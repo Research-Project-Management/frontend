@@ -10,5 +10,6 @@ pnpm-lock.yaml
 yarn.lock
 
 .env
+.env.local
 .dev.env
 .test.env

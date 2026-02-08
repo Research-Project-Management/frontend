@@ -1,4 +1,3 @@
-
 import Navbar from "./Navbar";
 import Flux from "~/assets/Flux.svg?react";
 import { Link } from "react-router";
@@ -38,7 +37,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="space-y-8 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm font-medium text-primary">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-full text-sm font-medium text-orange-800">
                 <Sparkles className="w-4 h-4" />
                 AI-Powered Research Management
               </div>
@@ -76,7 +75,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
                 <Link
-                  to="/register"
+                  to="/ws"
                   className="group px-8 py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 >
                   Get Started Free
@@ -102,7 +101,7 @@ export default function LandingPage() {
                 <div className="absolute inset-0 bg-linear-to-tr from-primary/20 to-blue-500/20 rounded-3xl blur-3xl"></div>
 
                 {/* Screenshot */}
-                <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-background">
+                <div className="relative rounded-xl overflow-hidden shadow-2xl shadow-blue-500/10 border border-border/50 bg-background">
                   <img
                     src="/screenshot.png"
                     alt="Flux Dashboard Screenshot"
@@ -111,13 +110,13 @@ export default function LandingPage() {
                 </div>
 
                 {/* Floating badges */}
-                <div className="absolute -top-4 -left-4 bg-background border border-border rounded-xl px-4 py-2 shadow-lg flex items-center gap-2">
+                <div className="absolute -top-20 left-1/2 bg-background border border-border rounded-xl px-4 py-2 shadow-lg flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-green-500" />
                   <span className="text-sm font-semibold">
                     40% More Productive
                   </span>
                 </div>
-                <div className="absolute -bottom-4 -right-4 bg-background border border-border rounded-xl px-4 py-2 shadow-lg flex items-center gap-2">
+                <div className="absolute -bottom-16 -right-4 bg-background border border-border rounded-xl px-4 py-2 shadow-lg flex items-center gap-2">
                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                   <span className="text-sm font-semibold">4.9/5 Rating</span>
                 </div>
@@ -271,7 +270,7 @@ export default function LandingPage() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
               <Link
-                to="/register"
+                to="/ws"
                 className="group px-8 py-4 bg-white text-primary rounded-xl font-semibold hover:bg-gray-100 transition-all shadow-xl hover:shadow-2xl flex items-center gap-2"
               >
                 Create Your Workspace Free

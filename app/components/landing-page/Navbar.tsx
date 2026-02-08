@@ -25,7 +25,13 @@ export default function Navbar() {
       }`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
+        <div
+          className={
+            `flex justify-between items-center ` +
+            (isScrolled ? "h-20" : "h-24") +
+            ` transition-all duration-300`
+          }
+        >
           {/* Logo */}
           <Link
             to="/"
@@ -37,15 +43,15 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden  items-center gap-8">
             <Link
-              to="/features"
+              to="/"
               className="font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Features
             </Link>
             <Link
-              to="/pricing"
+              to="/"
               className="font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Pricing
@@ -73,7 +79,7 @@ export default function Navbar() {
               Sign In
             </Link>
             <Link
-              to="/register"
+              to="/ws"
               className="group px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-sm hover:shadow-md flex items-center gap-2"
             >
               Get Started
@@ -83,7 +89,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 hover:bg-secondary rounded-lg transition-colors"
+            className="hidden p-2 hover:bg-secondary rounded-lg transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >

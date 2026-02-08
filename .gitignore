@@ -1,0 +1,14 @@
+gh.DS_Store
+/node_modules/
+
+# React Router
+/.react-router/
+/build/
+
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+.env
+.dev.env
+.test.env

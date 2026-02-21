@@ -23,7 +23,7 @@ const fetchWorkspacePages = async (workspaceId: string, status?: string, search?
 
 export const useWorkspacePages = (workspaceId: string, status?: string, search?: string, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: ["workspace-pages", workspaceId, status, search],
+    queryKey: ["workspace-pages", workspaceId, status],
     queryFn: () => fetchWorkspacePages(workspaceId, status, search),
     enabled: !!workspaceId && (options?.enabled ?? true),
   });
@@ -49,7 +49,7 @@ const fetchProjectPages = async (projectId: string, status?: string, search?: st
 
 export const useProjectPages = (projectId: string, status?: string, search?: string, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: ["pages", projectId, status, search],
+    queryKey: ["pages", projectId, status],
     queryFn: () => fetchProjectPages(projectId, status, search),
     enabled: !!projectId && (options?.enabled ?? true),
   });

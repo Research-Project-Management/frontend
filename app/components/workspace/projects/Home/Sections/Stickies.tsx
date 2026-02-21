@@ -162,7 +162,7 @@ export default function Stickies() {
             <div
               key={note._id}
               className={`h-48 overflow-hidden transition-all duration-200 ${
-                draggedId === note._id ? "opacity-50 scale-95" : "opacity-100"
+                draggedId === note._id ? "opacity-80 scale-95" : "opacity-100"
               }`}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, note._id)}

@@ -287,94 +287,96 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
     );
   }
 
-  // List view
+  // List view - Match Recent component style
   return (
     <>
-      <div className="flex items-center gap-4 px-4 py-3 rounded-lg bg-card border border-border hover:border-primary/50 hover:shadow-md transition-all duration-200 group">
-        <Link
-          to={`/editor/${page._id}`}
-          className="flex items-center gap-4 flex-1 min-w-0"
-        >
-          <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors shrink-0">
-            <FileText className="h-5 w-5" />
-          </div>
-
-          <div className="flex-1 grid gap-0.5 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
-                {page.title}
-              </h3>
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-md font-medium capitalize border ${
-                  statusColors[page.status] ||
-                  "bg-gray-500/10 text-gray-600 border-gray-600/20"
-                }`}
-              >
-                {page.status}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Folder className="w-3 h-3" />
-                {projectName}
-              </span>
-              <span>•</span>
-              <span>Edited {formattedDate}</span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                {page.views || 0}
-              </span>
-            </div>
-          </div>
-        </Link>
-
-        <div onClick={handleMenuClick}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-              >
-                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(`/editor/${page._id}`);
-                }}
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setNewTitle(page.title);
-                  setIsRenameDialogOpen(true);
-                }}
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsDeleteDialogOpen(true);
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <Link
+        to={`/editor/${page._id}`}
+        className="flex items-center gap-4 px-2 transition-all duration-200 cursor-pointer group"
+      >
+        {/* Project Icon */}
+        <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors shrink-0">
+          <FileText className="h-4 w-4" />
         </div>
+
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h3 className="font-medium hover:underline underline-offset-2 text-gray-900 group-hover:text-primary transition-all truncate">
+              {page.title}
+            </h3>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-md font-medium capitalize border ${
+                statusColors[page.status] ||
+                "bg-gray-500/10 text-gray-600 border-gray-600/20"
+              }`}
+            >
+              {page.status}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span className="font-medium">{projectName}</span>
+            <span>•</span>
+            <span>{formattedDate}</span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              {page.views || 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Hover Indicator */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-primary" />
+        </div>
+      </Link>
+
+      <div onClick={handleMenuClick} className="shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreHorizontal className="w-4 h-4 text-gray-500" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(`/editor/${page._id}`);
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                setNewTitle(page.title);
+                setIsRenameDialogOpen(true);
+              }}
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                setIsDeleteDialogOpen(true);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Rename Dialog */}

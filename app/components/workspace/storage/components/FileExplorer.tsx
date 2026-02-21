@@ -48,7 +48,7 @@ export default function FileExplorer({
   enableUpload = false,
   enableBreadcrumbs = false,
   isTrash = false,
-  defaultView = "grid",
+  defaultView = "list",
   header,
 }: FileExplorerProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">(defaultView);

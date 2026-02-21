@@ -47,14 +47,6 @@ export default function StickyLayout() {
   const updateSticky = useUpdateSticky();
   const deleteSticky = useDeleteSticky();
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      // Search logic handled in filteredNotes
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   // Handle mutation states in useEffect to avoid too many re-renders
   useEffect(() => {
     if (updateSticky.isPending) {
@@ -123,8 +115,45 @@ export default function StickyLayout() {
     setOrderedNotes(notes);
   }, [notes]);
 
-  const handleDragStart = (noteId: string) => {
+  const handleDragStart = (noteId: string, e?: React.DragEvent) => {
     setDraggedId(noteId);
+    
+    // Fix drag ghost image gradient issue
+    if (e?.dataTransfer) {
+      const draggedElement = e.currentTarget as HTMLElement;
+      
+      // Create a clone and append it to body first so it can render
+      const clone = draggedElement.cloneNode(true) as HTMLElement;
+      
+      // Position it off-screen but visible to browser so it renders
+      clone.style.position = 'fixed';
+      clone.style.top = '0px';
+      clone.style.left = '-9999px';
+      clone.style.width = draggedElement.offsetWidth + 'px';
+      clone.style.height = draggedElement.offsetHeight + 'px';
+      clone.style.opacity = '1';
+      clone.style.transform = 'none';
+      clone.style.pointerEvents = 'none';
+      clone.style.zIndex = '9999';
+      
+      document.body.appendChild(clone);
+      
+      // Use requestAnimationFrame to ensure the clone is rendered before setting as drag image
+      requestAnimationFrame(() => {
+        e.dataTransfer!.setDragImage(
+          clone,
+          draggedElement.offsetWidth / 2,
+          draggedElement.offsetHeight / 2
+        );
+        
+        // Clean up after a short delay
+        setTimeout(() => {
+          if (document.body.contains(clone)) {
+            document.body.removeChild(clone);
+          }
+        }, 50);
+      });
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -189,26 +218,26 @@ export default function StickyLayout() {
       <Header title="Stickies" Icon={Layers2} />
 
       {/* Toolbar */}
-      <div className="shrink-0 bg-background">
+      <div className="shrink-0 bg-background border-b border-gray-200">
         <div className="flex items-center justify-between px-6 py-3 gap-4">
           {/* Left side - Search & Filter */}
           <div className="flex items-center gap-2 flex-1">
             {/* Search */}
             <div className="relative max-w-xs w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
               <Input
                 type="text"
                 placeholder="Search stickies..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
+                className="pl-9 h-9 bg-background border-gray-200"
               />
             </div>
 
             {/* Filter by Tags */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9">
+                <Button variant="outline" size="sm" className="h-9 border-gray-200">
                   <Filter className="h-4 w-4 mr-2" />
                   Tags
                   {selectedTags.length > 0 && (
@@ -319,7 +348,7 @@ export default function StickyLayout() {
               <div
                 key={note._id}
                 className={`transition-all duration-200 ${
-                  draggedId === note._id ? "opacity-50 scale-95" : "opacity-100"
+                  draggedId === note._id ? "opacity-80 scale-95" : "opacity-100"
                 }`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, note._id)}
@@ -330,7 +359,7 @@ export default function StickyLayout() {
                   onDelete={handleDeleteNote}
                   dragHandleProps={{
                     draggable: true,
-                    onDragStart: () => handleDragStart(note._id),
+                    onDragStart: (e) => handleDragStart(note._id, e),
                     onDragEnd: handleDragEnd,
                   }}
                 />

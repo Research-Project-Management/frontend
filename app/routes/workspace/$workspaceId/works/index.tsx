@@ -1,4 +1,4 @@
-import YourWorks from "~/components/workspace/works/YourWorks";
+import YourWorks from "~/components/workspace/projects/works/YourWorks";
 
 export default function YourWorksRoute() {
   return <YourWorks />;

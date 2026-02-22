@@ -1,41 +1,119 @@
-import { useState, useCallback, useEffect } from "react";
-import { useParams } from "react-router";
-import { Plus, StickyNote as StickyIcon } from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { Link } from "react-router";
-import {
-  useStickies,
-  useCreateSticky,
-  useUpdateSticky,
-  useDeleteSticky,
-} from "~/query/sticky";
-import StickyNote from "../../stickies/note/StickyNote";
+import { useCallback, useMemo } from "react";
+import { useParams, Link } from "react-router";
+import { Plus, ArrowRight, Loader2 } from "lucide-react";
+import { useStickies, useCreateSticky, useDeleteSticky } from "~/query/sticky";
 import type { Note } from "../../stickies/types/note.type";
-import { NOTE_COLOR_CYCLE } from "../../stickies/types/noteColor.type";
+import {
+  NOTE_COLOR_MAP,
+  NOTE_COLOR_CYCLE,
+} from "../../stickies/types/noteColor.type";
+import HomeSection from "../HomeSection";
+
+// Strip HTML tags → plain text for preview
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// ─── Mini card ───────────────────────────────────────────────────────────────
+
+function MiniCard({ note }: { note: Note }) {
+  const colorConfig = NOTE_COLOR_MAP[note.color];
+  const accentStyle = {
+    backgroundColor: colorConfig.bg,
+    filter: "brightness(0.85)",
+  };
+  const plainContent = useMemo(
+    () => stripHtml(note.content || ""),
+    [note.content],
+  );
+
+  return (
+    <div
+      className="group relative flex flex-col rounded-xl overflow-hidden shadow-sm
+                 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+      style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
+    >
+      {/* Accent bar */}
+      <div className="h-1.5 w-full shrink-0" style={accentStyle} />
+
+      {/* Body */}
+      <div className="flex flex-col gap-1 px-3 py-2.5">
+        {note.title ? (
+          <p className="text-sm font-semibold leading-snug truncate">
+            {note.title}
+          </p>
+        ) : null}
+        <p className="text-xs leading-relaxed line-clamp-4 opacity-70">
+          {plainContent || (
+            <span className="italic opacity-50">Empty note</span>
+          )}
+        </p>
+      </div>
+
+      {/* Tags */}
+      {note.tags && note.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-3 pb-2.5 mt-auto">
+          {note.tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag._id}
+              className="px-1.5 py-0.5 text-[9px] rounded font-semibold text-white leading-none"
+              style={{ backgroundColor: tag.color || "#aaa" }}
+            >
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Add card ────────────────────────────────────────────────────────────────
+
+function AddCard({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex flex-col items-center justify-center gap-1.5 rounded-xl border-2
+                 border-dashed border-border/50 hover:border-primary/40 hover:bg-primary/5
+                 text-muted-foreground/40 hover:text-primary/60 transition-all duration-200
+                 disabled:opacity-40 disabled:cursor-not-allowed min-h-24"
+    >
+      {disabled ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          <Plus className="h-4 w-4" />
+          <span className="text-xs font-medium">New note</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+// ─── Section ─────────────────────────────────────────────────────────────────
 
 export default function Stickies() {
   const { workspaceId } = useParams();
   const { data: notes = [], isLoading } = useStickies(workspaceId || "", []);
   const createSticky = useCreateSticky();
-  const updateSticky = useUpdateSticky();
   const deleteSticky = useDeleteSticky();
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [orderedNotes, setOrderedNotes] = useState<Note[]>([]);
 
-  const getNextColor = (prevNotes: Note[]): Note["color"] => {
-    if (prevNotes.length === 0) return NOTE_COLOR_CYCLE[0];
-
-    const lastColor = prevNotes[0].color;
-    const idx = NOTE_COLOR_CYCLE.indexOf(lastColor);
-    const nextIdx = idx === -1 ? 0 : (idx + 1) % NOTE_COLOR_CYCLE.length;
-    return NOTE_COLOR_CYCLE[nextIdx];
-  };
-
-  const handleAddNote = () => {
+  const handleAdd = useCallback(() => {
     if (!workspaceId) return;
-
-    const color = getNextColor(notes);
-
+    const lastColor = notes[0]?.color;
+    const idx = lastColor ? NOTE_COLOR_CYCLE.indexOf(lastColor) : -1;
+    const color = NOTE_COLOR_CYCLE[(idx + 1) % NOTE_COLOR_CYCLE.length];
     createSticky.mutate({
       workspaceId,
       content: "<p></p>",
@@ -43,144 +121,35 @@ export default function Stickies() {
       title: "",
       position: { x: 0, y: 0 },
     });
-  };
+  }, [workspaceId, notes, createSticky]);
 
-  const handleUpdateNote = useCallback(
-    (id: string, updatedFields: Partial<Note>) => {
-      updateSticky.mutate({
-        stickyId: id,
-        updates: updatedFields,
-      });
-    },
-    [updateSticky],
+  const preview = useMemo(() => notes.slice(0, 5), [notes]);
+
+  const viewAllAction = notes.length > 0 && (
+    <Link
+      to={`/${workspaceId}/stickies`}
+      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+    >
+      View all
+      <ArrowRight className="h-3 w-3" />
+    </Link>
   );
-
-  const handleDeleteNote = useCallback(
-    (id: string) => {
-      deleteSticky.mutate(id);
-    },
-    [deleteSticky],
-  );
-
-  // Update ordered notes when data changes
-  useEffect(() => {
-    if (notes.length > 0) {
-      setOrderedNotes(notes.slice(0, 4));
-    }
-  }, [notes]);
-
-  const handleDragStart = (noteId: string) => {
-    setDraggedId(noteId);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-
-    const currentNotes =
-      orderedNotes.length > 0 ? orderedNotes : notes.slice(0, 4);
-    const draggedIndex = currentNotes.findIndex((n) => n._id === draggedId);
-    const targetIndex = currentNotes.findIndex((n) => n._id === targetId);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedId(null);
-      return;
-    }
-
-    const newOrder = [...currentNotes];
-    const [draggedNote] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedNote);
-
-    setOrderedNotes(newOrder);
-    setDraggedId(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedId(null);
-  };
-
-  const displayNotes =
-    orderedNotes.length > 0 ? orderedNotes : notes.slice(0, 4);
-
-  if (isLoading) {
-    return (
-      <div className="w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <StickyIcon className="w-5 h-5" />
-            Quick Notes
-          </h2>
-        </div>
-        <p className="text-muted-foreground">Loading stickies...</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="w-full max-w-6xl">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <StickyIcon className="w-4 h-4" />
-          Quick Notes
-        </h2>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleAddNote} size="sm" variant="outline">
-            <Plus className="w-3 h-3 mr-1" />
-            New
-          </Button>
-          {notes.length > 0 && (
-            <Link to={`/${workspaceId}/stickies`}>
-              <Button size="sm" variant="ghost" className="text-xs">
-                View All
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {notes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 space-y-3 border-2 border-dashed rounded-lg">
-          <StickyIcon className="w-8 h-8 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">No stickies yet</p>
-          <Button onClick={handleAddNote} variant="outline" size="sm">
-            <Plus className="w-3 h-3 mr-1" />
-            Create your first sticky
-          </Button>
+    <HomeSection title="Quick Notes" action={viewAllAction}>
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading…
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {displayNotes.map((note) => (
-            <div
-              key={note._id}
-              className={`h-48 overflow-hidden transition-all duration-200 ${
-                draggedId === note._id ? "opacity-80 scale-95" : "opacity-100"
-              }`}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, note._id)}
-            >
-              <StickyNote
-                note={note}
-                onUpdate={handleUpdateNote}
-                onDelete={handleDeleteNote}
-                dragHandleProps={{
-                  draggable: true,
-                  onDragStart: () => handleDragStart(note._id),
-                  onDragEnd: handleDragEnd,
-                }}
-              />
-            </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          {preview.map((note) => (
+            <MiniCard key={note._id} note={note} />
           ))}
+          <AddCard onClick={handleAdd} disabled={createSticky.isPending} />
         </div>
       )}
-    </div>
+    </HomeSection>
   );
 }

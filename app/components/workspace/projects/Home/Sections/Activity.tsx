@@ -21,7 +21,7 @@ export default function Activity() {
           {activities.map((activity, index) => (
             <div
               key={index}
-              className="p-2 py-2 flex items-center gap-4 bg-white border-gray-200 rounded-lg"
+              className="p-3 flex items-center gap-4 bg-card border border-border/40 rounded-lg"
             >
               <Avatar className="size-8">
                 <AvatarImage src={activity.user?.avatar} />
@@ -36,7 +36,9 @@ export default function Activity() {
                 {activity.content}
               </p>
               <span className="text-xs text-gray-500">
-                {formatDistanceToNow(new Date(activity.time), { addSuffix: true })}
+                {formatDistanceToNow(new Date(activity.time), {
+                  addSuffix: true,
+                })}
               </span>
             </div>
           ))}

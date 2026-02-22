@@ -76,7 +76,7 @@ export default memo(function StickyContent({
     content: note.content || "",
     onUpdate: ({ editor }) => {
       if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
-      
+
       updateTimerRef.current = setTimeout(() => {
         onUpdate(note._id, { content: editor.getHTML() });
       }, 1000);
@@ -95,9 +95,10 @@ export default memo(function StickyContent({
 
   useEffect(() => {
     if (!editor) return;
+    if (editor.isFocused) return; // Don't overwrite while user is typing
     const next = note.content || "";
     if (editor.getHTML() !== next) {
-      editor.commands.setContent(next);
+      editor.commands.setContent(next, false);
     }
   }, [note.content, editor]);
 

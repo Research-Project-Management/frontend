@@ -2,14 +2,16 @@ import type { Note } from "../types/note.type";
 import { NOTE_COLOR_MAP } from "../types/noteColor.type";
 import StickyContent from "./StickyContent";
 import StickyToolbar from "./StickyToolbar";
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import type { Editor } from "@tiptap/react";
+import { GripVertical } from "lucide-react";
 
 interface StickyNoteProps {
   note: Note;
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onDelete: (id: string) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  isDragging?: boolean;
 }
 
 const StickyNote = memo(function StickyNote({
@@ -17,81 +19,108 @@ const StickyNote = memo(function StickyNote({
   onUpdate,
   onDelete,
   dragHandleProps,
+  isDragging,
 }: StickyNoteProps) {
   const colorConfig = NOTE_COLOR_MAP[note.color];
   const [editor, setEditor] = useState<Editor | null>(null);
   const [localTitle, setLocalTitle] = useState(note.title || "");
+  const titleFocusedRef = useRef(false);
 
-  // Sync local title with note prop if it changes from server/externally
+  // Only sync title from server when not currently editing it
   useEffect(() => {
+    if (titleFocusedRef.current) return;
     if (note.title !== undefined && note.title !== localTitle) {
-      // Only sync if not recently edited to avoid cursor jumps
-      // But for simplicity, we check if the target has matured.
       setLocalTitle(note.title);
     }
   }, [note.title]);
 
   // Debounce title update
   useEffect(() => {
+    if (!titleFocusedRef.current) return;
     const timer = setTimeout(() => {
       if (localTitle !== note.title) {
         onUpdate(note._id, { title: localTitle });
       }
-    }, 1000);
-
+    }, 800);
     return () => clearTimeout(timer);
   }, [localTitle, note._id, note.title, onUpdate]);
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalTitle(e.target.value);
+  // Derive a slightly darker shade for the top accent
+  const topAccentStyle = {
+    backgroundColor: colorConfig.bg,
+    filter: "brightness(0.88)",
   };
 
   return (
     <div
-      className="relative flex flex-col min-h-[354px] rounded shadow-sm transition-shadow hover:shadow-md"
+      className={`group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 ${
+        isDragging
+          ? "shadow-2xl scale-[1.02] rotate-1"
+          : "shadow-md hover:shadow-xl hover:-translate-y-0.5"
+      }`}
       style={{
         backgroundColor: colorConfig.bg,
         color: colorConfig.text,
-        border: colorConfig.border
-          ? `1px solid ${colorConfig.border}`
-          : undefined,
-        boxShadow: "0 1px 2px rgba(0,0,0,0.07)",
       }}
     >
+      {/* Top accent bar + drag handle */}
       <div
-        className="px-4 pt-4 pb-0 flex flex-col gap-2 cursor-move"
+        className="h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing select-none"
+        style={topAccentStyle}
         {...dragHandleProps}
       >
-        <input
-          type="text"
-          value={localTitle}
-          onChange={handleTitleChange}
-          placeholder="Title"
-          className="w-full bg-transparent border-none outline-none font-bold text-lg placeholder:text-gray-400/70"
-          style={{ color: "inherit" }}
-        />
-        {note.tags && note.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {note.tags.map((tag) => (
+        {/* Tags in header */}
+        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+          {note.tags && note.tags.length > 0 ? (
+            note.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag._id}
-                className="px-1.5 py-0.5 text-[10px] rounded-sm font-medium opacity-80"
-                style={{ backgroundColor: tag.color || "#ccc", color: "#fff" }}
+                className="px-1.5 py-0 text-[9px] rounded font-semibold text-white shrink-0"
+                style={{ backgroundColor: tag.color || "#aaa" }}
               >
                 {tag.name}
               </span>
-            ))}
-          </div>
-        )}
+            ))
+          ) : (
+            <span className="text-[10px] opacity-40 italic">Sticky note</span>
+          )}
+        </div>
+        <GripVertical className="h-3.5 w-3.5 opacity-30 shrink-0" />
       </div>
 
+      {/* Title */}
+      <div className="px-4 pt-3 pb-0">
+        <input
+          type="text"
+          value={localTitle}
+          onChange={(e) => setLocalTitle(e.target.value)}
+          onFocus={() => {
+            titleFocusedRef.current = true;
+          }}
+          onBlur={() => {
+            titleFocusedRef.current = false;
+            if (localTitle !== note.title) {
+              onUpdate(note._id, { title: localTitle });
+            }
+          }}
+          placeholder="Title…"
+          className="w-full bg-transparent border-none outline-none font-bold text-base placeholder:opacity-40"
+          style={{ color: "inherit" }}
+        />
+      </div>
+
+      {/* Content */}
       <StickyContent note={note} onUpdate={onUpdate} onReady={setEditor} />
-      <StickyToolbar
-        note={note}
-        onUpdate={onUpdate}
-        onDelete={onDelete}
-        editor={editor}
-      />
+
+      {/* Toolbar — show on group-hover */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <StickyToolbar
+          note={note}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          editor={editor}
+        />
+      </div>
     </div>
   );
 });

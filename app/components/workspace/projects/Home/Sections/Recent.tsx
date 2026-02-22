@@ -18,31 +18,35 @@ export default function Recent() {
       ) : items && items.length > 0 ? (
         <div className="grid gap-3">
           {items.map((item) => {
-            const linkTo = 
-              item.type === "project" 
+            const linkTo =
+              item.type === "project"
                 ? `/workspace/${workspaceId}/${item.id}`
                 : item.type === "page" && item.project
-                ? `/workspace/${workspaceId}/${item.project._id}/page/${item.id}`
-                : `/workspace/${workspaceId}/storage`;
+                  ? `/workspace/${workspaceId}/${item.project._id}/page/${item.id}`
+                  : `/workspace/${workspaceId}/storage`;
 
             return (
               <Link
                 key={item.id}
                 to={linkTo}
-                className="flex items-center gap-4 px-2 transition-all duration-200 cursor-pointer group"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent
+                           hover:bg-secondary/60 hover:border-border/40 transition-all duration-150 group cursor-pointer"
               >
-                <span className="text-xl">{item.icon}</span>
+                <span className="text-base shrink-0">{item.icon}</span>
 
-                <span className="font-medium hover:underline underline-offset-2 text-gray-900 group-hover:text-primary transition-all">
+                <span className="flex-1 text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
                   {item.name}
                 </span>
-                <span className="text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(item.lastEdited), { addSuffix: true })}
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {formatDistanceToNow(new Date(item.lastEdited), {
+                    addSuffix: true,
+                  })}
                 </span>
 
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary" />
-                </div>
+                <ChevronRight
+                  className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary
+                                        opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                />
               </Link>
             );
           })}

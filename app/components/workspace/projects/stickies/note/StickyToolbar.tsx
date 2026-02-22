@@ -1,6 +1,6 @@
 import type { Note } from "../types/note.type";
 import { Palette, Bold, Italic, ListTodo, Trash2 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 import ColorModal from "../modals/ColorModal";
 import DeleteModal from "../modals/deleteModal";
@@ -45,93 +45,74 @@ export default function StickyToolbar({
   }
 
   const handleToggleTag = (tagId: string) => {
-      // note.tags contains Tag objects (populated), but for update we usually just send IDs or rely on backend logic.
-      // Based on Sticky model, updates usually replace array.
-      // note.tags is Tag[] from populate.
-      
-      const currentTagIds = note.tags.map(t => t._id);
-      let newTagIds;
-      if (currentTagIds.includes(tagId)) {
-          newTagIds = currentTagIds.filter(id => id !== tagId);
-      } else {
-          newTagIds = [...currentTagIds, tagId];
-      }
-      
-      onUpdate(note._id, { tags: newTagIds as any }); // Cast needed because Partial<Note> expects Tag[] but API often accepts IDs. 
-      // Actually, frontend Note type has Tag[]. We might need to handle this mismatch or ensure API response updates Note correctly.
-      // The updateSticky in sticky.ts sends json body. Backend expects IDs for `tags` field (ref ObjectId).
-      // So sending array of strings is correct for Backend.
-      // However, optimistically updating FE state might be tricky if we don't have the full Tag object immediately.
-      // React Query invalidation will fix it quickly.
+    // note.tags contains Tag objects (populated), but for update we usually just send IDs or rely on backend logic.
+    // Based on Sticky model, updates usually replace array.
+    // note.tags is Tag[] from populate.
+
+    const currentTagIds = note.tags.map((t) => t._id);
+    let newTagIds;
+    if (currentTagIds.includes(tagId)) {
+      newTagIds = currentTagIds.filter((id) => id !== tagId);
+    } else {
+      newTagIds = [...currentTagIds, tagId];
+    }
+
+    onUpdate(note._id, { tags: newTagIds as any }); // Cast needed because Partial<Note> expects Tag[] but API often accepts IDs.
+    // Actually, frontend Note type has Tag[]. We might need to handle this mismatch or ensure API response updates Note correctly.
+    // The updateSticky in sticky.ts sends json body. Backend expects IDs for `tags` field (ref ObjectId).
+    // So sending array of strings is correct for Backend.
+    // However, optimistically updating FE state might be tricky if we don't have the full Tag object immediately.
+    // React Query invalidation will fix it quickly.
   };
 
   return (
-    <div className="h-9 px-5 pb-5 flex items-center justify-between">
-      <div ref={ref} className="relative flex items-center gap-1">
-        <button
-          type="button"
-          title="Background color"
+    <div className="h-9 px-3 pb-2 flex items-center justify-between border-t border-black/5">
+      <div ref={ref} className="relative flex items-center gap-0.5">
+        <ToolbarBtn
+          title="Color"
           onClick={() =>
             setActiveModal((m) => (m === "color" ? null : "color"))
           }
-          className="flex items-center pr-4 text-gray-500 hover:text-gray-700"
         >
-          <Palette size={16} />
-        </button>
-
-        <button
-          type="button"
+          <Palette size={14} />
+        </ToolbarBtn>
+        <ToolbarBtn
           title="Bold"
           onClick={() => editor?.chain().focus().toggleBold().run()}
           disabled={!editor}
-          aria-disabled={!editor}
-          className="flex items-center pr-4 text-gray-500 hover:text-gray-700 disabled:opacity-50"
         >
-          <Bold size={16} />
-        </button>
-
-        <button
-          type="button"
+          <Bold size={14} />
+        </ToolbarBtn>
+        <ToolbarBtn
           title="Italic"
-          className="flex items-center pr-4 text-gray-500 hover:text-gray-700 disabled:opacity-50"
           onClick={() => editor?.chain().focus().toggleItalic().run()}
           disabled={!editor}
-          aria-disabled={!editor}
         >
-          <Italic size={16} />
-        </button>
-
-        <button
-          type="button"
+          <Italic size={14} />
+        </ToolbarBtn>
+        <ToolbarBtn
           title="Task list"
-          className="flex items-center pr-4 text-gray-500 hover:text-gray-700 disabled:opacity-50"
           onClick={() => editor?.chain().focus().toggleTaskList().run()}
           disabled={!editor}
-          aria-disabled={!editor}
         >
-          <ListTodo size={16} />
-        </button>
-
-        <div className="pr-4">
-             <TagPicker 
-                selectedTagIds={note.tags.map(t => t._id)}
-                onToggleTag={handleToggleTag}
-             />
-        </div>
-
+          <ListTodo size={14} />
+        </ToolbarBtn>
+        <TagPicker
+          selectedTagIds={note.tags.map((t) => t._id)}
+          onToggleTag={handleToggleTag}
+        />
         {isColorOpen && (
           <ColorModal note={note} onUpdate={onUpdate} onClose={closeModal} />
         )}
       </div>
 
-      <button
-        type="button"
+      <ToolbarBtn
         title="Delete"
         onClick={() => setActiveModal("delete")}
-        className="flex items-center text-gray-500 hover:text-red-500"
+        danger
       >
-        <Trash2 size={16} />
-      </button>
+        <Trash2 size={14} />
+      </ToolbarBtn>
 
       <DeleteModal
         open={isDeleteOpen}
@@ -144,5 +125,35 @@ export default function StickyToolbar({
         description="Are you sure you want to delete this note? This action cannot be undone."
       />
     </div>
+  );
+}
+
+function ToolbarBtn({
+  children,
+  title,
+  onClick,
+  disabled,
+  danger,
+}: {
+  children: React.ReactNode;
+  title: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors disabled:opacity-30 ${
+        danger
+          ? "text-current opacity-50 hover:opacity-100 hover:text-red-500 hover:bg-red-50"
+          : "text-current opacity-50 hover:opacity-100 hover:bg-black/10"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

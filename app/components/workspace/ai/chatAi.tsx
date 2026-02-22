@@ -7,7 +7,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Paperclip, Send, Upload, X, FileText, Plus } from "lucide-react";
+import {
+  Paperclip,
+  Send,
+  Upload,
+  X,
+  FileText,
+  Plus,
+  ArrowUp,
+} from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
 import { Button } from "~/components/ui/button";
@@ -96,7 +104,7 @@ export default function ChatAi() {
               disabled={!message.trim()}
               className="size-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-30"
             >
-              <Send className="size-4" />
+              <ArrowUp className="size-4" />
             </button>
           </div>
         </div>

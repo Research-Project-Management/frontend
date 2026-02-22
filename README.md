@@ -93,7 +93,7 @@ Clone the repository:
 
 ```bash
 git clone <repository-url>
-cd RPM
+cd Flux
 ```
 
 Install dependencies:
@@ -153,13 +153,13 @@ npm run typecheck
 Build Docker image:
 
 ```bash
-docker build -t rpm-app .
+docker build -t flux-app .
 ```
 
 Run container:
 
 ```bash
-docker run -p 2916:2916 rpm-app
+docker run -p 2916:2916 flux-app
 ```
 
 ### Cloud Platforms

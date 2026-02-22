@@ -222,7 +222,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
       </nav>
 
       {/* Pinned Section */}
-      <nav className="flex gap-2 flex-col pt-4 border-t border-secondary mt-4">
+      <nav className="hidden gap-2 flex-col pt-4 border-t border-secondary mt-4">
         <div className="flex gap-1 justify-between text-muted-foreground font-semibold items-center ml-2 text-sm">
           <span>Pinned</span>
           <Pin className="size-4" />

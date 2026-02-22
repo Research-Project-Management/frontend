@@ -3,6 +3,13 @@ import SideBar from "./SideBar";
 import TopBar from "./TopBar";
 import { ChatModeProvider, useChatMode } from "~/contexts/ChatModeContext";
 import WikiChatFeatures from "../WikiChatFeatures";
+import { useState } from "react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 
 export default function ChatAiLayout() {
   return (
@@ -14,6 +21,7 @@ export default function ChatAiLayout() {
 
 function ChatAiContent() {
   const { mode } = useChatMode();
+  const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
 
   return (
     <div className="flex-1 bg-background h-full flex overflow-hidden">
@@ -39,16 +47,62 @@ function ChatAiContent() {
 
           {/* Right Panel - Sources (Wiki Mode Only) */}
           {mode === "wiki" && (
-            <aside className="w-80 border-l bg-secondary/10 overflow-y-auto animate-in slide-in-from-right duration-300">
-              <div className="p-6">
-                <h2 className="text-[11px] font-bold mb-6 flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
+            <aside
+              className={`relative shrink-0 border-l bg-secondary/10 flex overflow-hidden transition-[width] duration-300 ease-in-out ${
+                sourcesCollapsed ? "w-10" : "w-72"
+              }`}
+            >
+              {/* Toggle button on left edge */}
+              <div className="absolute top-3 left-2 z-10">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setSourcesCollapsed((v) => !v)}
+                      className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    >
+                      {sourcesCollapsed ? (
+                        <PanelRightOpen className="size-3.5" />
+                      ) : (
+                        <PanelRightClose className="size-3.5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {sourcesCollapsed ? "Expand sources" : "Collapse sources"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              {/* Content — hidden when collapsed */}
+              <div
+                className={`flex-1 overflow-y-auto transition-opacity duration-200 ${
+                  sourcesCollapsed
+                    ? "opacity-0 pointer-events-none"
+                    : "opacity-100"
+                }`}
+              >
+                <div className="p-4 pt-3">
+                  <h2 className="text-[10px] font-semibold mb-4 flex items-center gap-2 text-muted-foreground/70 uppercase tracking-widest pl-7">
                     <span className="p-1.5 rounded-lg bg-secondary text-primary border border-border">
-                        <WikiChatFeaturesIcon />
+                      <WikiChatFeaturesIcon />
                     </span>
                     Sources
-                </h2>
-                <WikiChatFeatures />
+                  </h2>
+                  <WikiChatFeatures />
+                </div>
               </div>
+
+              {/* Collapsed label */}
+              {sourcesCollapsed && (
+                <div className="flex-1 flex items-center justify-center">
+                  <span
+                    className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-widest"
+                    style={{ writingMode: "vertical-rl", rotate: "180deg" }}
+                  >
+                    Sources
+                  </span>
+                </div>
+              )}
             </aside>
           )}
         </main>
@@ -58,7 +112,22 @@ function ChatAiContent() {
 }
 
 function WikiChatFeaturesIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="M2 15h10"/><path d="m9 18 3-3-3-3"/></svg>
-    )
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" />
+      <polyline points="14 2 14 8 20 8" />
+      <path d="M2 15h10" />
+      <path d="m9 18 3-3-3-3" />
+    </svg>
+  );
 }

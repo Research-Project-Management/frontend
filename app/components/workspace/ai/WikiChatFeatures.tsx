@@ -1,127 +1,236 @@
-import { Upload, FileText, Trash2, Plus, FileUp, Database } from "lucide-react";
+import {
+  FileText,
+  Trash2,
+  FileUp,
+  Database,
+  FileImage,
+  FileCode,
+  File,
+  CloudUpload,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { useState } from "react";
+import { useState, useRef, useCallback, type DragEvent } from "react";
 import { Switch } from "~/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 
-type Document = {
+type UploadedFile = {
   id: string;
   name: string;
   size: number;
   type: string;
+  file: File;
 };
 
+const ACCEPTED_TYPES =
+  ".pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.png,.jpg,.jpeg,.ts,.tsx,.js,.json";
+
+function getFileIcon(type: string, name: string) {
+  if (type.startsWith("image/"))
+    return <FileImage className="size-4 text-violet-500" />;
+  if (
+    type.includes("pdf") ||
+    type.includes("word") ||
+    name.endsWith(".docx") ||
+    name.endsWith(".doc")
+  )
+    return <FileText className="size-4 text-red-500" />;
+  if (type.includes("sheet") || name.endsWith(".xlsx") || name.endsWith(".csv"))
+    return <FileText className="size-4 text-emerald-500" />;
+  if (
+    type.includes("javascript") ||
+    type.includes("typescript") ||
+    name.match(/\.(ts|tsx|js|jsx|json)$/)
+  )
+    return <FileCode className="size-4 text-blue-500" />;
+  if (name.endsWith(".md") || name.endsWith(".txt"))
+    return <FileText className="size-4 text-amber-500" />;
+  return <File className="size-4 text-muted-foreground" />;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
 export default function WikiChatFeatures() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [useRpmData, setUseRpmData] = useState(true);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [useFluxData, setUseFluxData] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = () => {
-    const mockDoc: Document = {
-      id: Date.now().toString(),
-      name: "Lecture_Notes_Unit_1.pdf",
-      size: 1024 * 1024 * 1.2,
-      type: "application/pdf",
-    };
-    setDocuments([...documents, mockDoc]);
+  const addFiles = useCallback((incoming: FileList | null) => {
+    if (!incoming) return;
+    const newFiles: UploadedFile[] = Array.from(incoming).map((file) => ({
+      id: `${Date.now()}-${Math.random()}`,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file,
+    }));
+    setFiles((prev) => {
+      const existingNames = new Set(prev.map((f) => f.name));
+      return [...prev, ...newFiles.filter((f) => !existingNames.has(f.name))];
+    });
+  }, []);
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = () => setIsDragging(false);
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    addFiles(e.dataTransfer.files);
   };
 
-  const handleRemove = (id: string) => {
-    setDocuments(documents.filter((doc) => doc.id !== id));
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  };
+  const handleRemove = (id: string) =>
+    setFiles((prev) => prev.filter((f) => f.id !== id));
 
   return (
-    <div className="space-y-6">
-      {/* RPM Data Toggle */}
+    <div className="space-y-5">
+      {/* Flux Data Toggle */}
       <div
-        className="flex items-center justify-between p-4 bg-secondary/20 rounded-xl border border-border group hover:border-primary/20 transition-all cursor-pointer"
-        onClick={() => setUseRpmData(!useRpmData)}
+        className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer group ${
+          useFluxData
+            ? "bg-primary/8 border-primary/25 hover:border-primary/40"
+            : "bg-secondary/20 border-border hover:border-primary/20"
+        }`}
+        onClick={() => setUseFluxData((v) => !v)}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div
-            className={`p-2 rounded-lg transition-colors ${useRpmData ? "bg-highlight text-primary" : "bg-secondary text-primary/40"}`}
+            className={`p-1.5 rounded-lg transition-colors ${
+              useFluxData
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
           >
-            <Database className="size-4" />
+            <Database className="size-3.5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-foreground uppercase tracking-tight">
-              Use RPM Data
-            </p>
-            <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter mt-0.5">
-              Integrate RPM context
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <p className="text-xs font-semibold text-foreground">
+                  Flux Workspace Data
+                </p>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-52">
+                Allow the AI to access your Flux project data for more informed
+                responses.
+              </TooltipContent>
+            </Tooltip>
+            <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+              {useFluxData ? "Active" : "Disabled"}
             </p>
           </div>
         </div>
         <Switch
-          checked={useRpmData}
-          onCheckedChange={setUseRpmData}
-          className="data-[state=checked]:bg-primary scale-75"
+          checked={useFluxData}
+          onCheckedChange={setUseFluxData}
+          className="data-[state=checked]:bg-primary scale-[0.8] shrink-0"
+          onClick={(e) => e.stopPropagation()}
         />
       </div>
 
-      {/* Upload Button */}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full h-12 border-dashed border-border bg-secondary/30 hover:bg-secondary/50 text-foreground transition-all group"
-        onClick={handleUpload}
+      {/* Drop zone */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        className={`relative flex flex-col items-center justify-center gap-2 py-7 px-4 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200 text-center select-none ${
+          isDragging
+            ? "border-primary bg-primary/8 scale-[0.99]"
+            : "border-border/60 hover:border-primary/50 bg-secondary/20 hover:bg-secondary/40"
+        }`}
       >
-        <div className="flex items-center gap-2">
-          <FileUp className="size-4 group-hover:scale-110 transition-transform text-primary" />
-          <span className="font-bold text-[11px] uppercase tracking-wider">
-            Add Source
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept={ACCEPTED_TYPES}
+          className="hidden"
+          onChange={(e) => addFiles(e.target.files)}
+        />
+        <div
+          className={`p-2.5 rounded-xl transition-colors ${isDragging ? "bg-primary/15" : "bg-secondary"}`}
+        >
+          {isDragging ? (
+            <CloudUpload className="size-5 text-primary" />
+          ) : (
+            <FileUp className="size-5 text-muted-foreground" />
+          )}
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-foreground/80">
+            {isDragging ? "Drop files here" : "Upload sources"}
+          </p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+            PDF, DOCX, MD, TXT, CSV, images, code
+          </p>
+        </div>
+        {!isDragging && (
+          <p className="text-[10px] text-muted-foreground/40">
+            Click or drag & drop
+          </p>
+        )}
+      </div>
+
+      {/* File list */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+            Sources
+          </span>
+          <span className="text-[10px] text-muted-foreground/50 font-medium">
+            {files.length} file{files.length !== 1 ? "s" : ""}
           </span>
         </div>
-      </Button>
 
-      {/* Document List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Current Sources ({documents.length})
-          </h3>
-        </div>
-
-        {documents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center px-4 bg-secondary/10 rounded-xl border border-dashed border-border">
-            <FileText className="size-8 text-muted-foreground/20 mb-3" />
-            <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-tight">
-              No documents yet
+        {files.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 rounded-xl bg-secondary/10 border border-dashed border-border/40 text-center">
+            <FileText className="size-6 text-muted-foreground/20 mb-2" />
+            <p className="text-[10px] text-muted-foreground/50">
+              No files uploaded yet
             </p>
           </div>
         ) : (
-          <div className="grid gap-2">
-            {documents.map((doc) => (
+          <div className="space-y-1.5">
+            {files.map((f) => (
               <div
-                key={doc.id}
-                className="flex items-center justify-between p-3 bg-background border border-border rounded-xl group hover:border-primary/30 transition-all"
+                key={f.id}
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-border/50 bg-background hover:border-primary/30 hover:bg-secondary/30 transition-all group"
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="shrink-0 size-8 rounded-lg bg-secondary text-primary flex items-center justify-center border border-border">
-                    <FileText className="size-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">
-                      {doc.name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
-                      {formatFileSize(doc.size)}
-                    </p>
-                  </div>
+                <div className="shrink-0 size-7 rounded-md bg-secondary flex items-center justify-center border border-border/50">
+                  {getFileIcon(f.type, f.name)}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemove(doc.id)}
-                  className="size-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-secondary hover:text-destructive"
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate text-foreground/90 group-hover:text-primary transition-colors leading-snug">
+                    {f.name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                    {formatFileSize(f.size)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <CheckCircle2 className="size-3.5 text-emerald-500 opacity-70" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemove(f.id)}
+                    className="size-6 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

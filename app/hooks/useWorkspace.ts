@@ -5,7 +5,7 @@ import { fetchProjectsByWorkspaceId, fetchWorkspaceById } from "~/query/workspac
 export const useWorkspace = () => {
     const { workspaceId } = useParams<{ workspaceId: string }>();
     const { data, isLoading, isError } = useQuery({
-        queryKey: [workspaceId, workspaceId],
+        queryKey: ['workspace', workspaceId],
         queryFn: () => fetchWorkspaceById(workspaceId!),
         enabled: !!workspaceId,
     });

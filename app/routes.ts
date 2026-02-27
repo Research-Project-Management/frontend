@@ -67,10 +67,11 @@ export default [
         "./routes/workspace/$workspaceId/project/$projectId/settings.tsx",
       ),
     ]),
-    route(
-      ":workspaceId/setting",
-      "./routes/workspace/$workspaceId/setting.tsx",
-    ),
+    layout("./components/workspace/settings/layout/SettingLayout.tsx", [
+        route(":workspaceId/settings", "./routes/workspace/$workspaceId/settings/index.tsx"),
+        route(":workspaceId/settings/members", "./routes/workspace/$workspaceId/settings/members.tsx"),
+      ]),
+
     layout("./components/workspace/ai/layout/ChatAiLayout.tsx", [
       route(":workspaceId/ai", "./routes/workspace/$workspaceId/ai/index.tsx"),
       // [ route(":chatId", "./routes/workspace/$workspaceId/ai/$chatId$/chatId.tsx"),
@@ -83,7 +84,7 @@ export default [
       route(":workspaceId/storage/starred", "./routes/workspace/$workspaceId/storage/starred.tsx"),
       route(":workspaceId/storage/trash", "./routes/workspace/$workspaceId/storage/trash.tsx"),
     ]),
-    route(":workspaceId/team", "./routes/workspace/$workspaceId/team.tsx"),
+    // route(":workspaceId/team", "./routes/workspace/$workspaceId/team.tsx"),
     route(":workspaceId/roles", "./routes/workspace/$workspaceId/roles/index.tsx"),
     route(":workspaceId/roles/:roleId", "./routes/workspace/$workspaceId/roles/$roleId.tsx"),
   ]),
@@ -92,4 +93,6 @@ export default [
   layout("./components/workspace/$pageId/layout/PageLayout.tsx", [
     route("/editor/:pageId", "./routes/workspace/$pageId/$pageId.tsx"),
   ]),
+
+
 ] satisfies RouteConfig;

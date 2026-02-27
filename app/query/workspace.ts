@@ -133,3 +133,86 @@ export const useRemoveWorkspaceMember = () => {
         },
     });
 };
+
+//Workspace mutations (used by settings pages)
+export const updateWorkspace = async ({
+  id,
+  data,
+}: {
+  id: string;
+  data: Partial<{
+    name: string;
+    avatar?: string | null;
+    companySize?: string;
+    timezone?: string;
+    url?: string;
+  }>;
+}) => {
+  const response = await fetch(API_URL + `/api/workspace/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    if (errText) {
+      try {
+        const errJson = JSON.parse(errText);
+        throw new Error(errJson?.error || errJson?.message || errText);
+      } catch {
+        throw new Error(errText);
+      }
+    }
+    throw new Error("Failed to update workspace");
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+};
+
+export const useUpdateWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateWorkspace,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+  });
+};
+
+export const deleteWorkspace = async (id: string) => {
+  const response = await fetch(API_URL + `/api/workspace/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    if (errText) {
+      try {
+        const errJson = JSON.parse(errText);
+        throw new Error(errJson?.error || errJson?.message || errText);
+      } catch {
+        throw new Error(errText);
+      }
+    }
+    throw new Error("Failed to delete workspace");
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+};
+
+export const useDeleteWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteWorkspace,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    },
+  });
+};

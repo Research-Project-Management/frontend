@@ -3,10 +3,10 @@ import React from "react";
 import {
   CloudIcon,
   Square3Stack3DIcon,
-  UsersIcon,
   InboxIcon,
   SparklesIcon,
   MagnifyingGlassIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/solid";
 import { Input } from "~/components/ui/input";
 import { Link, useParams, useLocation, useNavigate } from "react-router";
@@ -35,13 +35,21 @@ import Loading from "~/components/ui/Loading";
 import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import { Button } from "~/components/ui/button";
-import { Cog, LayoutGrid, Plus, PlusCircle, User, LogOut, Settings } from "lucide-react";
+import {
+  Cog,
+  LayoutGrid,
+  Plus,
+  PlusCircle,
+  User,
+  LogOut,
+  Settings,
+} from "lucide-react";
 
 const sidebarItems = [
   { label: "Projects", icon: Square3Stack3DIcon, to: "" },
   { label: "Chat AI", icon: SparklesIcon, to: "/ai" },
   { label: "Storage", icon: CloudIcon, to: "/storage" },
-  { label: "Teams", icon: UsersIcon, to: "/team" },
+  { label: "Settings", icon: Cog6ToothIcon, to: "/settings" },
 ];
 
 export default function Wrapper({ children }: { children: React.ReactNode }) {
@@ -88,7 +96,9 @@ export function TopBar() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user.name}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user.name}
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     {user.email}
                   </p>
@@ -215,7 +225,8 @@ export function ItemSideBar({
         pathAfterWorkspace === "/" ||
         (!pathAfterWorkspace.startsWith("/ai") &&
           !pathAfterWorkspace.startsWith("/team") &&
-          !pathAfterWorkspace.startsWith("/storage"))
+          !pathAfterWorkspace.startsWith("/storage") &&
+          !pathAfterWorkspace.startsWith("/settings"))
       );
     }
     // Các route khác: kiểm tra exact hoặc startsWith

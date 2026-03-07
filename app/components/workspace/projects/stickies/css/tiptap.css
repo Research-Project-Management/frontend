@@ -48,7 +48,11 @@
   place-content: center;
 }
 
-.ProseMirror ul[data-type="taskList"] li > label > input[type="checkbox"]::before {
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]::before {
   content: "";
   width: 7px;
   height: 4px;
@@ -58,20 +62,36 @@
   transform: rotate(-45deg) scale(0);
 }
 
-.ProseMirror ul[data-type="taskList"] li > label > input[type="checkbox"]:checked {
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:checked {
   background: #2563eb;
   border-color: #2563eb;
 }
 
-.ProseMirror ul[data-type="taskList"] li > label > input[type="checkbox"]:checked::before {
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:checked::before {
   transform: rotate(-45deg) scale(1);
 }
 
-.ProseMirror ul[data-type="taskList"] li > label > input[type="checkbox"]:hover {
-  border-color: rgba(0,  0,  0,  0.55);
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:hover {
+  border-color: rgba(0, 0, 0, 0.55);
 }
 
-.ProseMirror ul[data-type="taskList"] li > label > input[type="checkbox"]:focus-visible {
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:focus-visible {
   outline: 2px solid rgba(37, 99, 235, 0.35);
   outline-offset: 2px;
 }

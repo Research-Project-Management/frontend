@@ -18,6 +18,7 @@ export interface Note {
   author: TypeUser;
   createdAt: string;
   updatedAt: string;
+  workspace: string;
   position?: {
     x: number;
     y: number;

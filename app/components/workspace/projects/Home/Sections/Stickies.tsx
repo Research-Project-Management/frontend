@@ -19,7 +19,13 @@ function stripHtml(html: string): string {
 
 // ─── Mini card ───────────────────────────────────────────────────────────────
 
-function MiniCard({ note }: { note: Note }) {
+function MiniCard({
+  note,
+  workspaceUrl,
+}: {
+  note: Note;
+  workspaceUrl: string;
+}) {
   const colorConfig = NOTE_COLOR_MAP[note.color];
   const accentStyle = {
     backgroundColor: colorConfig.bg,
@@ -31,7 +37,8 @@ function MiniCard({ note }: { note: Note }) {
   );
 
   return (
-    <div
+    <Link
+      to={`/${workspaceUrl}/stickies`}
       className="group relative flex flex-col rounded-xl overflow-hidden shadow-sm
                  hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
       style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
@@ -67,7 +74,7 @@ function MiniCard({ note }: { note: Note }) {
           ))}
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -134,7 +141,6 @@ export default function Stickies() {
       <ArrowRight className="h-3 w-3" />
     </Link>
   );
-
   return (
     <HomeSection title="Quick Notes" action={viewAllAction}>
       {isLoading ? (
@@ -145,7 +151,11 @@ export default function Stickies() {
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
           {preview.map((note) => (
-            <MiniCard key={note._id} note={note} />
+            <MiniCard
+              workspaceUrl={workspaceId || ""}
+              key={note._id}
+              note={note}
+            />
           ))}
           <AddCard onClick={handleAdd} disabled={createSticky.isPending} />
         </div>

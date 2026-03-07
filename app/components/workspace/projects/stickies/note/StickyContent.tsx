@@ -103,10 +103,10 @@ export default memo(function StickyContent({
   }, [note.content, editor]);
 
   return (
-    <div className="flex-1 px-4 py-3 overflow-hidden">
+    <div className="flex-1 px-4 py-3 overflow-hidden overflow-y-auto">
       <EditorContent
         editor={editor}
-        className="h-full w-full bg-transparent text-lg leading-relaxed
+        className="h-full max-h-125 w-full bg-transparent text-lg leading-relaxed
                    [&_.ProseMirror]:h-full
                    [&_.ProseMirror]:bg-transparent
                    [&_.ProseMirror]:outline-none"

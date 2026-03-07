@@ -53,10 +53,10 @@ const StickyNote = memo(function StickyNote({
 
   return (
     <div
-      className={`group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200 ${
+      className={`group relative flex flex-col rounded overflow-hidden transition-all duration-200 ${
         isDragging
-          ? "shadow-2xl scale-[1.02] rotate-1"
-          : "shadow-md hover:shadow-xl hover:-translate-y-0.5"
+          ? "shadow-md scale-[1.02] rotate-1"
+          : "hover:shadow-md hover:-translate-y-0.5"
       }`}
       style={{
         backgroundColor: colorConfig.bg,
@@ -65,7 +65,7 @@ const StickyNote = memo(function StickyNote({
     >
       {/* Top accent bar + drag handle */}
       <div
-        className="h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing select-none"
+        className="h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing active:outline-0 select-none"
         style={topAccentStyle}
         {...dragHandleProps}
       >

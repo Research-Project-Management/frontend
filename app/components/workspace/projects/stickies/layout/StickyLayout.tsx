@@ -158,7 +158,6 @@ export default function StickyLayout() {
       <div className="flex flex-col h-full">
         <div className="shrink-0 border-b border-border/60 px-5 h-13 flex items-center">
           <div className="flex items-center gap-2">
-            <Layers2 className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold text-sm">Stickies</span>
           </div>
         </div>
@@ -177,9 +176,6 @@ export default function StickyLayout() {
         <div className="flex items-center gap-3 px-5 h-13">
           {/* Left: title + count */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
-              <Layers2 className="h-3.5 w-3.5 text-primary" />
-            </div>
             <span className="font-semibold text-sm">Stickies</span>
             {filteredNotes.length > 0 && (
               <span className="text-xs text-muted-foreground/60 tabular-nums">

@@ -8,6 +8,8 @@ import {
   File,
   CloudUpload,
   CheckCircle2,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useState, useRef, useCallback, type DragEvent } from "react";
@@ -17,13 +19,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
+import { useChatMode } from "~/contexts/ChatModeContext";
+import { uploadDocument } from "~/query/chat-ai";
+
+type UploadStatus = "uploading" | "done" | "error";
 
 type UploadedFile = {
   id: string;
   name: string;
   size: number;
   type: string;
-  file: File;
+  status: UploadStatus;
+  docId?: string; // ID returned by Flux-AI after ingestion
 };
 
 const ACCEPTED_TYPES =
@@ -59,25 +66,56 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function WikiChatFeatures() {
+  const { setDocumentIds } = useChatMode();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [useFluxData, setUseFluxData] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const addFiles = useCallback((incoming: FileList | null) => {
-    if (!incoming) return;
-    const newFiles: UploadedFile[] = Array.from(incoming).map((file) => ({
-      id: `${Date.now()}-${Math.random()}`,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      file,
-    }));
-    setFiles((prev) => {
-      const existingNames = new Set(prev.map((f) => f.name));
-      return [...prev, ...newFiles.filter((f) => !existingNames.has(f.name))];
-    });
-  }, []);
+  const addFiles = useCallback(
+    async (incoming: FileList | null) => {
+      if (!incoming) return;
+      const newEntries: UploadedFile[] = Array.from(incoming)
+        .filter((file) => !files.some((f) => f.name === file.name))
+        .map((file) => ({
+          id: `${Date.now()}-${Math.random()}`,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          status: "uploading" as UploadStatus,
+        }));
+
+      if (newEntries.length === 0) return;
+      setFiles((prev) => [...prev, ...newEntries]);
+
+      // Upload each file and update status
+      await Promise.all(
+        newEntries.map(async (entry) => {
+          const fileObj = Array.from(incoming).find(
+            (f) => f.name === entry.name,
+          )!;
+          try {
+            const result = await uploadDocument(fileObj);
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === entry.id
+                  ? { ...f, status: "done", docId: result.id }
+                  : f,
+              ),
+            );
+            setDocumentIds((prev) => [...prev, result.id]);
+          } catch {
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === entry.id ? { ...f, status: "error" } : f,
+              ),
+            );
+          }
+        }),
+      );
+    },
+    [files, setDocumentIds],
+  );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -90,17 +128,19 @@ export default function WikiChatFeatures() {
     addFiles(e.dataTransfer.files);
   };
 
-  const handleRemove = (id: string) =>
-    setFiles((prev) => prev.filter((f) => f.id !== id));
+  const handleRemove = (file: UploadedFile) => {
+    setFiles((prev) => prev.filter((f) => f.id !== file.id));
+    if (file.docId) {
+      setDocumentIds((prev) => prev.filter((id) => id !== file.docId));
+    }
+  };
 
   return (
     <div className="space-y-5">
       {/* Flux Data Toggle */}
       <div
         className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer group ${
-          useFluxData
-            ? "bg-primary/8 border-primary/25 hover:border-primary/40"
-            : "bg-secondary/20 border-border hover:border-primary/20"
+          useFluxData ? "bg-primary/8 " : "bg-secondary/20 "
         }`}
         onClick={() => setUseFluxData((v) => !v)}
       >
@@ -118,7 +158,7 @@ export default function WikiChatFeatures() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <p className="text-xs font-semibold text-foreground">
-                  Flux Workspace Data
+                  Flux Data
                 </p>
               </TooltipTrigger>
               <TooltipContent side="left" className="max-w-52">
@@ -220,12 +260,25 @@ export default function WikiChatFeatures() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <CheckCircle2 className="size-3.5 text-emerald-500 opacity-70" />
+                  {f.status === "uploading" && (
+                    <Loader2 className="size-3.5 text-primary animate-spin" />
+                  )}
+                  {f.status === "done" && (
+                    <CheckCircle2 className="size-3.5 text-emerald-500 opacity-70" />
+                  )}
+                  {f.status === "error" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertCircle className="size-3.5 text-destructive" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Upload failed</TooltipContent>
+                    </Tooltip>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleRemove(f.id)}
+                    onClick={() => handleRemove(f)}
                     className="size-6 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="size-3" />

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Role, Permission } from "~/types/role";
-
-const API_URL = "http://localhost:8080";
+import { API_URL } from "~/lib/api";
 
 // Fetch all roles for workspace
 export function useRoles(workspaceId: string) {

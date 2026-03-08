@@ -1,8 +1,8 @@
-
+import { API_URL } from "~/lib/api";
 import type { TypeUser } from "~/types/user";
 
 export const fetchUser = async () :Promise<TypeUser>=> {
-  const response = await fetch(import.meta.env.VITE_API_URL+"/auth/user", {
+  const response = await fetch(API_URL+"/auth/user", {
     credentials: "include",
   });
 
@@ -15,7 +15,7 @@ export const fetchUser = async () :Promise<TypeUser>=> {
 }
 
 export const logoutUser = async () => {
-  const response = await fetch(import.meta.env.VITE_API_URL+"/auth/logout", {
+  const response = await fetch(API_URL+"/auth/logout", {
     credentials: "include",
   });
 

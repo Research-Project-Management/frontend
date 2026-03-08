@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 
+export function meta() {
+  return [{ title: "Signing in… · Flux" }];
+}
+
 export default function Callback() {
   const navigate = useNavigate();
 

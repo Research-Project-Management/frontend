@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Note } from "../components/workspace/projects/stickies/types/note.type";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from "~/lib/api";
 
 // Fetch Stickies
 export const fetchStickies = async (workspaceId: string, tags?: string[]) => {

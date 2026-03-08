@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Task, Column } from "../types/task";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from "~/lib/api";
 
 export type ProjectTasksData = {
   tasks: Task[];

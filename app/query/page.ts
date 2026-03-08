@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Page } from "../types/page";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from "~/lib/api";
 
 // Fetch Pages for a Workspace
 const fetchWorkspacePages = async (workspaceId: string, status?: string, search?: string) => {

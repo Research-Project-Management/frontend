@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from "~/lib/api";
 
 // Workspace-level aggregated fetch functions
 export const fetchWorkspaceFiles = async (workspaceId: string, parentId?: string | null) => {

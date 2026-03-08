@@ -38,10 +38,8 @@ function ChatAiContent() {
 
         <main className="flex-1 flex min-h-0 overflow-hidden">
           <div className="flex-1 flex flex-col min-w-0">
-            <div className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-4xl h-full p-6">
-                <Outlet />
-              </div>
+            <div className="flex-1 overflow-hidden">
+              <Outlet />
             </div>
           </div>
 
@@ -53,25 +51,6 @@ function ChatAiContent() {
               }`}
             >
               {/* Toggle button on left edge */}
-              <div className="absolute top-3 left-2 z-10">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => setSourcesCollapsed((v) => !v)}
-                      className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                    >
-                      {sourcesCollapsed ? (
-                        <PanelRightOpen className="size-3.5" />
-                      ) : (
-                        <PanelRightClose className="size-3.5" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {sourcesCollapsed ? "Expand sources" : "Collapse sources"}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
 
               {/* Content — hidden when collapsed */}
               <div
@@ -82,10 +61,7 @@ function ChatAiContent() {
                 }`}
               >
                 <div className="p-4 pt-3">
-                  <h2 className="text-[10px] font-semibold mb-4 flex items-center gap-2 text-muted-foreground/70 uppercase tracking-widest pl-7">
-                    <span className="p-1.5 rounded-lg bg-secondary text-primary border border-border">
-                      <WikiChatFeaturesIcon />
-                    </span>
+                  <h2 className="text-xs font-semibold mb-4 flex items-center gap-2 text-muted-foreground/70 uppercase tracking-widest">
                     Sources
                   </h2>
                   <WikiChatFeatures />

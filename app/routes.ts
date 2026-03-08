@@ -74,8 +74,7 @@ export default [
 
     layout("./components/workspace/ai/layout/ChatAiLayout.tsx", [
       route(":workspaceId/ai", "./routes/workspace/$workspaceId/ai/index.tsx"),
-      // [ route(":chatId", "./routes/workspace/$workspaceId/ai/$chatId$/chatId.tsx"),
-      // ],
+      route(":workspaceId/ai/:chatId", "./routes/workspace/$workspaceId/ai/$chatId.tsx"),
     ]),
     layout("./components/workspace/storage/layout/StorageLayout.tsx", [
       route(":workspaceId/storage", "./routes/workspace/$workspaceId/storage/index.tsx"),

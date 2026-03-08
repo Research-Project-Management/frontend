@@ -1,6 +1,10 @@
 // redirect to workspaceId if logged in and has workspace
 
 import { useEffect } from "react";
+
+export function meta() {
+  return [{ title: "Flux" }];
+}
 import { useNavigate } from "react-router";
 import Loading from "~/components/ui/Loading";
 

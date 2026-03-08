@@ -134,7 +134,7 @@ export default function ChatAiTab() {
                   {msg.role === "user" ? (
                     <User className="size-3 text-primary-foreground" />
                   ) : (
-                    <Bot className="size-3 text-primary" />
+                   <img src="/Chat.svg" alt="flux-ai" />
                   )}
                 </div>
                 <div
@@ -152,7 +152,7 @@ export default function ChatAiTab() {
             {isLoading && (
               <div className="flex gap-2">
                 <div className="size-6 rounded-full bg-muted flex items-center justify-center">
-                  <Bot className="size-3 text-primary" />
+                 <img src="/Chat.svg" alt="flux-ai" />
                 </div>
                 <div className="rounded-lg px-3 py-2 bg-muted">
                   <div className="flex gap-1">

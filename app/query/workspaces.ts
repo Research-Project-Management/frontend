@@ -1,6 +1,7 @@
+import { API_URL } from "~/lib/api";
 
 export const fetchWorkspaces = async () => {
-  const response = await fetch(import.meta.env.VITE_API_URL+"/api/workspace", {
+  const response = await fetch(API_URL+"/api/workspace", {
     credentials: "include",
   });
 

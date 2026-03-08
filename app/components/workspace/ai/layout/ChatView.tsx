@@ -20,9 +20,22 @@
  */
 
 import { useParams, useLocation, useNavigate } from "react-router";
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Copy, Check, ChevronDown, Brain } from "lucide-react";
-import type { ChatMessage } from "~/types/chat";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
+import {
+  Copy,
+  Check,
+  ChevronDown,
+  Brain,
+  ExternalLink,
+  FileText,
+  Quote,
+} from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
+import type { ChatMessage, SourceItem } from "~/types/chat";
 import {
   streamChatResponse,
   getChatSession,
@@ -139,16 +152,88 @@ function ThinkingBlock({
   );
 }
 
+// ── Sources list ───────────────────────────────────────────────────────────────
+
+function SourcesList({ sources }: { sources: SourceItem[] }) {
+  if (!sources.length) return null;
+
+  const webSources = sources.filter((s) => s.url);
+  const ragSources = sources.filter((s) => s.source && !s.url);
+
+  return (
+    <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+        Sources
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {webSources.map((s, i) => (
+          <a
+            key={i}
+            href={s.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={[s.authors, s.snippet].filter(Boolean).join("\n")}
+            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 transition-colors max-w-55 truncate"
+          >
+            <ExternalLink className="size-2.5 shrink-0" />
+            <span className="truncate">{s.title || s.url}</span>
+            {s.year && <span className="shrink-0 opacity-60">{s.year}</span>}
+          </a>
+        ))}
+        {ragSources.map((s, i) =>
+          s.snippet ? (
+            <Popover key={i}>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-pointer hover:bg-violet-500/20 transition-colors">
+                  <FileText className="size-2.5 shrink-0" />
+                  <span className="truncate">{s.source}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="start"
+                className="w-80 p-0 overflow-hidden"
+              >
+                <div className="px-3 py-2 border-b border-border/50 bg-secondary/60 flex items-center gap-2">
+                  <Quote className="size-3 text-violet-500 shrink-0" />
+                  <span className="text-[11px] font-semibold text-foreground/80 truncate">
+                    {s.source}
+                  </span>
+                </div>
+                <div className="px-3 py-2.5 max-h-52 overflow-y-auto">
+                  <p className="text-[11px] leading-relaxed text-foreground/70 whitespace-pre-wrap">
+                    {s.snippet}
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-default"
+            >
+              <FileText className="size-2.5 shrink-0" />
+              <span className="truncate">{s.source}</span>
+            </span>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Message bubble ──────────────────────────────────────────────────────────────
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   content,
   role,
   isStreaming = false,
+  sources,
 }: {
   content: string;
   role: "user" | "assistant";
   isStreaming?: boolean;
+  sources?: SourceItem[];
 }) {
   const [copied, setCopied] = useState(false);
   const isUser = role === "user";
@@ -196,6 +281,9 @@ function MessageBubble({
                   {isStreaming && !isThinkingOpen && (
                     <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
                   )}
+                  {!isStreaming && sources && sources.length > 0 && (
+                    <SourcesList sources={sources} />
+                  )}
                 </>
               );
             })()}
@@ -221,7 +309,7 @@ function MessageBubble({
       </div>
     </div>
   );
-}
+});
 
 // ── Typing indicator (three bouncing dots) ──────────────────────────────────────
 
@@ -296,7 +384,13 @@ export default function ChatView() {
   const { chatId, workspaceId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { documentIds, setDocumentIds } = useChatMode();
+  const {
+    enabledDocumentIds,
+    fluxDataEnabled,
+    setFluxDataEnabled,
+    restoreSourceIds,
+    clearSources,
+  } = useChatMode();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streamContent, setStreamContent] = useState("");
@@ -311,6 +405,12 @@ export default function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
+  const activeSourcesRef = useRef<SourceItem[]>([]);
+  // Mirror of `messages` kept in sync during render so handleSend can always
+  // read the latest list without needing it in its own dependency array.
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
+  const scrollRafRef = useRef<number | null>(null);
 
   // Abort any in-progress stream when the component unmounts (e.g. navigating away)
   useEffect(() => {
@@ -332,9 +432,12 @@ export default function ChatView() {
       setActiveAgent(null);
       setChatStarted(false);
       setSaveError(false);
+      setFluxDataEnabled(false);
+      clearSources();
       abortRef.current?.abort();
       abortRef.current = null;
       streamRef.current = "";
+      activeSourcesRef.current = [];
       return;
     }
 
@@ -351,11 +454,19 @@ export default function ChatView() {
     getChatSession(chatId)
       .then((session) => {
         setMessages(
-          session.messages.map(({ role, content }) => ({ role, content })),
+          session.messages.map(({ role, content, sources }) => ({
+            role,
+            content,
+            sources,
+          })),
         );
         // Restore uploaded document IDs so the AI still has context from prior uploads
         if (session.documentIds?.length > 0) {
-          setDocumentIds(session.documentIds);
+          restoreSourceIds(session.documentIds);
+          setFluxDataEnabled(true);
+        } else {
+          setFluxDataEnabled(false);
+          clearSources();
         }
       })
       .catch((err) => console.error("Failed to load history:", err))
@@ -364,7 +475,12 @@ export default function ChatView() {
   }, [chatId, newChatKey]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollRafRef.current !== null)
+      cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      scrollRafRef.current = null;
+    });
   }, [messages, streamContent]);
 
   const handleSend = useCallback(
@@ -372,7 +488,7 @@ export default function ChatView() {
       if (isStreaming) return;
 
       const userMsg: ChatMessage = { role: "user", content: text };
-      const newMessages = [...messages, userMsg];
+      const newMessages = [...messagesRef.current, userMsg];
       setMessages(newMessages);
       streamRef.current = "";
       setStreamContent("");
@@ -380,17 +496,26 @@ export default function ChatView() {
       setActiveAgent(null);
       setChatStarted(true);
       setSaveError(false);
+      activeSourcesRef.current = [];
 
       const controller = new AbortController();
       abortRef.current = controller;
 
       try {
         for await (const chunk of streamChatResponse(newMessages, {
-          projectId,
-          documentIds: documentIds.length > 0 ? documentIds : undefined,
-          webSearchSites,
           signal: controller.signal,
-          onMeta: (meta) => setActiveAgent(meta.agent),
+          projectId,
+          documentIds:
+            fluxDataEnabled && enabledDocumentIds.length > 0
+              ? enabledDocumentIds
+              : undefined,
+          webSearchSites,
+          onMeta: (meta) => {
+            setActiveAgent(meta.agent);
+            if (meta.sources && meta.sources.length > 0) {
+              activeSourcesRef.current = meta.sources;
+            }
+          },
         })) {
           streamRef.current += chunk;
           setStreamContent(streamRef.current);
@@ -402,6 +527,10 @@ export default function ChatView() {
         const assistantMsg: ChatMessage = {
           role: "assistant",
           content: finalContent,
+          sources:
+            activeSourcesRef.current.length > 0
+              ? [...activeSourcesRef.current]
+              : undefined,
         };
         setMessages((prev) => [...prev, assistantMsg]);
 
@@ -410,7 +539,9 @@ export default function ChatView() {
           appendChatMessages(
             chatId,
             [userMsg, assistantMsg],
-            documentIds.length > 0 ? documentIds : undefined,
+            fluxDataEnabled && enabledDocumentIds.length > 0
+              ? enabledDocumentIds
+              : undefined,
           ).catch((err) => console.error("Failed to save messages:", err));
         } else if (workspaceId) {
           // New chat — create session atomically with the first exchange already inside
@@ -421,7 +552,10 @@ export default function ChatView() {
               title,
               projectId,
               messages: [userMsg, assistantMsg],
-              documentIds: documentIds.length > 0 ? documentIds : undefined,
+              documentIds:
+                fluxDataEnabled && enabledDocumentIds.length > 0
+                  ? enabledDocumentIds
+                  : undefined,
             });
             // replace: true so Back doesn't loop to the welcome screen
             navigate(`/${workspaceId}/ai/${session._id}`, {
@@ -450,9 +584,17 @@ export default function ChatView() {
         streamRef.current = "";
         abortRef.current = null;
         setActiveAgent(null);
+        activeSourcesRef.current = [];
       }
     },
-    [messages, isStreaming, chatId, workspaceId, navigate, documentIds],
+    [
+      isStreaming,
+      chatId,
+      workspaceId,
+      navigate,
+      enabledDocumentIds,
+      fluxDataEnabled,
+    ],
   );
 
   // ── Welcome screen: no session, not streaming, and no chat started yet ───────
@@ -495,7 +637,12 @@ export default function ChatView() {
         ) : (
           <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
             {messages.map((msg, i) => (
-              <MessageBubble key={i} content={msg.content} role={msg.role} />
+              <MessageBubble
+                key={i}
+                content={msg.content}
+                role={msg.role}
+                sources={msg.sources}
+              />
             ))}
 
             {/* Streaming response — shown while tokens arrive */}

@@ -1,4 +1,9 @@
-import type { ChatMessage, ChatSession, ChatSessionDetail } from "~/types/chat";
+import type {
+  ChatMessage,
+  ChatSession,
+  ChatSessionDetail,
+  SourceItem,
+} from "~/types/chat";
 import { API_URL } from "~/lib/api";
 
 /**
@@ -16,7 +21,7 @@ export async function* streamChatResponse(
     onMeta?: (meta: {
       agent: string;
       intent: string;
-      sources?: unknown[];
+      sources?: SourceItem[];
     }) => void;
     signal?: AbortSignal;
   },
@@ -271,5 +276,36 @@ export async function uploadDocument(
     body: form,
   });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  return res.json();
+}
+
+/** Resolve titles/types for multiple document IDs (e.g. after restoring a session). */
+export async function fetchDocumentsBulk(
+  ids: string[],
+): Promise<Array<{ id: string; title: string; type: string }>> {
+  if (!ids.length) return [];
+  const res = await fetch(
+    `${API_URL}/api/ai/documents/bulk?ids=${ids.map(encodeURIComponent).join(",")}`,
+    { credentials: "include" },
+  );
+  if (!res.ok)
+    throw new Error(`Failed to fetch document metadata: ${res.status}`);
+  return res.json();
+}
+
+/** Fetch the reconstructed full-text content of a single document. */
+export async function fetchDocumentContent(docId: string): Promise<{
+  id: string;
+  title: string;
+  type: string;
+  content: string;
+  chunk_count: number;
+}> {
+  const res = await fetch(
+    `${API_URL}/api/ai/documents/${encodeURIComponent(docId)}`,
+    { credentials: "include" },
+  );
+  if (!res.ok)
+    throw new Error(`Failed to fetch document content: ${res.status}`);
   return res.json();
 }

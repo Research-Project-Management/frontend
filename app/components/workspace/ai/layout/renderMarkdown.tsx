@@ -122,6 +122,69 @@ export function renderMarkdown(text: string): React.ReactNode[] {
       continue;
     }
 
+    // ── Markdown table (GFM) ─────────────────────────────────────────────────
+    if (line.startsWith("|")) {
+      const nextLine = lines[i + 1];
+      if (nextLine && /^\|[\s\-:|]+\|/.test(nextLine)) {
+        const tableRows: string[][] = [];
+        let j = i;
+        while (j < lines.length && lines[j].trim().startsWith("|")) {
+          tableRows.push(
+            lines[j]
+              .split("|")
+              .slice(1, -1)
+              .map((c) => c.trim()),
+          );
+          j++;
+        }
+        const headers = tableRows[0] ?? [];
+        const bodyRows = tableRows.slice(2); // skip separator row
+        elements.push(
+          <div
+            key={`table-${i}`}
+            className="my-3 overflow-x-auto rounded-xl border border-border/50"
+          >
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-secondary/60">
+                  {headers.map((h, hi) => (
+                    <th
+                      key={hi}
+                      className="px-3 py-2 text-left text-xs font-semibold text-foreground/80 border-b border-border/50 whitespace-nowrap"
+                    >
+                      {formatInline(h)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, ri) => (
+                  <tr
+                    key={ri}
+                    className={
+                      ri % 2 === 0 ? "bg-background" : "bg-secondary/20"
+                    }
+                  >
+                    {row.map((cell, ci) => (
+                      <td
+                        key={ci}
+                        className="px-3 py-2 text-xs text-foreground/70 border-b border-border/30"
+                      >
+                        {formatInline(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>,
+        );
+        i = j - 1;
+        continue;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (line.startsWith("### ")) {
       elements.push(
         <h4 key={i} className="text-sm font-semibold mt-4 mb-1.5">

@@ -60,7 +60,7 @@ function ChatAiContent() {
                     : "opacity-100"
                 }`}
               >
-                <div className="p-4 pt-3">
+                <div className="p-4">
                   <h2 className="text-xs font-semibold mb-4 flex items-center gap-2 text-muted-foreground/70 uppercase tracking-widest">
                     Sources
                   </h2>

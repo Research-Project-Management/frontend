@@ -113,7 +113,7 @@ export default function SideBar() {
     >
       {/* Header */}
       <div
-        className={`flex items-center gap-2 px-3 py-3 border-b border-sidebar-border ${collapsed ? "justify-center" : "justify-between"}`}
+        className={`flex items-center gap-2 px-3 py-3 ${collapsed ? "justify-center" : "justify-between"}`}
       >
         {!collapsed && (
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
@@ -276,18 +276,13 @@ function ChatItem({
 
   return (
     <div
-      className={`group relative flex items-center gap-1 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-100 ${
+      className={`group relative mt-2 flex items-center gap-1 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-100 ${
         isActive
           ? "bg-primary/10 text-primary"
           : "text-foreground/70 hover:bg-secondary/60 hover:text-foreground"
       }`}
       onClick={!isRenaming ? onSelect : undefined}
     >
-      {/* Active bar */}
-      {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
-      )}
-
       <div className="flex-1 min-w-0">
         {isRenaming ? (
           <input

@@ -134,7 +134,7 @@ export function SelectWorkspaces() {
   return (
     <Select
       onValueChange={(url) => navigate(`/${url}`)}
-      defaultValue={workspaceId || ""}
+      value={workspaceId ?? ""}
       disabled={workspacesLoading || !workspaces || workspaces.length === 0}
     >
       <SelectTrigger
@@ -167,13 +167,13 @@ export function SelectWorkspaces() {
         </Link>
         <Separator className="my-1" />
         <Label className=" py-1 px-2 text-primary/60">Switch</Label>
-        {workspaces.map((workspace: Workspace) => (
+        {(workspaces ?? []).map((workspace: any) => (
           <SelectItem key={workspace._id} value={workspace.url}>
             <div className="flex items-center  gap-2">
               <img
                 src={workspace.avatar}
                 alt={workspace.name}
-                className="size-8 rounded-sm object-cover"
+                className="size-6 rounded-sm object-cover"
               />
               <span className="font-semibold truncate ">{workspace.name}</span>
             </div>
@@ -218,7 +218,7 @@ export function ItemSideBar({
       // Projects: active khi không có /ai, /team, /storage
       const pathAfterWorkspace = location.pathname.replace(
         `/${workspaceId}`,
-        ""
+        "",
       );
       return (
         pathAfterWorkspace === "" ||
@@ -241,13 +241,13 @@ export function ItemSideBar({
       to={fullPath}
       className={cn(
         "flex flex-col items-center space-y-2 p-1 rounded-sm cursor-pointer",
-        isActive ? "text-primary" : "text-primary/60"
+        isActive ? "text-primary" : "text-primary/60",
       )}
     >
       <Icon
         className={cn(
           "size-9 rounded-md p-2",
-          isActive ? "bg-primary/10" : "hover:bg-primary/10"
+          isActive ? "bg-primary/10" : "hover:bg-primary/10",
         )}
       />
       <span className="text-xs font-medium">{label}</span>

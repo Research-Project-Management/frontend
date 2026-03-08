@@ -2,10 +2,28 @@
  * Chat types — aligned with Flux-AI backend models.
  */
 
+/** A source document managed in the Sources panel (NotebookLM-style). */
+export interface SourceDoc {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
+
+/** A source citation attached to an assistant message */
+export interface SourceItem {
+  source?: string;   // RAG: file name / doc name
+  snippet?: string;  // RAG: passage excerpt that was cited
+  title?: string;    // Web: page title
+  url?: string;      // Web: URL
+  authors?: string;  // OpenAlex: author list (comma-separated)
+  year?: number;     // OpenAlex: publication year
+}
+
 /** Single message in a conversation */
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  sources?: SourceItem[];
 }
 
 /** A persisted chat session (from RPM-BE ChatHistory) */

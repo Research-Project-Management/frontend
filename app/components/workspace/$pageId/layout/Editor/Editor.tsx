@@ -158,7 +158,9 @@ export default function Editor({ page }: EditorProps) {
   const presenceUsers = usePagePresence(pageIdParam);
   const remoteCursors = useRemoteCursors(pageIdParam);
   const [editorMounted, setEditorMounted] = useState(false);
-  const cursorWidgetsRef = useRef<Map<string, editor.IContentWidget>>(new Map());
+  const cursorWidgetsRef = useRef<Map<string, editor.IContentWidget>>(
+    new Map(),
+  );
 
   // Realtime: receive content changes from other collaborators
   useEffect(() => {

@@ -44,7 +44,6 @@ import type { Page } from "~/types/page";
 import { useDebounce } from "~/hooks/useDebounce";
 import { useEditorContext } from "./EditorLayout";
 
-
 const toolGroups = [
   {
     name: "history",
@@ -417,7 +416,6 @@ export default function ToolBar({ page }: ToolBarProps) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-
     </div>
   );
 }

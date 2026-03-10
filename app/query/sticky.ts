@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Note } from "../components/workspace/projects/stickies/types/note.type";
 import { API_URL } from "~/lib/api";
+import { useSocket } from "~/contexts/SocketProvider";
 
 // Fetch Stickies
 export const fetchStickies = async (workspaceId: string, tags?: string[]) => {
@@ -25,6 +27,43 @@ export const fetchStickies = async (workspaceId: string, tags?: string[]) => {
 };
 
 export const useStickies = (workspaceId: string, tags?: string[]) => {
+    const queryClient = useQueryClient();
+    const socket = useSocket();
+
+    useEffect(() => {
+        if (!socket || !workspaceId) return;
+        socket.emit("join:workspace", workspaceId);
+
+        const qKey = ["stickies", workspaceId, tags];
+
+        const onCreated = ({ sticky }: { sticky: Note }) => {
+            queryClient.setQueryData<Note[]>(qKey, (old = []) =>
+                old.some((s) => s._id === sticky._id) ? old : [sticky, ...old],
+            );
+        };
+        const onUpdated = ({ sticky }: { sticky: Note }) => {
+            queryClient.setQueryData<Note[]>(qKey, (old = []) =>
+                old.map((s) => (s._id === sticky._id ? sticky : s)),
+            );
+        };
+        const onDeleted = ({ stickyId }: { stickyId: string }) => {
+            queryClient.setQueryData<Note[]>(qKey, (old = []) =>
+                old.filter((s) => s._id !== stickyId),
+            );
+        };
+
+        socket.on("sticky:created", onCreated);
+        socket.on("sticky:updated", onUpdated);
+        socket.on("sticky:deleted", onDeleted);
+
+        return () => {
+            socket.emit("leave:workspace", workspaceId);
+            socket.off("sticky:created", onCreated);
+            socket.off("sticky:updated", onUpdated);
+            socket.off("sticky:deleted", onDeleted);
+        };
+    }, [socket, workspaceId, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+
     return useQuery({
         queryKey: ["stickies", workspaceId, tags],
         queryFn: () => fetchStickies(workspaceId, tags),

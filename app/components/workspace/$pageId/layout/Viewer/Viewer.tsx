@@ -1,16 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Download,
+  Info,
   Loader2,
-  Maximize2,
-  Minus,
   Play,
-  Plus,
-  RefreshCw,
-  Save,
+  Terminal,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -19,10 +20,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { Switch } from "~/components/ui/switch";
-import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
+import { API_URL } from "~/lib/api";
+import { usePageContext } from "../PageContext";
+import { useEditorSettingsStore } from "~/stores/editor-settings";
+import { useUpdatePageThumbnail } from "~/query/page";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -30,9 +33,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// Mock PDF URL for demo
-const MOCK_PDF_URL =
-  "https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf";
+// ── Toolbar Button ─────────────────────────────────────────────────────────
 
 interface ToolbarButtonProps {
   icon: React.ElementType;
@@ -64,15 +65,13 @@ function ToolbarButton({
             variant === "default" &&
               "text-muted-foreground hover:text-primary hover:bg-primary/10",
             variant === "primary" &&
-              "bg-primary text-primary-foreground hover:bg-primary/90"
+              "bg-primary text-primary-foreground hover:bg-primary/90",
           )}
         >
           {loading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
-            <>
-              <Icon className="size-4" strokeWidth={2} />
-            </>
+            <Icon className="size-4" strokeWidth={2} />
           )}
           {title && <span className="text-sm font-medium">{title}</span>}
         </button>
@@ -82,101 +81,486 @@ function ToolbarButton({
   );
 }
 
+// ── Log Parser ─────────────────────────────────────────────────────────────
+
+interface LogEntry {
+  message: string;
+  file?: string;
+  line?: number;
+  detail?: string;
+}
+
+interface ParsedLog {
+  errors: LogEntry[];
+  warnings: LogEntry[];
+  badBoxes: LogEntry[];
+}
+
+function parseLatexLog(raw: string): ParsedLog {
+  const lines = raw.split("\n");
+  const errors: LogEntry[] = [];
+  const warnings: LogEntry[] = [];
+  const badBoxes: LogEntry[] = [];
+  const seen = new Set<string>();
+
+  const tryAdd = (arr: LogEntry[], entry: LogEntry) => {
+    const key = `${entry.file ?? ""}|${entry.line ?? ""}|${entry.message}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      arr.push(entry);
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Hard errors: lines starting with !
+    if (line.startsWith("!")) {
+      const message = line.slice(1).trim();
+      let lineNum: number | undefined;
+      let detail: string | undefined;
+      for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
+        const m = lines[j].match(/^l\.(\d+)\s*(.*)/);
+        if (m) {
+          lineNum = parseInt(m[1], 10);
+          detail = m[2].trim() || undefined;
+          break;
+        }
+      }
+      tryAdd(errors, { message, line: lineNum, detail });
+    }
+
+    // File:line: format errors (e.g. ./main.tex:10: Undefined control sequence)
+    const fle = line.match(
+      /^(\.{1,2}\/[^\s:!]*\.(?:tex|sty|cls|bib)):(\d+):\s*(.+)$/,
+    );
+    if (fle) {
+      tryAdd(errors, {
+        message: fle[3].trim(),
+        file: fle[1].replace(/^\.\//, ""),
+        line: parseInt(fle[2], 10),
+      });
+    }
+
+    // Warnings: LaTeX Warning:, Package X Warning:, Class X Warning:, pdfTeX warning:
+    if (
+      /(?:LaTeX|(?:Package|Class)\s+\S+|pdfTeX|xdvipdfmx)\s+[Ww]arning:/.test(
+        line,
+      )
+    ) {
+      let msg = line.trim();
+      for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+        if (/^\s{2,}/.test(lines[j])) msg += " " + lines[j].trim();
+        else break;
+      }
+      const lineRef = msg.match(/input line (\d+)/);
+      tryAdd(warnings, {
+        message: msg,
+        line: lineRef ? parseInt(lineRef[1], 10) : undefined,
+      });
+    }
+
+    // Bad boxes: Overfull/Underfull \hbox or \vbox
+    if (/^(Overfull|Underfull)\\[hv]box/.test(line)) {
+      const lineRef = line.match(/lines? (\d+)/);
+      tryAdd(badBoxes, {
+        message: line.trim(),
+        line: lineRef ? parseInt(lineRef[1], 10) : undefined,
+      });
+    }
+  }
+
+  return { errors, warnings, badBoxes };
+}
+
+// ── Log Panel ──────────────────────────────────────────────────────────────
+
+type LogTab = "errors" | "warnings" | "badboxes" | "raw";
+
+function EntryRow({
+  type,
+  entry,
+}: {
+  type: "error" | "warning" | "badbox";
+  entry: LogEntry;
+}) {
+  return (
+    <div className="flex gap-2.5 px-3 py-2.5 border-b border-zinc-800/50 last:border-0">
+      {type === "error" && (
+        <AlertCircle className="size-3.5 text-red-400 shrink-0 mt-0.5" />
+      )}
+      {type === "warning" && (
+        <AlertTriangle className="size-3.5 text-amber-400 shrink-0 mt-0.5" />
+      )}
+      {type === "badbox" && (
+        <Info className="size-3.5 text-blue-400 shrink-0 mt-0.5" />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-zinc-200 font-mono text-[11px] leading-snug wrap-break-word">
+          {entry.message}
+        </p>
+        {(entry.file || entry.line !== undefined) && (
+          <p className="text-[10px] mt-0.5 text-zinc-500">
+            {entry.file && <span className="text-zinc-400">{entry.file}</span>}
+            {entry.file && entry.line !== undefined && <span> · </span>}
+            {entry.line !== undefined && <span>Line {entry.line}</span>}
+          </p>
+        )}
+        {entry.detail && (
+          <p className="text-zinc-600 text-[10px] mt-0.5 truncate">
+            {entry.detail}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LogEmpty({ text }: { text: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 gap-2 text-zinc-600">
+      <CheckCircle2 className="size-5" />
+      <span className="text-xs">{text}</span>
+    </div>
+  );
+}
+
+function LogPanel({ log, onClose }: { log: string; onClose: () => void }) {
+  const parsed = useMemo(() => parseLatexLog(log), [log]);
+  const [activeTab, setActiveTab] = useState<LogTab>(() => {
+    const p = parseLatexLog(log);
+    if (p.errors.length > 0) return "errors";
+    if (p.warnings.length > 0) return "warnings";
+    return "raw";
+  });
+
+  const countOf = (key: LogTab) => {
+    if (key === "errors") return parsed.errors.length;
+    if (key === "warnings") return parsed.warnings.length;
+    if (key === "badboxes") return parsed.badBoxes.length;
+    return null;
+  };
+
+  const badgeClass = (key: LogTab) => {
+    const n = countOf(key);
+    if (n === null) return "";
+    if (key === "errors")
+      return n > 0 ? "bg-red-500 text-white" : "bg-zinc-700 text-zinc-400";
+    if (key === "warnings")
+      return n > 0 ? "bg-amber-500 text-white" : "bg-zinc-700 text-zinc-400";
+    if (key === "badboxes")
+      return n > 0 ? "bg-blue-500 text-white" : "bg-zinc-700 text-zinc-400";
+    return "";
+  };
+
+  const tabs: { key: LogTab; label: string }[] = [
+    { key: "errors", label: "Errors" },
+    { key: "warnings", label: "Warnings" },
+    { key: "badboxes", label: "Bad Boxes" },
+    { key: "raw", label: "Raw Log" },
+  ];
+
+  return (
+    <div
+      className="absolute bottom-0 left-0 right-0 z-20 bg-zinc-950 flex flex-col border-t border-zinc-700"
+      style={{ height: 300 }}
+    >
+      {/* Tab bar */}
+      <div className="flex items-center justify-between border-b border-zinc-800 shrink-0">
+        <div className="flex overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium border-b-2 shrink-0 transition-colors",
+                activeTab === tab.key
+                  ? "border-primary text-zinc-100"
+                  : "border-transparent text-zinc-500 hover:text-zinc-300",
+              )}
+            >
+              {tab.label}
+              {countOf(tab.key) !== null && (
+                <span
+                  className={cn(
+                    "px-1 min-w-4 text-center rounded-full text-[10px] font-bold leading-4",
+                    badgeClass(tab.key),
+                  )}
+                >
+                  {countOf(tab.key)}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onClose}
+          className="px-3 py-2 text-zinc-500 hover:text-zinc-200 transition-colors shrink-0"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        {activeTab === "raw" && (
+          <pre className="p-3 text-green-400 font-mono text-[11px] whitespace-pre-wrap leading-5">
+            {log}
+          </pre>
+        )}
+        {activeTab === "errors" &&
+          (parsed.errors.length === 0 ? (
+            <LogEmpty text="No errors" />
+          ) : (
+            parsed.errors.map((e, i) => (
+              <EntryRow key={i} type="error" entry={e} />
+            ))
+          ))}
+        {activeTab === "warnings" &&
+          (parsed.warnings.length === 0 ? (
+            <LogEmpty text="No warnings" />
+          ) : (
+            parsed.warnings.map((e, i) => (
+              <EntryRow key={i} type="warning" entry={e} />
+            ))
+          ))}
+        {activeTab === "badboxes" &&
+          (parsed.badBoxes.length === 0 ? (
+            <LogEmpty text="No bad boxes" />
+          ) : (
+            parsed.badBoxes.map((e, i) => (
+              <EntryRow key={i} type="badbox" entry={e} />
+            ))
+          ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Thumbnail Generation ───────────────────────────────────────────────────
+
+async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
+  try {
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(arrayBuffer),
+    });
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+    // Scale 1.5 gives ~892 × 1263 px for A4 — crisp on retina displays
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d")!;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    // Return base64 payload (strip the data-URL prefix — backend needs raw base64)
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+    return dataUrl.split(",")[1]; // raw base64 only
+  } catch {
+    return null;
+  }
+}
+
+// ── Main Viewer ────────────────────────────────────────────────────────────
+
 export default function Viewer() {
+  const {
+    getEditorContent,
+    pdfUrl,
+    setPdfUrl,
+    isCompiling,
+    setIsCompiling,
+    compileLog,
+    setCompileLog,
+    compileRef,
+    currentPage,
+    gotoPageRef,
+    pdfDocRef,
+  } = usePageContext();
+  const { engine, compileMode } = useEditorSettingsStore();
+
+  const saveThumbnailMutation = useUpdatePageThumbnail();
+
+  // Keep a ref so handleCompile always reads the latest parentPageId (avoids stale closure).
+  // If on a child file → use parentPage (the project root ID).
+  // If on the root page itself (no parentPage) → use own _id.
+  const parentPageIdRef = useRef<string | null>(null);
+  parentPageIdRef.current = currentPage
+    ? currentPage.parentPage
+      ? String(currentPage.parentPage)
+      : currentPage._id
+    : null;
+
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [autoSave, setAutoSave] = useState(true);
   const [lastCompiled, setLastCompiled] = useState<Date | null>(null);
-  const [pdfError, setPdfError] = useState(false);
-  const [scrollMode, setScrollMode] = useState(true);
+  const [showLog, setShowLog] = useState(false);
+  const [scrollMode] = useState(true);
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setPdfError(false);
-  };
+  const parsedLog = useMemo(
+    () => (compileLog ? parseLatexLog(compileLog) : null),
+    [compileLog],
+  );
 
-  const onDocumentLoadError = () => {
-    setPdfError(true);
-  };
+  const downloadRef = useRef<HTMLAnchorElement>(null);
+  const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  // Register scroll-to-page function so OutlineTab can call it.
+  useEffect(() => {
+    gotoPageRef.current = (n: number) => {
+      const el = pageElemRefs.current[n];
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    return () => {
+      gotoPageRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Compile ──────────────────────────────────────────────────────────────
 
   const handleCompile = async () => {
+    const source = getEditorContent.current?.() ?? "";
+    if (!source.trim()) return;
+
     setIsCompiling(true);
-    // Mock compile delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setLastCompiled(new Date());
-    setIsCompiling(false);
+    setCompileLog(null);
+    setShowLog(false);
+
+    try {
+      const response = await fetch(`${API_URL}/api/latex/compile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          source,
+          engine,
+          parentPageId:
+            compileMode === "fast" ? undefined : parentPageIdRef.current,
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+        setLastCompiled(new Date());
+        setPageNumber(1);
+
+        // Generate first-page thumbnail asynchronously (non-blocking)
+        const pid = parentPageIdRef.current;
+        if (pid) {
+          generateThumbnail(blob).then((base64) => {
+            if (base64)
+              saveThumbnailMutation.mutate({ pageId: pid, dataUrl: base64 });
+          });
+        }
+      } else {
+        let data: any = {};
+        try {
+          data = await response.json();
+        } catch {
+          data = { detail: { log: response.statusText } };
+        }
+        const log =
+          data?.detail?.log ??
+          data?.log ??
+          data?.message ??
+          "Compilation failed (unknown error).";
+        setCompileLog(log);
+        setShowLog(true);
+      }
+    } catch (err) {
+      setCompileLog(String(err));
+      setShowLog(true);
+    } finally {
+      setIsCompiling(false);
+    }
   };
 
-  const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));
-  const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
+  // ── Register compile ref so ToolBar/Menu can trigger compile ────────────
+  // Use a stable wrapper ref so compileRef always calls the latest handleCompile,
+  // regardless of which deps changed — avoids stale parentPageId in the closure.
+  const handleCompileLatestRef = useRef(handleCompile);
+  handleCompileLatestRef.current = handleCompile;
+
+  useEffect(() => {
+    compileRef.current = () => handleCompileLatestRef.current();
+    return () => {
+      compileRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auto-compile on initial page load ────────────────────────────────────
+
+  useEffect(() => {
+    const timer = setTimeout(() => handleCompileLatestRef.current(), 600);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Ctrl+Enter shortcut ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleCompileLatestRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Zoom ─────────────────────────────────────────────────────────────────
+
+  const handleZoomIn = () => setScale((p) => Math.min(p + 0.25, 3));
+  const handleZoomOut = () => setScale((p) => Math.max(p - 0.25, 0.5));
   const handleResetZoom = () => setScale(1.0);
 
-  const handlePrevPage = () => setPageNumber((prev) => Math.max(prev - 1, 1));
-  const handleNextPage = () =>
-    setPageNumber((prev) => Math.min(prev + 1, numPages));
+  // ── Pages ─────────────────────────────────────────────────────────────────
+
+  const handlePrevPage = () => setPageNumber((p) => Math.max(p - 1, 1));
+  const handleNextPage = () => setPageNumber((p) => Math.min(p + 1, numPages));
+
+  const onDocumentLoadSuccess = (pdf: any) => {
+    setNumPages(pdf.numPages);
+    pdfDocRef.current = pdf;
+  };
+
+  // ── Download ──────────────────────────────────────────────────────────────
+
+  const handleDownload = () => {
+    if (!pdfUrl || !downloadRef.current) return;
+    downloadRef.current.href = pdfUrl;
+    downloadRef.current.download = "output.pdf";
+    downloadRef.current.click();
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-full w-full flex flex-col bg-background">
+    <div className="h-full w-full flex flex-col bg-background relative">
       {/* Viewer Toolbar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5 bg-secondary">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-3 h-9 bg-secondary shrink-0">
         <div className="flex items-center gap-1">
-          {/* Compile controls */}
-          <ToolbarButton
-            icon={Play}
-            label="Compile (Ctrl+Enter)"
-            onClick={handleCompile}
-            loading={isCompiling}
-            variant="primary"
-            title={"Compile"}
-          />
-          <ToolbarButton
-            icon={RefreshCw}
-            label="Recompile"
-            onClick={handleCompile}
-            disabled={isCompiling}
-          />
-
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {/* Auto-save toggle */}
-          <div className="flex items-center gap-2 px-2">
-            <Switch
-              id="auto-save"
-              checked={autoSave}
-              onCheckedChange={setAutoSave}
-              className="scale-75"
-            />
-            <Label
-              htmlFor="auto-save"
-              className="text-xs text-muted-foreground cursor-pointer"
-            >
-              Auto-save
-            </Label>
-          </div>
-
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          {!autoSave && (
-            <ToolbarButton icon={Save} label="Save" onClick={() => {}} />
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          {/* Zoom controls */}
+          {/* Zoom */}
           <ToolbarButton
             icon={ZoomOut}
-            label="Zoom Out"
+            label="Zoom Out (-)"
             onClick={handleZoomOut}
           />
           <button
             onClick={handleResetZoom}
-            className="px-2 py-1 text-xs text-muted-foreground hover:text-primary min-w-[3rem] text-center"
+            className="px-2 py-1 text-xs text-muted-foreground hover:text-primary min-w-12 text-center"
           >
             {Math.round(scale * 100)}%
           </button>
-          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
+          <ToolbarButton
+            icon={ZoomIn}
+            label="Zoom In (+)"
+            onClick={handleZoomIn}
+          />
 
           <Separator orientation="vertical" className="h-5 mx-1" />
 
@@ -187,7 +571,7 @@ export default function Viewer() {
             onClick={handlePrevPage}
             disabled={pageNumber <= 1}
           />
-          <span className="text-xs text-muted-foreground px-1 min-w-[4rem] text-center">
+          <span className="text-xs text-muted-foreground px-1 min-w-16 text-center">
             {numPages > 0 ? `${pageNumber} / ${numPages}` : "- / -"}
           </span>
           <ToolbarButton
@@ -196,30 +580,41 @@ export default function Viewer() {
             onClick={handleNextPage}
             disabled={pageNumber >= numPages}
           />
+        </div>
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
-          <ToolbarButton
-            icon={Maximize2}
-            label="Fullscreen"
-            onClick={() => {}}
-          />
+        <div className="flex items-center gap-1">
+          {compileLog && (
+            <ToolbarButton
+              icon={Terminal}
+              label={showLog ? "Hide log" : "Show log"}
+              onClick={() => setShowLog((p) => !p)}
+              variant={showLog ? "primary" : "default"}
+            />
+          )}
           <ToolbarButton
             icon={Download}
             label="Download PDF"
-            onClick={() => {}}
+            onClick={handleDownload}
+            disabled={!pdfUrl}
           />
+          {/* Hidden anchor for programmatic download */}
+          <a ref={downloadRef} className="hidden" aria-hidden="true" />
         </div>
       </div>
 
       {/* PDF Viewer */}
-      <div className="flex-1 overflow-auto bg-muted/30 flex justify-center p-4">
-        {pdfError ? (
-          <div className="flex flex-col items-center justify-center text-muted-foreground gap-4">
+      <div className="flex-1 overflow-auto bg-muted/30 flex justify-center p-4 relative">
+        {!pdfUrl ? (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
             <div className="text-center">
-              <p className="text-sm font-medium">No PDF available</p>
+              <p className="text-sm font-medium">No PDF yet</p>
               <p className="text-xs mt-1">
-                Click "Compile" to generate the PDF preview
+                Click <strong>Compile</strong> or press{" "}
+                <kbd className="px-1 py-0.5 text-[10px] bg-muted border rounded">
+                  Ctrl+Enter
+                </kbd>{" "}
+                to generate the PDF
               </p>
             </div>
             <button
@@ -232,14 +627,14 @@ export default function Viewer() {
               ) : (
                 <Play className="size-4" />
               )}
-              {isCompiling ? "Compiling..." : "Compile"}
+              {isCompiling ? "Compiling…" : "Compile"}
             </button>
           </div>
         ) : (
+          /* Real PDF */
           <Document
-            file={MOCK_PDF_URL}
+            file={pdfUrl}
             onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
             loading={
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -248,15 +643,21 @@ export default function Viewer() {
           >
             {scrollMode ? (
               <div className="flex flex-col gap-4">
-                {Array.from(new Array(numPages), (_, index) => (
-                  <Page
-                    key={`page_${index + 1}`}
-                    pageNumber={index + 1}
-                    scale={scale}
-                    className="shadow-lg"
-                    renderTextLayer={true}
-                    renderAnnotationLayer={true}
-                  />
+                {Array.from({ length: numPages }, (_, i) => (
+                  <div
+                    key={`page_${i + 1}`}
+                    ref={(el) => {
+                      pageElemRefs.current[i + 1] = el;
+                    }}
+                  >
+                    <Page
+                      pageNumber={i + 1}
+                      scale={scale}
+                      className="shadow-lg"
+                      renderTextLayer
+                      renderAnnotationLayer
+                    />
+                  </div>
                 ))}
               </div>
             ) : (
@@ -264,31 +665,56 @@ export default function Viewer() {
                 pageNumber={pageNumber}
                 scale={scale}
                 className="shadow-lg"
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
+                renderTextLayer
+                renderAnnotationLayer
               />
             )}
           </Document>
         )}
+
+        {/* Compilation log overlay */}
+        {showLog && compileLog && (
+          <LogPanel log={compileLog} onClose={() => setShowLog(false)} />
+        )}
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground">
+      <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground shrink-0">
         <div className="flex items-center gap-2">
-          {isCompiling && (
-            <span className="flex items-center gap-1">
-              <Loader2 className="size-3 animate-spin" />
-              Compiling...
-            </span>
-          )}
           {!isCompiling && lastCompiled && (
             <span>Last compiled: {lastCompiled.toLocaleTimeString()}</span>
           )}
+          {parsedLog && !isCompiling && (
+            <button
+              onClick={() => setShowLog((p) => !p)}
+              className="flex items-center gap-1.5 hover:opacity-75 transition-opacity"
+            >
+              {parsedLog.errors.length > 0 && (
+                <span className="flex items-center gap-0.5 text-red-400">
+                  <AlertCircle className="size-3" />
+                  {parsedLog.errors.length} error
+                  {parsedLog.errors.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {parsedLog.warnings.length > 0 && (
+                <span className="flex items-center gap-0.5 text-amber-400">
+                  <AlertTriangle className="size-3" />
+                  {parsedLog.warnings.length} warning
+                  {parsedLog.warnings.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {parsedLog.errors.length === 0 &&
+                parsedLog.warnings.length === 0 && (
+                  <span className="flex items-center gap-0.5 text-zinc-500">
+                    <Terminal className="size-3" />
+                    Log
+                  </span>
+                )}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {autoSave && (
-            <span className="text-green-600">● Auto-save enabled</span>
-          )}
+          {pdfUrl && <span className="text-green-600">PDF ready</span>}
         </div>
       </div>
     </div>

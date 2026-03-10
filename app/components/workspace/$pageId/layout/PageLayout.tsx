@@ -1,116 +1,148 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Outlet, useParams } from "react-router";
-import ToolBar from "./ToolBar";
+import { Outlet } from "react-router";
 import SideBar from "./SideBar/SideBar";
 import Viewer from "./Viewer/Viewer";
+import ToolBar from "./ToolBar";
+import { PageContextProvider, usePageContext } from "./PageContext";
+import { useEditorSettingsStore } from "~/stores/editor-settings";
 
-interface ResizeHandleProps {
+function ResizeHandle({
+  onMouseDown,
+}: {
   onMouseDown: (e: React.MouseEvent) => void;
-}
-
-function ResizeHandle({ onMouseDown }: ResizeHandleProps) {
+}) {
   return (
     <div
-      className="w-1 hover:w-1 bg-transparent hover:bg-primary/20 border-r cursor-col-resize shrink-0 transition-colors group relative"
       onMouseDown={onMouseDown}
+      className="w-px bg-border hover:bg-primary/40 active:bg-primary/60 cursor-col-resize shrink-0 transition-colors relative"
     >
+      {/* wider hit area */}
       <div className="absolute inset-y-0 -left-1 -right-1" />
     </div>
   );
 }
 
-export default function PageLayout() {
+/** Inner component so it can consume PageContext (layout state) */
+function PageInner() {
+  const { layout, sidebarWidth, editorFlex, setSidebarWidth, setEditorFlex } =
+    useEditorSettingsStore();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(320);
-  // editorFlex is the ratio of editor width to the total (editor + viewer) width
-  // 0.5 means 50% editor, 50% viewer
-  const [editorFlex, setEditorFlex] = useState(0.5);
+  const sidebarWidthRef = useRef(sidebarWidth);
+  const editorFlexRef = useRef(editorFlex);
 
-  const minSidebarWidth = 200;
-  const maxSidebarWidth = 500;
-  const minEditorFlex = 0.2;
-  const maxEditorFlex = 0.8;
+  // Keep state as local for smooth dragging, initialised from store
+  const [localSidebarWidth, setLocalSidebarWidth] = useState(sidebarWidth);
+  const [localEditorFlex, setLocalEditorFlex] = useState(editorFlex);
 
-  const handleSidebarResize = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startWidth = sidebarWidth;
+  const MIN_SIDEBAR = 180;
+  const MAX_SIDEBAR = 500;
+  const MIN_EDITOR_FLEX = 0.2;
+  const MAX_EDITOR_FLEX = 0.8;
 
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        const delta = moveEvent.clientX - startX;
-        const newWidth = Math.min(
-          Math.max(startWidth + delta, minSidebarWidth),
-          maxSidebarWidth
-        );
-        setSidebarWidth(newWidth);
-      };
+  const handleSidebarResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidthRef.current;
 
-      const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      };
+    const onMove = (ev: MouseEvent) => {
+      const newW = Math.min(
+        Math.max(startWidth + (ev.clientX - startX), MIN_SIDEBAR),
+        MAX_SIDEBAR,
+      );
+      sidebarWidthRef.current = newW;
+      setLocalSidebarWidth(newW);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setSidebarWidth(sidebarWidthRef.current);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    },
-    [sidebarWidth]
-  );
+  const handleEditorViewerResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleEditorViewerResize = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      const container = containerRef.current;
-      if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const available = rect.width - sidebarWidthRef.current - 2;
 
-      const containerRect = container.getBoundingClientRect();
-      const availableWidth = containerRect.width - sidebarWidth - 8; // 8px for resize handles
+    const onMove = (ev: MouseEvent) => {
+      const mouseX = ev.clientX - rect.left - sidebarWidthRef.current - 1;
+      const newFlex = Math.min(
+        Math.max(mouseX / available, MIN_EDITOR_FLEX),
+        MAX_EDITOR_FLEX,
+      );
+      editorFlexRef.current = newFlex;
+      setLocalEditorFlex(newFlex);
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setEditorFlex(editorFlexRef.current);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        const mouseX =
-          moveEvent.clientX - containerRect.left - sidebarWidth - 4;
-        const newFlex = Math.min(
-          Math.max(mouseX / availableWidth, minEditorFlex),
-          maxEditorFlex
-        );
-        setEditorFlex(newFlex);
-      };
-
-      const handleMouseUp = () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      };
-
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    },
-    [sidebarWidth]
-  );
+  const showEditor = layout !== "viewer-only";
+  const showViewer = layout !== "editor-only";
+  const showDivider = layout === "split";
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
       <ToolBar />
-      <div ref={containerRef} className="flex-1 flex h-full overflow-hidden">
-        <div style={{ width: sidebarWidth }} className="shrink-0">
+      <div ref={containerRef} className="flex-1 flex overflow-hidden">
+        {/* Sidebar — always visible */}
+        <div
+          style={{ width: localSidebarWidth }}
+          className="shrink-0 overflow-hidden"
+        >
           <SideBar />
         </div>
         <ResizeHandle onMouseDown={handleSidebarResize} />
-        <div style={{ flex: editorFlex }} className="min-w-0">
-          <Outlet />
-        </div>
-        <ResizeHandle onMouseDown={handleEditorViewerResize} />
-        <div style={{ flex: 1 - editorFlex }} className="min-w-0">
-          <Viewer />
-        </div>
+
+        {/* Editor panel */}
+        {showEditor && (
+          <div
+            style={{ flex: showDivider ? localEditorFlex : 1 }}
+            className="min-w-0 overflow-hidden"
+          >
+            <Outlet />
+          </div>
+        )}
+
+        {/* Editor ↔ Viewer splitter — only in split mode */}
+        {showDivider && <ResizeHandle onMouseDown={handleEditorViewerResize} />}
+
+        {/* Viewer panel */}
+        {showViewer && (
+          <div
+            style={{ flex: showDivider ? 1 - localEditorFlex : 1 }}
+            className="min-w-0 overflow-hidden"
+          >
+            <Viewer />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function PageLayout() {
+  return (
+    <PageContextProvider>
+      <PageInner />
+    </PageContextProvider>
   );
 }

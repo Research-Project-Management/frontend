@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Task, Column } from "../types/task";
 import { API_URL } from "~/lib/api";
+import { useSocket } from "~/contexts/SocketProvider";
 
 export type ProjectTasksData = {
   tasks: Task[];
@@ -17,6 +19,54 @@ export const fetchProjectTasks = async (projectId: string) => {
 };
 
 export const useProjectTasks = (projectId: string) => {
+  const queryClient = useQueryClient();
+  const socket = useSocket();
+
+  useEffect(() => {
+    if (!socket || !projectId) return;
+    socket.emit("join:project", projectId);
+
+    const onCreated = ({ task }: { task: Task }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
+        if (old.tasks.some((t) => t._id === task._id)) return old;
+        return { ...old, tasks: [...old.tasks, task] };
+      });
+    };
+    const onUpdated = ({ task }: { task: Task }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
+        return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
+      });
+    };
+    const onDeleted = ({ taskId }: { taskId: string }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
+        return { ...old, tasks: old.tasks.filter((t) => t._id !== taskId) };
+      });
+      queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
+    };
+    const onColumnCreated = ({ columns }: { columns: Column[] }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
+        return { ...old, columns };
+      });
+    };
+
+    socket.on("task:created", onCreated);
+    socket.on("task:updated", onUpdated);
+    socket.on("task:deleted", onDeleted);
+    socket.on("column:created", onColumnCreated);
+
+    return () => {
+      socket.emit("leave:project", projectId);
+      socket.off("task:created", onCreated);
+      socket.off("task:updated", onUpdated);
+      socket.off("task:deleted", onDeleted);
+      socket.off("column:created", onColumnCreated);
+    };
+  }, [socket, projectId, queryClient]);
+
   return useQuery({
     queryKey: ["tasks", projectId],
     queryFn: () => fetchProjectTasks(projectId),

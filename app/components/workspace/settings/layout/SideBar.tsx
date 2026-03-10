@@ -1,5 +1,5 @@
 import React from "react";
-import { PanelLeftClose, UsersIcon, Calculator } from "lucide-react";
+import { PanelLeftClose, UsersIcon, Calculator, ShieldCheck } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router";
 
 export default function SideBar() {
@@ -14,6 +14,7 @@ export default function SideBar() {
   const sidebarItems = [
     { label: "General", icon: Calculator, to: basePath },
     { label: "Members", icon: UsersIcon, to: `${basePath}/members` },
+    { label: "Roles", icon: ShieldCheck, to: `/${workspaceId}/roles` },
   ];
 
   return (
@@ -29,7 +30,7 @@ export default function SideBar() {
       {/* Settings Navigation */}
       <nav className="flex flex-col gap-1">
         {sidebarItems.map((item) => {
-          const isActive = location.pathname === item.to;
+          const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + "/");
           return (
             <Link
               to={item.to}

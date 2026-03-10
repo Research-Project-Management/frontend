@@ -330,3 +330,16 @@ html {
 ::-webkit-scrollbar {
   width: 10px;
 }
+
+/* Monaco editor comment glyph */
+.flux-comment-glyph {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E")
+    no-repeat center;
+  background-size: 12px 12px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.flux-comment-glyph:hover {
+  opacity: 1;
+}

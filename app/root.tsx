@@ -10,6 +10,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { QueryProvider } from "./lib/react-query";
+import { SocketProvider } from "./contexts/SocketProvider";
 import { Toaster } from "sonner";
 
 export const links: Route.LinksFunction = () => [
@@ -36,7 +37,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body suppressHydrationWarning>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <SocketProvider>{children}</SocketProvider>
+        </QueryProvider>
         <Toaster position="top-right" richColors />
         <ScrollRestoration />
         <Scripts />

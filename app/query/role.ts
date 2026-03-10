@@ -97,6 +97,31 @@ export function useUpdateRole(workspaceId: string) {
   });
 }
 
+// Duplicate role
+export function useDuplicateRole(workspaceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (roleId: string) => {
+      const res = await fetch(
+        `${API_URL}/api/roles/${workspaceId}/${roleId}/duplicate`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to duplicate role");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles", workspaceId] });
+    },
+  });
+}
+
 // Delete role
 export function useDeleteRole(workspaceId: string) {
   const queryClient = useQueryClient();

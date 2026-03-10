@@ -208,13 +208,6 @@ export default function HomeDashboard() {
     [config],
   );
 
-  const greeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
-
   const firstName = user?.name?.split(" ")[0];
 
   return (
@@ -222,10 +215,7 @@ export default function HomeDashboard() {
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-6 py-3 border-b shrink-0">
         <div>
-          <p className="text-sm font-semibold leading-tight">
-            {greeting}
-            {firstName ? `, ${firstName}` : ""}
-          </p>
+          <p className="text-sm font-semibold leading-tight">Home</p>
           <p className="text-xs text-muted-foreground">
             {format(new Date(), "EEEE, MMMM d")}
           </p>

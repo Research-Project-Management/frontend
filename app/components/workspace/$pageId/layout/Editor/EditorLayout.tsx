@@ -1,10 +1,12 @@
-import React, { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext, useRef, useEffect } from "react";
 import { useParams } from "react-router";
 import { usePage } from "~/query/page";
 import Loading from "~/components/ui/Loading";
 import ToolBar from "./ToolBar";
 import Editor from "./Editor";
 import type { editor } from "monaco-editor";
+import { usePageContext } from "../PageContext";
+import type { Page } from "~/types/page";
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
@@ -23,7 +25,22 @@ export const useEditorContext = () => {
 export default function EditorLayout() {
   const { pageId } = useParams<{ pageId: string }>();
   const { data: page, isLoading } = usePage(pageId!);
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  // Use the shared editorRef from PageContext so SearchTab and others can access it.
+  const { getEditorContent, setCurrentPage, editorRef } = usePageContext();
+
+  // Register a stable content-getter so the Viewer can read the editor text at compile time.
+  useEffect(() => {
+    getEditorContent.current = () => editorRef.current?.getValue() ?? "";
+    return () => {
+      getEditorContent.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync the loaded page into shared context so sidebar/toolbar can access it.
+  useEffect(() => {
+    if (page) setCurrentPage(page);
+    return () => setCurrentPage(null);
+  }, [page?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return <Loading />;

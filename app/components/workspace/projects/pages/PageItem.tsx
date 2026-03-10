@@ -1,18 +1,13 @@
 import {
   FileText,
   MoreHorizontal,
-  Eye,
-  Folder,
   Pencil,
   Trash2,
-  Archive,
-  CheckCircle2,
-  FileEdit,
   ExternalLink,
+  Clock,
 } from "lucide-react";
 import React, { useState } from "react";
-import { pdfjs, Document, Page as PDFPage } from "react-pdf";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -20,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
 } from "~/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -36,30 +30,39 @@ import type { Page } from "~/types/page";
 import { useDeletePage, useUpdatePageTitle } from "~/query/page";
 import { toast } from "sonner";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
 interface PageItemProps {
   page: Page;
   viewMode: "grid" | "list";
 }
 
-const statusColors: Record<string, string> = {
-  draft: "bg-yellow-500/10 text-yellow-600 border-yellow-600/20",
-  approved: "bg-green-500/10 text-green-600 border-green-600/20",
-  archived: "bg-gray-500/10 text-gray-600 border-gray-600/20",
-  published: "bg-blue-500/10 text-blue-600 border-blue-600/20",
-};
+// Decorative "text lines" widths for the paper thumbnail preview
+const LINE_WIDTHS = [100, 85, 92, 78, 95, 70, 88, 60, 76, 83, 65, 90];
+
+function relativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function PageItem({ page, viewMode }: PageItemProps) {
   const navigate = useNavigate();
   const projectId =
     typeof page.project === "string" ? page.project : page.project._id;
   const projectName =
-    typeof page.project === "string" ? page.project : page.project.name;
-  const formattedDate = new Date(page.updatedAt).toLocaleDateString();
+    typeof page.project === "string" ? "—" : page.project.name;
 
-  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(page.title);
 
   const deleteMutation = useDeletePage();
@@ -67,371 +70,133 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
 
   const handleRename = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || newTitle === page.title) {
-      setIsRenameDialogOpen(false);
+    const trimmed = newTitle.trim();
+    if (!trimmed || trimmed === page.title) {
+      setIsRenameOpen(false);
       return;
     }
-
     try {
       await updateTitleMutation.mutateAsync({
         pageId: page._id,
-        title: newTitle.trim(),
+        title: trimmed,
       });
-      toast.success("Page renamed successfully");
-      setIsRenameDialogOpen(false);
-    } catch (error) {
-      toast.error("Failed to rename page");
+      toast.success("Renamed successfully");
+      setIsRenameOpen(false);
+    } catch {
+      toast.error("Failed to rename");
     }
   };
 
   const handleDelete = async () => {
     try {
-      await deleteMutation.mutateAsync({
-        pageId: page._id,
-        projectId,
-      });
-      toast.success("Page deleted successfully");
-      setIsDeleteDialogOpen(false);
-    } catch (error) {
-      toast.error("Failed to delete page");
+      await deleteMutation.mutateAsync({ pageId: page._id, projectId });
+      toast.success("Deleted");
+      setIsDeleteOpen(false);
+    } catch {
+      toast.error("Failed to delete");
     }
   };
 
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
+  const mainFileId =
+    page.mainFile && typeof page.mainFile === "object"
+      ? page.mainFile._id
+      : ((page.mainFile as string | null | undefined) ?? null);
+  const mainFileTitle =
+    page.mainFile && typeof page.mainFile === "object"
+      ? page.mainFile.title
+      : null;
 
-  if (viewMode === "grid") {
-    return (
-      <>
-        <Link
-          to={`/editor/${page._id}`}
-          className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group flex flex-col"
+  const openEditor = () => navigate(`/editor/${mainFileId ?? page._id}`);
+
+  const ActionMenu = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 opacity-0 group-hover:opacity-100 transition-opacity data-[state=open]:opacity-100"
         >
-          {/* PDF Preview */}
-          <div className="relative aspect-[3/4] bg-muted/30 overflow-hidden">
-            <div className="absolute inset-0 flex items-center justify-center scale-[0.6] origin-top">
-              <Document
-                file="https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf"
-                loading={
-                  <div className="flex items-center justify-center h-full">
-                    <FileText className="w-12 h-12 text-muted-foreground/20" />
-                  </div>
-                }
-                error={
-                  <div className="flex items-center justify-center h-full">
-                    <FileText className="w-12 h-12 text-muted-foreground/20" />
-                  </div>
-                }
-              >
-                <PDFPage
-                  width={450}
-                  pageNumber={1}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  className="shadow-sm"
-                />
-              </Document>
-            </div>
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={openEditor}>
+          <ExternalLink className="size-4 mr-2" />
+          Open
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            setNewTitle(page.title);
+            setIsRenameOpen(true);
+          }}
+        >
+          <Pencil className="size-4 mr-2" />
+          Rename
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setIsDeleteOpen(true)}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="size-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
-            {/* Hover overlay */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-
-            {/* Status badge */}
-            <div className="absolute top-2 left-2">
-              <span
-                className={`text-[10px] px-2 py-1 rounded-md font-medium backdrop-blur-sm border ${
-                  statusColors[page.status] ||
-                  "bg-gray-500/10 text-gray-600 border-gray-600/20"
-                }`}
-              >
-                {page.status}
-              </span>
-            </div>
-
-            {/* Action menu */}
-            <div className="absolute top-2 right-2" onClick={handleMenuClick}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 bg-background/80 backdrop-blur-sm hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate(`/editor/${page._id}`);
-                    }}
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setNewTitle(page.title);
-                      setIsRenameDialogOpen(true);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsDeleteDialogOpen(true);
-                    }}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="p-3 bg-card">
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <h3 className="text-sm font-medium text-foreground truncate flex-1 group-hover:text-primary transition-colors">
-                {page.title}
-              </h3>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5 truncate max-w-[70%]">
-                <Folder className="w-3 h-3 shrink-0" />
-                <span className="truncate">{projectName}</span>
-              </div>
-              <span className="shrink-0">{formattedDate}</span>
-            </div>
-          </div>
-        </Link>
-
-        {/* Rename Dialog */}
-        <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Rename Page</DialogTitle>
-              <DialogDescription>
-                Enter a new name for this page
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleRename}>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Page Title</Label>
-                  <Input
-                    id="title"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Enter page title"
-                    autoFocus
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsRenameDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={updateTitleMutation.isPending}>
-                  {updateTitleMutation.isPending ? "Saving..." : "Save"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Dialog */}
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Page</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete "{page.title}"? This action
-                cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDeleteDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </>
-    );
-  }
-
-  // List view - Match Recent component style
-  return (
+  const Dialogs = () => (
     <>
-      <Link
-        to={`/editor/${page._id}`}
-        className="flex items-center gap-4 px-2 transition-all duration-200 cursor-pointer group"
-      >
-        {/* Project Icon */}
-        <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors shrink-0">
-          <FileText className="h-4 w-4" />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="font-medium hover:underline underline-offset-2 text-gray-900 group-hover:text-primary transition-all truncate">
-              {page.title}
-            </h3>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-md font-medium capitalize border ${
-                statusColors[page.status] ||
-                "bg-gray-500/10 text-gray-600 border-gray-600/20"
-              }`}
-            >
-              {page.status}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="font-medium">{projectName}</span>
-            <span>•</span>
-            <span>{formattedDate}</span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              {page.views || 0}
-            </span>
-          </div>
-        </div>
-
-        {/* Hover Indicator */}
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-          <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-primary" />
-        </div>
-      </Link>
-
-      <div onClick={handleMenuClick} className="shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <MoreHorizontal className="w-4 h-4 text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(`/editor/${page._id}`);
-              }}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                setNewTitle(page.title);
-                setIsRenameDialogOpen(true);
-              }}
-            >
-              <Pencil className="w-4 h-4 mr-2" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                setIsDeleteDialogOpen(true);
-              }}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Rename Dialog */}
-      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+      {/* Rename */}
+      <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename Page</DialogTitle>
-            <DialogDescription>
-              Enter a new name for this page
-            </DialogDescription>
+            <DialogTitle>Rename document</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRename}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Page Title</Label>
-                <Input
-                  id="title"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Enter page title"
-                  autoFocus
-                />
-              </div>
+            <div className="py-4">
+              <Label htmlFor="rename-title" className="sr-only">
+                Title
+              </Label>
+              <Input
+                id="rename-title"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Document title"
+                autoFocus
+              />
             </div>
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsRenameDialogOpen(false)}
+                onClick={() => setIsRenameOpen(false)}
               >
                 Cancel
               </Button>
               <Button type="submit" disabled={updateTitleMutation.isPending}>
-                {updateTitleMutation.isPending ? "Saving..." : "Save"}
+                {updateTitleMutation.isPending ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* Delete */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Page</DialogTitle>
+            <DialogTitle>Delete document</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{page.title}"? This action cannot
-              be undone.
+              Are you sure you want to delete <strong>"{page.title}"</strong>?
+              This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
+              onClick={() => setIsDeleteOpen(false)}
             >
               Cancel
             </Button>
@@ -440,11 +205,130 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+
+  // ── Grid card ──────────────────────────────────────────────────────────────
+
+  if (viewMode === "grid") {
+    return (
+      <>
+        <div className="group cursor-pointer" onClick={openEditor}>
+          {/* Paper thumbnail */}
+          <div className="relative bg-background border border-border rounded-lg overflow-hidden group-hover:shadow-md group-hover:border-primary/30 transition-all aspect-3/4">
+            {page.pdfThumbnail ? (
+              /* Last compiled PDF — first page preview */
+              <img
+                src={page.pdfThumbnail}
+                alt={`${page.title} preview`}
+                className="absolute inset-0 w-full h-full object-cover object-top"
+                draggable={false}
+              />
+            ) : (
+              /* Fallback: decorative text lines */
+              <>
+                <div className="absolute inset-0 flex flex-col justify-center gap-1.5 px-4 py-6 pointer-events-none">
+                  {LINE_WIDTHS.map((w, i) => (
+                    <div
+                      key={i}
+                      className="h-px bg-foreground/10 rounded-full"
+                      style={{ width: `${w}%` }}
+                    />
+                  ))}
+                </div>
+                {/* Center icon + main file label */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+                  <FileText className="size-8 text-muted-foreground/15" />
+                  {mainFileTitle && (
+                    <span className="text text-muted-foreground/50 bg-muted/50 px-1.5 py-0.5 rounded font-mono">
+                      {mainFileTitle}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors flex items-center justify-center">
+              <span className="opacity-0 group-hover:opacity-100 group-hover:translate-y-0 -translate-y-1 transition-all bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-full font-medium shadow">
+                Open
+              </span>
+            </div>
+
+            {/* Action button */}
+            <div
+              className="absolute top-1.5 right-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="[&>button]:bg-background/80 [&>button]:backdrop-blur-sm [&>button]:hover:bg-background">
+                <ActionMenu />
+              </div>
+            </div>
+          </div>
+
+          {/* Info below card */}
+          <div className="mt-2 px-0.5">
+            <p className="text font-medium truncate group-hover:text-primary transition-colors leading-snug">
+              {page.title}
+            </p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
+              {projectName}
+            </p>
+            <p className="text-xs text-muted-foreground/60 flex items-center gap-1 mt-0.5">
+              {relativeTime(page.updatedAt)}
+            </p>
+          </div>
+        </div>
+        <Dialogs />
+      </>
+    );
+  }
+
+  // ── List row ───────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <div
+        className="relative grid grid-cols-[1fr_180px_140px_40px] gap-2 px-4 py-2.5 items-center hover:bg-muted/30 transition-colors cursor-pointer group"
+        onClick={openEditor}
+      >
+        {/* Title */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="size-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+            <FileText className="size-4 text-primary/60" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+              {page.title}
+            </p>
+            <p className="text-[11px] text-muted-foreground/60 truncate">
+              {page.author?.name ?? ""}
+            </p>
+          </div>
+        </div>
+
+        {/* Project */}
+        <span className="text-sm text-muted-foreground truncate">
+          {projectName}
+        </span>
+
+        {/* Date */}
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <Clock className="size-3 shrink-0" />
+          {relativeTime(page.updatedAt)}
+        </span>
+
+        {/* Actions — stopPropagation so click doesn't open editor */}
+        <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
+          <ActionMenu />
+        </div>
+      </div>
+      <Dialogs />
     </>
   );
 }

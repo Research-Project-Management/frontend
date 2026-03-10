@@ -1,29 +1,37 @@
 import {
   AlignCenter,
-  AlignJustify,
   AlignLeft,
   AlignRight,
   Bold,
+  BookOpen,
+  Braces,
   ChevronDown,
-  ClipboardPaste,
   Code,
   Copy,
+  FileText,
+  Hash,
   Italic,
   List,
   ListOrdered,
+  Pilcrow,
   Redo,
   Scissors,
+  Sigma,
   Strikethrough,
   Subscript,
   Superscript,
+  Tag,
   Underline,
   Undo,
-  Save,
-  FileText,
 } from "lucide-react";
 import React, { useState } from "react";
-import { useParams } from "react-router";
 import { Input } from "~/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -35,6 +43,8 @@ import { useUpdatePageTitle } from "~/query/page";
 import type { Page } from "~/types/page";
 import { useDebounce } from "~/hooks/useDebounce";
 import { useEditorContext } from "./EditorLayout";
+import { usePagePresence } from "~/hooks/usePagePresence";
+import { useUserStore } from "~/stores/user";
 
 const toolGroups = [
   {
@@ -49,7 +59,6 @@ const toolGroups = [
     items: [
       { label: "Cut", icon: Scissors, shortcut: "Ctrl+X" },
       { label: "Copy", icon: Copy, shortcut: "Ctrl+C" },
-      { label: "Paste", icon: ClipboardPaste, shortcut: "Ctrl+V" },
     ],
   },
   {
@@ -69,6 +78,7 @@ const toolGroups = [
         command: "\\underline{}",
       },
       { label: "Strikethrough", icon: Strikethrough, command: "\\sout{}" },
+      { label: "Code", icon: Code, command: "\\texttt{}" },
     ],
   },
   {
@@ -84,7 +94,6 @@ const toolGroups = [
       { label: "Align Left", icon: AlignLeft },
       { label: "Align Center", icon: AlignCenter },
       { label: "Align Right", icon: AlignRight },
-      { label: "Justify", icon: AlignJustify },
     ],
   },
   {
@@ -99,9 +108,36 @@ const toolGroups = [
     ],
   },
   {
-    name: "code",
-    items: [{ label: "Code", icon: Code, command: "\\texttt{}" }],
+    name: "math",
+    items: [
+      { label: "Inline Math", icon: Sigma, shortcut: "Ctrl+Shift+M" },
+      { label: "Display Math", icon: Braces },
+    ],
   },
+  {
+    name: "refs",
+    items: [
+      { label: "Label", icon: Tag, command: "\\label{}" },
+      { label: "Ref", icon: Hash, command: "\\ref{}" },
+      { label: "Cite", icon: BookOpen, command: "\\cite{}" },
+    ],
+  },
+];
+
+const SECTION_COMMANDS = [
+  { label: "Part", command: "\\part{}" },
+  { label: "Chapter", command: "\\chapter{}" },
+  { label: "Section", command: "\\section{}" },
+  { label: "Subsection", command: "\\subsection{}" },
+  { label: "Subsubsection", command: "\\subsubsection{}" },
+  { label: "Paragraph", command: "\\paragraph{}" },
+];
+
+const MATH_ENV_COMMANDS = [
+  { label: "Equation", env: "equation" },
+  { label: "Align", env: "align" },
+  { label: "Gather", env: "gather" },
+  { label: "Multline", env: "multline" },
 ];
 
 interface ToolButtonProps {
@@ -125,18 +161,18 @@ function ToolButton({
         <button
           onClick={onClick}
           className={cn(
-            "p-1.5 rounded transition-colors",
+            "p-1 rounded transition-colors",
             "text-muted-foreground hover:text-primary hover:bg-primary/10",
             isActive && "bg-primary/10 text-primary",
           )}
         >
-          <Icon className="size-4" strokeWidth={2} />
+          <Icon className="size-3.5" strokeWidth={2} />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="flex items-center gap-2">
         <span>{label}</span>
         {shortcut && (
-          <kbd className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">
+          <kbd className="text-[10px] bg-gray-500 px-1.5 py-0.5 rounded font-mono">
             {shortcut}
           </kbd>
         )}
@@ -147,6 +183,47 @@ function ToolButton({
 
 interface ToolBarProps {
   page: Page;
+}
+
+const MAX_AVATARS = 4;
+
+function PresenceAvatars({ pageId }: { pageId: string }) {
+  const currentUser = useUserStore((s) => s.user);
+  const users = usePagePresence(pageId);
+  const others = users.filter((u) => u._id !== currentUser?._id);
+
+  if (others.length === 0) return null;
+
+  const shown = others.slice(0, MAX_AVATARS);
+  const overflow = others.length - shown.length;
+
+  return (
+    <div className="flex items-center gap-1 ml-auto shrink-0 pl-2">
+      <div className="flex items-center -space-x-1.5">
+        {shown.map((u) => (
+          <Tooltip key={u.socketId}>
+            <TooltipTrigger asChild>
+              <div className="size-6 rounded-full ring-2 ring-background overflow-hidden shrink-0 cursor-default">
+                {u.avatar ? (
+                  <img src={u.avatar} alt={u.name} className="size-full object-cover" />
+                ) : (
+                  <div className="size-full bg-primary/20 flex items-center justify-center text-[10px] font-semibold text-primary">
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{u.name}</TooltipContent>
+          </Tooltip>
+        ))}
+        {overflow > 0 && (
+          <div className="size-6 rounded-full ring-2 ring-background bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+            +{overflow}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function ToolBar({ page }: ToolBarProps) {
@@ -167,6 +244,16 @@ export default function ToolBar({ page }: ToolBarProps) {
   React.useEffect(() => {
     setTitle(page.title);
   }, [page.title]);
+
+  const handleUndo = () => {
+    editorRef.current?.trigger("toolbar", "undo", null);
+    editorRef.current?.focus();
+  };
+
+  const handleRedo = () => {
+    editorRef.current?.trigger("toolbar", "redo", null);
+    editorRef.current?.focus();
+  };
 
   const insertText = (text: string) => {
     const editor = editorRef.current;
@@ -207,67 +294,174 @@ export default function ToolBar({ page }: ToolBarProps) {
     editor.focus();
   };
 
-  const handleToolClick = (command?: string, label?: string) => {
-    if (!command) return;
-
+  const handleToolClick = (label?: string, command?: string) => {
+    const editor = editorRef.current;
     switch (label) {
+      case "Undo":
+        handleUndo();
+        return;
+      case "Redo":
+        handleRedo();
+        return;
+      case "Cut":
+        editor?.trigger("toolbar", "editor.action.clipboardCutAction", null);
+        editor?.focus();
+        return;
+      case "Copy":
+        editor?.trigger("toolbar", "editor.action.clipboardCopyAction", null);
+        editor?.focus();
+        return;
       case "Bold":
       case "Italic":
       case "Underline":
       case "Strikethrough":
       case "Code":
-        wrapSelection(command.replace("}", ""), "}");
-        break;
+        if (command) wrapSelection(command.replace("}", ""), "}");
+        return;
       case "Superscript":
         wrapSelection("^{", "}");
-        break;
+        return;
       case "Subscript":
         wrapSelection("_{", "}");
-        break;
+        return;
+      case "Align Left":
+        wrapSelection("\\begin{flushleft}\n", "\n\\end{flushleft}");
+        return;
+      case "Align Center":
+        wrapSelection("\\begin{center}\n", "\n\\end{center}");
+        return;
+      case "Align Right":
+        wrapSelection("\\begin{flushright}\n", "\n\\end{flushright}");
+        return;
       case "Bullet List":
-        insertText("\n\\begin{itemize}\n\\item \n\\end{itemize}\n");
-        break;
+        insertText("\n\\begin{itemize}\n  \\item \n\\end{itemize}\n");
+        return;
       case "Numbered List":
-        insertText("\n\\begin{enumerate}\n\\item \n\\end{enumerate}\n");
-        break;
+        insertText("\n\\begin{enumerate}\n  \\item \n\\end{enumerate}\n");
+        return;
+      case "Inline Math":
+        wrapSelection("$", "$");
+        return;
+      case "Display Math":
+        wrapSelection("\\[\n  ", "\n\\]");
+        return;
+      case "Label":
+      case "Ref":
+      case "Cite":
+        if (command) insertText(command);
+        return;
       default:
         if (command) insertText(command);
     }
   };
 
+  const handleSectionInsert = (command: string) => insertText(command);
+  const handleMathEnvInsert = (env: string) =>
+    wrapSelection(`\\begin{${env}}\n  `, `\n\\end{${env}}`);
+
   return (
-    <div className="flex items-center gap-1 bg-secondary border-b border-border px-3 py-1.5">
-      {/* File info */}
-      <div className="flex items-center gap-2 mr-2">
-        <FileText className="size-4 text-muted-foreground" />
+    <div className="flex items-center gap-0.5 bg-background border-b border-border px-2 h-9 overflow-x-auto shrink-0">
+      {/* File title */}
+      <div className="flex items-center gap-1.5 mr-2 shrink-0">
+        <FileText className="size-3.5 text-muted-foreground" />
         <Input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="h-7 text-sm font-medium w-48 bg-background border-border focus:ring-1 focus:ring-primary/20"
+          className="h-6 text-xs font-medium w-44 bg-muted/40 border-transparent focus:border-border focus:bg-background"
           placeholder="Page title"
         />
       </div>
 
-      <Separator orientation="vertical" className="h-5 mx-1" />
+      <Separator orientation="vertical" className="h-4 mx-1 shrink-0" />
 
       {/* Tool groups */}
       {toolGroups.map((group, groupIndex) => (
         <React.Fragment key={group.name}>
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             {group.items.map((item) => (
               <ToolButton
                 key={item.label}
                 label={item.label}
                 icon={item.icon}
+                shortcut={(item as any).shortcut}
+                onClick={() =>
+                  handleToolClick(item.label, (item as any).command)
+                }
               />
             ))}
+            {/* Inline math env dropdown inside math group */}
+            {group.name === "math" && (
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex items-center gap-0.5 px-1 py-1 rounded transition-colors text-muted-foreground hover:text-primary hover:bg-primary/10">
+                        <span className="text-[12px] font-serif leading-none">
+                          ∑
+                        </span>
+                        <ChevronDown className="size-2" />
+                      </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    Math Environments
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="start" className="min-w-42.5">
+                  {MATH_ENV_COMMANDS.map((m) => (
+                    <DropdownMenuItem
+                      key={m.env}
+                      onClick={() => handleMathEnvInsert(m.env)}
+                    >
+                      <span className="text-[11px] font-mono text-muted-foreground mr-2">
+                        {`\\begin{${m.env}}`}
+                      </span>
+                      {m.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {groupIndex < toolGroups.length - 1 && (
-            <Separator orientation="vertical" className="h-5 mx-1" />
+            <Separator orientation="vertical" className="h-4 mx-0.5 shrink-0" />
           )}
         </React.Fragment>
       ))}
+
+      <Separator orientation="vertical" className="h-4 mx-0.5 shrink-0" />
+
+      {/* Section dropdown */}
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-0.5 px-1 py-1 rounded transition-colors text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0">
+                <Pilcrow className="size-3.5" strokeWidth={2} />
+                <ChevronDown className="size-2" />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Insert Section</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="start" className="min-w-50">
+          {SECTION_COMMANDS.map((s) => (
+            <DropdownMenuItem
+              key={s.label}
+              onClick={() => handleSectionInsert(s.command)}
+            >
+              <span className="text-[11px] font-mono text-muted-foreground mr-2">
+                {`\\${s.label.toLowerCase()}{}`}
+              </span>
+              {s.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Presence avatars */}
+      <PresenceAvatars pageId={page._id} />
     </div>
   );
 }

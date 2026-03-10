@@ -39,7 +39,7 @@ function MiniCard({
   return (
     <Link
       to={`/${workspaceUrl}/stickies`}
-      className="group relative flex flex-col rounded-xl overflow-hidden shadow-sm
+      className="group relative flex flex-col rounded-md overflow-hidden shadow-sm
                  hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
       style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
     >

@@ -43,8 +43,7 @@ import { useUpdatePageTitle } from "~/query/page";
 import type { Page } from "~/types/page";
 import { useDebounce } from "~/hooks/useDebounce";
 import { useEditorContext } from "./EditorLayout";
-import { usePagePresence } from "~/hooks/usePagePresence";
-import { useUserStore } from "~/stores/user";
+
 
 const toolGroups = [
   {
@@ -183,47 +182,6 @@ function ToolButton({
 
 interface ToolBarProps {
   page: Page;
-}
-
-const MAX_AVATARS = 4;
-
-function PresenceAvatars({ pageId }: { pageId: string }) {
-  const currentUser = useUserStore((s) => s.user);
-  const users = usePagePresence(pageId);
-  const others = users.filter((u) => u._id !== currentUser?._id);
-
-  if (others.length === 0) return null;
-
-  const shown = others.slice(0, MAX_AVATARS);
-  const overflow = others.length - shown.length;
-
-  return (
-    <div className="flex items-center gap-1 ml-auto shrink-0 pl-2">
-      <div className="flex items-center -space-x-1.5">
-        {shown.map((u) => (
-          <Tooltip key={u.socketId}>
-            <TooltipTrigger asChild>
-              <div className="size-6 rounded-full ring-2 ring-background overflow-hidden shrink-0 cursor-default">
-                {u.avatar ? (
-                  <img src={u.avatar} alt={u.name} className="size-full object-cover" />
-                ) : (
-                  <div className="size-full bg-primary/20 flex items-center justify-center text-[10px] font-semibold text-primary">
-                    {u.name.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{u.name}</TooltipContent>
-          </Tooltip>
-        ))}
-        {overflow > 0 && (
-          <div className="size-6 rounded-full ring-2 ring-background bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
-            +{overflow}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 export default function ToolBar({ page }: ToolBarProps) {
@@ -460,8 +418,6 @@ export default function ToolBar({ page }: ToolBarProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Presence avatars */}
-      <PresenceAvatars pageId={page._id} />
     </div>
   );
 }

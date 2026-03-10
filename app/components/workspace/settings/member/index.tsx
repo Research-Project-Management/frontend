@@ -6,6 +6,7 @@ import {
   useUpdateWorkspaceMemberRole,
   useRemoveWorkspaceMember,
 } from "~/query/workspace";
+import { useRoles } from "~/query/role";
 import {
   Users,
   UserPlus,
@@ -50,6 +51,7 @@ export default function MemberPage() {
 
   // Fetch Workspace Data
   const { workspace, isLoading, yourRole } = useWorkspace(workspaceUrl!);
+  const { data: roles } = useRoles(workspace?._id ?? "");
 
   // Mutations
   const updateRoleMutation = useUpdateWorkspaceMemberRole();
@@ -62,9 +64,9 @@ export default function MemberPage() {
       members.filter(
         (m: any) =>
           m.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+          m.user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
       ),
-    [members, searchTerm]
+    [members, searchTerm],
   );
 
   const canManage = yourRole === "owner" || yourRole === "admin";
@@ -78,7 +80,7 @@ export default function MemberPage() {
         newRole,
       });
     },
-    [updateRoleMutation, workspace]
+    [updateRoleMutation, workspace],
   );
 
   const handleRemoveMember = useCallback(
@@ -86,13 +88,13 @@ export default function MemberPage() {
       if (!workspace) return;
       if (
         confirm(
-          "Are you sure you want to remove this member from the workspace?"
+          "Are you sure you want to remove this member from the workspace?",
         )
       ) {
         removeMemberMutation.mutate({ workspaceId: workspace._id, userId });
       }
     },
-    [removeMemberMutation, workspace]
+    [removeMemberMutation, workspace],
   );
 
   // Early returns AFTER all hooks
@@ -196,7 +198,7 @@ export default function MemberPage() {
                     </td>
                     <td className="p-4 text-muted-foreground">
                       {new Date(
-                        member.joinedAt || Date.now()
+                        member.joinedAt || Date.now(),
                       ).toLocaleDateString()}
                     </td>
                     <td className="p-4 text-right">
@@ -219,14 +221,31 @@ export default function MemberPage() {
                                 handleUpdateRole(member.user._id, val)
                               }
                             >
-                              {yourRole === "owner" && (
-                                <DropdownMenuRadioItem value="admin">
-                                  Admin
-                                </DropdownMenuRadioItem>
-                              )}
-                              <DropdownMenuRadioItem value="member">
-                                Member
-                              </DropdownMenuRadioItem>
+                              {roles
+                                ?.filter(
+                                  (r) => r.name.toLowerCase() !== "owner",
+                                )
+                                .filter(
+                                  (r) =>
+                                    yourRole === "owner" ||
+                                    r.name.toLowerCase() !== "admin",
+                                )
+                                .map((r) => (
+                                  <DropdownMenuRadioItem
+                                    key={r._id}
+                                    value={r.name}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="size-2 rounded-full inline-block shrink-0"
+                                        style={{
+                                          backgroundColor: r.color ?? "#6b7280",
+                                        }}
+                                      />
+                                      {r.name}
+                                    </span>
+                                  </DropdownMenuRadioItem>
+                                ))}
                             </DropdownMenuRadioGroup>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -297,7 +316,7 @@ function AddWorkspaceMemberDialog({
           `${import.meta.env.VITE_API_URL}/auth/search?query=${search}`,
           {
             credentials: "include",
-          }
+          },
         );
         const data = await response.json();
         setSearchResults(data.users || []);

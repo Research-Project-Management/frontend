@@ -37,6 +37,9 @@ import { useEditorContext } from "./EditorLayout";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { cn } from "~/lib/utils";
+import { useSocket } from "~/contexts/SocketProvider";
+import { usePagePresence } from "~/hooks/usePagePresence";
+import { useRemoteCursors } from "~/hooks/useRemoteCursors";
 
 // Register LaTeX language and custom theme before Monaco loads
 loader.init().then((monaco) => {
@@ -99,6 +102,15 @@ loader.init().then((monaco) => {
   });
 });
 
+/** Deterministic HSL colour from an arbitrary string (e.g. user._id). */
+function stringToColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `hsl(${Math.abs(hash) % 360},65%,42%)`;
+}
+
 interface EditorProps {
   page: Page;
 }
@@ -139,13 +151,54 @@ export default function Editor({ page }: EditorProps) {
   const decorationCollRef = useRef<any>(null);
   const [selFloating, setSelFloating] = useState<SelFloating | null>(null);
   const selFloatingRef = useRef<HTMLDivElement>(null);
+  const socket = useSocket();
+  // Tracks the last content received via socket to avoid re-saving/re-emitting remote changes.
+  const lastRemoteContentRef = useRef<string | null>(null);
+  // Remote cursor widgets
+  const presenceUsers = usePagePresence(pageIdParam);
+  const remoteCursors = useRemoteCursors(pageIdParam);
+  const [editorMounted, setEditorMounted] = useState(false);
+  const cursorWidgetsRef = useRef<Map<string, editor.IContentWidget>>(new Map());
 
-  // Auto-save when content changes (debounced)
+  // Realtime: receive content changes from other collaborators
   useEffect(() => {
+    if (!socket || !page._id) return;
+    const handleRemote = ({
+      pageId,
+      content: remote,
+    }: {
+      pageId: string;
+      content: string;
+    }) => {
+      if (pageId !== page._id) return;
+      const ed = editorRef.current;
+      if (ed && ed.getValue() === remote) return;
+      lastRemoteContentRef.current = remote;
+      setContent(remote);
+    };
+    socket.on("page:content", handleRemote);
+    return () => {
+      socket.off("page:content", handleRemote);
+    };
+  }, [socket, page._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save when content changes (debounced) — skip if it originated from socket
+  useEffect(() => {
+    if (debouncedContent === lastRemoteContentRef.current) return;
     if (debouncedContent && debouncedContent !== page.content) {
       updateMutation.mutate({ pageId: page._id, content: debouncedContent });
     }
   }, [debouncedContent]);
+
+  // Realtime: broadcast local content changes to other collaborators (debounced)
+  useEffect(() => {
+    if (!socket || !page._id || !debouncedContent) return;
+    if (debouncedContent === lastRemoteContentRef.current) return;
+    socket.emit("page:content", {
+      pageId: page._id,
+      content: debouncedContent,
+    });
+  }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update local content when page changes
   useEffect(() => {
@@ -370,8 +423,73 @@ export default function Editor({ page }: EditorProps) {
     ],
   ];
 
+  // Draw / update remote cursor content widgets whenever cursors or presence changes
+  useEffect(() => {
+    const ed = editorRef.current;
+    if (!editorMounted || !ed) return;
+
+    // Remove stale widgets first
+    cursorWidgetsRef.current.forEach((w) => ed.removeContentWidget(w));
+    cursorWidgetsRef.current.clear();
+
+    // Add a widget for each remote cursor we know about
+    remoteCursors.forEach((cursor, socketId) => {
+      const user = presenceUsers.find((u) => u.socketId === socketId);
+      if (!user) return;
+
+      const color = stringToColor(user._id);
+
+      const outer = document.createElement("div");
+      outer.style.cssText = "position:relative;pointer-events:none;";
+
+      const label = document.createElement("div");
+      label.style.cssText = [
+        "position:absolute",
+        "bottom:100%",
+        "left:0",
+        `background:${color}`,
+        "color:#fff",
+        "font-size:10px",
+        "padding:1px 5px",
+        "border-radius:3px 3px 3px 0",
+        "white-space:nowrap",
+        "font-family:system-ui,sans-serif",
+        "line-height:1.5",
+        "user-select:none",
+      ].join(";");
+      label.textContent = user.name;
+
+      const bar = document.createElement("div");
+      bar.style.cssText = `width:2px;height:1.3em;background:${color};margin-top:-1px;`;
+
+      outer.appendChild(label);
+      outer.appendChild(bar);
+
+      const capturedCursor = cursor;
+      const widget: editor.IContentWidget = {
+        getId: () => `rc:${socketId}`,
+        getDomNode: () => outer,
+        getPosition: () => ({
+          position: {
+            lineNumber: capturedCursor.line,
+            column: capturedCursor.column,
+          },
+          preference: [0 as editor.ContentWidgetPositionPreference],
+        }),
+      };
+      ed.addContentWidget(widget);
+      cursorWidgetsRef.current.set(socketId, widget);
+    });
+
+    return () => {
+      cursorWidgetsRef.current.forEach((w) => ed.removeContentWidget(w));
+      cursorWidgetsRef.current.clear();
+    };
+  }, [editorMounted, remoteCursors, presenceUsers]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    setEditorMounted(true);
 
     // Intercept right-clicks to show our custom menu
     const domNode = editor.getDomNode();
@@ -395,6 +513,15 @@ export default function Editor({ page }: EditorProps) {
     // Ctrl+Enter → compile
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       compileRef.current?.();
+    });
+
+    // Emit cursor position to collaborators on every cursor move
+    editor.onDidChangeCursorPosition((e) => {
+      socket?.emit("page:cursor", {
+        pageId: page._id,
+        line: e.position.lineNumber,
+        column: e.position.column,
+      });
     });
 
     // Show floating bar on non-empty selection

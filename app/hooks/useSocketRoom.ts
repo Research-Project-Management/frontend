@@ -13,8 +13,13 @@ export function useSocketRoom(
   const socket = useSocket();
   useEffect(() => {
     if (!socket || !id) return;
-    socket.emit(`join:${type}`, id);
+    const join = () => socket.emit(`join:${type}`, id);
+    // Join immediately (works if already connected; socket.io buffers if not yet connected)
+    join();
+    // Re-join after every reconnect (socket gets a new id on reconnect)
+    socket.on("connect", join);
     return () => {
+      socket.off("connect", join);
       socket.emit(`leave:${type}`, id);
     };
   }, [socket, type, id]);

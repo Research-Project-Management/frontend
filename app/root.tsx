@@ -40,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <QueryProvider>
           <SocketProvider>{children}</SocketProvider>
         </QueryProvider>
-        <Toaster position="top-right" richColors />
+        <Toaster position="top-right" richColors duration={3000} />
         <ScrollRestoration />
         <Scripts />
       </body>

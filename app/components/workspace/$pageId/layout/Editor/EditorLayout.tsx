@@ -7,6 +7,7 @@ import Editor from "./Editor";
 import type { editor } from "monaco-editor";
 import { usePageContext } from "../PageContext";
 import type { Page } from "~/types/page";
+import { useSocketRoom } from "~/hooks/useSocketRoom";
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
@@ -27,6 +28,9 @@ export default function EditorLayout() {
   const { data: page, isLoading } = usePage(pageId!);
   // Use the shared editorRef from PageContext so SearchTab and others can access it.
   const { getEditorContent, setCurrentPage, editorRef } = usePageContext();
+
+  // Join the Socket.IO page room so presence updates and content broadcasts are received.
+  useSocketRoom("page", pageId);
 
   // Register a stable content-getter so the Viewer can read the editor text at compile time.
   useEffect(() => {

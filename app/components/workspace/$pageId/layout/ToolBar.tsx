@@ -1,5 +1,10 @@
 import React from "react";
 import { Link, useNavigate } from "react-router";
+import { usePagePresence, type PresenceUser } from "~/hooks/usePagePresence";
+import { useRemoteCursors } from "~/hooks/useRemoteCursors";
+import { useSocket } from "~/contexts/SocketProvider";
+import { useAuth } from "~/hooks/useAuth";
+import { toast } from "sonner";
 import Menu from "./Menu";
 import Flux from "@/assets/Flux.svg?react";
 import {
@@ -38,6 +43,160 @@ import {
   type LaTeXEngine,
   type LayoutMode,
 } from "~/stores/editor-settings";
+
+const MAX_AVATARS = 4;
+
+function UserAvatar({ name, avatar }: { name: string; avatar: string | null }) {
+  if (avatar) {
+    return <img src={avatar} alt={name} className="size-full object-cover" />;
+  }
+  return (
+    <div className="size-full rounded-full bg-primary/20 flex items-center justify-center font-semibold text-primary text-[10px]">
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+function PresenceAvatars() {
+  const { user: currentUser } = useAuth();
+  const socket = useSocket();
+  const { currentPage, editorRef } = usePageContext();
+  const users = usePagePresence(currentPage?._id);
+  const remoteCursors = useRemoteCursors(currentPage?._id);
+  const [followingSocketId, setFollowingSocketId] = React.useState<
+    string | null
+  >(null);
+  const prevUsersRef = React.useRef<PresenceUser[]>([]);
+  const isFirstRender = React.useRef(true);
+
+  // Scroll editor to followed user whenever their cursor moves
+  React.useEffect(() => {
+    if (!followingSocketId) return;
+    const cursor = remoteCursors.get(followingSocketId);
+    if (cursor && editorRef.current) {
+      editorRef.current.revealLineInCenter(cursor.line);
+      editorRef.current.setPosition({
+        lineNumber: cursor.line,
+        column: cursor.column,
+      });
+    }
+  }, [remoteCursors, followingSocketId]);
+
+  // Join / leave toasts
+  React.useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      prevUsersRef.current = users;
+      return;
+    }
+    const prev = prevUsersRef.current;
+    const prevIds = new Set(prev.map((u) => u.socketId));
+    const currIds = new Set(users.map((u) => u.socketId));
+    for (const u of users) {
+      if (!prevIds.has(u.socketId) && u._id !== currentUser?._id) {
+        toast(
+          <div className="flex items-center gap-2">
+            <div className="size-6 rounded-full overflow-hidden shrink-0">
+              <UserAvatar name={u.name} avatar={u.avatar} />
+            </div>
+            <span className="text-sm">
+              <span className="font-medium">{u.name}</span> đã tham gia
+            </span>
+          </div>,
+          { duration: 3000 },
+        );
+      }
+    }
+    for (const u of prev) {
+      if (!currIds.has(u.socketId) && u._id !== currentUser?._id) {
+        toast(
+          <div className="flex items-center gap-2">
+            <div className="size-6 rounded-full overflow-hidden shrink-0">
+              <UserAvatar name={u.name} avatar={u.avatar} />
+            </div>
+            <span className="text-sm">
+              <span className="font-medium">{u.name}</span> đã rời khỏi
+            </span>
+          </div>,
+          { duration: 3000 },
+        );
+      }
+    }
+    prevUsersRef.current = users;
+  }, [users]);
+
+  // Separate self from others, deduplicate others by _id
+  const selfUser = users.find((u) => u.socketId === socket?.id);
+  const seen = new Set<string>();
+  const others = users.filter((u) => {
+    if (u.socketId === socket?.id) return false;
+    if (seen.has(u._id)) return false;
+    seen.add(u._id);
+    return true;
+  });
+
+  const allVisible = selfUser ? [selfUser, ...others] : others;
+  if (allVisible.length === 0) return null;
+
+  const shown = allVisible.slice(0, MAX_AVATARS);
+  const overflow = allVisible.length - shown.length;
+
+  return (
+    <div className="flex items-center -space-x-1.5 mr-1">
+      {shown.map((u) => {
+        const isSelf = u.socketId === socket?.id;
+        const cursor = remoteCursors.get(u.socketId);
+        const isFollowing = followingSocketId === u.socketId;
+        return (
+          <Tooltip key={u.socketId}>
+            <TooltipTrigger asChild>
+              {isSelf ? (
+                <div className="size-8 rounded-full overflow-hidden shrink-0 cursor-default">
+                  <UserAvatar name={u.name} avatar={u.avatar} />
+                </div>
+              ) : (
+                <button
+                  onClick={() =>
+                    setFollowingSocketId(isFollowing ? null : u.socketId)
+                  }
+                  className={cn(
+                    "size-7 rounded-full ring-2 overflow-hidden shrink-0 transition-all",
+                    isFollowing
+                      ? "ring-blue-500 scale-110"
+                      : "ring-background hover:ring-blue-500/80",
+                  )}
+                >
+                  <UserAvatar name={u.name} avatar={u.avatar} />
+                </button>
+              )}
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              className="flex flex-col items-center gap-0.5 text-center"
+            >
+              <span>{isSelf ? `${u.name} (You)` : u.name}</span>
+              {!isSelf && cursor && (
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Ln {cursor.line}, Col {cursor.column}
+                </span>
+              )}
+              {!isSelf && (
+                <span className="text-[10px] text-muted-foreground">
+                  {isFollowing ? "Click to unfollow" : "Click to follow"}
+                </span>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+      {overflow > 0 && (
+        <div className="size-7 rounded-full ring-2 ring-background bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+          +{overflow}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const LAYOUT_OPTIONS: {
   value: LayoutMode;
@@ -145,6 +304,9 @@ export default function ToolBar() {
 
       {/* ── Right ── */}
       <div className="flex gap-1 items-center shrink-0">
+        {/* Collaborator avatars */}
+        <PresenceAvatars />
+
         {/* Compile split button */}
         <div className="flex items-center">
           <button

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSocket } from "~/contexts/SocketProvider";
-import { useUserStore } from "~/stores/user";
+import { useAuth } from "~/hooks/useAuth";
 
 export interface PresenceUser {
   socketId: string;
@@ -11,17 +11,20 @@ export interface PresenceUser {
 
 export function usePagePresence(pageId: string | null | undefined): PresenceUser[] {
   const socket = useSocket();
-  const user = useUserStore((s) => s.user);
+  const { user } = useAuth();
   const [users, setUsers] = useState<PresenceUser[]>([]);
 
   useEffect(() => {
     if (!socket || !pageId || !user) return;
     const roomId = `page:${pageId}`;
+    const userInfo = { _id: user._id, name: user.name, avatar: user.avatar };
 
-    socket.emit("presence:join", {
-      roomId,
-      user: { _id: user._id, name: user.name, avatar: user.avatar },
-    });
+    const emitJoin = () =>
+      socket.emit("presence:join", { roomId, user: userInfo });
+
+    // Join immediately and re-join after every reconnect
+    emitJoin();
+    socket.on("connect", emitJoin);
 
     const onUpdate = ({ roomId: rid, users: u }: { roomId: string; users: PresenceUser[] }) => {
       if (rid === roomId) setUsers(u);
@@ -29,6 +32,7 @@ export function usePagePresence(pageId: string | null | undefined): PresenceUser
     socket.on("presence:update", onUpdate);
 
     return () => {
+      socket.off("connect", emitJoin);
       socket.emit("presence:leave", { roomId });
       socket.off("presence:update", onUpdate);
       setUsers([]);

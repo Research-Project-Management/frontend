@@ -42,8 +42,25 @@ function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   return null;
 }
 
+const STORAGE_KEY = "flux:sidebar:open-panels";
+const validTabs = new Set(sideBarItems.map((i) => i.name));
+
+function loadPanels(): Tab[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown[];
+      const tabs = parsed.filter(
+        (t): t is Tab => typeof t === "string" && validTabs.has(t as Tab),
+      );
+      if (tabs.length > 0) return tabs;
+    }
+  } catch {}
+  return ["Files"];
+}
+
 export default function SideBar() {
-  const [openPanels, setOpenPanels] = useState<Tab[]>(["Files"]);
+  const [openPanels, setOpenPanels] = useState<Tab[]>(loadPanels);
 
   const MAX_PANELS = 2;
 
@@ -56,6 +73,10 @@ export default function SideBar() {
         : next;
     });
   };
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(openPanels));
+  }, [openPanels]);
 
   useEffect(() => {
     const handler = (e: Event) => {

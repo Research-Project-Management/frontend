@@ -101,8 +101,8 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="flex w-full text-primary justify-between items-center px-3 h-8 shrink-0">
-        <span className="font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center justify-between px-3 h-8 shrink-0">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Search
         </span>
         <div className="flex items-center gap-0.5">

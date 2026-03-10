@@ -123,7 +123,24 @@ export const useUpdateComment = () => {
       if (!res.ok) throw new Error("Failed to update comment");
       return (await res.json()).comment as PageComment;
     },
-    onSuccess: (_, { pageId }) => {
+    onMutate: async ({ pageId, commentId, status, content }) => {
+      await queryClient.cancelQueries({ queryKey: ["page-comments", pageId] });
+      const snapshot = queryClient.getQueryData<PageComment[]>(["page-comments", pageId]);
+      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
+        old.map((c) =>
+          c._id === commentId
+            ? { ...c, ...(status !== undefined && { status }), ...(content !== undefined && { content }) }
+            : c,
+        ),
+      );
+      return { snapshot };
+    },
+    onError: (_err, { pageId }, ctx) => {
+      if (ctx?.snapshot) {
+        queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
+      }
+    },
+    onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
     },
   });
@@ -147,7 +164,20 @@ export const useDeleteComment = () => {
       );
       if (!res.ok) throw new Error("Failed to delete comment");
     },
-    onSuccess: (_, { pageId }) => {
+    onMutate: async ({ pageId, commentId }) => {
+      await queryClient.cancelQueries({ queryKey: ["page-comments", pageId] });
+      const snapshot = queryClient.getQueryData<PageComment[]>(["page-comments", pageId]);
+      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
+        old.filter((c) => c._id !== commentId),
+      );
+      return { snapshot };
+    },
+    onError: (_err, { pageId }, ctx) => {
+      if (ctx?.snapshot) {
+        queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
+      }
+    },
+    onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
     },
   });
@@ -179,7 +209,12 @@ export const useAddReply = () => {
       if (!res.ok) throw new Error("Failed to add reply");
       return (await res.json()).comment as PageComment;
     },
-    onSuccess: (_, { pageId }) => {
+    onSuccess: (updatedComment, { pageId }) => {
+      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
+        old.map((c) => (c._id === updatedComment._id ? updatedComment : c)),
+      );
+    },
+    onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
     },
   });
@@ -206,7 +241,24 @@ export const useDeleteReply = () => {
       if (!res.ok) throw new Error("Failed to delete reply");
       return (await res.json()).comment as PageComment;
     },
-    onSuccess: (_, { pageId }) => {
+    onMutate: async ({ pageId, commentId, replyId }) => {
+      await queryClient.cancelQueries({ queryKey: ["page-comments", pageId] });
+      const snapshot = queryClient.getQueryData<PageComment[]>(["page-comments", pageId]);
+      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
+        old.map((c) =>
+          c._id === commentId
+            ? { ...c, replies: c.replies.filter((r) => r._id !== replyId) }
+            : c,
+        ),
+      );
+      return { snapshot };
+    },
+    onError: (_err, { pageId }, ctx) => {
+      if (ctx?.snapshot) {
+        queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
+      }
+    },
+    onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
     },
   });

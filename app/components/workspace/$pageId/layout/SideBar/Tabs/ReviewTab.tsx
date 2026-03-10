@@ -1,15 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router";
 import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Circle,
-  Clock,
   Loader2,
   MessageSquare,
   MessageSquarePlus,
-  MoreHorizontal,
   RotateCcw,
   Send,
   Trash2,
@@ -72,15 +70,15 @@ function CommentCard({
   comment,
   pageId,
   currentUserId,
+  onNavigate,
 }: {
   comment: PageComment;
   pageId: string;
   currentUserId: string | undefined;
+  onNavigate?: (line: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const updateMutation = useUpdateComment();
   const deleteMutation = useDeleteComment();
@@ -89,6 +87,8 @@ function CommentCard({
 
   const isAuthor = currentUserId === comment.author._id;
   const isResolved = comment.status === "resolved";
+  const hasReplies = comment.replies.length > 0;
+  const lineEnd = (comment as any).lineEnd;
 
   const handleToggleStatus = () => {
     updateMutation.mutate({
@@ -117,119 +117,120 @@ function CommentCard({
 
   return (
     <li
-      className={cn(
-        "border-b border-border transition-colors",
-        isResolved && "opacity-60",
-      )}
+      className={cn("border-b border-border last:border-b-0 transition-colors")}
     >
-      {/* Main comment row */}
-      <div className="px-3 py-3 hover:bg-muted/30 transition-colors">
-        <div className="flex items-start gap-2">
-          <Avatar author={comment.author} size={6} />
+      {/* Main comment body */}
+      <div className={cn("px-3 py-2.5", isResolved && "opacity-70")}>
+        {/* Row 1: avatar + author + status badge */}
+        <div className="flex items-center gap-1.5 min-w-0 mb-1">
+          <Avatar author={comment.author} size={5} />
+          <span className="text-[11px] font-semibold truncate flex-1 min-w-0">
+            {comment.author.name}
+          </span>
+          {isResolved ? (
+            <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-green-600 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-full">
+              <CheckCircle2 className="size-2.5" />
+              Resolved
+            </span>
+          ) : (
+            <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+              <Circle className="size-2.5" />
+              Open
+            </span>
+          )}
+        </div>
 
-          <div className="flex-1 min-w-0">
-            {/* Author + meta */}
-            <div className="flex items-center justify-between gap-1 mb-0.5">
-              <span className="text-xs font-medium truncate">
-                {comment.author.name}
-              </span>
-              <div className="flex items-center gap-1 shrink-0">
-                {comment.line != null && (
-                  <span className="text-[9px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-mono">
-                    L{comment.line}
-                    {(comment as any).lineEnd != null &&
-                    (comment as any).lineEnd !== comment.line
-                      ? `–${(comment as any).lineEnd}`
-                      : ""}
-                  </span>
-                )}
-                <span className="text-[10px] text-muted-foreground">
-                  {timeAgo(comment.createdAt)}
-                </span>
-              </div>
-            </div>
+        {/* Row 2: line badge + timestamp */}
+        <div className="flex items-center gap-1.5 mb-2 ml-6">
+          {comment.line != null && (
+            <button
+              onClick={() => onNavigate?.(comment.line!)}
+              className="text-[9px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground shrink-0 hover:bg-primary/10 hover:text-primary transition-colors"
+              title="Jump to line"
+            >
+              L{comment.line}
+              {lineEnd != null && lineEnd !== comment.line
+                ? `\u2013${lineEnd}`
+                : ""}
+            </button>
+          )}
+          <span className="text-[10px] text-muted-foreground">
+            {timeAgo(comment.createdAt)}
+          </span>
+        </div>
 
-            {/* Content */}
-            <p className="text-xs text-foreground leading-relaxed">
-              {comment.content}
-            </p>
+        {/* Row 3: content */}
+        <p className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap ml-6">
+          {comment.content}
+        </p>
 
-            {/* Footer actions */}
-            <div className="flex items-center gap-2 mt-2">
-              {/* Resolve / Reopen */}
-              <button
-                onClick={handleToggleStatus}
-                disabled={updateMutation.isPending}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                title={isResolved ? "Reopen" : "Mark resolved"}
-              >
-                {isResolved ? (
-                  <>
-                    <RotateCcw className="size-3" />
-                    Reopen
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-3 text-green-500" />
-                    Resolve
-                  </>
-                )}
-              </button>
+        {/* Row 4: actions */}
+        <div className="flex items-center gap-3 mt-2 ml-6 flex-wrap">
+          <button
+            onClick={handleToggleStatus}
+            disabled={updateMutation.isPending}
+            className={cn(
+              "flex items-center gap-1 text-[10px] transition-colors",
+              isResolved
+                ? "text-muted-foreground hover:text-foreground"
+                : "text-green-600 dark:text-green-400 hover:opacity-80",
+            )}
+          >
+            {updateMutation.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : isResolved ? (
+              <RotateCcw className="size-3" />
+            ) : (
+              <CheckCircle2 className="size-3" />
+            )}
+            {isResolved ? "Reopen" : "Resolve"}
+          </button>
 
-              {/* Reply toggle */}
-              <button
-                onClick={() => setExpanded((v) => !v)}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <MessageSquare className="size-3" />
-                {comment.replies.length > 0
-                  ? `${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}`
-                  : "Reply"}
-                {comment.replies.length > 0 &&
-                  (expanded ? (
-                    <ChevronDown className="size-3" />
-                  ) : (
-                    <ChevronRight className="size-3" />
-                  ))}
-              </button>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <MessageSquare className="size-3" />
+            {hasReplies
+              ? `${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}`
+              : "Reply"}
+            {hasReplies &&
+              (expanded ? (
+                <ChevronDown className="size-3" />
+              ) : (
+                <ChevronRight className="size-3" />
+              ))}
+          </button>
 
-              {/* Delete — author only */}
-              {isAuthor && (
-                <button
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                  className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors ml-auto"
-                  title="Delete comment"
-                >
-                  {deleteMutation.isPending ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-3" />
-                  )}
-                </button>
+          {isAuthor && (
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors ml-auto"
+              title="Delete comment"
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Trash2 className="size-3" />
               )}
-            </div>
-          </div>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Replies section */}
       {expanded && (
-        <div className="pl-7 pr-3 pb-2 border-t border-border/50 bg-muted/20">
-          {/* Existing replies */}
+        <div className="ml-5 border-l border-border/60 pl-3 pr-3 pb-2.5 bg-muted/10">
           {comment.replies.map((reply) => (
             <ReplyRow
               key={reply._id}
               reply={reply}
-              pageId={pageId}
-              commentId={comment._id}
               currentUserId={currentUserId}
               onDelete={handleDeleteReply}
               isPending={deleteReplyMutation.isPending}
             />
           ))}
-
-          {/* Add reply input */}
           <div className="flex items-center gap-1.5 mt-2">
             <input
               value={replyText}
@@ -237,13 +238,13 @@ function CommentCard({
               onKeyDown={(e) =>
                 e.key === "Enter" && !e.shiftKey && handleSendReply()
               }
-              placeholder="Write a reply…"
-              className="flex-1 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+              placeholder="Reply…"
+              className="flex-1 min-w-0 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
             />
             <button
               onClick={handleSendReply}
               disabled={!replyText.trim() || addReplyMutation.isPending}
-              className="p-1 rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40"
+              className="p-1 rounded text-primary hover:bg-primary/10 transition-colors disabled:opacity-40 shrink-0"
             >
               {addReplyMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -260,40 +261,38 @@ function CommentCard({
 
 function ReplyRow({
   reply,
-  pageId,
-  commentId,
   currentUserId,
   onDelete,
   isPending,
 }: {
   reply: CommentReply;
-  pageId: string;
-  commentId: string;
   currentUserId: string | undefined;
   onDelete: (replyId: string) => void;
   isPending: boolean;
 }) {
   const isAuthor = currentUserId === reply.author._id;
   return (
-    <div className="group flex items-start gap-2 py-1.5">
-      <Avatar author={reply.author} size={5} />
+    <div className="group flex items-start gap-2 py-1.5 min-w-0">
+      <Avatar author={reply.author} size={4} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-medium">{reply.author.name}</span>
-          <span className="text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          <span className="text-[10px] font-semibold truncate">
+            {reply.author.name}
+          </span>
+          <span className="text-[10px] text-muted-foreground shrink-0">
             {timeAgo(reply.createdAt)}
           </span>
           {isAuthor && (
             <button
               onClick={() => onDelete(reply._id)}
               disabled={isPending}
-              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
             >
               <Trash2 className="size-3" />
             </button>
           )}
         </div>
-        <p className="text-xs text-foreground leading-relaxed">
+        <p className="text-xs text-foreground leading-relaxed wrap-break-word whitespace-pre-wrap">
           {reply.content}
         </p>
       </div>
@@ -304,10 +303,10 @@ function ReplyRow({
 // ── Main ReviewTab ─────────────────────────────────────────────────────────────
 export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
-  const { currentPage, editorRef } = usePageContext();
+  const { editorRef, scrollToLineRef, scrollToPdfLineRef } = usePageContext();
   const { user } = useUserStore();
 
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("open");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newContent, setNewContent] = useState("");
   const [newLineStart, setNewLineStart] = useState<string>("");
@@ -316,6 +315,11 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   const { data: comments = [], isLoading } = usePageComments(pageId ?? null);
   const createMutation = useCreateComment();
   const { pendingComment, clearPendingComment } = useWorkspaceActionsStore();
+
+  const handleNavigateToLine = (line: number) => {
+    scrollToLineRef.current?.(line);
+    scrollToPdfLineRef.current?.(line);
+  };
 
   // Pre-fill form when "Add Comment" is triggered from editor context menu
   useEffect(() => {
@@ -357,7 +361,6 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
     );
   };
 
-  /** Pre-fill line number from the Monaco editor's current cursor position. */
   const handleOpenAddForm = () => {
     const line = editorRef.current?.getPosition()?.lineNumber;
     if (line) {
@@ -370,9 +373,15 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
       {/* ── Header ── */}
-      <div className="flex w-full items-center justify-between px-3 h-8 shrink-0">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="flex items-center justify-between px-3 h-10 border-b border-border shrink-0">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <MessageSquare className="size-3.5" />
           Review
+          {openCount > 0 && (
+            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium normal-case tracking-normal">
+              {openCount}
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-0.5">
           <button
@@ -395,33 +404,53 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
 
       {/* ── Add comment form ── */}
       {showAddForm && (
-        <div className="px-3 py-2 border-b border-border bg-muted/20 shrink-0 flex flex-col gap-2">
+        <div className="px-3 py-2.5 border-b border-border bg-muted/20 shrink-0">
+          {/* Form header */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+              New comment
+            </span>
+            {(newLineStart || newLineEnd) && (
+              <span className="text-[9px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                L{newLineStart}
+                {newLineEnd && newLineEnd !== newLineStart
+                  ? `–${newLineEnd}`
+                  : ""}
+              </span>
+            )}
+          </div>
+
           <textarea
             autoFocus
             value={newContent}
             onChange={(e) => setNewContent(e.target.value)}
-            placeholder="Add a comment…"
+            onKeyDown={(e) => e.key === "Enter" && e.ctrlKey && handleCreate()}
+            placeholder="Describe your feedback…"
             rows={3}
-            className="w-full text-xs bg-background border border-border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-full text-xs bg-background border border-border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-primary/50 mb-2"
           />
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Line range inputs */}
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="shrink-0">Lines:</span>
               <input
                 type="number"
                 value={newLineStart}
                 onChange={(e) => setNewLineStart(e.target.value)}
-                placeholder="L start"
-                className="w-16 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                placeholder="start"
+                className="w-14 text-xs bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
-              <span className="text-xs text-muted-foreground">–</span>
+              <span>–</span>
               <input
                 type="number"
                 value={newLineEnd}
                 onChange={(e) => setNewLineEnd(e.target.value)}
-                placeholder="L end"
-                className="w-16 text-xs bg-background border border-border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                placeholder="end"
+                className="w-14 text-xs bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
               />
             </div>
+
             <div className="flex gap-1.5 ml-auto">
               <button
                 onClick={() => {
@@ -437,14 +466,14 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
               <button
                 onClick={handleCreate}
                 disabled={!newContent.trim() || createMutation.isPending}
-                className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1"
+                className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1"
               >
                 {createMutation.isPending ? (
                   <Loader2 className="size-3 animate-spin" />
                 ) : (
                   <Send className="size-3" />
                 )}
-                Comment
+                Post
               </button>
             </div>
           </div>
@@ -452,7 +481,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
       )}
 
       {/* ── Filter bar ── */}
-      <div className="flex gap-1 px-3 py-1.5 border-b border-border shrink-0">
+      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border shrink-0">
         {(
           [
             { key: "all", label: "All", count: comments.length },
@@ -464,20 +493,29 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             className={cn(
-              "px-2 py-0.5 text-xs rounded transition-colors",
+              "flex items-center gap-1 px-2 py-0.5 text-[11px] rounded transition-colors",
               filter === tab.key
                 ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:text-primary hover:bg-primary/5",
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
             )}
           >
             {tab.label}
-            <span className="ml-1 opacity-60">({tab.count})</span>
+            <span
+              className={cn(
+                "text-[9px] font-medium rounded-full px-1",
+                filter === tab.key
+                  ? "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
 
       {/* ── Comment list ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -488,7 +526,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
             <MessageSquare className="size-8 opacity-25" />
             <p className="text-xs text-center leading-relaxed">
               {filter === "all"
-                ? "No comments yet.\nClick the + button to add one."
+                ? "No comments yet. Click + to add one."
                 : `No ${filter} comments.`}
             </p>
           </div>
@@ -500,6 +538,9 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
                 comment={comment}
                 pageId={pageId!}
                 currentUserId={user?._id}
+                onNavigate={
+                  comment.line != null ? handleNavigateToLine : undefined
+                }
               />
             ))}
           </ul>

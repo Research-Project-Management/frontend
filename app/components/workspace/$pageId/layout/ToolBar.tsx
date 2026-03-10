@@ -100,7 +100,7 @@ function PresenceAvatars() {
               <UserAvatar name={u.name} avatar={u.avatar} />
             </div>
             <span className="text-sm">
-              <span className="font-medium">{u.name}</span> đã tham gia
+              <span className="font-medium">{u.name}</span> in.
             </span>
           </div>,
           { duration: 3000 },
@@ -115,7 +115,7 @@ function PresenceAvatars() {
               <UserAvatar name={u.name} avatar={u.avatar} />
             </div>
             <span className="text-sm">
-              <span className="font-medium">{u.name}</span> đã rời khỏi
+              <span className="font-medium">{u.name}</span> out.
             </span>
           </div>,
           { duration: 3000 },
@@ -142,7 +142,7 @@ function PresenceAvatars() {
   const overflow = allVisible.length - shown.length;
 
   return (
-    <div className="flex items-center -space-x-1.5 mr-1">
+    <div className="flex items-center -space-x-1.5 mr-4">
       {shown.map((u) => {
         const isSelf = u.socketId === socket?.id;
         const cursor = remoteCursors.get(u.socketId);

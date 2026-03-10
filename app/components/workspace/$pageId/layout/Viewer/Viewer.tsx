@@ -353,13 +353,172 @@ async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d")!;
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
     // Return base64 payload (strip the data-URL prefix — backend needs raw base64)
     const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
     return dataUrl.split(",")[1]; // raw base64 only
   } catch {
     return null;
   }
+}
+
+// ── SyncTeX types & parser ─────────────────────────────────────────────────
+//
+// After compilation the server returns the decompressed SyncTeX text.  We
+// parse it once into a bidirectional map so both scroll-sync directions have
+// O(log n) lookups instead of linear scans.
+
+interface SyncTeXMap {
+  /** source line (1-based) → first PDF page (1-based) it appears on */
+  lineToPage: Map<number, number>;
+  /** PDF page (1-based) → sorted list of source lines rendered on it */
+  pageToLines: Map<number, number[]>;
+  /** all mapped source lines, sorted ascending — used for binary search */
+  sortedLines: number[];
+}
+
+/**
+ * Parse a decompressed SyncTeX text into a bidirectional line↔page map.
+ * Only considers records referencing Input tag 1 (main.tex).
+ */
+function parseSyncTeX(text: string): SyncTeXMap {
+  const lineToPage = new Map<number, number>();
+  const pageToLines = new Map<number, number[]>();
+  let currentPage = 0;
+
+  for (const raw of text.split("\n")) {
+    const s = raw.trimEnd();
+    if (!s) continue;
+    const first = s.charCodeAt(0);
+
+    // Page start marker: {N
+    if (first === 123 /* { */) {
+      const m = s.match(/^\{(\d+)/);
+      if (m) {
+        currentPage = parseInt(m[1], 10);
+        if (!pageToLines.has(currentPage)) pageToLines.set(currentPage, []);
+      }
+      continue;
+    }
+    // Page end marker or header lines — skip
+    if (first === 125 /* } */ || currentPage === 0) continue;
+
+    let srcLine: number | null = null;
+
+    // Box open: (1,LINE:...
+    if (first === 40 /* ( */) {
+      const m = s.match(/^\(1,(\d+):/);
+      if (m) srcLine = parseInt(m[1], 10);
+    }
+    // Node types h/v/g/x/k/$: e.g. "h1:LINE,col:x,y:w"
+    else if (
+      first === 104 /* h */ ||
+      first === 118 /* v */ ||
+      first === 103 /* g */ ||
+      first === 120 /* x */ ||
+      first === 107 /* k */ ||
+      first === 36 /* $ */
+    ) {
+      const m = s.match(/^[hvgxk$]1:(\d+),/);
+      if (m) srcLine = parseInt(m[1], 10);
+    }
+
+    if (srcLine !== null) {
+      if (!lineToPage.has(srcLine)) lineToPage.set(srcLine, currentPage);
+      const arr = pageToLines.get(currentPage)!;
+      if (!arr.includes(srcLine)) arr.push(srcLine);
+    }
+  }
+
+  for (const arr of pageToLines.values()) arr.sort((a, b) => a - b);
+  const sortedLines = [...lineToPage.keys()].sort((a, b) => a - b);
+  return { lineToPage, pageToLines, sortedLines };
+}
+
+/** Binary-search: index of first element ≥ target in a sorted array. */
+function lowerBound(sorted: number[], target: number): number {
+  let lo = 0,
+    hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (sorted[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/** Monaco line → PDF page (1-based), with nearest-line fallback. */
+function syncTeXLineToPage(line: number, map: SyncTeXMap): number {
+  if (map.lineToPage.has(line)) return map.lineToPage.get(line)!;
+  if (map.sortedLines.length === 0) return 1;
+  const idx = lowerBound(map.sortedLines, line);
+  if (idx === 0) return map.lineToPage.get(map.sortedLines[0])!;
+  if (idx === map.sortedLines.length)
+    return map.lineToPage.get(map.sortedLines[idx - 1])!;
+  const before = map.sortedLines[idx - 1],
+    after = map.sortedLines[idx];
+  return map.lineToPage.get(line - before <= after - line ? before : after)!;
+}
+
+/**
+ * PDF page + Y-fraction (0..1) → Monaco line.
+ * Uses the list of source lines known to render on that page and distributes
+ * them proportionally by fraction — much better than a document-wide ratio.
+ */
+function syncTeXPageFractionToLine(
+  page: number,
+  fraction: number,
+  map: SyncTeXMap,
+): number {
+  const lines = map.pageToLines.get(page);
+  if (lines && lines.length > 0) {
+    const idx = Math.round(fraction * (lines.length - 1));
+    return lines[Math.max(0, Math.min(lines.length - 1, idx))];
+  }
+  // Nearest page fallback
+  for (let d = 1; d <= map.pageToLines.size; d++) {
+    for (const p of [page - d, page + d]) {
+      const arr = map.pageToLines.get(p);
+      if (arr && arr.length > 0)
+        return d <= 2 && p < page ? arr[arr.length - 1] : arr[0];
+    }
+  }
+  return 1;
+}
+
+// ── Sync helpers ──────────────────────────────────────────────────────────
+// LaTeX preamble lines (before \begin{document}) produce no PDF output, so we
+// skip them for a more accurate line ↔ page approximation.
+
+function getContentBounds(content: string): {
+  firstContentLine: number; // 1-based line number of the first content line
+  contentLineCount: number; // number of lines from firstContentLine to EOF
+} {
+  const lines = content.split("\n");
+  const idx = lines.findIndex((l) => l.trim().startsWith("\\begin{document}"));
+  const firstContentLine = idx >= 0 ? idx + 2 : 1; // +1 for \begin{document} itself, +1 for 1-based
+  const contentLineCount = Math.max(1, lines.length - (firstContentLine - 1));
+  return { firstContentLine, contentLineCount };
+}
+
+/**
+ * (pageIndex 0-based, clickFraction within page 0..1) → Monaco line (1-based).
+ * clickFraction = e.nativeEvent.offsetY / pageHeight gives sub-page precision.
+ */
+function pdfPositionToLine(
+  pageIndex: number,
+  clickFraction: number,
+  numPages: number,
+  content: string,
+): number {
+  const { firstContentLine, contentLineCount } = getContentBounds(content);
+  const docFraction =
+    (pageIndex + Math.max(0, Math.min(1, clickFraction))) /
+    Math.max(1, numPages);
+  return Math.max(
+    1,
+    firstContentLine + Math.round(docFraction * contentLineCount),
+  );
 }
 
 // ── Main Viewer ────────────────────────────────────────────────────────────
@@ -377,6 +536,8 @@ export default function Viewer() {
     currentPage,
     gotoPageRef,
     pdfDocRef,
+    scrollToPdfLineRef,
+    scrollToLineRef,
   } = usePageContext();
   const { engine, compileMode } = useEditorSettingsStore();
 
@@ -406,6 +567,8 @@ export default function Viewer() {
 
   const downloadRef = useRef<HTMLAnchorElement>(null);
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const pdfScrollContainerRef = useRef<HTMLDivElement>(null);
+  const synctexMapRef = useRef<SyncTeXMap | null>(null);
 
   // Register scroll-to-page function so OutlineTab can call it.
   useEffect(() => {
@@ -417,6 +580,47 @@ export default function Viewer() {
       gotoPageRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register line→page scroll function so Editor/ReviewTab can sync the PDF.
+  useEffect(() => {
+    scrollToPdfLineRef.current = (line: number) => {
+      if (numPages === 0) return;
+      const container = pdfScrollContainerRef.current;
+      if (!container) return;
+
+      let pageNum: number;
+      const smap = synctexMapRef.current;
+      if (smap && smap.sortedLines.length > 0) {
+        // SyncTeX path — accurate, compiler-derived mapping
+        pageNum = syncTeXLineToPage(line, smap);
+      } else {
+        // Fallback: linear heuristic (skips preamble before \begin{document})
+        const content = getEditorContent.current?.() ?? "";
+        const { firstContentLine, contentLineCount } =
+          getContentBounds(content);
+        const contentLine = Math.max(0, line - firstContentLine);
+        const continuousPage =
+          (contentLine / Math.max(1, contentLineCount)) * numPages;
+        pageNum = Math.min(
+          numPages,
+          Math.max(1, Math.floor(continuousPage) + 1),
+        );
+      }
+
+      const pageEl = pageElemRefs.current[pageNum];
+      if (!pageEl) return;
+
+      // Use live pixel positions — accounts for padding/gaps between PDF pages.
+      const containerRect = container.getBoundingClientRect();
+      const pageRect = pageEl.getBoundingClientRect();
+      const targetScrollTop =
+        container.scrollTop + (pageRect.top - containerRect.top);
+      container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+    };
+    return () => {
+      scrollToPdfLineRef.current = null;
+    };
+  }, [numPages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Compile ──────────────────────────────────────────────────────────────
 
@@ -442,8 +646,19 @@ export default function Viewer() {
       });
 
       if (response.ok) {
-        const blob = await response.blob();
+        // API now returns JSON { pdf: base64, synctex: string }
+        const data = await response.json();
+        const pdfBytes = Uint8Array.from(atob(data.pdf), (c) =>
+          c.charCodeAt(0),
+        );
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
+
+        // Build SyncTeX map for accurate line↔page sync
+        synctexMapRef.current = data.synctex
+          ? parseSyncTeX(data.synctex)
+          : null;
+
         setPdfUrl(url);
         setLastCompiled(new Date());
         setPageNumber(1);
@@ -490,13 +705,6 @@ export default function Viewer() {
     return () => {
       compileRef.current = null;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Auto-compile on initial page load ────────────────────────────────────
-
-  useEffect(() => {
-    const timer = setTimeout(() => handleCompileLatestRef.current(), 600);
-    return () => clearTimeout(timer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ctrl+Enter shortcut ──────────────────────────────────────────────────
@@ -603,7 +811,10 @@ export default function Viewer() {
       </div>
 
       {/* PDF Viewer */}
-      <div className="flex-1 overflow-auto bg-muted/30 flex justify-center p-4 relative">
+      <div
+        ref={pdfScrollContainerRef}
+        className="flex-1 overflow-auto bg-muted/30 flex justify-center p-4 relative"
+      >
         {!pdfUrl ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
@@ -648,6 +859,34 @@ export default function Viewer() {
                     key={`page_${i + 1}`}
                     ref={(el) => {
                       pageElemRefs.current[i + 1] = el;
+                    }}
+                    onDoubleClickCapture={(e) => {
+                      // Use capture phase so this fires even when the PDF text layer
+                      // calls stopPropagation on the bubble phase.
+                      const pageHeight = (e.currentTarget as HTMLDivElement)
+                        .offsetHeight;
+                      const clickFraction =
+                        pageHeight > 0 ? e.nativeEvent.offsetY / pageHeight : 0;
+                      const smap = synctexMapRef.current;
+                      let approxLine: number;
+                      if (smap && smap.sortedLines.length > 0) {
+                        // SyncTeX path — knows exactly which lines are on this page
+                        approxLine = syncTeXPageFractionToLine(
+                          i + 1,
+                          clickFraction,
+                          smap,
+                        );
+                      } else {
+                        // Fallback heuristic
+                        const content = getEditorContent.current?.() ?? "";
+                        approxLine = pdfPositionToLine(
+                          i,
+                          clickFraction,
+                          numPages,
+                          content,
+                        );
+                      }
+                      scrollToLineRef.current?.(approxLine);
                     }}
                   >
                     <Page

@@ -22,6 +22,10 @@ interface PageContextType {
   gotoPageRef: React.MutableRefObject<((page: number) => void) | null>;
   /** Loaded PDFDocumentProxy from react-pdf; stored by Viewer on load, read by OutlineTab. */
   pdfDocRef: React.MutableRefObject<any>;
+  /** Scroll Monaco editor to a specific line; registered by Editor on mount. */
+  scrollToLineRef: React.MutableRefObject<((line: number) => void) | null>;
+  /** Scroll PDF viewer to the page that corresponds to a given editor line; registered by Viewer. */
+  scrollToPdfLineRef: React.MutableRefObject<((line: number) => void) | null>;
 }
 
 const PageContext = createContext<PageContextType | null>(null);
@@ -48,6 +52,8 @@ export function PageContextProvider({
   const [currentPage, setCurrentPage] = useState<Page | null>(null);
   const gotoPageRef = useRef<((page: number) => void) | null>(null);
   const pdfDocRef = useRef<any>(null);
+  const scrollToLineRef = useRef<((line: number) => void) | null>(null);
+  const scrollToPdfLineRef = useRef<((line: number) => void) | null>(null);
 
   // Revoke previous blob URL before setting a new one to prevent memory leaks.
   const setPdfUrl = (url: string | null) => {
@@ -73,6 +79,8 @@ export function PageContextProvider({
         setCurrentPage,
         gotoPageRef,
         pdfDocRef,
+        scrollToLineRef,
+        scrollToPdfLineRef,
       }}
     >
       {children}

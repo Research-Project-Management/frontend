@@ -185,9 +185,9 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
         {onClose && (
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted"
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <X className="size-3" />
+            <X className="size-3.5" />
           </button>
         )}
       </div>

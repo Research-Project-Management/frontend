@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import MonacoEditor, { loader } from "@monaco-editor/react";
 import type { OnMount } from "@monaco-editor/react";
@@ -16,7 +16,9 @@ import {
   Italic,
   List,
   MessageSquarePlus,
+  Pencil,
   Scissors,
+  X,
   Search,
   Sigma,
   Sparkles,
@@ -26,11 +28,15 @@ import {
   Tag,
   Underline,
   Zap,
+  Check,
+  Plus,
+  Circle,
 } from "lucide-react";
 import { useParams } from "react-router";
 import { useUpdatePageContent } from "~/query/page";
 import { usePageComments } from "~/query/comment";
 import type { Page } from "~/types/page";
+import type { PageComment } from "~/types/page";
 import { useWorkspaceActionsStore } from "~/stores/workspace-actions";
 import { useDebounce } from "~/hooks/useDebounce";
 import { useEditorContext } from "./EditorLayout";
@@ -134,7 +140,8 @@ interface MenuAction {
 
 export default function Editor({ page }: EditorProps) {
   const { editorRef } = useEditorContext();
-  const { compileRef, isCompiling } = usePageContext();
+  const { compileRef, isCompiling, scrollToLineRef, scrollToPdfLineRef } =
+    usePageContext();
   const { editorTheme, autoCompile } = useEditorSettingsStore();
   const [content, setContent] = useState(page.content || "");
   const debouncedContent = useDebounce(content, 1000);
@@ -144,13 +151,26 @@ export default function Editor({ page }: EditorProps) {
   const { setPendingComment, setPendingAiText } = useWorkspaceActionsStore();
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
+  // Adjusted position after measuring the menu DOM (avoids pre-paint flash)
+  const [ctxPos, setCtxPos] = useState<CtxPos | null>(null);
   const [ctxStartLine, setCtxStartLine] = useState<number | null>(null);
   const [ctxEndLine, setCtxEndLine] = useState<number | null>(null);
   const [ctxSelText, setCtxSelText] = useState("");
   const ctxMenuRef = useRef<HTMLDivElement>(null);
   const decorationCollRef = useRef<any>(null);
+  const lineCommentsRef = useRef<Map<number, PageComment[]>>(new Map());
+  const [glyphTooltip, setGlyphTooltip] = useState<{
+    x: number;
+    bottom: number;
+    comments: PageComment[];
+  } | null>(null);
   const [selFloating, setSelFloating] = useState<SelFloating | null>(null);
   const selFloatingRef = useRef<HTMLDivElement>(null);
+  const [renameDialog, setRenameDialog] = useState<{
+    word: string;
+    newName: string;
+  } | null>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const socket = useSocket();
   // Tracks the last content received via socket to avoid re-saving/re-emitting remote changes.
   const lastRemoteContentRef = useRef<string | null>(null);
@@ -223,6 +243,25 @@ export default function Editor({ page }: EditorProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [ctxMenu]);
 
+  // Smart-position the context menu: measure actual DOM size then adjust
+  // so it never overflows the viewport edges.
+  useLayoutEffect(() => {
+    if (!ctxMenu || !ctxMenuRef.current) return;
+    if (ctxPos) return; // already positioned for this open
+    const el = ctxMenuRef.current;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const rawX = ctxMenu.x;
+    const rawY = ctxMenu.y;
+    // Flip left if it would overflow the right edge
+    const x = Math.max(4, rawX + w + 4 > vw ? rawX - w - 4 : rawX);
+    // Flip upward if it would overflow the bottom edge
+    const y = Math.max(4, rawY + h + 4 > vh ? rawY - h - 8 : rawY);
+    setCtxPos({ x, y });
+  }, [ctxMenu, ctxPos]);
+
   // Close selection floating bar when clicking outside
   useEffect(() => {
     if (!selFloating) return;
@@ -234,30 +273,50 @@ export default function Editor({ page }: EditorProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [selFloating]);
 
+  // Auto-focus and select the rename input when the dialog opens
+  useEffect(() => {
+    if (renameDialog) {
+      setTimeout(() => {
+        renameInputRef.current?.focus();
+        renameInputRef.current?.select();
+      }, 30);
+    }
+  }, [renameDialog]);
+
   // Update comment glyph decorations when comments change
   useEffect(() => {
     const coll = decorationCollRef.current;
     if (!coll) return;
-    const lineSet = new Set<number>();
+
+    // Build map: line → comments that cover that line
+    const lineComments = new Map<number, PageComment[]>();
     comments.forEach((c) => {
-      if (c.line != null) {
-        const from = c.line;
-        const to = (c as any).lineEnd ?? c.line;
-        for (let l = from; l <= to; l++) lineSet.add(l);
+      if (c.line == null) return;
+      const from = c.line;
+      const to = (c as any).lineEnd ?? c.line;
+      for (let l = from; l <= to; l++) {
+        if (!lineComments.has(l)) lineComments.set(l, []);
+        lineComments.get(l)!.push(c);
       }
     });
+
+    // Keep ref in sync so the onMouseMove handler always sees fresh data.
+    lineCommentsRef.current = lineComments;
+
     coll.set(
-      Array.from(lineSet).map((line) => ({
+      Array.from(lineComments.entries()).map(([line]) => ({
         range: {
           startLineNumber: line,
           startColumn: 1,
           endLineNumber: line,
           endColumn: 1,
         },
-        options: { glyphMarginClassName: "flux-comment-glyph" },
+        options: {
+          glyphMarginClassName: "flux-comment-glyph",
+        },
       })),
     );
-  }, [comments]);
+  }, [comments, editorMounted]);
 
   // ── Context menu helpers ────────────────────────────────────────────────────
   const closeMenu = () => setCtxMenu(null);
@@ -289,6 +348,39 @@ export default function Editor({ page }: EditorProps) {
     ed.executeEdits("ctx-menu", [{ range: sel, text, forceMoveMarkers: true }]);
     ed.focus();
     closeMenu();
+  };
+
+  const openRenameDialog = () => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const pos = ed.getPosition();
+    const word = pos ? ed.getModel()?.getWordAtPosition(pos) : null;
+    if (!word) return;
+    closeMenu();
+    setRenameDialog({ word: word.word, newName: word.word });
+  };
+
+  const applyRename = (word: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === word) {
+      setRenameDialog(null);
+      return;
+    }
+    const ed = editorRef.current;
+    if (!ed) return;
+    const model = ed.getModel();
+    if (!model) return;
+    // Whole-word case-sensitive match using Monaco's findMatches with wordSeparators
+    const wordSep = "`~!@#$%^&*()-=+[{]}\\|;:'\",./<>?";
+    const matches = model.findMatches(word, false, false, true, wordSep, false);
+    if (matches.length > 0) {
+      ed.executeEdits(
+        "rename",
+        matches.map((m) => ({ range: m.range, text: trimmed })),
+      );
+    }
+    setRenameDialog(null);
+    ed.focus();
   };
 
   // ── Menu definition ─────────────────────────────────────────────────────────
@@ -386,6 +478,12 @@ export default function Editor({ page }: EditorProps) {
         action: () => trigger("actions.find"),
       },
       {
+        icon: Pencil,
+        label: "Rename Occurrences",
+        kbd: "F2",
+        action: openRenameDialog,
+      },
+      {
         icon: Zap,
         label: "Compile",
         kbd: "Ctrl+↵",
@@ -445,15 +543,20 @@ export default function Editor({ page }: EditorProps) {
       outer.style.cssText = "position:relative;pointer-events:none;";
 
       const label = document.createElement("div");
+      // Show label below the cursor bar when near the top of the editor to
+      // avoid it being clipped by Monaco's overflow:hidden container.
+      const labelAbove = cursor.line > 3;
       label.style.cssText = [
         "position:absolute",
-        "bottom:100%",
+        labelAbove ? "bottom:100%" : "top:110%",
         "left:0",
         `background:${color}`,
         "color:#fff",
         "font-size:10px",
         "padding:1px 5px",
-        "border-radius:3px 3px 3px 0",
+        labelAbove
+          ? "border-radius:3px 3px 3px 0"
+          : "border-radius:0 3px 3px 3px",
         "white-space:nowrap",
         "font-family:system-ui,sans-serif",
         "line-height:1.5",
@@ -489,13 +592,28 @@ export default function Editor({ page }: EditorProps) {
     };
   }, [editorMounted, remoteCursors, presenceUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep a stable ref so the F2 command always calls the latest openRenameDialog.
+  const openRenameDialogLatestRef = useRef(openRenameDialog);
+  openRenameDialogLatestRef.current = openRenameDialog;
+
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     setEditorMounted(true);
 
-    // Intercept right-clicks to show our custom menu
+    // Intercept right-clicks to show our custom menu.
+    // Also attach native dblclick to reliably scroll the PDF to the current line.
     const domNode = editor.getDomNode();
     if (domNode) {
+      const dblClickHandler = () => {
+        const pos = editor.getPosition();
+        if (pos) scrollToPdfLineRef.current?.(pos.lineNumber);
+      };
+      domNode.addEventListener("dblclick", dblClickHandler);
+      // Clean up when the editor is disposed
+      editor.onDidDispose(() =>
+        domNode.removeEventListener("dblclick", dblClickHandler),
+      );
+
       domNode.addEventListener("contextmenu", (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -505,26 +623,11 @@ export default function Editor({ page }: EditorProps) {
         setCtxStartLine(sel?.startLineNumber ?? curLine);
         setCtxEndLine(sel?.endLineNumber ?? curLine);
         setCtxSelText(sel ? (ed?.getModel()?.getValueInRange(sel) ?? "") : "");
-        setCtxMenu({
-          x: Math.min(e.clientX + 2, window.innerWidth - 230),
-          y: Math.min(e.clientY + 2, window.innerHeight - 540),
-        });
+        // Store raw click position; useLayoutEffect will adjust after measuring
+        setCtxPos(null);
+        setCtxMenu({ x: e.clientX + 2, y: e.clientY + 2 });
       });
     }
-
-    // Ctrl+Enter → compile
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      compileRef.current?.();
-    });
-
-    // Emit cursor position to collaborators on every cursor move
-    editor.onDidChangeCursorPosition((e) => {
-      socket?.emit("page:cursor", {
-        pageId: page._id,
-        line: e.position.lineNumber,
-        column: e.position.column,
-      });
-    });
 
     // Show floating bar on non-empty selection
     editor.onDidChangeCursorSelection((e) => {
@@ -578,6 +681,25 @@ export default function Editor({ page }: EditorProps) {
       });
     });
 
+    // Emit cursor position to collaborators on every cursor move
+    editor.onDidChangeCursorPosition((e) => {
+      socket?.emit("page:cursor", {
+        pageId: page._id,
+        line: e.position.lineNumber,
+        column: e.position.column,
+      });
+    });
+
+    // Ctrl+Enter → compile (Monaco swallows keydown so window listener misses it)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
+      compileRef.current?.(),
+    );
+
+    // Override F2 to show our custom rename confirmation dialog
+    editor.addCommand(monaco.KeyCode.F2, () =>
+      openRenameDialogLatestRef.current(),
+    );
+
     // Configure editor options
     editor.updateOptions({
       wordWrap: "on",
@@ -593,12 +715,54 @@ export default function Editor({ page }: EditorProps) {
       folding: true,
       foldingStrategy: "indentation",
       contextmenu: false,
+      // Position overlay widgets (hover, suggestions, params) relative to the
+      // viewport instead of the editor container, preventing them from being
+      // clipped by any ancestor with overflow:hidden.
+      fixedOverflowWidgets: true,
     });
 
     // Decoration collection for inline comment glyph indicators
     decorationCollRef.current = editor.createDecorationsCollection([]);
 
-    // Click on glyph margin → open Review panel
+    // Register line-scroll ref so ReviewTab/others can jump to a specific line
+    scrollToLineRef.current = (line: number) => {
+      editor.revealLineInCenter(line, 0 /* Immediate */);
+      editor.setPosition({ lineNumber: line, column: 1 });
+      editor.focus();
+    };
+
+    // Single click on glyph margin → open Review panel.
+    // Double-click anywhere in editor → scroll PDF (handled by native dblclick above).
+    editor.onMouseMove((e) => {
+      if (e.target.type === 2 /* GUTTER_GLYPH_MARGIN */) {
+        const line = e.target.position?.lineNumber;
+        if (line != null) {
+          const lineCs = lineCommentsRef.current.get(line);
+          if (lineCs?.length) {
+            const domNode = editor.getDomNode();
+            const domRect = domNode?.getBoundingClientRect();
+            const pos = editor.getScrolledVisiblePosition({
+              lineNumber: line,
+              column: 1,
+            });
+            if (domRect && pos) {
+              const lineTopViewport = domRect.top + pos.top;
+              setGlyphTooltip({
+                x: domRect.left + 4,
+                // Place tooltip bottom edge 6px above the line top
+                bottom: window.innerHeight - lineTopViewport + 6,
+                comments: lineCs,
+              });
+              return;
+            }
+          }
+        }
+      }
+      setGlyphTooltip(null);
+    });
+
+    editor.onMouseLeave(() => setGlyphTooltip(null));
+
     editor.onMouseDown((e) => {
       if (e.target.type === 2 /* GUTTER_GLYPH_MARGIN */) {
         document.dispatchEvent(
@@ -606,6 +770,9 @@ export default function Editor({ page }: EditorProps) {
         );
       }
     });
+
+    // Trigger an initial compile now that the editor is fully ready.
+    compileRef.current?.();
   };
 
   const defaultValue =
@@ -654,6 +821,51 @@ Your conclusions here.
         onMount={handleEditorMount}
         options={{ automaticLayout: true }}
       />
+
+      {/* Glyph comment tooltip — appears ABOVE the hovered line, never covers it */}
+      {glyphTooltip &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed z-9997 max-w-xs rounded-lg border border-border bg-popover shadow-xl py-2 px-3 pointer-events-none"
+            style={{ left: glyphTooltip.x, bottom: glyphTooltip.bottom }}
+          >
+            {glyphTooltip.comments.map((c, idx) => (
+              <div key={c._id}>
+                {idx > 0 && <div className="my-1.5 h-px bg-border" />}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[11px] font-semibold text-foreground leading-tight">
+                    {c.author.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px] p-1 py-px rounded-full font-medium",
+                      c.status === "resolved"
+                        ? "bg-green-500/15 text-green-600"
+                        : "bg-blue-500/15 text-blue-600",
+                    )}
+                  >
+                    {c.status === "resolved" ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <Circle className="size-3.5" />
+                    )}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug line-clamp-3">
+                  {c.content}
+                </p>
+                {c.replies.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                    {c.replies.length}{" "}
+                    {c.replies.length === 1 ? "reply" : "replies"}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
 
       {/* Selection floating action bar */}
       {selFloating &&
@@ -708,7 +920,12 @@ Your conclusions here.
           <div
             ref={ctxMenuRef}
             className="fixed z-9999 w-52 rounded-lg border border-border bg-popover shadow-xl py-1 overflow-hidden"
-            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+            style={{
+              left: ctxPos?.x ?? ctxMenu.x,
+              top: ctxPos?.y ?? ctxMenu.y,
+              // Hidden until useLayoutEffect measures and adjusts position
+              visibility: ctxPos ? "visible" : "hidden",
+            }}
           >
             {menuGroups.map((group, gi) => (
               <React.Fragment key={gi}>
@@ -742,6 +959,78 @@ Your conclusions here.
                 })}
               </React.Fragment>
             ))}
+          </div>,
+          document.body,
+        )}
+
+      {/* Rename occurrences confirmation dialog */}
+      {renameDialog &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="fixed inset-0 z-10000 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setRenameDialog(null)}
+            />
+            <div className="relative z-10 w-80 rounded-xl border border-border bg-popover shadow-2xl p-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">
+                  Rename Occurrences
+                </span>
+                <button
+                  onClick={() => setRenameDialog(null)}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-muted-foreground">
+                  Rename{" "}
+                  <code className="font-mono bg-muted px-1 rounded text-foreground">
+                    {renameDialog.word}
+                  </code>{" "}
+                  to:
+                </label>
+                <input
+                  ref={renameInputRef}
+                  value={renameDialog.newName}
+                  onChange={(e) =>
+                    setRenameDialog((d) =>
+                      d ? { ...d, newName: e.target.value } : null,
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter")
+                      applyRename(renameDialog.word, renameDialog.newName);
+                    if (e.key === "Escape") setRenameDialog(null);
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-ring"
+                  spellCheck={false}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setRenameDialog(null)}
+                  className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() =>
+                    applyRename(renameDialog.word, renameDialog.newName)
+                  }
+                  disabled={
+                    !renameDialog.newName.trim() ||
+                    renameDialog.newName === renameDialog.word
+                  }
+                  className="px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Rename
+                </button>
+              </div>
+            </div>
           </div>,
           document.body,
         )}

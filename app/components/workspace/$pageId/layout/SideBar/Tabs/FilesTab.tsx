@@ -392,7 +392,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         />
         {/* Toolbar row */}
         <div className="flex items-center justify-between px-3 h-8 shrink-0">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             Files
           </span>
           <div className="flex gap-0.5">
@@ -531,20 +531,44 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   />
 
                   {renamingId === file._id ? (
-                    <input
-                      autoFocus
-                      type="text"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter") handleCommitRename(file._id);
-                        if (e.key === "Escape") setRenamingId(null);
-                      }}
-                      onBlur={() => handleCommitRename(file._id)}
-                      className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
-                    />
+                    <>
+                      <input
+                        autoFocus
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") handleCommitRename(file._id);
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCommitRename(file._id);
+                        }}
+                        disabled={updateTitleMutation.isPending}
+                        className="text-primary hover:opacity-70 transition-opacity disabled:opacity-40 shrink-0"
+                      >
+                        {updateTitleMutation.isPending ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Check className="size-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRenamingId(null);
+                        }}
+                        className="text-muted-foreground hover:text-primary transition-colors shrink-0"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </>
                   ) : (
                     <span className="flex-1 flex items-center min-w-0 truncate text-xs">
                       {displayName(file.title)}

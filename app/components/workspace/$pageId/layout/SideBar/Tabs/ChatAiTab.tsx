@@ -147,7 +147,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <div className="flex w-full text-primary justify-between items-center px-3 h-8 shrink-0">
+      <div className="flex items-center justify-between px-3 h-8 shrink-0">
         <div className="flex items-center gap-2">
           <img src="/Chat.svg" alt="Chat AI" className="size-5" />
           <span className="font-semibold">Flux AI</span>

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type LaTeXEngine = "pdflatex" | "xelatex" | "lualatex";
-export type CompileMode = "normal" | "fast";
+export type CompileMode = "normal" | "fast" | "draft";
 export type LayoutMode = "split" | "editor-only" | "viewer-only";
 export type EditorTheme = "light" | "dark";
 
@@ -14,6 +14,12 @@ interface EditorSettingsState {
   editorTheme: EditorTheme;
   sidebarWidth: number;
   editorFlex: number;
+  useCache: boolean;
+  settingsPanelOpen: boolean;
+  mainFile: string;
+  fontSize: number;
+  wordWrap: boolean;
+  lineNumbers: boolean;
   setEngine: (engine: LaTeXEngine) => void;
   setCompileMode: (compileMode: CompileMode) => void;
   setAutoCompile: (autoCompile: boolean) => void;
@@ -21,6 +27,13 @@ interface EditorSettingsState {
   setEditorTheme: (editorTheme: EditorTheme) => void;
   setSidebarWidth: (sidebarWidth: number) => void;
   setEditorFlex: (editorFlex: number) => void;
+  setUseCache: (useCache: boolean) => void;
+  setSettingsPanelOpen: (open: boolean) => void;
+  toggleSettingsPanel: () => void;
+  setMainFile: (mainFile: string) => void;
+  setFontSize: (fontSize: number) => void;
+  setWordWrap: (wordWrap: boolean) => void;
+  setLineNumbers: (lineNumbers: boolean) => void;
 }
 
 export const useEditorSettingsStore = create<EditorSettingsState>()(
@@ -33,6 +46,12 @@ export const useEditorSettingsStore = create<EditorSettingsState>()(
       editorTheme: "light",
       sidebarWidth: 300,
       editorFlex: 0.5,
+      useCache: true,
+      settingsPanelOpen: false,
+      mainFile: "main.tex",
+      fontSize: 14,
+      wordWrap: true,
+      lineNumbers: true,
       setEngine: (engine) => set({ engine }),
       setCompileMode: (compileMode) => set({ compileMode }),
       setAutoCompile: (autoCompile) => set({ autoCompile }),
@@ -40,7 +59,22 @@ export const useEditorSettingsStore = create<EditorSettingsState>()(
       setEditorTheme: (editorTheme) => set({ editorTheme }),
       setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
       setEditorFlex: (editorFlex) => set({ editorFlex }),
+      setUseCache: (useCache) => set({ useCache }),
+      setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),
+      toggleSettingsPanel: () =>
+        set((s) => ({ settingsPanelOpen: !s.settingsPanelOpen })),
+      setMainFile: (mainFile) => set({ mainFile }),
+      setFontSize: (fontSize) => set({ fontSize }),
+      setWordWrap: (wordWrap) => set({ wordWrap }),
+      setLineNumbers: (lineNumbers) => set({ lineNumbers }),
     }),
-    { name: "flux-editor-settings" },
+    {
+      name: "flux-editor-settings",
+      partialize: (state) => {
+        // Don't persist the panel open state
+        const { settingsPanelOpen, ...rest } = state;
+        return rest;
+      },
+    },
   ),
 );

@@ -1,8 +1,7 @@
-import React from "react";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useParams } from "react-router";
+import { ArrowUp } from "lucide-react";
 import { Textarea } from "~/components/ui/textarea";
-import useGetUser from "~/hooks/useAuth";
-import { useUserStore } from "~/stores/user";
-import HomeSection from "../HomeSection";
 import {
   Select,
   SelectContent,
@@ -10,24 +9,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PaperClipIcon, PaperAirplaneIcon } from "@heroicons/react/24/solid";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
+import HomeSection from "../HomeSection";
 
 export default function ChatAi() {
+  const { workspaceId } = useParams();
+  const navigate = useNavigate();
   const { projects, isLoading } = useProjects();
-  if (isLoading || !projects || projects.length === 0) {
-    return null;
-  }
+  const [message, setMessage] = useState("");
+  const [webSearch, setWebSearch] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 150) + "px";
+    }
+  }, [message]);
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    const pid = selectedProject || projects?.[0]?._id;
+    navigate(
+      `/${workspaceId}/ai?q=${encodeURIComponent(message.trim())}${pid ? `&project=${pid}` : ""}`,
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  if (isLoading || !projects || projects.length === 0) return null;
 
   return (
     <HomeSection title="Ask AI">
-      <div className="relative w-full">
-        <div className="absolute h-12 px-2 flex items-center top-0">
-          <Select defaultValue={projects[0]._id}>
+      <div className="relative rounded-2xl border border-border bg-background transition-shadow duration-300 focus-within:border-primary/30">
+        {/* Top: project selector */}
+        <div className="flex items-center gap-2 px-3 pt-3">
+          <Select
+            value={selectedProject || projects[0]?._id}
+            onValueChange={setSelectedProject}
+          >
             <SelectTrigger
               size="sm"
-              className="min-w-[100px] data-[size=sm]:h-8 p-2 focus-visible:ring-transparent hover:ring-1 ring-primary/10 focus-visible:border-transparent"
+              className="min-w-[100px] data-[size=sm]:h-7 px-2 text-xs focus-visible:ring-transparent hover:ring-1 ring-primary/10 focus-visible:border-transparent bg-secondary/50 rounded-lg border-none"
             >
               <SelectValue />
             </SelectTrigger>
@@ -36,30 +67,45 @@ export default function ChatAi() {
                 <SelectItem key={project._id} value={project._id}>
                   <div className="flex items-center gap-2">
                     {project.avatar}
-                    <span className="font-semibold">{project.name}</span>
+                    <span className="font-medium">{project.name}</span>
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Textarea */}
         <Textarea
-          className="py-14 placeholder:opacity-80 resize-none"
-          placeholder="Ask AI to help you with your project..."
-        ></Textarea>
-        <div className="absolute h-12 bottom-0 flex items-center w-full justify-between px-4">
-          <div className="flex h-full gap-2 items-center">
-            <Switch />
-            <span className="select-none text-sm font-medium">Web Search</span>
+          ref={textareaRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          className="border-none shadow-none focus-visible:ring-0 resize-none min-h-[44px] max-h-[150px] px-4 py-3 text-sm placeholder:text-muted-foreground/50"
+          placeholder="Ask anything about your research..."
+        />
+
+        {/* Bottom row */}
+        <div className="flex items-center justify-between px-3 pb-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={webSearch}
+              onCheckedChange={setWebSearch}
+              className="data-[state=checked]:bg-primary scale-[0.7]"
+            />
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Web
+            </span>
           </div>
-          <div className="flex gap-3 items-start h-full">
-            <button className="size-9">
-              <PaperClipIcon className="size-5  " />
-            </button>
-            <button className="size-9 flex items-center justify-center rounded-sm bg-primary text-white">
-              <PaperAirplaneIcon className="size-4  " />
-            </button>
-          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={!message.trim()}
+            className="size-8 flex items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+          >
+            <ArrowUp className="size-4" />
+          </button>
         </div>
       </div>
     </HomeSection>

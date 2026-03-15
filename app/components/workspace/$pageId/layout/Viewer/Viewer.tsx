@@ -642,6 +642,7 @@ export default function Viewer() {
           engine,
           parentPageId:
             compileMode === "fast" ? undefined : parentPageIdRef.current,
+          draft: compileMode === "draft",
         }),
       });
 

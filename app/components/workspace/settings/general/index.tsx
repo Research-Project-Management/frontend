@@ -1,5 +1,4 @@
 import TopBar from "../layout/TopBar";
-import { Calculator } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -11,27 +10,57 @@ import DeleteModal from "./components/deleteModal";
 
 import { useWorkspace } from "~/hooks";
 import { useUpdateWorkspace, useDeleteWorkspace } from "~/query/workspace";
+import { Skeleton } from "~/components/ui/skeleton";
 
 export default function GeneralPage() {
   const navigate = useNavigate();
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [currentAvatar, setCurrentAvatar] = useState<string | null>(
-    null
-  );
+  const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const { workspace, isLoading, isError } = useWorkspace();
 
   const updateMutation = useUpdateWorkspace();
   const deleteMutation = useDeleteWorkspace();
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
-  if (isError || !workspace)
-    return <div className="p-6">Workspace not found</div>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-4 border-b border-border">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-56 mt-2" />
+        </div>
+        <div className="flex-1 px-8 py-8 space-y-6 max-w-3xl">
+          <div className="flex items-center gap-5">
+            <Skeleton className="size-16 rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !workspace) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Workspace not found
+      </div>
+    );
+  }
+
   const ws = workspace.workspace;
 
-  // Initialize avatar on mount/workspace change
   if (currentAvatar === null && ws.avatar) {
     setCurrentAvatar(ws.avatar);
   }
@@ -39,9 +68,7 @@ export default function GeneralPage() {
   const handleAvatarUpload = async (file: File) => {
     try {
       setIsUploadingAvatar(true);
-      setAvatarFile(file);
 
-      // Get presigned URL
       const presignResponse = await fetch(
         import.meta.env.VITE_API_URL + "/api/files/presign",
         {
@@ -58,7 +85,6 @@ export default function GeneralPage() {
 
       const { url: presignedUrl, path } = await presignResponse.json();
 
-      // Upload to presigned URL
       const uploadResponse = await fetch(presignedUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
@@ -71,13 +97,11 @@ export default function GeneralPage() {
       setCurrentAvatar(finalAvatarUrl);
       setIsUploadingAvatar(false);
 
-      // Update workspace with new avatar
       updateMutation.mutate(
         { id: ws._id, data: { avatar: finalAvatarUrl } },
         {
           onSuccess: () => {
             toast.success("Avatar updated");
-            setAvatarFile(null);
           },
           onError: (err: any) => {
             toast.error(err?.message || "Failed to update avatar");
@@ -128,40 +152,51 @@ export default function GeneralPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar title="General" Icon={Calculator} />
-      <div className="flex-1 py-9 mx-auto space-y-6 w-full max-w-225 flex flex-col overflow-hidden">
-        <ProfileSection
-          name={ws.name}
-          url={ws.url}
-          avatar={currentAvatar || ws.avatar}
-          onAvatarUpload={handleAvatarUpload}
-          isUploadingAvatar={isUploadingAvatar}
-        />
-        <GeneralForm
-          id={ws._id}
-          name={ws.name}
-          url={ws.url}
-          avatar={ws.avatar}
-          companySize={ws.companySize}
-          timezone={ws.timezone}
-          onSubmit={handleUpdate}
-          isSubmitting={updateMutation.isPending}
-        />
-        <DangerZone onDelete={() => setIsDeleteOpen(true)} />
+      <TopBar
+        title="General"
+        description="Manage your workspace profile, settings, and preferences."
+      />
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-8 py-8 space-y-8 max-w-3xl">
+          <ProfileSection
+            name={ws.name}
+            url={ws.url}
+            avatar={currentAvatar || ws.avatar}
+            onAvatarUpload={handleAvatarUpload}
+            isUploadingAvatar={isUploadingAvatar}
+          />
 
-        <DeleteModal
-          isOpen={isDeleteOpen}
-          onClose={() => setIsDeleteOpen(false)}
-          onConfirm={() => {
-            setIsDeleteOpen(false);
-            handleDelete();
-          }}
-          title="Delete workspace?"
-          description="Are you sure you want to delete this workspace? This action cannot be undone."
-          confirmText="Delete"
-          cancelText="Dismiss"
-          loading={deleteMutation.isPending}
-        />
+          <hr className="border-border" />
+
+          <GeneralForm
+            id={ws._id}
+            name={ws.name}
+            url={ws.url}
+            avatar={ws.avatar}
+            companySize={ws.companySize}
+            timezone={ws.timezone}
+            onSubmit={handleUpdate}
+            isSubmitting={updateMutation.isPending}
+          />
+
+          <hr className="border-border" />
+
+          <DangerZone onDelete={() => setIsDeleteOpen(true)} />
+
+          <DeleteModal
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            onConfirm={() => {
+              setIsDeleteOpen(false);
+              handleDelete();
+            }}
+            title="Delete workspace?"
+            description="Are you sure you want to delete this workspace? This action cannot be undone."
+            confirmText="Delete"
+            cancelText="Dismiss"
+            loading={deleteMutation.isPending}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,43 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";
 import Wrapper from "./Wrapper";
 import { useWorkspaces } from "~/query/workspace";
-import Loading from "~/components/ui/Loading";
 import { useWorkspace } from "~/hooks/useWorkspace";
+import { Skeleton } from "~/components/ui/skeleton";
+
+function WorkspaceSkeleton() {
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Sidebar skeleton */}
+      <div className="w-60 border-r border-border p-4 space-y-4 shrink-0">
+        <Skeleton className="h-8 w-32" />
+        <div className="space-y-2 pt-4">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-3/4" />
+        </div>
+        <div className="space-y-2 pt-6">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </div>
+      {/* Content skeleton */}
+      <div className="flex-1 p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function WorkspaceLayout() {
   const navigate = useNavigate();
@@ -14,12 +48,12 @@ export default function WorkspaceLayout() {
     if (isLoading || workspaceLoading) return;
 
     if (workspaces && workspaces.length > 0 && !workspace) {
-      navigate(`/${workspaces[0].url}`, { replace: true });
+      navigate(`/${(workspaces[0] as any).url}`, { replace: true });
     }
   }, [workspaces, workspace, isLoading, workspaceLoading, navigate]);
 
   if (isLoading || workspaceLoading) {
-    return <Loading />;
+    return <WorkspaceSkeleton />;
   }
 
   return (

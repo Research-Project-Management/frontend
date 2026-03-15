@@ -9,7 +9,7 @@ import {
   CalendarDays,
   ArrowUpRight,
 } from "lucide-react";
-import Loading from "~/components/ui/Loading";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import { Progress } from "~/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -54,10 +54,59 @@ export default function ProjectOverview() {
     [],
   );
 
-  // Early returns AFTER all hooks
-  if (isLoading) return <Loading />;
+  if (isLoading) {
+    return (
+      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+        <div className="flex justify-between items-start">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-md" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-4 rounded-xl bg-secondary/20 space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-8 rounded-lg" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-7 w-12" />
+              <Skeleton className="h-1.5 w-full rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
+          <div className="col-span-4 space-y-4">
+            <Skeleton className="h-5 w-24" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-3">
+                <Skeleton className="size-10 rounded-lg" />
+                <div className="space-y-1 flex-1">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="col-span-3 space-y-4">
+            <Skeleton className="h-5 w-28" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-2">
+                <Skeleton className="size-9 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (error || !data)
-    return <div className="p-6 text-red-500">Failed to load overview</div>;
+    return <div className="p-6 text-destructive">Failed to load overview</div>;
 
   const { project, stats } = data;
 

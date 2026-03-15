@@ -12,7 +12,7 @@ export default function ProjectsLayout() {
       <div 
         className={`h-full transition-all duration-300 ease-in-out ${
           isSidebarVisible ? "w-60" : "w-0"
-        } border-r border-secondary bg-white overflow-hidden`}
+        } border-r border-secondary bg-background overflow-hidden`}
       >
         <div className="w-60 h-full">
             <SideBar onToggle={() => setIsSidebarVisible(false)} />

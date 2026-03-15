@@ -18,7 +18,7 @@ import {
   User,
   Loader2,
 } from "lucide-react";
-import Loading from "~/components/ui/Loading";
+import { Skeleton } from "~/components/ui/skeleton";
 import { getRoleName, getRoleColor } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -97,26 +97,38 @@ export default function MemberPage() {
     [removeMemberMutation, workspace],
   );
 
-  // Early returns AFTER all hooks
-  if (isLoading) return <Loading />;
-  if (!workspace) return <div className="p-6">Workspace not found</div>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-8 pt-8 pb-6 border-b border-border">
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </div>
+        <div className="flex-1 px-8 py-8 space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="size-9 rounded-full" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (!workspace) return <div className="p-6 text-muted-foreground">Workspace not found</div>;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar title="Members" Icon={Users} />
-      <div className="flex-1 px-12 py-9 space-y-6 flex flex-col overflow-hidden">
+      <TopBar title="Members" description={`Manage members of "${workspace.name}" workspace.`} />
+      <div className="flex-1 px-8 py-8 space-y-6 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Users className="h-6 w-6" />
-              Workspace Team
-            </h1>
-            <p className="text-muted-foreground">
-              Manage members of the "{workspace.name}" workspace.
-            </p>
-          </div>
+          <div />
           {canManage && (
-            <Button onClick={() => setAddMemberOpen(true)}>
+            <Button onClick={() => setAddMemberOpen(true)} size="sm">
               <UserPlus className="mr-2 h-4 w-4" />
               Add Member
             </Button>

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import Loading from "~/components/ui/Loading";
+import { Skeleton } from "~/components/ui/skeleton";
 import CreatePageDialog from "./CreatePageDialog";
 import { cn } from "~/lib/utils";
 
@@ -57,9 +57,36 @@ export default function PagesManager({ projectId }: { projectId?: string }) {
     });
   }, [allPages, searchQuery, sortBy]);
 
-  if (isLoading) return <Loading />;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full bg-background">
+        <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3 flex justify-between items-center">
+          <div className="flex gap-3 items-center">
+            <Skeleton className="h-8 w-48 rounded-md" />
+            <Skeleton className="h-8 w-40 rounded-md" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-20 rounded-md" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+          </div>
+        </div>
+        <div className="flex-1 px-6 py-6">
+          <Skeleton className="h-3 w-24 mb-5" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (error)
-    return <div className="p-6 text-red-500">Failed to load pages</div>;
+    return <div className="p-6 text-destructive">Failed to load pages</div>;
 
   return (
     <div className="flex flex-col h-full bg-background">

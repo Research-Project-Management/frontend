@@ -7,6 +7,7 @@ import { useSocket } from "~/contexts/SocketProvider";
 export type ProjectTasksData = {
   tasks: Task[];
   columns: Column[];
+  projectName: string;
 };
 
 // Fetch Tasks and Columns

@@ -11,7 +11,7 @@ import {
   ShieldAlert,
   Lock,
 } from "lucide-react";
-import Loading from "~/components/ui/Loading";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -49,8 +49,22 @@ export default function RoleDetailPage() {
     }
   }, [role]);
 
-  if (workspaceLoading || roleLoading) return <Loading />;
-  if (!workspace || !role) return <div className="p-6">Role not found</div>;
+  if (workspaceLoading || roleLoading) {
+    return (
+      <div className="flex-1 p-8 space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="size-9 rounded-md" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+        <Skeleton className="h-48 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </div>
+    );
+  }
+  if (!workspace || !role) return <div className="p-6 text-muted-foreground">Role not found</div>;
 
   const hasPermission = (resource: string, action: string) => {
     const perm = formData.permissions.find((p) => p.resource === resource);
@@ -143,7 +157,7 @@ export default function RoleDetailPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(`/${workspaceUrl}/roles`)}
+            onClick={() => navigate(`/${workspaceUrl}/settings/roles`)}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

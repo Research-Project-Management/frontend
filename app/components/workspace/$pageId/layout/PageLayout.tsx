@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import SideBar from "./SideBar/SideBar";
 import Viewer from "./Viewer/Viewer";
 import ToolBar from "./ToolBar";
+import SettingsPanel from "./SettingsPanel";
 import { PageContextProvider, usePageContext } from "./PageContext";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 
@@ -24,7 +25,7 @@ function ResizeHandle({
 
 /** Inner component so it can consume PageContext (layout state) */
 function PageInner() {
-  const { layout, sidebarWidth, editorFlex, setSidebarWidth, setEditorFlex } =
+  const { layout, sidebarWidth, editorFlex, setSidebarWidth, setEditorFlex, settingsPanelOpen } =
     useEditorSettingsStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarWidthRef = useRef(sidebarWidth);
@@ -134,6 +135,9 @@ function PageInner() {
             <Viewer />
           </div>
         )}
+
+        {/* Settings panel — right edge */}
+        {settingsPanelOpen && <SettingsPanel />}
       </div>
     </div>
   );

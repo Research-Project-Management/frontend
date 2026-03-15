@@ -12,6 +12,8 @@ import "./app.css";
 import { QueryProvider } from "./lib/react-query";
 import { SocketProvider } from "./contexts/SocketProvider";
 import { Toaster } from "sonner";
+import NavigationProgress from "~/components/ui/NavigationProgress";
+import { TooltipProvider } from "~/components/ui/tooltip";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/Flux.svg" },
@@ -38,7 +40,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body suppressHydrationWarning>
         <QueryProvider>
-          <SocketProvider>{children}</SocketProvider>
+          <SocketProvider>
+            <TooltipProvider delayDuration={200}>
+              <NavigationProgress />
+              {children}
+            </TooltipProvider>
+          </SocketProvider>
         </QueryProvider>
         <Toaster position="top-right" richColors duration={3000} />
         <ScrollRestoration />

@@ -1,28 +1,30 @@
+import { Button } from "~/components/ui/button";
+
 type DangerZoneProps = {
   onDelete: () => void;
 };
+
 export default function DangerZone({ onDelete }: DangerZoneProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6">
-      <div className="flex items-center justify-between">
+    <div className="rounded-lg border border-destructive/30 p-6">
+      <div className="flex items-center justify-between gap-6">
         <div className="space-y-1">
-          <h3 className="text-base font-medium text-gray-900">
+          <h3 className="text-sm font-semibold text-foreground">
             Delete this workspace
           </h3>
-          <p className="text-sm text-gray-500 max-w-2xl">
-            Tread carefully here. You delete your workspace, you lose all your
-            data, your members can't access projects and pages, and we can't
-            retrieve any of it for you. Proceed only if you are sure you want
-            your workspace deleted.
+          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+            This action is irreversible. All data, projects, pages, and member
+            access will be permanently removed.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={onDelete}
-          className="rounded-md border border-red-500 px-4 py-2 text-sm font-medium text-red-600 focus:outline-none hover:bg-red-50"
+          className="shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
         >
           Delete
-        </button>
+        </Button>
       </div>
     </div>
   );

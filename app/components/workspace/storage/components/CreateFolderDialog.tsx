@@ -17,8 +17,9 @@ import { useProject } from "~/query/project";
 type CreateFolderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string;
+  projectId?: string | null;
   parentId?: string | null;
+  workspaceId?: string;
 };
 
 export default function CreateFolderDialog({
@@ -26,11 +27,12 @@ export default function CreateFolderDialog({
   onOpenChange,
   projectId,
   parentId,
+  workspaceId: workspaceIdProp,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
   const createFolderMutation = useCreateFolder();
-  const { data: projectData } = useProject(projectId);
-  const workspaceId = projectData?.project?.workspace as unknown as string;
+  const { data: projectData } = useProject(projectId || "");
+  const workspaceId = workspaceIdProp || (projectData?.project?.workspace as unknown as string);
 
   const handleCreate = async () => {
     if (!folderName.trim()) return;
@@ -38,7 +40,7 @@ export default function CreateFolderDialog({
     try {
       await createFolderMutation.mutateAsync({
         name: folderName,
-        projectId,
+        projectId: projectId || "",
         workspaceId: workspaceId!,
         parentId,
       });

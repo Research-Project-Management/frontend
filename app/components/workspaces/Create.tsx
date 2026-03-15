@@ -24,7 +24,7 @@ export default function Create() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("flux");
   const [avatar, setAvatar] = useState<string | null>(
-    "https://i.pinimg.com/736x/e2/47/e7/e247e767399dd132c5955f34ff197b10.jpg",
+    "https://i.pinimg.com/736x/5f/08/52/5f085214d65b511a9992497e2d818625.jpg",
   );
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -203,7 +203,19 @@ export default function Create() {
                 placeholder="Something like Team, Company, or Project"
                 aria-invalid={false}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setName(val);
+                  // Auto-generate URL slug from name
+                  const slug = val
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9\s-]/g, "")
+                    .replace(/\s+/g, "-")
+                    .replace(/-+/g, "-");
+                  const rand = Math.random().toString(36).substring(2, 8);
+                  setUrl(slug ? `${slug}-${rand}` : "");
+                }}
               />
             </Field>
             <Field>
@@ -218,6 +230,7 @@ export default function Create() {
                   autoComplete="off"
                   aria-invalid={false}
                   placeholder="abc123"
+                  value={url}
                   onChange={(e) => setUrl(e.target.value)}
                 />
               </div>

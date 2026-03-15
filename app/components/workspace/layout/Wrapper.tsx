@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import Flux from "~/assets/Flux.svg?react";
 
 import {
   CloudIcon,
@@ -8,7 +9,6 @@ import {
   MagnifyingGlassIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/solid";
-import { Input } from "~/components/ui/input";
 import { Link, useParams, useLocation, useNavigate } from "react-router";
 import { cn } from "~/lib/utils";
 import {
@@ -28,7 +28,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUser, logoutUser } from "~/query/user";
-import { useWorkspaces } from "~/query/workspace";
+import { useWorkspaces, fetchProjectsByWorkspaceId } from "~/query/workspace";
 import type { Workspace } from "~/types/workspace";
 import useAuth from "~/hooks/useAuth";
 import Loading from "~/components/ui/Loading";
@@ -43,7 +43,9 @@ import {
   User,
   LogOut,
   Settings,
+  ChevronDown,
 } from "lucide-react";
+import SearchCommandPalette from "./SearchCommandPalette";
 
 const sidebarItems = [
   { label: "Projects", icon: Square3Stack3DIcon, to: "" },
@@ -60,7 +62,7 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
       <TopBar />
       <div className="flex w-full flex-1 min-h-0 pb-2 pr-2">
         <SideBar />
-        <div className="flex-1 min-w-0 border rounded-md overflow-hidden bg-white">
+        <div className="flex-1 min-w-0 border rounded-md overflow-hidden bg-background">
           {isUserLoading || isWorkspacesLoading ? <Loading /> : children}
         </div>
       </div>
@@ -70,19 +72,150 @@ export default function Wrapper({ children }: { children: React.ReactNode }) {
 
 export function TopBar() {
   const { user, isLoading } = useAuth();
+  const { workspaceId, projectId } = useParams();
+  const navigate = useNavigate();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const { workspaces } = useWorkspaces();
+  const currentWorkspace = (workspaces ?? []).find((w: any) => w.url === workspaceId) as any;
+
+  // Fetch projects for project switcher
+  const { data: projectsData } = useQuery({
+    queryKey: ["projects-header", workspaceId],
+    queryFn: () => fetchProjectsByWorkspaceId(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 60_000,
+  });
+  const projects = projectsData?.projects;
+
+  // Fetch current project name if in a project route
+  const { data: project } = useQuery({
+    queryKey: ["project-header", projectId],
+    queryFn: async () => {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/project/${projectId}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+
+  const projectName = project?.project?.name || project?.name;
 
   return (
-    <nav className="px-4 py-2 flex w-full justify-between items-center ">
-      <SelectWorkspaces />
-      <div className="flex items-center relative">
-        <MagnifyingGlassIcon className="size-4 text-primary/60 absolute left-3" />
-        <Input
-          type="text"
-          placeholder="Search everything..."
-          className="pl-9 min-w-xl bg-white border-none focus:ring-0 focus:border-none"
-        />
+    <nav className="px-4 py-2 flex w-full items-center">
+      {/* Left: Search button */}
+      <div className="flex-1 flex items-center">
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-primary hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+        >
+          <MagnifyingGlassIcon className="size-5" />
+          <span className="text-xs font-medium hidden sm:inline">Search</span>
+          <kbd className="hidden sm:inline-flex text-[10px] bg-muted text-muted-foreground/80 px-1.5 py-0.5 rounded font-mono ml-1">
+            Ctrl + K
+          </kbd>
+        </button>
       </div>
-      <div className="flex items-center gap-3">
+
+      {/* Center: Breadcrumb in white rounded container */}
+      <div className="flex items-center gap-1.5 bg-background rounded-lg px-3 py-1.5 border border-border/50">
+        {/* Flux Logo */}
+        <Link to={`/${workspaceId}`} className="shrink-0 hover:opacity-80 transition-opacity">
+          <Flux className="size-5" />
+        </Link>
+
+        {/* Workspace dropdown */}
+        {currentWorkspace && (
+          <>
+            <span className="text-primary/20 text-sm select-none">/</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 hover:bg-muted rounded-md px-2 py-1 transition-colors cursor-pointer outline-none">
+                  {currentWorkspace.avatar && (
+                    <img
+                      src={currentWorkspace.avatar}
+                      alt=""
+                      className="size-5 rounded object-cover"
+                    />
+                  )}
+                  <span className="text-sm font-semibold text-primary/80 truncate max-w-[140px]">
+                    {currentWorkspace.name}
+                  </span>
+                  <ChevronDown className="size-3 text-primary/40" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-52">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Actions</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => navigate("/create")}>
+                  <PlusCircle className="mr-2 size-4" />
+                  Create Workspace
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/manage")}>
+                  <LayoutGrid className="mr-2 size-4" />
+                  Manage Workspaces
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Switch</DropdownMenuLabel>
+                {(workspaces ?? []).map((ws: any) => (
+                  <DropdownMenuItem
+                    key={ws._id}
+                    onClick={() => navigate(`/${ws.url}`)}
+                    className={ws.url === workspaceId ? "bg-muted" : ""}
+                  >
+                    <img
+                      src={ws.avatar}
+                      alt={ws.name}
+                      className="mr-2 size-5 rounded-sm object-cover"
+                    />
+                    <span className="truncate">{ws.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+
+        {/* Project dropdown */}
+        {projectId && projectName && (
+          <>
+            <span className="text-primary/20 text-sm select-none">/</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 hover:bg-muted rounded-md px-2 py-1 transition-colors cursor-pointer outline-none">
+                  <span className="text-sm font-medium text-primary/60 truncate max-w-[140px]">
+                    {projectName}
+                  </span>
+                  <ChevronDown className="size-3 text-primary/40" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-52">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Actions</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => navigate(`/${workspaceId}`)}>
+                  <PlusCircle className="mr-2 size-4" />
+                  Create Project
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Switch</DropdownMenuLabel>
+                {(projects ?? []).map((p: any) => (
+                  <DropdownMenuItem
+                    key={p._id}
+                    onClick={() => navigate(`/${workspaceId}/projects/${p._id}/overview`)}
+                    className={p._id === projectId ? "bg-muted" : ""}
+                  >
+                    <span className="truncate">{p.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+      </div>
+
+      {/* Right: Inbox + User */}
+      <div className="flex-1 flex items-center justify-end gap-3">
         <InboxIcon className="size-10 p-2 hover:bg-primary/10 rounded-sm text-primary/60 cursor-pointer" />
         {!isLoading && user && (
           <DropdownMenu>
@@ -105,13 +238,9 @@ export function TopBar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => workspaceId && navigate(`/${workspaceId}/settings/profile`)}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logoutUser} variant="destructive">
@@ -122,6 +251,7 @@ export function TopBar() {
           </DropdownMenu>
         )}
       </div>
+      <SearchCommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </nav>
   );
 }

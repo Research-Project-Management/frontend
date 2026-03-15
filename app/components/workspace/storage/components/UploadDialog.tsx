@@ -16,8 +16,9 @@ import { useProject } from "~/query/project";
 type UploadDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string;
+  projectId?: string | null;
   parentId?: string | null;
+  workspaceId?: string;
 };
 
 type FileWithProgress = {
@@ -32,12 +33,13 @@ export default function UploadDialog({
   onOpenChange,
   projectId,
   parentId,
+  workspaceId: workspaceIdProp,
 }: UploadDialogProps) {
   const [files, setFiles] = useState<FileWithProgress[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const uploadMutation = useUploadFile();
-  const { data: projectData } = useProject(projectId);
-  const workspaceId = projectData?.project?.workspace as unknown as string;
+  const { data: projectData } = useProject(projectId || "");
+  const workspaceId = workspaceIdProp || (projectData?.project?.workspace as unknown as string);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -102,7 +104,7 @@ export default function UploadDialog({
 
         await uploadMutation.mutateAsync({
           file: files[i].file,
-          projectId,
+          projectId: projectId || "",
           workspaceId: workspaceId!,
           parentId,
         });

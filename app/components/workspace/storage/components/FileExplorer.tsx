@@ -5,15 +5,17 @@ import UploadDialog from "./UploadDialog";
 import CreateFolderDialog from "./CreateFolderDialog";
 import RenameDialog from "./RenameDialog";
 import Breadcrumb from "./Breadcrumb";
-import FilePreviewModal from "./FilePreviewModal";
+import FilePreviewSidebar from "./FilePreviewSidebar";
 import type { StorageItem } from "../types";
 
 type FileExplorerProps = {
   items: StorageItem[];
-  projectId: string;
+  projectId?: string;
   currentFolder?: string | null;
   breadcrumbs?: Array<{ id: string | null; name: string }>;
-  workspaceId?: string; // Thêm workspaceId cho Breadcrumb
+  workspaceId?: string;
+  // Thêm workspaceId riêng cho workspace-level uploads
+  wsId?: string;
 
   // Actions
   onNavigate?: (folderId: string | null) => void;
@@ -39,6 +41,7 @@ export default function FileExplorer({
   currentFolder,
   breadcrumbs = [],
   workspaceId,
+  wsId,
   onNavigate,
   onFolderClick,
   onToggleStar,
@@ -61,7 +64,6 @@ export default function FileExplorer({
     name: string;
   } | null>(null);
   const [previewItem, setPreviewItem] = useState<StorageItem | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
 
   function toggleViewMode() {
     setViewMode((prev) => (prev === "list" ? "grid" : "list"));
@@ -72,102 +74,108 @@ export default function FileExplorer({
   );
 
   const handleFileClick = (item: StorageItem) => {
-    setPreviewItem(item);
-    setPreviewOpen(true);
+    // Toggle: click same file closes, click different file opens
+    setPreviewItem((prev) => (prev?._id === item._id ? null : item));
   };
 
   const handleRenameRequest = (item: StorageItem) => {
     if (onRenameProp) {
-      // If external handler provided (though usually handled internally via dialog)
-      // But here we use local state for the dialog
       setFileToRename({ id: item._id, name: item.filename });
       setRenameDialogOpen(true);
     }
   };
 
-  // Only pass rename handler if the feature is enabled (prop passed)
   const onRenameHandler = onRenameProp ? handleRenameRequest : undefined;
 
   return (
-    <div className="flex-1 flex flex-col px-6 py-4 h-full">
-      {header && <div className="mb-3">{header}</div>}
+    <div className="flex-1 flex h-full overflow-hidden">
+      {/* Main file list area */}
+      <div className="flex-1 flex flex-col px-6 py-4 min-w-0 overflow-hidden">
+        {header && <div className="mb-3">{header}</div>}
 
-      {enableBreadcrumbs && breadcrumbs.length > 0 && onNavigate && (
-        <Breadcrumb
-          items={breadcrumbs}
-          workspaceId={workspaceId}
-          onNavigate={onNavigate}
-        />
-      )}
-
-      <Toolbar
-        searchValue={searchText}
-        onSearchChange={setSearchText}
-        viewMode={viewMode}
-        onToggleView={toggleViewMode}
-        onUpload={enableUpload ? () => setUploadDialogOpen(true) : undefined}
-        onCreateFolder={
-          enableUpload ? () => setCreateFolderDialogOpen(true) : undefined
-        }
-      />
-
-      <div className="flex-1 overflow-auto">
-        {viewMode === "list" ? (
-          <StorageListView
-            items={filteredFiles}
-            onFolderClick={onFolderClick}
-            onFileClick={handleFileClick}
-            onToggleStar={onToggleStar}
-            onDelete={onDelete}
-            onDownload={onDownload}
-            onRename={onRenameHandler}
-            isTrash={isTrash}
-          />
-        ) : (
-          <StorageGridView
-            items={filteredFiles}
-            onFolderClick={onFolderClick}
-            onFileClick={handleFileClick}
-            onToggleStar={onToggleStar}
-            onDelete={onDelete}
-            onDownload={onDownload}
-            onRename={onRenameHandler}
-            isTrash={isTrash}
+        {enableBreadcrumbs && breadcrumbs.length > 0 && onNavigate && (
+          <Breadcrumb
+            items={breadcrumbs}
+            workspaceId={workspaceId || ""}
+            onNavigate={onNavigate}
           />
         )}
+
+        <Toolbar
+          searchValue={searchText}
+          onSearchChange={setSearchText}
+          viewMode={viewMode}
+          onToggleView={toggleViewMode}
+          onUpload={enableUpload ? () => setUploadDialogOpen(true) : undefined}
+          onCreateFolder={
+            enableUpload ? () => setCreateFolderDialogOpen(true) : undefined
+          }
+        />
+
+        <div className="flex-1 overflow-auto">
+          {viewMode === "list" ? (
+            <StorageListView
+              items={filteredFiles}
+              onFolderClick={onFolderClick}
+              onFileClick={handleFileClick}
+              onToggleStar={onToggleStar}
+              onDelete={onDelete}
+              onDownload={onDownload}
+              onRename={onRenameHandler}
+              isTrash={isTrash}
+              selectedItemId={previewItem?._id}
+            />
+          ) : (
+            <StorageGridView
+              items={filteredFiles}
+              onFolderClick={onFolderClick}
+              onFileClick={handleFileClick}
+              onToggleStar={onToggleStar}
+              onDelete={onDelete}
+              onDownload={onDownload}
+              onRename={onRenameHandler}
+              isTrash={isTrash}
+              selectedItemId={previewItem?._id}
+            />
+          )}
+        </div>
+
+        {enableUpload && (
+          <>
+            <UploadDialog
+              open={uploadDialogOpen}
+              onOpenChange={setUploadDialogOpen}
+              projectId={projectId}
+              parentId={currentFolder}
+              workspaceId={wsId}
+            />
+
+            <CreateFolderDialog
+              open={createFolderDialogOpen}
+              onOpenChange={setCreateFolderDialogOpen}
+              projectId={projectId}
+              parentId={currentFolder}
+              workspaceId={wsId}
+            />
+          </>
+        )}
+
+        <RenameDialog
+          open={renameDialogOpen}
+          onOpenChange={setRenameDialogOpen}
+          fileId={fileToRename?.id || null}
+          currentName={fileToRename?.name || ""}
+        />
       </div>
 
-      {enableUpload && (
-        <>
-          <UploadDialog
-            open={uploadDialogOpen}
-            onOpenChange={setUploadDialogOpen}
-            projectId={projectId}
-            parentId={currentFolder}
-          />
-
-          <CreateFolderDialog
-            open={createFolderDialogOpen}
-            onOpenChange={setCreateFolderDialogOpen}
-            projectId={projectId}
-            parentId={currentFolder}
-          />
-        </>
+      {/* Right preview sidebar */}
+      {previewItem && (
+        <FilePreviewSidebar
+          item={previewItem}
+          onClose={() => setPreviewItem(null)}
+          onDownload={onDownload}
+        />
       )}
-
-      <RenameDialog
-        open={renameDialogOpen}
-        onOpenChange={setRenameDialogOpen}
-        fileId={fileToRename?.id || null}
-        currentName={fileToRename?.name || ""}
-      />
-
-      <FilePreviewModal
-        item={previewItem}
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        onDownload={onDownload}
-      />
     </div>
   );
 }

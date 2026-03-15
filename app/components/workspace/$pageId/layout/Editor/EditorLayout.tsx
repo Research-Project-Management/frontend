@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useRef, useEffect } from "react";
 import { useParams } from "react-router";
 import { usePage } from "~/query/page";
-import Loading from "~/components/ui/Loading";
+import { Skeleton } from "~/components/ui/skeleton";
 import ToolBar from "./ToolBar";
 import Editor from "./Editor";
 import type { editor } from "monaco-editor";
@@ -47,7 +47,36 @@ export default function EditorLayout() {
   }, [page?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <Loading />;
+    return (
+      <div className="h-full w-full flex flex-col animate-in fade-in duration-300">
+        {/* Toolbar skeleton */}
+        <div className="h-10 border-b border-border flex items-center gap-2 px-3">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-5 w-16" />
+          <div className="flex-1" />
+          <Skeleton className="h-6 w-6 rounded" />
+          <Skeleton className="h-6 w-6 rounded" />
+        </div>
+        {/* Code lines skeleton */}
+        <div className="flex-1 bg-[var(--editor-bg,hsl(var(--background)))] p-4 space-y-2">
+          {Array.from({ length: 24 }).map((_, i) => {
+            const widths = ["60%", "45%", "75%", "30%", "55%", "80%", "40%", "65%", "20%", "70%", "50%", "35%"];
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-8 text-right">
+                  <Skeleton className="h-3.5 w-5 ml-auto" />
+                </span>
+                <Skeleton
+                  className="h-3.5 rounded-sm"
+                  style={{ width: widths[i % widths.length] }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   if (!page) {

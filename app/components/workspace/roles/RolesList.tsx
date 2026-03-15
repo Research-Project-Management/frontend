@@ -20,7 +20,7 @@ import {
   Loader2,
   ShieldCheck,
 } from "lucide-react";
-import Loading from "~/components/ui/Loading";
+import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
@@ -67,8 +67,26 @@ export default function WorkspaceRolesPage() {
   const deleteRoleMutation = useDeleteRole(workspaceId!);
   const duplicateRoleMutation = useDuplicateRole(workspaceId!);
 
-  if (workspaceLoading || rolesLoading) return <Loading />;
-  if (!workspace) return <div className="p-6">Workspace not found</div>;
+  if (workspaceLoading || rolesLoading) {
+    return (
+      <div className="flex-1 p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-md" />
+        </div>
+        <Skeleton className="h-9 w-56 rounded-md" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (!workspace) return <div className="p-6 text-muted-foreground">Workspace not found</div>;
 
   const filteredRoles =
     roles?.filter(
@@ -121,47 +139,44 @@ export default function WorkspaceRolesPage() {
   };
 
   return (
-    <div className="flex-1 p-6 space-y-6 flex flex-col h-full overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6" />
-            Roles & Permissions
-          </h1>
-          <p className="text-muted-foreground">
-            Manage roles and permissions for "{workspace.name}"
-          </p>
+      <div className="px-8 pt-8 pb-6 border-b border-border">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Roles & Permissions</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage roles and permissions for "{workspace.name}"
+            </p>
+          </div>
+          {canManage && (
+            <Button onClick={() => setCreateDialogOpen(true)} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Role
+            </Button>
+          )}
         </div>
-        {canManage && (
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Role
-          </Button>
-        )}
       </div>
 
-      {/* Search */}
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex-1 overflow-auto px-8 py-6 space-y-6">
+        {/* Search */}
+        <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search roles..."
+            placeholder="Search roles…"
             className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-      </div>
 
-      {/* Roles Grid */}
-      <div className="flex-1 overflow-auto">
+        {/* Roles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredRoles.map((role: Role) => (
             <div
               key={role._id}
-              className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-card"
+              className="border rounded-lg p-4 hover:border-primary/20 transition-colors bg-card"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -195,7 +210,7 @@ export default function WorkspaceRolesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link to={`/${workspaceUrl}/roles/${role._id}`}>
+                        <Link to={`/${workspaceUrl}/settings/roles/${role._id}`}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
                         </Link>
@@ -208,7 +223,7 @@ export default function WorkspaceRolesPage() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600"
+                        className="text-destructive focus:text-destructive"
                         onClick={() => handleDeleteRole(role._id, role.name)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -227,7 +242,7 @@ export default function WorkspaceRolesPage() {
                 <span>{role.permissions.length} permissions</span>
                 {!role.isSystem && (
                   <Link
-                    to={`/${workspaceUrl}/roles/${role._id}`}
+                    to={`/${workspaceUrl}/settings/roles/${role._id}`}
                     className="text-primary hover:underline"
                   >
                     View details →

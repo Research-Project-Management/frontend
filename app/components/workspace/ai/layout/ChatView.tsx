@@ -19,7 +19,7 @@
  *   2. Each send → stream → appendChatMessages to backend.
  */
 
-import { useParams, useLocation, useNavigate } from "react-router";
+import { useParams, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
   Copy,
@@ -336,9 +336,13 @@ function TypingIndicator() {
 function WelcomeScreen({
   onSend,
   disabled,
+  initialMessage,
+  initialProject,
 }: {
   onSend: (text: string, projectId?: string, webSearchSites?: string[]) => void;
   disabled: boolean;
+  initialMessage?: string;
+  initialProject?: string;
 }) {
   return (
     <div className="h-full flex flex-col items-center justify-center py-12">
@@ -356,7 +360,7 @@ function WelcomeScreen({
         </div>
       </div>
       <div className="w-full">
-        <ChatAi onSend={onSend} disabled={disabled} />
+        <ChatAi onSend={onSend} disabled={disabled} initialProject={initialProject} initialMessage={initialMessage} />
       </div>
     </div>
   );
@@ -382,6 +386,9 @@ function EmptyConversation() {
 
 export default function ChatView() {
   const { chatId, workspaceId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQ = searchParams.get("q") || undefined;
+  const initialProject = searchParams.get("project") || undefined;
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -411,6 +418,7 @@ export default function ChatView() {
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
   const scrollRafRef = useRef<number | null>(null);
+  const autoSentRef = useRef(false);
 
   // Abort any in-progress stream when the component unmounts (e.g. navigating away)
   useEffect(() => {
@@ -482,6 +490,7 @@ export default function ChatView() {
       scrollRafRef.current = null;
     });
   }, [messages, streamContent]);
+
 
   const handleSend = useCallback(
     async (text: string, projectId?: string, webSearchSites?: string[]) => {
@@ -596,12 +605,26 @@ export default function ChatView() {
       fluxDataEnabled,
     ],
   );
+  // Stable ref to latest handleSend so auto-send effect doesn't get canceled
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
+
+  // Auto-send when ?q= is present (from dashboard chat input)
+  useEffect(() => {
+    if (initialQ && !chatId) {
+      const timer = setTimeout(() => {
+        handleSendRef.current(initialQ, initialProject);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Welcome screen: no session, not streaming, and no chat started yet ───────
   // chatStarted prevents the welcome screen from re-appearing after a failed
   // session-save (which would otherwise erase the visible conversation).
   if (!chatId && !isStreaming && !chatStarted) {
-    return <WelcomeScreen onSend={handleSend} disabled={false} />;
+    return <WelcomeScreen onSend={handleSend} disabled={false} initialMessage={initialQ} initialProject={initialProject} />;
   }
 
   // ── Chat view ───────────────────────────────────────────────────────────────

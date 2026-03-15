@@ -30,7 +30,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className="w-60 border-r border-secondary h-full bg-white p-2 py-4 overflow-x-hidden">
+    <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
       {/* Header */}
       <div className="mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
         <span>Storage</span>

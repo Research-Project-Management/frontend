@@ -13,6 +13,7 @@ import {
   Settings,
   UserStar,
   Layers2,
+  RotateCcw,
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
@@ -42,6 +43,7 @@ import DropMenu from "./DropMenu";
 type ModuleKey =
   | "overview"
   | "tasks"
+  | "cycles"
   | "pages"
   | "storage"
   | "settings"
@@ -50,6 +52,7 @@ type ModuleKey =
 const modulesConfig: Record<ModuleKey, { label: string; icon: LucideIcon }> = {
   overview: { label: "Overview", icon: ChartBarBig },
   tasks: { label: "Tasks", icon: KanbanSquare },
+  cycles: { label: "Cycles", icon: RotateCcw },
   pages: { label: "Pages", icon: PenLine },
   storage: { label: "Storage", icon: Cloud },
   settings: { label: "Settings", icon: Settings },
@@ -83,7 +86,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
     useProjects();
 
   return (
-    <aside className="w-60 border-r border-secondary h-full bg-white p-2 py-4 overflow-x-hidden">
+    <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
       {/* Header */}
       <div className="mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
         <span>Projects</span>

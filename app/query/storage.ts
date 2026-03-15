@@ -1,7 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_URL } from "~/lib/api";
+import type { StorageItem } from "~/components/workspace/storage/types";
 
 // Workspace-level aggregated fetch functions
+export const fetchWorkspaceHome = async (workspaceId: string) => {
+    const response = await fetch(`${API_URL}/api/files/workspace/${workspaceId}/home`, {
+        credentials: "include",
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch workspace home");
+    }
+
+    return response.json() as Promise<{
+        projects: { _id: string; name: string; fileCount: number; totalSize: number }[];
+        workspaceFiles: StorageItem[];
+    }>;
+};
+
 export const fetchWorkspaceFiles = async (workspaceId: string, parentId?: string | null) => {
     const url = parentId
         ? `${API_URL}/api/files/workspace/${workspaceId}/all?parentId=${parentId}`
@@ -396,6 +412,7 @@ export const useUploadFile = () => {
             uploadFile(file, projectId, workspaceId, parentId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["files"] });
+            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
         },
     });
 };
@@ -409,6 +426,7 @@ export const useCreateFolder = () => {
             createFolder(name, projectId, workspaceId, parentId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["files"] });
+            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
         },
     });
 };

@@ -235,11 +235,21 @@ function ModulesSettings({
       description: "Project overview and statistics",
     },
     { id: "tasks", name: "Tasks", description: "Task management and tracking" },
+    {
+      id: "cycles",
+      name: "Cycles",
+      description: "Research cycles, milestones, and deliverables",
+    },
     { id: "pages", name: "Pages", description: "Documentation and wiki pages" },
     {
       id: "storage",
       name: "Storage",
       description: "File storage and management",
+    },
+    {
+      id: "stickies",
+      name: "Stickies",
+      description: "Sticky notes for quick ideas",
     },
     {
       id: "settings",

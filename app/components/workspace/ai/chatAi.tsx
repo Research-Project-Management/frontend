@@ -35,13 +35,15 @@ interface ChatAiProps {
     webSearchSites?: string[],
   ) => void;
   disabled?: boolean;
+  initialProject?: string;
+  initialMessage?: string;
 }
 
-export default function ChatAi({ onSend, disabled }: ChatAiProps) {
+export default function ChatAi({ onSend, disabled, initialProject, initialMessage }: ChatAiProps) {
   const { projects, isLoading } = useProjects();
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage || "");
   const [webSearch, setWebSearch] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedProject, setSelectedProject] = useState<string>(initialProject || "");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);

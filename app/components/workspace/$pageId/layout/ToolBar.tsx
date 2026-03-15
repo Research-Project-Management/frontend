@@ -12,21 +12,16 @@ import {
   Columns2,
   Image,
   Loader2,
-  Moon,
-  MoreHorizontal,
   PanelLeft,
   PanelRight,
   Play,
-  RefreshCw,
-  Sun,
+  Settings,
   Zap,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
@@ -208,26 +203,17 @@ const LAYOUT_OPTIONS: {
   { value: "viewer-only", icon: PanelRight, label: "PDF only" },
 ];
 
-const ENGINE_LABELS: Record<LaTeXEngine, string> = {
-  pdflatex: "pdfLaTeX",
-  xelatex: "XeLaTeX",
-  lualatex: "LuaLaTeX",
-};
-
 export default function ToolBar() {
   const navigate = useNavigate();
   const { currentPage, isCompiling, compileRef } = usePageContext();
   const {
     layout,
     setLayout,
-    editorTheme,
-    setEditorTheme,
     engine,
-    setEngine,
     compileMode,
     setCompileMode,
-    autoCompile,
-    setAutoCompile,
+    settingsPanelOpen,
+    toggleSettingsPanel,
   } = useEditorSettingsStore();
 
   const COMPILE_MODE_OPTIONS: {
@@ -240,9 +226,10 @@ export default function ToolBar() {
       value: "normal",
       label: "Normal",
       icon: Image,
-      description: "With images",
+      description: "Full compile",
     },
-    { value: "fast", label: "Fast", icon: Zap, description: "No images" },
+    { value: "fast", label: "Fast", icon: Zap, description: "No project" },
+    { value: "draft", label: "Draft", icon: Zap, description: "Skip images" },
   ];
 
   const projectName =
@@ -252,6 +239,12 @@ export default function ToolBar() {
 
   const LayoutIcon =
     LAYOUT_OPTIONS.find((o) => o.value === layout)?.icon ?? Columns2;
+
+  const ENGINE_SHORT: Record<LaTeXEngine, string> = {
+    pdflatex: "pdf",
+    xelatex: "Xe",
+    lualatex: "Lua",
+  };
 
   return (
     <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
@@ -312,7 +305,7 @@ export default function ToolBar() {
           <button
             onClick={() => compileRef.current?.()}
             disabled={isCompiling}
-            title={`Compile (Ctrl+Enter) — ${compileMode === "fast" ? "Fast: no images" : "Normal: with images"}`}
+            title={`Compile (Ctrl+Enter) — ${ENGINE_SHORT[engine]} · ${compileMode}`}
             className="flex items-center gap-1.5 h-8 px-3 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
           >
             {isCompiling ? (
@@ -323,7 +316,7 @@ export default function ToolBar() {
             {isCompiling ? "Compiling…" : `Compile`}
             {!isCompiling && (
               <span className="opacity-60 font-normal">
-                · {compileMode === "fast" ? "Fast" : "Normal"}
+                · {ENGINE_SHORT[engine]}
               </span>
             )}
           </button>
@@ -338,12 +331,12 @@ export default function ToolBar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               {COMPILE_MODE_OPTIONS.map(
-                ({ value, label, icon: Icon, description }) => (
+                ({ value, label, description }) => (
                   <DropdownMenuItem
                     key={value}
                     onClick={() => setCompileMode(value)}
                     className={cn(
-                      compileMode === value && "font-semibol text-primary",
+                      compileMode === value && "font-semibold text-primary",
                       "text-xs",
                     )}
                   >
@@ -384,76 +377,24 @@ export default function ToolBar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* ··· Settings dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {/* Settings panel toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
             <button
+              onClick={toggleSettingsPanel}
               title="Settings"
-              className="p-1.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-            >
-              <MoreHorizontal className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            {/* Engine */}
-            <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal uppercase tracking-wide pb-1">
-              Compiler engine
-            </DropdownMenuLabel>
-            {(Object.keys(ENGINE_LABELS) as LaTeXEngine[]).map((eng) => (
-              <DropdownMenuItem
-                key={eng}
-                onClick={() => setEngine(eng)}
-                className={cn(engine === eng && "font-semibold text-primary")}
-              >
-                {ENGINE_LABELS[eng]}
-                {engine === eng && (
-                  <span className="ml-auto text-[10px] text-primary">✓</span>
-                )}
-              </DropdownMenuItem>
-            ))}
-
-            <DropdownMenuSeparator />
-
-            {/* Auto-compile */}
-            <DropdownMenuItem onClick={() => setAutoCompile(!autoCompile)}>
-              <RefreshCw
-                className={cn(
-                  "size-3.5 mr-2",
-                  autoCompile &&
-                    "text-primary animate-spin animation-duration-[3s]",
-                )}
-              />
-              Auto-compile
-              <span
-                className={cn(
-                  "ml-auto text-[11px] font-medium",
-                  autoCompile ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                {autoCompile ? "ON" : "OFF"}
-              </span>
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            {/* Dark mode */}
-            <DropdownMenuItem
-              onClick={() =>
-                setEditorTheme(editorTheme === "light" ? "dark" : "light")
-              }
-            >
-              {editorTheme === "light" ? (
-                <Moon className="size-3.5 mr-2" />
-              ) : (
-                <Sun className="size-3.5 mr-2" />
+              className={cn(
+                "p-1.5 rounded transition-colors",
+                settingsPanelOpen
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-primary hover:bg-primary/10",
               )}
-              Editor theme
-              <span className="ml-auto text-[11px] text-muted-foreground capitalize">
-                {editorTheme}
-              </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            >
+              <Settings className="size-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Settings</TooltipContent>
+        </Tooltip>
       </div>
     </nav>
   );

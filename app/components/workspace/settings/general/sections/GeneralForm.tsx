@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { Loader2 } from "lucide-react";
 
 type GeneralFormProps = {
   id: string;
@@ -28,17 +29,17 @@ type GeneralFormProps = {
 
 const COMPANY_SIZES = [
   { value: "1", label: "Just me" },
-  { value: "2-10", label: "2-10" },
-  { value: "11-50", label: "11-50" },
-  { value: "51-200", label: "51-200" },
-  { value: "201-500", label: "201-500" },
+  { value: "2-10", label: "2–10" },
+  { value: "11-50", label: "11–50" },
+  { value: "51-200", label: "51–200" },
+  { value: "201-500", label: "201–500" },
   { value: "500+", label: "500+" },
 ] as const;
 
 const TIMEZONES = [
-  { value: "UTC", label: "UTC" },
-  { value: "PST", label: "PST" },
-  { value: "EST", label: "EST" },
+  { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+  { value: "PST", label: "PST (Pacific Standard Time)" },
+  { value: "EST", label: "EST (Eastern Standard Time)" },
 ] as const;
 
 export default function GeneralForm({
@@ -51,102 +52,72 @@ export default function GeneralForm({
   onSubmit,
   isSubmitting = false,
 }: GeneralFormProps) {
-  const [workspaceName, setWorkspaceName] = useState(name || "");
-  const [selectedCompanySize, setCompanySize] = useState(companySize || "2-10");
-  const [selectedTimezone, setTimezone] = useState(timezone || "UTC");
-
-  // keep local copy of original values to detect changes
-  const original = {
-    name,
-    url,
-    avatar: avatar || "",
-    companySize: companySize || "",
-    timezone: timezone || "",
-  };
-
   const [formValues, setFormValues] = useState({
     name: name || "",
     url,
     avatar: avatar || "",
-    companySize: companySize || "",
-    timezone: timezone || "",
+    companySize: companySize || "2-10",
+    timezone: timezone || "UTC",
   });
 
   useEffect(() => {
-    setWorkspaceName(name || "");
-    setCompanySize(companySize || "2-10");
-    setTimezone(timezone || "UTC");
-
     setFormValues({
       name: name || "",
       url,
       avatar: avatar || "",
-      companySize: companySize || "",
-      timezone: timezone || "",
+      companySize: companySize || "2-10",
+      timezone: timezone || "UTC",
     });
   }, [url, name, avatar, companySize, timezone]);
 
   const workspaceUrl = `app.flux/${url || "untitled"}`;
 
   const hasChanges =
-    formValues.name !== original.name ||
-    formValues.avatar !== original.avatar ||
-    formValues.companySize !== original.companySize ||
-    formValues.timezone !== original.timezone;
+    formValues.name !== (name || "") ||
+    formValues.companySize !== (companySize || "") ||
+    formValues.timezone !== (timezone || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (typeof onSubmit === "function") {
-      onSubmit(formValues);
-    }
+    onSubmit?.(formValues);
   };
+
+  const update = (key: string, value: string) =>
+    setFormValues((f) => ({ ...f, [key]: value }));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Workspace Name */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <label
             htmlFor="workspace-name"
-            className="block text-sm font-medium text-gray-600"
+            className="text-sm font-medium text-foreground"
           >
             Workspace name
           </label>
           <Input
             id="workspace-name"
-            value={workspaceName}
-            onChange={(e) => {
-              setWorkspaceName(e.target.value);
-              setFormValues((f) => ({ ...f, name: e.target.value }));
-            }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            value={formValues.name}
+            onChange={(e) => update("name", e.target.value)}
           />
         </div>
 
         {/* Company Size */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <label
             htmlFor="company-size"
-            className="block text-sm font-medium text-gray-600"
+            className="text-sm font-medium text-foreground"
           >
-            Company size
+            Team size
           </label>
-
           <Select
-            value={selectedCompanySize}
-            onValueChange={(val) => {
-              setCompanySize(val);
-              setFormValues((f) => ({ ...f, companySize: val }));
-            }}
+            value={formValues.companySize}
+            onValueChange={(val) => update("companySize", val)}
           >
-            <SelectTrigger
-              id="company-size"
-              size="sm"
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none"
-            >
-              <SelectValue placeholder="Select company size" />
+            <SelectTrigger id="company-size" className="w-full">
+              <SelectValue placeholder="Select team size" />
             </SelectTrigger>
-
             <SelectContent>
               {COMPANY_SIZES.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
@@ -158,10 +129,10 @@ export default function GeneralForm({
         </div>
 
         {/* Workspace URL */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <label
             htmlFor="workspace-url"
-            className="block text-sm font-medium text-gray-600"
+            className="text-sm font-medium text-foreground"
           >
             Workspace URL
           </label>
@@ -169,33 +140,25 @@ export default function GeneralForm({
             id="workspace-url"
             readOnly
             value={workspaceUrl}
-            className="w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-500 cursor-not-allowed focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="bg-muted text-muted-foreground cursor-not-allowed"
           />
         </div>
 
-        <div className="space-y-2">
+        {/* Timezone */}
+        <div className="space-y-1.5">
           <label
             htmlFor="timezone"
-            className="block text-sm font-medium text-gray-600"
+            className="text-sm font-medium text-foreground"
           >
-            Workspace Timezone
+            Timezone
           </label>
-
           <Select
-            value={selectedTimezone}
-            onValueChange={(val) => {
-              setTimezone(val);
-              setFormValues((f) => ({ ...f, timezone: val }));
-            }}
+            value={formValues.timezone}
+            onValueChange={(val) => update("timezone", val)}
           >
-            <SelectTrigger
-              id="timezone"
-              size="sm"
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none"
-            >
+            <SelectTrigger id="timezone" className="w-full">
               <SelectValue placeholder="Select timezone" />
             </SelectTrigger>
-
             <SelectContent>
               {TIMEZONES.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
@@ -208,12 +171,9 @@ export default function GeneralForm({
       </div>
 
       <div>
-        <Button
-          type="submit"
-          disabled={!hasChanges || isSubmitting}
-          className="rounded-md bg-[#0F5F96] px-4 py-2 text-sm font-medium text-white hover:bg-[#0c4b77] focus:outline-none disabled:opacity-50"
-        >
-          {isSubmitting ? "Saving..." : "Update workspace"}
+        <Button type="submit" disabled={!hasChanges || isSubmitting}>
+          {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
+          {isSubmitting ? "Saving…" : "Update workspace"}
         </Button>
       </div>
     </form>

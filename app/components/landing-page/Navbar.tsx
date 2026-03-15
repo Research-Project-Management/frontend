@@ -18,138 +18,74 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+      className={`fixed top-0 z-50 w-full transition-all duration-200 ${
         isScrolled
-          ? "bg-background/80 backdrop-blur-lg border-b border-border/50 "
+          ? "bg-background/90 backdrop-blur-md border-b border-border"
           : "bg-transparent"
       }`}
     >
-      <div className="container mx-auto px-4">
-        <div
-          className={
-            `flex justify-between items-center ` +
-            (isScrolled ? "h-20" : "h-24") +
-            ` transition-all duration-300`
-          }
-        >
+      <div className="container mx-auto px-6">
+        <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link
             to="/"
-            className="flex gap-2 items-center group"
+            className="flex gap-2.5 items-center"
             onClick={() => setIsMenuOpen(false)}
           >
-            <Flux className="w-7 h-7 text-primary group-hover:scale-110 transition-transform" />
-            <div className="font-bold text-2xl">Flux</div>
+            <Flux className="w-6 h-6 text-foreground" />
+            <div className="font-semibold text-lg tracking-tight">Flux</div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden  items-center gap-8">
-            <Link
-              to="/"
-              className="font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Features
-            </Link>
-            <Link
-              to="/"
-              className="font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link
-              to="/docs"
-              className="font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Docs
-            </Link>
-            <Link
-              to="/about"
-              className="font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              About
-            </Link>
-          </div>
-
           {/* Action Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
             <Link
               to="/login"
-              className="px-4 py-2 font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              Sign In
+              Sign in
             </Link>
             <Link
               to="/ws"
-              className="group px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+              className="group px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
             >
-              Get Started
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Get started
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="hidden p-2 hover:bg-secondary rounded-lg transition-colors"
+            className="md:hidden p-2 hover:bg-secondary rounded-lg transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
             {isMenuOpen ? (
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             ) : (
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             )}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border animate-in slide-in-from-top-5 duration-300">
-            <div className="flex flex-col gap-4">
+          <div className="md:hidden py-4 border-t border-border">
+            <div className="flex flex-col gap-2">
               <Link
-                to="/features"
-                className="px-4 py-2 font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all"
+                to="/login"
+                className="px-4 py-2.5 text-sm font-medium text-center border border-border rounded-lg hover:bg-secondary transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Features
+                Sign in
               </Link>
               <Link
-                to="/pricing"
-                className="px-4 py-2 font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all"
+                to="/ws"
+                className="px-4 py-2.5 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-80 transition-opacity text-center flex items-center justify-center gap-1.5"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Pricing
+                Get started
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-              <Link
-                to="/docs"
-                className="px-4 py-2 font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Docs
-              </Link>
-              <Link
-                to="/about"
-                className="px-4 py-2 font-medium text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                About
-              </Link>
-              <div className="pt-4 border-t border-border flex flex-col gap-3">
-                <Link
-                  to="/login"
-                  className="px-4 py-2.5 font-medium text-center border border-border rounded-lg hover:bg-secondary transition-all"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all text-center flex items-center justify-center gap-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Get Started
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
             </div>
           </div>
         )}

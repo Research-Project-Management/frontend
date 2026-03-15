@@ -233,6 +233,7 @@ type StorageViewProps = {
   onFileClick?: (file: StorageItem) => void;
   onRename?: (item: StorageItem) => void;
   isTrash?: boolean;
+  selectedItemId?: string | null;
 };
 
 export function StorageListView({
@@ -244,14 +245,16 @@ export function StorageListView({
   onFileClick,
   onRename,
   isTrash,
+  selectedItemId,
 }: StorageViewProps) {
   return (
     <div className="rounded-lg overflow-hidden">
       {/* Header - Google Drive style */}
       <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/50">
-        <div className="col-span-5">Name</div>
+        <div className="col-span-4">Name</div>
+        <div className="col-span-2">Owner</div>
         <div className="col-span-3">Last modified</div>
-        <div className="col-span-2">File size</div>
+        <div className="col-span-1">Size</div>
         <div className="col-span-2"></div>
       </div>
 
@@ -267,7 +270,9 @@ export function StorageListView({
             return (
               <div
                 key={item._id}
-                className="grid grid-cols-12 gap-4 items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer group transition-colors"
+                className={`grid grid-cols-12 gap-4 items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer group transition-colors ${
+                  selectedItemId === item._id ? "bg-primary/5 border-l-2 border-l-primary" : ""
+                }`}
                 onClick={() => {
                   if (item.isFolder) {
                     onFolderClick?.(item);
@@ -276,7 +281,7 @@ export function StorageListView({
                   }
                 }}
               >
-                <div className="col-span-5 flex items-center gap-3 min-w-0">
+                <div className="col-span-4 flex items-center gap-3 min-w-0">
                   <div
                     className={`flex items-center justify-center shrink-0 ${!(item.thumbnail || (fileType === "image" && item.url)) ? getFileColor(fileType) : ""}`}
                   >
@@ -296,11 +301,30 @@ export function StorageListView({
                   )}
                 </div>
 
+                <div className="col-span-2 flex items-center gap-2 min-w-0">
+                  {item.isFolder ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : (
+                    <>
+                      {item.author?.avatar ? (
+                        <img src={item.author.avatar} alt="" className="size-5 rounded-full shrink-0" />
+                      ) : (
+                        <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            {item.author?.name?.charAt(0)?.toUpperCase() || "?"}
+                          </span>
+                        </div>
+                      )}
+                      <span className="text-xs text-muted-foreground truncate">{item.author?.name || "—"}</span>
+                    </>
+                  )}
+                </div>
+
                 <div className="col-span-3 text-xs text-muted-foreground">
                   {formatDate(item.updatedAt)}
                 </div>
 
-                <div className="col-span-2 text-xs text-muted-foreground">
+                <div className="col-span-1 text-xs text-muted-foreground">
                   {item.isFolder ? "—" : formatFileSize(item.size)}
                 </div>
 
@@ -332,6 +356,7 @@ export function StorageGridView({
   onFileClick,
   onRename,
   isTrash,
+  selectedItemId,
 }: StorageViewProps) {
   if (items.length === 0) {
     return (
@@ -349,7 +374,9 @@ export function StorageGridView({
         return (
           <div
             key={item._id}
-            className="group bg-card border border-border/50 rounded-lg overflow-hidden hover:border-border hover:bg-muted/30 transition-all cursor-pointer"
+            className={`group bg-card border rounded-lg overflow-hidden hover:border-border hover:bg-muted/30 transition-all cursor-pointer ${
+              selectedItemId === item._id ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border/50"
+            }`}
             onClick={() => {
               if (item.isFolder) {
                 onFolderClick?.(item);
@@ -401,8 +428,19 @@ export function StorageGridView({
                   <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0 mt-0.5" />
                 )}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {item.isFolder ? "Folder" : formatFileSize(item.size)}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{item.isFolder ? "Folder" : formatFileSize(item.size)}</span>
+                {item.author && (
+                  <div className="flex items-center gap-1.5" title={item.author.name}>
+                    {item.author.avatar ? (
+                      <img src={item.author.avatar} alt="" className="size-4 rounded-full" />
+                    ) : (
+                      <div className="size-4 rounded-full bg-muted flex items-center justify-center">
+                        <span className="text-[8px] font-medium">{item.author.name?.charAt(0)?.toUpperCase()}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

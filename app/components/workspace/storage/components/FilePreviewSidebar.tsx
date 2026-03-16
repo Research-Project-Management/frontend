@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import {
   X, Download, ExternalLink, FileText, Calendar, User, Hash,
   BookOpen, GraduationCap, Globe, Layers, FileDigit, Building2,
-  BookMarked, ScrollText, Fingerprint,
+  BookMarked, ScrollText, Fingerprint, Maximize2,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import type { StorageItem } from "../types";
 import { getFileType, getFileIcon, getFileColor, formatFileSize, formatDate } from "../pages/SharedComponents";
+import { useBlobUrl, downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 interface FilePreviewSidebarProps {
   item: StorageItem | null;
   onClose: () => void;
   onDownload: (item: StorageItem) => void;
+  onPreview?: (item: StorageItem) => void;
 }
 
 type PdfMetadata = {
@@ -239,14 +241,27 @@ function parsePdfDate(raw?: string): string | null {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-export default function FilePreviewSidebar({ item, onClose, onDownload }: FilePreviewSidebarProps) {
+export default function FilePreviewSidebar({ item, onClose, onDownload, onPreview }: FilePreviewSidebarProps) {
   const { metadata, previewDataUrl, loading: pdfLoading } = usePdfData(item);
+
+  const isImage = item ? getFileType(item) === "image" : false;
+  const { blobUrl: imageBlobUrl, loading: imageLoading } = useBlobUrl(
+    item && isImage && item.url ? item.url : null,
+  );
 
   if (!item) return null;
 
   const fileType = getFileType(item);
-  const isImage = fileType === "image";
   const isPdf = item.filename.toLowerCase().endsWith(".pdf") || item.mimeType === "application/pdf";
+
+  const handleDownload = async () => {
+    if (!item.url) return;
+    try {
+      await downloadFileAsBlob(item.url, item.filename);
+    } catch {
+      onDownload(item);
+    }
+  };
 
   return (
     <div className="w-80 h-full border-l border-border bg-background flex flex-col animate-in slide-in-from-right-4 duration-200">
@@ -268,12 +283,19 @@ export default function FilePreviewSidebar({ item, onClose, onDownload }: FilePr
         {/* Preview thumbnail */}
         <div className="p-4">
           <div className="rounded-lg overflow-hidden bg-muted/30 border border-border/50">
-            {isImage && item.url ? (
-              <img
-                src={item.url}
-                alt={item.filename}
-                className="w-full h-48 object-contain bg-white dark:bg-black/20"
-              />
+            {isImage ? (
+              imageLoading ? (
+                <div className="h-48 flex items-center justify-center">
+                  <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <img
+                  src={imageBlobUrl || item.url || ""}
+                  alt={item.filename}
+                  className="w-full h-48 object-contain bg-white dark:bg-black/20 cursor-pointer"
+                  onClick={() => onPreview?.(item)}
+                />
+              )
             ) : isPdf ? (
               pdfLoading ? (
                 <div className="h-48 flex items-center justify-center">
@@ -307,16 +329,14 @@ export default function FilePreviewSidebar({ item, onClose, onDownload }: FilePr
 
         {/* Actions */}
         <div className="px-4 pb-4 flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => onDownload(item)}>
+          <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={handleDownload}>
             <Download className="size-3 mr-1.5" />
             Download
           </Button>
-          {item.url && (
-            <Button size="sm" variant="outline" className="text-xs" asChild>
-              <a href={item.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="size-3 mr-1.5" />
-                Open
-              </a>
+          {onPreview && (
+            <Button size="sm" variant="outline" className="text-xs" onClick={() => onPreview(item)}>
+              <Maximize2 className="size-3 mr-1.5" />
+              Preview
             </Button>
           )}
         </div>

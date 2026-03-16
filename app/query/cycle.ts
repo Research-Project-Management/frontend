@@ -1,103 +1,53 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Cycle } from "~/types/task";
-import { API_URL } from "~/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 
-// Fetch cycles for a project
-export const fetchProjectCycles = async (projectId: string) => {
-  const response = await fetch(`${API_URL}/api/project/${projectId}/cycles`, {
-    credentials: "include",
-  });
-  if (!response.ok) throw new Error("Failed to fetch cycles");
-  return response.json() as Promise<{ cycles: Cycle[] }>;
-};
+// ── Fetch ─────────────────────────────────────────────────────────────────────
 
-export const useProjectCycles = (projectId: string) => {
-  return useQuery({
+export const fetchProjectCycles = (projectId: string) =>
+  apiGet<{ cycles: Cycle[] }>(`/api/project/${projectId}/cycles`);
+
+// ── Queries ───────────────────────────────────────────────────────────────────
+
+export const useProjectCycles = (projectId: string) =>
+  useQuery({
     queryKey: ["cycles", projectId],
     queryFn: () => fetchProjectCycles(projectId),
     enabled: !!projectId,
   });
-};
 
-// Create cycle
+// ── Mutations ─────────────────────────────────────────────────────────────────
+
 export const useCreateCycle = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      ...data
-    }: { projectId: string } & Partial<Cycle>) => {
-      const response = await fetch(
-        `${API_URL}/api/project/${projectId}/cycles`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        },
-      );
-      if (!response.ok) throw new Error("Failed to create cycle");
-      return response.json();
-    },
+    mutationFn: ({ projectId, ...data }: { projectId: string } & Partial<Cycle>) =>
+      apiPost(`/api/project/${projectId}/cycles`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["cycles", variables.projectId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["cycles", variables.projectId] });
     },
   });
 };
 
-// Update cycle
 export const useUpdateCycle = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      cycleId,
-      projectId,
-      ...data
-    }: { cycleId: string; projectId: string } & Partial<Cycle>) => {
-      const response = await fetch(`${API_URL}/api/cycles/${cycleId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to update cycle");
-      return response.json();
-    },
+    mutationFn: ({ cycleId, projectId, ...data }: { cycleId: string; projectId: string } & Partial<Cycle>) =>
+      apiPut(`/api/cycles/${cycleId}`, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["cycles", variables.projectId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["cycles", variables.projectId] });
     },
   });
 };
 
-// Delete cycle
 export const useDeleteCycle = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      cycleId,
-      projectId,
-    }: {
-      cycleId: string;
-      projectId: string;
-    }) => {
-      const response = await fetch(`${API_URL}/api/cycles/${cycleId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to delete cycle");
-      return true;
-    },
+    mutationFn: ({ cycleId }: { cycleId: string; projectId: string }) =>
+      apiDelete(`/api/cycles/${cycleId}`),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["cycles", variables.projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["tasks", variables.projectId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["cycles", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
     },
   });
 };

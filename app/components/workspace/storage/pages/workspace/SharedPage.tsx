@@ -10,6 +10,7 @@ import { Share2 } from "lucide-react";
 import Loading from "~/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
+import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 export default function WorkspaceSharedPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -43,8 +44,11 @@ export default function WorkspaceSharedPage() {
     }
   };
 
-  const handleDownload = (item: StorageItem) => {
-    if (item.url) {
+  const handleDownload = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await downloadFileAsBlob(item.url, item.filename);
+    } catch {
       window.open(item.url, "_blank");
     }
   };

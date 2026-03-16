@@ -9,6 +9,7 @@ import { useWorkspace } from "~/query/workspace";
 import { Skeleton } from "~/components/ui/skeleton";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
+import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 export default function WorkspaceHomePage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -43,8 +44,11 @@ export default function WorkspaceHomePage() {
     }
   };
 
-  const handleDownload = (item: StorageItem) => {
-    if (item.url) {
+  const handleDownload = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await downloadFileAsBlob(item.url, item.filename);
+    } catch {
       window.open(item.url, "_blank");
     }
   };

@@ -9,6 +9,7 @@ export type StorageItem = {
   url?: string;
   thumbnail?: string;
   starred: boolean;
+  metaData?: Record<string, any>;
   author: {
     name: string;
     email: string;

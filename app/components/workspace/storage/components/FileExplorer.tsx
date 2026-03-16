@@ -6,7 +6,9 @@ import CreateFolderDialog from "./CreateFolderDialog";
 import RenameDialog from "./RenameDialog";
 import Breadcrumb from "./Breadcrumb";
 import FilePreviewSidebar from "./FilePreviewSidebar";
+import FilePreviewModal from "./FilePreviewModal";
 import type { StorageItem } from "../types";
+import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 type FileExplorerProps = {
   items: StorageItem[];
@@ -64,6 +66,7 @@ export default function FileExplorer({
     name: string;
   } | null>(null);
   const [previewItem, setPreviewItem] = useState<StorageItem | null>(null);
+  const [previewModalItem, setPreviewModalItem] = useState<StorageItem | null>(null);
 
   function toggleViewMode() {
     setViewMode((prev) => (prev === "list" ? "grid" : "list"));
@@ -76,6 +79,19 @@ export default function FileExplorer({
   const handleFileClick = (item: StorageItem) => {
     // Toggle: click same file closes, click different file opens
     setPreviewItem((prev) => (prev?._id === item._id ? null : item));
+  };
+
+  const handleFilePreview = (item: StorageItem) => {
+    setPreviewModalItem(item);
+  };
+
+  const handleBlobDownload = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await downloadFileAsBlob(item.url, item.filename);
+    } catch {
+      onDownload(item);
+    }
   };
 
   const handleRenameRequest = (item: StorageItem) => {
@@ -173,9 +189,17 @@ export default function FileExplorer({
         <FilePreviewSidebar
           item={previewItem}
           onClose={() => setPreviewItem(null)}
-          onDownload={onDownload}
+          onDownload={handleBlobDownload}
+          onPreview={handleFilePreview}
         />
       )}
+
+      {/* Full-screen preview modal */}
+      <FilePreviewModal
+        item={previewModalItem}
+        open={!!previewModalItem}
+        onOpenChange={(open) => !open && setPreviewModalItem(null)}
+      />
     </div>
   );
 }

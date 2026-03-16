@@ -1,27 +1,12 @@
-import { API_URL } from "~/lib/api";
+import { apiGet } from "~/lib/api";
 import type { TypeUser } from "~/types/user";
 
-export const fetchUser = async () :Promise<TypeUser>=> {
-  const response = await fetch(API_URL+"/auth/user", {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch user");
-  }
-
-  const data = await response.json();
+export const fetchUser = async (): Promise<TypeUser> => {
+  const data = await apiGet<{ user: TypeUser }>("/auth/user");
   return data.user;
-}
+};
 
 export const logoutUser = async () => {
-  const response = await fetch(API_URL+"/auth/logout", {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to logout");
-  }
-
+  await apiGet("/auth/logout");
   return window.location.replace("/login");
-}
+};

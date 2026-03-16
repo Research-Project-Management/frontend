@@ -4,6 +4,7 @@ import { useFiles, useToggleStar, useDeleteFile } from "~/query/storage";
 import Loading from "~/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
+import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 export default function StoragePage() {
   const { projectId } = useParams();
@@ -45,8 +46,11 @@ export default function StoragePage() {
     }
   };
 
-  const handleDownload = (item: StorageItem) => {
-    if (item.url) {
+  const handleDownload = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await downloadFileAsBlob(item.url, item.filename);
+    } catch {
       window.open(item.url, "_blank");
     }
   };

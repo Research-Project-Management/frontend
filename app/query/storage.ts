@@ -1,157 +1,53 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { API_URL } from "~/lib/api";
+import { API_URL, apiFetch, apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import type { StorageItem } from "~/components/workspace/storage/types";
 
-// Workspace-level aggregated fetch functions
-export const fetchWorkspaceHome = async (workspaceId: string) => {
-    const response = await fetch(`${API_URL}/api/files/workspace/${workspaceId}/home`, {
-        credentials: "include",
-    });
+// ── Workspace-level fetch ─────────────────────────────────────────────────────
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch workspace home");
-    }
-
-    return response.json() as Promise<{
+export const fetchWorkspaceHome = (workspaceId: string) =>
+    apiGet<{
         projects: { _id: string; name: string; fileCount: number; totalSize: number }[];
         workspaceFiles: StorageItem[];
-    }>;
-};
+    }>(`/api/files/workspace/${workspaceId}/home`);
 
-export const fetchWorkspaceFiles = async (workspaceId: string, parentId?: string | null) => {
-    const url = parentId
-        ? `${API_URL}/api/files/workspace/${workspaceId}/all?parentId=${parentId}`
-        : `${API_URL}/api/files/workspace/${workspaceId}/all`;
+export const fetchWorkspaceFiles = (workspaceId: string, parentId?: string | null) =>
+    apiGet(parentId
+        ? `/api/files/workspace/${workspaceId}/all?parentId=${parentId}`
+        : `/api/files/workspace/${workspaceId}/all`);
 
-    const response = await fetch(url, {
-        credentials: "include",
-    });
+export const fetchWorkspaceMyFiles = (workspaceId: string) =>
+    apiGet(`/api/files/workspace/${workspaceId}/my-files`);
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch workspace files");
-    }
+export const fetchWorkspaceStarredFiles = (workspaceId: string) =>
+    apiGet(`/api/files/workspace/${workspaceId}/starred`);
 
-    return response.json();
-};
+export const fetchWorkspaceSharedFiles = (workspaceId: string) =>
+    apiGet(`/api/files/workspace/${workspaceId}/shared`);
 
-export const fetchWorkspaceMyFiles = async (workspaceId: string) => {
-    const response = await fetch(`${API_URL}/api/files/workspace/${workspaceId}/my-files`, {
-        credentials: "include",
-    });
+export const fetchWorkspaceTrashedFiles = (workspaceId: string) =>
+    apiGet(`/api/files/workspace/${workspaceId}/trash`);
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch workspace my files");
-    }
+// ── Project-level fetch ───────────────────────────────────────────────────────
 
-    return response.json();
-};
+export const fetchFiles = (projectId: string, parentId?: string | null) =>
+    apiGet(parentId
+        ? `/api/files/project/${projectId}?parentId=${parentId}`
+        : `/api/files/project/${projectId}`);
 
-export const fetchWorkspaceStarredFiles = async (workspaceId: string) => {
-    const response = await fetch(`${API_URL}/api/files/workspace/${workspaceId}/starred`, {
-        credentials: "include",
-    });
+export const fetchMyFiles = (projectId: string) =>
+    apiGet(`/api/files/my-files/${projectId}`);
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch workspace starred files");
-    }
+export const fetchStarredFiles = (projectId: string) =>
+    apiGet(`/api/files/starred/${projectId}`);
 
-    return response.json();
-};
+export const fetchSharedFiles = (projectId: string) =>
+    apiGet(`/api/files/shared/${projectId}`);
 
-export const fetchWorkspaceSharedFiles = async (workspaceId: string) => {
-    const response = await fetch(`${API_URL}/api/files/workspace/${workspaceId}/shared`, {
-        credentials: "include",
-    });
+export const fetchTrashedFiles = (projectId: string) =>
+    apiGet(`/api/files/trash/${projectId}`);
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch workspace shared files");
-    }
+// ── Thumbnail helper ──────────────────────────────────────────────────────────
 
-    return response.json();
-};
-
-export const fetchWorkspaceTrashedFiles = async (workspaceId: string) => {
-    const response = await fetch(`${API_URL}/api/files/workspace/${workspaceId}/trash`, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch workspace trashed files");
-    }
-
-    return response.json();
-};
-
-// Fetch files in project or folder
-export const fetchFiles = async (projectId: string, parentId?: string | null) => {
-    const url = parentId
-        ? `${API_URL}/api/files/project/${projectId}?parentId=${parentId}`
-        : `${API_URL}/api/files/project/${projectId}`;
-
-    const response = await fetch(url, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch files");
-    }
-
-    return response.json();
-};
-
-// Fetch my files
-export const fetchMyFiles = async (projectId: string) => {
-    const response = await fetch(`${API_URL}/api/files/my-files/${projectId}`, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch my files");
-    }
-
-    return response.json();
-};
-
-// Fetch starred files
-export const fetchStarredFiles = async (projectId: string) => {
-    const response = await fetch(`${API_URL}/api/files/starred/${projectId}`, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch starred files");
-    }
-
-    return response.json();
-};
-
-// Fetch shared files
-export const fetchSharedFiles = async (projectId: string) => {
-    const response = await fetch(`${API_URL}/api/files/shared/${projectId}`, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch shared files");
-    }
-
-    return response.json();
-};
-
-// Fetch trashed files
-export const fetchTrashedFiles = async (projectId: string) => {
-    const response = await fetch(`${API_URL}/api/files/trash/${projectId}`, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to fetch trashed files");
-    }
-
-    return response.json();
-};
-
-// Helper to generate thumbnail
 const generateThumbnail = async (file: File): Promise<Blob | null> => {
     if (!file.type.startsWith("image/")) return null;
 
@@ -166,28 +62,17 @@ const generateThumbnail = async (file: File): Promise<Blob | null> => {
                 let height = img.height;
 
                 if (width > height) {
-                    if (width > MAX_SIZE) {
-                        height *= MAX_SIZE / width;
-                        width = MAX_SIZE;
-                    }
+                    if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
                 } else {
-                    if (height > MAX_SIZE) {
-                        width *= MAX_SIZE / height;
-                        height = MAX_SIZE;
-                    }
+                    if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
                 }
 
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext("2d");
-                if (!ctx) {
-                    resolve(null);
-                    return;
-                }
+                if (!ctx) { resolve(null); return; }
                 ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => {
-                    resolve(blob);
-                }, "image/jpeg", 0.7);
+                canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.7);
             };
             img.onerror = () => resolve(null);
             img.src = e.target?.result as string;
@@ -196,217 +81,96 @@ const generateThumbnail = async (file: File): Promise<Blob | null> => {
     });
 };
 
-// Upload file
+// ── Mutations (plain functions) ───────────────────────────────────────────────
+
 export const uploadFile = async (file: File, projectId: string, workspaceId: string, parentId?: string | null) => {
     const timestamp = Date.now();
     const fileName = `${workspaceId}/${timestamp}-${file.name}`;
-    
+
     // Get presigned URL for main file
-    const presignResponse = await fetch(`${API_URL}/api/files/presign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ fileName }),
-    });
+    const { url: presignedUrl, path } = await apiPost<{ url: string; path: string }>(
+        `/api/files/presign`, { fileName },
+    );
 
-    if (!presignResponse.ok) {
-        throw new Error("Failed to get presigned URL");
-    }
-
-    const { url: presignedUrl, path } = await presignResponse.json();
-
-    // Upload to R2
+    // Upload to R2 (direct, not through our API)
     const uploadResponse = await fetch(presignedUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
         body: file,
     });
-
-    if (!uploadResponse.ok) {
-        throw new Error("Failed to upload file to R2");
-    }
+    if (!uploadResponse.ok) throw new Error("Failed to upload file to R2");
 
     // Handle thumbnail
-    let thumbnailUrl = undefined;
+    let thumbnailUrl: string | undefined;
     if (file.type.startsWith("image/")) {
         try {
             const thumbnailBlob = await generateThumbnail(file);
             if (thumbnailBlob) {
                 const thumbName = `${workspaceId}/thumbnails/${timestamp}-${file.name}_thumb.jpg`;
-                
-                const thumbPresignResponse = await fetch(`${API_URL}/api/files/presign`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ fileName: thumbName }),
+                const { url: thumbPresignedUrl, path: thumbPath } = await apiPost<{ url: string; path: string }>(
+                    `/api/files/presign`, { fileName: thumbName },
+                );
+
+                const thumbUploadResponse = await fetch(thumbPresignedUrl, {
+                    method: "PUT",
+                    headers: { "Content-Type": "image/jpeg" },
+                    body: thumbnailBlob,
                 });
 
-                if (thumbPresignResponse.ok) {
-                    const { url: thumbPresignedUrl, path: thumbPath } = await thumbPresignResponse.json();
-                    
-                    const thumbUploadResponse = await fetch(thumbPresignedUrl, {
-                        method: "PUT",
-                        headers: { "Content-Type": "image/jpeg" },
-                        body: thumbnailBlob,
-                    });
-
-                    if (thumbUploadResponse.ok) {
-                        thumbnailUrl = `${API_URL}/api/files/${thumbPath}`;
-                    }
+                if (thumbUploadResponse.ok) {
+                    thumbnailUrl = `${API_URL}/api/files/${thumbPath}`;
                 }
             }
         } catch (e) {
             console.error("Failed to generate/upload thumbnail", e);
-            // Continue without thumbnail
         }
     }
 
     // Save metadata
-    const metadataResponse = await fetch(`${API_URL}/api/files/upload`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-            filename: file.name,
-            size: file.size,
-            mimeType: file.type,
-            url: `${API_URL}/api/files/${path}`,
-            thumbnail: thumbnailUrl,
-            workspaceId,
-            projectId,
-            parentId: parentId || null,
-        }),
+    return apiPost(`/api/files/upload`, {
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type,
+        url: `${API_URL}/api/files/${path}`,
+        thumbnail: thumbnailUrl,
+        workspaceId,
+        projectId,
+        parentId: parentId || null,
     });
-
-    if (!metadataResponse.ok) {
-        throw new Error("Failed to save file metadata");
-    }
-
-    return metadataResponse.json();
 };
 
-// Create folder
-export const createFolder = async (name: string, projectId: string, workspaceId: string, parentId?: string | null) => {
-    const response = await fetch(`${API_URL}/api/files/folder`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-            name,
-            workspaceId,
-            projectId,
-            parentId: parentId || null,
-        }),
-    });
+export const createFolder = (name: string, projectId: string, workspaceId: string, parentId?: string | null) =>
+    apiPost(`/api/files/folder`, { name, workspaceId, projectId, parentId: parentId || null });
 
-    if (!response.ok) {
-        throw new Error("Failed to create folder");
-    }
+export const toggleStar = (fileId: string) =>
+    apiPut(`/api/files/${fileId}/star`);
 
-    return response.json();
-};
+export const deleteFile = (fileId: string) =>
+    apiDelete(`/api/files/${fileId}`);
 
-// Toggle star
-export const toggleStar = async (fileId: string) => {
-    const response = await fetch(`${API_URL}/api/files/${fileId}/star`, {
-        method: "PUT",
-        credentials: "include",
-    });
+export const restoreFile = (fileId: string) =>
+    apiPut(`/api/files/${fileId}/restore`);
 
-    if (!response.ok) {
-        throw new Error("Failed to toggle star");
-    }
+export const permanentlyDeleteFile = (fileId: string) =>
+    apiDelete(`/api/files/${fileId}/permanent`);
 
-    return response.json();
-};
+export const shareFile = (fileId: string, userId: string, permission: "view" | "edit") =>
+    apiPut(`/api/files/${fileId}/share`, { userId, permission });
 
-// Delete file (move to trash)
-export const deleteFile = async (fileId: string) => {
-    const response = await fetch(`${API_URL}/api/files/${fileId}`, {
-        method: "DELETE",
-        credentials: "include",
-    });
+export const renameFile = (fileId: string, name: string) =>
+    apiPut(`/api/files/${fileId}/rename`, { name });
 
-    if (!response.ok) {
-        throw new Error("Failed to delete file");
-    }
+// ── React Query Hooks ─────────────────────────────────────────────────────────
 
-    return response.json();
-};
-
-// Restore file from trash
-export const restoreFile = async (fileId: string) => {
-    const response = await fetch(`${API_URL}/api/files/${fileId}/restore`, {
-        method: "PUT",
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to restore file");
-    }
-
-    return response.json();
-};
-
-// Permanently delete file
-export const permanentlyDeleteFile = async (fileId: string) => {
-    const response = await fetch(`${API_URL}/api/files/${fileId}/permanent`, {
-        method: "DELETE",
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to permanently delete file");
-    }
-
-    return response.json();
-};
-
-// Share file
-export const shareFile = async (fileId: string, userId: string, permission: "view" | "edit") => {
-    const response = await fetch(`${API_URL}/api/files/${fileId}/share`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ userId, permission }),
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to share file");
-    }
-
-    return response.json();
-};
-
-// Rename file
-export const renameFile = async (fileId: string, name: string) => {
-    const response = await fetch(`${API_URL}/api/files/${fileId}/rename`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name }),
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to rename file");
-    }
-
-    return response.json();
-};
-
-// Hook for fetching files
-export const useFiles = (workspaceId: string, parentId?: string | null) => {
-    return useQuery({
+export const useFiles = (workspaceId: string, parentId?: string | null) =>
+    useQuery({
         queryKey: ["files", workspaceId, parentId],
         queryFn: () => fetchFiles(workspaceId, parentId),
         enabled: !!workspaceId,
     });
-};
 
-// Hook for uploading files
 export const useUploadFile = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: ({ file, projectId, workspaceId, parentId }: { file: File; projectId: string; workspaceId: string; parentId?: string | null }) =>
             uploadFile(file, projectId, workspaceId, parentId),
@@ -417,10 +181,8 @@ export const useUploadFile = () => {
     });
 };
 
-// Hook for creating folders
 export const useCreateFolder = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: ({ name, projectId, workspaceId, parentId }: { name: string; projectId: string; workspaceId: string; parentId?: string | null }) =>
             createFolder(name, projectId, workspaceId, parentId),
@@ -431,62 +193,42 @@ export const useCreateFolder = () => {
     });
 };
 
-// Hook for toggling star
 export const useToggleStar = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: (fileId: string) => toggleStar(fileId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
     });
 };
 
-// Hook for deleting files
 export const useDeleteFile = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: (fileId: string) => deleteFile(fileId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
     });
 };
 
-// Hook for restoring files
 export const useRestoreFile = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: (fileId: string) => restoreFile(fileId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
     });
 };
 
-// Hook for permanently deleting files
 export const usePermanentlyDeleteFile = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
     });
 };
 
-// Hook for renaming files
 export const useRenameFile = () => {
     const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
     });
 };

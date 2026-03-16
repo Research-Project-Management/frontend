@@ -141,10 +141,10 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                 <Plus className="size-4" />
               </button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle className="text-xl font-semibold">
-                  Create New Project
+                  New Project
                 </DialogTitle>
               </DialogHeader>
               <CreateProject onSuccess={() => setOpen(false)} />

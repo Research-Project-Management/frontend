@@ -10,6 +10,7 @@ import { FolderOpen } from "lucide-react";
 import Loading from "~/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
+import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 export default function WorkspaceMyFilesPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -45,8 +46,11 @@ export default function WorkspaceMyFilesPage() {
     }
   };
 
-  const handleDownload = (item: StorageItem) => {
-    if (item.url) {
+  const handleDownload = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await downloadFileAsBlob(item.url, item.filename);
+    } catch {
       window.open(item.url, "_blank");
     }
   };

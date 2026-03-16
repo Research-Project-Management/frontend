@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { PageComment } from "../types/page";
-import { API_URL } from "~/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import { useSocket } from "~/contexts/SocketProvider";
 
 // ── Fetch + real-time subscription ────────────────────────────────────────────
@@ -54,11 +54,8 @@ export const usePageComments = (pageId: string | null) => {
   return useQuery({
     queryKey: ["page-comments", pageId],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/pages/${pageId}/comments`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch comments");
-      return (await res.json()).comments as PageComment[];
+      const data = await apiGet<{ comments: PageComment[] }>(`/api/pages/${pageId}/comments`);
+      return data.comments;
     },
     enabled: !!pageId,
   });
@@ -69,25 +66,14 @@ export const usePageComments = (pageId: string | null) => {
 export const useCreateComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      pageId,
-      content,
-      line,
-      lineEnd,
-    }: {
-      pageId: string;
-      content: string;
-      line?: number | null;
-      lineEnd?: number | null;
+    mutationFn: async ({ pageId, content, line, lineEnd }: {
+      pageId: string; content: string; line?: number | null; lineEnd?: number | null;
     }) => {
-      const res = await fetch(`${API_URL}/api/pages/${pageId}/comments`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, line: line ?? null, lineEnd: lineEnd ?? null }),
-      });
-      if (!res.ok) throw new Error("Failed to create comment");
-      return (await res.json()).comment as PageComment;
+      const data = await apiPost<{ comment: PageComment }>(
+        `/api/pages/${pageId}/comments`,
+        { content, line: line ?? null, lineEnd: lineEnd ?? null },
+      );
+      return data.comment;
     },
     onSuccess: (_, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
@@ -100,28 +86,14 @@ export const useCreateComment = () => {
 export const useUpdateComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      pageId,
-      commentId,
-      status,
-      content,
-    }: {
-      pageId: string;
-      commentId: string;
-      status?: "open" | "resolved";
-      content?: string;
+    mutationFn: async ({ pageId, commentId, status, content }: {
+      pageId: string; commentId: string; status?: "open" | "resolved"; content?: string;
     }) => {
-      const res = await fetch(
-        `${API_URL}/api/pages/${pageId}/comments/${commentId}`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status, content }),
-        },
+      const data = await apiPut<{ comment: PageComment }>(
+        `/api/pages/${pageId}/comments/${commentId}`,
+        { status, content },
       );
-      if (!res.ok) throw new Error("Failed to update comment");
-      return (await res.json()).comment as PageComment;
+      return data.comment;
     },
     onMutate: async ({ pageId, commentId, status, content }) => {
       await queryClient.cancelQueries({ queryKey: ["page-comments", pageId] });
@@ -136,9 +108,7 @@ export const useUpdateComment = () => {
       return { snapshot };
     },
     onError: (_err, { pageId }, ctx) => {
-      if (ctx?.snapshot) {
-        queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
-      }
+      if (ctx?.snapshot) queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
     },
     onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
@@ -151,19 +121,8 @@ export const useUpdateComment = () => {
 export const useDeleteComment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      pageId,
-      commentId,
-    }: {
-      pageId: string;
-      commentId: string;
-    }) => {
-      const res = await fetch(
-        `${API_URL}/api/pages/${pageId}/comments/${commentId}`,
-        { method: "DELETE", credentials: "include" },
-      );
-      if (!res.ok) throw new Error("Failed to delete comment");
-    },
+    mutationFn: ({ pageId, commentId }: { pageId: string; commentId: string }) =>
+      apiDelete(`/api/pages/${pageId}/comments/${commentId}`),
     onMutate: async ({ pageId, commentId }) => {
       await queryClient.cancelQueries({ queryKey: ["page-comments", pageId] });
       const snapshot = queryClient.getQueryData<PageComment[]>(["page-comments", pageId]);
@@ -173,9 +132,7 @@ export const useDeleteComment = () => {
       return { snapshot };
     },
     onError: (_err, { pageId }, ctx) => {
-      if (ctx?.snapshot) {
-        queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
-      }
+      if (ctx?.snapshot) queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
     },
     onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });
@@ -188,26 +145,14 @@ export const useDeleteComment = () => {
 export const useAddReply = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      pageId,
-      commentId,
-      content,
-    }: {
-      pageId: string;
-      commentId: string;
-      content: string;
+    mutationFn: async ({ pageId, commentId, content }: {
+      pageId: string; commentId: string; content: string;
     }) => {
-      const res = await fetch(
-        `${API_URL}/api/pages/${pageId}/comments/${commentId}/replies`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        },
+      const data = await apiPost<{ comment: PageComment }>(
+        `/api/pages/${pageId}/comments/${commentId}/replies`,
+        { content },
       );
-      if (!res.ok) throw new Error("Failed to add reply");
-      return (await res.json()).comment as PageComment;
+      return data.comment;
     },
     onSuccess: (updatedComment, { pageId }) => {
       queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
@@ -225,21 +170,13 @@ export const useAddReply = () => {
 export const useDeleteReply = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      pageId,
-      commentId,
-      replyId,
-    }: {
-      pageId: string;
-      commentId: string;
-      replyId: string;
+    mutationFn: async ({ pageId, commentId, replyId }: {
+      pageId: string; commentId: string; replyId: string;
     }) => {
-      const res = await fetch(
-        `${API_URL}/api/pages/${pageId}/comments/${commentId}/replies/${replyId}`,
-        { method: "DELETE", credentials: "include" },
+      const data = await apiPost<{ comment: PageComment }>(
+        `/api/pages/${pageId}/comments/${commentId}/replies/${replyId}`,
       );
-      if (!res.ok) throw new Error("Failed to delete reply");
-      return (await res.json()).comment as PageComment;
+      return data.comment;
     },
     onMutate: async ({ pageId, commentId, replyId }) => {
       await queryClient.cancelQueries({ queryKey: ["page-comments", pageId] });
@@ -254,9 +191,7 @@ export const useDeleteReply = () => {
       return { snapshot };
     },
     onError: (_err, { pageId }, ctx) => {
-      if (ctx?.snapshot) {
-        queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
-      }
+      if (ctx?.snapshot) queryClient.setQueryData(["page-comments", pageId], ctx.snapshot);
     },
     onSettled: (_, _err, { pageId }) => {
       queryClient.invalidateQueries({ queryKey: ["page-comments", pageId] });

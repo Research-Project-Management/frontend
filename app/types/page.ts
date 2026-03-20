@@ -48,12 +48,19 @@ export type PageComment = {
   updatedAt: string;
 };
 
-export type PageAsset = {
+export type PageFileAsset = {
   _id: string;
-  name: string;
-  mimeType: string;
-  size: number;
+  filename: string;
+  isFolder: boolean;
+  parent: string | null;
+  mimeType?: string;
+  size?: number;
+  url?: string;
+  thumbnail?: string;
+  pageId: string;
+  author?: { _id: string; name: string; email?: string; avatar?: string };
   createdAt: string;
+  updatedAt: string;
 };
 
 export type Page = {

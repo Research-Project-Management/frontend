@@ -2,10 +2,14 @@ import React, { useRef, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   Check,
+  ChevronRight,
   Ellipsis,
   FileCode2,
   FilePlus,
   FileText,
+  FolderPlus,
+  FolderOpen,
+  Folder,
   Image,
   Loader2,
   Paperclip,
@@ -45,8 +49,309 @@ import {
   usePageAssets,
   useUploadPageAsset,
   useDeletePageAsset,
-  useFetchAssetData,
+  useCreatePageFolder,
+  useRenamePageAsset,
 } from "~/query/page";
+import type { PageFileAsset } from "~/types/page";
+
+// ── Folder Node (recursive, collapsible) ─────────────────────────────────────
+
+function FolderNode({
+  folder,
+  pageId,
+  depth,
+  onInsertAsset,
+  onPreview,
+}: {
+  folder: PageFileAsset;
+  pageId: string;
+  depth: number;
+  onInsertAsset: (name: string) => void;
+  onPreview: (asset: PageFileAsset) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: children, isLoading } = usePageAssets(pageId, expanded ? folder._id : undefined);
+  const deleteAssetMutation = useDeletePageAsset();
+  const renameAssetMutation = useRenamePageAsset();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  const handleDelete = (assetId: string) => {
+    deleteAssetMutation.mutate({ pageId, assetId });
+  };
+
+  const handleStartRename = (asset: PageFileAsset) => {
+    setRenamingId(asset._id);
+    setRenameValue(asset.filename);
+  };
+
+  const handleCommitRename = (assetId: string) => {
+    const name = renameValue.trim();
+    if (!name) { setRenamingId(null); return; }
+    renameAssetMutation.mutate(
+      { pageId, assetId, name },
+      { onSuccess: () => setRenamingId(null) },
+    );
+  };
+
+  return (
+    <>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        className="group flex items-center gap-1.5 py-1.5 pr-2 cursor-pointer transition-colors text-foreground hover:bg-primary/5"
+      >
+        <ChevronRight
+          className={cn(
+            "size-3 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-90",
+          )}
+        />
+        {expanded ? (
+          <FolderOpen className="size-3.5 shrink-0 text-amber-500" />
+        ) : (
+          <Folder className="size-3.5 shrink-0 text-amber-500" />
+        )}
+
+        {renamingId === folder._id ? (
+          <>
+            <input
+              autoFocus
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") handleCommitRename(folder._id);
+                if (e.key === "Escape") setRenamingId(null);
+              }}
+              className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); handleCommitRename(folder._id); }}
+              className="text-primary hover:opacity-70 transition-opacity shrink-0"
+            >
+              <Check className="size-3.5" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setRenamingId(null); }}
+              className="text-muted-foreground hover:text-primary transition-colors shrink-0"
+            >
+              <X className="size-3.5" />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="flex-1 min-w-0 truncate text-xs">{folder.filename}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
+                >
+                  <Ellipsis className="size-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  className="text-xs!"
+                  onClick={(e) => { e.stopPropagation(); handleStartRename(folder); }}
+                >
+                  <Pencil className="size-3.5 mr-2" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-xs!"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(folder._id); }}
+                >
+                  <Trash2 className="size-3.5 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+      </div>
+
+      {/* Children (loaded on expand) */}
+      {expanded && (
+        <>
+          {isLoading && (
+            <div style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }} className="py-1">
+              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {children?.map((child) =>
+            child.isFolder ? (
+              <FolderNode
+                key={child._id}
+                folder={child}
+                pageId={pageId}
+                depth={depth + 1}
+                onInsertAsset={onInsertAsset}
+                onPreview={onPreview}
+              />
+            ) : (
+              <AssetFileRow
+                key={child._id}
+                asset={child}
+                pageId={pageId}
+                depth={depth + 1}
+                onInsertAsset={onInsertAsset}
+                onPreview={onPreview}
+              />
+            ),
+          )}
+          {!isLoading && !children?.length && (
+            <div
+              style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
+              className="text-[10px] text-muted-foreground/60 italic py-1"
+            >
+              Empty folder
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+// ── Asset File Row ──────────────────────────────────────────────────────────
+
+function AssetFileRow({
+  asset,
+  pageId,
+  depth,
+  onInsertAsset,
+  onPreview,
+}: {
+  asset: PageFileAsset;
+  pageId: string;
+  depth: number;
+  onInsertAsset: (name: string) => void;
+  onPreview: (asset: PageFileAsset) => void;
+}) {
+  const isImage = asset.mimeType?.startsWith("image/");
+  const deleteAssetMutation = useDeletePageAsset();
+  const renameAssetMutation = useRenamePageAsset();
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  const handleDelete = () => deleteAssetMutation.mutate({ pageId, assetId: asset._id });
+
+  const handleStartRename = () => {
+    setRenamingId(asset._id);
+    setRenameValue(asset.filename);
+  };
+
+  const handleCommitRename = () => {
+    const name = renameValue.trim();
+    if (!name) { setRenamingId(null); return; }
+    renameAssetMutation.mutate(
+      { pageId, assetId: asset._id, name },
+      { onSuccess: () => setRenamingId(null) },
+    );
+  };
+
+  return (
+    <div
+      onClick={() =>
+        isImage ? onPreview(asset) : onInsertAsset(asset.filename)
+      }
+      title={
+        isImage
+          ? `Click to preview ${asset.filename}`
+          : `Click to insert \\includegraphics{${asset.filename}}`
+      }
+      style={{ paddingLeft: `${depth * 12 + 8}px` }}
+      className="group flex items-center gap-2 py-1.5 pr-2 cursor-pointer transition-colors text-foreground hover:bg-primary/5"
+    >
+      {isImage ? (
+        <Image className="size-3.5 shrink-0 text-muted-foreground" />
+      ) : (
+        <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
+      )}
+
+      {renamingId === asset._id ? (
+        <>
+          <input
+            autoFocus
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") handleCommitRename();
+              if (e.key === "Escape") setRenamingId(null);
+            }}
+            className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCommitRename(); }}
+            className="text-primary hover:opacity-70 transition-opacity shrink-0"
+          >
+            <Check className="size-3.5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setRenamingId(null); }}
+            className="text-muted-foreground hover:text-primary transition-colors shrink-0"
+          >
+            <X className="size-3.5" />
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="flex-1 min-w-0 truncate text-xs">{asset.filename}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
+              >
+                <Ellipsis className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                className="text-xs!"
+                onClick={(e) => { e.stopPropagation(); onInsertAsset(asset.filename); }}
+              >
+                <FileCode2 className="size-3.5 mr-2" />
+                Insert Command
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs!"
+                onClick={(e) => { e.stopPropagation(); handleStartRename(); }}
+              >
+                <Pencil className="size-3.5 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-xs!"
+                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+              >
+                <Trash2 className="size-3.5 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Extensions ──────────────────────────────────────────────────────────────
+
+const TEX_EXTS = new Set([
+  ".tex", ".bib", ".cls", ".sty", ".bst", ".txt", ".md", ".ltx", ".dtx", ".ins",
+]);
+
+// ── Main FilesTab ───────────────────────────────────────────────────────────
 
 export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
@@ -56,9 +361,13 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [isCreatingFile, setIsCreatingFile] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFileName, setNewFileName] = useState("");
+  const [newFolderName, setNewFolderName] = useState("");
   const newFileInputRef = useRef<HTMLInputElement>(null);
+  const newFolderInputRef = useRef<HTMLInputElement>(null);
   const combinedUploadRef = useRef<HTMLInputElement>(null);
+  const folderUploadRef = useRef<HTMLInputElement>(null);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadingAssets, setUploadingAssets] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -68,8 +377,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  // The parent page-project ID: if currentPage is a child file, use its parentPage;
-  // if currentPage IS the project root (no parentPage), use its own _id.
+  // The parent page-project ID
   const parentPageId: string | null = currentPage
     ? currentPage.parentPage
       ? String(currentPage.parentPage)
@@ -89,35 +397,19 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const setMainFileMutation = useSetPageMainFile();
   const deletePageMutation = useDeletePage();
   const updateTitleMutation = useUpdatePageTitle();
-  const { data: assets, isLoading: assetsLoading } =
-    usePageAssets(parentPageId);
+
+  // Assets (R2-backed files & folders) — root level only
+  const { data: assets, isLoading: assetsLoading } = usePageAssets(parentPageId);
   const uploadAssetMutation = useUploadPageAsset();
   const deleteAssetMutation = useDeletePageAsset();
-  const fetchAssetDataMutation = useFetchAssetData();
+  const createFolderMutation = useCreatePageFolder();
 
-  const [previewAsset, setPreviewAsset] = useState<{
-    _id: string;
-    name: string;
-    mimeType: string;
-  } | null>(null);
-  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  // Image preview
+  const [previewAsset, setPreviewAsset] = useState<PageFileAsset | null>(null);
 
-  const handleOpenPreview = useCallback(
-    (asset: { _id: string; name: string; mimeType: string }) => {
-      if (!parentPageId) return;
-      setPreviewAsset(asset);
-      setPreviewDataUrl(null);
-      fetchAssetDataMutation.mutate(
-        { pageId: parentPageId, assetId: asset._id },
-        {
-          onSuccess: (result) => {
-            setPreviewDataUrl(`data:${result.mimeType};base64,${result.data}`);
-          },
-        },
-      );
-    },
-    [parentPageId, fetchAssetDataMutation],
-  );
+  const handleOpenPreview = useCallback((asset: PageFileAsset) => {
+    setPreviewAsset(asset);
+  }, []);
 
   const projectId =
     currentPage?.project && typeof currentPage.project === "object"
@@ -134,18 +426,44 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     setTimeout(() => newFileInputRef.current?.focus(), 0);
   };
 
+  const handleStartCreateFolder = () => {
+    setIsCreatingFolder(true);
+    setNewFolderName("");
+    setTimeout(() => newFolderInputRef.current?.focus(), 0);
+  };
+
   const handleCancelCreate = () => {
     setIsCreatingFile(false);
     setNewFileName("");
   };
 
+  const handleCancelCreateFolder = () => {
+    setIsCreatingFolder(false);
+    setNewFolderName("");
+  };
+
   const handleUpload = () => combinedUploadRef.current?.click();
+  const handleFolderUpload = () => folderUploadRef.current?.click();
 
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!picked.length) return;
     setPendingUploads(picked.map((f) => ({ file: f, name: f.name })));
+    setUploadDialogOpen(true);
+  };
+
+  const handleFolderPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!picked.length) return;
+    // For folder uploads, flatten all files with their webkitRelativePath
+    setPendingUploads(
+      picked.map((f) => ({
+        file: f,
+        name: (f as any).webkitRelativePath || f.name,
+      })),
+    );
     setUploadDialogOpen(true);
   };
 
@@ -168,6 +486,20 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           setIsCreatingFile(false);
           setNewFileName("");
           navigate(`/editor/${file._id}`);
+        },
+      },
+    );
+  };
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim();
+    if (!parentPageId || !name) return;
+    createFolderMutation.mutate(
+      { pageId: parentPageId, name },
+      {
+        onSuccess: () => {
+          setIsCreatingFolder(false);
+          setNewFolderName("");
         },
       },
     );
@@ -336,19 +668,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   // ── Drag & drop ──────────────────────────────────────────────────────────
 
-  const TEX_EXTS = new Set([
-    ".tex",
-    ".bib",
-    ".cls",
-    ".sty",
-    ".bst",
-    ".txt",
-    ".md",
-    ".ltx",
-    ".dtx",
-    ".ins",
-  ]);
-
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -382,7 +701,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   return (
     <>
       <div className="w-full h-full flex flex-col select-none">
-        {/* Hidden upload input — accepts all file types */}
+        {/* Hidden upload inputs */}
         <input
           ref={combinedUploadRef}
           type="file"
@@ -390,6 +709,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           className="hidden"
           onChange={handleFilePicked}
         />
+        <input
+          ref={folderUploadRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFolderPicked}
+          {...({ webkitdirectory: "", directory: "" } as any)}
+        />
+
         {/* Toolbar row */}
         <div className="flex items-center justify-between px-3 h-8 shrink-0">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -398,6 +726,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           <div className="flex gap-0.5">
             {[
               { icon: FilePlus, label: "New File", action: handleStartCreate },
+              { icon: FolderPlus, label: "New Folder", action: handleStartCreateFolder },
               { icon: Upload, label: "Upload Files", action: handleUpload },
             ].map(({ icon: Icon, label, action }) => (
               <Tooltip key={label}>
@@ -445,6 +774,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               </span>
             </div>
           )}
+
           {/* Inline new-file input */}
           {isCreatingFile && (
             <div className="flex items-center gap-1.5 px-2 py-1">
@@ -481,6 +811,42 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
+          {/* Inline new-folder input */}
+          {isCreatingFolder && (
+            <div className="flex items-center gap-1.5 px-2 py-1">
+              <Folder className="size-3.5 text-amber-500 shrink-0" />
+              <input
+                ref={newFolderInputRef}
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateFolder();
+                  if (e.key === "Escape") handleCancelCreateFolder();
+                }}
+                placeholder="folder name"
+                className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none text-primary placeholder:text-muted-foreground/50"
+              />
+              <button
+                onClick={handleCreateFolder}
+                disabled={createFolderMutation.isPending}
+                className="text-primary hover:opacity-70 transition-opacity disabled:opacity-40"
+              >
+                {createFolderMutation.isPending ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Check className="size-3.5" />
+                )}
+              </button>
+              <button
+                onClick={handleCancelCreateFolder}
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Loading — skeleton rows */}
           {(isLoading || assetsLoading) && (
             <div className="flex flex-col">
@@ -506,7 +872,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
-          {/* File rows */}
+          {/* TeX file rows */}
           {!isLoading &&
             !assetsLoading &&
             files?.map((file) => {
@@ -572,7 +938,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   ) : (
                     <span className="flex-1 flex items-center min-w-0 truncate text-xs">
                       {displayName(file.title)}
-                      {/* Main file star badge */}
                       {isMain && !renamingId && (
                         <span className="ml-2 text-xs text-primary/80 p-0.5 px-1 rounded bg-primary/20">
                           main
@@ -644,78 +1009,38 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
-          {/* Asset rows — inline with files */}
+          {/* Asset rows — unified with files (folders first, then files) */}
           {!isLoading &&
             !assetsLoading &&
-            assets?.map((asset) => {
-              const isImage = asset.mimeType.startsWith("image/");
-              return (
-                <div
+            assets?.map((asset) =>
+              asset.isFolder ? (
+                <FolderNode
                   key={asset._id}
-                  onClick={() =>
-                    isImage
-                      ? handleOpenPreview(asset)
-                      : handleInsertAsset(asset.name)
-                  }
-                  title={
-                    isImage
-                      ? `Click to preview ${asset.name}`
-                      : `Click to insert \\includegraphics{${asset.name}}`
-                  }
-                  className="group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors text-foreground hover:bg-primary/5"
-                >
-                  {isImage ? (
-                    <Image className="size-3.5 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
-                  )}
-                  <span className="flex-1 min-w-0 truncate text-xs">
-                    {asset.name}
-                  </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
-                      >
-                        <Ellipsis className="size-3.5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem
-                        className="text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleInsertAsset(asset.name);
-                        }}
-                      >
-                        <FileCode2 className="size-3.5 mr-2" />
-                        Insert Command
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteAsset(asset._id);
-                        }}
-                        className="text-xs"
-                      >
-                        <Trash2 className="size-3.5 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              );
-            })}
+                  folder={asset}
+                  pageId={parentPageId!}
+                  depth={0}
+                  onInsertAsset={handleInsertAsset}
+                  onPreview={handleOpenPreview}
+                />
+              ) : (
+                <AssetFileRow
+                  key={asset._id}
+                  asset={asset}
+                  pageId={parentPageId!}
+                  depth={0}
+                  onInsertAsset={handleInsertAsset}
+                  onPreview={handleOpenPreview}
+                />
+              ),
+            )}
 
           {/* Empty state */}
           {!isLoading &&
             !assetsLoading &&
             !files?.length &&
             !assets?.length &&
-            !isCreatingFile && (
+            !isCreatingFile &&
+            !isCreatingFolder && (
               <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
                 <FileText className="size-8 opacity-25" />
                 <p className="text-xs text-center leading-relaxed">
@@ -812,28 +1137,26 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         </DialogContent>
       </Dialog>
 
-      {/* Image preview dialog */}
+      {/* Image preview dialog — now using R2 URL directly */}
       <Dialog
         open={!!previewAsset}
         onOpenChange={(open) => {
-          if (!open) {
-            setPreviewAsset(null);
-            setPreviewDataUrl(null);
-          }
+          if (!open) setPreviewAsset(null);
         }}
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm truncate">
-              {previewAsset?.name}
+              {previewAsset?.filename}
             </DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-32">
-            {previewDataUrl ? (
+            {previewAsset?.url ? (
               <img
-                src={previewDataUrl}
-                alt={previewAsset?.name}
+                src={previewAsset.url}
+                alt={previewAsset.filename}
                 className="max-w-full max-h-[70vh] object-contain rounded"
+                crossOrigin="use-credentials"
               />
             ) : (
               <Loader2 className="size-6 animate-spin text-muted-foreground" />

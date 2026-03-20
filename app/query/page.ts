@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import type { Page, PageAsset, PageVersion, PageEvent } from "../types/page";
-import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
+import type { Page, PageFileAsset, PageVersion, PageEvent } from "../types/page";
+import { API_URL, apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import { useSocket } from "~/contexts/SocketProvider";
 
 // ── Workspace Pages ───────────────────────────────────────────────────────────
@@ -244,13 +244,14 @@ export const useUpdatePageThumbnail = () => {
   });
 };
 
-// ── Page Assets (images & binary files uploaded to a page-project) ────────
+// ── Page Assets (R2-backed files & folders inside a page-project) ─────────
 
-export const usePageAssets = (pageId: string | null) =>
+export const usePageAssets = (pageId: string | null, parentId?: string | null) =>
   useQuery({
-    queryKey: ["page-assets", pageId],
+    queryKey: ["page-assets", pageId, parentId ?? null],
     queryFn: async () => {
-      const data = await apiGet<{ assets: PageAsset[] }>(`/api/pages/${pageId}/assets`);
+      const params = parentId ? `?parentId=${parentId}` : "";
+      const data = await apiGet<{ assets: PageFileAsset[] }>(`/api/pages/${pageId}/assets${params}`);
       return data.assets;
     },
     enabled: !!pageId,
@@ -259,19 +260,53 @@ export const usePageAssets = (pageId: string | null) =>
 export const useUploadPageAsset = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ pageId, file }: { pageId: string; file: File }) => {
-      const base64 = await new Promise<string>((resolve, reject) => {
+    mutationFn: async ({ pageId, file, parentId }: { pageId: string; file: File; parentId?: string | null }) => {
+      // 1. Get presigned URL
+      const { url: presignedUrl, path } = await apiPost<{ url: string; path: string }>(
+        `/api/pages/${pageId}/assets/presign`, { fileName: file.name },
+      );
+
+      // 2. Upload to R2
+      const uploadResponse = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error("Failed to upload to R2");
+
+      // 3. Read file as base64 for compiler sync
+      const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve((reader.result as string).split(",")[1]);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      const data = await apiPost<{ asset: PageAsset }>(`/api/pages/${pageId}/assets`, {
-        name: file.name,
+
+      // 4. Save metadata + send base64 for compiler sync
+      const data = await apiPost<{ asset: PageFileAsset }>(`/api/pages/${pageId}/assets`, {
+        filename: file.name,
+        size: file.size,
         mimeType: file.type || "application/octet-stream",
-        data: base64,
+        url: `${API_URL}/api/files/${path}`,
+        parentId: parentId || null,
+        base64Data,
       });
       return data.asset;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["page-assets", variables.pageId] });
+    },
+  });
+};
+
+export const useCreatePageFolder = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId, name, parentId }: { pageId: string; name: string; parentId?: string | null }) => {
+      const data = await apiPost<{ folder: PageFileAsset }>(`/api/pages/${pageId}/folders`, {
+        name, parentId: parentId || null,
+      });
+      return data.folder;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["page-assets", variables.pageId] });
@@ -290,13 +325,18 @@ export const useDeletePageAsset = () => {
   });
 };
 
-export const useFetchAssetData = () =>
-  useMutation({
-    mutationFn: ({ pageId, assetId }: { pageId: string; assetId: string }) =>
-      apiGet<{ name: string; mimeType: string; data: string }>(
-        `/api/pages/${pageId}/assets/${assetId}/data`,
-      ),
+export const useRenamePageAsset = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId, assetId, name }: { pageId: string; assetId: string; name: string }) => {
+      const data = await apiPut<{ asset: PageFileAsset }>(`/api/pages/${pageId}/assets/${assetId}/rename`, { name });
+      return data.asset;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["page-assets", variables.pageId] });
+    },
   });
+};
 
 // ── Version control ───────────────────────────────────────────────────────────
 

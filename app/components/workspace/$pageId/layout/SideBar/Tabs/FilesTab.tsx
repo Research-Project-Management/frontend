@@ -742,6 +742,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     if (assetItems.length) {
       setUploadingAssets(true);
       let done = 0;
+      const total = assetItems.length;
       assetItems.forEach(({ file, name }) => {
         const renamedFile =
           name !== file.name
@@ -750,9 +751,13 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         uploadAssetMutation.mutate(
           { pageId: parentPageId, file: renamedFile },
           {
-            onSettled: () => {
+            onSuccess: () => {
               done++;
-              if (done === assetItems.length) setUploadingAssets(false);
+              if (done >= total) setUploadingAssets(false);
+            },
+            onError: () => {
+              done++;
+              if (done >= total) setUploadingAssets(false);
             },
           },
         );
@@ -1365,22 +1370,35 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 "." + (item.file.name.split(".").pop() ?? "").toLowerCase();
               const isTex = TEX_EXTS.has(ext);
               const isImg = item.file.type.startsWith("image/");
+              // Show folder path prefix when uploading from a folder
+              const hasPath = item.name.includes("/");
+              const folderPath = hasPath ? item.name.substring(0, item.name.lastIndexOf("/")) : null;
               const Icon = isTex ? FileCode2 : isImg ? Image : Paperclip;
               return (
                 <div key={i} className="flex items-center gap-2 px-1 py-1">
                   <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) =>
-                      setPendingUploads((prev) =>
-                        prev.map((p, j) =>
-                          j === i ? { ...p, name: e.target.value } : p,
-                        ),
-                      )
-                    }
-                    className="flex-1 min-w-0 text-xs bg-muted/40 border border-border rounded px-2 py-1 outline-none focus:border-primary"
-                  />
+                  <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    {folderPath && (
+                      <div className="flex items-center gap-1">
+                        <Folder className="size-3 text-amber-500 shrink-0" />
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {folderPath}
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) =>
+                        setPendingUploads((prev) =>
+                          prev.map((p, j) =>
+                            j === i ? { ...p, name: e.target.value } : p,
+                          ),
+                        )
+                      }
+                      className="w-full text-xs bg-muted/40 border border-border rounded px-2 py-1 outline-none focus:border-primary"
+                    />
+                  </div>
                   <button
                     onClick={() =>
                       setPendingUploads((prev) =>

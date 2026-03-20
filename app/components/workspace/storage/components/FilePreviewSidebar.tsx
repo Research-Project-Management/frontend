@@ -1,13 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   X, Download, ExternalLink, FileText, Calendar, User, Hash,
   BookOpen, GraduationCap, Globe, Layers, FileDigit, Building2,
-  BookMarked, ScrollText, Fingerprint, Maximize2,
+  BookMarked, ScrollText, Fingerprint, Maximize2, Search, Save,
+  Loader2, RefreshCw, CheckCircle2, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import type { StorageItem } from "../types";
 import { getFileType, getFileIcon, getFileColor, formatFileSize, formatDate } from "../pages/SharedComponents";
 import { useBlobUrl, downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import {
+  searchCrossref, lookupDoi, useUpdateFileMetadata,
+  type CrossrefWork,
+} from "~/query/storage";
 
 interface FilePreviewSidebarProps {
   item: StorageItem | null;
@@ -40,19 +47,39 @@ type PdfMetadata = {
   abstract?: string;
   language?: string;
   copyright?: string;
+  year?: number | string;
+  authors?: string[];
+  type?: string;
+  url?: string;
+  // Crossref enrichment source
+  crossrefEnriched?: boolean;
   // Raw extra fields
   extraFields?: Record<string, string>;
 };
+
+// ── DOI regex (matches 10.xxxx/... patterns) ─────────────────────────────────
+
+const DOI_REGEX = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s<>"{}|\\^`[\]]+)/g;
+
+function extractDoiFromText(text: string): string | null {
+  const matches = text.match(DOI_REGEX);
+  return matches?.[0] || null;
+}
+
+// ── PDF data hook with Crossref auto-enrichment ──────────────────────────────
 
 function usePdfData(item: StorageItem | null) {
   const [metadata, setMetadata] = useState<PdfMetadata | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [crossrefLoading, setCrossrefLoading] = useState(false);
+  const [crossrefStatus, setCrossrefStatus] = useState<"idle" | "found" | "not-found" | "error">("idle");
 
   useEffect(() => {
     if (!item || !item.url) {
       setMetadata(null);
       setPreviewDataUrl(null);
+      setCrossrefStatus("idle");
       return;
     }
 
@@ -63,9 +90,19 @@ function usePdfData(item: StorageItem | null) {
       return;
     }
 
+    // If saved metadata exists, use it directly
+    if (item.metaData && Object.keys(item.metaData).length > 0) {
+      setMetadata(item.metaData as PdfMetadata);
+      setCrossrefStatus(item.metaData.crossrefEnriched ? "found" : "idle");
+      // still render the preview
+      renderPdfPreview(item);
+      return;
+    }
+
     setLoading(true);
     setMetadata(null);
     setPreviewDataUrl(null);
+    setCrossrefStatus("idle");
 
     let cancelled = false;
 
@@ -105,9 +142,23 @@ function usePdfData(item: StorageItem | null) {
           }
         }
 
+        // Try to extract DOI from text if not in XMP
+        let doi = xmpFields.doi || undefined;
+        if (!doi) {
+          try {
+            for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const text = textContent.items.map((t: any) => t.str).join(" ");
+              const found = extractDoiFromText(text);
+              if (found) { doi = found; break; }
+            }
+          } catch { /* ignore text extraction errors */ }
+        }
+
         if (cancelled) return;
 
-        setMetadata({
+        const baseMeta: PdfMetadata = {
           title: info.Title || xmpFields.title || undefined,
           author: info.Author || xmpFields.creator || undefined,
           subject: info.Subject || xmpFields.description || undefined,
@@ -117,7 +168,7 @@ function usePdfData(item: StorageItem | null) {
           modDate: info.ModDate || undefined,
           pageCount: pdf.numPages,
           keywords: info.Keywords || xmpFields.keywords || undefined,
-          doi: xmpFields.doi || undefined,
+          doi,
           journal: xmpFields.journal || xmpFields.publicationName || undefined,
           publisher: xmpFields.publisher || undefined,
           issn: xmpFields.issn || undefined,
@@ -134,7 +185,9 @@ function usePdfData(item: StorageItem | null) {
           language: xmpFields.language || undefined,
           copyright: xmpFields.rights || undefined,
           extraFields: Object.keys(extraFields).length > 0 ? extraFields : undefined,
-        });
+        };
+
+        setMetadata(baseMeta);
 
         // Render first page as preview
         const page = await pdf.getPage(1);
@@ -151,6 +204,41 @@ function usePdfData(item: StorageItem | null) {
         if (!cancelled) {
           setPreviewDataUrl(canvas.toDataURL("image/png"));
         }
+
+        // Auto-enrich via Crossref
+        if (!cancelled) {
+          setCrossrefLoading(true);
+          try {
+            let crossrefWork: CrossrefWork | null = null;
+
+            if (doi) {
+              try {
+                const result = await lookupDoi(doi);
+                crossrefWork = result.work;
+              } catch { /* DOI not found on Crossref */ }
+            }
+
+            if (!crossrefWork && baseMeta.title) {
+              try {
+                const result = await searchCrossref(baseMeta.title, 1);
+                if (result.works.length > 0 && result.works[0].score > 10) {
+                  crossrefWork = result.works[0];
+                }
+              } catch { /* search failed */ }
+            }
+
+            if (crossrefWork && !cancelled) {
+              setMetadata((prev) => prev ? mergeCrossrefMetadata(prev, crossrefWork!) : prev);
+              setCrossrefStatus("found");
+            } else if (!cancelled) {
+              setCrossrefStatus("not-found");
+            }
+          } catch {
+            if (!cancelled) setCrossrefStatus("error");
+          } finally {
+            if (!cancelled) setCrossrefLoading(false);
+          }
+        }
       } catch (err) {
         console.error("Failed to process PDF:", err);
         if (!cancelled) {
@@ -165,7 +253,59 @@ function usePdfData(item: StorageItem | null) {
     return () => { cancelled = true; };
   }, [item?._id, item?.url]);
 
-  return { metadata, previewDataUrl, loading };
+  // Just render preview for already-saved metadata
+  const renderPdfPreview = useCallback(async (fileItem: StorageItem) => {
+    if (!fileItem.url) return;
+    try {
+      const response = await fetch(fileItem.url, { credentials: "include" });
+      if (!response.ok) return;
+      const arrayBuffer = await response.arrayBuffer();
+
+      const pdfjsLib = await import("pdfjs-dist");
+      const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = 280 / viewport.width;
+      const scaledViewport = page.getViewport({ scale });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      const ctx = canvas.getContext("2d")!;
+
+      await page.render({ canvasContext: ctx, viewport: scaledViewport, canvas } as any).promise;
+      setPreviewDataUrl(canvas.toDataURL("image/png"));
+    } catch { /* ignore */ }
+  }, []);
+
+  return { metadata, setMetadata, previewDataUrl, loading, crossrefLoading, crossrefStatus, setCrossrefStatus, setCrossrefLoading };
+}
+
+/** Merge Crossref data into existing metadata (fill gaps, don't overwrite) */
+function mergeCrossrefMetadata(base: PdfMetadata, work: CrossrefWork): PdfMetadata {
+  return {
+    ...base,
+    title: base.title || work.title || base.title,
+    author: base.author || work.authors?.join(", ") || base.author,
+    authors: work.authors?.length ? work.authors : base.authors,
+    doi: base.doi || work.doi || base.doi,
+    journal: base.journal || work.journal || base.journal,
+    publisher: base.publisher || work.publisher || base.publisher,
+    issn: base.issn || work.issn || base.issn,
+    isbn: base.isbn || work.isbn || base.isbn,
+    volume: base.volume || work.volume || base.volume,
+    issue: base.issue || work.issue || base.issue,
+    pages: base.pages || work.pages || base.pages,
+    year: base.year || work.year || base.year,
+    publicationDate: base.publicationDate || (work.year ? String(work.year) : undefined) || base.publicationDate,
+    abstract: base.abstract || work.abstract || base.abstract,
+    type: base.type || work.type || base.type,
+    url: base.url || work.url || base.url,
+    crossrefEnriched: true,
+  };
 }
 
 /** Parse XMP metadata XML for scholarly fields */
@@ -173,7 +313,6 @@ function parseXmpMetadata(xml: string): Record<string, string> {
   if (!xml) return {};
   const fields: Record<string, string> = {};
   const get = (tag: string): string | undefined => {
-    // Try <tag>value</tag> and <rdf:li>value</rdf:li> patterns
     const patterns = [
       new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, "i"),
       new RegExp(`<${tag}[^>]*>\\s*<rdf:(?:Alt|Seq|Bag)>\\s*<rdf:li[^>]*>([^<]+)</rdf:li>`, "i"),
@@ -185,7 +324,6 @@ function parseXmpMetadata(xml: string): Record<string, string> {
     return undefined;
   };
 
-  // Dublin Core
   fields.title = get("dc:title") || "";
   fields.creator = get("dc:creator") || "";
   fields.description = get("dc:description") || "";
@@ -194,7 +332,6 @@ function parseXmpMetadata(xml: string): Record<string, string> {
   fields.language = get("dc:language") || "";
   fields.publisher = get("dc:publisher") || "";
 
-  // CrossRef / PRISM (Publishing Requirements for Industry Standard Metadata)
   fields.doi = get("prism:doi") || get("pdfx:doi") || get("crossmark:DOI") || "";
   fields.journal = get("prism:publicationName") || get("prism:aggregationType") || "";
   fields.publicationName = get("prism:publicationName") || "";
@@ -209,16 +346,13 @@ function parseXmpMetadata(xml: string): Record<string, string> {
   fields.publicationDate = get("prism:coverDate") || get("prism:coverDisplayDate") || "";
   fields.keywords = get("pdf:Keywords") || get("prism:keyword") || "";
 
-  // CrossMark
   if (!fields.doi) {
     const doiMatch = xml.match(/doi[>"'\s:]+([^<"'\s]+10\.\d{4,}\/[^\s<"']+)/i);
     if (doiMatch) fields.doi = doiMatch[1];
   }
 
-  // Abstract from various sources
   fields.abstract = get("dc:description") || get("pdfx:Abstract") || "";
 
-  // Clean empty strings
   for (const k of Object.keys(fields)) {
     if (!fields[k]) delete fields[k];
   }
@@ -241,13 +375,31 @@ function parsePdfDate(raw?: string): string | null {
   return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+// ── Main component ───────────────────────────────────────────────────────────
+
 export default function FilePreviewSidebar({ item, onClose, onDownload, onPreview }: FilePreviewSidebarProps) {
-  const { metadata, previewDataUrl, loading: pdfLoading } = usePdfData(item);
+  const {
+    metadata, setMetadata, previewDataUrl, loading: pdfLoading,
+    crossrefLoading, crossrefStatus, setCrossrefStatus, setCrossrefLoading,
+  } = usePdfData(item);
 
   const isImage = item ? getFileType(item) === "image" : false;
   const { blobUrl: imageBlobUrl, loading: imageLoading } = useBlobUrl(
     item && isImage && item.url ? item.url : null,
   );
+
+  // Crossref search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<CrossrefWork[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Save metadata
+  const saveMetadataMutation = useUpdateFileMetadata();
+  const [saved, setSaved] = useState(false);
+
+  // Abstract expand
+  const [abstractExpanded, setAbstractExpanded] = useState(false);
 
   if (!item) return null;
 
@@ -261,6 +413,94 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
     } catch {
       onDownload(item);
     }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearchLoading(true);
+    try {
+      const result = await searchCrossref(searchQuery, 5);
+      setSearchResults(result.works);
+    } catch {
+      toast.error("Failed to search Crossref");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSelectCrossref = (work: CrossrefWork) => {
+    if (metadata) {
+      setMetadata(mergeCrossrefMetadata(metadata, work));
+    } else {
+      setMetadata({
+        title: work.title,
+        author: work.authors?.join(", "),
+        authors: work.authors,
+        doi: work.doi,
+        journal: work.journal,
+        publisher: work.publisher,
+        issn: work.issn,
+        isbn: work.isbn,
+        volume: work.volume,
+        issue: work.issue,
+        pages: work.pages,
+        year: work.year,
+        publicationDate: work.year ? String(work.year) : undefined,
+        abstract: work.abstract,
+        type: work.type,
+        url: work.url,
+        crossrefEnriched: true,
+      });
+    }
+    setCrossrefStatus("found");
+    setSearchOpen(false);
+    setSaved(false);
+  };
+
+  const handleRetryLookup = async () => {
+    if (!metadata?.title) return;
+    setCrossrefLoading(true);
+    setCrossrefStatus("idle");
+    try {
+      let work: CrossrefWork | null = null;
+      if (metadata.doi) {
+        try {
+          const r = await lookupDoi(metadata.doi);
+          work = r.work;
+        } catch { /* not found */ }
+      }
+      if (!work && metadata.title) {
+        const r = await searchCrossref(metadata.title, 1);
+        if (r.works.length > 0 && r.works[0].score > 10) {
+          work = r.works[0];
+        }
+      }
+      if (work) {
+        setMetadata((prev) => prev ? mergeCrossrefMetadata(prev, work!) : prev);
+        setCrossrefStatus("found");
+        setSaved(false);
+      } else {
+        setCrossrefStatus("not-found");
+      }
+    } catch {
+      setCrossrefStatus("error");
+    } finally {
+      setCrossrefLoading(false);
+    }
+  };
+
+  const handleSaveMetadata = () => {
+    if (!metadata || !item) return;
+    saveMetadataMutation.mutate(
+      { fileId: item._id, metaData: metadata },
+      {
+        onSuccess: () => {
+          toast.success("Metadata saved");
+          setSaved(true);
+        },
+        onError: () => toast.error("Failed to save metadata"),
+      },
+    );
   };
 
   return (
@@ -297,7 +537,7 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
                 />
               )
             ) : isPdf ? (
-              pdfLoading ? (
+              pdfLoading && !previewDataUrl ? (
                 <div className="h-48 flex items-center justify-center">
                   <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
@@ -355,12 +595,18 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
           <>
             {/* Citation / Bibliographic Info */}
             <Section title="Citation Info">
-              {pdfLoading ? (
+              {pdfLoading && !metadata ? (
                 <LoadingSkeleton />
               ) : metadata ? (
                 <div className="space-y-2.5">
                   {metadata.title && <MetaRow icon={BookOpen} label="Title" value={metadata.title} />}
-                  {metadata.author && <MetaRow icon={User} label="Authors" value={metadata.author} />}
+                  {(metadata.authors?.length ? metadata.authors.join(", ") : metadata.author) && (
+                    <MetaRow
+                      icon={User}
+                      label="Authors"
+                      value={metadata.authors?.length ? metadata.authors.join(", ") : metadata.author!}
+                    />
+                  )}
                   {metadata.doi && (
                     <MetaRow
                       icon={Fingerprint}
@@ -382,25 +628,168 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
                       ].filter(Boolean).join(", ")}
                     />
                   )}
-                  {metadata.publicationDate && (
-                    <MetaRow icon={Calendar} label="Published" value={metadata.publicationDate} />
+                  {(metadata.publicationDate || metadata.year) && (
+                    <MetaRow icon={Calendar} label="Published" value={String(metadata.publicationDate || metadata.year)} />
                   )}
+                  {metadata.type && <MetaRow icon={FileText} label="Type" value={metadata.type.replace(/-/g, " ")} />}
                   {metadata.issn && <MetaRow icon={FileDigit} label="ISSN" value={metadata.issn} />}
                   {metadata.isbn && <MetaRow icon={FileDigit} label="ISBN" value={metadata.isbn} />}
                   {metadata.language && <MetaRow icon={Globe} label="Language" value={metadata.language} />}
                   {!metadata.title && !metadata.doi && !metadata.journal && (
-                    <p className="text-xs text-muted-foreground italic">No citation metadata embedded in this PDF</p>
+                    <p className="text-xs text-muted-foreground italic">No citation metadata found</p>
                   )}
+
+                  {/* Crossref status badge */}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    {crossrefLoading && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Loader2 className="size-3 animate-spin" />
+                        Looking up Crossref…
+                      </span>
+                    )}
+                    {crossrefStatus === "found" && !crossrefLoading && (
+                      <span className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <CheckCircle2 className="size-3" />
+                        Enriched via Crossref
+                      </span>
+                    )}
+                    {crossrefStatus === "not-found" && !crossrefLoading && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        Not found on Crossref
+                        <button
+                          onClick={handleRetryLookup}
+                          className="text-primary hover:underline ml-1"
+                        >
+                          Retry
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">Failed to read metadata</p>
               )}
             </Section>
 
+            {/* Crossref actions */}
+            <div className="px-4 pb-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs"
+                onClick={() => {
+                  setSearchOpen(!searchOpen);
+                  setSearchQuery(metadata?.title || item.filename.replace(/\.pdf$/i, ""));
+                  setSearchResults([]);
+                }}
+              >
+                <Search className="size-3 mr-1.5" />
+                Search Crossref
+              </Button>
+              {metadata && (
+                <Button
+                  size="sm"
+                  variant={saved ? "outline" : "default"}
+                  className="text-xs"
+                  onClick={handleSaveMetadata}
+                  disabled={saveMetadataMutation.isPending || saved}
+                >
+                  {saveMetadataMutation.isPending ? (
+                    <Loader2 className="size-3 mr-1.5 animate-spin" />
+                  ) : saved ? (
+                    <CheckCircle2 className="size-3 mr-1.5" />
+                  ) : (
+                    <Save className="size-3 mr-1.5" />
+                  )}
+                  {saved ? "Saved" : "Save"}
+                </Button>
+              )}
+            </div>
+
+            {/* Crossref search panel */}
+            {searchOpen && (
+              <div className="px-4 pb-3 space-y-2">
+                <div className="flex gap-1.5">
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    placeholder="Search by title, author, DOI…"
+                    className="text-xs h-8"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2 shrink-0"
+                    onClick={handleSearch}
+                    disabled={searchLoading}
+                  >
+                    {searchLoading ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Search className="size-3" />
+                    )}
+                  </Button>
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                    {searchResults.map((work, i) => (
+                      <button
+                        key={`${work.doi}-${i}`}
+                        onClick={() => handleSelectCrossref(work)}
+                        className="w-full text-left p-2 rounded-md border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                      >
+                        <p className="text-xs font-medium text-foreground leading-snug line-clamp-2">
+                          {work.title || "Untitled"}
+                        </p>
+                        {work.authors.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            {work.authors.slice(0, 3).join(", ")}
+                            {work.authors.length > 3 && ` +${work.authors.length - 3}`}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          {work.journal && (
+                            <span className="text-[10px] text-primary/70 truncate">{work.journal}</span>
+                          )}
+                          {work.year && (
+                            <span className="text-[10px] text-muted-foreground shrink-0">{work.year}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {searchResults.length === 0 && !searchLoading && searchQuery && (
+                  <p className="text-[10px] text-muted-foreground text-center py-2">
+                    Press Enter or click search to find papers
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Abstract */}
             {metadata?.abstract && metadata.abstract !== metadata.subject && (
               <Section title="Abstract">
-                <p className="text-xs text-foreground leading-relaxed">{metadata.abstract}</p>
+                <div className="relative">
+                  <p className={`text-xs text-foreground leading-relaxed ${!abstractExpanded ? "line-clamp-4" : ""}`}>
+                    {metadata.abstract}
+                  </p>
+                  {metadata.abstract.length > 200 && (
+                    <button
+                      onClick={() => setAbstractExpanded(!abstractExpanded)}
+                      className="text-[10px] text-primary hover:underline mt-1 flex items-center gap-0.5"
+                    >
+                      {abstractExpanded ? (
+                        <><ChevronUp className="size-3" /> Show less</>
+                      ) : (
+                        <><ChevronDown className="size-3" /> Show more</>
+                      )}
+                    </button>
+                  )}
+                </div>
               </Section>
             )}
 
@@ -431,7 +820,7 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
 
             {/* Document Properties */}
             <Section title="Document Properties">
-              {pdfLoading ? (
+              {pdfLoading && !metadata ? (
                 <LoadingSkeleton />
               ) : metadata ? (
                 <div className="space-y-2">

@@ -252,3 +252,45 @@ export const useMoveFile = () => {
         },
     });
 };
+
+// ── Crossref & Metadata ───────────────────────────────────────────────────
+
+export type CrossrefWork = {
+    title: string;
+    authors: string[];
+    doi: string;
+    journal: string;
+    publisher: string;
+    issn: string;
+    isbn: string;
+    volume: string;
+    issue: string;
+    pages: string;
+    year: number | string;
+    type: string;
+    abstract: string;
+    url: string;
+    score: number;
+};
+
+export const searchCrossref = (query: string, rows = 5) =>
+    apiGet<{ works: CrossrefWork[]; totalResults: number }>(
+        `/api/files/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`,
+    );
+
+export const lookupDoi = (doi: string) =>
+    apiGet<{ work: CrossrefWork }>(`/api/files/crossref/doi/${encodeURIComponent(doi)}`);
+
+export const updateFileMetadata = (fileId: string, metaData: Record<string, any>) =>
+    apiPut(`/api/files/${fileId}/metadata`, { metaData });
+
+export const useUpdateFileMetadata = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, any> }) =>
+            updateFileMetadata(fileId, metaData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["files"] });
+        },
+    });
+};

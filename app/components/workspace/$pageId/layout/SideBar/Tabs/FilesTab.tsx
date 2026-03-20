@@ -18,6 +18,9 @@ import {
   Trash2,
   Upload,
   X,
+  FileType,
+  BookText,
+  Braces,
 } from "lucide-react";
 import {
   Tooltip,
@@ -54,6 +57,219 @@ import {
   useMovePageAsset,
 } from "~/query/page";
 import type { PageFileAsset } from "~/types/page";
+
+// ── File icon helper ─────────────────────────────────────────────────────────
+
+function getFileIcon(filename: string) {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  switch (ext) {
+    case "tex":
+    case "ltx":
+    case "dtx":
+      return { icon: FileCode2, color: "text-blue-500" };
+    case "bib":
+    case "bst":
+      return { icon: BookText, color: "text-emerald-500" };
+    case "cls":
+    case "sty":
+    case "ins":
+      return { icon: Braces, color: "text-violet-500" };
+    case "md":
+    case "txt":
+      return { icon: FileType, color: "text-muted-foreground" };
+    default:
+      return { icon: FileCode2, color: "text-muted-foreground" };
+  }
+}
+
+function getAssetIcon(asset: PageFileAsset) {
+  const isImage = asset.mimeType?.startsWith("image/");
+  if (isImage) return { icon: Image, color: "text-amber-500" };
+  return { icon: Paperclip, color: "text-muted-foreground" };
+}
+
+// ── Indent Guide ─────────────────────────────────────────────────────────────
+
+function IndentGuides({ depth }: { depth: number }) {
+  if (depth <= 0) return null;
+  return (
+    <>
+      {Array.from({ length: depth }).map((_, i) => (
+        <span
+          key={i}
+          className="shrink-0 w-4 flex justify-center self-stretch"
+        >
+          <span className="w-px h-full bg-border/60" />
+        </span>
+      ))}
+    </>
+  );
+}
+
+// ── Collapsible Section Header ───────────────────────────────────────────────
+
+function SectionHeader({
+  label,
+  count,
+  expanded,
+  onToggle,
+  actions,
+}: {
+  label: string;
+  count?: number;
+  expanded: boolean;
+  onToggle: () => void;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div
+      onClick={onToggle}
+      className="group/section flex items-center h-[22px] px-2 cursor-pointer select-none bg-muted/30 border-b border-border/60 hover:bg-muted/50 transition-colors"
+    >
+      <ChevronRight
+        className={cn(
+          "size-3 shrink-0 text-foreground/70 transition-transform duration-150",
+          expanded && "rotate-90",
+        )}
+      />
+      <span className="ml-1 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
+        {label}
+      </span>
+      {count !== undefined && count > 0 && (
+        <span className="ml-1.5 text-[10px] text-muted-foreground/70 tabular-nums">
+          {count}
+        </span>
+      )}
+      <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/section:opacity-100 transition-opacity">
+        {actions}
+      </div>
+    </div>
+  );
+}
+
+// ── Inline Input Row (for new file / folder creation) ────────────────────────
+
+function InlineInput({
+  icon: Icon,
+  iconColor,
+  value,
+  onChange,
+  placeholder,
+  onCommit,
+  onCancel,
+  isPending,
+}: {
+  icon: React.ElementType;
+  iconColor?: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  onCommit: () => void;
+  onCancel: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <div className="flex items-center h-[22px] pl-5 pr-2 bg-primary/5 border border-primary/30 mx-0.5 rounded-sm">
+      <Icon className={cn("size-3.5 shrink-0 mr-1.5", iconColor ?? "text-muted-foreground")} />
+      <input
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onCommit();
+          if (e.key === "Escape") onCancel();
+        }}
+        placeholder={placeholder}
+        className="flex-1 min-w-0 text-[12px] bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/40"
+      />
+      <button
+        onClick={onCommit}
+        disabled={isPending}
+        className="p-0.5 text-primary hover:opacity-70 transition-opacity disabled:opacity-40 shrink-0"
+      >
+        {isPending ? (
+          <Loader2 className="size-3 animate-spin" />
+        ) : (
+          <Check className="size-3" />
+        )}
+      </button>
+      <button
+        onClick={onCancel}
+        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+      >
+        <X className="size-3" />
+      </button>
+    </div>
+  );
+}
+
+// ── Rename Input (inline) ────────────────────────────────────────────────────
+
+function RenameInput({
+  value,
+  onChange,
+  onCommit,
+  onCancel,
+  isPending,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <>
+      <input
+        autoFocus
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") onCommit();
+          if (e.key === "Escape") onCancel();
+        }}
+        className="flex-1 min-w-0 text-[12px] bg-primary/5 border border-primary/40 rounded-sm px-1 outline-none text-foreground"
+      />
+      <button
+        onClick={(e) => { e.stopPropagation(); onCommit(); }}
+        disabled={isPending}
+        className="p-0.5 text-primary hover:opacity-70 transition-opacity disabled:opacity-40 shrink-0"
+      >
+        {isPending ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onCancel(); }}
+        className="p-0.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+      >
+        <X className="size-3" />
+      </button>
+    </>
+  );
+}
+
+// ── Row Actions Button ───────────────────────────────────────────────────────
+
+function RowActions({ children }: { children: React.ReactNode }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          className="p-0.5 rounded-sm opacity-0 group-hover/row:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+        >
+          <Ellipsis className="size-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44 text-[12px]">
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 // ── Folder Node (recursive, collapsible) ─────────────────────────────────────
 
@@ -118,104 +334,78 @@ function FolderNode({
           e.preventDefault();
           e.stopPropagation();
           setDragOver(false);
-          // Desktop files dropped on folder
           const droppedFiles = Array.from(e.dataTransfer.files);
           if (droppedFiles.length > 0 && onUploadToFolder) {
             onUploadToFolder(droppedFiles, folder._id);
             return;
           }
-          // Internal asset move
           const assetId = e.dataTransfer.getData("application/x-asset-id");
           if (assetId && assetId !== folder._id && onMoveAssetToFolder) {
             onMoveAssetToFolder(assetId, folder._id);
           }
         }}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
         className={cn(
-          "group flex items-center gap-1.5 py-1.5 pr-2 cursor-pointer transition-colors text-foreground hover:bg-primary/5",
-          dragOver && "bg-primary/10 ring-1 ring-primary/30",
+          "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors",
+          dragOver
+            ? "bg-primary/10 outline outline-1 outline-primary/30"
+            : "hover:bg-muted/50",
         )}
       >
+        <IndentGuides depth={depth} />
         <ChevronRight
           className={cn(
-            "size-3 shrink-0 text-muted-foreground transition-transform",
+            "size-3 shrink-0 text-foreground/60 transition-transform duration-150 mx-0.5",
             expanded && "rotate-90",
           )}
         />
         {expanded ? (
-          <FolderOpen className="size-3.5 shrink-0 text-amber-500" />
+          <FolderOpen className="size-3.5 shrink-0 text-amber-500 mr-1.5" />
         ) : (
-          <Folder className="size-3.5 shrink-0 text-amber-500" />
+          <Folder className="size-3.5 shrink-0 text-amber-500 mr-1.5" />
         )}
 
         {renamingId === folder._id ? (
-          <>
-            <input
-              autoFocus
-              type="text"
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") handleCommitRename(folder._id);
-                if (e.key === "Escape") setRenamingId(null);
-              }}
-              className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
-            />
-            <button
-              onClick={(e) => { e.stopPropagation(); handleCommitRename(folder._id); }}
-              className="text-primary hover:opacity-70 transition-opacity shrink-0"
-            >
-              <Check className="size-3.5" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setRenamingId(null); }}
-              className="text-muted-foreground hover:text-primary transition-colors shrink-0"
-            >
-              <X className="size-3.5" />
-            </button>
-          </>
+          <RenameInput
+            value={renameValue}
+            onChange={setRenameValue}
+            onCommit={() => handleCommitRename(folder._id)}
+            onCancel={() => setRenamingId(null)}
+          />
         ) : (
           <>
-            <span className="flex-1 min-w-0 truncate text-xs">{folder.filename}</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
-                >
-                  <Ellipsis className="size-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem
-                  className="text-xs!"
-                  onClick={(e) => { e.stopPropagation(); handleStartRename(folder); }}
-                >
-                  <Pencil className="size-3.5 mr-2" />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-xs!"
-                  onClick={(e) => { e.stopPropagation(); handleDelete(folder._id); }}
-                >
-                  <Trash2 className="size-3.5 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <span className="flex-1 min-w-0 truncate text-[12px] text-foreground/90">
+              {folder.filename}
+            </span>
+            <RowActions>
+              <DropdownMenuItem
+                className="text-[12px]!"
+                onClick={(e) => { e.stopPropagation(); handleStartRename(folder); }}
+              >
+                <Pencil className="size-3.5 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-[12px]! text-destructive focus:text-destructive"
+                onClick={(e) => { e.stopPropagation(); handleDelete(folder._id); }}
+              >
+                <Trash2 className="size-3.5 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </RowActions>
           </>
         )}
       </div>
 
-      {/* Children (loaded on expand) */}
+      {/* Children */}
       {expanded && (
         <>
           {isLoading && (
-            <div style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }} className="py-1">
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            <div
+              className="flex items-center h-[22px]"
+              style={{ paddingLeft: `${(depth + 1) * 16 + 20}px` }}
+            >
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
             </div>
           )}
           {children?.map((child) =>
@@ -243,8 +433,8 @@ function FolderNode({
           )}
           {!isLoading && !children?.length && (
             <div
-              style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
-              className="text-[10px] text-muted-foreground/60 italic py-1"
+              className="flex items-center h-[22px] text-[11px] text-muted-foreground/50 italic"
+              style={{ paddingLeft: `${(depth + 1) * 16 + 20}px` }}
             >
               Empty folder
             </div>
@@ -271,6 +461,7 @@ function AssetFileRow({
   onPreview: (asset: PageFileAsset) => void;
 }) {
   const isImage = asset.mimeType?.startsWith("image/");
+  const { icon: Icon, color } = getAssetIcon(asset);
   const deleteAssetMutation = useDeletePageAsset();
   const renameAssetMutation = useRenamePageAsset();
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -307,80 +498,49 @@ function AssetFileRow({
           ? `Click to preview ${asset.filename}`
           : `Click to insert \\includegraphics{${asset.filename}}`
       }
-      style={{ paddingLeft: `${depth * 12 + 8}px` }}
-      className="group flex items-center gap-2 py-1.5 pr-2 cursor-pointer transition-colors text-foreground hover:bg-primary/5"
+      className="group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors hover:bg-muted/50"
     >
-      {isImage ? (
-        <Image className="size-3.5 shrink-0 text-muted-foreground" />
-      ) : (
-        <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
-      )}
+      <IndentGuides depth={depth} />
+      {/* Spacer to align with folder chevrons */}
+      <span className="w-4 shrink-0" />
+      <Icon className={cn("size-3.5 shrink-0 mr-1.5", color)} />
 
       {renamingId === asset._id ? (
-        <>
-          <input
-            autoFocus
-            type="text"
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter") handleCommitRename();
-              if (e.key === "Escape") setRenamingId(null);
-            }}
-            className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
-          />
-          <button
-            onClick={(e) => { e.stopPropagation(); handleCommitRename(); }}
-            className="text-primary hover:opacity-70 transition-opacity shrink-0"
-          >
-            <Check className="size-3.5" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setRenamingId(null); }}
-            className="text-muted-foreground hover:text-primary transition-colors shrink-0"
-          >
-            <X className="size-3.5" />
-          </button>
-        </>
+        <RenameInput
+          value={renameValue}
+          onChange={setRenameValue}
+          onCommit={handleCommitRename}
+          onCancel={() => setRenamingId(null)}
+        />
       ) : (
         <>
-          <span className="flex-1 min-w-0 truncate text-xs">{asset.filename}</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
-              >
-                <Ellipsis className="size-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                className="text-xs!"
-                onClick={(e) => { e.stopPropagation(); onInsertAsset(asset.filename); }}
-              >
-                <FileCode2 className="size-3.5 mr-2" />
-                Insert Command
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-xs!"
-                onClick={(e) => { e.stopPropagation(); handleStartRename(); }}
-              >
-                <Pencil className="size-3.5 mr-2" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-xs!"
-                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-              >
-                <Trash2 className="size-3.5 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <span className="flex-1 min-w-0 truncate text-[12px] text-foreground/90">
+            {asset.filename}
+          </span>
+          <RowActions>
+            <DropdownMenuItem
+              className="text-[12px]!"
+              onClick={(e) => { e.stopPropagation(); onInsertAsset(asset.filename); }}
+            >
+              <FileCode2 className="size-3.5 mr-2" />
+              Insert Command
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-[12px]!"
+              onClick={(e) => { e.stopPropagation(); handleStartRename(); }}
+            >
+              <Pencil className="size-3.5 mr-2" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-[12px]! text-destructive focus:text-destructive"
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+            >
+              <Trash2 className="size-3.5 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </RowActions>
         </>
       )}
     </div>
@@ -419,14 +579,16 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  // The parent page-project ID
+  // Collapsible section state
+  const [sourcesExpanded, setSourcesExpanded] = useState(true);
+  const [assetsExpanded, setAssetsExpanded] = useState(true);
+
   const parentPageId: string | null = currentPage
     ? currentPage.parentPage
       ? String(currentPage.parentPage)
       : currentPage._id
     : null;
 
-  // Fetch the parent page to know which file is mainFile
   const { data: parentPage } = usePage(parentPageId ?? "");
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === "object"
@@ -440,14 +602,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const deletePageMutation = useDeletePage();
   const updateTitleMutation = useUpdatePageTitle();
 
-  // Assets (R2-backed files & folders) — root level only
   const { data: assets, isLoading: assetsLoading } = usePageAssets(parentPageId);
   const uploadAssetMutation = useUploadPageAsset();
   const deleteAssetMutation = useDeletePageAsset();
   const createFolderMutation = useCreatePageFolder();
   const moveAssetMutation = useMovePageAsset();
 
-  // Image preview
   const [previewAsset, setPreviewAsset] = useState<PageFileAsset | null>(null);
 
   const handleOpenPreview = useCallback((asset: PageFileAsset) => {
@@ -466,12 +626,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleStartCreate = () => {
     setIsCreatingFile(true);
     setNewFileName("");
+    setSourcesExpanded(true);
     setTimeout(() => newFileInputRef.current?.focus(), 0);
   };
 
   const handleStartCreateFolder = () => {
     setIsCreatingFolder(true);
     setNewFolderName("");
+    setAssetsExpanded(true);
     setTimeout(() => newFolderInputRef.current?.focus(), 0);
   };
 
@@ -500,7 +662,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!picked.length) return;
-    // For folder uploads, flatten all files with their webkitRelativePath
     setPendingUploads(
       picked.map((f) => ({
         file: f,
@@ -665,7 +826,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       text: string;
     }[] = [];
 
-    // Auto-inject \usepackage{graphicx} before \begin{document} if it's missing.
     if (ext !== "svg") {
       const model = editor.getModel();
       if (model) {
@@ -741,13 +901,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     e.preventDefault();
   };
 
-  // ── Upload-to-folder callback (from FolderNode drop) ──────────────────
+  // ── Upload-to-folder callback ──────────────────────────────────────────
 
   const handleUploadToFolder = useCallback(
     (files: File[], folderId: string) => {
       if (!parentPageId) return;
       const items = files.map((f) => ({ file: f, name: f.name }));
-      // Upload assets with the target folder as parentId
       let done = 0;
       setUploadingAssets(true);
       items.forEach(({ file, name }) => {
@@ -769,7 +928,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [parentPageId, uploadAssetMutation],
   );
 
-  // ── Move asset to folder (internal drag) ──────────────────────────────
+  // ── Move asset to folder ──────────────────────────────────────────────
 
   const handleMoveAssetToFolder = useCallback(
     (assetId: string, folderId: string) => {
@@ -779,9 +938,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [parentPageId, moveAssetMutation],
   );
 
+  // ── Counts ─────────────────────────────────────────────────────────────
+
+  const sourceCount = files?.length ?? 0;
+  const assetCount = assets?.length ?? 0;
+
   return (
     <>
-      <div className="w-full h-full flex flex-col select-none">
+      <div className="w-full h-full flex flex-col select-none text-[13px]">
         {/* Hidden upload inputs */}
         <input
           ref={combinedUploadRef}
@@ -799,10 +963,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           {...({ webkitdirectory: "", directory: "" } as any)}
         />
 
-        {/* Toolbar row */}
-        <div className="flex items-center justify-between px-3 h-8 shrink-0">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Files
+        {/* ── Header toolbar ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border/60">
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Explorer
           </span>
           <div className="flex gap-0.5">
             {[
@@ -814,7 +978,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={action}
-                    className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   >
                     <Icon className="size-3.5" />
                   </button>
@@ -827,7 +991,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={onClose}
-                    className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -838,9 +1002,9 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
 
-        {/* File list */}
+        {/* ── File tree ──────────────────────────────────────────────── */}
         <div
-          className="relative flex-1 overflow-y-auto py-1"
+          className="relative flex-1 overflow-y-auto"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -848,296 +1012,304 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         >
           {/* Drag-over overlay */}
           {isDragging && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-primary bg-primary/10 pointer-events-none">
-              <Upload className="size-6 text-primary" />
-              <span className="text-xs font-medium text-primary">
-                Drop to upload
-              </span>
-            </div>
-          )}
-
-          {/* Inline new-file input */}
-          {isCreatingFile && (
-            <div className="flex items-center gap-1.5 px-2 py-1">
-              <FileCode2 className="size-3.5 text-muted-foreground shrink-0" />
-              <input
-                ref={newFileInputRef}
-                type="text"
-                value={newFileName}
-                onChange={(e) => setNewFileName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateFile();
-                  if (e.key === "Escape") handleCancelCreate();
-                }}
-                placeholder="filename.tex"
-                className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none text-primary placeholder:text-muted-foreground/50"
-              />
-              <button
-                onClick={handleCreateFile}
-                disabled={createFileMutation.isPending}
-                className="text-primary hover:opacity-70 transition-opacity disabled:opacity-40"
-              >
-                {createFileMutation.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Check className="size-3.5" />
-                )}
-              </button>
-              <button
-                onClick={handleCancelCreate}
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Inline new-folder input */}
-          {isCreatingFolder && (
-            <div className="flex items-center gap-1.5 px-2 py-1">
-              <Folder className="size-3.5 text-amber-500 shrink-0" />
-              <input
-                ref={newFolderInputRef}
-                type="text"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateFolder();
-                  if (e.key === "Escape") handleCancelCreateFolder();
-                }}
-                placeholder="folder name"
-                className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none text-primary placeholder:text-muted-foreground/50"
-              />
-              <button
-                onClick={handleCreateFolder}
-                disabled={createFolderMutation.isPending}
-                className="text-primary hover:opacity-70 transition-opacity disabled:opacity-40"
-              >
-                {createFolderMutation.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Check className="size-3.5" />
-                )}
-              </button>
-              <button
-                onClick={handleCancelCreateFolder}
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Loading — skeleton rows */}
-          {(isLoading || assetsLoading) && (
-            <div className="flex flex-col">
-              {[65, 82, 50, 90, 72, 58].map((w, i) => (
-                <div key={i} className="flex items-center gap-2 px-2 py-1.5">
-                  <div className="size-3.5 rounded-sm bg-muted animate-pulse shrink-0" />
-                  <div
-                    className="h-2 rounded bg-muted animate-pulse"
-                    style={{ width: `${w}%` }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Uploading indicator — tex files */}
-          {uploadingCount > 0 && (
-            <div className="flex items-center justify-center gap-2 py-3">
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">
-                Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}…
-              </span>
-            </div>
-          )}
-
-          {/* TeX file rows */}
-          {!isLoading &&
-            !assetsLoading &&
-            files?.map((file) => {
-              const isActive = file._id === pageId;
-              const isMain = file._id === mainFileId;
-              return (
-                <div
-                  key={file._id}
-                  onClick={() => handleFileClick(file._id)}
-                  className={cn(
-                    "group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors",
-                    isActive
-                      ? "bg-primary/15 text-primary"
-                      : "text-foreground hover:bg-primary/5",
-                  )}
-                >
-                  <FileCode2
-                    className={cn(
-                      "size-3.5 shrink-0",
-                      isActive ? "text-primary" : "text-muted-foreground",
-                    )}
-                  />
-
-                  {renamingId === file._id ? (
-                    <>
-                      <input
-                        autoFocus
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                          if (e.key === "Enter") handleCommitRename(file._id);
-                          if (e.key === "Escape") setRenamingId(null);
-                        }}
-                        className="flex-1 min-w-0 text-xs bg-transparent border-b border-primary outline-none"
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCommitRename(file._id);
-                        }}
-                        disabled={updateTitleMutation.isPending}
-                        className="text-primary hover:opacity-70 transition-opacity disabled:opacity-40 shrink-0"
-                      >
-                        {updateTitleMutation.isPending ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Check className="size-3.5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRenamingId(null);
-                        }}
-                        className="text-muted-foreground hover:text-primary transition-colors shrink-0"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </>
-                  ) : (
-                    <span className="flex-1 flex items-center min-w-0 truncate text-xs">
-                      {displayName(file.title)}
-                      {isMain && !renamingId && (
-                        <span className="ml-2 text-xs text-primary/80 p-0.5 px-1 rounded bg-primary/20">
-                          main
-                        </span>
-                      )}
-                    </span>
-                  )}
-
-                  {/* Context menu */}
-                  {renamingId !== file._id && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className={cn(
-                            "p-0.5 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity",
-                            "text-muted-foreground hover:text-primary hover:bg-primary/10",
-                          )}
-                        >
-                          <Ellipsis className="size-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        {!isMain && (
-                          <DropdownMenuItem
-                            className="text-xs!"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSetMain(file._id);
-                            }}
-                          >
-                            <Star className="size-3.5 mr-2" />
-                            Set as Main File
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          className="text-xs!"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartRename(file);
-                          }}
-                        >
-                          <Pencil className="size-3.5 mr-2" />
-                          Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-xs!"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(file._id);
-                          }}
-                        >
-                          <Trash2 className="size-3.5 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-              );
-            })}
-
-          {/* Uploading indicator — assets */}
-          {uploadingAssets && (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Uploading…</span>
-            </div>
-          )}
-
-          {/* Asset rows — unified with files (folders first, then files) */}
-          {!isLoading &&
-            !assetsLoading &&
-            assets?.map((asset) =>
-              asset.isFolder ? (
-                <FolderNode
-                  key={asset._id}
-                  folder={asset}
-                  pageId={parentPageId!}
-                  depth={0}
-                  onInsertAsset={handleInsertAsset}
-                  onPreview={handleOpenPreview}
-                  onUploadToFolder={handleUploadToFolder}
-                  onMoveAssetToFolder={handleMoveAssetToFolder}
-                />
-              ) : (
-                <AssetFileRow
-                  key={asset._id}
-                  asset={asset}
-                  pageId={parentPageId!}
-                  depth={0}
-                  onInsertAsset={handleInsertAsset}
-                  onPreview={handleOpenPreview}
-                />
-              ),
-            )}
-
-          {/* Empty state */}
-          {!isLoading &&
-            !assetsLoading &&
-            !files?.length &&
-            !assets?.length &&
-            !isCreatingFile &&
-            !isCreatingFolder && (
-              <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-                <FileText className="size-8 opacity-25" />
-                <p className="text-xs text-center leading-relaxed">
-                  No files yet.
-                  <br />
-                  <button
-                    onClick={handleStartCreate}
-                    className="text-primary hover:underline"
-                  >
-                    Create your first file
-                  </button>
-                </p>
+            <div className="absolute inset-1 z-10 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 pointer-events-none backdrop-blur-[1px]">
+              <div className="p-2.5 rounded-full bg-primary/10">
+                <Upload className="size-5 text-primary" />
               </div>
-            )}
+              <span className="text-xs font-medium text-primary">
+                Drop files to upload
+              </span>
+            </div>
+          )}
+
+          {/* ── SOURCES section ──────────────────────────────────────── */}
+          <SectionHeader
+            label="Sources"
+            count={sourceCount}
+            expanded={sourcesExpanded}
+            onToggle={() => setSourcesExpanded((v) => !v)}
+            actions={
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleStartCreate(); }}
+                    className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <FilePlus className="size-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">New File</TooltipContent>
+              </Tooltip>
+            }
+          />
+
+          {sourcesExpanded && (
+            <div className="py-px">
+              {/* Inline new-file input */}
+              {isCreatingFile && (
+                <InlineInput
+                  icon={FileCode2}
+                  iconColor="text-blue-500"
+                  value={newFileName}
+                  onChange={setNewFileName}
+                  placeholder="filename.tex"
+                  onCommit={handleCreateFile}
+                  onCancel={handleCancelCreate}
+                  isPending={createFileMutation.isPending}
+                />
+              )}
+
+              {/* Loading skeleton */}
+              {isLoading && (
+                <div className="flex flex-col">
+                  {[60, 75, 45, 82, 55].map((w, i) => (
+                    <div key={i} className="flex items-center h-[22px] gap-2 px-5">
+                      <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
+                      <div
+                        className="h-2.5 rounded bg-muted animate-pulse"
+                        style={{ width: `${w}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Uploading indicator */}
+              {uploadingCount > 0 && (
+                <div className="flex items-center gap-2 px-5 h-[22px]">
+                  <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                  <span className="text-[11px] text-muted-foreground">
+                    Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}…
+                  </span>
+                </div>
+              )}
+
+              {/* TeX file rows */}
+              {!isLoading &&
+                files?.map((file) => {
+                  const isActive = file._id === pageId;
+                  const isMain = file._id === mainFileId;
+                  const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
+                  return (
+                    <div
+                      key={file._id}
+                      onClick={() => handleFileClick(file._id)}
+                      className={cn(
+                        "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors",
+                        isActive
+                          ? "bg-primary/8 border-l-2 border-l-primary"
+                          : "border-l-2 border-l-transparent hover:bg-muted/50",
+                      )}
+                    >
+                      {/* Spacer for chevron alignment */}
+                      <span className={cn("shrink-0", isActive ? "w-[18px]" : "w-5")} />
+                      <FileIcon
+                        className={cn(
+                          "size-3.5 shrink-0 mr-1.5",
+                          isActive ? "text-primary" : fileColor,
+                        )}
+                      />
+
+                      {renamingId === file._id ? (
+                        <RenameInput
+                          value={renameValue}
+                          onChange={setRenameValue}
+                          onCommit={() => handleCommitRename(file._id)}
+                          onCancel={() => setRenamingId(null)}
+                          isPending={updateTitleMutation.isPending}
+                        />
+                      ) : (
+                        <>
+                          <span
+                            className={cn(
+                              "flex-1 min-w-0 truncate text-[12px]",
+                              isActive ? "text-primary font-medium" : "text-foreground/90",
+                            )}
+                          >
+                            {displayName(file.title)}
+                          </span>
+                          {isMain && !renamingId && (
+                            <span className="shrink-0 text-[10px] px-1.5 py-px rounded-full border border-primary/30 bg-primary/8 text-primary/80 font-medium mr-1">
+                              main
+                            </span>
+                          )}
+                          {renamingId !== file._id && (
+                            <RowActions>
+                              {!isMain && (
+                                <DropdownMenuItem
+                                  className="text-[12px]!"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSetMain(file._id);
+                                  }}
+                                >
+                                  <Star className="size-3.5 mr-2" />
+                                  Set as Main File
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                className="text-[12px]!"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartRename(file);
+                                }}
+                              >
+                                <Pencil className="size-3.5 mr-2" />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-[12px]! text-destructive focus:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(file._id);
+                                }}
+                              >
+                                <Trash2 className="size-3.5 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </RowActions>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+
+              {/* Empty sources */}
+              {!isLoading && !files?.length && !isCreatingFile && (
+                <div className="flex items-center gap-2 px-5 py-3 text-muted-foreground">
+                  <FileText className="size-4 opacity-30" />
+                  <span className="text-[11px]">
+                    No source files.{" "}
+                    <button
+                      onClick={handleStartCreate}
+                      className="text-primary hover:underline"
+                    >
+                      Create one
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── ASSETS section ───────────────────────────────────────── */}
+          <SectionHeader
+            label="Assets"
+            count={assetCount}
+            expanded={assetsExpanded}
+            onToggle={() => setAssetsExpanded((v) => !v)}
+            actions={
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleStartCreateFolder(); }}
+                      className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <FolderPlus className="size-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">New Folder</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleUpload(); }}
+                      className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Upload className="size-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Upload</TooltipContent>
+                </Tooltip>
+              </>
+            }
+          />
+
+          {assetsExpanded && (
+            <div className="py-px">
+              {/* Inline new-folder input */}
+              {isCreatingFolder && (
+                <InlineInput
+                  icon={Folder}
+                  iconColor="text-amber-500"
+                  value={newFolderName}
+                  onChange={setNewFolderName}
+                  placeholder="folder name"
+                  onCommit={handleCreateFolder}
+                  onCancel={handleCancelCreateFolder}
+                  isPending={createFolderMutation.isPending}
+                />
+              )}
+
+              {/* Loading skeleton */}
+              {assetsLoading && (
+                <div className="flex flex-col">
+                  {[50, 70, 60].map((w, i) => (
+                    <div key={i} className="flex items-center h-[22px] gap-2 px-5">
+                      <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
+                      <div
+                        className="h-2.5 rounded bg-muted animate-pulse"
+                        style={{ width: `${w}%` }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Uploading indicator */}
+              {uploadingAssets && (
+                <div className="flex items-center gap-2 px-5 h-[22px]">
+                  <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                  <span className="text-[11px] text-muted-foreground">Uploading…</span>
+                </div>
+              )}
+
+              {/* Asset rows — folders first, then files */}
+              {!assetsLoading &&
+                assets?.map((asset) =>
+                  asset.isFolder ? (
+                    <FolderNode
+                      key={asset._id}
+                      folder={asset}
+                      pageId={parentPageId!}
+                      depth={0}
+                      onInsertAsset={handleInsertAsset}
+                      onPreview={handleOpenPreview}
+                      onUploadToFolder={handleUploadToFolder}
+                      onMoveAssetToFolder={handleMoveAssetToFolder}
+                    />
+                  ) : (
+                    <AssetFileRow
+                      key={asset._id}
+                      asset={asset}
+                      pageId={parentPageId!}
+                      depth={0}
+                      onInsertAsset={handleInsertAsset}
+                      onPreview={handleOpenPreview}
+                    />
+                  ),
+                )}
+
+              {/* Empty assets */}
+              {!assetsLoading && !assets?.length && !isCreatingFolder && (
+                <div className="flex items-center gap-2 px-5 py-3 text-muted-foreground">
+                  <Image className="size-4 opacity-30" />
+                  <span className="text-[11px]">
+                    No assets.{" "}
+                    <button
+                      onClick={handleUpload}
+                      className="text-primary hover:underline"
+                    >
+                      Upload files
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1220,7 +1392,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         </DialogContent>
       </Dialog>
 
-      {/* Image preview dialog — now using R2 URL directly */}
+      {/* Image preview dialog */}
       <Dialog
         open={!!previewAsset}
         onOpenChange={(open) => {

@@ -1,6 +1,7 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
+  AlertTriangle,
   Check,
   ChevronRight,
   Ellipsis,
@@ -533,9 +534,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadingAssets, setUploadingAssets] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [pendingUploads, setPendingUploads] = useState<
-    { file: File; name: string }[]
-  >([]);
+
+  type PendingItem = {
+    file: File;
+    name: string;
+    /** "none" = no conflict, "duplicate" = name exists already */
+    conflict: "none" | "duplicate";
+  };
+  const [pendingUploads, setPendingUploads] = useState<PendingItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
@@ -606,11 +612,33 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleUpload = () => combinedUploadRef.current?.click();
   const handleFolderUpload = () => folderUploadRef.current?.click();
 
+  // Build a set of existing file names for duplicate detection
+  const existingNames = useMemo(() => {
+    const names = new Set<string>();
+    files?.forEach((f) => names.add(f.title.toLowerCase()));
+    assets?.forEach((a) => { if (!a.isFolder) names.add(a.filename.toLowerCase()); });
+    return names;
+  }, [files, assets]);
+
+  const markConflicts = useCallback(
+    (items: { file: File; name: string }[]): PendingItem[] => {
+      const seen = new Set<string>();
+      return items.map((item) => {
+        const lower = item.name.toLowerCase();
+        const isDup = existingNames.has(lower) || seen.has(lower);
+        seen.add(lower);
+        return { ...item, conflict: isDup ? "duplicate" : "none" };
+      });
+    },
+    [existingNames],
+  );
+
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!picked.length) return;
-    setPendingUploads(picked.map((f) => ({ file: f, name: f.name })));
+    const items = picked.map((f) => ({ file: f, name: f.name }));
+    setPendingUploads(markConflicts(items));
     setUploadDialogOpen(true);
   };
 
@@ -618,12 +646,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!picked.length) return;
-    setPendingUploads(
-      picked.map((f) => ({
-        file: f,
-        name: (f as any).webkitRelativePath || f.name,
-      })),
-    );
+    const items = picked.map((f) => ({
+      file: f,
+      name: (f as any).webkitRelativePath || f.name,
+    }));
+    setPendingUploads(markConflicts(items));
     setUploadDialogOpen(true);
   };
 
@@ -699,21 +726,55 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     setMainFileMutation.mutate({ pageId: parentPageId, fileId });
   };
 
-  const handleConfirmUpload = () => {
+  /** Auto-rename a file to avoid duplicates: "file.png" → "file (1).png" etc. */
+  const autoRename = useCallback(
+    (name: string): string => {
+      const dot = name.lastIndexOf(".");
+      const base = dot > 0 ? name.slice(0, dot) : name;
+      const ext = dot > 0 ? name.slice(dot) : "";
+      let n = 1;
+      let candidate = `${base} (${n})${ext}`;
+      while (existingNames.has(candidate.toLowerCase())) {
+        n++;
+        candidate = `${base} (${n})${ext}`;
+      }
+      return candidate;
+    },
+    [existingNames],
+  );
+
+  const handleAutoRenameAll = () => {
+    setPendingUploads((prev) =>
+      prev.map((item) =>
+        item.conflict === "duplicate"
+          ? { ...item, name: autoRename(item.name), conflict: "none" }
+          : item,
+      ),
+    );
+  };
+
+  const handleConfirmUpload = async () => {
     if (!parentPageId || !pendingUploads.length) return;
     setUploadDialogOpen(false);
-    const texItems = pendingUploads.filter(({ file }) =>
-      TEX_EXTS.has("." + (file.name.split(".").pop() ?? "").toLowerCase()),
+
+    // Separate: items with folder paths need folder creation first
+    const folderItems = pendingUploads.filter((p) => p.name.includes("/"));
+    const flatItems = pendingUploads.filter((p) => !p.name.includes("/"));
+
+    // --- Flat files (no folder path) ---
+    const texFlat = flatItems.filter(({ name }) =>
+      TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
     );
-    const assetItems = pendingUploads.filter(
-      ({ file }) =>
-        !TEX_EXTS.has("." + (file.name.split(".").pop() ?? "").toLowerCase()),
+    const assetFlat = flatItems.filter(
+      ({ name }) =>
+        !TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
     );
-    if (texItems.length) {
-      setUploadingCount(texItems.length);
+
+    if (texFlat.length) {
+      setUploadingCount(texFlat.length);
       let lastId: string | null = null;
       let done = 0;
-      texItems.forEach(({ file, name }) => {
+      texFlat.forEach(({ file, name }) => {
         const reader = new FileReader();
         reader.onload = () => {
           createFileMutation.mutate(
@@ -728,7 +789,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               },
               onSettled: () => {
                 done++;
-                if (done === texItems.length) {
+                if (done === texFlat.length) {
                   setUploadingCount(0);
                   if (lastId) navigate(`/editor/${lastId}`);
                 }
@@ -739,11 +800,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         reader.readAsText(file);
       });
     }
-    if (assetItems.length) {
+
+    if (assetFlat.length) {
       setUploadingAssets(true);
       let done = 0;
-      const total = assetItems.length;
-      assetItems.forEach(({ file, name }) => {
+      const total = assetFlat.length;
+      assetFlat.forEach(({ file, name }) => {
         const renamedFile =
           name !== file.name
             ? new File([file], name, { type: file.type })
@@ -763,6 +825,73 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         );
       });
     }
+
+    // --- Folder items (have path like "folder/sub/file.png") ---
+    if (folderItems.length) {
+      setUploadingAssets(true);
+      try {
+        // Collect unique folder paths and create them
+        const folderPaths = new Set<string>();
+        for (const { name } of folderItems) {
+          const parts = name.split("/");
+          for (let i = 1; i < parts.length; i++) {
+            folderPaths.add(parts.slice(0, i).join("/"));
+          }
+        }
+        const sortedPaths = Array.from(folderPaths).sort();
+        const folderIdMap: Record<string, string> = {};
+
+        for (const folderPath of sortedPaths) {
+          const parts = folderPath.split("/");
+          const folderName = parts[parts.length - 1];
+          const parentPath = parts.slice(0, -1).join("/");
+          const parentId = parentPath ? folderIdMap[parentPath] : undefined;
+
+          const created = await new Promise<{ _id: string }>((resolve, reject) => {
+            createFolderMutation.mutate(
+              { pageId: parentPageId, name: folderName, parentId },
+              {
+                onSuccess: (data: any) => resolve(data),
+                onError: (err: any) => reject(err),
+              },
+            );
+          });
+          folderIdMap[folderPath] = created._id;
+        }
+
+        // Upload files into correct folders
+        let done = 0;
+        const total = folderItems.length;
+        for (const { file, name } of folderItems) {
+          const parts = name.split("/");
+          const fileName = parts[parts.length - 1];
+          const folderPath = parts.slice(0, -1).join("/");
+          const parentId = folderIdMap[folderPath];
+
+          const renamedFile =
+            fileName !== file.name
+              ? new File([file], fileName, { type: file.type })
+              : file;
+
+          uploadAssetMutation.mutate(
+            { pageId: parentPageId, file: renamedFile, parentId },
+            {
+              onSuccess: () => {
+                done++;
+                if (done >= total) setUploadingAssets(false);
+              },
+              onError: () => {
+                done++;
+                if (done >= total) setUploadingAssets(false);
+              },
+            },
+          );
+        }
+      } catch {
+        setUploadingAssets(false);
+      }
+    }
+
     setPendingUploads([]);
   };
 
@@ -866,106 +995,23 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [],
   );
 
-  // Helper: recursively create folders and upload files for a dropped folder
-  const uploadDroppedFolder = useCallback(
-    async (dirEntry: FileSystemDirectoryEntry) => {
-      if (!parentPageId) return;
-      setUploadingAssets(true);
-
-      try {
-        // 1. Create root folder
-        const rootFolder = await new Promise<{ _id: string }>((resolve, reject) => {
-          createFolderMutation.mutate(
-            { pageId: parentPageId, name: dirEntry.name },
-            {
-              onSuccess: (data: any) => resolve(data),
-              onError: (err: any) => reject(err),
-            },
-          );
-        });
-
-        // 2. Recursively read all files from the dropped folder
-        const allFiles = await readEntriesRecursively(dirEntry, dirEntry.name);
-
-        // 3. Collect unique sub-folder paths and create them
-        const subFolderPaths = new Set<string>();
-        for (const { relativePath } of allFiles) {
-          const parts = relativePath.split("/");
-          // e.g. "folder/sub/file.png" → sub-folder path is "folder/sub"
-          // Skip the root folder part (index 0) since it's already created
-          for (let i = 2; i < parts.length; i++) {
-            subFolderPaths.add(parts.slice(1, i).join("/"));
-          }
-        }
-
-        // Create sub-folders sequentially, mapping path → folderId
-        const folderIdMap: Record<string, string> = { "": rootFolder._id };
-        const sortedPaths = Array.from(subFolderPaths).sort();
-
-        for (const subPath of sortedPaths) {
-          const parts = subPath.split("/");
-          const folderName = parts[parts.length - 1];
-          const parentPath = parts.slice(0, -1).join("/");
-          const parentId = folderIdMap[parentPath] ?? rootFolder._id;
-
-          const created = await new Promise<{ _id: string }>((resolve, reject) => {
-            createFolderMutation.mutate(
-              { pageId: parentPageId, name: folderName, parentId },
-              {
-                onSuccess: (data: any) => resolve(data),
-                onError: (err: any) => reject(err),
-              },
-            );
-          });
-          folderIdMap[subPath] = created._id;
-        }
-
-        // 4. Upload files into correct folders
-        let done = 0;
-        const total = allFiles.length;
-        if (total === 0) {
-          setUploadingAssets(false);
-          return;
-        }
-
-        for (const { file, relativePath } of allFiles) {
-          const parts = relativePath.split("/");
-          // Sub-folder path relative to root folder (skip root name)
-          const parentSubPath = parts.slice(1, -1).join("/");
-          const parentId = folderIdMap[parentSubPath] ?? rootFolder._id;
-
-          uploadAssetMutation.mutate(
-            { pageId: parentPageId, file, parentId },
-            {
-              onSettled: () => {
-                done++;
-                if (done === total) setUploadingAssets(false);
-              },
-            },
-          );
-        }
-      } catch {
-        setUploadingAssets(false);
-      }
-    },
-    [parentPageId, createFolderMutation, uploadAssetMutation, readEntriesRecursively],
-  );
 
   const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
+    async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       dragCounterRef.current = 0;
       setIsDragging(false);
       if (!parentPageId) return;
 
-      const items = e.dataTransfer.items;
-      const plainFiles: File[] = [];
+      const dtItems = e.dataTransfer.items;
+      const allItems: { file: File; name: string }[] = [];
       const folderEntries: FileSystemDirectoryEntry[] = [];
+      const plainFiles: File[] = [];
 
       // Separate folders from files using webkitGetAsEntry
-      if (items?.length) {
-        for (let i = 0; i < items.length; i++) {
-          const entry = items[i].webkitGetAsEntry?.();
+      if (dtItems?.length) {
+        for (let i = 0; i < dtItems.length; i++) {
+          const entry = dtItems[i].webkitGetAsEntry?.();
           if (entry?.isDirectory) {
             folderEntries.push(entry as FileSystemDirectoryEntry);
           } else if (entry?.isFile) {
@@ -974,20 +1020,26 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           }
         }
       } else {
-        // Fallback: no items API
         plainFiles.push(...Array.from(e.dataTransfer.files));
       }
 
-      // Handle folders: create folder structure and upload files
-      folderEntries.forEach((dir) => uploadDroppedFolder(dir));
+      // Add plain files
+      plainFiles.forEach((f) => allItems.push({ file: f, name: f.name }));
 
-      // Handle plain files: go through the naming dialog
-      if (plainFiles.length > 0) {
-        setPendingUploads(plainFiles.map((f) => ({ file: f, name: f.name })));
+      // Read folder contents recursively and add with relative paths
+      for (const dir of folderEntries) {
+        const folderFiles = await readEntriesRecursively(dir, dir.name);
+        for (const { file, relativePath } of folderFiles) {
+          allItems.push({ file, name: relativePath });
+        }
+      }
+
+      if (allItems.length > 0) {
+        setPendingUploads(markConflicts(allItems));
         setUploadDialogOpen(true);
       }
     },
-    [parentPageId, uploadDroppedFolder],
+    [parentPageId, readEntriesRecursively, markConflicts],
   );
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
@@ -1370,13 +1422,22 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 "." + (item.file.name.split(".").pop() ?? "").toLowerCase();
               const isTex = TEX_EXTS.has(ext);
               const isImg = item.file.type.startsWith("image/");
-              // Show folder path prefix when uploading from a folder
               const hasPath = item.name.includes("/");
               const folderPath = hasPath ? item.name.substring(0, item.name.lastIndexOf("/")) : null;
               const Icon = isTex ? FileCode2 : isImg ? Image : Paperclip;
+              const isDuplicate = item.conflict === "duplicate";
               return (
-                <div key={i} className="flex items-center gap-2 px-1 py-1">
-                  <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                <div
+                  key={i}
+                  className={cn(
+                    "flex items-center gap-2 px-1 py-1 rounded",
+                    isDuplicate && "bg-amber-500/5 ring-1 ring-amber-500/30",
+                  )}
+                >
+                  <Icon className={cn(
+                    "size-3.5 shrink-0",
+                    isDuplicate ? "text-amber-500" : "text-muted-foreground",
+                  )} />
                   <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                     {folderPath && (
                       <div className="flex items-center gap-1">
@@ -1389,15 +1450,28 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     <input
                       type="text"
                       value={item.name}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newName = e.target.value;
                         setPendingUploads((prev) =>
-                          prev.map((p, j) =>
-                            j === i ? { ...p, name: e.target.value } : p,
-                          ),
-                        )
-                      }
-                      className="w-full text-xs bg-muted/40 border border-border rounded px-2 py-1 outline-none focus:border-primary"
+                          prev.map((p, j) => {
+                            if (j !== i) return p;
+                            const lower = newName.toLowerCase();
+                            const conflict = existingNames.has(lower) ? "duplicate" : "none";
+                            return { ...p, name: newName, conflict };
+                          }),
+                        );
+                      }}
+                      className={cn(
+                        "w-full text-xs bg-muted/40 border rounded px-2 py-1 outline-none focus:border-primary",
+                        isDuplicate ? "border-amber-500/50" : "border-border",
+                      )}
                     />
+                    {isDuplicate && (
+                      <span className="text-[10px] text-amber-600 flex items-center gap-1">
+                        <AlertTriangle className="size-2.5" />
+                        File already exists
+                      </span>
+                    )}
                   </div>
                   <button
                     onClick={() =>
@@ -1418,26 +1492,41 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               </p>
             )}
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              onClick={() => {
-                setUploadDialogOpen(false);
-                setPendingUploads([]);
-              }}
-              className="h-7 px-3 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmUpload}
-              disabled={pendingUploads.length === 0}
-              className="h-7 px-3 rounded text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              Upload
-              {pendingUploads.length > 0
-                ? ` ${pendingUploads.length} file${pendingUploads.length > 1 ? "s" : ""}`
-                : ""}
-            </button>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            {/* Left: conflict helpers */}
+            <div>
+              {pendingUploads.some((p) => p.conflict === "duplicate") && (
+                <button
+                  onClick={handleAutoRenameAll}
+                  className="h-7 px-3 rounded text-xs text-amber-600 hover:bg-amber-500/10 transition-colors flex items-center gap-1"
+                >
+                  <AlertTriangle className="size-3" />
+                  Auto rename duplicates
+                </button>
+              )}
+            </div>
+            {/* Right: cancel / upload */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setUploadDialogOpen(false);
+                  setPendingUploads([]);
+                }}
+                className="h-7 px-3 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmUpload}
+                disabled={pendingUploads.length === 0}
+                className="h-7 px-3 rounded text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                Upload
+                {pendingUploads.length > 0
+                  ? ` ${pendingUploads.length} file${pendingUploads.length > 1 ? "s" : ""}`
+                  : ""}
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

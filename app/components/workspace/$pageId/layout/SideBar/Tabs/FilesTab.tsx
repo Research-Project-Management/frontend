@@ -106,46 +106,6 @@ function IndentGuides({ depth }: { depth: number }) {
   );
 }
 
-// ── Collapsible Section Header ───────────────────────────────────────────────
-
-function SectionHeader({
-  label,
-  count,
-  expanded,
-  onToggle,
-  actions,
-}: {
-  label: string;
-  count?: number;
-  expanded: boolean;
-  onToggle: () => void;
-  actions?: React.ReactNode;
-}) {
-  return (
-    <div
-      onClick={onToggle}
-      className="group/section flex items-center h-[22px] px-2 cursor-pointer select-none bg-muted/30 border-b border-border/60 hover:bg-muted/50 transition-colors"
-    >
-      <ChevronRight
-        className={cn(
-          "size-3 shrink-0 text-foreground/70 transition-transform duration-150",
-          expanded && "rotate-90",
-        )}
-      />
-      <span className="ml-1 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
-        {label}
-      </span>
-      {count !== undefined && count > 0 && (
-        <span className="ml-1.5 text-[10px] text-muted-foreground/70 tabular-nums">
-          {count}
-        </span>
-      )}
-      <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/section:opacity-100 transition-opacity">
-        {actions}
-      </div>
-    </div>
-  );
-}
 
 // ── Inline Input Row (for new file / folder creation) ────────────────────────
 
@@ -579,9 +539,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  // Collapsible section state
-  const [sourcesExpanded, setSourcesExpanded] = useState(true);
-  const [assetsExpanded, setAssetsExpanded] = useState(true);
+  // Collapsible section state — no longer needed for separate sections
 
   const parentPageId: string | null = currentPage
     ? currentPage.parentPage
@@ -626,14 +584,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleStartCreate = () => {
     setIsCreatingFile(true);
     setNewFileName("");
-    setSourcesExpanded(true);
     setTimeout(() => newFileInputRef.current?.focus(), 0);
   };
 
   const handleStartCreateFolder = () => {
     setIsCreatingFolder(true);
     setNewFolderName("");
-    setAssetsExpanded(true);
     setTimeout(() => newFolderInputRef.current?.focus(), 0);
   };
 
@@ -938,11 +894,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     [parentPageId, moveAssetMutation],
   );
 
-  // ── Counts ─────────────────────────────────────────────────────────────
-
-  const sourceCount = files?.length ?? 0;
-  const assetCount = assets?.length ?? 0;
-
   return (
     <>
       <div className="w-full h-full flex flex-col select-none text-[13px]">
@@ -1022,294 +973,231 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
-          {/* ── SOURCES section ──────────────────────────────────────── */}
-          <SectionHeader
-            label="Sources"
-            count={sourceCount}
-            expanded={sourcesExpanded}
-            onToggle={() => setSourcesExpanded((v) => !v)}
-            actions={
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleStartCreate(); }}
-                    className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <FilePlus className="size-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">New File</TooltipContent>
-              </Tooltip>
-            }
-          />
+          {/* ── Inline create inputs ────────────────────────────────── */}
+          {isCreatingFile && (
+            <InlineInput
+              icon={FileCode2}
+              iconColor="text-blue-500"
+              value={newFileName}
+              onChange={setNewFileName}
+              placeholder="filename.tex"
+              onCommit={handleCreateFile}
+              onCancel={handleCancelCreate}
+              isPending={createFileMutation.isPending}
+            />
+          )}
+          {isCreatingFolder && (
+            <InlineInput
+              icon={Folder}
+              iconColor="text-amber-500"
+              value={newFolderName}
+              onChange={setNewFolderName}
+              placeholder="folder name"
+              onCommit={handleCreateFolder}
+              onCancel={handleCancelCreateFolder}
+              isPending={createFolderMutation.isPending}
+            />
+          )}
 
-          {sourcesExpanded && (
-            <div className="py-px">
-              {/* Inline new-file input */}
-              {isCreatingFile && (
-                <InlineInput
-                  icon={FileCode2}
-                  iconColor="text-blue-500"
-                  value={newFileName}
-                  onChange={setNewFileName}
-                  placeholder="filename.tex"
-                  onCommit={handleCreateFile}
-                  onCancel={handleCancelCreate}
-                  isPending={createFileMutation.isPending}
-                />
-              )}
-
-              {/* Loading skeleton */}
-              {isLoading && (
-                <div className="flex flex-col">
-                  {[60, 75, 45, 82, 55].map((w, i) => (
-                    <div key={i} className="flex items-center h-[22px] gap-2 px-5">
-                      <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
-                      <div
-                        className="h-2.5 rounded bg-muted animate-pulse"
-                        style={{ width: `${w}%` }}
-                      />
-                    </div>
-                  ))}
+          {/* Loading skeleton */}
+          {(isLoading || assetsLoading) && (
+            <div className="flex flex-col">
+              {[60, 75, 45, 82, 55].map((w, i) => (
+                <div key={i} className="flex items-center h-[22px] gap-2 px-5">
+                  <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
+                  <div
+                    className="h-2.5 rounded bg-muted animate-pulse"
+                    style={{ width: `${w}%` }}
+                  />
                 </div>
-              )}
+              ))}
+            </div>
+          )}
 
-              {/* Uploading indicator */}
-              {uploadingCount > 0 && (
-                <div className="flex items-center gap-2 px-5 h-[22px]">
-                  <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                  <span className="text-[11px] text-muted-foreground">
-                    Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}…
-                  </span>
-                </div>
-              )}
+          {/* Uploading indicator */}
+          {(uploadingCount > 0 || uploadingAssets) && (
+            <div className="flex items-center gap-2 px-5 h-[22px]">
+              <Loader2 className="size-3 animate-spin text-muted-foreground" />
+              <span className="text-[11px] text-muted-foreground">
+                Uploading{uploadingCount > 0 ? ` ${uploadingCount} file${uploadingCount > 1 ? "s" : ""}` : ""}…
+              </span>
+            </div>
+          )}
 
-              {/* TeX file rows */}
-              {!isLoading &&
-                files?.map((file) => {
-                  const isActive = file._id === pageId;
-                  const isMain = file._id === mainFileId;
-                  const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
-                  return (
-                    <div
-                      key={file._id}
-                      onClick={() => handleFileClick(file._id)}
-                      className={cn(
-                        "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors",
-                        isActive
-                          ? "bg-primary/8 border-l-2 border-l-primary"
-                          : "border-l-2 border-l-transparent hover:bg-muted/50",
-                      )}
-                    >
-                      {/* Spacer for chevron alignment */}
-                      <span className={cn("shrink-0", isActive ? "w-[18px]" : "w-5")} />
-                      <FileIcon
-                        className={cn(
-                          "size-3.5 shrink-0 mr-1.5",
-                          isActive ? "text-primary" : fileColor,
-                        )}
-                      />
+          {/* ── UNIFIED FILE TREE ──────────────────────────────────── */}
+          {!isLoading && !assetsLoading && (() => {
+            // Merge tex files and assets into one sorted list
+            // Order: folders first, then files alphabetically
+            type UnifiedItem =
+              | { kind: "folder"; data: PageFileAsset }
+              | { kind: "asset"; data: PageFileAsset }
+              | { kind: "tex"; data: { _id: string; title: string; updatedAt: string } };
 
-                      {renamingId === file._id ? (
-                        <RenameInput
-                          value={renameValue}
-                          onChange={setRenameValue}
-                          onCommit={() => handleCommitRename(file._id)}
-                          onCancel={() => setRenamingId(null)}
-                          isPending={updateTitleMutation.isPending}
-                        />
-                      ) : (
-                        <>
-                          <span
-                            className={cn(
-                              "flex-1 min-w-0 truncate text-[12px]",
-                              isActive ? "text-primary font-medium" : "text-foreground/90",
-                            )}
-                          >
-                            {displayName(file.title)}
-                          </span>
-                          {isMain && !renamingId && (
-                            <span className="shrink-0 text-[10px] px-1.5 py-px rounded-full border border-primary/30 bg-primary/8 text-primary/80 font-medium mr-1">
-                              main
-                            </span>
-                          )}
-                          {renamingId !== file._id && (
-                            <RowActions>
-                              {!isMain && (
-                                <DropdownMenuItem
-                                  className="text-[12px]!"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSetMain(file._id);
-                                  }}
-                                >
-                                  <Star className="size-3.5 mr-2" />
-                                  Set as Main File
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                className="text-[12px]!"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartRename(file);
-                                }}
-                              >
-                                <Pencil className="size-3.5 mr-2" />
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-[12px]! text-destructive focus:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDelete(file._id);
-                                }}
-                              >
-                                <Trash2 className="size-3.5 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </RowActions>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+            const items: UnifiedItem[] = [];
 
-              {/* Empty sources */}
-              {!isLoading && !files?.length && !isCreatingFile && (
-                <div className="flex items-center gap-2 px-5 py-3 text-muted-foreground">
-                  <FileText className="size-4 opacity-30" />
-                  <span className="text-[11px]">
-                    No source files.{" "}
+            // Add asset folders first
+            assets?.forEach((a) => {
+              if (a.isFolder) items.push({ kind: "folder", data: a });
+            });
+
+            // Then all files: tex files + asset files, sorted alphabetically
+            const fileItems: UnifiedItem[] = [];
+            files?.forEach((f) => fileItems.push({ kind: "tex", data: f }));
+            assets?.forEach((a) => {
+              if (!a.isFolder) fileItems.push({ kind: "asset", data: a });
+            });
+            fileItems.sort((a, b) => {
+              const nameA = a.kind === "tex" ? a.data.title : (a.data as PageFileAsset).filename;
+              const nameB = b.kind === "tex" ? b.data.title : (b.data as PageFileAsset).filename;
+              return nameA.localeCompare(nameB);
+            });
+
+            items.push(...fileItems);
+
+            if (items.length === 0 && !isCreatingFile && !isCreatingFolder) {
+              return (
+                <div className="flex flex-col items-center gap-2 px-5 py-8 text-muted-foreground">
+                  <FileText className="size-6 opacity-20" />
+                  <span className="text-[11px] text-center">
+                    No files yet.{" "}
                     <button
                       onClick={handleStartCreate}
                       className="text-primary hover:underline"
                     >
-                      Create one
+                      Create a file
                     </button>
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── ASSETS section ───────────────────────────────────────── */}
-          <SectionHeader
-            label="Assets"
-            count={assetCount}
-            expanded={assetsExpanded}
-            onToggle={() => setAssetsExpanded((v) => !v)}
-            actions={
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleStartCreateFolder(); }}
-                      className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <FolderPlus className="size-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">New Folder</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleUpload(); }}
-                      className="p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Upload className="size-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Upload</TooltipContent>
-                </Tooltip>
-              </>
-            }
-          />
-
-          {assetsExpanded && (
-            <div className="py-px">
-              {/* Inline new-folder input */}
-              {isCreatingFolder && (
-                <InlineInput
-                  icon={Folder}
-                  iconColor="text-amber-500"
-                  value={newFolderName}
-                  onChange={setNewFolderName}
-                  placeholder="folder name"
-                  onCommit={handleCreateFolder}
-                  onCancel={handleCancelCreateFolder}
-                  isPending={createFolderMutation.isPending}
-                />
-              )}
-
-              {/* Loading skeleton */}
-              {assetsLoading && (
-                <div className="flex flex-col">
-                  {[50, 70, 60].map((w, i) => (
-                    <div key={i} className="flex items-center h-[22px] gap-2 px-5">
-                      <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
-                      <div
-                        className="h-2.5 rounded bg-muted animate-pulse"
-                        style={{ width: `${w}%` }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Uploading indicator */}
-              {uploadingAssets && (
-                <div className="flex items-center gap-2 px-5 h-[22px]">
-                  <Loader2 className="size-3 animate-spin text-muted-foreground" />
-                  <span className="text-[11px] text-muted-foreground">Uploading…</span>
-                </div>
-              )}
-
-              {/* Asset rows — folders first, then files */}
-              {!assetsLoading &&
-                assets?.map((asset) =>
-                  asset.isFolder ? (
-                    <FolderNode
-                      key={asset._id}
-                      folder={asset}
-                      pageId={parentPageId!}
-                      depth={0}
-                      onInsertAsset={handleInsertAsset}
-                      onPreview={handleOpenPreview}
-                      onUploadToFolder={handleUploadToFolder}
-                      onMoveAssetToFolder={handleMoveAssetToFolder}
-                    />
-                  ) : (
-                    <AssetFileRow
-                      key={asset._id}
-                      asset={asset}
-                      pageId={parentPageId!}
-                      depth={0}
-                      onInsertAsset={handleInsertAsset}
-                      onPreview={handleOpenPreview}
-                    />
-                  ),
-                )}
-
-              {/* Empty assets */}
-              {!assetsLoading && !assets?.length && !isCreatingFolder && (
-                <div className="flex items-center gap-2 px-5 py-3 text-muted-foreground">
-                  <Image className="size-4 opacity-30" />
-                  <span className="text-[11px]">
-                    No assets.{" "}
+                    {" or "}
                     <button
                       onClick={handleUpload}
                       className="text-primary hover:underline"
                     >
-                      Upload files
+                      upload
                     </button>
                   </span>
                 </div>
-              )}
-            </div>
-          )}
+              );
+            }
+
+            return items.map((item) => {
+              if (item.kind === "folder") {
+                return (
+                  <FolderNode
+                    key={item.data._id}
+                    folder={item.data}
+                    pageId={parentPageId!}
+                    depth={0}
+                    onInsertAsset={handleInsertAsset}
+                    onPreview={handleOpenPreview}
+                    onUploadToFolder={handleUploadToFolder}
+                    onMoveAssetToFolder={handleMoveAssetToFolder}
+                  />
+                );
+              }
+
+              if (item.kind === "asset") {
+                return (
+                  <AssetFileRow
+                    key={item.data._id}
+                    asset={item.data as PageFileAsset}
+                    pageId={parentPageId!}
+                    depth={0}
+                    onInsertAsset={handleInsertAsset}
+                    onPreview={handleOpenPreview}
+                  />
+                );
+              }
+
+              // kind === "tex"
+              const file = item.data;
+              const isActive = file._id === pageId;
+              const isMain = file._id === mainFileId;
+              const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
+              return (
+                <div
+                  key={file._id}
+                  onClick={() => handleFileClick(file._id)}
+                  className={cn(
+                    "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors",
+                    isActive
+                      ? "bg-primary/8 border-l-2 border-l-primary"
+                      : "border-l-2 border-l-transparent hover:bg-muted/50",
+                  )}
+                >
+                  {/* Spacer for chevron alignment */}
+                  <span className={cn("shrink-0", isActive ? "w-[18px]" : "w-5")} />
+                  <FileIcon
+                    className={cn(
+                      "size-3.5 shrink-0 mr-1.5",
+                      isActive ? "text-primary" : fileColor,
+                    )}
+                  />
+
+                  {renamingId === file._id ? (
+                    <RenameInput
+                      value={renameValue}
+                      onChange={setRenameValue}
+                      onCommit={() => handleCommitRename(file._id)}
+                      onCancel={() => setRenamingId(null)}
+                      isPending={updateTitleMutation.isPending}
+                    />
+                  ) : (
+                    <>
+                      <span
+                        className={cn(
+                          "flex-1 min-w-0 truncate text-[12px]",
+                          isActive ? "text-primary font-medium" : "text-foreground/90",
+                        )}
+                      >
+                        {displayName(file.title)}
+                      </span>
+                      {isMain && !renamingId && (
+                        <span className="shrink-0 text-[10px] px-1.5 py-px rounded-full border border-primary/30 bg-primary/8 text-primary/80 font-medium mr-1">
+                          main
+                        </span>
+                      )}
+                      {renamingId !== file._id && (
+                        <RowActions>
+                          {!isMain && (
+                            <DropdownMenuItem
+                              className="text-[12px]!"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetMain(file._id);
+                              }}
+                            >
+                              <Star className="size-3.5 mr-2" />
+                              Set as Main File
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-[12px]!"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartRename(file);
+                            }}
+                          >
+                            <Pencil className="size-3.5 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-[12px]! text-destructive focus:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(file._id);
+                            }}
+                          >
+                            <Trash2 className="size-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </RowActions>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 

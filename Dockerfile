@@ -15,6 +15,7 @@ RUN npm install -g pnpm
 COPY . /app/
 COPY --from=development-dependencies-env /app/node_modules /app/node_modules
 WORKDIR /app
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN pnpm run build
 
 FROM node:20-alpine

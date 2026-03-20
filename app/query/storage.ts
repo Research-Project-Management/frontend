@@ -232,3 +232,23 @@ export const useRenameFile = () => {
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
     });
 };
+
+export const moveFile = (fileId: string, parentId: string | null) =>
+    apiPut(`/api/files/${fileId}/move`, { parentId });
+
+export const checkDuplicate = (filename: string, parentId: string | null, projectId?: string, workspaceId?: string) =>
+    apiPost<{ exists: boolean; existingFile: { _id: string; filename: string } | null }>(
+        `/api/files/check-duplicate`, { filename, parentId, projectId, workspaceId },
+    );
+
+export const useMoveFile = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) =>
+            moveFile(fileId, parentId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["files"] });
+            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+        },
+    });
+};

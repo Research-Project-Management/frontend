@@ -51,6 +51,7 @@ import {
   useDeletePageAsset,
   useCreatePageFolder,
   useRenamePageAsset,
+  useMovePageAsset,
 } from "~/query/page";
 import type { PageFileAsset } from "~/types/page";
 
@@ -62,12 +63,16 @@ function FolderNode({
   depth,
   onInsertAsset,
   onPreview,
+  onUploadToFolder,
+  onMoveAssetToFolder,
 }: {
   folder: PageFileAsset;
   pageId: string;
   depth: number;
   onInsertAsset: (name: string) => void;
   onPreview: (asset: PageFileAsset) => void;
+  onUploadToFolder?: (files: File[], folderId: string) => void;
+  onMoveAssetToFolder?: (assetId: string, folderId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { data: children, isLoading } = usePageAssets(pageId, expanded ? folder._id : undefined);
@@ -94,12 +99,42 @@ function FolderNode({
     );
   };
 
+  const [dragOver, setDragOver] = useState(false);
+
   return (
     <>
       <div
         onClick={() => setExpanded(!expanded)}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation();
+          setDragOver(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragOver(false);
+          // Desktop files dropped on folder
+          const droppedFiles = Array.from(e.dataTransfer.files);
+          if (droppedFiles.length > 0 && onUploadToFolder) {
+            onUploadToFolder(droppedFiles, folder._id);
+            return;
+          }
+          // Internal asset move
+          const assetId = e.dataTransfer.getData("application/x-asset-id");
+          if (assetId && assetId !== folder._id && onMoveAssetToFolder) {
+            onMoveAssetToFolder(assetId, folder._id);
+          }
+        }}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
-        className="group flex items-center gap-1.5 py-1.5 pr-2 cursor-pointer transition-colors text-foreground hover:bg-primary/5"
+        className={cn(
+          "group flex items-center gap-1.5 py-1.5 pr-2 cursor-pointer transition-colors text-foreground hover:bg-primary/5",
+          dragOver && "bg-primary/10 ring-1 ring-primary/30",
+        )}
       >
         <ChevronRight
           className={cn(
@@ -192,6 +227,8 @@ function FolderNode({
                 depth={depth + 1}
                 onInsertAsset={onInsertAsset}
                 onPreview={onPreview}
+                onUploadToFolder={onUploadToFolder}
+                onMoveAssetToFolder={onMoveAssetToFolder}
               />
             ) : (
               <AssetFileRow
@@ -257,6 +294,11 @@ function AssetFileRow({
 
   return (
     <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("application/x-asset-id", asset._id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
       onClick={() =>
         isImage ? onPreview(asset) : onInsertAsset(asset.filename)
       }
@@ -403,6 +445,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const uploadAssetMutation = useUploadPageAsset();
   const deleteAssetMutation = useDeletePageAsset();
   const createFolderMutation = useCreatePageFolder();
+  const moveAssetMutation = useMovePageAsset();
 
   // Image preview
   const [previewAsset, setPreviewAsset] = useState<PageFileAsset | null>(null);
@@ -697,6 +740,44 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
+
+  // ── Upload-to-folder callback (from FolderNode drop) ──────────────────
+
+  const handleUploadToFolder = useCallback(
+    (files: File[], folderId: string) => {
+      if (!parentPageId) return;
+      const items = files.map((f) => ({ file: f, name: f.name }));
+      // Upload assets with the target folder as parentId
+      let done = 0;
+      setUploadingAssets(true);
+      items.forEach(({ file, name }) => {
+        const renamedFile =
+          name !== file.name
+            ? new File([file], name, { type: file.type })
+            : file;
+        uploadAssetMutation.mutate(
+          { pageId: parentPageId, file: renamedFile, parentId: folderId },
+          {
+            onSettled: () => {
+              done++;
+              if (done === items.length) setUploadingAssets(false);
+            },
+          },
+        );
+      });
+    },
+    [parentPageId, uploadAssetMutation],
+  );
+
+  // ── Move asset to folder (internal drag) ──────────────────────────────
+
+  const handleMoveAssetToFolder = useCallback(
+    (assetId: string, folderId: string) => {
+      if (!parentPageId) return;
+      moveAssetMutation.mutate({ pageId: parentPageId, assetId, parentId: folderId });
+    },
+    [parentPageId, moveAssetMutation],
+  );
 
   return (
     <>
@@ -1021,6 +1102,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   depth={0}
                   onInsertAsset={handleInsertAsset}
                   onPreview={handleOpenPreview}
+                  onUploadToFolder={handleUploadToFolder}
+                  onMoveAssetToFolder={handleMoveAssetToFolder}
                 />
               ) : (
                 <AssetFileRow

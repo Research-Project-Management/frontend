@@ -1,4 +1,5 @@
 // Shared components for storage pages to avoid code duplication
+import { useState } from "react";
 import {
   File,
   FileText,
@@ -234,6 +235,8 @@ type StorageViewProps = {
   onRename?: (item: StorageItem) => void;
   isTrash?: boolean;
   selectedItemId?: string | null;
+  onDropOnFolder?: (folder: StorageItem, e: React.DragEvent) => void;
+  onDragStartFile?: (item: StorageItem, e: React.DragEvent) => void;
 };
 
 export function StorageListView({
@@ -246,7 +249,10 @@ export function StorageListView({
   onRename,
   isTrash,
   selectedItemId,
+  onDropOnFolder,
+  onDragStartFile,
 }: StorageViewProps) {
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   return (
     <div className="rounded-lg overflow-hidden">
       {/* Header - Google Drive style */}
@@ -270,8 +276,33 @@ export function StorageListView({
             return (
               <div
                 key={item._id}
+                draggable={!item.isFolder && !!onDragStartFile}
+                onDragStart={(e) => {
+                  if (!item.isFolder && onDragStartFile) {
+                    onDragStartFile(item, e);
+                  }
+                }}
+                onDragOver={(e) => {
+                  if (item.isFolder && onDropOnFolder) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOverFolderId(item._id);
+                  }
+                }}
+                onDragLeave={(e) => {
+                  e.stopPropagation();
+                  setDragOverFolderId(null);
+                }}
+                onDrop={(e) => {
+                  if (item.isFolder && onDropOnFolder) {
+                    setDragOverFolderId(null);
+                    onDropOnFolder(item, e);
+                  }
+                }}
                 className={`grid grid-cols-12 gap-4 items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer group transition-colors ${
                   selectedItemId === item._id ? "bg-primary/5 border-l-2 border-l-primary" : ""
+                } ${
+                  dragOverFolderId === item._id ? "bg-primary/10 ring-1 ring-primary/30" : ""
                 }`}
                 onClick={() => {
                   if (item.isFolder) {
@@ -357,7 +388,10 @@ export function StorageGridView({
   onRename,
   isTrash,
   selectedItemId,
+  onDropOnFolder,
+  onDragStartFile,
 }: StorageViewProps) {
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   if (items.length === 0) {
     return (
       <div className="p-16 text-center text-muted-foreground">
@@ -374,8 +408,33 @@ export function StorageGridView({
         return (
           <div
             key={item._id}
+            draggable={!item.isFolder && !!onDragStartFile}
+            onDragStart={(e) => {
+              if (!item.isFolder && onDragStartFile) {
+                onDragStartFile(item, e);
+              }
+            }}
+            onDragOver={(e) => {
+              if (item.isFolder && onDropOnFolder) {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragOverFolderId(item._id);
+              }
+            }}
+            onDragLeave={(e) => {
+              e.stopPropagation();
+              setDragOverFolderId(null);
+            }}
+            onDrop={(e) => {
+              if (item.isFolder && onDropOnFolder) {
+                setDragOverFolderId(null);
+                onDropOnFolder(item, e);
+              }
+            }}
             className={`group bg-card border rounded-lg overflow-hidden hover:border-border hover:bg-muted/30 transition-all cursor-pointer ${
               selectedItemId === item._id ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border/50"
+            } ${
+              dragOverFolderId === item._id ? "border-primary bg-primary/10 ring-2 ring-primary/30" : ""
             }`}
             onClick={() => {
               if (item.isFolder) {

@@ -340,6 +340,19 @@ export const useRenamePageAsset = () => {
 
 // ── Version control ───────────────────────────────────────────────────────────
 
+export const useMovePageAsset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ pageId, assetId, parentId }: { pageId: string; assetId: string; parentId: string | null }) => {
+            const data = await apiPut<{ asset: PageFileAsset }>(`/api/pages/${pageId}/assets/${assetId}/move`, { parentId });
+            return data.asset;
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["page-assets", variables.pageId] });
+        },
+    });
+};
+
 export const usePageVersions = (pageId: string | null) =>
   useQuery({
     queryKey: ["page-versions", pageId],

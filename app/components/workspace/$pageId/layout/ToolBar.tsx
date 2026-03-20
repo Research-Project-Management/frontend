@@ -8,15 +8,10 @@ import { toast } from "sonner";
 import Menu from "./Menu";
 import Flux from "@/assets/Flux.svg?react";
 import {
-  ChevronDown,
   Columns2,
-  Image,
-  Loader2,
   PanelLeft,
   PanelRight,
-  Play,
   Settings,
-  Zap,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,13 +24,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
 import { usePageContext } from "./PageContext";
 import {
   useEditorSettingsStore,
-  type CompileMode,
-  type LaTeXEngine,
   type LayoutMode,
 } from "~/stores/editor-settings";
 
@@ -205,32 +197,13 @@ const LAYOUT_OPTIONS: {
 
 export default function ToolBar() {
   const navigate = useNavigate();
-  const { currentPage, isCompiling, compileRef } = usePageContext();
+  const { currentPage } = usePageContext();
   const {
     layout,
     setLayout,
-    engine,
-    compileMode,
-    setCompileMode,
     settingsPanelOpen,
     toggleSettingsPanel,
   } = useEditorSettingsStore();
-
-  const COMPILE_MODE_OPTIONS: {
-    value: CompileMode;
-    label: string;
-    icon: React.ElementType;
-    description: string;
-  }[] = [
-    {
-      value: "normal",
-      label: "Normal",
-      icon: Image,
-      description: "Full compile",
-    },
-    { value: "fast", label: "Fast", icon: Zap, description: "No project" },
-    { value: "draft", label: "Draft", icon: Zap, description: "Skip images" },
-  ];
 
   const projectName =
     currentPage && typeof currentPage.project === "object"
@@ -239,12 +212,6 @@ export default function ToolBar() {
 
   const LayoutIcon =
     LAYOUT_OPTIONS.find((o) => o.value === layout)?.icon ?? Columns2;
-
-  const ENGINE_SHORT: Record<LaTeXEngine, string> = {
-    pdflatex: "pdf",
-    xelatex: "Xe",
-    lualatex: "Lua",
-  };
 
   return (
     <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
@@ -299,59 +266,6 @@ export default function ToolBar() {
       <div className="flex gap-1 items-center shrink-0">
         {/* Collaborator avatars */}
         <PresenceAvatars />
-
-        {/* Compile split button */}
-        <div className="flex items-center">
-          <button
-            onClick={() => compileRef.current?.()}
-            disabled={isCompiling}
-            title={`Compile (Ctrl+Enter) — ${ENGINE_SHORT[engine]} · ${compileMode}`}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
-          >
-            {isCompiling ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Play className="size-3.5 fill-white" />
-            )}
-            {isCompiling ? "Compiling…" : `Compile`}
-            {!isCompiling && (
-              <span className="opacity-60 font-normal">
-                · {ENGINE_SHORT[engine]}
-              </span>
-            )}
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                disabled={isCompiling}
-                className="flex items-center justify-center h-8 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 border-l border-primary-foreground/20"
-              >
-                <ChevronDown className="size-3" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              {COMPILE_MODE_OPTIONS.map(
-                ({ value, label, description }) => (
-                  <DropdownMenuItem
-                    key={value}
-                    onClick={() => setCompileMode(value)}
-                    className={cn(
-                      compileMode === value && "font-semibold text-primary",
-                      "text-xs",
-                    )}
-                  >
-                    {label}
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {description}
-                    </span>
-                  </DropdownMenuItem>
-                ),
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <Separator orientation="vertical" className="h-5 mx-1" />
 
         {/* Layout switcher */}
         <DropdownMenu>

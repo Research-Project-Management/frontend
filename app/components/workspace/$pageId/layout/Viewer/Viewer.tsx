@@ -4,14 +4,17 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
+  Image,
   Info,
   Loader2,
   Play,
   Terminal,
   X,
+  Zap,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -20,11 +23,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
 import { API_URL } from "~/lib/api";
 import { usePageContext } from "../PageContext";
-import { useEditorSettingsStore } from "~/stores/editor-settings";
+import { useEditorSettingsStore, type CompileMode, type LaTeXEngine } from "~/stores/editor-settings";
 import { useUpdatePageThumbnail } from "~/query/page";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -521,6 +530,89 @@ function pdfPositionToLine(
   );
 }
 
+// ── Compile Split Button ──────────────────────────────────────────────────
+
+const ENGINE_SHORT: Record<LaTeXEngine, string> = {
+  pdflatex: "pdf",
+  xelatex: "Xe",
+  lualatex: "Lua",
+};
+
+const COMPILE_MODE_OPTIONS: {
+  value: CompileMode;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+}[] = [
+  { value: "normal", label: "Normal", icon: Image, description: "Full compile" },
+  { value: "fast", label: "Fast", icon: Zap, description: "No project" },
+  { value: "draft", label: "Draft", icon: Zap, description: "Skip images" },
+];
+
+function CompileButton({
+  isCompiling,
+  onCompile,
+  engine,
+  compileMode,
+  setCompileMode,
+}: {
+  isCompiling: boolean;
+  onCompile: () => void;
+  engine: LaTeXEngine;
+  compileMode: CompileMode;
+  setCompileMode: (m: CompileMode) => void;
+}) {
+  return (
+    <div className="flex items-center">
+      <button
+        onClick={onCompile}
+        disabled={isCompiling}
+        title={`Compile (Ctrl+Enter) — ${ENGINE_SHORT[engine]} · ${compileMode}`}
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
+      >
+        {isCompiling ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <Play className="size-3 fill-current" />
+        )}
+        {isCompiling ? "Compiling…" : "Compile"}
+        {!isCompiling && (
+          <span className="opacity-60 font-normal">
+            · {ENGINE_SHORT[engine]}
+          </span>
+        )}
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            disabled={isCompiling}
+            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 border-l border-primary-foreground/20"
+          >
+            <ChevronDown className="size-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {COMPILE_MODE_OPTIONS.map(({ value, label, description }) => (
+            <DropdownMenuItem
+              key={value}
+              onClick={() => setCompileMode(value)}
+              className={cn(
+                compileMode === value && "font-semibold text-primary",
+                "text-xs",
+              )}
+            >
+              {label}
+              <span className="ml-auto text-xs text-muted-foreground">
+                {description}
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 // ── Main Viewer ────────────────────────────────────────────────────────────
 
 export default function Viewer() {
@@ -539,7 +631,7 @@ export default function Viewer() {
     scrollToPdfLineRef,
     scrollToLineRef,
   } = usePageContext();
-  const { engine, compileMode } = useEditorSettingsStore();
+  const { engine, compileMode, setCompileMode } = useEditorSettingsStore();
 
   const saveThumbnailMutation = useUpdatePageThumbnail();
 
@@ -751,8 +843,19 @@ export default function Viewer() {
   return (
     <div className="h-full w-full flex flex-col bg-background relative">
       {/* Viewer Toolbar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 h-9 bg-secondary shrink-0">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-2 h-9 bg-secondary shrink-0">
+        {/* Left: compile button */}
         <div className="flex items-center gap-1">
+          <CompileButton
+            isCompiling={isCompiling}
+            onCompile={handleCompile}
+            engine={engine}
+            compileMode={compileMode}
+            setCompileMode={setCompileMode}
+          />
+
+          <Separator orientation="vertical" className="h-5 mx-0.5" />
+
           {/* Zoom */}
           <ToolbarButton
             icon={ZoomOut}
@@ -770,9 +873,10 @@ export default function Viewer() {
             label="Zoom In (+)"
             onClick={handleZoomIn}
           />
+        </div>
 
-          <Separator orientation="vertical" className="h-5 mx-1" />
-
+        {/* Right */}
+        <div className="flex items-center gap-1">
           {/* Page navigation */}
           <ToolbarButton
             icon={ChevronLeft}
@@ -789,9 +893,9 @@ export default function Viewer() {
             onClick={handleNextPage}
             disabled={pageNumber >= numPages}
           />
-        </div>
 
-        <div className="flex items-center gap-1">
+          <Separator orientation="vertical" className="h-5 mx-0.5" />
+
           {compileLog && (
             <ToolbarButton
               icon={Terminal}
@@ -814,7 +918,7 @@ export default function Viewer() {
       {/* PDF Viewer */}
       <div
         ref={pdfScrollContainerRef}
-        className="flex-1 overflow-auto bg-muted/30 flex justify-center p-4 relative"
+        className="flex-1 overflow-auto bg-muted/30 flex justify-center relative"
       >
         {!pdfUrl ? (
           /* Empty state */
@@ -854,7 +958,7 @@ export default function Viewer() {
             }
           >
             {scrollMode ? (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
                 {Array.from({ length: numPages }, (_, i) => (
                   <div
                     key={`page_${i + 1}`}

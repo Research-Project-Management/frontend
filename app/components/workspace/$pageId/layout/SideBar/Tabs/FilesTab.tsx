@@ -825,7 +825,126 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     deleteAssetMutation.mutate({ pageId: parentPageId, assetId });
   };
 
-  // ── Drag & drop ──────────────────────────────────────────────────────────
+  // ── Drag & drop (with folder support) ────────────────────────────────────
+
+  // Helper: read all File objects from a FileSystemDirectoryEntry recursively
+  const readEntriesRecursively = useCallback(
+    async (dirEntry: FileSystemDirectoryEntry, basePath: string): Promise<{ file: File; relativePath: string }[]> => {
+      const results: { file: File; relativePath: string }[] = [];
+      const reader = dirEntry.createReader();
+
+      // readEntries may not return all entries in one call, so loop
+      const readBatch = (): Promise<FileSystemEntry[]> =>
+        new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+
+      let batch: FileSystemEntry[];
+      do {
+        batch = await readBatch();
+        for (const entry of batch) {
+          if (entry.isFile) {
+            const file = await new Promise<File>((resolve, reject) =>
+              (entry as FileSystemFileEntry).file(resolve, reject),
+            );
+            results.push({ file, relativePath: `${basePath}/${file.name}` });
+          } else if (entry.isDirectory) {
+            const subResults = await readEntriesRecursively(
+              entry as FileSystemDirectoryEntry,
+              `${basePath}/${entry.name}`,
+            );
+            results.push(...subResults);
+          }
+        }
+      } while (batch.length > 0);
+
+      return results;
+    },
+    [],
+  );
+
+  // Helper: recursively create folders and upload files for a dropped folder
+  const uploadDroppedFolder = useCallback(
+    async (dirEntry: FileSystemDirectoryEntry) => {
+      if (!parentPageId) return;
+      setUploadingAssets(true);
+
+      try {
+        // 1. Create root folder
+        const rootFolder = await new Promise<{ _id: string }>((resolve, reject) => {
+          createFolderMutation.mutate(
+            { pageId: parentPageId, name: dirEntry.name },
+            {
+              onSuccess: (data: any) => resolve(data),
+              onError: (err: any) => reject(err),
+            },
+          );
+        });
+
+        // 2. Recursively read all files from the dropped folder
+        const allFiles = await readEntriesRecursively(dirEntry, dirEntry.name);
+
+        // 3. Collect unique sub-folder paths and create them
+        const subFolderPaths = new Set<string>();
+        for (const { relativePath } of allFiles) {
+          const parts = relativePath.split("/");
+          // e.g. "folder/sub/file.png" → sub-folder path is "folder/sub"
+          // Skip the root folder part (index 0) since it's already created
+          for (let i = 2; i < parts.length; i++) {
+            subFolderPaths.add(parts.slice(1, i).join("/"));
+          }
+        }
+
+        // Create sub-folders sequentially, mapping path → folderId
+        const folderIdMap: Record<string, string> = { "": rootFolder._id };
+        const sortedPaths = Array.from(subFolderPaths).sort();
+
+        for (const subPath of sortedPaths) {
+          const parts = subPath.split("/");
+          const folderName = parts[parts.length - 1];
+          const parentPath = parts.slice(0, -1).join("/");
+          const parentId = folderIdMap[parentPath] ?? rootFolder._id;
+
+          const created = await new Promise<{ _id: string }>((resolve, reject) => {
+            createFolderMutation.mutate(
+              { pageId: parentPageId, name: folderName, parentId },
+              {
+                onSuccess: (data: any) => resolve(data),
+                onError: (err: any) => reject(err),
+              },
+            );
+          });
+          folderIdMap[subPath] = created._id;
+        }
+
+        // 4. Upload files into correct folders
+        let done = 0;
+        const total = allFiles.length;
+        if (total === 0) {
+          setUploadingAssets(false);
+          return;
+        }
+
+        for (const { file, relativePath } of allFiles) {
+          const parts = relativePath.split("/");
+          // Sub-folder path relative to root folder (skip root name)
+          const parentSubPath = parts.slice(1, -1).join("/");
+          const parentId = folderIdMap[parentSubPath] ?? rootFolder._id;
+
+          uploadAssetMutation.mutate(
+            { pageId: parentPageId, file, parentId },
+            {
+              onSettled: () => {
+                done++;
+                if (done === total) setUploadingAssets(false);
+              },
+            },
+          );
+        }
+      } catch {
+        setUploadingAssets(false);
+      }
+    },
+    [parentPageId, createFolderMutation, uploadAssetMutation, readEntriesRecursively],
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -833,12 +952,37 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       dragCounterRef.current = 0;
       setIsDragging(false);
       if (!parentPageId) return;
-      const dropped = Array.from(e.dataTransfer.files);
-      if (!dropped.length) return;
-      setPendingUploads(dropped.map((f) => ({ file: f, name: f.name })));
-      setUploadDialogOpen(true);
+
+      const items = e.dataTransfer.items;
+      const plainFiles: File[] = [];
+      const folderEntries: FileSystemDirectoryEntry[] = [];
+
+      // Separate folders from files using webkitGetAsEntry
+      if (items?.length) {
+        for (let i = 0; i < items.length; i++) {
+          const entry = items[i].webkitGetAsEntry?.();
+          if (entry?.isDirectory) {
+            folderEntries.push(entry as FileSystemDirectoryEntry);
+          } else if (entry?.isFile) {
+            const file = e.dataTransfer.files[i];
+            if (file) plainFiles.push(file);
+          }
+        }
+      } else {
+        // Fallback: no items API
+        plainFiles.push(...Array.from(e.dataTransfer.files));
+      }
+
+      // Handle folders: create folder structure and upload files
+      folderEntries.forEach((dir) => uploadDroppedFolder(dir));
+
+      // Handle plain files: go through the naming dialog
+      if (plainFiles.length > 0) {
+        setPendingUploads(plainFiles.map((f) => ({ file: f, name: f.name })));
+        setUploadDialogOpen(true);
+      }
     },
-    [parentPageId],
+    [parentPageId, uploadDroppedFolder],
   );
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {

@@ -7,26 +7,37 @@ import {
   Braces,
   Check,
   ChevronDown,
+  ChevronRight,
   Clipboard,
   Code,
+  Columns,
   Copy,
   FileText,
   Hash,
+  Image,
   Italic,
+  Link,
   List,
   ListOrdered,
   Loader2,
+  Minus,
   Pilcrow,
+  Plus,
   Redo,
   Scissors,
   Sigma,
   Strikethrough,
   Subscript,
   Superscript,
+  Table,
   Tag,
+  Type,
   Underline,
   Undo,
   X,
+  ListChecks,
+  Quote,
+  CodeSquare,
 } from "lucide-react";
 import React, { useState } from "react";
 import { Input } from "~/components/ui/input";
@@ -41,7 +52,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
 import { useUpdatePageTitle } from "~/query/page";
 import type { Page } from "~/types/page";
@@ -76,14 +86,6 @@ const toolGroups = [
     ],
   },
   {
-    name: "align",
-    items: [
-      { label: "Align Left", icon: AlignLeft },
-      { label: "Align Center", icon: AlignCenter },
-      { label: "Align Right", icon: AlignRight },
-    ],
-  },
-  {
     name: "list",
     items: [
       { label: "Bullet List", icon: List, command: "\\begin{itemize}" },
@@ -92,21 +94,30 @@ const toolGroups = [
         icon: ListOrdered,
         command: "\\begin{enumerate}",
       },
+      { label: "Checklist", icon: ListChecks },
     ],
   },
   {
-    name: "math",
+    name: "block",
     items: [
-      { label: "Inline Math", icon: Sigma, shortcut: "Ctrl+Shift+M" },
-      { label: "Display Math", icon: Braces },
+      { label: "Quote", icon: Quote },
+      { label: "Code Block", icon: CodeSquare },
+      { label: "Divider", icon: Minus },
     ],
   },
   {
-    name: "refs",
+    name: "insert",
     items: [
-      { label: "Label", icon: Tag, command: "\\label{}" },
-      { label: "Ref", icon: Hash, command: "\\ref{}" },
-      { label: "Cite", icon: BookOpen, command: "\\cite{}" },
+      { label: "Link", icon: Link },
+      { label: "Image", icon: Image },
+      { label: "Table", icon: Table },
+    ],
+  },
+  {
+    name: "format",
+    items: [
+      { label: "Font Style", icon: Type },
+      { label: "Columns", icon: Columns },
     ],
   },
 ];
@@ -148,24 +159,29 @@ function ToolButton({
         <button
           onClick={onClick}
           className={cn(
-            "p-1 rounded transition-colors",
-            "text-muted-foreground hover:text-primary hover:bg-primary/10",
-            isActive && "bg-primary/10 text-primary",
+            "p-1.5 rounded-md transition-all duration-150",
+            "text-gray-500 hover:text-gray-800 hover:bg-gray-100",
+            isActive && "bg-blue-50 text-blue-600",
           )}
         >
-          <Icon className="size-3.5" strokeWidth={2} />
+          <Icon className="size-[15px]" strokeWidth={1.8} />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="flex items-center gap-2">
         <span>{label}</span>
         {shortcut && (
-          <kbd className="text-[10px] bg-gray-500 px-1.5 py-0.5 rounded font-mono">
+          <kbd className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
             {shortcut}
           </kbd>
         )}
       </TooltipContent>
     </Tooltip>
   );
+}
+
+/** Thin vertical divider between tool groups */
+function ToolDivider() {
+  return <div className="w-px h-4 bg-gray-200 mx-1 self-center shrink-0" />;
 }
 
 interface ToolBarProps {
@@ -301,6 +317,26 @@ export default function ToolBar({ page }: ToolBarProps) {
       case "Cite":
         if (command) insertText(command);
         return;
+      case "Quote":
+        wrapSelection("\\begin{quote}\n", "\n\\end{quote}");
+        return;
+      case "Code Block":
+        wrapSelection("\\begin{verbatim}\n", "\n\\end{verbatim}");
+        return;
+      case "Divider":
+        insertText("\n\\noindent\\rule{\\textwidth}{0.4pt}\n");
+        return;
+      case "Link":
+        wrapSelection("\\href{url}{", "}");
+        return;
+      case "Image":
+        insertText("\\includegraphics[width=\\textwidth]{}");
+        return;
+      case "Table":
+        insertText(
+          "\n\\begin{tabular}{|c|c|c|}\n\\hline\n  &  &  \\\\\n\\hline\n\\end{tabular}\n",
+        );
+        return;
       default:
         if (command) insertText(command);
     }
@@ -310,46 +346,117 @@ export default function ToolBar({ page }: ToolBarProps) {
   const handleMathEnvInsert = (env: string) =>
     wrapSelection(`\\begin{${env}}\n  `, `\n\\end{${env}}`);
 
+  // Project name from the page's populated project
+  const projectName =
+    page && typeof page.project === "object"
+      ? (page.project as any).name
+      : null;
+
   return (
-    <div className="flex flex-col bg-background border-b border-border shrink-0">
-      {/* ── Row 1: File title ── */}
-      <div className="flex items-center gap-1 px-2 h-9 border-b border-border/50">
-        <FileText className="size-3.5 text-muted-foreground shrink-0" />
-        <Input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleCommitTitle();
-            if (e.key === "Escape") handleCancelTitle();
-          }}
-          className="h-6 text-xs font-medium flex-1 min-w-0 max-w-72 bg-muted/40 border-transparent focus:border-border focus:bg-background"
-          placeholder="Page title"
-        />
-        {isDirty && (
-          <>
-            <button
-              onClick={handleCommitTitle}
-              disabled={!title.trim() || updateTitleMutation.isPending}
-              className="p-0.5 rounded text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 transition-colors shrink-0"
-              title="Confirm rename"
-            >
-              {updateTitleMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Check className="size-3.5" />
-              )}
-            </button>
-            <button
-              onClick={handleCancelTitle}
-              className="p-0.5 rounded text-muted-foreground hover:bg-muted transition-colors shrink-0"
-              title="Cancel"
-            >
-              <X className="size-3.5" />
-            </button>
-          </>
-        )}
-        <Separator orientation="vertical" className="h-4 mx-0.5 shrink-0" />
+    <div className="flex flex-col shrink-0 select-none">
+      {/* ── Row 1: Tab bar ───────────────────────────────────────────── */}
+      <div className="flex items-center h-9 bg-[#f8f8f8] border-b border-gray-200">
+        {/* Active tab */}
+        <div className="flex items-center gap-1.5 h-full px-3 bg-white border-r border-gray-200 border-t-2 border-t-blue-500 min-w-0 max-w-[200px]">
+          <FileText className="size-3.5 text-gray-400 shrink-0" />
+          <span className="text-xs font-medium text-gray-700 truncate">
+            {title || "Untitled"}
+          </span>
+          <button
+            onClick={handleCancelTitle}
+            className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors shrink-0 ml-auto"
+            title="Close tab"
+          >
+            <X className="size-3" />
+          </button>
+        </div>
+        {/* Add tab button */}
+        <button className="flex items-center justify-center size-9 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0">
+          <Plus className="size-3.5" />
+        </button>
+        <div className="flex-1" />
+      </div>
+
+      {/* ── Row 2: Breadcrumb + Actions ─────────────────────────────── */}
+      <div className="flex items-center h-8 px-3 bg-white border-b border-gray-200">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1 text-xs text-gray-400 min-w-0 flex-1">
+          {projectName && (
+            <>
+              <span className="truncate max-w-[120px] hover:text-gray-600 cursor-pointer transition-colors">
+                {projectName}
+              </span>
+              <ChevronRight className="size-3 shrink-0" />
+            </>
+          )}
+          {/* Editable page title inline */}
+          <div className="flex items-center gap-1 min-w-0">
+            <FileText className="size-3 shrink-0 text-gray-400" />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCommitTitle();
+                if (e.key === "Escape") handleCancelTitle();
+              }}
+              onBlur={handleCommitTitle}
+              className="text-xs font-medium text-gray-600 bg-transparent border-none outline-none min-w-0 max-w-[160px] truncate hover:text-gray-800 focus:text-gray-800 transition-colors"
+              placeholder="Untitled"
+              spellCheck={false}
+            />
+            {isDirty && (
+              <>
+                <button
+                  onClick={handleCommitTitle}
+                  disabled={!title.trim() || updateTitleMutation.isPending}
+                  className="p-0.5 rounded text-green-600 hover:bg-green-50 disabled:opacity-50 transition-colors shrink-0"
+                  title="Confirm rename"
+                >
+                  {updateTitleMutation.isPending ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Check className="size-3" />
+                  )}
+                </button>
+                <button
+                  onClick={handleCancelTitle}
+                  className="p-0.5 rounded text-gray-400 hover:bg-gray-100 transition-colors shrink-0"
+                  title="Cancel"
+                >
+                  <X className="size-3" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right-side action icons */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <ToolButton
+            label="Copy"
+            icon={Copy}
+            shortcut="Ctrl+C"
+            onClick={() => handleToolClick("Copy")}
+          />
+          <ToolButton
+            label="Cut"
+            icon={Scissors}
+            shortcut="Ctrl+X"
+            onClick={() => handleToolClick("Cut")}
+          />
+          <ToolButton
+            label="Paste"
+            icon={Clipboard}
+            shortcut="Ctrl+V"
+            onClick={() => handleToolClick("Paste")}
+          />
+        </div>
+      </div>
+
+      {/* ── Row 3: Formatting toolbar ───────────────────────────────── */}
+      <div className="flex items-center gap-0.5 px-2 h-9 bg-[#fafafa] border-b border-gray-200 overflow-x-auto">
+        {/* Undo / Redo */}
         <ToolButton
           label="Undo"
           icon={Undo}
@@ -362,29 +469,9 @@ export default function ToolBar({ page }: ToolBarProps) {
           shortcut="Ctrl+Y"
           onClick={handleRedo}
         />
-        <Separator orientation="vertical" className="h-4 mx-0.5 shrink-0" />
-        <ToolButton
-          label="Cut"
-          icon={Scissors}
-          shortcut="Ctrl+X"
-          onClick={() => handleToolClick("Cut")}
-        />
-        <ToolButton
-          label="Copy"
-          icon={Copy}
-          shortcut="Ctrl+C"
-          onClick={() => handleToolClick("Copy")}
-        />
-        <ToolButton
-          label="Paste"
-          icon={Clipboard}
-          shortcut="Ctrl+V"
-          onClick={() => handleToolClick("Paste")}
-        />
-      </div>
 
-      {/* ── Row 2: Tool buttons (wraps on narrow widths) ── */}
-      <div className="flex flex-wrap items-center gap-y-0.5 px-1.5 py-0.5">
+        <ToolDivider />
+
         {/* Tool groups */}
         {toolGroups.map((group, groupIndex) => (
           <React.Fragment key={group.name}>
@@ -400,59 +487,21 @@ export default function ToolBar({ page }: ToolBarProps) {
                   }
                 />
               ))}
-              {/* Inline math env dropdown inside math group */}
-              {group.name === "math" && (
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <button className="flex items-center gap-0.5 px-1 py-1 rounded transition-colors text-muted-foreground hover:text-primary hover:bg-primary/10">
-                          <span className="text-[12px] font-serif leading-none">
-                            ∑
-                          </span>
-                          <ChevronDown className="size-2" />
-                        </button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      Math Environments
-                    </TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent align="start" className="min-w-42.5">
-                    {MATH_ENV_COMMANDS.map((m) => (
-                      <DropdownMenuItem
-                        key={m.env}
-                        onClick={() => handleMathEnvInsert(m.env)}
-                      >
-                        <span className="text-[11px] font-mono text-muted-foreground mr-2">
-                          {`\\begin{${m.env}}`}
-                        </span>
-                        {m.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
-            {groupIndex < toolGroups.length - 1 && (
-              <Separator
-                orientation="vertical"
-                className="h-4 mx-0.5 self-center"
-              />
-            )}
+            {groupIndex < toolGroups.length - 1 && <ToolDivider />}
           </React.Fragment>
         ))}
 
-        <Separator orientation="vertical" className="h-4 mx-0.5 self-center" />
+        <ToolDivider />
 
-        {/* Section dropdown */}
+        {/* Heading / Section dropdown */}
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-0.5 px-1 py-1 rounded transition-colors text-muted-foreground hover:text-primary hover:bg-primary/10">
-                  <Pilcrow className="size-3.5" strokeWidth={2} />
-                  <ChevronDown className="size-2" />
+                <button className="flex items-center gap-0.5 px-1.5 py-1 rounded-md transition-all duration-150 text-gray-500 hover:text-gray-800 hover:bg-gray-100 text-xs font-medium">
+                  <span>H1</span>
+                  <ChevronDown className="size-2.5" />
                 </button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
@@ -472,6 +521,68 @@ export default function ToolBar({ page }: ToolBarProps) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Math dropdown */}
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-0.5 px-1.5 py-1 rounded-md transition-all duration-150 text-gray-500 hover:text-gray-800 hover:bg-gray-100">
+                  <Sigma className="size-[15px]" strokeWidth={1.8} />
+                  <ChevronDown className="size-2.5" />
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Math Environments</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="start" className="min-w-42.5">
+            <DropdownMenuItem
+              onClick={() => handleToolClick("Inline Math")}
+            >
+              <span className="text-[11px] font-mono text-muted-foreground mr-2">
+                $...$
+              </span>
+              Inline Math
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleToolClick("Display Math")}
+            >
+              <span className="text-[11px] font-mono text-muted-foreground mr-2">
+                \[...\]
+              </span>
+              Display Math
+            </DropdownMenuItem>
+            {MATH_ENV_COMMANDS.map((m) => (
+              <DropdownMenuItem
+                key={m.env}
+                onClick={() => handleMathEnvInsert(m.env)}
+              >
+                <span className="text-[11px] font-mono text-muted-foreground mr-2">
+                  {`\\begin{${m.env}}`}
+                </span>
+                {m.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Refs group */}
+        <ToolDivider />
+        <ToolButton
+          label="Label"
+          icon={Tag}
+          onClick={() => handleToolClick("Label", "\\label{}")}
+        />
+        <ToolButton
+          label="Ref"
+          icon={Hash}
+          onClick={() => handleToolClick("Ref", "\\ref{}")}
+        />
+        <ToolButton
+          label="Cite"
+          icon={BookOpen}
+          onClick={() => handleToolClick("Cite", "\\cite{}")}
+        />
       </div>
     </div>
   );

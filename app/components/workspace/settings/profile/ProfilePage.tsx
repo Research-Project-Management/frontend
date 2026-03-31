@@ -9,6 +9,10 @@ import { Input } from "~/components/ui/input";
 import { API_URL } from "~/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useUpload } from "~/hooks/useUpload";
+import { Avatar } from "../../layout/Avatar";
+import { useEffect } from "react";
+import { apiPut } from "~/lib/api";
 
 export default function ProfilePage() {
   const { user, isLoading: isLoadingUser } = useAuth();
@@ -16,9 +20,17 @@ export default function ProfilePage() {
 
   const [name, setName] = useState(user?.name || "");
   const [avatar, setAvatar] = useState(user?.avatar || "");
-  const [isUploading, setIsUploading] = useState(false);
+  const { uploadAvatar, isUploading } = useUpload();
   const [isSaving, setIsSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Sync state when user data loads/changes
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setAvatar(user.avatar || "");
+    }
+  }, [user]);
 
   // Password change
   const [currentPassword, setCurrentPassword] = useState("");
@@ -31,32 +43,19 @@ export default function ProfilePage() {
 
   const handleAvatarUpload = async (file: File) => {
     try {
-      setIsUploading(true);
-      const presignResponse = await fetch(`${API_URL}/api/files/presign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          fileName: `avatars/${Date.now()}-${file.name}`,
-        }),
-      });
-      if (!presignResponse.ok) throw new Error("Failed to get upload URL");
-      const { url: presignedUrl, path } = await presignResponse.json();
-
-      const uploadResponse = await fetch(presignedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!uploadResponse.ok) throw new Error("Failed to upload file");
-
-      const finalUrl = `${API_URL}/api/files/${path}`;
+      const finalUrl = await uploadAvatar(file);
       setAvatar(finalUrl);
-      toast.success("Avatar uploaded");
-    } catch {
-      toast.error("Failed to upload avatar");
-    } finally {
-      setIsUploading(false);
+
+      // Auto-save avatar change to backend
+      await apiPut("/auth/profile", { 
+        name: (name || user?.name || "").trim(), 
+        avatar: finalUrl 
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      toast.success("Avatar updated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload avatar");
     }
   };
 
@@ -67,17 +66,10 @@ export default function ProfilePage() {
     }
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/profile`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name: name.trim(), avatar: avatar || null }),
+      await apiPut("/auth/profile", { 
+        name: name.trim(), 
+        avatar: avatar || null 
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update");
-      }
-      const { user: updatedUser } = await res.json();
       queryClient.invalidateQueries({ queryKey: ["currentUser"] });
       toast.success("Profile updated");
     } catch (err: any) {
@@ -161,17 +153,14 @@ export default function ProfilePage() {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={isUploading}
-              className="relative group size-20 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-3xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
+              className="relative group size-20 shrink-0 rounded-full flex items-center justify-center text-3xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
             >
-              {avatar ? (
-                <img
-                  src={avatar}
-                  alt="Avatar"
-                  className="size-full object-cover"
-                />
-              ) : (
-                <span>{initial}</span>
-              )}
+              <Avatar
+                src={avatar}
+                name={user.name!}
+                className="size-full"
+                fallbackType="user"
+              />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 {isUploading ? (
                   <Loader2 className="size-5 text-white animate-spin" />

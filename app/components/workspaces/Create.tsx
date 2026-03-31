@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_URL } from "~/lib/api";
 import {
   Field,
   FieldContent,
@@ -29,6 +30,7 @@ export default function Create() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const createWorkspace = useMutation({
     mutationFn: async (workspaceData: {
@@ -36,21 +38,20 @@ export default function Create() {
       url: string;
       avatar: string | null;
     }) => {
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + "/api/workspace",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(workspaceData),
+      const apiUrl = API_URL + "/api/workspace";
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        credentials: "include",
+        body: JSON.stringify(workspaceData),
+      });
+      const respText = await response.text();
       if (!response.ok) {
-        throw new Error("Failed to create workspace");
+        throw new Error("Failed to create workspace: " + respText);
       }
-      return response.json();
+      return respText ? JSON.parse(respText) : null;
     },
     onSuccess(data) {
       const workspaceUrl = `/${data.workspace.url}`;
@@ -60,6 +61,7 @@ export default function Create() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploadError(null);
 
     try {
       let finalAvatar = avatar;
@@ -67,9 +69,9 @@ export default function Create() {
       // Upload file if user selected one
       if (avatarFile) {
         setIsUploadingAvatar(true);
-
+        // Use API_URL for presign endpoint
         const presignResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/files/presign",
+          API_URL + "/api/files/presign",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -80,7 +82,13 @@ export default function Create() {
           },
         );
 
-        if (!presignResponse.ok) throw new Error("Failed to get upload URL");
+        if (!presignResponse.ok) {
+          setIsUploadingAvatar(false);
+          setAvatarFile(null);
+          setAvatar(null);
+          setUploadError("Không lấy được upload URL. Vui lòng thử lại.");
+          return;
+        }
 
         const { url: presignedUrl, path } = await presignResponse.json();
 
@@ -90,9 +98,15 @@ export default function Create() {
           body: avatarFile,
         });
 
-        if (!uploadResponse.ok) throw new Error("Failed to upload file");
+        if (!uploadResponse.ok) {
+          setIsUploadingAvatar(false);
+          setAvatarFile(null);
+          setAvatar(null);
+          setUploadError("Upload file thất bại. Vui lòng thử lại.");
+          return;
+        }
 
-        finalAvatar = `${import.meta.env.VITE_API_URL}/api/files/${path}`;
+        finalAvatar = `${API_URL}/api/files/${path}`;
         setIsUploadingAvatar(false);
       }
 
@@ -104,9 +118,10 @@ export default function Create() {
 
       createWorkspace.mutate(workspaceData);
     } catch (error) {
-      console.error("Upload error:", error);
-      alert("Failed to upload avatar. Please try again.");
       setIsUploadingAvatar(false);
+      setAvatarFile(null);
+      setAvatar(null);
+      setUploadError("Có lỗi khi upload avatar. Vui lòng thử lại.");
     }
   };
 
@@ -166,7 +181,7 @@ export default function Create() {
                     {isUploadingAvatar ? (
                       <>
                         <Loader2 className="mr-2 size-4 animate-spin" />
-                        Uploading...
+                        Đang upload...
                       </>
                     ) : (
                       "Upload Image"
@@ -190,6 +205,9 @@ export default function Create() {
                     value={avatar || ""}
                     onChange={(e) => setAvatar(e.target.value)}
                   />
+                )}
+                {uploadError && (
+                  <FieldError>{uploadError}</FieldError>
                 )}
               </div>
             </Field>
@@ -243,10 +261,14 @@ export default function Create() {
             </FieldLabel>
           </Field> */}
             <Field orientation="horizontal">
-              <Button disabled={!name || !url} type="submit">
+              <Button disabled={!name || !url || isUploadingAvatar} type="submit">
                 Create Workspace
               </Button>
-              <Button variant="outline" type="button">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => navigate(-1)}
+              >
                 Go back
               </Button>
               {createWorkspace.isPending && (

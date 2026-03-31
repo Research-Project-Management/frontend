@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_URL } from "~/lib/api";
 import { useNavigate } from "react-router";
 import { useWorkspaces } from "../../query/workspace";
 import { Button } from "../../components/ui/button";
@@ -39,6 +40,8 @@ export default function ManageWorkspaces() {
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
   const updateWorkspace = useMutation({
     mutationFn: async ({
@@ -70,17 +73,29 @@ export default function ManageWorkspaces() {
   const deleteWorkspace = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(
-        import.meta.env.VITE_API_URL + `/api/workspace/${id}`,
+        API_URL + `/api/workspace/${id}`,
         {
           method: "DELETE",
           credentials: "include",
         },
       );
-      if (!response.ok) throw new Error("Failed to delete workspace");
+      if (!response.ok) {
+        let msg = "Failed to delete workspace";
+        try {
+          const data = await response.json();
+          msg = data?.error || data?.message || msg;
+        } catch {}
+        throw new Error(msg);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       setDeletingWorkspace(null);
+      setDeleteConfirmInput("");
+      setDeleteError(null);
+    },
+    onError: (err: any) => {
+      setDeleteError(err?.message || "Failed to delete workspace");
     },
   });
 
@@ -94,6 +109,8 @@ export default function ManageWorkspaces() {
 
   const handleDelete = (workspace: Workspace) => {
     setDeletingWorkspace(workspace);
+    setDeleteError(null);
+    setDeleteConfirmInput("");
   };
 
   const confirmUpdate = async () => {
@@ -150,6 +167,7 @@ export default function ManageWorkspaces() {
 
   const confirmDelete = () => {
     if (!deletingWorkspace) return;
+    setDeleteError(null);
     deleteWorkspace.mutate(deletingWorkspace._id);
   };
 
@@ -366,25 +384,45 @@ export default function ManageWorkspaces() {
               Delete Workspace
             </DialogTitle>
             <DialogDescription className="text-base pt-2">
-              Are you sure you want to delete{" "}
-              <strong>"{deletingWorkspace?.name}"</strong>?
+              Are you sure you want to delete <strong>"{deletingWorkspace?.name}"</strong>?
               <br />
               <span className="text-destructive font-medium">
                 This action cannot be undone.
               </span>
             </DialogDescription>
           </DialogHeader>
+          <div className="mt-4">
+            <div className="mb-2 text-sm">
+              Please type "<span className="font-bold">{deletingWorkspace?.name}</span>" to confirm:
+            </div>
+            <Input
+              autoFocus
+              value={deleteConfirmInput}
+              onChange={e => setDeleteConfirmInput(e.target.value)}
+              disabled={deleteWorkspace.isPending}
+              placeholder={deletingWorkspace?.name}
+              className="mb-2"
+            />
+            {deleteError && (
+              <div className="text-red-500 text-sm mb-2">{deleteError}</div>
+            )}
+          </div>
           <DialogFooter className="mt-4">
             <Button
               variant="outline"
               onClick={() => setDeletingWorkspace(null)}
+              disabled={deleteWorkspace.isPending}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDelete}
-              disabled={deleteWorkspace.isPending}
+              disabled={
+                deleteWorkspace.isPending ||
+                !deletingWorkspace ||
+                deleteConfirmInput !== deletingWorkspace.name
+              }
               className="gap-2"
             >
               {deleteWorkspace.isPending ? "Deleting..." : "Delete Workspace"}

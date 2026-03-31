@@ -1,5 +1,5 @@
 import TopBar from "../layout/TopBar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -11,14 +11,16 @@ import DeleteModal from "./components/deleteModal";
 import { useWorkspace } from "~/hooks";
 import { useUpdateWorkspace, useDeleteWorkspace } from "~/query/workspace";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useUpload } from "~/hooks/useUpload";
+import { Avatar } from "../../layout/Avatar";
 
 export default function GeneralPage() {
   const navigate = useNavigate();
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const { workspace, isLoading, isError } = useWorkspace();
+  const { uploadAvatar, isUploading: isUploadingAvatar } = useUpload();
 
   const updateMutation = useUpdateWorkspace();
   const deleteMutation = useDeleteWorkspace();
@@ -61,41 +63,17 @@ export default function GeneralPage() {
 
   const ws = workspace.workspace;
 
-  if (currentAvatar === null && ws.avatar) {
-    setCurrentAvatar(ws.avatar);
-  }
+  // Sync avatar when workspace data loads/changes
+  useEffect(() => {
+    if (ws?.avatar) {
+      setCurrentAvatar(ws.avatar);
+    }
+  }, [ws?.avatar]);
 
   const handleAvatarUpload = async (file: File) => {
     try {
-      setIsUploadingAvatar(true);
-
-      const presignResponse = await fetch(
-        import.meta.env.VITE_API_URL + "/api/files/presign",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            fileName: `avatars/${Date.now()}-${file.name}`,
-          }),
-        }
-      );
-
-      if (!presignResponse.ok) throw new Error("Failed to get upload URL");
-
-      const { url: presignedUrl, path } = await presignResponse.json();
-
-      const uploadResponse = await fetch(presignedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      if (!uploadResponse.ok) throw new Error("Failed to upload file");
-
-      const finalAvatarUrl = `${import.meta.env.VITE_API_URL}/api/files/${path}`;
+      const finalAvatarUrl = await uploadAvatar(file);
       setCurrentAvatar(finalAvatarUrl);
-      setIsUploadingAvatar(false);
 
       updateMutation.mutate(
         { id: ws._id, data: { avatar: finalAvatarUrl } },
@@ -113,7 +91,6 @@ export default function GeneralPage() {
       console.error("Upload error:", error);
       toast.error("Failed to upload avatar. Please try again.");
       setCurrentAvatar(ws.avatar || null);
-      setIsUploadingAvatar(false);
     }
   };
 

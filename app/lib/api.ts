@@ -1,4 +1,13 @@
-export const API_URL = import.meta.env.VITE_API_URL ?? "";
+const isBrowserLocalhost =
+  !import.meta.env.SSR &&
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+export const API_URL = isBrowserLocalhost
+  ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL || ""
+  : import.meta.env.DEV
+    ? import.meta.env.VITE_DEV_API_URL || import.meta.env.VITE_API_URL || ""
+    : import.meta.env.VITE_API_URL || "";
 
 // ── Custom error class ────────────────────────────────────────────────────────
 

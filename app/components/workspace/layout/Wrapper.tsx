@@ -46,6 +46,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import SearchCommandPalette from "./SearchCommandPalette";
+import { Avatar } from "./Avatar";
 
 const sidebarItems = [
   { label: "Projects", icon: Square3Stack3DIcon, to: "" },
@@ -134,13 +135,12 @@ export function TopBar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:bg-muted rounded-md px-2 py-1 transition-colors cursor-pointer outline-none">
-                  {currentWorkspace.avatar && (
-                    <img
-                      src={currentWorkspace.avatar}
-                      alt=""
-                      className="size-5 rounded object-cover"
-                    />
-                  )}
+                  <Avatar
+                    src={currentWorkspace.avatar}
+                    name={currentWorkspace.name}
+                    className="size-5 rounded"
+                    fallbackType="workspace"
+                  />
                   <span className="text-sm font-semibold text-primary/80 truncate max-w-[140px]">
                     {currentWorkspace.name}
                   </span>
@@ -165,10 +165,11 @@ export function TopBar() {
                     onClick={() => navigate(`/${ws.url}`)}
                     className={ws.url === workspaceId ? "bg-muted" : ""}
                   >
-                    <img
+                    <Avatar
                       src={ws.avatar}
-                      alt={ws.name}
-                      className="mr-2 size-5 rounded-sm object-cover"
+                      name={ws.name}
+                      className="mr-2 size-5 rounded-sm"
+                      fallbackType="workspace"
                     />
                     <span className="truncate">{ws.name}</span>
                   </DropdownMenuItem>
@@ -220,11 +221,14 @@ export function TopBar() {
         {!isLoading && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <img
-                src={user.avatar || undefined}
-                alt={user.name || "User Avatar"}
-                className="size-8 rounded-sm cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
-              />
+              <div className="size-8 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all rounded-sm overflow-hidden">
+                <Avatar
+                  src={user.avatar}
+                  name={user.name!}
+                  className="size-full"
+                  fallbackType="user"
+                />
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>

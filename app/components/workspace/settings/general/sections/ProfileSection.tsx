@@ -1,5 +1,6 @@
 import { Camera, Loader2 } from "lucide-react";
 import { useRef } from "react";
+import { Avatar } from "../../../layout/Avatar";
 
 type ProfileSectionProps = {
   name: string;
@@ -27,17 +28,14 @@ export default function ProfileSection({
         type="button"
         onClick={() => fileRef.current?.click()}
         disabled={isUploadingAvatar}
-        className="relative group size-16 shrink-0 rounded-xl bg-primary text-primary-foreground flex items-center justify-center text-2xl font-semibold overflow-hidden transition-opacity hover:opacity-90"
+        className="relative group size-16 shrink-0 rounded-xl flex items-center justify-center text-2xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
       >
-        {avatar ? (
-          <img
-            src={avatar}
-            alt="Workspace logo"
-            className="size-full object-cover"
-          />
-        ) : (
-          <span>{initial}</span>
-        )}
+        <Avatar
+          src={avatar}
+          name={name}
+          className="size-full"
+          fallbackType="workspace"
+        />
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           {isUploadingAvatar ? (

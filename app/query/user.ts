@@ -1,9 +1,25 @@
-import { apiGet } from "~/lib/api";
+import { apiGet, apiPost } from "~/lib/api";
 import type { TypeUser } from "~/types/user";
+
+type RegisterPayload = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+type RegisterResponse = {
+  user: TypeUser;
+};
 
 export const fetchUser = async (): Promise<TypeUser> => {
   const data = await apiGet<{ user: TypeUser }>("/auth/user");
   return data.user;
+};
+
+export const registerUser = async (
+  payload: RegisterPayload,
+): Promise<RegisterResponse> => {
+  return apiPost<RegisterResponse>("/auth/register", payload);
 };
 
 export const logoutUser = async () => {

@@ -6,22 +6,37 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tag, Calendar, UserRound, SquarePen } from "lucide-react";
+import { Calendar, Copy, MoreHorizontal, Tag, Trash2, UserRound } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import type { Task } from "~/types/task";
+import { DEFAULT_TASK_COLUMN_COLORS } from "~/types/task";
 
 export type Card = Task;
 
-export function CardTemplate({ card }: { card: Task }) {
+type CardTemplateProps = {
+  card: Task;
+  onDelete?: (card: Task) => void;
+  onDuplicate?: (card: Task) => void;
+};
+
+export function CardTemplate({
+  card,
+  onDelete,
+  onDuplicate,
+}: CardTemplateProps) {
   const labels = card.labels || [];
 
   const assigneeName = card.assignee?.name;
   const hasLabels = labels.length > 0;
   const hasDueDate = Boolean(card.dueDate);
   const hasAssignee = Boolean(assigneeName);
-
-  // Color based on status or random for visual interest
-  const accentColor = getCardAccentColor(card.columnId);
+  const accentColor = DEFAULT_TASK_COLUMN_COLORS[card.columnId] || "#6B7280";
 
   return (
     <CardItem
@@ -34,15 +49,46 @@ export function CardTemplate({ card }: { card: Task }) {
         </CardTitle>
 
         <CardAction className="self-start">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-md opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-            aria-label="More actions"
-          >
-            <SquarePen className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-md opacity-0 transition-all group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent/80 data-[state=open]:bg-accent/80"
+                aria-label="More actions"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-44 rounded-xl border-border/70 bg-background/95 p-1.5 shadow-lg backdrop-blur"
+            >
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(card);
+                }}
+                className="rounded-lg text-foreground"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDuplicate?.(card);
+                }}
+                className="rounded-lg"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardAction>
       </CardHeader>
 
@@ -101,14 +147,3 @@ export function CardTemplate({ card }: { card: Task }) {
   );
 }
 
-// Helper function to get accent color based on column
-function getCardAccentColor(columnId: string): string {
-  const colors: Record<string, string> = {
-    backlog: "#64748b",
-    todo: "#3b82f6",
-    doing: "#f59e0b",
-    review: "#eab308",
-    done: "#22c55e",
-  };
-  return colors[columnId] || "#6B7280";
-}

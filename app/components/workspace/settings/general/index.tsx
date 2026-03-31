@@ -9,7 +9,11 @@ import DangerZone from "./sections/DangerZone";
 import DeleteModal from "./components/deleteModal";
 
 import { useWorkspace } from "~/hooks";
-import { useUpdateWorkspace, useDeleteWorkspace } from "~/query/workspace";
+import {
+  useUpdateWorkspace,
+  useDeleteWorkspace,
+  useWorkspaces,
+} from "~/query/workspace";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useUpload } from "~/hooks/useUpload";
 import { Avatar } from "../../layout/Avatar";
@@ -20,10 +24,17 @@ export default function GeneralPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
   const { workspace, isLoading, isError } = useWorkspace();
+  const { workspaces } = useWorkspaces();
   const { uploadAvatar, isUploading: isUploadingAvatar } = useUpload();
 
   const updateMutation = useUpdateWorkspace();
   const deleteMutation = useDeleteWorkspace();
+
+  useEffect(() => {
+    if (workspace?.workspace?.avatar) {
+      setCurrentAvatar(workspace.workspace.avatar);
+    }
+  }, [workspace?.workspace?.avatar]);
 
   if (isLoading) {
     return (
@@ -62,13 +73,6 @@ export default function GeneralPage() {
   }
 
   const ws = workspace.workspace;
-
-  // Sync avatar when workspace data loads/changes
-  useEffect(() => {
-    if (ws?.avatar) {
-      setCurrentAvatar(ws.avatar);
-    }
-  }, [ws?.avatar]);
 
   const handleAvatarUpload = async (file: File) => {
     try {
@@ -117,10 +121,12 @@ export default function GeneralPage() {
   };
 
   const handleDelete = () => {
+    const shouldRedirectToCreate = (workspaces?.length || 0) === 1;
+
     deleteMutation.mutate(ws._id, {
       onSuccess: () => {
         toast.success("Workspace deleted");
-        navigate("/");
+        navigate(shouldRedirectToCreate ? "/create" : "/");
       },
       onError: (err: any) =>
         toast.error(err?.message || "Failed to delete workspace"),

@@ -6,9 +6,16 @@ import type { Task } from "~/types/task";
 type KanbanCardProps = {
   card: Task;
   onEdit?: (card: Task) => void;
+  onDelete?: (card: Task) => void;
+  onDuplicate?: (card: Task) => void;
 };
 
-export function KanbanCard({ card, onEdit }: KanbanCardProps) {
+export function KanbanCard({
+  card,
+  onEdit,
+  onDelete,
+  onDuplicate,
+}: KanbanCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: card._id,
@@ -29,7 +36,11 @@ export function KanbanCard({ card, onEdit }: KanbanCardProps) {
       {...listeners}
       onClick={() => onEdit?.(card)}
     >
-      <CardTemplate card={card} />
+      <CardTemplate
+        card={card}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+      />
     </div>
   );
 }

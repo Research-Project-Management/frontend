@@ -15,10 +15,13 @@ import type { Task, Column } from "~/types/task";
 type BoardViewProps = {
   tasks: Task[];
   columns: Column[];
-  projectId: string;
   onAddCard: (columnId: string) => void;
   onEditCard: (card: Task) => void;
+  onDeleteCard: (card: Task) => void;
+  onDuplicateCard: (card: Task) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
+  onDeleteColumn: (columnId: string) => void;
+  onUpdateColumn: (columnId: string) => void;
 };
 
 export default function BoardView({
@@ -26,7 +29,11 @@ export default function BoardView({
   columns,
   onAddCard,
   onEditCard,
+  onDeleteCard,
+  onDuplicateCard,
   onMoveCard,
+  onDeleteColumn,
+  onUpdateColumn,
 }: BoardViewProps) {
   const [activeCard, setActiveCard] = useState<Task | null>(null);
 
@@ -62,15 +69,23 @@ export default function BoardView({
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-5 h-full min-w-max">
-          {columns.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              column={column}
-              cards={tasks.filter((task) => task.columnId === column.id)}
-              onAdd={() => onAddCard(column.id)}
-              onEditCard={onEditCard}
-            />
-          ))}
+          {columns.map((column) => {
+            const columnId = column.id ?? column._id ?? "";
+
+            return (
+              <KanbanColumn
+                key={columnId}
+                column={column}
+                cards={tasks.filter((task) => task.columnId === columnId)}
+                onAdd={() => onAddCard(columnId)}
+                onEditCard={onEditCard}
+                onDeleteCard={onDeleteCard}
+                onDuplicateCard={onDuplicateCard}
+                onDelete={() => onDeleteColumn(columnId)}
+                onUpdate={() => onUpdateColumn(columnId)}
+              />
+            );
+          })}
         </div>
 
         <DragOverlay>

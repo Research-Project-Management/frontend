@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,31 +7,30 @@ import {
   DialogHeader,
   DialogOverlay,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "~/components/ui/dialog";
+import { Button } from "~/components/ui/button";
 
-interface DeleteModalProps {
+export interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  title: string;
-  description: string;
-  confirmText?: string;
-  cancelText?: string;
-  loading?: boolean;
+  title?: string;
+  message?: string;
+  confirmLabel?: string;
+  isLoading?: boolean;
 }
 
-export default function DeleteModal({
+export default function DeleteConfirmModal({
   isOpen,
   onClose,
   onConfirm,
-  title,
-  description,
-  confirmText = "Delete",
-  cancelText = "Dismiss",
-  loading = false,
-}: DeleteModalProps) {
+  title = "Delete section",
+  message = "Are you sure you want to delete this section? This action cannot be undone.",
+  confirmLabel = "Delete",
+  isLoading = false,
+}: DeleteConfirmModalProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogOverlay
         className="absolute inset-0 z-50
           bg-black/15 backdrop-blur-[0.5px]
@@ -41,10 +39,9 @@ export default function DeleteModal({
           data-[state=open]:duration-200 data-[state=closed]:duration-150
         "
       />
-
       <DialogContent
         className="
-          max-w-[560px] p-0 overflow-hidden
+          max-w-[560px] p-0 overflow-hidden z-[51]
           data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
           data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
           data-[state=open]:duration-200 data-[state=closed]:duration-200
@@ -52,7 +49,7 @@ export default function DeleteModal({
       >
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
+            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 shrink-0">
               <WarningIcon className="h-5 w-5 text-red-600" />
             </div>
 
@@ -61,7 +58,7 @@ export default function DeleteModal({
                 {title}
               </DialogTitle>
               <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                {description}
+                {message}
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -73,19 +70,20 @@ export default function DeleteModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={loading}
+              disabled={isLoading}
+              className="h-9 px-4 text-xs font-medium"
             >
-              {cancelText}
+              Cancel
             </Button>
 
             <Button
               type="button"
               variant="destructive"
               onClick={onConfirm}
-              disabled={loading}
-              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={isLoading}
+              className="h-9 px-4 text-xs font-medium bg-red-600 hover:bg-red-700 text-white border-none shadow-sm"
             >
-              {loading ? "Deleting..." : confirmText}
+              {isLoading ? "Deleting..." : confirmLabel}
             </Button>
           </DialogFooter>
         </div>

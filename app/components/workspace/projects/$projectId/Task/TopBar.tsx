@@ -4,52 +4,57 @@ import {
   List,
   Search,
   Plus,
-  RotateCcw,
   SlidersHorizontal,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import type { Cycle, Priority } from "~/types/task";
-import { PHASE_CONFIG, PRIORITY_CONFIG } from "~/types/task";
+import type { Column } from "~/types/task";
+import { DEFAULT_TASK_COLUMN_COLORS } from "~/types/task";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type ViewMode = "board" | "list";
-type GroupBy = "status" | "priority";
-
 type TopBarProps = {
   viewMode: ViewMode;
   onViewChange: (mode: ViewMode) => void;
-  groupBy: GroupBy;
-  onGroupByChange: (g: GroupBy) => void;
   searchText: string;
   onSearchChange: (text: string) => void;
-  selectedCycleId: string | null;
-  onCycleChange: (id: string | null) => void;
-  selectedPriority: Priority | null;
-  onPriorityChange: (p: Priority | null) => void;
-  cycles: Cycle[];
-  onCreateSection: (payload: any) => void;
+  columns: Column[];
+  selectedColumnIds: string[];
+  onColumnFilterChange: (columnIds: string[]) => void;
+  onCreateSection: () => void;
 };
 
 export default function TopBar({
   viewMode,
   onViewChange,
-  groupBy,
-  onGroupByChange,
   searchText,
   onSearchChange,
-  selectedCycleId,
-  onCycleChange,
-  selectedPriority,
-  onPriorityChange,
-  cycles,
+  columns,
+  selectedColumnIds,
+  onColumnFilterChange,
   onCreateSection,
 }: TopBarProps) {
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const activeColumns = columns.filter((column) =>
+    selectedColumnIds.includes(column.id ?? column._id ?? ""),
+  );
 
-  const hasFilters = selectedCycleId || selectedPriority;
+  const toggleColumnFilter = (columnId: string) => {
+    if (selectedColumnIds.includes(columnId)) {
+      onColumnFilterChange(selectedColumnIds.filter((id) => id !== columnId));
+      return;
+    }
+
+    onColumnFilterChange([...selectedColumnIds, columnId]);
+  };
 
   return (
-    <div className="px-4 py-2 space-y-2">
-      {/* Primary row */}
+    <div className="px-4 py-2">
       <div className="flex items-center gap-2">
         {/* View toggle */}
         <div className="flex items-center bg-muted rounded-lg p-0.5">
@@ -83,108 +88,120 @@ export default function TopBar({
 
         <div className="flex-1" />
 
-        {/* Filters toggle */}
-        <Button
-          variant={showFilters ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-          className="gap-1.5 h-8 text-xs"
-        >
-          <SlidersHorizontal className="size-3.5" />
-          Filters
-          {hasFilters && (
-            <span className="size-1.5 rounded-full bg-primary" />
-          )}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                aria-label="Filter tasks"
+              >
+                <SlidersHorizontal className="size-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 rounded-xl border-border/70 p-2 shadow-lg">
+              <div className="px-2 py-1">
+                <p className="text-sm font-semibold text-foreground">Filter tasks</p>
+                <p className="text-xs text-muted-foreground">Filter by column</p>
+              </div>
 
-        {/* Create column (board only) */}
-        {viewMode === "board" && (
+              {activeColumns.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5 px-2 pb-2">
+                  {activeColumns.map((column) => {
+                    const columnId = column.id ?? column._id ?? "";
+                    const columnColor =
+                      DEFAULT_TASK_COLUMN_COLORS[columnId] ||
+                      column.accentColor ||
+                      "#6B7280";
+
+                    return (
+                      <button
+                        key={columnId}
+                        type="button"
+                        onClick={() =>
+                          onColumnFilterChange(
+                            selectedColumnIds.filter((id) => id !== columnId),
+                          )
+                        }
+                        className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-accent/80"
+                      >
+                        <span
+                          className="size-1.5 rounded-full"
+                          style={{ backgroundColor: columnColor }}
+                        />
+                        <span>{column.title}</span>
+                        <X className="size-3" />
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="mt-1 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onColumnFilterChange([]);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                    selectedColumnIds.length === 0
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
+                  }`}
+                >
+                  <span className="size-2 rounded-full bg-muted-foreground/50" />
+                  <span className="flex-1">All columns</span>
+                  {selectedColumnIds.length === 0 ? (
+                    <Check className="size-4 text-foreground" />
+                  ) : null}
+                </button>
+
+                {columns.map((column) => {
+                  const columnId = column.id ?? column._id ?? "";
+                  const columnColor =
+                    DEFAULT_TASK_COLUMN_COLORS[columnId] ||
+                    column.accentColor ||
+                    "#6B7280";
+                  const isActive = selectedColumnIds.includes(columnId);
+
+                  return (
+                    <button
+                      key={columnId}
+                      type="button"
+                      onClick={() => toggleColumnFilter(columnId)}
+                      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                        isActive
+                          ? "bg-accent text-foreground"
+                          : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
+                      }`}
+                    >
+                      <span
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: columnColor }}
+                      />
+                      <span className="flex-1">{column.title}</span>
+                      {isActive ? (
+                        <Check className="size-4 text-foreground" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <Button
             variant="ghost"
             size="sm"
-            onClick={() =>
-              onCreateSection({
-                sectionName: "New Column",
-                selectedColor: "#e2e8f0",
-                isDefault: false,
-              })
-            }
+            onClick={onCreateSection}
             className="gap-1.5 h-8 text-xs"
           >
             <Plus className="size-3.5" />
-            Column
+            New Column
           </Button>
-        )}
-      </div>
-
-      {/* Filter row (expandable) */}
-      {showFilters && (
-        <div className="flex items-center gap-2 pb-1 flex-wrap animate-in slide-in-from-top-1 fade-in duration-200">
-          {/* Cycle filter */}
-          <select
-            value={selectedCycleId || ""}
-            onChange={(e) =>
-              onCycleChange(e.target.value || null)
-            }
-            className="text-xs px-2.5 py-1.5 bg-muted/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-          >
-            <option value="">All Cycles</option>
-            {cycles.map((c) => (
-              <option key={c._id} value={c._id}>
-                {PHASE_CONFIG[c.phase]?.icon} {c.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Priority filter */}
-          <select
-            value={selectedPriority || ""}
-            onChange={(e) =>
-              onPriorityChange(
-                (e.target.value as Priority) || null,
-              )
-            }
-            className="text-xs px-2.5 py-1.5 bg-muted/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-          >
-            <option value="">All Priorities</option>
-            {Object.entries(PRIORITY_CONFIG).map(([key, val]) => (
-              <option key={key} value={key}>
-                {val.icon} {val.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Group by (list view only) */}
-          {viewMode === "list" && (
-            <select
-              value={groupBy}
-              onChange={(e) =>
-                onGroupByChange(e.target.value as GroupBy)
-              }
-              className="text-xs px-2.5 py-1.5 bg-muted/50 border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-            >
-              <option value="status">Group by Status</option>
-              <option value="priority">Group by Priority</option>
-            </select>
-          )}
-
-          {/* Clear filters */}
-          {hasFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                onCycleChange(null);
-                onPriorityChange(null);
-              }}
-              className="gap-1 h-7 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="size-3" />
-              Clear
-            </Button>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,25 @@
 export type Column = {
   id: string;
+  _id?: string;
   title: string;
   isDefault: boolean;
   accentColor?: string;
+};
+
+export const DEFAULT_TASK_COLUMN_IDS = [
+  "backlog",
+  "todo",
+  "doing",
+  "review",
+  "done",
+];
+
+export const DEFAULT_TASK_COLUMN_COLORS: Record<string, string> = {
+  backlog: "#6366F1",
+  todo: "#0EA5E9",
+  doing: "#F59E0B",
+  review: "#EAB308",
+  done: "#22C55E",
 };
 
 export type Priority = "urgent" | "high" | "medium" | "low" | "none";
@@ -39,6 +56,25 @@ export type Task = {
   identifier: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TaskMutationInput = Partial<
+  Pick<
+    Task,
+    | "title"
+    | "content"
+    | "description"
+    | "columnId"
+    | "dueDate"
+    | "labels"
+    | "priority"
+    | "estimate"
+    | "rank"
+  >
+> & {
+  assignee?: string | null;
+  cycle?: string | null;
+  parentTask?: string | null;
 };
 
 export type CyclePhase =

@@ -18,8 +18,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Task, Column } from "~/types/task";
+import type { Task, Column, TaskMutationInput } from "~/types/task";
+import { DEFAULT_TASK_COLUMN_COLORS } from "~/types/task";
 import { useProjectDetails } from "~/query/project";
+
+type TaskDialogFormData = {
+  title: string;
+  content: string;
+  columnId: string;
+  labels: string[];
+  assignee?: Task["assignee"] | string | null;
+  dueDate: string;
+};
 
 type TaskDialogProps = {
   open: boolean;
@@ -27,8 +37,9 @@ type TaskDialogProps = {
   mode: "add" | "edit";
   card?: Partial<Task>;
   columns: Column[];
-  onSave: (card: Partial<Task>) => void;
+  onSave: (card: TaskMutationInput) => void;
   onDelete?: () => void;
+  onDuplicate?: () => void;
 };
 
 export function TaskDialog({
@@ -38,16 +49,16 @@ export function TaskDialog({
   card,
   columns,
   onSave,
-  onDelete,
 }: TaskDialogProps) {
   const { projectId } = useParams();
   const { data: projectData } = useProjectDetails(projectId!);
   const members = projectData?.project?.members || [];
+  const firstColumnId = columns[0]?.id ?? columns[0]?._id ?? "";
 
-  const [formData, setFormData] = useState<Partial<Task>>({
+  const [formData, setFormData] = useState<TaskDialogFormData>({
     title: "",
     content: "",
-    columnId: columns[0]?.id || "",
+    columnId: firstColumnId,
     labels: [],
     assignee: undefined,
     dueDate: "",
@@ -60,7 +71,7 @@ export function TaskDialog({
       setFormData({
         title: card.title || "",
         content: card.content || "",
-        columnId: card.columnId || columns[0]?.id || "",
+        columnId: card.columnId || firstColumnId,
         labels: card.labels || [],
         assignee: card.assignee,
         dueDate: card.dueDate
@@ -72,14 +83,14 @@ export function TaskDialog({
       setFormData({
         title: "",
         content: "",
-        columnId: columns[0]?.id || "",
+        columnId: firstColumnId,
         labels: [],
         assignee: undefined,
         dueDate: "",
       });
       setLabelsString("");
     }
-  }, [open, card, columns]);
+  }, [open, card, firstColumnId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +101,7 @@ export function TaskDialog({
 
     // Convert assignee object to ID if it's an object (for mutation)
     let assigneeId =
-      typeof formData.assignee === "object"
+      formData.assignee && typeof formData.assignee === "object"
         ? (formData.assignee as any)._id
         : formData.assignee;
     if (assigneeId === "none") assigneeId = null;
@@ -153,21 +164,29 @@ export function TaskDialog({
                     setFormData({ ...formData, columnId: value })
                   }
                 >
-                  <SelectTrigger id="columnId">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
+                    <SelectTrigger id="columnId">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
                   <SelectContent>
-                    {columns.map((column) => (
-                      <SelectItem key={column.id} value={column.id}>
+                    {columns.map((column) => {
+                      const columnId = column.id ?? column._id ?? "";
+                      const columnColor =
+                        DEFAULT_TASK_COLUMN_COLORS[columnId] ||
+                        column.accentColor ||
+                        "#6B7280";
+
+                      return (
+                        <SelectItem key={columnId} value={columnId}>
                         <div className="flex items-center gap-2">
                           <div
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: column.accentColor }}
+                            style={{ backgroundColor: columnColor }}
                           />
                           {column.title}
                         </div>
-                      </SelectItem>
-                    ))}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -178,7 +197,7 @@ export function TaskDialog({
                 </Label>
                 <Select
                   value={
-                    typeof formData.assignee === "object"
+                    formData.assignee && typeof formData.assignee === "object"
                       ? (formData.assignee as any)?._id
                       : formData.assignee
                   }
@@ -244,14 +263,7 @@ export function TaskDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex justify-between items-center">
-            <div>
-              {mode === "edit" && onDelete && (
-                <Button type="button" variant="destructive" onClick={onDelete}>
-                  Delete Task
-                </Button>
-              )}
-            </div>
+          <DialogFooter className="flex justify-end items-center">
             <div className="flex gap-2">
               <Button
                 type="button"

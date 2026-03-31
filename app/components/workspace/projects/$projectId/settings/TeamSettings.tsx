@@ -3,7 +3,7 @@ import { useProjectDetails, type Project } from "~/query/project";
 import { useWorkspace } from "~/query/workspace";
 import Loading from "~/components/ui/Loading";
 import TopBar from "~/components/workspace/settings/layout/TopBar";
-import ProjectTeam from "../Team";
+import ProjectTeam from "../team/Team";
 
 export default function TeamSettings() {
   const { projectId, workspaceId } = useParams();

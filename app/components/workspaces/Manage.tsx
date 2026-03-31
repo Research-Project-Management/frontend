@@ -15,6 +15,7 @@ import { Input } from "../../components/ui/input";
 import { Card } from "../../components/ui/card";
 import { Pencil, Trash2, Users, ArrowRight, Plus } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
 
 interface Workspace {
   _id: string;
@@ -41,7 +42,6 @@ export default function ManageWorkspaces() {
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
   const updateWorkspace = useMutation({
     mutationFn: async ({
@@ -91,7 +91,6 @@ export default function ManageWorkspaces() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       setDeletingWorkspace(null);
-      setDeleteConfirmInput("");
       setDeleteError(null);
     },
     onError: (err: any) => {
@@ -110,7 +109,6 @@ export default function ManageWorkspaces() {
   const handleDelete = (workspace: Workspace) => {
     setDeletingWorkspace(workspace);
     setDeleteError(null);
-    setDeleteConfirmInput("");
   };
 
   const confirmUpdate = async () => {
@@ -167,8 +165,15 @@ export default function ManageWorkspaces() {
 
   const confirmDelete = () => {
     if (!deletingWorkspace) return;
+    const shouldRedirectToCreate = (workspaces?.length || 0) === 1;
     setDeleteError(null);
-    deleteWorkspace.mutate(deletingWorkspace._id);
+    deleteWorkspace.mutate(deletingWorkspace._id, {
+      onSuccess: () => {
+        if (shouldRedirectToCreate) {
+          navigate("/create");
+        }
+      },
+    });
   };
 
   if (isLoading) {
@@ -373,63 +378,21 @@ export default function ManageWorkspaces() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={!!deletingWorkspace}
-        onOpenChange={(open) => !open && setDeletingWorkspace(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl text-destructive">
-              Delete Workspace
-            </DialogTitle>
-            <DialogDescription className="text-base pt-2">
-              Are you sure you want to delete <strong>"{deletingWorkspace?.name}"</strong>?
-              <br />
-              <span className="text-destructive font-medium">
-                This action cannot be undone.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4">
-            <div className="mb-2 text-sm">
-              Please type "<span className="font-bold">{deletingWorkspace?.name}</span>" to confirm:
-            </div>
-            <Input
-              autoFocus
-              value={deleteConfirmInput}
-              onChange={e => setDeleteConfirmInput(e.target.value)}
-              disabled={deleteWorkspace.isPending}
-              placeholder={deletingWorkspace?.name}
-              className="mb-2"
-            />
-            {deleteError && (
-              <div className="text-red-500 text-sm mb-2">{deleteError}</div>
-            )}
-          </div>
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setDeletingWorkspace(null)}
-              disabled={deleteWorkspace.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={
-                deleteWorkspace.isPending ||
-                !deletingWorkspace ||
-                deleteConfirmInput !== deletingWorkspace.name
-              }
-              className="gap-2"
-            >
-              {deleteWorkspace.isPending ? "Deleting..." : "Delete Workspace"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteModal
+        isOpen={!!deletingWorkspace}
+        onClose={() => {
+          if (!deleteWorkspace.isPending) {
+            setDeletingWorkspace(null);
+            setDeleteError(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        title="Delete workspace?"
+        description={`Are you sure you want to delete "${deletingWorkspace?.name}"? This action cannot be undone.${deleteError ? ` ${deleteError}` : ""}`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        loading={deleteWorkspace.isPending}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import ProjectOverview from "~/components/workspace/projects/$projectId/Overview";
+import ProjectOverview from "~/components/workspace/projects/$projectId/overview/Overview";
 
 export function meta() {
   return [{ title: "Overview · Flux" }];

@@ -66,20 +66,21 @@ export default [
         ":workspaceId/projects/:projectId/storage",
         "./routes/workspace/$workspaceId/project/$projectId/storage/index.tsx",
       ),
-    ]),
-    layout("./components/workspace/projects/$projectId/settings/layout/ProjectSettingLayout.tsx", [
-      route(
-        ":workspaceId/projects/:projectId/settings",
-        "./routes/workspace/$workspaceId/project/$projectId/settings/index.tsx",
-      ),
-      route(
-        ":workspaceId/projects/:projectId/settings/team",
-        "./routes/workspace/$workspaceId/project/$projectId/settings/team.tsx",
-      ),
-      route(
-        ":workspaceId/projects/:projectId/settings/modules",
-        "./routes/workspace/$workspaceId/project/$projectId/settings/modules.tsx",
-      ),
+
+      layout("./components/workspace/projects/$projectId/settings/layout/ProjectSettingLayout.tsx", [
+        route(
+          ":workspaceId/projects/:projectId/settings",
+          "./routes/workspace/$workspaceId/project/$projectId/settings/index.tsx",
+        ),
+        route(
+          ":workspaceId/projects/:projectId/settings/team",
+          "./routes/workspace/$workspaceId/project/$projectId/settings/team.tsx",
+        ),
+        route(
+          ":workspaceId/projects/:projectId/settings/modules",
+          "./routes/workspace/$workspaceId/project/$projectId/settings/modules.tsx",
+        ),
+      ]),
     ]),
     layout("./components/workspace/settings/layout/SettingLayout.tsx", [
         route(":workspaceId/settings", "./routes/workspace/$workspaceId/settings/index.tsx"),

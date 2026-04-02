@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { toast } from "sonner";
 import {
@@ -7,10 +7,28 @@ import {
   type Project,
 } from "~/query/project";
 import { useWorkspace } from "~/query/workspace";
-import { Save, Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import Loading from "~/components/ui/Loading";
 import { Button } from "~/components/ui/button";
-import TopBar from "~/components/workspace/settings/layout/TopBar";
+
+type ProjectModuleKey =
+  | "overview"
+  | "tasks"
+  | "cycles"
+  | "pages"
+  | "storage"
+  | "stickies"
+  | "settings";
+
+const MODULE_ORDER: ProjectModuleKey[] = [
+  "overview",
+  "pages",
+  "tasks",
+  "cycles",
+  "storage",
+  "stickies",
+  "settings",
+];
 
 export default function ModulesSettings() {
   const { projectId, workspaceId } = useParams();
@@ -36,12 +54,12 @@ export default function ModulesSettings() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar
-        title="Modules"
-        description="Enable or disable modules for this project."
-      />
+
+
+
+
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-8 max-w-3xl">
+        <div className="px-8 py-8 max-w-3xl mx-auto">
           <ModulesList
             project={project}
             canManage={canManage}
@@ -62,19 +80,25 @@ function ModulesList({
   canManage: boolean;
   projectId: string;
 }) {
-  const availableModules = [
+  const availableModules: {
+    id: ProjectModuleKey;
+    name: string;
+    description: string;
+    locked?: boolean;
+  }[] = [
     {
       id: "overview",
       name: "Overview",
       description: "Project overview and statistics",
+      locked: true,
     },
+    { id: "pages", name: "Pages", description: "Documentation and wiki pages" },
     { id: "tasks", name: "Tasks", description: "Task management and tracking" },
     {
       id: "cycles",
       name: "Cycles",
       description: "Research cycles, milestones, and deliverables",
     },
-    { id: "pages", name: "Pages", description: "Documentation and wiki pages" },
     {
       id: "storage",
       name: "Storage",
@@ -89,27 +113,46 @@ function ModulesList({
       id: "settings",
       name: "Settings",
       description: "Project settings and configuration",
+      locked: true,
     },
   ];
 
-  const [selectedModules, setSelectedModules] = useState<string[]>(
-    project.modules || [],
+  const normalizedProjectModules = useMemo(() => {
+    const selectedModules = new Set(project.modules || []);
+    selectedModules.add("overview");
+    selectedModules.add("settings");
+    return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
+  }, [project.modules]);
+  const [selectedModules, setSelectedModules] = useState<ProjectModuleKey[]>(
+    normalizedProjectModules,
   );
   const updateProjectMutation = useUpdateProject();
 
-  const toggleModule = (moduleId: string) => {
+  useEffect(() => {
+    setSelectedModules(normalizedProjectModules);
+  }, [normalizedProjectModules]);
+
+  const toggleModule = (moduleId: ProjectModuleKey) => {
     if (!canManage) return;
+    if (moduleId === "overview" || moduleId === "settings") return;
 
     setSelectedModules((prev) =>
       prev.includes(moduleId)
         ? prev.filter((id) => id !== moduleId)
-        : [...prev, moduleId],
+        : MODULE_ORDER.filter((currentModuleId) =>
+            new Set([...prev, moduleId]).has(currentModuleId),
+          ),
     );
   };
 
   const handleSave = () => {
     updateProjectMutation.mutate(
-      { projectId, modules: selectedModules },
+      {
+        projectId,
+        modules: MODULE_ORDER.filter((moduleId) =>
+          selectedModules.includes(moduleId),
+        ),
+      },
       {
         onSuccess: () => {
           toast.success("Modules updated successfully");
@@ -122,8 +165,7 @@ function ModulesList({
   };
 
   const hasChanges =
-    JSON.stringify([...selectedModules].sort()) !==
-    JSON.stringify([...project.modules].sort());
+    JSON.stringify(selectedModules) !== JSON.stringify(normalizedProjectModules);
 
   return (
     <div className="space-y-6">
@@ -131,11 +173,11 @@ function ModulesList({
         {availableModules.map((module) => (
           <div
             key={module.id}
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 border ${
+            className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 border ${
               selectedModules.includes(module.id)
                 ? "bg-primary/5 border-primary/20"
                 : "bg-secondary/10 border-transparent hover:bg-secondary/30"
-            } ${!canManage ? "cursor-not-allowed opacity-60" : ""}`}
+            } ${(!canManage || module.id === 'overview' || module.id === 'settings') ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
             onClick={() => toggleModule(module.id)}
           >
             <div

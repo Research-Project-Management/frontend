@@ -13,7 +13,6 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
-import TopBar from "~/components/workspace/settings/layout/TopBar";
 import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
 
 export default function GeneralSettings() {
@@ -42,12 +41,9 @@ export default function GeneralSettings() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar
-        title="General"
-        description="Manage your project's basic information and settings."
-      />
+
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-8 space-y-8 max-w-3xl">
+        <div className="px-8 py-8 space-y-8 max-w-3xl mx-auto">
           <GeneralForm
             project={project}
             canManage={canManage}

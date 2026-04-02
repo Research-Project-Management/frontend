@@ -102,10 +102,13 @@ export default function GeneralPage() {
     name: string;
     url?: string;
     avatar?: string | null;
-    companySize?: string;
-    timezone?: string;
+    teamSize?: string;
   }) => {
-    const payload: typeof values = { ...values };
+    const payload: any = { ...values };
+    if (payload.teamSize) {
+      payload.companySize = payload.teamSize;
+      delete payload.teamSize;
+    }
     if (payload.avatar === null) {
       delete payload.avatar;
     }
@@ -156,8 +159,7 @@ export default function GeneralPage() {
             name={ws.name}
             url={ws.url}
             avatar={ws.avatar}
-            companySize={ws.companySize}
-            timezone={ws.timezone}
+            teamSize={ws.companySize}
             onSubmit={handleUpdate}
             isSubmitting={updateMutation.isPending}
           />

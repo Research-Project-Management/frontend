@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Camera, Loader2, Lock, User, Github } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, Loader2, Github } from "lucide-react";
 import { toast } from "sonner";
 
 import TopBar from "../layout/TopBar";
@@ -11,7 +11,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useUpload } from "~/hooks/useUpload";
 import { Avatar } from "../../layout/Avatar";
-import { useEffect } from "react";
 import { apiPut } from "~/lib/api";
 
 export default function ProfilePage() {
@@ -38,23 +37,34 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const initial = (user?.name || "U").charAt(0).toUpperCase();
   const isOAuth = !!(user as any)?.googleId || !!(user as any)?.githubId;
+  const hasProfileChanges =
+    name.trim() !== (user?.name || "") || avatar !== (user?.avatar || "");
+  const canChangePassword = isOAuth
+    ? !!newPassword && !!confirmPassword
+    : !!currentPassword && !!newPassword && !!confirmPassword;
+
+  const updateCurrentUserCache = (patch: Record<string, unknown>) => {
+    queryClient.setQueryData(["currentUser"], (currentUser: any) =>
+      currentUser ? { ...currentUser, ...patch } : currentUser
+    );
+  };
 
   const handleAvatarUpload = async (file: File) => {
+    const previousAvatar = avatar;
+
     try {
       const finalUrl = await uploadAvatar(file);
       setAvatar(finalUrl);
 
-      // Auto-save avatar change to backend
-      await apiPut("/auth/profile", { 
-        name: (name || user?.name || "").trim(), 
-        avatar: finalUrl 
+      await apiPut("/auth/profile", {
+        name: (user?.name || "").trim(),
+        avatar: finalUrl,
       });
-
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      updateCurrentUserCache({ avatar: finalUrl });
       toast.success("Avatar updated");
     } catch (err: any) {
+      setAvatar(previousAvatar || "");
       toast.error(err.message || "Failed to upload avatar");
     }
   };
@@ -66,11 +76,11 @@ export default function ProfilePage() {
     }
     setIsSaving(true);
     try {
-      await apiPut("/auth/profile", { 
-        name: name.trim(), 
-        avatar: avatar || null 
+      await apiPut("/auth/profile", {
+        name: name.trim(),
+        avatar: avatar || null,
       });
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      updateCurrentUserCache({ name: name.trim(), avatar: avatar || null });
       toast.success("Profile updated");
     } catch (err: any) {
       toast.error(err.message || "Failed to update profile");
@@ -80,6 +90,10 @@ export default function ProfilePage() {
   };
 
   const handleChangePassword = async () => {
+    if (!isOAuth && !currentPassword) {
+      toast.error("Current password is required");
+      return;
+    }
     if (newPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
@@ -118,20 +132,31 @@ export default function ProfilePage() {
           title="Profile"
           description="Manage your personal profile and security."
         />
-        <div className="flex-1 p-8 space-y-8 max-w-3xl">
-          <div className="flex items-center gap-6">
-            <Skeleton className="size-20 rounded-full" />
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-32" />
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-8 py-8 space-y-8 max-w-3xl">
+            <div className="flex items-center gap-5">
+              <Skeleton className="size-16 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-32" />
+              </div>
             </div>
-          </div>
-          <hr className="border-border" />
-          <div className="space-y-5">
-            <Skeleton className="h-5 w-40" />
-            <div className="grid grid-cols-2 gap-6">
-              <Skeleton className="h-14 w-full" />
-              <Skeleton className="h-14 w-full" />
+            <hr className="border-border" />
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -147,13 +172,12 @@ export default function ProfilePage() {
       />
       <div className="flex-1 overflow-y-auto">
         <div className="px-8 py-8 space-y-8 max-w-3xl">
-          {/* Avatar + Name section */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={isUploading}
-              className="relative group size-20 shrink-0 rounded-full flex items-center justify-center text-3xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
+              className="relative group size-16 shrink-0 rounded-xl flex items-center justify-center text-2xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
             >
               <Avatar
                 src={avatar}
@@ -176,12 +200,15 @@ export default function ProfilePage() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleAvatarUpload(file);
+                  e.currentTarget.value = "";
                 }}
               />
             </button>
 
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold truncate">{user.name}</h2>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <h2 className="text-base font-semibold truncate">
+                {user.name}
+              </h2>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               {isOAuth && (
                 <div className="flex items-center gap-1 mt-1">
@@ -202,96 +229,140 @@ export default function ProfilePage() {
 
           <hr className="border-border" />
 
-          {/* Profile form */}
-          <div className="space-y-5">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <User className="size-4" />
-              Personal Information
-            </h3>
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Personal information
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Update your display name and review the email on this account.
+              </p>
+            </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="profile-full-name"
+                  className="text-sm font-medium text-foreground"
+                >
                   Full Name
                 </label>
                 <Input
+                  id="profile-full-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your name"
+                  autoComplete="name"
+                  className="h-10"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="profile-email"
+                  className="text-sm font-medium text-foreground"
+                >
                   Email
                 </label>
-                <Input value={user.email || ""} disabled className="opacity-60" />
+                <Input
+                  id="profile-email"
+                  value={user.email || ""}
+                  readOnly
+                  className="bg-muted/50 text-muted-foreground cursor-not-allowed h-10 font-medium"
+                />
               </div>
             </div>
 
             <Button
               onClick={handleSaveProfile}
-              disabled={isSaving || name === user.name && avatar === (user.avatar || "")}
-              size="sm"
+              disabled={isSaving || !hasProfileChanges}
             >
               {isSaving ? (
                 <Loader2 className="size-4 animate-spin mr-1.5" />
               ) : null}
-              Save Changes
+              Update profile
             </Button>
           </div>
 
           <hr className="border-border" />
 
-          {/* Change password */}
-          <div className="space-y-5">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Lock className="size-4" />
-              Change Password
-            </h3>
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Security
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {isOAuth
+                  ? "Set a password if you want to sign in without your social account."
+                  : "Change the password you use to sign in to this account."}
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 gap-4 max-w-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {!isOAuth && (
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="current-password"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Current Password
                   </label>
                   <Input
+                    id="current-password"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Enter current password"
+                    autoComplete="current-password"
+                    className="h-10"
                   />
                 </div>
               )}
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="new-password"
+                  className="text-sm font-medium text-foreground"
+                >
                   New Password
                 </label>
                 <Input
+                  id="new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new password"
+                  autoComplete="new-password"
+                  className="h-10"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="confirm-new-password"
+                  className="text-sm font-medium text-foreground"
+                >
                   Confirm New Password
                 </label>
                 <Input
+                  id="confirm-new-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && canChangePassword) {
+                      e.preventDefault();
+                      handleChangePassword();
+                    }
+                  }}
+                  className="h-10"
                 />
               </div>
             </div>
 
             <Button
               onClick={handleChangePassword}
-              disabled={isChangingPassword || !newPassword || !confirmPassword}
+              disabled={isChangingPassword || !canChangePassword}
               variant="outline"
-              size="sm"
             >
               {isChangingPassword ? (
                 <Loader2 className="size-4 animate-spin mr-1.5" />

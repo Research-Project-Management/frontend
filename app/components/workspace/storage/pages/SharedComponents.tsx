@@ -24,6 +24,8 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Button } from "~/components/ui/button";
+import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
+import { toast } from "sonner";
 import type { StorageItem, FileType } from "../types";
 
 export function getFileType(item: StorageItem): FileType {
@@ -130,8 +132,8 @@ export function formatDate(dateString: string): string {
 
 type ItemActionsProps = {
   item: StorageItem;
-  onToggleStar: (fileId: string) => void;
-  onDelete: (fileId: string) => void;
+  onToggleStar: (fileId: string) => void | Promise<void>;
+  onDelete: (fileId: string) => void | Promise<void>;
   onDownload: (item: StorageItem) => void;
   onRename?: (item: StorageItem) => void;
   isTrash?: boolean;
@@ -145,90 +147,152 @@ function ItemActions({
   onRename,
   isTrash,
 }: ItemActionsProps) {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteDone, setIsDeleteDone] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await Promise.resolve(onDelete(item._id));
+      setIsDeleteDone(true);
+      window.setTimeout(() => {
+        setIsDeleteModalOpen(false);
+        setIsDeleteDone(false);
+      }, 180);
+    } finally {
+      window.setTimeout(() => {
+        setIsDeleting(false);
+      }, 180);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (isRestoring) return;
+    setIsRestoring(true);
+    try {
+      await Promise.resolve(onToggleStar(item._id));
+      toast.success(`Restored \"${item.filename}\"`);
+    } catch {
+      toast.error("Failed to restore file");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <MoreVertical className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {!item.isFolder && (
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload(item);
-            }}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
-            <Download className="size-4 mr-2" />
-            Download
-          </DropdownMenuItem>
-        )}
-        {isTrash ? (
-          <>
+            <MoreVertical className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {!item.isFolder && (
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleStar(item._id);
+                onDownload(item);
               }}
             >
-              <RotateCcw className="size-4 mr-2" />
-              Restore
+              <Download className="size-4 mr-2" />
+              Download
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(item._id);
-              }}
-              variant="destructive"
-            >
-              <Trash2 className="size-4 mr-2" />
-              Delete Permanently
-            </DropdownMenuItem>
-          </>
-        ) : (
-          <>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onRename?.(item);
-              }}
-            >
-              <Pencil className="size-4 mr-2" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleStar(item._id);
-              }}
-            >
-              <Star className="size-4 mr-2" />
-              {item.starred ? "Unstar" : "Star"}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(item._id);
-              }}
-              variant="destructive"
-            >
-              <Trash2 className="size-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          )}
+          {isTrash ? (
+            <>
+              <DropdownMenuItem
+                disabled={isRestoring}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleRestore();
+                }}
+              >
+                <RotateCcw className="size-4 mr-2" />
+                {isRestoring ? "Restoring..." : "Restore"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDeleteModalOpen(true);
+                }}
+                variant="destructive"
+              >
+                <Trash2 className="size-4 mr-2" />
+                Delete Permanently
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRename?.(item);
+                }}
+              >
+                <Pencil className="size-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleStar(item._id);
+                }}
+              >
+                <Star className="size-4 mr-2" />
+                {item.starred ? "Unstar" : "Star"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDeleteModalOpen(true);
+                }}
+                variant="destructive"
+              >
+                <Trash2 className="size-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={isTrash ? "Delete file permanently?" : "Move file to trash?"}
+        description={
+          isTrash
+            ? `Are you sure you want to permanently delete "${item.filename}"? This action cannot be undone.`
+            : `Are you sure you want to move "${item.filename}" to trash?`
+        }
+        confirmText={isDeleteDone ? "Deleted" : isTrash ? "Delete Permanently" : "Delete"}
+        cancelText="Cancel"
+        loading={isDeleting}
+      />
+    </>
   );
 }
 
 type StorageViewProps = {
   items: StorageItem[];
-  onToggleStar: (fileId: string) => void;
-  onDelete: (fileId: string) => void;
+  onToggleStar: (fileId: string) => void | Promise<void>;
+  onDelete: (fileId: string) => void | Promise<void>;
   onDownload: (item: StorageItem) => void;
   onFolderClick?: (folder: StorageItem) => void;
   onFileClick?: (file: StorageItem) => void;

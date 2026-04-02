@@ -11,11 +11,11 @@ import {
 import { Button } from "~/components/ui/button";
 import { Progress } from "~/components/ui/progress";
 import { useUploadFile } from "~/query/storage";
-import { useProject } from "~/query/project";
 
 type UploadDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  scope: "project" | "workspace";
   projectId?: string | null;
   parentId?: string | null;
   workspaceId?: string;
@@ -31,15 +31,24 @@ type FileWithProgress = {
 export default function UploadDialog({
   open,
   onOpenChange,
+  scope,
   projectId,
   parentId,
-  workspaceId: workspaceIdProp,
+  workspaceId,
 }: UploadDialogProps) {
   const [files, setFiles] = useState<FileWithProgress[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const uploadMutation = useUploadFile();
-  const { data: projectData } = useProject(projectId || "");
-  const workspaceId = workspaceIdProp || (projectData?.project?.workspace as unknown as string);
+
+  const closeWithAnimation = (onClosed?: () => void) => {
+    setIsClosing(true);
+    window.setTimeout(() => {
+      onOpenChange(false);
+      setIsClosing(false);
+      onClosed?.();
+    }, 180);
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -80,6 +89,8 @@ export default function UploadDialog({
   };
 
   const uploadFiles = async () => {
+    let hasError = false;
+
     for (let i = 0; i < files.length; i++) {
       if (files[i].status !== "pending") continue;
 
@@ -104,8 +115,9 @@ export default function UploadDialog({
 
         await uploadMutation.mutateAsync({
           file: files[i].file,
-          projectId: projectId || "",
-          workspaceId: workspaceId!,
+          scope,
+          projectId: projectId || undefined,
+          workspaceId,
           parentId,
         });
 
@@ -118,6 +130,7 @@ export default function UploadDialog({
           )
         );
       } catch (error) {
+        hasError = true;
         // Update status to error
         setFiles((prev) =>
           prev.map((f, idx) =>
@@ -134,13 +147,11 @@ export default function UploadDialog({
     }
 
     // Close dialog after all uploads complete
-    setTimeout(() => {
-      const allSuccess = files.every((f) => f.status === "success");
-      if (allSuccess) {
-        onOpenChange(false);
-        setFiles([]);
-      }
-    }, 1000);
+    if (!hasError && files.length > 0) {
+      window.setTimeout(() => {
+        closeWithAnimation(() => setFiles([]));
+      }, 260);
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -157,7 +168,11 @@ export default function UploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent
+        className={`sm:max-w-2xl transition-all duration-200 ${
+          isClosing ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
+        }`}
+      >
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
@@ -187,13 +202,13 @@ export default function UploadDialog({
               onChange={handleFileSelect}
               className="hidden"
               id="file-upload"
-              disabled={isUploading}
+              disabled={isUploading || isClosing}
             />
             <Button
               variant="outline"
               size="sm"
               onClick={() => document.getElementById("file-upload")?.click()}
-              disabled={isUploading}
+              disabled={isUploading || isClosing}
             >
               Browse Files
             </Button>
@@ -230,7 +245,7 @@ export default function UploadDialog({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeFile(index)}
-                        disabled={isUploading}
+                        disabled={isUploading || isClosing}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -271,16 +286,15 @@ export default function UploadDialog({
           <Button
             variant="outline"
             onClick={() => {
-              onOpenChange(false);
-              setFiles([]);
+              closeWithAnimation(() => setFiles([]));
             }}
-            disabled={isUploading}
+            disabled={isUploading || isClosing}
           >
             Cancel
           </Button>
           <Button
             onClick={uploadFiles}
-            disabled={!hasFiles || isUploading || allComplete}
+            disabled={!hasFiles || isUploading || allComplete || isClosing}
           >
             {isUploading ? (
               <>

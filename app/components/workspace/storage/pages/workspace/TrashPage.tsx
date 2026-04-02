@@ -66,8 +66,9 @@ export default function WorkspaceTrashPage() {
   return (
     <FileExplorer
       items={files}
-      projectId={workspaceId}
-      onToggleStar={() => {}}
+      storageScope="workspace"
+      workspaceId={workspaceId}
+      onToggleStar={handleRestore}
       onDelete={handlePermanentDelete}
       onDownload={handleDownload}
       enableUpload={false}

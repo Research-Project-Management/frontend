@@ -17,7 +17,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
 
   // Determine if we're in project or workspace context
   const basePath = projectId
-    ? `/${workspaceId}/project/${projectId}/storage`
+    ? `/${workspaceId}/projects/${projectId}/storage`
     : `/${workspaceId}/storage`;
 
   // Storage-specific navigation

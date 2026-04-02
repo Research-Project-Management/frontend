@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 import { useFiles, useToggleStar, useDeleteFile } from "~/query/storage";
+import { useProject } from "~/query/project";
 import Loading from "~/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
@@ -10,10 +11,12 @@ export default function StoragePage() {
   const { projectId } = useParams();
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<Array<{ id: string | null; name: string }>>([]);
+  const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
 
   const { data, isLoading: isFilesLoading } = useFiles(projectId!, currentFolder);
   const toggleStarMutation = useToggleStar();
   const deleteFileMutation = useDeleteFile();
+  const canUpload = projectData?.yourRole !== "viewer";
 
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);
@@ -59,7 +62,7 @@ export default function StoragePage() {
     // Trigger for rename option
   };
 
-  if (isFilesLoading) {
+  if (isFilesLoading || isProjectLoading) {
     return <Loading />;
   }
 
@@ -81,7 +84,7 @@ export default function StoragePage() {
       onDelete={handleDelete}
       onDownload={handleDownload}
       onRename={handleRenameTrigger}
-      enableUpload={true}
+      enableUpload={canUpload}
       enableBreadcrumbs={true}
     />
   );

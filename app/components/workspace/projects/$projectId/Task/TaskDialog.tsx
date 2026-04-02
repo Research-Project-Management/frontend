@@ -25,7 +25,6 @@ import {
   Link2,
   MoreHorizontal,
   Paperclip,
-  Plus,
   Send,
   Tag,
   Trash2,
@@ -165,6 +164,12 @@ export function TaskDialog({
   const assignee = members.find((m: any) => m.user._id === assigneeId);
   const assigneeName = assignee?.user?.name;
 
+  const quickActionButtonClass =
+    "h-8 rounded-lg border-border/60 bg-background/90 px-3 text-xs text-foreground/90 shadow-sm transition-all duration-200 hover:border-border hover:bg-accent/50 hover:text-foreground";
+
+  const quickActionTriggerClass =
+    "h-8 min-w-[130px] rounded-lg border-border/60 bg-background/90 px-3 text-xs text-foreground/90 shadow-sm transition-all duration-200 hover:border-border hover:bg-accent/50 hover:text-foreground focus:ring-0";
+
   const cardAttachment = card && mode === "edit" ? {
     projectName: projectData?.project?.name || "Project",
     listName: selectedColumn?.title || "",
@@ -272,21 +277,12 @@ export function TaskDialog({
               </div>
 
               {/* Quick actions */}
-              <div className="flex flex-wrap gap-2 ml-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 rounded-lg text-xs gap-1.5 border-dashed"
-                >
-                  <Plus className="h-3 w-3" />
-                  Thêm
-                </Button>
-
+              <div className="ml-8 flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/20 p-2">
                 {/* Labels */}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 rounded-lg text-xs gap-1.5"
+                  className={cn(quickActionButtonClass, "gap-1.5")}
                   onClick={() => {
                     const val = window.prompt(
                       "Nhãn (phân cách bằng dấu phẩy):",
@@ -303,23 +299,7 @@ export function TaskDialog({
                   }}
                 >
                   <Tag className="h-3 w-3" />
-                  {labels.length > 0 ? (
-                    <span className="flex gap-1">
-                      {labels.slice(0, 2).map((l) => (
-                        <span
-                          key={l}
-                          className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md text-[10px]"
-                        >
-                          {l}
-                        </span>
-                      ))}
-                      {labels.length > 2 && (
-                        <span className="text-muted-foreground">+{labels.length - 2}</span>
-                      )}
-                    </span>
-                  ) : (
-                    "Nhãn"
-                  )}
+                  <span>{labels.length > 0 ? `${labels.length} nhãn` : "Nhãn"}</span>
                 </Button>
 
                 {/* Due date */}
@@ -327,14 +307,14 @@ export function TaskDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 rounded-lg text-xs gap-1.5"
+                    className={cn(quickActionButtonClass, "gap-1.5")}
                     asChild
                   >
-                    <label className="cursor-pointer">
+                    <label className="cursor-pointer inline-flex items-center gap-1.5">
                       <Calendar className="h-3 w-3" />
-                      {dueDate
+                      <span className={cn(!dueDate && "text-muted-foreground")}>{dueDate
                         ? new Date(dueDate).toLocaleDateString("vi-VN")
-                        : "Ngày"}
+                        : "Ngày"}</span>
                       <input
                         type="date"
                         className="absolute inset-0 opacity-0 cursor-pointer"
@@ -349,7 +329,7 @@ export function TaskDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 rounded-lg text-xs gap-1.5"
+                  className={cn(quickActionButtonClass, "gap-1.5")}
                 >
                   <CheckSquare className="h-3 w-3" />
                   Việc cần làm
@@ -360,7 +340,7 @@ export function TaskDialog({
                   value={assigneeId ?? "none"}
                   onValueChange={(v) => setAssigneeId(v === "none" ? null : v)}
                 >
-                  <SelectTrigger className="h-7 w-auto border rounded-lg bg-transparent gap-1.5 text-xs px-2.5 focus:ring-0">
+                  <SelectTrigger className={cn(quickActionTriggerClass, "w-auto gap-1.5")}>
                     {assigneeName ? (
                       <span className="flex items-center gap-1.5">
                         <span
@@ -452,19 +432,11 @@ export function TaskDialog({
 
               {/* Attachments */}
               <div className="ml-8 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center">
                   <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                     <Paperclip className="h-4 w-4 text-muted-foreground" />
                     Các tập tin đính kèm
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 rounded-lg text-xs gap-1.5"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Thêm
-                  </Button>
                 </div>
 
                 {/* Linked card attachment preview */}

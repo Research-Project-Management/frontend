@@ -66,6 +66,22 @@ export default [
         ":workspaceId/projects/:projectId/storage",
         "./routes/workspace/$workspaceId/project/$projectId/storage/index.tsx",
       ),
+      route(
+        ":workspaceId/projects/:projectId/storage/my-files",
+        "./routes/workspace/$workspaceId/project/$projectId/storage/my-files.tsx",
+      ),
+      route(
+        ":workspaceId/projects/:projectId/storage/shared",
+        "./routes/workspace/$workspaceId/project/$projectId/storage/shared.tsx",
+      ),
+      route(
+        ":workspaceId/projects/:projectId/storage/starred",
+        "./routes/workspace/$workspaceId/project/$projectId/storage/starred.tsx",
+      ),
+      route(
+        ":workspaceId/projects/:projectId/storage/trash",
+        "./routes/workspace/$workspaceId/project/$projectId/storage/trash.tsx",
+      ),
 
       layout("./components/workspace/projects/$projectId/settings/layout/ProjectSettingLayout.tsx", [
         route(

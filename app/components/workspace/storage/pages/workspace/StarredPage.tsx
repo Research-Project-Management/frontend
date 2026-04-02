@@ -66,7 +66,8 @@ export default function WorkspaceStarredPage() {
   return (
     <FileExplorer
       items={files}
-      projectId={workspaceId}
+      storageScope="workspace"
+      workspaceId={workspaceId}
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}

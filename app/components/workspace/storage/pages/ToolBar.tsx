@@ -6,6 +6,8 @@ import {
   FolderPlus,
   ArrowUpDown,
   Filter,
+  FolderOpen,
+  X,
   FileText,
   Image,
   Video,
@@ -17,17 +19,26 @@ import { Input } from "~/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
   DropdownMenuCheckboxItem,
+  DropdownMenuGroup,
 } from "~/components/ui/dropdown-menu";
 import { useState } from "react";
+
+type SourceFilter =
+  | { kind: "all" }
+  | { kind: "workspace" }
+  | { kind: "shared" }
+  | { kind: "project"; projectId: string; projectName: string };
 
 type ToolbarProps = {
   searchValue: string;
   onSearchChange: (value: string) => void;
+  sourceFilter?: SourceFilter;
+  projectOptions?: Array<{ value: string; label: string }>;
+  onSourceChange?: (value: SourceFilter) => void;
   viewMode: "grid" | "list";
   onToggleView: () => void;
   actionLabel?: string;
@@ -47,6 +58,9 @@ type FileTypeFilter =
 export default function Toolbar({
   searchValue,
   onSearchChange,
+  sourceFilter = { kind: "all" },
+  projectOptions = [],
+  onSourceChange,
   viewMode,
   onToggleView,
   onUpload,
@@ -208,6 +222,81 @@ export default function Toolbar({
                 <Archive className="size-4 mr-2" />
                 Archives
               </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <div className="inline-flex items-center rounded-md bg-transparent hover:bg-accent/60 transition-colors overflow-hidden">
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 gap-1.5 rounded-none rounded-l-md px-3 bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground"
+                >
+                  <FolderOpen className="size-4" />
+                  <span className="text-xs font-normal max-w-28 truncate">Source</span>
+                </Button>
+              </DropdownMenuTrigger>
+              {sourceFilter.kind !== "all" && onSourceChange && (
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-8 items-center justify-center rounded-none rounded-r-md text-muted-foreground hover:bg-muted-foreground/10 hover:text-foreground"
+                  aria-label="Clear source filter"
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    onSourceChange({ kind: "all" });
+                  }}
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuLabel>Source</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuCheckboxItem
+                  checked={sourceFilter.kind === "workspace"}
+                  onCheckedChange={() => onSourceChange?.({ kind: "workspace" })}
+                >
+                  Workspace
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={sourceFilter.kind === "shared"}
+                  onCheckedChange={() => onSourceChange?.({ kind: "shared" })}
+                >
+                  Shared
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuGroup>
+              <DropdownMenuGroup>
+                {projectOptions.length === 0 ? (
+                  <DropdownMenuCheckboxItem disabled checked={false}>
+                    No projects
+                  </DropdownMenuCheckboxItem>
+                ) : (
+                  projectOptions.map((project) => (
+                    <DropdownMenuCheckboxItem
+                      key={project.value}
+                      checked={
+                        sourceFilter.kind === "project" && sourceFilter.projectId === project.value
+                      }
+                      onCheckedChange={() =>
+                        onSourceChange?.({
+                          kind: "project",
+                          projectId: project.value,
+                          projectName: project.label,
+                        })
+                      }
+                    >
+                      {project.label}
+                    </DropdownMenuCheckboxItem>
+                  ))
+                )}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

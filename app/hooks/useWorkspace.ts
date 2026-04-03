@@ -6,7 +6,7 @@ export const useWorkspace = () => {
     const { workspaceId } = useParams<{ workspaceId: string }>();
     const { data, isLoading, isError } = useQuery({
         queryKey: ['workspace', workspaceId],
-        queryFn: () => fetchWorkspaceById(workspaceId!),
+        queryFn: ({ signal }) => fetchWorkspaceById(workspaceId!, signal),
         enabled: !!workspaceId,
     });
 
@@ -17,7 +17,7 @@ export const useProjects = () => {
     const { workspaceId } = useParams<{ workspaceId: string }>();
     const { data, isLoading, isError } = useQuery({
         queryKey: ['projects', workspaceId],
-        queryFn: () => fetchProjectsByWorkspaceId(workspaceId!),
+        queryFn: ({ signal }) => fetchProjectsByWorkspaceId(workspaceId!, signal),
         enabled: !!workspaceId,
     });
 

@@ -15,12 +15,13 @@ import {
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
 import { Button } from "../ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export default function Create() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("flux");
@@ -54,6 +55,29 @@ export default function Create() {
       return respText ? JSON.parse(respText) : null;
     },
     onSuccess(data) {
+      const newWorkspace = data?.workspace;
+
+      if (newWorkspace?._id) {
+        queryClient.setQueriesData({ queryKey: ["workspaces"] }, (current: any) => {
+          if (Array.isArray(current)) {
+            const exists = current.some((w: any) => w?._id === newWorkspace._id);
+            return exists ? current : [newWorkspace, ...current];
+          }
+
+          if (Array.isArray(current?.workspaces)) {
+            const exists = current.workspaces.some(
+              (w: any) => w?._id === newWorkspace._id,
+            );
+            return exists
+              ? current
+              : { ...current, workspaces: [newWorkspace, ...current.workspaces] };
+          }
+
+          return current;
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       const workspaceUrl = `/${data.workspace.url}`;
       navigate(workspaceUrl, { replace: true });
     },

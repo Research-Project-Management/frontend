@@ -53,6 +53,8 @@ export default function WorkspaceStarredPage() {
     }
   };
 
+  const handleRenameTrigger = () => {};
+
   if (isWorkspaceLoading || isFilesLoading) {
     return <Loading />;
   }
@@ -71,6 +73,7 @@ export default function WorkspaceStarredPage() {
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}
+      onRename={handleRenameTrigger}
       enableUpload={false}
       enableBreadcrumbs={false}
       defaultView="list"

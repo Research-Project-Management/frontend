@@ -4,9 +4,9 @@ import { fetchWorkspaces } from "~/query/workspaces";
 export const useWorkspaces = () => {
     const {data, isLoading, isError} = useQuery({
         queryKey: ['workspaces'],
-        queryFn: fetchWorkspaces,
+        queryFn: ({ signal }) => fetchWorkspaces(signal),
     });
 
-    return {workspaces: data, isLoading, isError};
+    return {workspaces: data?.workspaces || [], isLoading, isError};
 }
 

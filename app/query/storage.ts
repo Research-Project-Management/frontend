@@ -90,6 +90,7 @@ const invalidateStorageQueries = (queryClient: QueryClient) => {
     queryClient.invalidateQueries({ queryKey: ["shared-files"] });
     queryClient.invalidateQueries({ queryKey: ["trashed-files"] });
     queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-home-files"] });
     queryClient.invalidateQueries({ queryKey: ["workspace-my-files"] });
     queryClient.invalidateQueries({ queryKey: ["workspace-starred-files"] });
     queryClient.invalidateQueries({ queryKey: ["workspace-shared-files"] });

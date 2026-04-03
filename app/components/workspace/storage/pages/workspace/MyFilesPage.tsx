@@ -58,6 +58,8 @@ export default function WorkspaceMyFilesPage() {
     }
   };
 
+  const handleRenameTrigger = () => {};
+
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);
     setBreadcrumbs((prev) => [...prev, { id: folder._id, name: folder.filename }]);
@@ -105,6 +107,7 @@ export default function WorkspaceMyFilesPage() {
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}
+      onRename={handleRenameTrigger}
       enableUpload={canUpload}
       enableBreadcrumbs={true}
       defaultView="list"

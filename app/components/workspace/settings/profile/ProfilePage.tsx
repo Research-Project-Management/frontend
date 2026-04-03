@@ -40,9 +40,8 @@ export default function ProfilePage() {
   const isOAuth = !!(user as any)?.googleId || !!(user as any)?.githubId;
   const hasProfileChanges =
     name.trim() !== (user?.name || "") || avatar !== (user?.avatar || "");
-  const canChangePassword = isOAuth
-    ? !!newPassword && !!confirmPassword
-    : !!currentPassword && !!newPassword && !!confirmPassword;
+  const canChangePassword =
+    !isOAuth && !!currentPassword && !!newPassword && !!confirmPassword;
 
   const updateCurrentUserCache = (patch: Record<string, unknown>) => {
     queryClient.setQueryData(["currentUser"], (currentUser: any) =>
@@ -90,7 +89,12 @@ export default function ProfilePage() {
   };
 
   const handleChangePassword = async () => {
-    if (!isOAuth && !currentPassword) {
+    if (isOAuth) {
+      toast.error("Password changes are not available for Google or GitHub accounts.");
+      return;
+    }
+
+    if (!currentPassword) {
       toast.error("Current password is required");
       return;
     }
@@ -292,83 +296,89 @@ export default function ProfilePage() {
               </h3>
               <p className="text-sm text-muted-foreground">
                 {isOAuth
-                  ? "Set a password if you want to sign in without your social account."
+                  ? "This account signs in with Google or GitHub, so password changes are disabled."
                   : "Change the password you use to sign in to this account."}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {!isOAuth && (
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="current-password"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Current Password
-                  </label>
-                  <Input
-                    id="current-password"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    autoComplete="current-password"
-                    className="h-10"
-                  />
+            {isOAuth ? (
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                Password management is handled by your social sign-in provider.
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="current-password"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Current Password
+                    </label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      autoComplete="current-password"
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="new-password"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      New Password
+                    </label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      autoComplete="new-password"
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="confirm-new-password"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Confirm New Password
+                    </label>
+                    <Input
+                      id="confirm-new-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      autoComplete="new-password"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && canChangePassword) {
+                          e.preventDefault();
+                          handleChangePassword();
+                        }
+                      }}
+                      className="h-10"
+                    />
+                  </div>
                 </div>
-              )}
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="new-password"
-                  className="text-sm font-medium text-foreground"
-                >
-                  New Password
-                </label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  autoComplete="new-password"
-                  className="h-10"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="confirm-new-password"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Confirm New Password
-                </label>
-                <Input
-                  id="confirm-new-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  autoComplete="new-password"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && canChangePassword) {
-                      e.preventDefault();
-                      handleChangePassword();
-                    }
-                  }}
-                  className="h-10"
-                />
-              </div>
-            </div>
 
-            <Button
-              onClick={handleChangePassword}
-              disabled={isChangingPassword || !canChangePassword}
-              variant="outline"
-            >
-              {isChangingPassword ? (
-                <Loader2 className="size-4 animate-spin mr-1.5" />
-              ) : null}
-              Change Password
-            </Button>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={isChangingPassword || !canChangePassword}
+                  variant="outline"
+                >
+                  {isChangingPassword ? (
+                    <Loader2 className="size-4 animate-spin mr-1.5" />
+                  ) : null}
+                  Change Password
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -10,7 +10,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 
-export interface DeleteConfirmModalProps {
+export interface DeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -20,7 +20,7 @@ export interface DeleteConfirmModalProps {
   isLoading?: boolean;
 }
 
-export default function DeleteConfirmModal({
+export default function DeleteModal({
   isOpen,
   onClose,
   onConfirm,
@@ -28,7 +28,7 @@ export default function DeleteConfirmModal({
   message = "Are you sure you want to delete this section? This action cannot be undone.",
   confirmLabel = "Delete",
   isLoading = false,
-}: DeleteConfirmModalProps) {
+}: DeleteModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogOverlay

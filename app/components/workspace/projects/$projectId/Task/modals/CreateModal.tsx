@@ -17,7 +17,7 @@ export type SectionData = {
   isDefault: boolean;
 };
 
-interface SectionModalProps {
+interface CreateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payload: SectionData) => void;
@@ -36,14 +36,14 @@ const COLORS = [
   { id: "purple", value: "#A855F7" },
 ];
 
-export default function SectionModal({
+export default function CreateModal({
   isOpen,
   onClose,
   onSubmit,
   mode = "create",
   initialData,
   isLoading = false,
-}: SectionModalProps) {
+}: CreateModalProps) {
   const [sectionName, setSectionName] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
   const [isDefault, setIsDefault] = useState(false);

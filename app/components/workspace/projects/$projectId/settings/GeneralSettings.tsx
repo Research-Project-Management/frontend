@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import {
+  useDeleteProject,
   useProjectDetails,
   useUpdateProject,
   type Project,
@@ -16,8 +17,10 @@ import { Textarea } from "~/components/ui/textarea";
 import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
 
 export default function GeneralSettings() {
+  const navigate = useNavigate();
   const { projectId, workspaceId } = useParams();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const deleteProjectMutation = useDeleteProject();
 
   const { data: projectData, isLoading: isProjectLoading } = useProjectDetails(
     projectId!,
@@ -61,15 +64,25 @@ export default function GeneralSettings() {
             isOpen={isDeleteOpen}
             onClose={() => setIsDeleteOpen(false)}
             onConfirm={() => {
-              setIsDeleteOpen(false);
-              // TODO: handle project deletion
-              toast.info("Project deletion is not yet implemented.");
+              deleteProjectMutation.mutate(
+                { projectId: projectId! },
+                {
+                  onSuccess: () => {
+                    setIsDeleteOpen(false);
+                    toast.success("Project deleted successfully");
+                    navigate(`/${workspaceId}`, { replace: true });
+                  },
+                  onError: (error: any) => {
+                    toast.error(error.message || "Failed to delete project");
+                  },
+                },
+              );
             }}
             title="Delete project?"
             description="Are you sure you want to delete this project? All data including tasks, pages, and files will be permanently removed."
             confirmText="Delete"
             cancelText="Dismiss"
-            loading={false}
+            loading={deleteProjectMutation.isPending}
           />
         </div>
       </div>

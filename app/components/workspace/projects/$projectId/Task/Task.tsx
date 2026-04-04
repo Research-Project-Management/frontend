@@ -3,35 +3,47 @@ import { useParams } from "react-router";
 import TopBar from "./TopBar";
 import BoardView from "./views/BoardView";
 import ListView from "./views/ListView";
-import { TaskDialog } from "./TaskDialog";
-import SectionModal, { type SectionData } from "./modals/SectionModal";
-import DeleteConfirmModal from "./modals/SectionModal/DeleteConfirmModal";
+import { TaskDialog } from "./task_dialog/CardDetail";
+import CreateModal, { type SectionData } from "./modals/CreateModal";
+import DeleteModal from "./modals/DeleteModal";
 import {
   useProjectTasks,
   useCreateTask,
   useUpdateTask,
   useCreateColumn,
   useDeleteTask,
+  useDuplicateTask,
   useDeleteColumn,
   useUpdateColumn,
 } from "~/query/task";
+import { useProjectDetails } from "~/query/project";
 import type {
   Task as TaskType,
   Column,
   TaskMutationInput,
 } from "~/types/task";
+import { resolveTaskColumnId } from "~/types/task";
 import { Skeleton } from "~/components/ui/skeleton";
 import { toast } from "sonner";
+import { useAuth } from "~/hooks/useAuth";
 
 type ViewMode = "board" | "list";
+type AssigneeFilterOption = {
+  id: string;
+  name: string;
+  avatar?: string;
+};
 
 export default function Task() {
+  const { user: currentUser } = useAuth();
   const { projectId } = useParams();
   const { data, isLoading } = useProjectTasks(projectId!);
+  const { data: projectData } = useProjectDetails(projectId!);
 
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
+  const duplicateTaskMutation = useDuplicateTask();
   const createColumnMutation = useCreateColumn();
   const deleteColumnMutation = useDeleteColumn();
   const updateColumnMutation = useUpdateColumn();
@@ -40,10 +52,10 @@ export default function Task() {
   const [viewMode, setViewMode] = useState<ViewMode>("board");
   const [searchText, setSearchText] = useState("");
   const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>([]);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
   const [dialogCard, setDialogCard] = useState<Partial<TaskType>>({});
   const [deletingTask, setDeletingTask] = useState<TaskType | null>(null);
 
@@ -54,8 +66,35 @@ export default function Task() {
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const allTasks = data?.tasks || [];
-  const columns = data?.columns || [];
+  const allTasks = data?.tasks ?? [];
+  const columns = data?.columns ?? [];
+  const members = projectData?.members ?? [];
+  const assigneeFilterOptions = useMemo<AssigneeFilterOption[]>(() => {
+    const byId = new Map<string, AssigneeFilterOption>();
+    let hasUnassignedTask = false;
+
+    for (const task of allTasks) {
+      if (task.assignee?._id) {
+        byId.set(task.assignee._id, {
+          id: task.assignee._id,
+          name: task.assignee.name,
+          avatar: task.assignee.avatar,
+        });
+      } else {
+        hasUnassignedTask = true;
+      }
+    }
+
+    const options = Array.from(byId.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "vi"),
+    );
+
+    if (hasUnassignedTask) {
+      options.push({ id: "__unassigned__", name: "Chưa giao" });
+    }
+
+    return options;
+  }, [allTasks]);
 
   // Filtered tasks
   const tasks = useMemo(() => {
@@ -72,13 +111,33 @@ export default function Task() {
       filtered = filtered.filter((t) => selectedColumnIds.includes(t.columnId));
     }
 
+    if (selectedAssigneeIds.length > 0) {
+      filtered = filtered.filter((t) => {
+        const assigneeId = t.assignee?._id ?? "__unassigned__";
+        return selectedAssigneeIds.includes(assigneeId);
+      });
+    }
+
     return filtered;
-  }, [allTasks, searchText, selectedColumnIds]);
+  }, [allTasks, searchText, selectedColumnIds, selectedAssigneeIds]);
+
+  const tasksByColumnId = useMemo(() => {
+    const grouped = new Map<string, TaskType[]>();
+
+    for (const task of tasks) {
+      if (!grouped.has(task.columnId)) {
+        grouped.set(task.columnId, []);
+      }
+      grouped.get(task.columnId)!.push(task);
+    }
+
+    return grouped;
+  }, [tasks]);
 
   const visibleColumns = useMemo(() => {
     if (selectedColumnIds.length > 0) {
       return columns.filter((column) =>
-        selectedColumnIds.includes(column.id ?? column._id ?? ""),
+        selectedColumnIds.includes(resolveTaskColumnId(column)),
       );
     }
 
@@ -88,21 +147,35 @@ export default function Task() {
 
     const taskColumnIds = new Set(tasks.map((task) => task.columnId));
     return columns.filter((column) =>
-      taskColumnIds.has(column.id ?? column._id ?? ""),
+      taskColumnIds.has(resolveTaskColumnId(column)),
     );
   }, [columns, selectedColumnIds, searchText, tasks]);
   const hasActiveTaskFilters =
-    Boolean(searchText.trim()) || selectedColumnIds.length > 0;
+    Boolean(searchText.trim()) ||
+    selectedColumnIds.length > 0 ||
+    selectedAssigneeIds.length > 0;
 
   /* Handlers */
-  const handleOpenAddDialog = (columnId: string) => {
-    setDialogMode("add");
-    setDialogCard({ columnId });
+  const handleOpenAddDialog = (columnId: string, title?: string) => {
+    const quickTitle = title?.trim();
+
+    if (quickTitle) {
+      createTaskMutation.mutate({
+        projectId: projectId!,
+        columnId,
+        title: quickTitle,
+      });
+      return;
+    }
+
+    setDialogCard({
+      columnId,
+      title: title?.trim() || "",
+    });
     setDialogOpen(true);
   };
 
   const handleOpenEditDialog = (card: TaskType) => {
-    setDialogMode("edit");
     setDialogCard(card);
     setDialogOpen(true);
   };
@@ -115,41 +188,51 @@ export default function Task() {
     });
   };
 
+  const handleToggleCardCompleted = (card: TaskType) => {
+    updateTaskMutation.mutate({
+      taskId: card._id,
+      projectId: projectId!,
+      completed: !card.completed,
+    });
+  };
+
   const handleSaveCard = (cardData: TaskMutationInput) => {
-    if (dialogMode === "add") {
-      createTaskMutation.mutate(
-        { projectId: projectId!, ...cardData },
-        {
-          onSuccess: () => {
-            setDialogOpen(false);
-            toast.success("Task created");
-          },
-        },
-      );
-    } else {
+    if (dialogCard._id) {
       updateTaskMutation.mutate(
-        { taskId: dialogCard._id!, projectId: projectId!, ...cardData },
         {
-          onSuccess: () => {
-            setDialogOpen(false);
-            toast.success("Task updated");
-          },
+          taskId: dialogCard._id,
+          projectId: projectId!,
+          ...cardData,
         },
       );
+      return;
     }
+
+    createTaskMutation.mutate(
+      {
+        projectId: projectId!,
+        ...cardData,
+      },
+      {
+        onSuccess: (result: any) => {
+          if (result?.task?._id) {
+            setDialogCard(result.task);
+            return;
+          }
+
+          setDialogCard({});
+        },
+      },
+    );
   };
 
   const closeTaskDeleteModal = () => {
     setDeletingTask(null);
   };
 
-  const openTaskDeleteModal = (task: TaskType) => {
-    setDeletingTask(task);
-  };
-
   const handleDeleteCard = () => {
     if (dialogCard._id) {
-      openTaskDeleteModal(dialogCard as TaskType);
+      setDeletingTask(dialogCard as TaskType);
     }
   };
 
@@ -165,7 +248,7 @@ export default function Task() {
   };
 
   const findColumn = (id: string) =>
-    columns.find((column) => (column.id ?? column._id ?? "") === id);
+    columns.find((column) => resolveTaskColumnId(column) === id);
 
   const handleOpenAddSectionModal = () => {
     setEditingColumn(null);
@@ -235,7 +318,7 @@ export default function Task() {
   };
 
   const handleDeleteCardFromMenu = (card: TaskType) => {
-    openTaskDeleteModal(card);
+    setDeletingTask(card);
   };
 
   const handleTaskDeleteConfirm = () => {
@@ -256,32 +339,36 @@ export default function Task() {
   };
 
   const handleDuplicateCard = (card: TaskType) => {
-    const duplicatePayload: TaskMutationInput = {
-      title: `${card.title} (copy)`,
-      content: card.content,
-      description: card.description,
-      columnId: card.columnId,
-      dueDate: card.dueDate,
-      labels: card.labels || [],
-      priority: card.priority,
-      estimate: card.estimate,
-      assignee:
-        typeof card.assignee === "object" ? card.assignee?._id : card.assignee,
-      cycle: card.cycle && typeof card.cycle === "object" ? card.cycle._id : card.cycle,
-      parentTask:
-        card.parentTask && typeof card.parentTask === "object"
-          ? card.parentTask._id
-          : card.parentTask,
-    };
-
-    createTaskMutation.mutate(
-      { projectId: projectId!, ...duplicatePayload },
+    duplicateTaskMutation.mutate(
+      { projectId: projectId!, taskId: card._id },
       {
         onSuccess: () => {
           toast.success("Task duplicated");
         },
       },
     );
+  };
+
+  const handleJoinCard = (card: TaskType) => {
+    if (!currentUser?._id) return;
+    if (card.assignee?._id === currentUser._id) return;
+
+    updateTaskMutation.mutate({
+      taskId: card._id,
+      projectId: projectId!,
+      assignee: currentUser._id,
+    });
+  };
+
+  const handleLeaveCard = (card: TaskType) => {
+    if (!currentUser?._id) return;
+    if (card.assignee?._id !== currentUser._id) return;
+
+    updateTaskMutation.mutate({
+      taskId: card._id,
+      projectId: projectId!,
+      assignee: null,
+    });
   };
 
 
@@ -319,6 +406,9 @@ export default function Task() {
           columns={columns}
           selectedColumnIds={selectedColumnIds}
           onColumnFilterChange={setSelectedColumnIds}
+          assignees={assigneeFilterOptions}
+          selectedAssigneeIds={selectedAssigneeIds}
+          onAssigneeFilterChange={setSelectedAssigneeIds}
           onCreateSection={handleOpenAddSectionModal}
         />
       </header>
@@ -337,11 +427,17 @@ export default function Task() {
       ) : viewMode === "board" ? (
         <BoardView
           tasks={tasks}
+          tasksByColumnId={tasksByColumnId}
           columns={visibleColumns}
+          currentUserId={currentUser?._id ?? null}
+          currentUserAvatar={currentUser?.avatar ?? undefined}
           onAddCard={handleOpenAddDialog}
           onEditCard={handleOpenEditDialog}
           onDeleteCard={handleDeleteCardFromMenu}
           onDuplicateCard={handleDuplicateCard}
+          onJoinCard={handleJoinCard}
+          onLeaveCard={handleLeaveCard}
+          onToggleCardCompleted={handleToggleCardCompleted}
           onMoveCard={handleMoveCard}
           onDeleteColumn={handleOpenDeleteModal}
           onUpdateColumn={handleOpenRenameModal}
@@ -349,12 +445,16 @@ export default function Task() {
       ) : (
         <div className="flex-1 overflow-auto px-6 py-4">
           <ListView
-            tasks={tasks}
+            tasksByColumnId={tasksByColumnId}
             columns={visibleColumns}
+            currentUserId={currentUser?._id ?? null}
+            currentUserAvatar={currentUser?.avatar ?? undefined}
             onAddCard={handleOpenAddDialog}
             onEditCard={handleOpenEditDialog}
             onDeleteCard={handleDeleteCardFromMenu}
             onDuplicateCard={handleDuplicateCard}
+            onJoinCard={handleJoinCard}
+            onLeaveCard={handleLeaveCard}
           />
         </div>
       )}
@@ -362,16 +462,16 @@ export default function Task() {
       <TaskDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        mode={dialogMode}
         card={dialogCard}
         columns={columns}
+        members={members}
         onSave={handleSaveCard}
         onDelete={handleDeleteCard}
         onDuplicate={() => dialogCard._id && handleDuplicateCard(dialogCard as TaskType)}
       />
 
       {/* Column Management Modals */}
-      <SectionModal
+      <CreateModal
         isOpen={isSectionModalOpen}
         onClose={closeSectionModal}
         onSubmit={(data) => {
@@ -391,7 +491,7 @@ export default function Task() {
         isLoading={createColumnMutation.isPending || updateColumnMutation.isPending}
       />
 
-      <DeleteConfirmModal
+      <DeleteModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
         onConfirm={handleColumnDeleteConfirm}
@@ -400,7 +500,7 @@ export default function Task() {
         isLoading={deleteColumnMutation.isPending}
       />
 
-      <DeleteConfirmModal
+      <DeleteModal
         isOpen={Boolean(deletingTask)}
         onClose={closeTaskDeleteModal}
         onConfirm={handleTaskDeleteConfirm}

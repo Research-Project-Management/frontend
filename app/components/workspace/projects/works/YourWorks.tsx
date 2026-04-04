@@ -16,15 +16,13 @@ import { useState, useMemo } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useWorkspaceTasks } from "~/query/task";
-import type { Task } from "~/types/task";
+import type { Task, CyclePhase, Priority } from "~/types/task";
 import { PHASE_CONFIG, PRIORITY_CONFIG } from "~/types/task";
-import type { CyclePhase } from "~/types/task";
 import { format, isPast, isToday, formatDistanceToNow } from "date-fns";
 import CalendarView from "./CalendarView";
 import HomeSection from "../Home/HomeSection";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Skeleton } from "~/components/ui/skeleton";
-import PriorityBadge from "~/components/workspace/projects/$projectId/Task/PriorityBadge";
 import { API_URL } from "~/lib/api";
 
 export default function YourWorks() {
@@ -228,6 +226,25 @@ export default function YourWorks() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: Priority }) {
+  const config = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.none;
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs shrink-0"
+      title={config.label}
+    >
+      <span
+        className="size-3 rounded-full border"
+        style={{
+          backgroundColor: `${config.color}20`,
+          borderColor: config.color,
+        }}
+      />
+    </span>
   );
 }
 

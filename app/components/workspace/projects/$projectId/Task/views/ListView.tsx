@@ -1,8 +1,6 @@
-import type { Task, Column } from "~/types/task";
-import { DEFAULT_TASK_COLUMN_COLORS } from "~/types/task";
-import PriorityBadge from "../PriorityBadge";
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import { CalendarDays, Copy, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Copy, MoreHorizontal, Plus, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -10,33 +8,86 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import {
+  PRIORITY_CONFIG,
+  resolveTaskColumnColor,
+  resolveTaskColumnId,
+  resolveTaskLabels,
+  type Priority,
+  type Task,
+  type Column,
+} from "~/types/task";
+
+function PriorityBadge({
+  priority,
+  showLabel = false,
+}: {
+  priority: Priority;
+  showLabel?: boolean;
+}) {
+  const config = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.none;
+
+  if (priority === "none" && !showLabel) return null;
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs shrink-0"
+      title={config.label}
+    >
+      <span
+        className="size-3 rounded-full border"
+        style={{
+          backgroundColor: `${config.color}20`,
+          borderColor: config.color,
+        }}
+      />
+      {showLabel && (
+        <span style={{ color: config.color }} className="font-medium">
+          {config.label}
+        </span>
+      )}
+    </span>
+  );
+}
 
 type ListViewProps = {
-  tasks: Task[];
+  tasksByColumnId: Map<string, Task[]>;
   columns: Column[];
-  onAddCard: (columnId: string) => void;
+  currentUserId?: string | null;
+  currentUserAvatar?: string;
+  onAddCard: (columnId: string, title?: string) => void;
   onEditCard: (task: Task) => void;
   onDeleteCard: (task: Task) => void;
   onDuplicateCard: (task: Task) => void;
+  onJoinCard: (task: Task) => void;
+  onLeaveCard: (task: Task) => void;
 };
 
 export default function ListView({
-  tasks,
+  tasksByColumnId,
   columns,
+  currentUserId,
+  currentUserAvatar,
   onAddCard,
   onEditCard,
   onDeleteCard,
   onDuplicateCard,
+  onJoinCard,
+  onLeaveCard,
 }: ListViewProps) {
-  const groups = columns.map((col) => ({
-    key: col.id ?? col._id ?? "",
-    label: col.title,
-    color:
-      DEFAULT_TASK_COLUMN_COLORS[col.id ?? col._id ?? ""] ||
-      col.accentColor ||
-      "#6B7280",
-    items: tasks.filter((t) => t.columnId === (col.id ?? col._id ?? "")),
-  }));
+  const groups = useMemo(
+    () =>
+      columns.map((col) => {
+        const columnId = resolveTaskColumnId(col);
+        return {
+          key: columnId,
+          label: col.title,
+          color: resolveTaskColumnColor(columnId, col.accentColor),
+          items: tasksByColumnId.get(columnId) ?? [],
+        };
+      }),
+    [columns, tasksByColumnId],
+  );
 
   return (
     <div className="space-y-6 pb-8">
@@ -76,7 +127,12 @@ export default function ListView({
             </div>
           ) : (
             <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
-              {group.items.map((task) => (
+              {group.items.map((task) => {
+                const visibleLabels = resolveTaskLabels(task.labels || []).filter(
+                  (label) => label.title.trim().length > 0,
+                );
+
+                return (
                 <div
                   key={task._id}
                   role="button"
@@ -100,14 +156,14 @@ export default function ListView({
                     {task.title}
                   </span>
 
-                  {task.labels?.length > 0 && (
+                  {visibleLabels.length > 0 && (
                     <div className="flex items-center gap-1 shrink-0">
-                      {task.labels.slice(0, 2).map((label) => (
+                      {visibleLabels.slice(0, 2).map((label) => (
                         <span
-                          key={label}
+                          key={label.id}
                           className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary"
                         >
-                          {label}
+                          {label.title}
                         </span>
                       ))}
                     </div>
@@ -125,7 +181,13 @@ export default function ListView({
 
                   {task.assignee && (
                     <Avatar className="size-5 shrink-0">
-                      <AvatarImage src={task.assignee.avatar} />
+                      <AvatarImage
+                        src={
+                          task.assignee._id === currentUserId && !task.assignee.avatar
+                            ? currentUserAvatar
+                            : task.assignee.avatar
+                        }
+                      />
                       <AvatarFallback className="text-[9px]">
                         {task.assignee.name?.charAt(0)}
                       </AvatarFallback>
@@ -153,16 +215,6 @@ export default function ListView({
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDeleteCard(task);
-                        }}
-                        className="rounded-lg text-foreground"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
                           onDuplicateCard(task);
                         }}
                         className="rounded-lg"
@@ -170,10 +222,42 @@ export default function ListView({
                         <Copy className="mr-2 h-4 w-4" />
                         Duplicate
                       </DropdownMenuItem>
+                      {currentUserId ? (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (task.assignee?._id === currentUserId) {
+                              onLeaveCard(task);
+                              return;
+                            }
+                            onJoinCard(task);
+                          }}
+                          disabled={task.permissions?.canEdit === false}
+                          className="rounded-lg"
+                        >
+                          {task.assignee?._id === currentUserId ? (
+                            <UserMinus className="mr-2 h-4 w-4" />
+                          ) : (
+                            <UserPlus className="mr-2 h-4 w-4" />
+                          )}
+                          {task.assignee?._id === currentUserId ? "Leave" : "Join"}
+                        </DropdownMenuItem>
+                      ) : null}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteCard(task);
+                        }}
+                        className="rounded-lg text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Github } from "lucide-react";
+import { Camera, Loader2, Github, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import TopBar from "../layout/TopBar";
 import { useAuth } from "~/hooks/useAuth";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { API_URL } from "~/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useUpload } from "~/hooks/useUpload";
 import { Avatar } from "../../layout/Avatar";
 import { apiPut } from "~/lib/api";
+import { changePassword } from "~/query/user";
 
 export default function ProfilePage() {
   const { user, isLoading: isLoadingUser } = useAuth();
@@ -37,11 +37,29 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  const passwordChecks = {
+    minLength: newPassword.length >= 6,
+    hasLetter: /[A-Za-z]/.test(newPassword),
+    hasNumber: /\d/.test(newPassword),
+  };
+  const isNewPasswordValid =
+    passwordChecks.minLength &&
+    passwordChecks.hasLetter &&
+    passwordChecks.hasNumber;
+  const isConfirmMatched = !!confirmPassword && newPassword === confirmPassword;
+
   const isOAuth = !!(user as any)?.googleId || !!(user as any)?.githubId;
   const hasProfileChanges =
     name.trim() !== (user?.name || "") || avatar !== (user?.avatar || "");
   const canChangePassword =
-    !isOAuth && !!currentPassword && !!newPassword && !!confirmPassword;
+    !isOAuth &&
+    !!currentPassword &&
+    !!newPassword &&
+    !!confirmPassword &&
+    isNewPasswordValid &&
+    isConfirmMatched;
+  const hasStartedPasswordChange =
+    !!currentPassword || !!newPassword || !!confirmPassword;
 
   const updateCurrentUserCache = (patch: Record<string, unknown>) => {
     queryClient.setQueryData(["currentUser"], (currentUser: any) =>
@@ -98,26 +116,17 @@ export default function ProfilePage() {
       toast.error("Current password is required");
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (!isNewPasswordValid) {
+      toast.error("Password does not meet all required conditions");
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (!isConfirmMatched) {
       toast.error("Passwords do not match");
       return;
     }
     setIsChangingPassword(true);
     try {
-      const res = await fetch(`${API_URL}/api/auth/change-password`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to change password");
-      }
+      await changePassword({ currentPassword, newPassword });
       toast.success("Password changed successfully");
       setCurrentPassword("");
       setNewPassword("");
@@ -308,23 +317,50 @@ export default function ProfilePage() {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="current-password"
-                      className="text-sm font-medium text-foreground"
-                    >
-                      Current Password
-                    </label>
-                    <Input
-                      id="current-password"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Enter current password"
-                      autoComplete="current-password"
-                      className="h-10"
-                    />
+                  <div className="space-y-6">
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="current-password"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Current Password
+                      </label>
+                      <Input
+                        id="current-password"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                        className="h-10"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="confirm-new-password"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Confirm New Password
+                      </label>
+                      <Input
+                        id="confirm-new-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        autoComplete="new-password"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && canChangePassword) {
+                            e.preventDefault();
+                            handleChangePassword();
+                          }
+                        }}
+                        className="h-10"
+                      />
+                    </div>
                   </div>
+
                   <div className="space-y-1.5">
                     <label
                       htmlFor="new-password"
@@ -341,29 +377,45 @@ export default function ProfilePage() {
                       autoComplete="new-password"
                       className="h-10"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="confirm-new-password"
-                      className="text-sm font-medium text-foreground"
-                    >
-                      Confirm New Password
-                    </label>
-                    <Input
-                      id="confirm-new-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      autoComplete="new-password"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && canChangePassword) {
-                          e.preventDefault();
-                          handleChangePassword();
-                        }
-                      }}
-                      className="h-10"
-                    />
+                    {hasStartedPasswordChange ? (
+                    <div className="pt-3">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">
+                        Password requirements
+                      </p>
+                      <ul className="space-y-1 text-xs">
+                        <li className="flex items-center gap-1.5">
+                          {passwordChecks.minLength ? (
+                            <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          ) : (
+                            <XCircle className="size-3.5 text-red-600" />
+                          )}
+                          <span className={passwordChecks.minLength ? "text-emerald-700" : "text-red-600"}>
+                            At least 6 characters
+                          </span>
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          {passwordChecks.hasLetter ? (
+                            <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          ) : (
+                            <XCircle className="size-3.5 text-red-600" />
+                          )}
+                          <span className={passwordChecks.hasLetter ? "text-emerald-700" : "text-red-600"}>
+                            Includes at least one letter
+                          </span>
+                        </li>
+                        <li className="flex items-center gap-1.5">
+                          {passwordChecks.hasNumber ? (
+                            <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          ) : (
+                            <XCircle className="size-3.5 text-red-600" />
+                          )}
+                          <span className={passwordChecks.hasNumber ? "text-emerald-700" : "text-red-600"}>
+                            Includes at least one number
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                    ) : null}
                   </div>
                 </div>
 

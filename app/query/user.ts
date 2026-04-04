@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "~/lib/api";
+import { apiGet, apiPost, apiPut } from "~/lib/api";
 import type { TypeUser } from "~/types/user";
 
 type RegisterPayload = {
@@ -9,6 +9,15 @@ type RegisterPayload = {
 
 type RegisterResponse = {
   user: TypeUser;
+};
+
+type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+type ChangePasswordResponse = {
+  message: string;
 };
 
 export const fetchUser = async (): Promise<TypeUser> => {
@@ -25,4 +34,10 @@ export const registerUser = async (
 export const logoutUser = async () => {
   await apiGet("/auth/logout");
   return window.location.replace("/login");
+};
+
+export const changePassword = async (
+  payload: ChangePasswordPayload,
+): Promise<ChangePasswordResponse> => {
+  return apiPut<ChangePasswordResponse>("/auth/change-password", payload);
 };

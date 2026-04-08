@@ -139,8 +139,8 @@ export const uploadFile = async (file: File, projectId: string, workspaceId: str
     });
 };
 
-export const createFolder = (name: string, projectId: string, workspaceId: string, parentId?: string | null) =>
-    apiPost(`/api/files/folder`, { name, workspaceId, projectId, parentId: parentId || null });
+export const createFolder = (name: string, projectId: string, workspaceId: string, parentId?: string | null, parentPageId?: string | null) =>
+    apiPost(`/api/files/folder`, { name, workspaceId, projectId, parentId: parentId || null, parentPageId: parentPageId || null });
 
 export const toggleStar = (fileId: string) =>
     apiPut(`/api/files/${fileId}/star`);
@@ -391,7 +391,7 @@ export const useCreateFolderForEditor = () => {
   return useMutation({
     mutationFn: ({ name, projectId, workspaceId, parentId, parentPageId }: {
       name: string; projectId: string; workspaceId: string; parentId?: string | null; parentPageId?: string | null;
-    }) => createFolder(name, projectId, workspaceId, parentId),
+    }) => createFolder(name, projectId, workspaceId, parentId, parentPageId),
     onSuccess: (_, variables) => {
       // Invalidate queries for the page-specific files
       if (variables.parentPageId) {

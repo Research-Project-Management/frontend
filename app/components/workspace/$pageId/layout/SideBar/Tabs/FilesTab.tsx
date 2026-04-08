@@ -92,9 +92,17 @@ function getFileIcon(filename: string) {
 }
 
 function getStorageIcon(item: StorageItem) {
-  const isImage = item.mimeType?.startsWith("image/");
-  if (isImage) return { icon: Image, color: "text-amber-500" };
-  return { icon: Paperclip, color: "text-muted-foreground" };
+  const mime = item.mimeType ?? "";
+  const ext = item.filename.split(".").pop()?.toLowerCase() ?? "";
+  if (mime.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "svg", "webp", "eps"].includes(ext))
+    return { icon: Image, color: "text-amber-500" };
+  if (ext === "pdf" || mime === "application/pdf")
+    return { icon: FileText, color: "text-rose-500" };
+  if (["bib", "bst"].includes(ext))
+    return { icon: BookText, color: "text-emerald-500" };
+  if (["zip", "tar", "gz", "rar", "7z"].includes(ext))
+    return { icon: Paperclip, color: "text-violet-400" };
+  return { icon: Paperclip, color: "text-sky-500" };
 }
 
 // ── Indent Guide ─────────────────────────────────────────────────────────────
@@ -758,7 +766,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     const name = newFolderName.trim();
     if (!parentPageId || !projectId || !name) return;
     createFolderMutation.mutate(
-      { name, projectId, workspaceId },
+      { name, projectId, workspaceId, parentPageId },
       {
         onSuccess: () => {
           setIsCreatingFolder(false);
@@ -922,24 +930,18 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         const sortedPaths = Array.from(folderPaths).sort();
         const folderIdMap: Record<string, string> = {};
 
+        // Use mutateAsync so each folder is created and its ID captured before uploading files.
         for (const folderPath of sortedPaths) {
           const parts = folderPath.split("/");
           const folderName = parts[parts.length - 1];
           const parentPath = parts.slice(0, -1).join("/");
           const parentId = parentPath ? folderIdMap[parentPath] : undefined;
 
-          const created = await new Promise<{ _id: string }>(
-            (resolve, reject) => {
-              createFolderMutation.mutate(
-                { name: folderName, projectId, workspaceId, parentId },
-                {
-                  onSuccess: (data: any) => resolve(data),
-                  onError: (err: any) => reject(err),
-                },
-              );
-            },
+          const created = await createFolderMutation.mutateAsync(
+            { name: folderName, projectId, workspaceId, parentId, parentPageId },
           );
-          folderIdMap[folderPath] = created._id;
+          // Backend returns { folder: { _id, ... } }
+          folderIdMap[folderPath] = (created as any).folder?._id ?? (created as any)._id;
         }
 
         let done = 0;

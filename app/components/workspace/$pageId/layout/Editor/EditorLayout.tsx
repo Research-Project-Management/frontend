@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useRef, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useParams, useSearchParams, useNavigate } from "react-router";
 import { usePage, useSyncProjectToCompiler } from "~/query/page";
 import { Skeleton } from "~/components/ui/skeleton";
 import Editor from "./Editor";
@@ -24,6 +24,7 @@ export const useEditorContext = () => {
 };
 
 export default function EditorLayout() {
+  const navigate = useNavigate();
   // pageId from URL = project root page (stable — never changes when switching files)
   const { pageId } = useParams<{ pageId: string }>();
   // fileId from ?file=... = the child file currently being edited
@@ -41,10 +42,43 @@ export default function EditorLayout() {
   const isLoading = parentLoading || (fileId ? childLoading : false);
 
   const { getEditorContent, setCurrentPage, editorRef } = usePageContext();
-  const { openTab } = useEditorTabsStore();
+  const { openTab, closeAllForProject } = useEditorTabsStore();
   const syncProjectMutation = useSyncProjectToCompiler();
   // Track whether we've already synced this session for this root page
   const syncedPageRef = useRef<string | null>(null);
+  // Track previous pageId so we can clean up its tabs when navigating away
+  const prevPageIdRef = useRef<string | null>(null);
+
+  // Validate and redirect if pageId is a child page
+  useEffect(() => {
+    const validateAndRedirect = async () => {
+      if (!pageId || !parentPage || parentLoading) return;
+
+      if (parentPage.parentPage) {
+        console.log(`[Editor] ${pageId} is a child page, redirecting to root ${parentPage.parentPage}`);
+        navigate(`/editor/${parentPage.parentPage}?file=${pageId}`, { replace: true });
+        return;
+      }
+
+      // Log current page info for debugging
+      console.log(`[Editor] Loading root page: ${pageId}`, {
+        pageId,
+        title: parentPage.title,
+        hasMainFile: !!parentPage.mainFile,
+        projectId: typeof parentPage.project === "object" ? (parentPage.project as any)._id : parentPage.project,
+      });
+    };
+
+    validateAndRedirect();
+  }, [pageId, parentPage, parentPage?.parentPage, parentPage?.title, parentPage?.mainFile, parentPage?.project, parentLoading, navigate]);
+
+  // Clear tabs when navigating to a different root page
+  useEffect(() => {
+    if (prevPageIdRef.current && prevPageIdRef.current !== pageId) {
+      closeAllForProject(prevPageIdRef.current);
+    }
+    prevPageIdRef.current = pageId ?? null;
+  }, [pageId, closeAllForProject]);
 
   // Join the project-root socket room ONLY — stable across tab switches.
   // Joining per-child-file would cause leave/rejoin on every file switch.
@@ -62,9 +96,12 @@ export default function EditorLayout() {
   // compile works even after a compiler restart (without requiring a manual save).
   useEffect(() => {
     if (!pageId || syncedPageRef.current === pageId) return;
+    if (!activePage || !activePage._id) return;
+    
+    console.log("[EditorLayout] Syncing project to compiler:", { pageId, activePageId: activePage._id });
     syncedPageRef.current = pageId;
     syncProjectMutation.mutate({ pageId });
-  }, [pageId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageId, activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Sync the active page into shared context so sidebar/toolbar can access it.
@@ -74,27 +111,13 @@ export default function EditorLayout() {
     return () => setCurrentPage(null);
   }, [activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Register the active file as an open tab whenever it changes
+  // Register the active file as an open tab whenever it changes.
+  // Key is the root pageId from the URL — each LaTeX page-project is isolated.
   useEffect(() => {
-    if (!activePage) return;
-
-    const projectId =
-      activePage.project && typeof activePage.project === "object"
-        ? (activePage.project as any)._id
-        : (activePage.project as string | null | undefined) ?? null;
-
-    if (!projectId) return;
-
-    openTab(projectId, { id: activePage._id, title: activePage.title });
+    if (!activePage || !pageId) return;
+    openTab(pageId, { id: activePage._id, title: activePage.title });
   }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Derive projectId for TabBar (prefer parent page to avoid stale from child)
-  const projectId =
-    parentPage?.project && typeof parentPage.project === "object"
-      ? (parentPage.project as any)._id
-      : typeof parentPage?.project === "string"
-        ? parentPage.project
-        : null;
 
   if (isLoading) {
     return (
@@ -146,8 +169,8 @@ export default function EditorLayout() {
   return (
     <EditorContext.Provider value={{ editorRef }}>
       <div className="h-full w-full overflow-hidden flex flex-col">
-        {/* Tab bar — shown when project has multiple open files */}
-        {projectId && <TabBar projectId={projectId} activeFileId={fileId ?? activePage._id} />}
+        {/* Tab bar — keyed by rootPageId so each LaTeX page-project is isolated */}
+        {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage._id} />}
         <Editor page={activePage} />
       </div>
     </EditorContext.Provider>

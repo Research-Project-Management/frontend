@@ -223,20 +223,25 @@ export default function CreatePageDialog({
         content,
       },
       {
-        onSuccess: ({ rootPageId, mainFileId }) => {
+        onSuccess: ({ rootPageId, mainFileId, page, mainFile }) => {
+          console.log("[CreatePageDialog] Page created:", { rootPageId, mainFileId, page, mainFile });
           setOpen(false);
           setTitle("");
           if (!defaultProjectId) setSelectedProjectId("");
           setSelectedTemplate("blank");
           toast.success("Document created");
+          
+          // Force navigation to the new page with unique timestamp to prevent cache
           if (rootPageId) {
             const url = mainFileId
-              ? `/editor/${rootPageId}?file=${mainFileId}`
-              : `/editor/${rootPageId}`;
-            navigate(url);
+              ? `/editor/${rootPageId}?file=${mainFileId}&t=${Date.now()}`
+              : `/editor/${rootPageId}?t=${Date.now()}`;
+            console.log("[CreatePageDialog] Navigating to:", url);
+            navigate(url, { replace: true });
           }
         },
         onError: (error: any) => {
+          console.error("[CreatePageDialog] Create failed:", error);
           toast.error(error.message ?? "Failed to create document");
         },
       },

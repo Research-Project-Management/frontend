@@ -26,10 +26,10 @@ function fileColor(title: string): string {
 interface TabItemProps {
   tab: EditorTab;
   isActive: boolean;
-  projectId: string;
+  rootPageId: string;
 }
 
-function TabItem({ tab, isActive, projectId }: TabItemProps) {
+function TabItem({ tab, isActive, rootPageId }: TabItemProps) {
   const [, setSearchParams] = useSearchParams();
   const { closeTab } = useEditorTabsStore();
 
@@ -47,7 +47,7 @@ function TabItem({ tab, isActive, projectId }: TabItemProps) {
 
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
-    closeTab(projectId, tab.id, (nextId) => {
+    closeTab(rootPageId, tab.id, (nextId) => {
       if (nextId) {
         // Switch to the next tab without changing the page path
         setSearchParams({ file: nextId });
@@ -116,14 +116,14 @@ function TabItem({ tab, isActive, projectId }: TabItemProps) {
 // ── Tab Bar ───────────────────────────────────────────────────────────────
 
 interface TabBarProps {
-  projectId: string;
+  rootPageId: string;
   /** The ID of the currently active file (from ?file= param or page root). */
   activeFileId: string;
 }
 
-export default function TabBar({ projectId, activeFileId }: TabBarProps) {
+export default function TabBar({ rootPageId, activeFileId }: TabBarProps) {
   const { getTabs } = useEditorTabsStore();
-  const tabs = getTabs(projectId);
+  const tabs = getTabs(rootPageId);
 
   if (tabs.length === 0) return null;
 
@@ -138,7 +138,7 @@ export default function TabBar({ projectId, activeFileId }: TabBarProps) {
           key={tab.id}
           tab={tab}
           isActive={tab.id === activeFileId}
-          projectId={projectId}
+          rootPageId={rootPageId}
         />
       ))}
     </div>

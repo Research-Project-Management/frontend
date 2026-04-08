@@ -36,7 +36,7 @@ import { API_URL } from "~/lib/api";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore, type CompileMode, type LaTeXEngine } from "~/stores/editor-settings";
 import { toast } from "sonner";
-import { useUpdatePageThumbnail } from "~/query/page";
+import { useUpdatePageThumbnail, useSyncProjectToCompiler } from "~/query/page";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -636,6 +636,7 @@ export default function Viewer() {
   const { engine, compileMode, setCompileMode, mainFile } = useEditorSettingsStore();
 
   const saveThumbnailMutation = useUpdatePageThumbnail();
+  const syncProjectMutation = useSyncProjectToCompiler();
 
   // pageId from URL is always the project root (never changes when switching files).
   const { pageId: urlPageId } = useParams<{ pageId: string }>();
@@ -648,6 +649,7 @@ export default function Viewer() {
   const [lastCompiled, setLastCompiled] = useState<Date | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [scrollMode] = useState(true);
+  const [compilerStatus, setCompilerStatus] = useState<"idle" | "syncing" | "ready" | "error">("idle");
 
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
@@ -736,21 +738,26 @@ export default function Viewer() {
     setShowLog(false);
 
     try {
+      // Build payload - omit source in project mode (compiler uses synced files)
+      const payload: Record<string, any> = {
+        engine,
+        draft: compileMode === "draft",
+      };
+      
+      if (isProjectMode) {
+        // Project mode: send parentPageId and mainFile, DON'T send source
+        payload.project_id = parentPageIdRef.current;
+        payload.main_file = mainFile || "main.tex";
+      } else {
+        // Fast mode: send source directly
+        payload.source = getEditorContent.current?.() ?? "";
+      }
+
       const response = await fetch(`${API_URL}/api/latex/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-      body: JSON.stringify({
-          // In fast mode: send current editor content as the source document.
-          // In project mode: DON'T send source — the compiler already has synced
-          // project files. Sending the currently-open tab's content would overwrite
-          // main.tex with whatever file is active (e.g. references.bib).
-          source: isProjectMode ? undefined : (getEditorContent.current?.() ?? ""),
-          engine,
-          parentPageId: isProjectMode ? parentPageIdRef.current : undefined,
-          mainFile: isProjectMode ? (mainFile || "main.tex") : undefined,
-          draft: compileMode === "draft",
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -793,6 +800,20 @@ export default function Viewer() {
           "Compilation failed (unknown error).";
         setCompileLog(log);
         setShowLog(true);
+
+        // Handle specific errors with actionable steps
+        if (data?.error === "compiler_folder_missing") {
+          toast.error("Project not synced to compiler", {
+            description: "The compiler needs your project files to compile.",
+            action: {
+              label: "Sync Now",
+              onClick: () => {
+                syncProjectMutation.mutate({ pageId: parentPageIdRef.current! });
+              }
+            },
+            id: "compiler-folder-missing",
+          });
+        }
       }
     } catch (err) {
       setCompileLog(String(err));

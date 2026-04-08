@@ -269,20 +269,44 @@ function StorageFolderNode({
   onUploadToFolder?: (files: File[], folderId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  
+  // IMPORTANT: Log when folder is clicked and children are fetched
+  // NOTE: projectId here is actually the parentPageId (root page ID)
   const { data: children, isLoading } = useProjectFilesEditor(
     projectId,
     expanded ? folder._id : undefined,
   );
+
+  useEffect(() => {
+    if (expanded && children !== undefined) {
+      console.log("[StorageFolderNode] Folder expanded:", {
+        folderId: folder._id,
+        folderName: folder.filename,
+        parentPageId: projectId,
+        childrenCount: children?.length || 0,
+      });
+    }
+  }, [expanded, children, folder._id, folder.filename, projectId]);
+
   const deleteFileMutation = useDeleteFileForEditor();
   const renameFileMutation = useRenameFileForEditor();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOver, setDragOver] = useState(false);
 
+  const handleClick = () => {
+    console.log("[StorageFolderNode] Folder clicked:", {
+      folderId: folder._id,
+      folderName: folder.filename,
+      parentPageId: projectId,
+    });
+    setExpanded(!expanded);
+  };
+
   return (
     <>
       <div
-        onClick={() => setExpanded(!expanded)}
+        onClick={handleClick}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -564,17 +588,23 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // pageId from URL is always the project root page after the routing refactor.
   const parentPageId: string | null = pageId ?? null;
 
-  const { data: parentPage } = usePage(parentPageId ?? "");
+  const { data: parentPage, isLoading: parentPageLoading } = usePage(parentPageId ?? "");
 
-  const mainFileId =
-    parentPage?.mainFile && typeof parentPage.mainFile === "object"
-      ? parentPage.mainFile._id
-      : ((parentPage?.mainFile as string | null | undefined) ?? null);
+  // IMPORTANT: Use parentPageId (root page) as the key for fetching files
+  // Each root page has its own independent file system
+  // projectId is derived from parentPage for tab management
+  const projectId = (parentPage?.project as any)?._id ?? "";
+  const mainFileId = parentPage?.mainFile && typeof parentPage.mainFile === "object"
+    ? parentPage.mainFile._id
+    : (parentPage?.mainFile as string | null | undefined) ?? null;
 
-  const projectId =
-    currentPage?.project && typeof currentPage.project === "object"
-      ? currentPage.project._id
-      : ((currentPage?.project as string | null | undefined) ?? "");
+  console.log("[FilesTab] Current state:", { 
+    parentPageId, 
+    projectId, 
+    mainFileId,
+    parentPageTitle: parentPage?.title,
+    currentPageTitle: currentPage?.title,
+  });
 
   // Derive workspaceId from parentPage.project.workspace for uploads
   const workspaceId: string =
@@ -586,6 +616,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     if (!files) return;
     const names = files.map((f) => f.title);
     setTexFiles(names);
+    console.log("[FilesTab] Page files updated:", names);
   }, [files, setTexFiles]);
 
   const createFileMutation = useCreatePageFile();
@@ -593,9 +624,23 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const deletePageMutation = useDeletePage();
   const updateTitleMutation = useUpdatePageTitle();
 
-  // Project files (non-tex: images, pdfs, etc.) from the unified File model
-  const { data: projectFiles, isLoading: projectFilesLoading } =
-    useProjectFilesEditor(projectId || null);
+  // Storage files (images, pdfs, etc.) - FETCH BY PARENT PAGE ID, NOT PROJECT ID
+  // Each root page has its own independent file system
+  const { data: projectFiles, isLoading: projectFilesLoading, refetch: refetchProjectFiles } =
+    useProjectFilesEditor(parentPageId || null, undefined);
+
+  // Refetch project files when parentPageId changes
+  useEffect(() => {
+    if (parentPageId) {
+      console.log("[FilesTab] Refetching files for page:", parentPageId);
+      refetchProjectFiles();
+    }
+  }, [parentPageId, refetchProjectFiles]);
+
+  // Log project files when loaded
+  useEffect(() => {
+    console.log("[FilesTab] Storage files loaded:", projectFiles?.length || 0, "files for page:", parentPageId);
+  }, [projectFiles, parentPageId]);
   const uploadFileMutation = useUploadFileForEditor();
   const createFolderMutation = useCreateFolderForEditor();
 
@@ -609,7 +654,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     // Don't re-open the already-active file
     const activeFileId = searchParams.get("file") ?? pageId;
     if (fileId === activeFileId) return;
-    if (projectId) openTab(projectId, { id: fileId, title });
+    // Use parentPageId as the tab key (matches EditorLayout's rootPageId)
+    if (parentPageId) openTab(parentPageId, { id: fileId, title });
     // Update only the ?file= query param — pageId (project root) stays stable
     setSearchParams({ file: fileId });
   };
@@ -710,13 +756,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   const handleCreateFolder = () => {
     const name = newFolderName.trim();
-    if (!projectId || !name) return;
+    if (!parentPageId || !projectId || !name) return;
     createFolderMutation.mutate(
       { name, projectId, workspaceId },
       {
         onSuccess: () => {
           setIsCreatingFolder(false);
           setNewFolderName("");
+          // Refetch files after creating folder
+          refetchProjectFiles();
         },
       },
     );
@@ -742,9 +790,9 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   };
 
   const handleDelete = (fileId: string) => {
-    if (!projectId) return;
+    if (!parentPageId) return;
     deletePageMutation.mutate(
-      { pageId: fileId, projectId },
+      { pageId: fileId, projectId: projectId },
       {
         onSuccess: () => {
           // If the deleted file was the active one, fall back to root page
@@ -835,7 +883,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       });
     }
 
-    if (assetFlat.length && projectId) {
+    if (assetFlat.length && parentPageId && projectId) {
       setUploadingAssets(true);
       let done = 0;
       const total = assetFlat.length;
@@ -861,7 +909,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     }
 
     // --- Folder items (have path like "folder/sub/file.png") ---
-    if (folderItems.length && projectId) {
+    if (folderItems.length && parentPageId && projectId) {
       setUploadingAssets(true);
       try {
         const folderPaths = new Set<string>();
@@ -1088,12 +1136,13 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   const handleUploadToFolder = useCallback(
     (files: File[], folderId: string) => {
-      if (!parentPageId || !projectId) return;
+      if (!parentPageId) return;
+      const tabProjectId = (parentPage?.project as any)?._id ?? "";
       setUploadingAssets(true);
       let done = 0;
       files.forEach((file) => {
         uploadFileMutation.mutate(
-          { file, projectId, workspaceId, parentPageId, parentId: folderId },
+          { file, projectId: tabProjectId, workspaceId, parentPageId, parentId: folderId },
           {
             onSettled: () => {
               done++;
@@ -1103,7 +1152,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         );
       });
     },
-    [parentPageId, projectId, workspaceId, uploadFileMutation],
+    [parentPageId, workspaceId, uploadFileMutation],
   );
 
   return (
@@ -1304,39 +1353,39 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               }
 
               return items.map((item) => {
-                if (item.kind === "folder") {
-                  return (
-                    <StorageFolderNode
-                      key={item.data._id}
-                      folder={item.data}
-                      projectId={projectId}
-                      depth={0}
-                      onInsertAsset={handleInsertAsset}
-                      onPreview={handleOpenPreview}
-                      onUploadToFolder={handleUploadToFolder}
-                    />
-                  );
-                }
+    if (item.kind === "folder") {
+      return (
+        <StorageFolderNode
+          key={item.data._id}
+          folder={item.data}
+          projectId={parentPageId || ""}
+          depth={0}
+          onInsertAsset={handleInsertAsset}
+          onPreview={handleOpenPreview}
+          onUploadToFolder={handleUploadToFolder}
+        />
+      );
+    }
 
-                if (item.kind === "asset") {
-                  return (
-                    <StorageFileRow
-                      key={item.data._id}
-                      item={item.data}
-                      depth={0}
-                      onInsertAsset={handleInsertAsset}
-                      onPreview={handleOpenPreview}
-                    />
-                  );
-                }
+    if (item.kind === "asset") {
+      return (
+        <StorageFileRow
+          key={item.data._id}
+          item={item.data}
+          depth={0}
+          onInsertAsset={handleInsertAsset}
+          onPreview={handleOpenPreview}
+        />
+      );
+    }
 
-                // kind === "tex"
-                const file = item.data;
-                const isActive = file._id === pageId;
-                const isMain = file._id === mainFileId;
-                const { icon: FileIcon, color: fileColor } = getFileIcon(
-                  file.title,
-                );
+    // kind === "tex"
+    const file = item.data;
+    const isActive = file._id === pageId;
+    const isMain = file._id === mainFileId;
+    const { icon: FileIcon, color: fileColor } = getFileIcon(
+      file.title,
+    );
                 return (
                   <div
                     key={file._id}

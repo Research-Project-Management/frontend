@@ -299,19 +299,32 @@ export const useUpdateFileMetadata = () => {
 // These hooks scope files to a specific project and use a separate query key
 // ("project-files-editor") to avoid conflicting with the Storage section cache.
 
-export const useProjectFilesEditor = (projectId: string | null | undefined, parentId?: string | null) =>
+export const useProjectFilesEditor = (parentPageId: string | null | undefined, parentId?: string | null) =>
   useQuery({
-    queryKey: ["project-files-editor", projectId, parentId ?? null],
+    queryKey: ["project-files-editor", parentPageId, parentId ?? null],
     queryFn: async () => {
-      const data = await apiGet<{ files: StorageItem[] }>(
-        parentId
-          ? `/api/files/project/${projectId}?parentId=${parentId}`
-          : `/api/files/project/${projectId}`,
-      );
+      // If parentPageId is provided, use the page-based endpoint
+      // Otherwise, return empty array (requires a page to fetch files)
+      if (!parentPageId) {
+        console.log("[useProjectFilesEditor] No parentPageId, returning empty");
+        return [];
+      }
+      
+      console.log("[useProjectFilesEditor] Fetching files:", { parentPageId, parentId });
+      
+      // Use page-based endpoint when parentPageId is provided
+      const endpoint = parentId
+        ? `/api/files/page/${parentPageId}?parentId=${parentId}`
+        : `/api/files/page/${parentPageId}`;
+      
+      const data = await apiGet<{ files: StorageItem[] }>(endpoint);
+      console.log("[useProjectFilesEditor] Files fetched:", data.files?.length || 0);
       return data.files;
     },
-    enabled: !!projectId,
-    staleTime: 10_000,
+    enabled: !!parentPageId,
+    staleTime: 0, // Always fresh data
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
 export const useUploadFileForEditor = () => {
@@ -358,11 +371,16 @@ export const useUploadFileForEditor = () => {
         workspaceId,
         projectId,
         parentId: parentId || null,
-        parentPageId,   // ← backend will sync to compiler
+        parentPageId,   // ← backend will sync to compiler and associate with page
       });
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+      // Invalidate queries based on parentPageId, not projectId
+      if (variables.parentPageId) {
+        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
+      } else if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+      }
     },
   });
 };
@@ -371,11 +389,16 @@ export const useUploadFileForEditor = () => {
 export const useCreateFolderForEditor = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, projectId, workspaceId, parentId }: {
-      name: string; projectId: string; workspaceId: string; parentId?: string | null;
+    mutationFn: ({ name, projectId, workspaceId, parentId, parentPageId }: {
+      name: string; projectId: string; workspaceId: string; parentId?: string | null; parentPageId?: string | null;
     }) => createFolder(name, projectId, workspaceId, parentId),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+      // Invalidate queries for the page-specific files
+      if (variables.parentPageId) {
+        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
+      } else if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+      }
     },
   });
 };

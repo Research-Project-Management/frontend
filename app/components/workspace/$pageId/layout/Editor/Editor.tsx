@@ -147,7 +147,8 @@ export default function Editor({ page }: EditorProps) {
   // Tracks the current page._id to detect tab switches
   const activePageIdRef = useRef(page._id);
   const debouncedContent = useDebounce(content, 1000);
-  const autoCompileDebounced = useDebounce(content, 3000);
+  // Ref to schedule a compile after the next successful save+sync.
+  const pendingCompileRef = useRef(false);
   const updateMutation = useUpdatePageContent();
   const { pageId: pageIdParam } = useParams<{ pageId: string }>();
   const { setPendingComment, setPendingAiText } = useWorkspaceActionsStore();
@@ -215,8 +216,24 @@ export default function Editor({ page }: EditorProps) {
     if (debouncedContent === lastRemoteContentRef.current) return;
     if (debouncedContent && debouncedContent !== page.content) {
       updateMutation.mutate({ pageId: page._id, content: debouncedContent });
+      // Mark that we want to auto-compile after this save confirms the sync.
+      if (autoCompile) pendingCompileRef.current = true;
     }
   }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-compile: trigger compile after save mutation succeeds (sync is confirmed
+  // by the backend since it now awaits the compiler sync before responding).
+  // This replaces the old 3-second separate debounce which could fire before sync.
+  useEffect(() => {
+    if (!autoCompile || isCompiling) return;
+    if (updateMutation.isSuccess && !updateMutation.isPending && pendingCompileRef.current) {
+      pendingCompileRef.current = false;
+      const timer = setTimeout(() => {
+        compileRef.current?.();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Realtime: broadcast local content changes to other collaborators (debounced)
   useEffect(() => {
@@ -234,14 +251,18 @@ export default function Editor({ page }: EditorProps) {
     // Update the ref FIRST so any in-flight debounce from the old page is rejected.
     activePageIdRef.current = page._id;
     lastRemoteContentRef.current = null;
+    pendingCompileRef.current = false;
+    
+    // Log content update for debugging
+    console.log("[Editor] Page content updated:", {
+      pageId: page._id,
+      title: page.title,
+      contentLength: page.content?.length || 0,
+      contentPreview: page.content?.substring(0, 100) || "",
+    });
+    
     if (page.content !== content) setContent(page.content || "");
-  }, [page._id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-compile on content change (3 s debounce, only when enabled and not compiling)
-  useEffect(() => {
-    if (!autoCompile || isCompiling || !autoCompileDebounced.trim()) return;
-    compileRef.current?.();
-  }, [autoCompileDebounced]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page._id, page.content, page.title, content]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -781,8 +802,9 @@ export default function Editor({ page }: EditorProps) {
       }
     });
 
-    // Trigger an initial compile now that the editor is fully ready.
-    compileRef.current?.();
+    // NOTE: No compile-on-mount here. The initial compile is triggered by
+    // EditorLayout after syncProjectMutation succeeds, ensuring the compiler
+    // has all project files before the first compilation attempt.
   };
 
   const defaultValue =

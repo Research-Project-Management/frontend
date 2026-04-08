@@ -72,7 +72,14 @@ export const useProjectPages = (projectId: string, status?: string, search?: str
 // ── Single Page ───────────────────────────────────────────────────────────────
 
 const fetchPage = async (pageId: string) => {
+  console.log("[fetchPage] Fetching page:", pageId);
   const data = await apiGet<{ page: Page }>(`/api/pages/${pageId}`);
+  console.log("[fetchPage] Page fetched:", { 
+    _id: data.page._id, 
+    title: data.page.title, 
+    contentLength: data.page.content?.length || 0,
+    hasMainFile: !!data.page.mainFile,
+  });
   return data.page;
 };
 
@@ -103,6 +110,9 @@ export const usePage = (pageId: string) => {
     queryKey: ["page", pageId],
     queryFn: () => fetchPage(pageId),
     enabled: !!pageId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 };
 
@@ -114,18 +124,34 @@ export const useCreatePage = () => {
     mutationFn: async ({ projectId, title, content, status }: {
       projectId: string; title: string; content?: string; status?: string;
     }) => {
-      const data = await apiPost<{ page: Page; mainFile?: { _id: string } }>(
+      const data = await apiPost<{ page: Page; mainFile?: Page }>(
         `/api/project/${projectId}/pages`, { title, content, status },
       );
+      console.log("[useCreatePage] Backend response:", data);
       return {
         page: data.page,
+        mainFile: data.mainFile || null,
         rootPageId: data.page._id as string,
         mainFileId: (data.mainFile?._id ?? null) as string | null,
       };
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["pages", variables.projectId] });
-      queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+    onSuccess: (data, variables) => {
+      console.log("[useCreatePage] onSuccess:", data);
+      
+      // Clear ALL page-related caches to ensure fresh data
+      queryClient.clear();
+      
+      // Force set fresh data immediately
+      if (data.rootPageId && data.page) {
+        queryClient.setQueryData(["page", data.rootPageId], data.page);
+      }
+      
+      if (data.mainFileId && data.mainFile) {
+        queryClient.setQueryData(["page", data.mainFileId], data.mainFile);
+      }
+    },
+    onError: (error: any) => {
+      console.error("[useCreatePage] onError:", error);
     },
   });
 };

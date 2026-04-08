@@ -66,8 +66,8 @@ export type Page = {
   updatedAt: string;
   /** Null = top-level page-project. Populated = this is a file inside a page-project. */
   parentPage?: string | null;
-  /** The child file designated as the main entry point (for compilation & thumbnail). */
-  mainFile?: string | { _id: string; title: string } | null;
+  /** The child page designated as the main entry point (for compilation & thumbnail). Can be a full Page object when populated. */
+  mainFile?: string | Page | null;
   /** Base64 JPEG data URL of the first page of the last successful PDF build. */
   pdfThumbnail?: string | null;
 };

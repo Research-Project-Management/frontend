@@ -7,6 +7,10 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths(), svgr(), devtoolsJson()],
   appType: "spa",
+  server: {
+    port: 2916,
+    strictPort: true,
+  },
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {

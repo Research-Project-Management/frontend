@@ -290,7 +290,130 @@ export const useUpdateFileMetadata = () => {
         mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, any> }) =>
             updateFileMetadata(fileId, metaData),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-        },
-    });
+        queryClient.invalidateQueries({ queryKey: ["files"] });
+    },
+  });
+};
+
+// ── Editor-scoped project file hooks ──────────────────────────────────────────
+// These hooks scope files to a specific project and use a separate query key
+// ("project-files-editor") to avoid conflicting with the Storage section cache.
+
+export const useProjectFilesEditor = (projectId: string | null | undefined, parentId?: string | null) =>
+  useQuery({
+    queryKey: ["project-files-editor", projectId, parentId ?? null],
+    queryFn: async () => {
+      const data = await apiGet<{ files: StorageItem[] }>(
+        parentId
+          ? `/api/files/project/${projectId}?parentId=${parentId}`
+          : `/api/files/project/${projectId}`,
+      );
+      return data.files;
+    },
+    enabled: !!projectId,
+    staleTime: 10_000,
+  });
+
+export const useUploadFileForEditor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      file,
+      projectId,
+      workspaceId,
+      parentPageId,
+      parentId,
+    }: {
+      file: File;
+      projectId: string;
+      workspaceId: string;
+      parentPageId: string;
+      parentId?: string | null;
+    }) => {
+      const timestamp = Date.now();
+      const fileName = `${workspaceId}/${timestamp}-${file.name}`;
+
+      // 1. Get presigned URL
+      const { url: presignedUrl, path } = await apiPost<{ url: string; path: string }>(
+        `/api/files/presign`, { fileName },
+      );
+
+      // 2. Upload to R2
+      const uploadRes = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Upload to R2 failed");
+
+      // 3. Save metadata to File model
+      await apiPost(`/api/files/upload`, {
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type || "application/octet-stream",
+        url: `${API_URL}/api/files/${path}`,
+        workspaceId,
+        projectId,
+        parentId: parentId || null,
+      });
+
+      // 4. Read as base64 and sync to LaTeX compiler so it can include the file
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      await apiPost(`/api/pages/${parentPageId}/files/sync`, {
+        filename: file.name,
+        base64Data,
+        parentId: parentId || null,
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+    },
+  });
+};
+
+export const useCreateFolderForEditor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, projectId, workspaceId, parentId }: {
+      name: string; projectId: string; workspaceId: string; parentId?: string | null;
+    }) => createFolder(name, projectId, workspaceId, parentId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+    },
+  });
+};
+
+export const useDeleteFileForEditor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
+    },
+  });
+};
+
+export const useRenameFileForEditor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
+    },
+  });
+};
+
+export const useMoveFileForEditor = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) => moveFile(fileId, parentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
+    },
+  });
 };

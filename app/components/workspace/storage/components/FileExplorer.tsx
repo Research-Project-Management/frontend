@@ -13,6 +13,7 @@ import type { DuplicateAction } from "./DuplicateFileDialog";
 import type { StorageItem } from "../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 import { useUploadFile, useMoveFile, checkDuplicate, deleteFile } from "~/query/storage";
+import { generateUniqueName } from "~/lib/utils";
 import { Upload } from "lucide-react";
 
 type FileExplorerProps = {
@@ -122,22 +123,6 @@ export default function FileExplorer({
 
   // ── File upload with duplicate check ──────────────────────────────────────
 
-  const generateUniqueName = (name: string): string => {
-    const dot = name.lastIndexOf(".");
-    const baseName = dot > 0 ? name.slice(0, dot) : name;
-    const ext = dot > 0 ? name.slice(dot) : "";
-
-    // Check against current items for a unique suffix
-    let counter = 1;
-    let candidate = `${baseName} (${counter})${ext}`;
-    const existingNames = new Set(items.map((i) => i.filename));
-    while (existingNames.has(candidate)) {
-      counter++;
-      candidate = `${baseName} (${counter})${ext}`;
-    }
-    return candidate;
-  };
-
   const uploadWithDuplicateCheck = useCallback(
     async (file: File, targetFolder: string | null) => {
       try {
@@ -198,7 +183,8 @@ export default function FileExplorer({
           });
           toast.success(`Replaced "${file.name}"`);
         } else if (action === "keep-both") {
-          const newName = generateUniqueName(file.name);
+          const existingFileNames = new Set(items.map((i) => i.filename));
+          const newName = generateUniqueName(file.name, existingFileNames);
           const renamed = new File([file], newName, { type: file.type });
           await uploadMutation.mutateAsync({
             file: renamed,

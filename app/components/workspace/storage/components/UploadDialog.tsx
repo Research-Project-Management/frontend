@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Upload, X, FileIcon, Loader2 } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Upload, X, FileIcon, Loader2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,11 @@ import { Button } from "~/components/ui/button";
 import { Progress } from "~/components/ui/progress";
 import { useUploadFile } from "~/query/storage";
 import { useProject } from "~/query/project";
+import { checkDuplicate, deleteFile } from "~/query/storage";
+import { generateUniqueName } from "~/lib/utils";
+import DuplicateFileDialog from "./DuplicateFileDialog";
+import type { DuplicateAction } from "./DuplicateFileDialog";
+import { toast } from "sonner";
 
 type UploadDialogProps = {
   open: boolean;
@@ -21,10 +26,12 @@ type UploadDialogProps = {
   workspaceId?: string;
 };
 
+type FileStatus = "pending" | "uploading" | "success" | "error" | "skipped";
+
 type FileWithProgress = {
   file: File;
   progress: number;
-  status: "pending" | "uploading" | "success" | "error";
+  status: FileStatus;
   error?: string;
 };
 
@@ -41,6 +48,13 @@ export default function UploadDialog({
   const { data: projectData } = useProject(projectId || "");
   const workspaceId = workspaceIdProp || (projectData?.project?.workspace as unknown as string);
 
+  // Duplicate dialog state
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateFilename, setDuplicateFilename] = useState("");
+  const [duplicateExistingId, setDuplicateExistingId] = useState<string | null>(null);
+  // Resolve callbacks for the current duplicate prompt
+  const duplicateResolveRef = useRef<((action: DuplicateAction) => void) | null>(null);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -54,7 +68,6 @@ export default function UploadDialog({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-
     const droppedFiles = Array.from(e.dataTransfer.files);
     addFiles(droppedFiles);
   }, []);
@@ -79,46 +92,116 @@ export default function UploadDialog({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ── Duplicate prompt helper ───────────────────────────────────────────────
+
+  /**
+   * Show the duplicate dialog and await the user's choice.
+   * Returns the chosen action once the dialog is closed.
+   */
+  const promptDuplicate = (
+    filename: string,
+    existingId: string | null,
+  ): Promise<DuplicateAction> =>
+    new Promise((resolve) => {
+      setDuplicateFilename(filename);
+      setDuplicateExistingId(existingId);
+      duplicateResolveRef.current = resolve;
+      setDuplicateDialogOpen(true);
+    });
+
+  const handleDuplicateAction = (action: DuplicateAction) => {
+    setDuplicateDialogOpen(false);
+    duplicateResolveRef.current?.(action);
+    duplicateResolveRef.current = null;
+  };
+
+  // ── Upload queue ──────────────────────────────────────────────────────────
+
   const uploadFiles = async () => {
+    // Collect existing filenames for "keep-both" renaming
+    const existingNames = new Set(
+      files.filter((f) => f.status === "success").map((f) => f.file.name),
+    );
+
     for (let i = 0; i < files.length; i++) {
       if (files[i].status !== "pending") continue;
 
+      const originalFile = files[i].file;
+      let fileToUpload = originalFile;
+
+      // ── Duplicate check ─────────────────────────────────
       try {
-        // Update status to uploading
-        setFiles((prev) =>
-          prev.map((f, idx) =>
-            idx === i ? { ...f, status: "uploading" as const, progress: 0 } : f
-          )
+        const { exists, existingFile } = await checkDuplicate(
+          originalFile.name,
+          parentId ?? null,
+          projectId ?? undefined,
+          workspaceId,
         );
 
-        // Simulate progress (in real app, you'd track actual upload progress)
+        if (exists) {
+          const action = await promptDuplicate(originalFile.name, existingFile?._id ?? null);
+
+          if (action === "cancel") {
+            setFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === i ? { ...f, status: "skipped" as const } : f,
+              ),
+            );
+            continue;
+          }
+
+          if (action === "overwrite" && existingFile?._id) {
+            try {
+              await deleteFile(existingFile._id);
+            } catch {
+              // Best-effort delete; proceed with upload anyway
+            }
+          }
+
+          if (action === "keep-both") {
+            const newName = generateUniqueName(originalFile.name, existingNames);
+            fileToUpload = new File([originalFile], newName, { type: originalFile.type });
+          }
+        }
+      } catch {
+        // If duplicate check fails, proceed with upload anyway
+      }
+
+      // ── Upload ──────────────────────────────────────────
+      try {
+        setFiles((prev) =>
+          prev.map((f, idx) =>
+            idx === i ? { ...f, status: "uploading" as const, progress: 0 } : f,
+          ),
+        );
+
+        // Fake progress while uploading (real progress not supported by presign flow)
         const progressInterval = setInterval(() => {
           setFiles((prev) =>
             prev.map((f, idx) =>
               idx === i && f.progress < 90
                 ? { ...f, progress: f.progress + 10 }
-                : f
-            )
+                : f,
+            ),
           );
         }, 200);
 
         await uploadMutation.mutateAsync({
-          file: files[i].file,
+          file: fileToUpload,
           projectId: projectId || "",
           workspaceId: workspaceId!,
           parentId,
         });
 
         clearInterval(progressInterval);
+        existingNames.add(fileToUpload.name);
 
-        // Update status to success
         setFiles((prev) =>
           prev.map((f, idx) =>
-            idx === i ? { ...f, status: "success" as const, progress: 100 } : f
-          )
+            idx === i ? { ...f, status: "success" as const, progress: 100 } : f,
+          ),
         );
       } catch (error) {
-        // Update status to error
         setFiles((prev) =>
           prev.map((f, idx) =>
             idx === i
@@ -127,20 +210,23 @@ export default function UploadDialog({
                   status: "error" as const,
                   error: error instanceof Error ? error.message : "Upload failed",
                 }
-              : f
-          )
+              : f,
+          ),
         );
+        toast.error(`Failed to upload "${fileToUpload.name}"`);
       }
     }
 
     // Close dialog after all uploads complete
     setTimeout(() => {
-      const allSuccess = files.every((f) => f.status === "success");
-      if (allSuccess) {
+      const allDone = files.every(
+        (f) => f.status === "success" || f.status === "error" || f.status === "skipped",
+      );
+      if (allDone) {
         onOpenChange(false);
         setFiles([]);
       }
-    }, 1000);
+    }, 800);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -148,151 +234,168 @@ export default function UploadDialog({
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+  };
+
+  // ── Status helpers ────────────────────────────────────────────────────────
+
+  const STATUS_ICON: Record<FileStatus, React.ReactNode> = {
+    pending: null,
+    uploading: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
+    success: (
+      <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
+        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+    ),
+    error: (
+      <div className="h-4 w-4 rounded-full bg-destructive flex items-center justify-center">
+        <X className="h-3 w-3 text-white" />
+      </div>
+    ),
+    skipped: (
+      <div className="h-4 w-4 rounded-full bg-muted-foreground/30 flex items-center justify-center">
+        <span className="text-[9px] text-muted-foreground font-bold">–</span>
+      </div>
+    ),
   };
 
   const hasFiles = files.length > 0;
   const isUploading = files.some((f) => f.status === "uploading");
-  const allComplete = files.every((f) => f.status === "success" || f.status === "error");
+  const allComplete = files.every(
+    (f) => f.status === "success" || f.status === "error" || f.status === "skipped",
+  );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Upload Files</DialogTitle>
-          <DialogDescription>
-            Drag and drop files here or click to browse
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Upload Files</DialogTitle>
+            <DialogDescription>
+              Drag and drop files here or click to browse
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Drop Zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              isDragging
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50"
-            }`}
-          >
-            <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Drag and drop files here, or click to select files
-            </p>
-            <input
-              type="file"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              id="file-upload"
-              disabled={isUploading}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById("file-upload")?.click()}
-              disabled={isUploading}
+          <div className="space-y-4">
+            {/* Drop Zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
+              }`}
             >
-              Browse Files
-            </Button>
+              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground mb-2">
+                Drag and drop files here, or click to select files
+              </p>
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+                disabled={isUploading}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById("file-upload")?.click()}
+                disabled={isUploading}
+              >
+                Browse Files
+              </Button>
+            </div>
+
+            {/* File List */}
+            {hasFiles && (
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {files.map((fileItem, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 border rounded-lg"
+                  >
+                    <FileIcon className="h-8 w-8 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {fileItem.file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(fileItem.file.size)}
+                      </p>
+                      {fileItem.status === "uploading" && (
+                        <Progress value={fileItem.progress} className="h-1 mt-2" />
+                      )}
+                      {fileItem.status === "error" && (
+                        <p className="text-xs text-destructive mt-1">
+                          {fileItem.error}
+                        </p>
+                      )}
+                      {fileItem.status === "skipped" && (
+                        <p className="text-xs text-muted-foreground mt-1">Skipped</p>
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      {fileItem.status === "pending" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          disabled={isUploading}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {STATUS_ICON[fileItem.status]}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* File List */}
-          {hasFiles && (
-            <div className="max-h-64 overflow-y-auto space-y-2">
-              {files.map((fileItem, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 p-3 border rounded-lg"
-                >
-                  <FileIcon className="h-8 w-8 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {fileItem.file.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(fileItem.file.size)}
-                    </p>
-                    {fileItem.status === "uploading" && (
-                      <Progress value={fileItem.progress} className="h-1 mt-2" />
-                    )}
-                    {fileItem.status === "error" && (
-                      <p className="text-xs text-destructive mt-1">
-                        {fileItem.error}
-                      </p>
-                    )}
-                  </div>
-                  <div className="shrink-0">
-                    {fileItem.status === "pending" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                        disabled={isUploading}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {fileItem.status === "uploading" && (
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    )}
-                    {fileItem.status === "success" && (
-                      <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
-                        <svg
-                          className="h-3 w-3 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                    {fileItem.status === "error" && (
-                      <div className="h-4 w-4 rounded-full bg-destructive flex items-center justify-center">
-                        <X className="h-3 w-3 text-white" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                onOpenChange(false);
+                setFiles([]);
+              }}
+              disabled={isUploading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={uploadFiles}
+              disabled={!hasFiles || isUploading || allComplete}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                `Upload ${files.filter((f) => f.status === "pending").length || files.length} ${
+                  files.length === 1 ? "file" : "files"
+                }`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              onOpenChange(false);
-              setFiles([]);
-            }}
-            disabled={isUploading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={uploadFiles}
-            disabled={!hasFiles || isUploading || allComplete}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              `Upload ${files.length} ${files.length === 1 ? "file" : "files"}`
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* Duplicate resolution dialog — rendered outside main dialog to not nest modals */}
+      <DuplicateFileDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+        filename={duplicateFilename}
+        onAction={handleDuplicateAction}
+      />
+    </>
   );
 }

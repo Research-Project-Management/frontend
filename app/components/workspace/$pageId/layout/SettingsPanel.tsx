@@ -1,8 +1,11 @@
+import { useEffect } from "react";
+import { toast } from "sonner";
 import {
   useEditorSettingsStore,
   type CompileMode,
   type LaTeXEngine,
 } from "~/stores/editor-settings";
+import { usePageContext } from "./PageContext";
 import {
   X,
   Cpu,
@@ -17,6 +20,7 @@ import {
   Type,
   Minus,
   Plus,
+  ChevronDown,
 } from "lucide-react";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
@@ -123,6 +127,57 @@ function SegmentedControl<T extends string>({
   );
 }
 
+// ── Main File Select ────────────────────────────────────────────────────────
+
+function MainFileSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+}) {
+  if (options.length === 0) {
+    // No project files loaded yet — fallback to plain text input
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-28 text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    );
+  }
+
+  return (
+    <div className="relative">
+      <select
+        value={options.includes(value) ? value : ""}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "w-28 text-xs bg-secondary border border-border rounded px-2 py-1 pr-6",
+          "text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary",
+          "cursor-pointer truncate",
+          !options.includes(value) && "text-muted-foreground",
+        )}
+      >
+        {!options.includes(value) && (
+          <option value="" disabled>
+            Select file…
+          </option>
+        )}
+        {options.map((f) => (
+          <option key={f} value={f}>
+            {f}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+    </div>
+  );
+}
+
 // ── Main Panel ──────────────────────────────────────────────────────────────
 
 export default function SettingsPanel() {
@@ -147,6 +202,27 @@ export default function SettingsPanel() {
     setLineNumbers,
     toggleSettingsPanel,
   } = useEditorSettingsStore();
+
+  const { texFiles } = usePageContext();
+
+  // ── Auto-select main.tex when tex files are first loaded ─────────────────
+  useEffect(() => {
+    if (texFiles.length === 0) return;
+
+    if (texFiles.includes("main.tex")) {
+      // Auto-select main.tex silently
+      setMainFile("main.tex");
+    } else if (!texFiles.includes(mainFile)) {
+      // Current mainFile doesn't exist in this project → warn user
+      toast.warning("Please select a main file for compilation", {
+        description: "No \"main.tex\" found. Choose the root .tex file from the Settings panel.",
+        duration: 6000,
+        id: "select-main-file", // deduplicate toasts
+      });
+    }
+    // Only run when texFiles list changes (e.g. on project load)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [texFiles]);
 
   return (
     <div className="h-full w-[280px] border-l border-border bg-background flex flex-col shrink-0">
@@ -210,11 +286,10 @@ export default function SettingsPanel() {
             label="Main file"
             description="Root document"
           >
-            <input
-              type="text"
+            <MainFileSelect
               value={mainFile}
-              onChange={(e) => setMainFile(e.target.value)}
-              className="w-24 text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary"
+              options={texFiles}
+              onChange={setMainFile}
             />
           </SettingRow>
         </SettingGroup>

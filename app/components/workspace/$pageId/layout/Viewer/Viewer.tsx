@@ -34,6 +34,7 @@ import { cn } from "~/lib/utils";
 import { API_URL } from "~/lib/api";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore, type CompileMode, type LaTeXEngine } from "~/stores/editor-settings";
+import { toast } from "sonner";
 import { useUpdatePageThumbnail } from "~/query/page";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -631,7 +632,7 @@ export default function Viewer() {
     scrollToPdfLineRef,
     scrollToLineRef,
   } = usePageContext();
-  const { engine, compileMode, setCompileMode } = useEditorSettingsStore();
+  const { engine, compileMode, setCompileMode, mainFile } = useEditorSettingsStore();
 
   const saveThumbnailMutation = useUpdatePageThumbnail();
 
@@ -717,8 +718,22 @@ export default function Viewer() {
   // ── Compile ──────────────────────────────────────────────────────────────
 
   const handleCompile = async () => {
-    const source = getEditorContent.current?.() ?? "";
-    if (!source.trim()) return;
+    const isProjectMode = compileMode !== "fast";
+
+    // In fast mode: require non-empty editor content
+    if (!isProjectMode) {
+      const source = getEditorContent.current?.() ?? "";
+      if (!source.trim()) return;
+    }
+
+    // In project mode: require mainFile to be selected
+    if (isProjectMode && !mainFile.trim()) {
+      toast.warning("Please select a main file", {
+        description: "Open Settings and choose the root .tex file for compilation.",
+        id: "select-main-file",
+      });
+      return;
+    }
 
     setIsCompiling(true);
     setCompileLog(null);
@@ -729,11 +744,15 @@ export default function Viewer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          source,
+      body: JSON.stringify({
+          // In fast mode: send current editor content as the source document.
+          // In project mode: DON'T send source — the compiler already has synced
+          // project files. Sending the currently-open tab's content would overwrite
+          // main.tex with whatever file is active (e.g. references.bib).
+          source: isProjectMode ? undefined : (getEditorContent.current?.() ?? ""),
           engine,
-          parentPageId:
-            compileMode === "fast" ? undefined : parentPageIdRef.current,
+          parentPageId: isProjectMode ? parentPageIdRef.current : undefined,
+          mainFile: isProjectMode ? (mainFile || "main.tex") : undefined,
           draft: compileMode === "draft",
         }),
       });

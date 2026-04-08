@@ -26,6 +26,12 @@ interface PageContextType {
   scrollToLineRef: React.MutableRefObject<((line: number) => void) | null>;
   /** Scroll PDF viewer to the page that corresponds to a given editor line; registered by Viewer. */
   scrollToPdfLineRef: React.MutableRefObject<((line: number) => void) | null>;
+  /**
+   * List of .tex filenames in the current project (populated by FilesTab after files load).
+   * Used by SettingsPanel to populate the main-file dropdown.
+   */
+  texFiles: string[];
+  setTexFiles: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const PageContext = createContext<PageContextType | null>(null);
@@ -54,6 +60,7 @@ export function PageContextProvider({
   const pdfDocRef = useRef<any>(null);
   const scrollToLineRef = useRef<((line: number) => void) | null>(null);
   const scrollToPdfLineRef = useRef<((line: number) => void) | null>(null);
+  const [texFiles, setTexFiles] = useState<string[]>([]);
 
   // Revoke previous blob URL before setting a new one to prevent memory leaks.
   const setPdfUrl = (url: string | null) => {
@@ -81,6 +88,8 @@ export function PageContextProvider({
         pdfDocRef,
         scrollToLineRef,
         scrollToPdfLineRef,
+        texFiles,
+        setTexFiles,
       }}
     >
       {children}

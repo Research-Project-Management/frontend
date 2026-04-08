@@ -30,6 +30,7 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  console.log(import.meta.env);
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

@@ -39,5 +39,28 @@ export function getRoleColor(member: any): string | undefined {
   return member.role?.color;
 }
 
+/**
+ * Generate a unique filename by appending a counter suffix when a name conflicts.
+ * Example: "report.tex" → "report (1).tex" → "report (2).tex"
+ *
+ * @param name          Desired filename (e.g. "report.tex")
+ * @param existingNames Set of filenames already present in the target location
+ */
+export function generateUniqueName(name: string, existingNames: Set<string>): string {
+  if (!existingNames.has(name)) return name;
+
+  const dot = name.lastIndexOf(".");
+  const baseName = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+
+  let counter = 1;
+  let candidate = `${baseName} (${counter})${ext}`;
+  while (existingNames.has(candidate)) {
+    counter++;
+    candidate = `${baseName} (${counter})${ext}`;
+  }
+  return candidate;
+}
+
 // Re-export format utilities for convenience
 export { formatFileSize, getInitials, formatRelativeTime, truncateText } from "./format";

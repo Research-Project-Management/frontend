@@ -2,12 +2,13 @@ import React, { createContext, useContext, useRef, useEffect } from "react";
 import { useParams } from "react-router";
 import { usePage } from "~/query/page";
 import { Skeleton } from "~/components/ui/skeleton";
-import ToolBar from "./ToolBar";
 import Editor from "./Editor";
+import TabBar from "./TabBar";
 import type { editor } from "monaco-editor";
 import { usePageContext } from "../PageContext";
 import type { Page } from "~/types/page";
 import { useSocketRoom } from "~/hooks/useSocketRoom";
+import { useEditorTabsStore } from "~/stores/editor-tabs";
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
@@ -26,8 +27,8 @@ export const useEditorContext = () => {
 export default function EditorLayout() {
   const { pageId } = useParams<{ pageId: string }>();
   const { data: page, isLoading } = usePage(pageId!);
-  // Use the shared editorRef from PageContext so SearchTab and others can access it.
   const { getEditorContent, setCurrentPage, editorRef } = usePageContext();
+  const { openTab, updateTabTitle } = useEditorTabsStore();
 
   // Join the Socket.IO page room so presence updates and content broadcasts are received.
   useSocketRoom("page", pageId);
@@ -46,6 +47,28 @@ export default function EditorLayout() {
     return () => setCurrentPage(null);
   }, [page?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Register this file as an open tab ──────────────────────────────────
+  useEffect(() => {
+    if (!page) return;
+
+    const projectId =
+      page.project && typeof page.project === "object"
+        ? (page.project as any)._id
+        : (page.project as string | null | undefined) ?? null;
+
+    if (!projectId) return;
+
+    openTab(projectId, { id: page._id, title: page.title });
+  }, [page?._id, page?.title]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Derive projectId for TabBar ────────────────────────────────────────
+  const projectId =
+    page?.project && typeof page.project === "object"
+      ? (page.project as any)._id
+      : typeof page?.project === "string"
+        ? page.project
+        : null;
+
   if (isLoading) {
     return (
       <div className="h-full w-full flex flex-col animate-in fade-in duration-300">
@@ -57,6 +80,12 @@ export default function EditorLayout() {
           <div className="flex-1" />
           <Skeleton className="h-6 w-6 rounded" />
           <Skeleton className="h-6 w-6 rounded" />
+        </div>
+        {/* TabBar skeleton */}
+        <div className="h-8 border-b border-border bg-muted/20 flex items-center gap-px px-1">
+          {[90, 110, 75].map((w, i) => (
+            <Skeleton key={i} className="h-5 rounded" style={{ width: w }} />
+          ))}
         </div>
         {/* Code lines skeleton */}
         <div className="flex-1 bg-[var(--editor-bg,hsl(var(--background)))] p-4 space-y-2">
@@ -90,7 +119,8 @@ export default function EditorLayout() {
   return (
     <EditorContext.Provider value={{ editorRef }}>
       <div className="h-full w-full overflow-hidden flex flex-col">
-        <ToolBar page={page} />
+        {/* Tab bar — shown when project has multiple open files */}
+        {projectId && <TabBar projectId={projectId} />}
         <Editor page={page} />
       </div>
     </EditorContext.Provider>

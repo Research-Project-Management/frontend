@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate, useParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { X } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
@@ -30,7 +30,7 @@ interface TabItemProps {
 }
 
 function TabItem({ tab, isActive, projectId }: TabItemProps) {
-  const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
   const { closeTab } = useEditorTabsStore();
 
   const handleActivate = (e: React.MouseEvent) => {
@@ -40,7 +40,8 @@ function TabItem({ tab, isActive, projectId }: TabItemProps) {
       return;
     }
     if (!isActive) {
-      navigate(`/editor/${tab.id}`);
+      // Only update the ?file= query param — URL path (pageId) stays stable.
+      setSearchParams({ file: tab.id });
     }
   };
 
@@ -48,10 +49,11 @@ function TabItem({ tab, isActive, projectId }: TabItemProps) {
     e.stopPropagation();
     closeTab(projectId, tab.id, (nextId) => {
       if (nextId) {
-        navigate(`/editor/${nextId}`);
+        // Switch to the next tab without changing the page path
+        setSearchParams({ file: nextId });
       } else {
-        // No tabs left — go back to workspace/project pages
-        navigate(-1);
+        // No tabs left — clear the ?file param (shows root page)
+        setSearchParams({});
       }
     });
   };
@@ -115,10 +117,11 @@ function TabItem({ tab, isActive, projectId }: TabItemProps) {
 
 interface TabBarProps {
   projectId: string;
+  /** The ID of the currently active file (from ?file= param or page root). */
+  activeFileId: string;
 }
 
-export default function TabBar({ projectId }: TabBarProps) {
-  const { pageId } = useParams<{ pageId: string }>();
+export default function TabBar({ projectId, activeFileId }: TabBarProps) {
   const { getTabs } = useEditorTabsStore();
   const tabs = getTabs(projectId);
 
@@ -134,7 +137,7 @@ export default function TabBar({ projectId }: TabBarProps) {
         <TabItem
           key={tab.id}
           tab={tab}
-          isActive={tab.id === pageId}
+          isActive={tab.id === activeFileId}
           projectId={projectId}
         />
       ))}

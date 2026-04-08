@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useEffect,
 } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
 import {
   AlertTriangle,
@@ -534,8 +534,8 @@ const TEX_EXTS = new Set([
 
 export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentPage, editorRef, setTexFiles } = usePageContext();
-  const navigate = useNavigate();
   const { openTab } = useEditorTabsStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -561,11 +561,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragCounterRef = useRef(0);
 
-  const parentPageId: string | null = currentPage
-    ? currentPage.parentPage
-      ? String(currentPage.parentPage)
-      : currentPage._id
-    : null;
+  // pageId from URL is always the project root page after the routing refactor.
+  const parentPageId: string | null = pageId ?? null;
 
   const { data: parentPage } = usePage(parentPageId ?? "");
 
@@ -609,9 +606,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   }, []);
 
   const handleFileClick = (fileId: string, title: string) => {
-    if (fileId === pageId) return;
+    // Don't re-open the already-active file
+    const activeFileId = searchParams.get("file") ?? pageId;
+    if (fileId === activeFileId) return;
     if (projectId) openTab(projectId, { id: fileId, title });
-    navigate(`/editor/${fileId}`);
+    // Update only the ?file= query param — pageId (project root) stays stable
+    setSearchParams({ file: fileId });
   };
 
   const handleStartCreate = () => {
@@ -701,7 +701,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         onSuccess: (file) => {
           setIsCreatingFile(false);
           setNewFileName("");
-          navigate(`/editor/${file._id}`);
+          // Open the newly created file without changing the URL path
+          setSearchParams({ file: file._id });
         },
       },
     );
@@ -732,8 +733,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setRenamingId(null);
       return;
     }
+    // Look up the current title so backend can rename the file in the compiler.
+    const oldTitle = files?.find((f) => f._id === fileId)?.title ?? "";
     updateTitleMutation.mutate(
-      { pageId: fileId, title },
+      { pageId: fileId, title, oldTitle },
       { onSuccess: () => setRenamingId(null) },
     );
   };
@@ -744,7 +747,9 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       { pageId: fileId, projectId },
       {
         onSuccess: () => {
-          if (fileId === pageId) navigate(-1);
+          // If the deleted file was the active one, fall back to root page
+          const activeFileId = searchParams.get("file") ?? pageId;
+          if (fileId === activeFileId) setSearchParams({});
         },
       },
     );
@@ -819,7 +824,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 done++;
                 if (done === texFlat.length) {
                   setUploadingCount(0);
-                  if (lastId) navigate(`/editor/${lastId}`);
+                  // Open the last uploaded .tex file
+                  if (lastId) setSearchParams({ file: lastId });
                 }
               },
             },

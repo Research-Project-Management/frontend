@@ -144,6 +144,8 @@ export default function Editor({ page }: EditorProps) {
     usePageContext();
   const { editorTheme, autoCompile } = useEditorSettingsStore();
   const [content, setContent] = useState(page.content || "");
+  // Tracks the current page._id to detect tab switches
+  const activePageIdRef = useRef(page._id);
   const debouncedContent = useDebounce(content, 1000);
   const autoCompileDebounced = useDebounce(content, 3000);
   const updateMutation = useUpdatePageContent();
@@ -204,17 +206,22 @@ export default function Editor({ page }: EditorProps) {
     };
   }, [socket, page._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save when content changes (debounced) — skip if it originated from socket
+  // Auto-save when content changes (debounced) — skip if it originated from socket.
+  // Guard against stale debounce firing after a tab switch: compare the page id
+  // captured when the debounce started with the currently-active page.
   useEffect(() => {
+    // If the active page changed while the debounce was pending, discard this save.
+    if (activePageIdRef.current !== page._id) return;
     if (debouncedContent === lastRemoteContentRef.current) return;
     if (debouncedContent && debouncedContent !== page.content) {
       updateMutation.mutate({ pageId: page._id, content: debouncedContent });
     }
-  }, [debouncedContent]);
+  }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Realtime: broadcast local content changes to other collaborators (debounced)
   useEffect(() => {
     if (!socket || !page._id || !debouncedContent) return;
+    if (activePageIdRef.current !== page._id) return;
     if (debouncedContent === lastRemoteContentRef.current) return;
     socket.emit("page:content", {
       pageId: page._id,
@@ -222,10 +229,13 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update local content when page changes
+  // Update local content and reset active page ref when the open file changes.
   useEffect(() => {
+    // Update the ref FIRST so any in-flight debounce from the old page is rejected.
+    activePageIdRef.current = page._id;
+    lastRemoteContentRef.current = null;
     if (page.content !== content) setContent(page.content || "");
-  }, [page._id]);
+  }, [page._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-compile on content change (3 s debounce, only when enabled and not compiling)
   useEffect(() => {

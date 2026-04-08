@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import {
   Clock,
   FilePlus2,
@@ -98,12 +98,13 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const { currentPage, editorRef } = usePageContext();
 
-  /** The root page ID for this project (used for project-level history). */
-  const rootPageId = currentPage
-    ? currentPage.parentPage
-      ? String(currentPage.parentPage)
-      : currentPage._id
-    : null;
+  /** The root page ID — pageId from URL is always the project root after routing refactor. */
+  const rootPageId = pageId ?? null;
+
+  /** The file currently being edited (child file or project root if no ?file= param). */
+  const [searchParams] = useSearchParams();
+  const fileId = searchParams.get("file");
+  const activeFileId = fileId ?? pageId ?? null;
 
   const [view, setView] = useState<View>("project");
   const [labelInput, setLabelInput] = useState("");
@@ -111,7 +112,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
 
   // ── "This file" data ────────────────────────────────────────────────────────
   const { data: versions, isLoading: versionsLoading } = usePageVersions(
-    pageId ?? null,
+    activeFileId,
   );
   const saveMutation = useSavePageVersion();
   const restoreFileMutation = useRestorePageVersion();
@@ -124,17 +125,17 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleSave = () => {
-    if (!pageId) return;
+    if (!activeFileId) return;
     saveMutation.mutate(
-      { pageId, label: labelInput.trim(), rootPageId: rootPageId ?? undefined },
+      { pageId: activeFileId, label: labelInput.trim(), rootPageId: rootPageId ?? undefined },
       { onSuccess: () => setLabelInput("") },
     );
   };
 
   const handleRestoreFile = (versionId: string) => {
-    if (!pageId) return;
+    if (!activeFileId) return;
     restoreFileMutation.mutate(
-      { pageId, versionId },
+      { pageId: activeFileId, versionId },
       {
         onSuccess: (restoredPage) => {
           if (restoredPage.content !== undefined)
@@ -151,7 +152,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
       { rootPageId, eventId },
       {
         onSuccess: (data) => {
-          const me = data.restored.find((r) => r.pageId === pageId);
+          const me = data.restored.find((r) => r.pageId === activeFileId);
           if (me) editorRef.current?.setValue(me.content);
           setConfirmId(null);
         },
@@ -311,7 +312,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                         <button
                           onClick={() =>
                             deleteMutation.mutate({
-                              pageId: pageId!,
+                              pageId: activeFileId!,
                               versionId: v._id,
                             })
                           }

@@ -346,28 +346,19 @@ export const useUploadFileForEditor = () => {
       });
       if (!uploadRes.ok) throw new Error("Upload to R2 failed");
 
-      // 3. Save metadata to File model
+      const fileUrl = `${API_URL}/api/files/${path}`;
+
+      // 3. Save metadata — backend fetches from R2 and syncs to compiler automatically
+      //    when parentPageId is provided.
       await apiPost(`/api/files/upload`, {
         filename: file.name,
         size: file.size,
         mimeType: file.type || "application/octet-stream",
-        url: `${API_URL}/api/files/${path}`,
+        url: fileUrl,
         workspaceId,
         projectId,
         parentId: parentId || null,
-      });
-
-      // 4. Read as base64 and sync to LaTeX compiler so it can include the file
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      await apiPost(`/api/pages/${parentPageId}/files/sync`, {
-        filename: file.name,
-        base64Data,
-        parentId: parentId || null,
+        parentPageId,   // ← backend will sync to compiler
       });
     },
     onSuccess: (_, variables) => {
@@ -375,6 +366,7 @@ export const useUploadFileForEditor = () => {
     },
   });
 };
+
 
 export const useCreateFolderForEditor = () => {
   const queryClient = useQueryClient();

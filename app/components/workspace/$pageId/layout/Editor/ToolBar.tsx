@@ -201,7 +201,7 @@ export default function ToolBar({ page }: ToolBarProps) {
 
   const handleCommitTitle = () => {
     if (!title.trim() || !isDirty) return;
-    updateTitleMutation.mutate({ pageId: page._id, title: title.trim() });
+    updateTitleMutation.mutate({ pageId: page._id, title: title.trim(), oldTitle: page.title });
   };
 
   const handleCancelTitle = () => {

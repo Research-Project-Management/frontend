@@ -223,13 +223,18 @@ export default function CreatePageDialog({
         content,
       },
       {
-        onSuccess: ({ mainFileId }) => {
+        onSuccess: ({ rootPageId, mainFileId }) => {
           setOpen(false);
           setTitle("");
           if (!defaultProjectId) setSelectedProjectId("");
           setSelectedTemplate("blank");
           toast.success("Document created");
-          if (mainFileId) navigate(`/editor/${mainFileId}`);
+          if (rootPageId) {
+            const url = mainFileId
+              ? `/editor/${rootPageId}?file=${mainFileId}`
+              : `/editor/${rootPageId}`;
+            navigate(url);
+          }
         },
         onError: (error: any) => {
           toast.error(error.message ?? "Failed to create document");

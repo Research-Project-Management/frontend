@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useParams } from "react-router";
 import { Document, Page, pdfjs } from "react-pdf";
 import {
   AlertCircle,
@@ -636,15 +637,10 @@ export default function Viewer() {
 
   const saveThumbnailMutation = useUpdatePageThumbnail();
 
-  // Keep a ref so handleCompile always reads the latest parentPageId (avoids stale closure).
-  // If on a child file → use parentPage (the project root ID).
-  // If on the root page itself (no parentPage) → use own _id.
+  // pageId from URL is always the project root (never changes when switching files).
+  const { pageId: urlPageId } = useParams<{ pageId: string }>();
   const parentPageIdRef = useRef<string | null>(null);
-  parentPageIdRef.current = currentPage
-    ? currentPage.parentPage
-      ? String(currentPage.parentPage)
-      : currentPage._id
-    : null;
+  parentPageIdRef.current = urlPageId ?? null;
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);

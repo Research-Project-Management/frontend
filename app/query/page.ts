@@ -117,7 +117,11 @@ export const useCreatePage = () => {
       const data = await apiPost<{ page: Page; mainFile?: { _id: string } }>(
         `/api/project/${projectId}/pages`, { title, content, status },
       );
-      return { page: data.page, mainFileId: (data.mainFile?._id ?? null) as string | null };
+      return {
+        page: data.page,
+        rootPageId: data.page._id as string,
+        mainFileId: (data.mainFile?._id ?? null) as string | null,
+      };
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pages", variables.projectId] });
@@ -154,8 +158,8 @@ export const useUpdatePageContent = () => {
 export const useUpdatePageTitle = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ pageId, title }: { pageId: string; title: string }) => {
-      const data = await apiPut<{ page: Page }>(`/api/pages/${pageId}`, { title });
+    mutationFn: async ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) => {
+      const data = await apiPut<{ page: Page }>(`/api/pages/${pageId}`, { title, _oldTitle: oldTitle });
       return data.page;
     },
     onSuccess: (data, variables) => {
@@ -245,6 +249,19 @@ export const useUpdatePageThumbnail = () => {
 };
 
 // ── File uploads are now handled via /api/files/* (project storage) ─────────
+
+/**
+ * Sync all .tex files of a root page-project from MongoDB to the LaTeX compiler.
+ * Call this when opening the page editor to ensure the compiler has fresh content
+ * (handles compiler restart / new deployment scenarios).
+ */
+export const useSyncProjectToCompiler = () =>
+  useMutation({
+    mutationFn: ({ pageId }: { pageId: string }) =>
+      apiPost(`/api/pages/${pageId}/sync-project`, {}),
+  });
+
+
 
 
 

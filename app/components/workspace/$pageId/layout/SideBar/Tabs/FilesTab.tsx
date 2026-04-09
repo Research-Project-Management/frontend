@@ -333,7 +333,7 @@ function StorageFolderNode({
             onUploadToFolder(dropped, folder._id);
         }}
         className={cn(
-          "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors",
+          "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors border-l-2 border-l-transparent",
           dragOver
             ? "bg-primary/10 outline outline-1 outline-primary/30"
             : "hover:bg-muted/50",
@@ -481,7 +481,7 @@ function StorageFileRow({
           ? `Click to preview ${item.filename}`
           : `Click to insert \\includegraphics{${item.filename}}`
       }
-      className="group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors hover:bg-muted/50"
+      className="group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors border-l-2 border-l-transparent hover:bg-muted/50"
     >
       <IndentGuides depth={depth} />
       <span className="w-4 shrink-0" />
@@ -1393,18 +1393,16 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     key={file._id}
                     onClick={() => handleFileClick(file._id, file.title)}
                     className={cn(
-                      "group/row mt-1 flex items-center h-[22px] pr-2 cursor-pointer transition-colors",
+                      "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors border-l-2",
                       isActive
-                        ? "bg-primary/8 border-l-2 border-l-primary"
-                        : "border-l-2 border-l-transparent hover:bg-muted/50",
+                        ? "bg-primary/8 border-l-primary"
+                        : "border-l-transparent hover:bg-muted/50",
                     )}
                   >
-                    <span
-                      className={cn("shrink-0", isActive ? "w-[18px]" : "w-5")}
-                    />
+                    <span className="w-4 shrink-0" />
                     <FileIcon
                       className={cn(
-                        "size-4 shrink-0 mr-1.5",
+                        "size-3.5 shrink-0 mr-1.5",
                         isActive ? "text-primary" : fileColor,
                       )}
                     />

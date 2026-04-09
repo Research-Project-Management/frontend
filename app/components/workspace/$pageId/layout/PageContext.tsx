@@ -2,6 +2,14 @@ import React, { createContext, useContext, useRef, useState } from "react";
 import type { Page } from "~/types/page";
 import type { editor as MonacoEditor } from "monaco-editor";
 
+export interface AssetInfo {
+  _id: string;
+  filename: string;
+  url?: string;
+  mimeType?: string;
+  size?: number;
+}
+
 interface PageContextType {
   /** Callback ref set by EditorLayout so Viewer can grab the current editor text at compile time. */
   getEditorContent: React.MutableRefObject<(() => string) | null>;
@@ -32,6 +40,12 @@ interface PageContextType {
    */
   texFiles: string[];
   setTexFiles: React.Dispatch<React.SetStateAction<string[]>>;
+  /**
+   * When an image asset tab is open, this holds its metadata so EditorLayout can
+   * render an image viewer instead of Monaco.
+   */
+  selectedAsset: AssetInfo | null;
+  setSelectedAsset: React.Dispatch<React.SetStateAction<AssetInfo | null>>;
 }
 
 const PageContext = createContext<PageContextType | null>(null);
@@ -61,6 +75,7 @@ export function PageContextProvider({
   const scrollToLineRef = useRef<((line: number) => void) | null>(null);
   const scrollToPdfLineRef = useRef<((line: number) => void) | null>(null);
   const [texFiles, setTexFiles] = useState<string[]>([]);
+  const [selectedAsset, setSelectedAsset] = useState<AssetInfo | null>(null);
 
   // Revoke previous blob URL before setting a new one to prevent memory leaks.
   const setPdfUrl = (url: string | null) => {
@@ -90,6 +105,8 @@ export function PageContextProvider({
         scrollToPdfLineRef,
         texFiles,
         setTexFiles,
+        selectedAsset,
+        setSelectedAsset,
       }}
     >
       {children}

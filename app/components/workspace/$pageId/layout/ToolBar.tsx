@@ -214,49 +214,48 @@ export default function ToolBar() {
     LAYOUT_OPTIONS.find((o) => o.value === layout)?.icon ?? Columns2;
 
   return (
-    <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-secondary shrink-0 z-10">
+    <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
       {/* ── Left ── */}
       <div className="flex gap-1 items-center min-w-0">
         <Menu />
       </div>
-      {/* Center */}
+      {/* Center breadcrumb: Logo / Project / Page */}
       <div className="flex items-center">
-        <button
-          onClick={() => {
-            navigate("/ws");
-          }}
-        >
+        <button onClick={() => navigate("/ws")}>
           <Flux className="size-5 mr-2" />
         </button>
-        <span className="text-muted-foreground/40 mx-1 text-sm select-none">
-          /
-        </span>
-        <button
-          onClick={() => {
-            const proj = currentPage?.project;
-            if (proj && typeof proj === "object") {
-              const ws = proj.workspace;
-              const wsUrl = ws && typeof ws === "object" ? ws.url : null;
-              if (wsUrl) {
-                navigate(`/${wsUrl}/projects/${proj._id}/pages`);
-                return;
-              }
-            }
-            navigate(-1);
-          }}
-          title="Back"
-          className="mx-1 p-1 text-sm rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
-        >
-          Pages
-        </button>
 
+        {/* Project name → back to project pages */}
         {projectName && (
           <>
-            <span className="text-muted-foreground/40 mx-1 text-sm select-none">
-              /
-            </span>
-            <span className="text-sm mx-1 font-medium text-foreground truncate max-w-44">
+            <span className="text-muted-foreground/40 mx-1 text-sm select-none">/</span>
+            <button
+              onClick={() => {
+                const proj = currentPage?.project;
+                if (proj && typeof proj === "object") {
+                  const ws = proj.workspace;
+                  const wsUrl = ws && typeof ws === "object" ? ws.url : null;
+                  if (wsUrl) {
+                    navigate(`/${wsUrl}/projects/${proj._id}/pages`);
+                    return;
+                  }
+                }
+                navigate(-1);
+              }}
+              title="Back to project"
+              className="mx-1 p-1 text-sm rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0 max-w-44 truncate"
+            >
               {projectName}
+            </button>
+          </>
+        )}
+
+        {/* Page title (current document) */}
+        {currentPage?.title && (
+          <>
+            <span className="text-muted-foreground/40 mx-1 text-sm select-none">/</span>
+            <span className="text-sm mx-1 font-medium text-foreground truncate max-w-44">
+              {currentPage.title}
             </span>
           </>
         )}

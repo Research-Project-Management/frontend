@@ -5,9 +5,69 @@ import { Skeleton } from "~/components/ui/skeleton";
 import Editor from "./Editor";
 import TabBar from "./TabBar";
 import type { editor } from "monaco-editor";
-import { usePageContext } from "../PageContext";
+import { usePageContext, type AssetInfo } from "../PageContext";
 import { useSocketRoom } from "~/hooks/useSocketRoom";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
+import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
+
+// ── Inline image viewer rendered inside the editor column ──────────────────
+
+function ImagePanel({ asset }: { asset: AssetInfo }) {
+  const ext = asset.filename.split(".").pop()?.toUpperCase() ?? "";
+  const sizeLabel = asset.size
+    ? asset.size < 1024
+      ? `${asset.size} B`
+      : asset.size < 1024 * 1024
+        ? `${(asset.size / 1024).toFixed(1)} KB`
+        : `${(asset.size / (1024 * 1024)).toFixed(1)} MB`
+    : null;
+
+  return (
+    <div className="flex flex-col h-full w-full bg-background">
+      {/* Info bar */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-xs text-muted-foreground shrink-0">
+        <FileImage className="size-3.5" />
+        <span className="font-medium text-foreground truncate">{asset.filename}</span>
+        {ext && (
+          <span className="px-1.5 py-0.5 rounded bg-secondary font-mono">{ext}</span>
+        )}
+        {sizeLabel && <span>{sizeLabel}</span>}
+      </div>
+      {/* Image viewer */}
+      <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
+        {asset.url ? (
+          <img
+            src={asset.url}
+            alt={asset.filename}
+            crossOrigin="use-credentials"
+            className="max-w-full max-h-full object-contain rounded shadow-sm"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <AlertCircle className="size-6" />
+            <span className="text-sm">Image URL not available.</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Empty state when no file is open ───────────────────────────────────────
+
+function EmptyEditorState() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
+      <FileCode2 className="size-10 text-muted-foreground/20" />
+      <p className="text-sm text-muted-foreground">No file open</p>
+      <p className="text-xs text-muted-foreground/60">
+        Open a file from the Explorer to start editing.
+      </p>
+    </div>
+  );
+}
+
+// ── Editor layout ─────────────────────────────────────────────────────────────
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
@@ -41,7 +101,13 @@ export default function EditorLayout() {
   const activePage = childPage ?? parentPage;
   const isLoading = parentLoading || (fileId ? childLoading : false);
 
-  const { getEditorContent, setCurrentPage, editorRef } = usePageContext();
+  const { getEditorContent, setCurrentPage, editorRef, selectedAsset } = usePageContext();
+
+  // True when the current ?file= param points to an image asset (not a page).
+  const isAssetTab = !!fileId && !!selectedAsset && selectedAsset._id === fileId;
+  // True when a child file is loaded — i.e., the editor should show a file, not the root page.
+  // When this is false (all tabs closed or initial state), show EmptyEditorState instead.
+  const hasChildFile = !!activePage && activePage._id !== pageId;
   const { openTab, closeAllForProject } = useEditorTabsStore();
   const syncProjectMutation = useSyncProjectToCompiler();
   // Track whether we've already synced this session for this root page
@@ -177,7 +243,13 @@ export default function EditorLayout() {
       <div className="h-full w-full overflow-hidden flex flex-col">
         {/* Tab bar — keyed by rootPageId so each LaTeX page-project is isolated */}
         {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage._id} />}
-        <Editor page={activePage} />
+        {isAssetTab ? (
+          <ImagePanel asset={selectedAsset!} />
+        ) : hasChildFile ? (
+          <Editor page={activePage} />
+        ) : (
+          <EmptyEditorState />
+        )}
       </div>
     </EditorContext.Provider>
   );

@@ -131,7 +131,7 @@ export default function TabBar({ rootPageId, activeFileId }: TabBarProps) {
     <div
       role="tablist"
       aria-label="Open files"
-      className="flex h-8 bg-muted/20 border-b border-border overflow-x-auto shrink-0 scrollbar-none"
+      className="flex h-8 bg-secondary border-b border-border overflow-x-auto shrink-0 scrollbar-none"
     >
       {tabs.map((tab) => (
         <TabItem

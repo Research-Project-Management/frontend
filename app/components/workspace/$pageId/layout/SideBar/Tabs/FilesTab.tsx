@@ -49,7 +49,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { cn } from "~/lib/utils";
-import { usePageContext } from "../../PageContext";
+import { usePageContext, type AssetInfo } from "../../PageContext";
 import {
   usePageFiles,
   useCreatePageFile,
@@ -567,7 +567,7 @@ const TEX_EXTS = new Set([
 export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentPage, editorRef, setTexFiles } = usePageContext();
+  const { currentPage, editorRef, setTexFiles, setSelectedAsset } = usePageContext();
   const { openTab } = useEditorTabsStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -652,11 +652,21 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const uploadFileMutation = useUploadFileForEditor();
   const createFolderMutation = useCreateFolderForEditor();
 
-  const [previewItem, setPreviewItem] = useState<StorageItem | null>(null);
+
 
   const handleOpenPreview = useCallback((item: StorageItem) => {
-    setPreviewItem(item);
-  }, []);
+    const asset: AssetInfo = {
+      _id: item._id,
+      filename: item.filename,
+      url: item.url,
+      mimeType: item.mimeType,
+      size: item.size,
+    };
+    setSelectedAsset(asset);
+    // Register the image as a tab and navigate to it via ?file=
+    if (parentPageId) openTab(parentPageId, { id: item._id, title: item.filename });
+    setSearchParams({ file: item._id });
+  }, [parentPageId, openTab, setSearchParams, setSelectedAsset]);
 
   const handleFileClick = (fileId: string, title: string) => {
     // Don't re-open the already-active file
@@ -1492,7 +1502,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           <DialogHeader>
             <DialogTitle className="text-sm">Upload Files</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-1 max-h-72 overflow-y-auto py-1">
+          <div className="flex flex-col gap-1 max-h-72 overflow-y-auto overflow-x-hidden py-1">
             {pendingUploads.map((item, i) => {
               const ext =
                 "." + (item.file.name.split(".").pop() ?? "").toLowerCase();
@@ -1520,7 +1530,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   />
                   <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                     {folderPath && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 min-w-0">
                         <Folder className="size-3 text-amber-500 shrink-0" />
                         <span className="text-[10px] text-muted-foreground truncate">
                           {folderPath}
@@ -1611,33 +1621,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         </DialogContent>
       </Dialog>
 
-      {/* Image preview dialog */}
-      <Dialog
-        open={!!previewItem}
-        onOpenChange={(open) => {
-          if (!open) setPreviewItem(null);
-        }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-sm truncate">
-              {previewItem?.filename}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex items-center justify-center min-h-32">
-            {previewItem?.url ? (
-              <img
-                src={previewItem.url}
-                alt={previewItem.filename}
-                className="max-w-full max-h-[70vh] object-contain rounded"
-                crossOrigin="use-credentials"
-              />
-            ) : (
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

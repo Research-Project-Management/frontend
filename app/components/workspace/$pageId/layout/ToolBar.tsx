@@ -214,7 +214,7 @@ export default function ToolBar() {
     LAYOUT_OPTIONS.find((o) => o.value === layout)?.icon ?? Columns2;
 
   return (
-    <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
+    <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-secondary shrink-0 z-10">
       {/* ── Left ── */}
       <div className="flex gap-1 items-center min-w-0">
         <Menu />

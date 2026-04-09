@@ -369,7 +369,7 @@ function StorageFolderNode({
           />
         ) : (
           <>
-            <span className="flex-1 min-w-0 truncate text-[12px] text-foreground/90">
+            <span className="flex-1 min-w-0 truncate text-[13px] text-foreground/90">
               {folder.filename}
             </span>
             <RowActions>
@@ -504,7 +504,7 @@ function StorageFileRow({
         />
       ) : (
         <>
-          <span className="flex-1 min-w-0 truncate text-[12px] text-foreground/90">
+          <span className="flex-1 min-w-0 truncate text-[13px] text-foreground/90">
             {item.filename}
           </span>
           <RowActions>
@@ -1419,7 +1419,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                       <>
                         <span
                           className={cn(
-                            "flex-1 min-w-0 truncate text-[14px]",
+                            "flex-1 min-w-0 truncate text-[13px]",
                             isActive
                               ? "text-primary font-medium"
                               : "text-foreground/90",

@@ -142,7 +142,7 @@ export default function Editor({ page }: EditorProps) {
   const { editorRef } = useEditorContext();
   const { compileRef, isCompiling, scrollToLineRef, scrollToPdfLineRef } =
     usePageContext();
-  const { editorTheme, autoCompile } = useEditorSettingsStore();
+  const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useEditorSettingsStore();
   const [content, setContent] = useState(page.content || "");
   // Tracks the current page._id to detect tab switches
   const activePageIdRef = useRef(page._id);
@@ -246,23 +246,17 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update local content and reset active page ref when the open file changes.
+  // Reset editor state only when switching to a different page.
+  // IMPORTANT: Do NOT include `content` or `page.content` in the deps — that would cause
+  // this to fire on every keystroke (content !== page.content while typing → reset loop).
+  // Collaborative content sync is handled by the socket "page:content" effect above.
   useEffect(() => {
     // Update the ref FIRST so any in-flight debounce from the old page is rejected.
     activePageIdRef.current = page._id;
     lastRemoteContentRef.current = null;
     pendingCompileRef.current = false;
-    
-    // Log content update for debugging
-    console.log("[Editor] Page content updated:", {
-      pageId: page._id,
-      title: page.title,
-      contentLength: page.content?.length || 0,
-      contentPreview: page.content?.substring(0, 100) || "",
-    });
-    
-    if (page.content !== content) setContent(page.content || "");
-  }, [page._id, page.content, page.title, content]); // eslint-disable-line react-hooks/exhaustive-deps
+    setContent(page.content || "");
+  }, [page._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -623,6 +617,16 @@ export default function Editor({ page }: EditorProps) {
     };
   }, [editorMounted, remoteCursors, presenceUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reactively apply editor settings whenever they change in the SettingsPanel.
+  // Theme is handled separately — it's a controlled prop on <MonacoEditor>.
+  useEffect(() => {
+    editorRef.current?.updateOptions({
+      fontSize,
+      wordWrap: wordWrap ? "on" : "off",
+      lineNumbers: lineNumbers ? "on" : "off",
+    });
+  }, [fontSize, wordWrap, lineNumbers]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Keep a stable ref so the F2 command always calls the latest openRenameDialog.
   const openRenameDialogLatestRef = useRef(openRenameDialog);
   openRenameDialogLatestRef.current = openRenameDialog;
@@ -721,8 +725,11 @@ export default function Editor({ page }: EditorProps) {
       });
     });
 
-    // Ctrl+Enter → compile (Monaco swallows keydown so window listener misses it)
+    // Ctrl+Enter and Ctrl+S → compile
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
+      compileRef.current?.(),
+    );
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
       compileRef.current?.(),
     );
 
@@ -731,12 +738,12 @@ export default function Editor({ page }: EditorProps) {
       openRenameDialogLatestRef.current(),
     );
 
-    // Configure editor options
+    // Configure editor options — use persisted store values so settings survive reloads.
     editor.updateOptions({
-      wordWrap: "on",
+      wordWrap: wordWrap ? "on" : "off",
       minimap: { enabled: false },
-      lineNumbers: "on",
-      fontSize: 14,
+      lineNumbers: lineNumbers ? "on" : "off",
+      fontSize,
       fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
       scrollBeyondLastLine: false,
       padding: { top: 2, bottom: 2 },
@@ -746,9 +753,7 @@ export default function Editor({ page }: EditorProps) {
       folding: true,
       foldingStrategy: "indentation",
       contextmenu: false,
-      // Position overlay widgets (hover, suggestions, params) relative to the
-      // viewport instead of the editor container, preventing them from being
-      // clipped by any ancestor with overflow:hidden.
+      // Position overlay widgets relative to viewport to avoid overflow:hidden clipping.
       fixedOverflowWidgets: true,
     });
 

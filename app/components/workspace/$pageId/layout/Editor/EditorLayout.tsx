@@ -104,17 +104,23 @@ export default function EditorLayout() {
   }, [pageId, activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
-  // Sync the active page into shared context so sidebar/toolbar can access it.
-  // currentPage = the file being edited (child or root); used for presence, title, etc.
+  // Sync the ROOT page into shared context so sidebar/toolbar can access project metadata.
+  // We intentionally use parentPage (root), NOT activePage (child file), because:
+  //  • parentPage is stable — it doesn't change when the user switches tabs
+  //  • ToolBar reads currentPage.project.name → needs root page (project is populated there)
+  //  • PresenceAvatars calls usePagePresence(currentPage._id) → must match the socket
+  //    room joined above (useSocketRoom("page", pageId) = root page ID)
   useEffect(() => {
-    if (activePage) setCurrentPage(activePage);
+    if (parentPage) setCurrentPage(parentPage);
     return () => setCurrentPage(null);
-  }, [activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parentPage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register the active file as an open tab whenever it changes.
   // Key is the root pageId from the URL — each LaTeX page-project is isolated.
+  // IMPORTANT: skip the root page itself (it's a container, not an editable file).
   useEffect(() => {
     if (!activePage || !pageId) return;
+    if (activePage._id === pageId) return; // root page is not a tab
     openTab(pageId, { id: activePage._id, title: activePage.title });
   }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 

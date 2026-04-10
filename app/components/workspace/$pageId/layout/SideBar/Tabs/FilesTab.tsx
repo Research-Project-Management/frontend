@@ -580,8 +580,9 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const combinedUploadRef = useRef<HTMLInputElement>(null);
   const folderUploadRef = useRef<HTMLInputElement>(null);
+  // Unified counter tracking total files still in flight.
+  // Incremented for each file before upload starts; decremented via onSettled.
   const [uploadingCount, setUploadingCount] = useState(0);
-  const [uploadingAssets, setUploadingAssets] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
   type PendingItem = {
@@ -856,43 +857,45 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     if (!parentPageId || !pendingUploads.length) return;
     setUploadDialogOpen(false);
 
-    const folderItems = pendingUploads.filter((p) => p.name.includes("/"));
-    const flatItems = pendingUploads.filter((p) => !p.name.includes("/"));
+    // Snapshot the list BEFORE clearing pending state
+    const uploads = pendingUploads;
+    setPendingUploads([]);
 
-    // --- Flat tex files ---
-    const texFlat = flatItems.filter(({ name }) =>
-      TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
-    );
-    // --- Flat non-tex files (go to File model) ---
-    const assetFlat = flatItems.filter(
-      ({ name }) =>
-        !TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
-    );
+    const folderItems = uploads.filter((p) => p.name.includes("/"));
+    const flatItems   = uploads.filter((p) => !p.name.includes("/"));
+    const texFlat     = flatItems.filter(({ name }) => TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()));
+    const assetFlat   = flatItems.filter(({ name }) => !TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()));
 
+    const totalFiles = texFlat.length + assetFlat.length + folderItems.length;
+    if (totalFiles === 0) return;
+
+    // --- Single shared mutable counter (JS is single-threaded, no race issues) ---
+    let remaining = totalFiles;
+    setUploadingCount(totalFiles);
+
+    const onFileSettled = () => {
+      remaining = Math.max(0, remaining - 1);
+      setUploadingCount(remaining);
+      if (remaining === 0) refetchProjectFiles();
+    };
+
+    // ── Tex files (read as text then create page) ─────────────────────────
+    let lastTexId: string | null = null;
+    let texDone = 0;
     if (texFlat.length) {
-      setUploadingCount(texFlat.length);
-      let lastId: string | null = null;
-      let done = 0;
       texFlat.forEach(({ file, name }) => {
         const reader = new FileReader();
         reader.onload = () => {
           createFileMutation.mutate(
+            { parentPageId, title: name.trim() || file.name, content: reader.result as string },
             {
-              parentPageId,
-              title: name.trim() || file.name,
-              content: reader.result as string,
-            },
-            {
-              onSuccess: (f) => {
-                lastId = f._id;
-              },
+              onSuccess: (f) => { lastTexId = f._id; },
               onSettled: () => {
-                done++;
-                if (done === texFlat.length) {
-                  setUploadingCount(0);
-                  // Open the last uploaded .tex file
-                  if (lastId) setSearchParams({ file: lastId });
+                texDone++;
+                if (texDone === texFlat.length && lastTexId) {
+                  setSearchParams({ file: lastTexId });
                 }
+                onFileSettled();
               },
             },
           );
@@ -901,92 +904,59 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       });
     }
 
-    if (assetFlat.length && parentPageId && projectId) {
-      setUploadingAssets(true);
-      let done = 0;
-      const total = assetFlat.length;
+    // ── Flat non-tex assets ───────────────────────────────────────────────
+    if (assetFlat.length && projectId) {
       assetFlat.forEach(({ file, name }) => {
-        const renamedFile =
-          name !== file.name
-            ? new File([file], name, { type: file.type })
-            : file;
+        const renamedFile = name !== file.name ? new File([file], name, { type: file.type }) : file;
         uploadFileMutation.mutate(
           { file: renamedFile, projectId, workspaceId, parentPageId },
-          {
-            onSuccess: () => {
-              done++;
-              if (done >= total) setUploadingAssets(false);
-            },
-            onError: () => {
-              done++;
-              if (done >= total) setUploadingAssets(false);
-            },
-          },
+          { onSettled: onFileSettled },
         );
       });
     }
 
-    // --- Folder items (have path like "folder/sub/file.png") ---
-    if (folderItems.length && parentPageId && projectId) {
-      setUploadingAssets(true);
-      try {
-        const folderPaths = new Set<string>();
-        for (const { name } of folderItems) {
-          const parts = name.split("/");
-          for (let i = 1; i < parts.length; i++) {
-            folderPaths.add(parts.slice(0, i).join("/"));
+    // ── Folder items (path like "folder/sub/file.png") ────────────────────
+    if (folderItems.length && projectId) {
+      // Run folder creation serially then fire file uploads in parallel
+      void (async () => {
+        try {
+          const folderPaths = new Set<string>();
+          for (const { name } of folderItems) {
+            const parts = name.split("/");
+            for (let i = 1; i < parts.length; i++)
+              folderPaths.add(parts.slice(0, i).join("/"));
           }
+          const sortedPaths = Array.from(folderPaths).sort();
+          const folderIdMap: Record<string, string> = {};
+
+          for (const folderPath of sortedPaths) {
+            const parts      = folderPath.split("/");
+            const folderName = parts[parts.length - 1];
+            const parentPath = parts.slice(0, -1).join("/");
+            const parentId   = parentPath ? folderIdMap[parentPath] : undefined;
+            const created    = await createFolderMutation.mutateAsync(
+              { name: folderName, projectId, workspaceId, parentId, parentPageId },
+            );
+            folderIdMap[folderPath] = (created as any).folder?._id ?? (created as any)._id;
+          }
+
+          for (const { file, name } of folderItems) {
+            const parts      = name.split("/");
+            const fileName   = parts[parts.length - 1];
+            const folderPath = parts.slice(0, -1).join("/");
+            const parentId   = folderIdMap[folderPath];
+            const renamedFile = fileName !== file.name ? new File([file], fileName, { type: file.type }) : file;
+            uploadFileMutation.mutate(
+              { file: renamedFile, projectId, workspaceId, parentPageId, parentId },
+              { onSettled: onFileSettled },
+            );
+          }
+        } catch {
+          // Folder creation failed — account for all folder file uploads so counter resets
+          for (let i = 0; i < folderItems.length; i++) onFileSettled();
         }
-        const sortedPaths = Array.from(folderPaths).sort();
-        const folderIdMap: Record<string, string> = {};
-
-        // Use mutateAsync so each folder is created and its ID captured before uploading files.
-        for (const folderPath of sortedPaths) {
-          const parts = folderPath.split("/");
-          const folderName = parts[parts.length - 1];
-          const parentPath = parts.slice(0, -1).join("/");
-          const parentId = parentPath ? folderIdMap[parentPath] : undefined;
-
-          const created = await createFolderMutation.mutateAsync(
-            { name: folderName, projectId, workspaceId, parentId, parentPageId },
-          );
-          // Backend returns { folder: { _id, ... } }
-          folderIdMap[folderPath] = (created as any).folder?._id ?? (created as any)._id;
-        }
-
-        let done = 0;
-        const total = folderItems.length;
-        for (const { file, name } of folderItems) {
-          const parts = name.split("/");
-          const fileName = parts[parts.length - 1];
-          const folderPath = parts.slice(0, -1).join("/");
-          const parentId = folderIdMap[folderPath];
-
-          const renamedFile =
-            fileName !== file.name
-              ? new File([file], fileName, { type: file.type })
-              : file;
-
-          uploadFileMutation.mutate(
-            { file: renamedFile, projectId, workspaceId, parentPageId, parentId },
-            {
-              onSuccess: () => {
-                done++;
-                if (done >= total) setUploadingAssets(false);
-              },
-              onError: () => {
-                done++;
-                if (done >= total) setUploadingAssets(false);
-              },
-            },
-          );
-        }
-      } catch {
-        setUploadingAssets(false);
-      }
+      })();
     }
-
-    setPendingUploads([]);
   };
 
   const handleInsertAsset = (name: string) => {
@@ -1292,15 +1262,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           )}
 
           {/* Uploading indicator */}
-          {(uploadingCount > 0 || uploadingAssets) && (
+          {uploadingCount > 0 && (
             <div className="flex items-center gap-2 px-5 h-[22px]">
               <Loader2 className="size-3 animate-spin text-muted-foreground" />
               <span className="text-[11px] text-muted-foreground">
-                Uploading
-                {uploadingCount > 0
-                  ? ` ${uploadingCount} file${uploadingCount > 1 ? "s" : ""}`
-                  : ""}
-                …
+                Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}…
               </span>
             </div>
           )}

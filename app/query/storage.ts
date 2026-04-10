@@ -14,6 +14,7 @@ type ScopedStorageParams = {
     projectId?: string;
     workspaceId?: string;
     parentId?: string | null;
+    parentPageId?: string | null;
 };
 
 const resolveScopedStorageBody = (params: ScopedStorageParams) => {
@@ -202,7 +203,8 @@ export const createFolder = (name: string, params: ScopedStorageParams) => {
     return apiPost("/api/files/folder", {
         ...scopeBody,
         name,
-        parentId: params.parentId || null,
+        parentId: params.parentId ?? null,
+        ...(params.parentPageId ? { parentPageId: params.parentPageId } : {}),
     });
 };
 
@@ -402,10 +404,9 @@ export const useUpdateFileMetadata = () => {
         mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, any> }) =>
             updateFileMetadata(fileId, metaData),
         onSuccess: () => {
-<<<<<<< HEAD
-        queryClient.invalidateQueries({ queryKey: ["files"] });
-    },
-  });
+            invalidateStorageQueries(queryClient);
+        },
+    });
 };
 
 // ── Editor-scoped project file hooks ──────────────────────────────────────────
@@ -500,53 +501,58 @@ export const useUploadFileForEditor = () => {
 
 
 export const useCreateFolderForEditor = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ name, projectId, workspaceId, parentId, parentPageId }: {
-      name: string; projectId: string; workspaceId: string; parentId?: string | null; parentPageId?: string | null;
-    }) => createFolder(name, projectId, workspaceId, parentId, parentPageId),
-    onSuccess: (_, variables) => {
-      // Invalidate queries for the page-specific files
-      if (variables.parentPageId) {
-        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
-      } else if (variables.projectId) {
-        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
-      }
-    },
-  });
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ name, projectId, workspaceId, parentId, parentPageId }: {
+            name: string;
+            projectId: string;
+            workspaceId: string;
+            parentId?: string | null;
+            parentPageId?: string | null;
+        }) =>
+            createFolder(name, {
+                scope: "project",
+                projectId,
+                workspaceId,
+                parentId: parentId ?? null,
+                parentPageId: parentPageId ?? null,
+            }),
+        onSuccess: (_, variables) => {
+            if (variables.parentPageId) {
+                queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
+            } else if (variables.projectId) {
+                queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+            }
+        },
+    });
 };
 
 export const useDeleteFileForEditor = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
-    },
-  });
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
+        },
+    });
 };
 
 export const useRenameFileForEditor = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
-    },
-  });
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
+        },
+    });
 };
 
 export const useMoveFileForEditor = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) => moveFile(fileId, parentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
-    },
-  });
-=======
-            invalidateStorageQueries(queryClient);
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) => moveFile(fileId, parentId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
         },
     });
->>>>>>> feature/ux-complete
 };

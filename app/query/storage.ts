@@ -1,6 +1,43 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    QueryClient,
+    useQuery,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 import { API_URL, apiFetch, apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import type { StorageItem } from "~/components/workspace/storage/types";
+
+type StorageScope = "project" | "workspace";
+
+type ScopedStorageParams = {
+    scope: StorageScope;
+    projectId?: string;
+    workspaceId?: string;
+    parentId?: string | null;
+};
+
+const resolveScopedStorageBody = (params: ScopedStorageParams) => {
+    if (params.scope === "project") {
+        if (!params.projectId) {
+            throw new Error("projectId is required for project storage actions");
+        }
+
+        return {
+            scope: "project" as const,
+            projectId: params.projectId,
+            workspaceId: params.workspaceId,
+        };
+    }
+
+    if (!params.workspaceId) {
+        throw new Error("workspaceId is required for workspace storage actions");
+    }
+
+    return {
+        scope: "workspace" as const,
+        workspaceId: params.workspaceId,
+    };
+};
 
 // ── Workspace-level fetch ─────────────────────────────────────────────────────
 
@@ -46,6 +83,20 @@ export const fetchSharedFiles = (projectId: string) =>
 export const fetchTrashedFiles = (projectId: string) =>
     apiGet(`/api/files/trash/${projectId}`);
 
+const invalidateStorageQueries = (queryClient: QueryClient) => {
+    queryClient.invalidateQueries({ queryKey: ["files"] });
+    queryClient.invalidateQueries({ queryKey: ["my-files"] });
+    queryClient.invalidateQueries({ queryKey: ["starred-files"] });
+    queryClient.invalidateQueries({ queryKey: ["shared-files"] });
+    queryClient.invalidateQueries({ queryKey: ["trashed-files"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-home-files"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-my-files"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-starred-files"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-shared-files"] });
+    queryClient.invalidateQueries({ queryKey: ["workspace-trashed-files"] });
+};
+
 // ── Thumbnail helper ──────────────────────────────────────────────────────────
 
 const generateThumbnail = async (file: File): Promise<Blob | null> => {
@@ -83,9 +134,17 @@ const generateThumbnail = async (file: File): Promise<Blob | null> => {
 
 // ── Mutations (plain functions) ───────────────────────────────────────────────
 
-export const uploadFile = async (file: File, projectId: string, workspaceId: string, parentId?: string | null) => {
+export const uploadFile = async (
+    file: File,
+    params: ScopedStorageParams,
+) => {
+    const scopeBody = resolveScopedStorageBody(params);
+    const storagePrefix =
+        params.scope === "project"
+            ? `project/${params.projectId}`
+            : `workspace/${params.workspaceId}`;
     const timestamp = Date.now();
-    const fileName = `${workspaceId}/${timestamp}-${file.name}`;
+    const fileName = `${storagePrefix}/${timestamp}-${file.name}`;
 
     // Get presigned URL for main file
     const { url: presignedUrl, path } = await apiPost<{ url: string; path: string }>(
@@ -106,7 +165,7 @@ export const uploadFile = async (file: File, projectId: string, workspaceId: str
         try {
             const thumbnailBlob = await generateThumbnail(file);
             if (thumbnailBlob) {
-                const thumbName = `${workspaceId}/thumbnails/${timestamp}-${file.name}_thumb.jpg`;
+                const thumbName = `${storagePrefix}/thumbnails/${timestamp}-${file.name}_thumb.jpg`;
                 const { url: thumbPresignedUrl, path: thumbPath } = await apiPost<{ url: string; path: string }>(
                     `/api/files/presign`, { fileName: thumbName },
                 );
@@ -127,20 +186,25 @@ export const uploadFile = async (file: File, projectId: string, workspaceId: str
     }
 
     // Save metadata
-    return apiPost(`/api/files/upload`, {
+    return apiPost("/api/files/upload", {
+        ...scopeBody,
         filename: file.name,
         size: file.size,
         mimeType: file.type,
         url: `${API_URL}/api/files/${path}`,
         thumbnail: thumbnailUrl,
-        workspaceId,
-        projectId,
-        parentId: parentId || null,
+        parentId: params.parentId || null,
     });
 };
 
-export const createFolder = (name: string, projectId: string, workspaceId: string, parentId?: string | null, parentPageId?: string | null) =>
-    apiPost(`/api/files/folder`, { name, workspaceId, projectId, parentId: parentId || null, parentPageId: parentPageId || null });
+export const createFolder = (name: string, params: ScopedStorageParams) => {
+    const scopeBody = resolveScopedStorageBody(params);
+    return apiPost("/api/files/folder", {
+        ...scopeBody,
+        name,
+        parentId: params.parentId || null,
+    });
+};
 
 export const toggleStar = (fileId: string) =>
     apiPut(`/api/files/${fileId}/star`);
@@ -172,11 +236,16 @@ export const useFiles = (workspaceId: string, parentId?: string | null) =>
 export const useUploadFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ file, projectId, workspaceId, parentId }: { file: File; projectId: string; workspaceId: string; parentId?: string | null }) =>
-            uploadFile(file, projectId, workspaceId, parentId),
+        mutationFn: ({ file, scope, projectId, workspaceId, parentId }: {
+            file: File;
+            scope: StorageScope;
+            projectId?: string;
+            workspaceId?: string;
+            parentId?: string | null;
+        }) =>
+            uploadFile(file, { scope, projectId, workspaceId, parentId }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+            invalidateStorageQueries(queryClient);
         },
     });
 };
@@ -184,11 +253,16 @@ export const useUploadFile = () => {
 export const useCreateFolder = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ name, projectId, workspaceId, parentId }: { name: string; projectId: string; workspaceId: string; parentId?: string | null }) =>
-            createFolder(name, projectId, workspaceId, parentId),
+        mutationFn: ({ name, scope, projectId, workspaceId, parentId }: {
+            name: string;
+            scope: StorageScope;
+            projectId?: string;
+            workspaceId?: string;
+            parentId?: string | null;
+        }) =>
+            createFolder(name, { scope, projectId, workspaceId, parentId }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+            invalidateStorageQueries(queryClient);
         },
     });
 };
@@ -197,7 +271,7 @@ export const useToggleStar = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (fileId: string) => toggleStar(fileId),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
+        onSuccess: () => { invalidateStorageQueries(queryClient); },
     });
 };
 
@@ -205,7 +279,7 @@ export const useDeleteFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (fileId: string) => deleteFile(fileId),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
+        onSuccess: () => { invalidateStorageQueries(queryClient); },
     });
 };
 
@@ -213,7 +287,7 @@ export const useRestoreFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (fileId: string) => restoreFile(fileId),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
+        onSuccess: () => { invalidateStorageQueries(queryClient); },
     });
 };
 
@@ -221,7 +295,7 @@ export const usePermanentlyDeleteFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
+        onSuccess: () => { invalidateStorageQueries(queryClient); },
     });
 };
 
@@ -229,17 +303,56 @@ export const useRenameFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["files"] }); },
+        onSuccess: () => { invalidateStorageQueries(queryClient); },
     });
 };
 
 export const moveFile = (fileId: string, parentId: string | null) =>
     apiPut(`/api/files/${fileId}/move`, { parentId });
 
-export const checkDuplicate = (filename: string, parentId: string | null, projectId?: string, workspaceId?: string) =>
-    apiPost<{ exists: boolean; existingFile: { _id: string; filename: string } | null }>(
-        `/api/files/check-duplicate`, { filename, parentId, projectId, workspaceId },
-    );
+export const checkDuplicate = (
+    filename: string,
+    parentId: string | null,
+    params: Omit<ScopedStorageParams, "parentId">,
+) => {
+    if (params.scope === "project") {
+        if (!params.projectId) {
+            throw new Error("projectId is required for project storage actions");
+        }
+
+        return fetchFiles(params.projectId, parentId).then((data: any) => {
+            const files: StorageItem[] = data?.files || [];
+            const existingFile = files.find(
+                (item) => !item.isFolder && item.filename === filename,
+            );
+
+            return {
+                exists: !!existingFile,
+                existingFile: existingFile
+                    ? { _id: existingFile._id, filename: existingFile.filename }
+                    : null,
+            };
+        });
+    }
+
+    if (!params.workspaceId) {
+        throw new Error("workspaceId is required for workspace storage actions");
+    }
+
+    return fetchWorkspaceFiles(params.workspaceId, parentId).then((data: any) => {
+        const files: StorageItem[] = data?.files || [];
+        const existingFile = files.find(
+            (item) => !item.isFolder && item.filename === filename,
+        );
+
+        return {
+            exists: !!existingFile,
+            existingFile: existingFile
+                ? { _id: existingFile._id, filename: existingFile.filename }
+                : null,
+        };
+    });
+};
 
 export const useMoveFile = () => {
     const queryClient = useQueryClient();
@@ -247,8 +360,7 @@ export const useMoveFile = () => {
         mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) =>
             moveFile(fileId, parentId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["files"] });
-            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+            invalidateStorageQueries(queryClient);
         },
     });
 };
@@ -290,6 +402,7 @@ export const useUpdateFileMetadata = () => {
         mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, any> }) =>
             updateFileMetadata(fileId, metaData),
         onSuccess: () => {
+<<<<<<< HEAD
         queryClient.invalidateQueries({ queryKey: ["files"] });
     },
   });
@@ -431,4 +544,9 @@ export const useMoveFileForEditor = () => {
       queryClient.invalidateQueries({ queryKey: ["project-files-editor"] });
     },
   });
+=======
+            invalidateStorageQueries(queryClient);
+        },
+    });
+>>>>>>> feature/ux-complete
 };

@@ -9,6 +9,7 @@ import {
   type Project,
 } from "~/query/project";
 import { useWorkspace } from "~/query/workspace";
+import { useAuth } from "~/hooks/useAuth";
 import {
   MoreVertical,
   UserPlus,
@@ -59,6 +60,7 @@ export default function ProjectTeam() {
 
   const project = projectData?.project as Project;
   const userRole = projectData?.yourRole; // Role của người đang xem trong project
+  const { user: currentUser } = useAuth();
 
   // Mutations
   const updateRoleMutation = useUpdateProjectMemberRole();
@@ -67,7 +69,7 @@ export default function ProjectTeam() {
   const handleUpdateRole = (userId: string, newRole: string) => {
     updateRoleMutation.mutate(
       { projectId: projectId!, userId, newRole },
-      {
+      {   
         onSuccess: () => {
           toast.success("Member role updated successfully");
         },
@@ -205,7 +207,10 @@ export default function ProjectTeam() {
                     ).toLocaleDateString()}
                   </td>
                   <td className="p-4 text-right">
-                    {canManageTeam && (
+                    {canManageTeam &&
+                      currentUser &&
+                      currentUser._id !== member.user._id &&
+                      currentUser.email !== member.user.email && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

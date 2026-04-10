@@ -20,7 +20,7 @@ import {
 
 // ── Module definitions ────────────────────────────────────────────────────────
 
-type ModuleKey =
+type ProjectModuleKey =
   | "overview"
   | "tasks"
   | "cycles"
@@ -29,17 +29,31 @@ type ModuleKey =
   | "stickies"
   | "settings";
 
-const ALL_MODULES: { id: ModuleKey; label: string; locked?: boolean }[] = [
+const MODULE_ORDER: ProjectModuleKey[] = [
+  "overview",
+  "pages",
+  "tasks",
+  "cycles",
+  "storage",
+  "stickies",
+  "settings",
+];
+
+const LOCKED_MODULES: ProjectModuleKey[] = ["overview", "settings"];
+
+const ALL_MODULES: {
+  id: ProjectModuleKey;
+  label: string;
+  locked?: boolean;
+}[] = [
   { id: "overview", label: "Overview", locked: true },
+  { id: "pages", label: "Pages" },
   { id: "tasks", label: "Tasks" },
   { id: "cycles", label: "Cycles" },
-  { id: "pages", label: "Pages" },
   { id: "storage", label: "Storage" },
   { id: "stickies", label: "Stickies" },
   { id: "settings", label: "Settings", locked: true },
 ];
-
-const LOCKED_MODULES: ModuleKey[] = ["overview", "settings"];
 
 // ── Template definitions ──────────────────────────────────────────────────────
 
@@ -48,7 +62,7 @@ type Template = {
   name: string;
   description: string;
   icon: LucideIcon;
-  modules: ModuleKey[];
+  modules: ProjectModuleKey[];
   accent: string; // tailwind ring color
 };
 
@@ -66,7 +80,7 @@ const TEMPLATES: Template[] = [
     name: "General Project",
     description: "Standard project management with tasks & files",
     icon: FolderKanban,
-    modules: ["overview", "tasks", "pages", "storage", "settings"],
+    modules: ["overview", "pages", "tasks", "storage", "settings"],
     accent: "ring-emerald-500/60",
   },
   {
@@ -102,9 +116,10 @@ export default function CreateProject({
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("📁");
   const [description, setDescription] = useState("");
-  const [modules, setModules] = useState<ModuleKey[]>([
-    ...TEMPLATES[0].modules,
-  ]);
+  const [modules, setModules] = useState<ProjectModuleKey[]>(() => {
+    const selectedModules = new Set(TEMPLATES[0].modules);
+    return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
+  });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Close emoji picker on outside click
@@ -122,15 +137,20 @@ export default function CreateProject({
 
   const handleTemplateSelect = (template: Template) => {
     setSelectedTemplate(template.id);
-    setModules([...template.modules]);
+    setModules(() => {
+      const selectedModules = new Set(template.modules);
+      return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
+    });
   };
 
-  const handleModuleToggle = (moduleId: ModuleKey) => {
+  const handleModuleToggle = (moduleId: ProjectModuleKey) => {
     if (LOCKED_MODULES.includes(moduleId)) return;
     setModules((prev) =>
       prev.includes(moduleId)
         ? prev.filter((m) => m !== moduleId)
-        : [...prev, moduleId],
+        : MODULE_ORDER.filter((currentModuleId) =>
+            new Set([...prev, moduleId]).has(currentModuleId),
+          ),
     );
   };
 
@@ -155,7 +175,10 @@ export default function CreateProject({
       setAvatar("📁");
       setDescription("");
       setSelectedTemplate("research");
-      setModules([...TEMPLATES[0].modules]);
+      setModules(() => {
+        const selectedModules = new Set(TEMPLATES[0].modules);
+        return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
+      });
       onSuccess?.();
     },
   });
@@ -163,7 +186,12 @@ export default function CreateProject({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    mutation.mutate({ name: name.trim(), avatar, description, modules });
+    mutation.mutate({
+      name: name.trim(),
+      avatar,
+      description,
+      modules: MODULE_ORDER.filter((moduleId) => modules.includes(moduleId)),
+    });
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -281,11 +309,12 @@ export default function CreateProject({
                       ? "bg-primary/10 text-primary border-primary/20"
                       : "bg-muted/30 text-muted-foreground border-transparent hover:bg-muted/50"
                   }
-                  ${isLocked ? "opacity-60 cursor-default" : "cursor-pointer"}
+                  ${isLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
                 `}
               >
                 {isLocked && <Lock className="size-3" />}
                 {!isLocked && isActive && <Check className="size-3" />}
+                {!isLocked && !isActive && <div className="w-3 shrink-0" />}
                 {mod.label}
               </button>
             );

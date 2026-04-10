@@ -12,11 +12,11 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useCreateFolder } from "~/query/storage";
-import { useProject } from "~/query/project";
 
 type CreateFolderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  scope: "project" | "workspace";
   projectId?: string | null;
   parentId?: string | null;
   workspaceId?: string;
@@ -25,14 +25,23 @@ type CreateFolderDialogProps = {
 export default function CreateFolderDialog({
   open,
   onOpenChange,
+  scope,
   projectId,
   parentId,
-  workspaceId: workspaceIdProp,
+  workspaceId,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
   const createFolderMutation = useCreateFolder();
-  const { data: projectData } = useProject(projectId || "");
-  const workspaceId = workspaceIdProp || (projectData?.project?.workspace as unknown as string);
+
+  const closeWithAnimation = (onClosed?: () => void) => {
+    setIsClosing(true);
+    window.setTimeout(() => {
+      onOpenChange(false);
+      setIsClosing(false);
+      onClosed?.();
+    }, 180);
+  };
 
   const handleCreate = async () => {
     if (!folderName.trim()) return;
@@ -40,12 +49,14 @@ export default function CreateFolderDialog({
     try {
       await createFolderMutation.mutateAsync({
         name: folderName,
-        projectId: projectId || "",
-        workspaceId: workspaceId!,
+        scope,
+        projectId: projectId || undefined,
+        workspaceId,
         parentId,
       });
-      setFolderName("");
-      onOpenChange(false);
+      window.setTimeout(() => {
+        closeWithAnimation(() => setFolderName(""));
+      }, 220);
     } catch (error) {
       console.error("Error creating folder:", error);
     }
@@ -53,7 +64,11 @@ export default function CreateFolderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className={`sm:max-w-md transition-all duration-200 ${
+          isClosing ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
+        }`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderPlus className="h-5 w-5" />
@@ -77,6 +92,7 @@ export default function CreateFolderDialog({
                   handleCreate();
                 }
               }}
+              disabled={createFolderMutation.isPending || isClosing}
               autoFocus
             />
           </div>
@@ -86,15 +102,15 @@ export default function CreateFolderDialog({
           <Button
             variant="outline"
             onClick={() => {
-              onOpenChange(false);
-              setFolderName("");
+              closeWithAnimation(() => setFolderName(""));
             }}
+            disabled={createFolderMutation.isPending || isClosing}
           >
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!folderName.trim() || createFolderMutation.isPending}
+            disabled={!folderName.trim() || createFolderMutation.isPending || isClosing}
           >
             {createFolderMutation.isPending ? "Creating..." : "Create Folder"}
           </Button>

@@ -1,7 +1,8 @@
-import { useParams, useNavigate } from "react-router";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  fetchWorkspaceHome,
+  fetchWorkspaceFiles,
   useToggleStar,
   useDeleteFile,
 } from "~/query/storage";
@@ -13,15 +14,18 @@ import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
 
 export default function WorkspaceHomePage() {
   const { workspaceId: workspaceUrl } = useParams();
-  const navigate = useNavigate();
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<
+    Array<{ id: string | null; name: string }>
+  >([]);
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
   const workspaceId = workspace?._id;
 
   const { data, isLoading: isHomeLoading } = useQuery({
-    queryKey: ["workspace-home", workspaceId],
-    queryFn: () => fetchWorkspaceHome(workspaceId!),
+    queryKey: ["workspace-home-files", workspaceId, currentFolder],
+    queryFn: () => fetchWorkspaceFiles(workspaceId!, currentFolder),
     enabled: !!workspaceId,
   });
 
@@ -53,6 +57,36 @@ export default function WorkspaceHomePage() {
     }
   };
 
+  const handleRenameTrigger = () => {};
+
+  const handleFolderClick = (folder: StorageItem) => {
+    setCurrentFolder(folder._id);
+    setBreadcrumbs((prev) => [...prev, { id: folder._id, name: folder.filename }]);
+  };
+
+  const handleBreadcrumbNavigate = (folderId: string | null) => {
+    setCurrentFolder(folderId);
+    if (folderId === null) {
+      setBreadcrumbs([]);
+      return;
+    }
+
+    setBreadcrumbs((prev) => {
+      const index = prev.findIndex((item) => item.id === folderId);
+      return index >= 0 ? prev.slice(0, index + 1) : prev;
+    });
+  };
+
+  // Home only shows project-scoped storage items.
+  // Workspace-only items are handled in My Drive.
+  const files = useMemo(
+    () =>
+      ((data?.files || []) as StorageItem[]).filter(
+        (item) => !!item.project?._id && !item.isFolder,
+      ),
+    [data?.files],
+  );
+
   if (isWorkspaceLoading || isHomeLoading) {
     return (
       <div className="flex-1 p-6 space-y-4">
@@ -70,45 +104,21 @@ export default function WorkspaceHomePage() {
     return <div className="p-6 text-muted-foreground">Workspace not found</div>;
   }
 
-  const projects = data?.projects || [];
-  const workspaceFiles = (data?.workspaceFiles || []) as StorageItem[];
-
-  // Convert projects into virtual folder StorageItems so they appear
-  // as regular folders inside the FileExplorer alongside workspace files
-  const projectFolders: StorageItem[] = projects.map((project) => ({
-    _id: `project:${project._id}`,
-    filename: project.name,
-    isFolder: true,
-    starred: false,
-    author: { name: "", email: "", avatar: "" },
-    project: { _id: project._id, name: project.name },
-    createdAt: "",
-    updatedAt: "",
-    size: project.totalSize,
-  }));
-
-  // Merge: project folders first, then workspace files
-  const allItems = [...projectFolders, ...workspaceFiles];
-
-  const handleFolderClick = (folder: StorageItem) => {
-    // If it's a virtual project folder, navigate to that project's storage
-    if (folder._id.startsWith("project:")) {
-      const projectId = folder._id.replace("project:", "");
-      navigate(`/${workspaceUrl}/projects/${projectId}/storage`);
-    }
-  };
-
   return (
     <FileExplorer
-      items={allItems}
-      projectId={undefined}
-      wsId={workspaceId}
+      items={files}
+      storageScope="workspace"
+      currentFolder={currentFolder}
+      breadcrumbs={breadcrumbs}
+      workspaceId={workspaceId}
+      onNavigate={handleBreadcrumbNavigate}
       onFolderClick={handleFolderClick}
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}
-      enableUpload={true}
-      enableBreadcrumbs={false}
+      onRename={handleRenameTrigger}
+      enableUpload={false}
+      enableBreadcrumbs={true}
       defaultView="list"
       header={
         <div className="flex items-center gap-2.5">

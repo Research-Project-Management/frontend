@@ -1,7 +1,10 @@
-import { useState } from "react";
-import { API_URL } from "~/lib/api";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { useWorkspaces } from "../../query/workspace";
+import {
+  useDeleteWorkspace,
+  useUpdateWorkspace,
+  useWorkspaces,
+} from "../../query/workspace";
 import { Button } from "../../components/ui/button";
 import {
   Dialog,
@@ -14,8 +17,10 @@ import {
 import { Input } from "../../components/ui/input";
 import { Card } from "../../components/ui/card";
 import { Pencil, Trash2, Users, ArrowRight, Plus } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
+import { useUpload } from "~/hooks/useUpload";
+import { Avatar } from "../workspace/layout/Avatar";
 
 interface Workspace {
   _id: string;
@@ -27,8 +32,8 @@ interface Workspace {
 
 export default function ManageWorkspaces() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { workspaces, isLoading } = useWorkspaces();
+  const { uploadAvatar, isUploading: isUploadingAvatar } = useUpload();
 
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(
     null,
@@ -39,139 +44,123 @@ export default function ManageWorkspaces() {
   const [editName, setEditName] = useState("");
   const [editUrl, setEditUrl] = useState("");
   const [editAvatar, setEditAvatar] = useState<string | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(
+    null,
+  );
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const updateWorkspace = useUpdateWorkspace();
 
-  const updateWorkspace = useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: { name: string; avatar?: string };
-    }) => {
-      const response = await fetch(
-        import.meta.env.VITE_API_URL + `/api/workspace/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        },
-      );
-      if (!response.ok) throw new Error("Failed to update workspace");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      setEditingWorkspace(null);
-      setEditAvatarFile(null);
-    },
-  });
+  const deleteWorkspace = useDeleteWorkspace();
 
-  const deleteWorkspace = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(
-        API_URL + `/api/workspace/${id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        },
-      );
-      if (!response.ok) {
-        let msg = "Failed to delete workspace";
-        try {
-          const data = await response.json();
-          msg = data?.error || data?.message || msg;
-        } catch {}
-        throw new Error(msg);
+  useEffect(() => {
+    return () => {
+      if (editAvatarPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(editAvatarPreview);
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      setDeletingWorkspace(null);
-      setDeleteError(null);
-    },
-    onError: (err: any) => {
-      setDeleteError(err?.message || "Failed to delete workspace");
-    },
-  });
+    };
+  }, [editAvatarPreview]);
+
+  const resetEditState = () => {
+    if (editAvatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+
+    setEditingWorkspace(null);
+    setEditName("");
+    setEditUrl("");
+    setEditAvatar(null);
+    setEditAvatarPreview(null);
+    setEditAvatarFile(null);
+  };
+
+  const editDisplayAvatar = editAvatarPreview || editAvatar;
+  const normalizedEditName = editName.trim();
+  const hasEditChanges =
+    !!editingWorkspace &&
+    (normalizedEditName !== editingWorkspace.name.trim() || !!editAvatarFile);
 
   const handleEdit = (workspace: Workspace) => {
+    if (editAvatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(editAvatarPreview);
+    }
+
     setEditingWorkspace(workspace);
     setEditName(workspace.name);
     setEditUrl(workspace.url);
     setEditAvatar(workspace.avatar);
+    setEditAvatarPreview(null);
     setEditAvatarFile(null);
   };
 
   const handleDelete = (workspace: Workspace) => {
     setDeletingWorkspace(workspace);
-    setDeleteError(null);
   };
 
   const confirmUpdate = async () => {
     if (!editingWorkspace) return;
+    if (!hasEditChanges) {
+      resetEditState();
+      return;
+    }
+
+    if (!normalizedEditName) {
+      toast.error("Workspace name is required");
+      return;
+    }
 
     try {
       let finalAvatar = editAvatar;
 
-      // Upload avatar if file selected
       if (editAvatarFile) {
-        setIsUploadingAvatar(true);
-
-        const presignResponse = await fetch(
-          import.meta.env.VITE_API_URL + "/api/files/presign",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              fileName: `avatars/${Date.now()}-${editAvatarFile.name}`,
-            }),
-          },
-        );
-
-        if (!presignResponse.ok) throw new Error("Failed to get upload URL");
-
-        const { url: presignedUrl, path } = await presignResponse.json();
-
-        const uploadResponse = await fetch(presignedUrl, {
-          method: "PUT",
-          headers: { "Content-Type": editAvatarFile.type },
-          body: editAvatarFile,
-        });
-
-        if (!uploadResponse.ok) throw new Error("Failed to upload file");
-
-        finalAvatar = `${import.meta.env.VITE_API_URL}/api/files/${path}`;
-        setIsUploadingAvatar(false);
+        finalAvatar = await uploadAvatar(editAvatarFile);
       }
 
-      updateWorkspace.mutate({
-        id: editingWorkspace._id,
-        data: {
-          name: editName,
-          ...(finalAvatar && { avatar: finalAvatar }),
+      updateWorkspace.mutate(
+        {
+          id: editingWorkspace._id,
+          data: {
+            name: normalizedEditName,
+            ...(finalAvatar ? { avatar: finalAvatar } : {}),
+          },
         },
-      });
+        {
+          onSuccess: () => {
+            toast.success("Workspace updated");
+            resetEditState();
+          },
+          onError: (error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Failed to update workspace",
+            );
+          },
+        },
+      );
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload avatar. Please try again.");
-      setIsUploadingAvatar(false);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload avatar. Please try again.",
+      );
     }
   };
 
   const confirmDelete = () => {
     if (!deletingWorkspace) return;
-    const shouldRedirectToCreate = (workspaces?.length || 0) === 1;
-    setDeleteError(null);
+
     deleteWorkspace.mutate(deletingWorkspace._id, {
       onSuccess: () => {
-        if (shouldRedirectToCreate) {
-          navigate("/create");
-        }
+        setDeletingWorkspace(null);
+        toast.success("Workspace deleted successfully");
+      },
+      onError: (error) => {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to delete workspace",
+        );
       },
     });
   };
@@ -217,10 +206,11 @@ export default function ManageWorkspaces() {
             >
               {/* Avatar & Info - Centered */}
               <div className="flex flex-col items-center text-center mb-6">
-                <img
+                <Avatar
                   src={workspace.avatar}
-                  alt={workspace.name}
-                  className="w-20 h-20 rounded-2xl object-cover mb-4"
+                  name={workspace.name}
+                  className="w-20 h-20 rounded-2xl mb-4"
+                  fallbackType="workspace"
                 />
                 <h3 className="text-xl font-bold mb-1 truncate w-full">
                   {workspace.name}
@@ -282,7 +272,11 @@ export default function ManageWorkspaces() {
       {/* Edit Dialog */}
       <Dialog
         open={!!editingWorkspace}
-        onOpenChange={(open) => !open && setEditingWorkspace(null)}
+        onOpenChange={(open) => {
+          if (!open && !updateWorkspace.isPending && !isUploadingAvatar) {
+            resetEditState();
+          }
+        }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -293,12 +287,13 @@ export default function ManageWorkspaces() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Avatar Preview */}
-            {editAvatar && (
+            {editDisplayAvatar && (
               <div className="flex justify-center">
-                <img
-                  src={editAvatar}
-                  alt="Avatar preview"
-                  className="w-24 h-24 rounded-2xl object-cover"
+                <Avatar
+                  src={editDisplayAvatar}
+                  name={normalizedEditName || editingWorkspace?.name || "Workspace"}
+                  className="w-24 h-24 rounded-2xl"
+                  fallbackType="workspace"
                 />
               </div>
             )}
@@ -316,13 +311,17 @@ export default function ManageWorkspaces() {
                   if (!file) return;
 
                   if (file.size > 5 * 1024 * 1024) {
-                    alert("File size must be less than 5MB");
+                    toast.error("File size must be less than 5MB");
                     return;
+                  }
+
+                  if (editAvatarPreview?.startsWith("blob:")) {
+                    URL.revokeObjectURL(editAvatarPreview);
                   }
 
                   setEditAvatarFile(file);
                   const previewUrl = URL.createObjectURL(file);
-                  setEditAvatar(previewUrl);
+                  setEditAvatarPreview(previewUrl);
                 }}
               />
               <Button
@@ -360,12 +359,18 @@ export default function ManageWorkspaces() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingWorkspace(null)}>
+            <Button
+              variant="outline"
+              onClick={resetEditState}
+              disabled={updateWorkspace.isPending || isUploadingAvatar}
+            >
               Cancel
             </Button>
             <Button
               onClick={confirmUpdate}
-              disabled={isUploadingAvatar || updateWorkspace.isPending}
+              disabled={
+                isUploadingAvatar || updateWorkspace.isPending || !hasEditChanges
+              }
               className="gap-2"
             >
               {isUploadingAvatar
@@ -383,12 +388,11 @@ export default function ManageWorkspaces() {
         onClose={() => {
           if (!deleteWorkspace.isPending) {
             setDeletingWorkspace(null);
-            setDeleteError(null);
           }
         }}
         onConfirm={confirmDelete}
         title="Delete workspace?"
-        description={`Are you sure you want to delete "${deletingWorkspace?.name}"? This action cannot be undone.${deleteError ? ` ${deleteError}` : ""}`}
+        description={`Are you sure you want to delete "${deletingWorkspace?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         loading={deleteWorkspace.isPending}

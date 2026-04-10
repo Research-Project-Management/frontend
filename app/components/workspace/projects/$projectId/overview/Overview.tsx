@@ -1,5 +1,5 @@
-import { useParams } from "react-router";
-import { useMemo } from "react";
+import { useParams, useNavigate } from "react-router";
+import { useMemo, useState } from "react";
 import { useProjectOverview } from "~/query/project";
 import {
   Users,
@@ -16,6 +16,51 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { getRoleName } from "~/lib/utils";
 import { memo } from "react";
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 2);
+}
+
+function UserAvatar({
+  name,
+  avatar,
+  className,
+  fallbackClassName,
+}: {
+  name: string;
+  avatar?: string;
+  className: string;
+  fallbackClassName?: string;
+}) {
+  const [hasImageError, setHasImageError] = useState(false);
+  const avatarValue = avatar?.trim() || "";
+  const isImageAvatar =
+    !hasImageError &&
+    (avatarValue.startsWith("http://") ||
+      avatarValue.startsWith("https://") ||
+      avatarValue.startsWith("/") ||
+      avatarValue.startsWith("data:image/"));
+
+  return (
+    <Avatar className={className}>
+      {isImageAvatar ? (
+        <AvatarImage
+          src={avatarValue}
+          alt={name}
+          onError={() => setHasImageError(true)}
+        />
+      ) : null}
+      <AvatarFallback className={fallbackClassName}>
+        {avatarValue && !isImageAvatar ? avatarValue : getInitials(name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
 const Section = memo(
   ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="w-full">
@@ -28,7 +73,8 @@ const Section = memo(
 Section.displayName = "Section";
 
 export default function ProjectOverview() {
-  const { projectId } = useParams();
+  const { projectId, workspaceId } = useParams();
+  const navigate = useNavigate();
   const { data, isLoading, error } = useProjectOverview(projectId!);
 
   const formatSize = useMemo(
@@ -38,18 +84,6 @@ export default function ProjectOverview() {
       const sizes = ["B", "KB", "MB", "GB", "TB"];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-    },
-    [],
-  );
-
-  const getInitials = useMemo(
-    () => (name: string) => {
-      return name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2);
     },
     [],
   );
@@ -120,16 +154,16 @@ export default function ProjectOverview() {
             {project.description || "No description provided."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline">Edit Project</Button>
-        </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/10 transition-colors">
+        <div
+          onClick={() => navigate(`/${workspaceId}/projects/${projectId}/tasks`)}
+          className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
               <CheckSquare className="h-4 w-4" />
             </div>
             <span className="text-sm font-medium text-muted-foreground">
@@ -152,9 +186,12 @@ export default function ProjectOverview() {
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/10 transition-colors">
+        <div
+          onClick={() => navigate(`/${workspaceId}/projects/${projectId}/settings/team`)}
+          className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
               <Users className="h-4 w-4" />
             </div>
             <span className="text-sm font-medium text-muted-foreground">
@@ -164,22 +201,23 @@ export default function ProjectOverview() {
           <div className="text-2xl font-bold pl-1">{stats.members}</div>
           <div className="flex -space-x-2 mt-3 overflow-hidden pl-1">
             {project.members.slice(0, 5).map((m, i) => (
-              <Avatar
+              <UserAvatar
                 key={i}
-                className="inline-block border-2 border-background w-6 h-6"
-              >
-                <AvatarImage src={m.user.avatar} />
-                <AvatarFallback className="text-[10px]">
-                  {getInitials(m.user.name)}
-                </AvatarFallback>
-              </Avatar>
+                name={m.user.name}
+                avatar={m.user.avatar}
+                className="inline-block h-6 w-6 border-2 border-background"
+                fallbackClassName="text-[10px]"
+              />
             ))}
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/10 transition-colors">
+        <div
+          onClick={() => navigate(`/${workspaceId}/projects/${projectId}/storage`)}
+          className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 cursor-pointer group"
+        >
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
               <HardDrive className="h-4 w-4" />
             </div>
             <span className="text-sm font-medium text-muted-foreground">
@@ -265,12 +303,11 @@ export default function ProjectOverview() {
                     key={member.user._id}
                     className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-secondary/50 transition-all duration-200 group"
                   >
-                    <Avatar className="h-9 w-9 border border-border/50">
-                      <AvatarImage src={member.user.avatar} />
-                      <AvatarFallback>
-                        {getInitials(member.user.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar
+                      name={member.user.name}
+                      avatar={member.user.avatar}
+                      className="h-9 w-9 border border-border/50"
+                    />
                     <div>
                       <p className="text-sm font-medium leading-none group-hover:text-primary transition-colors">
                         {member.user.name}

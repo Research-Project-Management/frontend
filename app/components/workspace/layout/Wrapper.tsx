@@ -57,14 +57,13 @@ const sidebarItems = [
 
 export default function Wrapper({ children }: { children: React.ReactNode }) {
   const { isLoading: isUserLoading } = useAuth();
-  const { isLoading: isWorkspacesLoading } = useWorkspaces();
   return (
     <div className="h-screen bg-secondary flex flex-col overflow-hidden">
       <TopBar />
       <div className="flex w-full flex-1 min-h-0 pb-2 pr-2">
         <SideBar />
         <div className="flex-1 min-w-0 border rounded-md overflow-hidden bg-background">
-          {isUserLoading || isWorkspacesLoading ? <Loading /> : children}
+          {isUserLoading ? <Loading /> : children}
         </div>
       </div>
     </div>

@@ -102,10 +102,13 @@ export default function GeneralPage() {
     name: string;
     url?: string;
     avatar?: string | null;
-    companySize?: string;
-    timezone?: string;
+    teamSize?: string;
   }) => {
-    const payload: typeof values = { ...values };
+    const payload: any = { ...values };
+    if (payload.teamSize) {
+      payload.companySize = payload.teamSize;
+      delete payload.teamSize;
+    }
     if (payload.avatar === null) {
       delete payload.avatar;
     }
@@ -125,6 +128,7 @@ export default function GeneralPage() {
 
     deleteMutation.mutate(ws._id, {
       onSuccess: () => {
+        setIsDeleteOpen(false);
         toast.success("Workspace deleted");
         navigate(shouldRedirectToCreate ? "/create" : "/");
       },
@@ -156,8 +160,7 @@ export default function GeneralPage() {
             name={ws.name}
             url={ws.url}
             avatar={ws.avatar}
-            companySize={ws.companySize}
-            timezone={ws.timezone}
+            teamSize={ws.companySize}
             onSubmit={handleUpdate}
             isSubmitting={updateMutation.isPending}
           />
@@ -168,11 +171,12 @@ export default function GeneralPage() {
 
           <DeleteModal
             isOpen={isDeleteOpen}
-            onClose={() => setIsDeleteOpen(false)}
-            onConfirm={() => {
-              setIsDeleteOpen(false);
-              handleDelete();
+            onClose={() => {
+              if (!deleteMutation.isPending) {
+                setIsDeleteOpen(false);
+              }
             }}
+            onConfirm={handleDelete}
             title="Delete workspace?"
             description="Are you sure you want to delete this workspace? This action cannot be undone."
             confirmText="Delete"

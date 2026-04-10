@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPut } from "~/lib/api";
+import { apiDelete, apiGet, apiPost, apiPut } from "~/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -106,6 +106,24 @@ export const useUpdateProject = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["project-overview", variables.projectId] });
+    },
+  });
+};
+
+export const useDeleteProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId }: { projectId: string }) =>
+      apiDelete(`/api/project/${projectId}`),
+    onSuccess: (_data, variables) => {
+      queryClient.removeQueries({ queryKey: ["project", variables.projectId] });
+      queryClient.removeQueries({ queryKey: ["project-overview", variables.projectId] });
+
+      // Keep workspace/project switchers and lists in sync after project removal.
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["projects-header"] });
+      queryClient.invalidateQueries({ queryKey: ["project-header"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
     },
   });
 };

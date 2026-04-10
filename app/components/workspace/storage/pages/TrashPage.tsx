@@ -34,16 +34,10 @@ export default function TrashPage() {
   };
 
   const handlePermanentDelete = async (fileId: string) => {
-    if (
-      confirm(
-        "Are you sure you want to permanently delete this file? This action cannot be undone.",
-      )
-    ) {
-      try {
-        await permanentlyDeleteFileMutation.mutateAsync(fileId);
-      } catch (error) {
-        console.error("Error permanently deleting file:", error);
-      }
+    try {
+      await permanentlyDeleteFileMutation.mutateAsync(fileId);
+    } catch (error) {
+      console.error("Error permanently deleting file:", error);
     }
   };
 

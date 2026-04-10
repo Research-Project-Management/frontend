@@ -2,7 +2,6 @@ import { useParams } from "react-router";
 import { useProjectDetails, type Project } from "~/query/project";
 import { useWorkspace } from "~/query/workspace";
 import Loading from "~/components/ui/Loading";
-import TopBar from "~/components/workspace/settings/layout/TopBar";
 import ProjectTeam from "../team/Team";
 
 export default function TeamSettings() {
@@ -20,12 +19,10 @@ export default function TeamSettings() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar
-        title="Team"
-        description={`Manage members of "${project.name}" project.`}
-      />
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <ProjectTeam />
+      <div className="flex-1 overflow-hidden w-full">
+        <div className="max-w-3xl mx-auto w-full h-full">
+          <ProjectTeam />
+        </div>
       </div>
     </div>
   );

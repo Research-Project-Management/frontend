@@ -1,11 +1,10 @@
 import {
-  ChartBarBig,
+  LayoutDashboard,
   ChevronRight,
   Cloud,
   Ellipsis,
   Home,
   KanbanSquare,
-  Layout,
   PanelLeftClose,
   PenLine,
   Pin,
@@ -14,6 +13,7 @@ import {
   UserStar,
   Layers2,
   RotateCcw,
+  ChartBarBig,
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
@@ -38,18 +38,28 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import DropMenu from "./DropMenu";
 
-type ModuleKey =
+
+type ProjectModuleKey =
   | "overview"
   | "tasks"
   | "cycles"
   | "pages"
   | "storage"
-  | "settings"
-  | "stickies";
+  | "stickies"
+  | "settings";
 
-const modulesConfig: Record<ModuleKey, { label: string; icon: LucideIcon }> = {
+const MODULE_ORDER: ProjectModuleKey[] = [
+  "overview",
+  "pages",
+  "tasks",
+  "cycles",
+  "storage",
+  "stickies",
+  "settings",
+];
+
+const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
   overview: { label: "Overview", icon: ChartBarBig },
   tasks: { label: "Tasks", icon: KanbanSquare },
   cycles: { label: "Cycles", icon: RotateCcw },
@@ -82,8 +92,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
     },
   ];
 
-  const { projects, isLoading }: { projects: Project[]; isLoading: boolean } =
-    useProjects();
+  const { projects }: { projects: Project[]; isLoading: boolean } = useProjects();
 
   return (
     <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
@@ -173,17 +182,6 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   </CollapsibleTrigger>
 
                   <div className="flex gap-1 items-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1 rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          <Ellipsis className="size-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropMenu project={project} />
-                    </DropdownMenu>
                     <CollapsibleTrigger asChild>
                       <button className="p-0.5 rounded-sm hover:bg-accent cursor-pointer">
                         <ChevronRight className="size-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
@@ -192,8 +190,10 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   </div>
                 </div>
                 <CollapsibleContent className="overflow-hidden space-y-1 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-                  {project.modules.map((moduleKey: string) => {
-                    const module = modulesConfig[moduleKey as ModuleKey];
+                  {MODULE_ORDER.filter((moduleKey) =>
+                    project.modules.includes(moduleKey),
+                  ).map((moduleKey) => {
+                    const module = modulesConfig[moduleKey];
                     if (!module) return null;
                     const moduleLink = `/${workspaceId}/projects/${project._id}/${moduleKey}`;
                     const isModuleActive = location.pathname === moduleLink;

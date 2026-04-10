@@ -45,14 +45,14 @@ export default function WorkspaceLayout() {
   const { workspace, isLoading: workspaceLoading } = useWorkspace();
 
   useEffect(() => {
-    if (isLoading || workspaceLoading) return;
+    if (workspaceLoading) return;
 
     if (workspaces && workspaces.length > 0 && !workspace) {
       navigate(`/${(workspaces[0] as any).url}`, { replace: true });
     }
   }, [workspaces, workspace, isLoading, workspaceLoading, navigate]);
 
-  if (isLoading || workspaceLoading) {
+  if (workspaceLoading) {
     return <WorkspaceSkeleton />;
   }
 

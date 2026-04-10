@@ -8,17 +8,27 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useState } from "react";
-import { KanbanColumn } from "../KanbanColumn";
-import { CardTemplate } from "../templates/CardTemplate";
-import type { Task, Column } from "~/types/task";
+import { Column } from "../Column";
+import { CardUI } from "../Card";
+import {
+  resolveTaskColumnId,
+  type Task,
+  type Column as ColumnType,
+} from "~/types/task";
 
 type BoardViewProps = {
   tasks: Task[];
-  columns: Column[];
-  onAddCard: (columnId: string) => void;
+  tasksByColumnId: Map<string, Task[]>;
+  columns: ColumnType[];
+  currentUserId?: string | null;
+  currentUserAvatar?: string;
+  onAddCard: (columnId: string, title?: string) => void;
   onEditCard: (card: Task) => void;
   onDeleteCard: (card: Task) => void;
   onDuplicateCard: (card: Task) => void;
+  onJoinCard: (card: Task) => void;
+  onLeaveCard: (card: Task) => void;
+  onToggleCardCompleted: (card: Task) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
   onDeleteColumn: (columnId: string) => void;
   onUpdateColumn: (columnId: string) => void;
@@ -26,11 +36,17 @@ type BoardViewProps = {
 
 export default function BoardView({
   tasks,
+  tasksByColumnId,
   columns,
+  currentUserId,
+  currentUserAvatar,
   onAddCard,
   onEditCard,
   onDeleteCard,
   onDuplicateCard,
+  onJoinCard,
+  onLeaveCard,
+  onToggleCardCompleted,
   onMoveCard,
   onDeleteColumn,
   onUpdateColumn,
@@ -70,17 +86,22 @@ export default function BoardView({
       >
         <div className="flex gap-5 h-full min-w-max">
           {columns.map((column) => {
-            const columnId = column.id ?? column._id ?? "";
+            const columnId = resolveTaskColumnId(column);
 
             return (
-              <KanbanColumn
+              <Column
                 key={columnId}
                 column={column}
-                cards={tasks.filter((task) => task.columnId === columnId)}
-                onAdd={() => onAddCard(columnId)}
+                cards={tasksByColumnId.get(columnId) ?? []}
+                onAdd={(cId, title) => onAddCard(cId, title)}
                 onEditCard={onEditCard}
                 onDeleteCard={onDeleteCard}
                 onDuplicateCard={onDuplicateCard}
+                currentUserId={currentUserId}
+                currentUserAvatar={currentUserAvatar}
+                onJoinCard={onJoinCard}
+                onLeaveCard={onLeaveCard}
+                onToggleCardCompleted={onToggleCardCompleted}
                 onDelete={() => onDeleteColumn(columnId)}
                 onUpdate={() => onUpdateColumn(columnId)}
               />
@@ -91,7 +112,7 @@ export default function BoardView({
         <DragOverlay>
           {activeCard ? (
             <div className="opacity-50">
-              <CardTemplate card={activeCard} />
+              <CardUI card={activeCard} />
             </div>
           ) : null}
         </DragOverlay>

@@ -10,6 +10,10 @@ export type StorageItem = {
   thumbnail?: string;
   starred: boolean;
   metaData?: Record<string, any>;
+  sharedWith?: Array<{
+    user: string;
+    permission: "view" | "edit";
+  }>;
   author: {
     name: string;
     email: string;

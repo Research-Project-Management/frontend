@@ -53,6 +53,8 @@ export default function WorkspaceSharedPage() {
     }
   };
 
+  const handleRenameTrigger = () => {};
+
   if (isWorkspaceLoading || isFilesLoading) {
     return <Loading />;
   }
@@ -66,10 +68,12 @@ export default function WorkspaceSharedPage() {
   return (
     <FileExplorer
       items={files}
-      projectId={workspaceId}
+      storageScope="workspace"
+      workspaceId={workspaceId}
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}
+      onRename={handleRenameTrigger}
       enableUpload={false}
       enableBreadcrumbs={false}
       defaultView="list"

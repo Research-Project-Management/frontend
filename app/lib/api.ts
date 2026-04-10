@@ -52,7 +52,8 @@ export async function apiFetch<T = any>(
 
 // ── Convenience helpers ───────────────────────────────────────────────────────
 
-export const apiGet = <T = any>(url: string) => apiFetch<T>(url);
+export const apiGet = <T = any>(url: string, options?: RequestInit) =>
+  apiFetch<T>(url, options);
 
 export const apiPost = <T = any>(url: string, body?: unknown) =>
   apiFetch<T>(url, {

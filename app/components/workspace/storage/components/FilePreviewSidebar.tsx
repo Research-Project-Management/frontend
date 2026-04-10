@@ -803,7 +803,7 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
                       <Hash className="size-3 text-muted-foreground/60" />
                       <span className="text-[10px] font-medium text-muted-foreground uppercase">Keywords</span>
                     </div>
-                    <div className="flex flex-wrap gap-1 pl-[18px]">
+                    <div className="flex flex-wrap gap-1 pl-4.5">
                       {metadata.keywords.split(/[,;]+/).map((kw, i) => (
                         <span
                           key={i}
@@ -875,7 +875,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-start gap-2">
       <span className="text-xs text-muted-foreground shrink-0">{label}</span>
-      <span className="text-xs text-foreground text-right break-words max-w-[180px]" title={value}>
+      <span className="text-xs text-foreground text-right wrap-break-word max-w-45" title={value}>
         {value}
       </span>
     </div>
@@ -894,12 +894,12 @@ function MetaRow({ icon: Icon, label, value, href }: { icon: any; label: string;
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-primary hover:underline pl-[18px] break-all leading-snug block"
+          className="text-xs text-primary hover:underline pl-4.5 break-all leading-snug block"
         >
           {value}
         </a>
       ) : (
-        <p className="text-xs text-foreground pl-[18px] break-words leading-snug">{value}</p>
+        <p className="text-xs text-foreground pl-4.5 wrap-break-word leading-snug">{value}</p>
       )}
     </div>
   );

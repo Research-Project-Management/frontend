@@ -49,7 +49,9 @@ export default function UploadDialog({
   const [duplicateFilename, setDuplicateFilename] = useState("");
 
   const uploadMutation = useUploadFile();
-  const duplicateResolveRef = useRef<((action: DuplicateAction) => void) | null>(null);
+  const duplicateResolveRef = useRef<
+    ((action: DuplicateAction) => void) | null
+  >(null);
 
   const closeWithAnimation = (onClosed?: () => void) => {
     setIsClosing(true);
@@ -77,12 +79,15 @@ export default function UploadDialog({
     addFiles(droppedFiles);
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      addFiles(selectedFiles);
-    }
-  }, []);
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        const selectedFiles = Array.from(e.target.files);
+        addFiles(selectedFiles);
+      }
+    },
+    [],
+  );
 
   const addFiles = (newFiles: File[]) => {
     const filesWithProgress: FileWithProgress[] = newFiles.map((file) => ({
@@ -129,18 +134,24 @@ export default function UploadDialog({
       let fileToUpload = originalFile;
 
       try {
-        const { exists, existingFile } = await checkDuplicate(originalFile.name, parentId ?? null, {
-          scope,
-          projectId: projectId ?? undefined,
-          workspaceId,
-        });
+        const { exists, existingFile } = await checkDuplicate(
+          originalFile.name,
+          parentId ?? null,
+          {
+            scope,
+            projectId: projectId ?? undefined,
+            workspaceId,
+          },
+        );
 
         if (exists) {
           const action = await promptDuplicate(originalFile.name);
 
           if (action === "cancel") {
             setFiles((prev) =>
-              prev.map((f, idx) => (idx === i ? { ...f, status: "skipped" as const } : f)),
+              prev.map((f, idx) =>
+                idx === i ? { ...f, status: "skipped" as const } : f,
+              ),
             );
             continue;
           }
@@ -154,8 +165,13 @@ export default function UploadDialog({
           }
 
           if (action === "keep-both") {
-            const newName = generateUniqueName(originalFile.name, existingNames);
-            fileToUpload = new File([originalFile], newName, { type: originalFile.type });
+            const newName = generateUniqueName(
+              originalFile.name,
+              existingNames,
+            );
+            fileToUpload = new File([originalFile], newName, {
+              type: originalFile.type,
+            });
           }
         }
       } catch {
@@ -174,7 +190,9 @@ export default function UploadDialog({
         progressInterval = setInterval(() => {
           setFiles((prev) =>
             prev.map((f, idx) =>
-              idx === i && f.progress < 90 ? { ...f, progress: f.progress + 10 } : f,
+              idx === i && f.progress < 90
+                ? { ...f, progress: f.progress + 10 }
+                : f,
             ),
           );
         }, 200);
@@ -202,7 +220,8 @@ export default function UploadDialog({
               ? {
                   ...f,
                   status: "error" as const,
-                  error: error instanceof Error ? error.message : "Upload failed",
+                  error:
+                    error instanceof Error ? error.message : "Upload failed",
                 }
               : f,
           ),
@@ -235,8 +254,18 @@ export default function UploadDialog({
     uploading: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
     success: (
       <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center">
-        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <svg
+          className="h-3 w-3 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
         </svg>
       </div>
     ),
@@ -255,7 +284,8 @@ export default function UploadDialog({
   const hasFiles = files.length > 0;
   const isUploading = files.some((f) => f.status === "uploading");
   const allComplete = files.every(
-    (f) => f.status === "success" || f.status === "error" || f.status === "skipped",
+    (f) =>
+      f.status === "success" || f.status === "error" || f.status === "skipped",
   );
   const pendingCount = files.filter((f) => f.status === "pending").length;
 
@@ -269,7 +299,9 @@ export default function UploadDialog({
         >
           <DialogHeader>
             <DialogTitle>Upload Files</DialogTitle>
-            <DialogDescription>Drag and drop files here or click to browse</DialogDescription>
+            <DialogDescription>
+              Drag and drop files here or click to browse
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -278,7 +310,9 @@ export default function UploadDialog({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                isDragging
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
               }`}
             >
               <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -306,19 +340,33 @@ export default function UploadDialog({
             {hasFiles && (
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {files.map((fileItem, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 border rounded-lg"
+                  >
                     <FileIcon className="h-8 w-8 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{fileItem.file.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(fileItem.file.size)}</p>
+                      <p className="text-sm font-medium truncate">
+                        {fileItem.file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(fileItem.file.size)}
+                      </p>
                       {fileItem.status === "uploading" && (
-                        <Progress value={fileItem.progress} className="h-1 mt-2" />
+                        <Progress
+                          value={fileItem.progress}
+                          className="h-1 mt-2"
+                        />
                       )}
                       {fileItem.status === "error" && (
-                        <p className="text-xs text-destructive mt-1">{fileItem.error}</p>
+                        <p className="text-xs text-destructive mt-1">
+                          {fileItem.error}
+                        </p>
                       )}
                       {fileItem.status === "skipped" && (
-                        <p className="text-xs text-muted-foreground mt-1">Skipped</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Skipped
+                        </p>
                       )}
                     </div>
                     <div className="shrink-0">
@@ -350,7 +398,13 @@ export default function UploadDialog({
             </Button>
             <Button
               onClick={uploadFiles}
-              disabled={!hasFiles || isUploading || allComplete || isClosing || pendingCount === 0}
+              disabled={
+                !hasFiles ||
+                isUploading ||
+                allComplete ||
+                isClosing ||
+                pendingCount === 0
+              }
             >
               {isUploading ? (
                 <>

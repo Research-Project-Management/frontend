@@ -35,7 +35,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import type { ChatMessage, SourceItem } from "~/types/chat";
+import type { ChatMessage, SourceItem, AgentAction } from "~/types/chat";
 import {
   streamChatResponse,
   getChatSession,
@@ -44,6 +44,7 @@ import {
 } from "~/query/chat-ai";
 import { renderMarkdown } from "./renderMarkdown";
 import ChatAi from "../chatAi";
+import { ActionCardsGroup } from "../ActionCard";
 import { useChatMode } from "~/contexts/ChatModeContext";
 
 // ── Agent metadata ──────────────────────────────────────────────────────────────
@@ -72,6 +73,10 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   web_search: {
     label: "Web Search",
     color: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  },
+  action: {
+    label: "Workspace Agent",
+    color: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
   },
 };
 
@@ -404,6 +409,7 @@ export default function ChatView() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
+  const [activeActions, setActiveActions] = useState<AgentAction[]>([]);
   // chatStarted: true once the user sends the first message in a new session
   // prevents WelcomeScreen from re-appearing when session creation fails
   const [chatStarted, setChatStarted] = useState(false);
@@ -503,6 +509,7 @@ export default function ChatView() {
       setStreamContent("");
       setIsStreaming(true);
       setActiveAgent(null);
+      setActiveActions([]);
       setChatStarted(true);
       setSaveError(false);
       activeSourcesRef.current = [];
@@ -514,6 +521,7 @@ export default function ChatView() {
         for await (const chunk of streamChatResponse(newMessages, {
           signal: controller.signal,
           projectId,
+          workspaceId,
           documentIds:
             fluxDataEnabled && enabledDocumentIds.length > 0
               ? enabledDocumentIds
@@ -524,6 +532,9 @@ export default function ChatView() {
             if (meta.sources && meta.sources.length > 0) {
               activeSourcesRef.current = meta.sources;
             }
+          },
+          onAction: (action) => {
+            setActiveActions((prev) => [...prev, action]);
           },
         })) {
           streamRef.current += chunk;
@@ -593,6 +604,7 @@ export default function ChatView() {
         streamRef.current = "";
         abortRef.current = null;
         setActiveAgent(null);
+        setActiveActions([]);
         activeSourcesRef.current = [];
       }
     },
@@ -669,23 +681,36 @@ export default function ChatView() {
             ))}
 
             {/* Streaming response — shown while tokens arrive */}
-            {isStreaming && streamContent && (
+            {isStreaming && (streamContent || activeActions.length > 0) && (
               <div className="space-y-1">
                 {activeAgent && (
                   <div className="pl-10">
                     <AgentBadge agent={activeAgent} />
                   </div>
                 )}
-                <MessageBubble
-                  content={streamContent}
-                  role="assistant"
-                  isStreaming
-                />
+
+                {/* Action cards from agent tool calls */}
+                {activeActions.length > 0 && (
+                  <div className="pl-10">
+                    <ActionCardsGroup
+                      actions={activeActions}
+                      isStreaming={isStreaming}
+                    />
+                  </div>
+                )}
+
+                {streamContent && (
+                  <MessageBubble
+                    content={streamContent}
+                    role="assistant"
+                    isStreaming
+                  />
+                )}
               </div>
             )}
 
             {/* Typing indicator — shown before first token arrives */}
-            {isStreaming && !streamContent && (
+            {isStreaming && !streamContent && activeActions.length === 0 && (
               <div className="flex flex-col gap-1.5 animate-in fade-in-0 duration-300">
                 {activeAgent && (
                   <div className="pl-10">

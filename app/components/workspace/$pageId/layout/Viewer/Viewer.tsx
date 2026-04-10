@@ -738,6 +738,24 @@ export default function Viewer() {
     setShowLog(false);
 
     try {
+      // ── Pre-compile save: flush current editor content to backend + compiler ──
+      // The autosave is debounced (1s), so if the user edits and immediately
+      // compiles, the compiler folder still has stale content.  We do an
+      // immediate save here to guarantee the compiler always sees the latest.
+      if (isProjectMode && currentPage?._id) {
+        const latestContent = getEditorContent.current?.() ?? "";
+        try {
+          await fetch(`${API_URL}/api/pages/${currentPage._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ content: latestContent }),
+          });
+        } catch (syncErr) {
+          console.warn("[compile] pre-compile save failed, compiling anyway:", syncErr);
+        }
+      }
+
       // Build payload - omit source in project mode (compiler uses synced files)
       const payload: Record<string, any> = {
         engine,

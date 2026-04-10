@@ -77,3 +77,33 @@ export interface ChatTraceResponse {
   description: string;
   details: object;
 }
+
+// ── Action Agent Types ──────────────────────────────────────────────────────────
+
+/** A single tool execution event from the action agent */
+export interface AgentAction {
+  type: "tool_start" | "tool_end";
+  tool: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  needs_confirm?: boolean;
+  error?: string;
+}
+
+/** Pretty labels for tools displayed in ActionCard */
+export const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
+  list_tasks: { label: "Listing Tasks", icon: "📋" },
+  create_task: { label: "Creating Task", icon: "✅" },
+  update_task: { label: "Updating Task", icon: "✏️" },
+  delete_task: { label: "Deleting Task", icon: "🗑️" },
+  list_projects: { label: "Listing Projects", icon: "📁" },
+  get_project_overview: { label: "Getting Overview", icon: "📊" },
+  list_members: { label: "Looking Up Members", icon: "👥" },
+  search_workspace: { label: "Searching Workspace", icon: "🔍" },
+  list_cycles: { label: "Listing Cycles", icon: "🔄" },
+  create_cycle: { label: "Creating Cycle", icon: "🔄" },
+  list_pages: { label: "Listing Pages", icon: "📄" },
+  get_page_content: { label: "Reading Page", icon: "📄" },
+  list_stickies: { label: "Listing Stickies", icon: "📌" },
+  create_sticky: { label: "Creating Sticky", icon: "📌" },
+};

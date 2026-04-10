@@ -3,6 +3,7 @@ import type {
   ChatSession,
   ChatSessionDetail,
   SourceItem,
+  AgentAction,
 } from "~/types/chat";
 import { API_URL } from "~/lib/api";
 
@@ -18,11 +19,13 @@ export async function* streamChatResponse(
     documentIds?: string[];
     intentHint?: string;
     webSearchSites?: string[];
+    workspaceId?: string;
     onMeta?: (meta: {
       agent: string;
       intent: string;
       sources?: SourceItem[];
     }) => void;
+    onAction?: (action: AgentAction) => void;
     signal?: AbortSignal;
   },
 ): AsyncGenerator<string, void, unknown> {
@@ -39,6 +42,7 @@ export async function* streamChatResponse(
       document_ids: options?.documentIds,
       intent_hint: options?.intentHint,
       web_search_sites: options?.webSearchSites ?? null,
+      workspace_id: options?.workspaceId ?? null,
     }),
     signal: options?.signal,
   });
@@ -72,6 +76,13 @@ export async function* streamChatResponse(
             try {
               const meta = JSON.parse(data.slice(6));
               options?.onMeta?.(meta);
+            } catch {}
+            continue;
+          }
+          if (data.startsWith("[ACTION]")) {
+            try {
+              const action: AgentAction = JSON.parse(data.slice(8));
+              options?.onAction?.(action);
             } catch {}
             continue;
           }

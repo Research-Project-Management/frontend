@@ -17,15 +17,26 @@ import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
 
 const DEFAULT_ACADEMIC_SITES = [
+  // Primary academic sources
   "arxiv.org",
-  "pubmed.ncbi.nlm.nih.gov",
-  "semanticscholar.org",
   "ieeexplore.ieee.org",
   "dl.acm.org",
+  "pubmed.ncbi.nlm.nih.gov",
+  "semanticscholar.org",
+  "scholar.google.com",
+  // Publishers
   "springer.com",
   "nature.com",
   "sciencedirect.com",
   "researchgate.net",
+  // Conference proceedings & preprints
+  "aclanthology.org",
+  "openreview.net",
+  "zenodo.org",
+  "proceedings.mlr.press",
+  "proceedings.neurips.cc",
+  "biorxiv.org",
+  "medrxiv.org",
 ];
 
 interface ChatAiProps {

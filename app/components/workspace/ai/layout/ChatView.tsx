@@ -499,7 +499,7 @@ export default function ChatView() {
 
 
   const handleSend = useCallback(
-    async (text: string, projectId?: string, webSearchSites?: string[]) => {
+    async (text: string, projectId?: string, webSearchSites?: string[], intentHint?: string) => {
       if (isStreaming) return;
 
       const userMsg: ChatMessage = { role: "user", content: text };
@@ -527,6 +527,7 @@ export default function ChatView() {
               ? enabledDocumentIds
               : undefined,
           webSearchSites,
+          intentHint,
           onMeta: (meta) => {
             setActiveAgent(meta.agent);
             if (meta.sources && meta.sources.length > 0) {
@@ -625,7 +626,7 @@ export default function ChatView() {
   useEffect(() => {
     if (initialQ && !chatId) {
       const timer = setTimeout(() => {
-        handleSendRef.current(initialQ, initialProject);
+        handleSendRef.current(initialQ, initialProject, undefined, undefined);
       }, 500);
       return () => clearTimeout(timer);
     }

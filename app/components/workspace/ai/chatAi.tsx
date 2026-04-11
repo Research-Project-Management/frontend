@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
+import { ArrowUp, Square, Globe, X, Plus, ChevronDown, Zap, Bot } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
 
@@ -39,11 +39,72 @@ const DEFAULT_ACADEMIC_SITES = [
   "medrxiv.org",
 ];
 
+/** Available agents that can be @mentioned */
+const AGENTS = [
+  {
+    id: "action",
+    label: "Action",
+    description: "Workspace ops: tasks, projects, pages",
+    icon: "⚡",
+    color: "text-amber-500",
+    bg: "bg-amber-500/10 hover:bg-amber-500/20",
+    border: "border-amber-500/30",
+  },
+  {
+    id: "rag",
+    label: "RAG",
+    description: "Search your uploaded documents",
+    icon: "📄",
+    color: "text-blue-500",
+    bg: "bg-blue-500/10 hover:bg-blue-500/20",
+    border: "border-blue-500/30",
+  },
+  {
+    id: "analyze",
+    label: "Analyze",
+    description: "Data analysis & research review",
+    icon: "🔬",
+    color: "text-emerald-500",
+    bg: "bg-emerald-500/10 hover:bg-emerald-500/20",
+    border: "border-emerald-500/30",
+  },
+  {
+    id: "latex",
+    label: "LaTeX",
+    description: "LaTeX code & equation generation",
+    icon: "📐",
+    color: "text-violet-500",
+    bg: "bg-violet-500/10 hover:bg-violet-500/20",
+    border: "border-violet-500/30",
+  },
+  {
+    id: "web_search",
+    label: "Web Search",
+    description: "Search academic & general web",
+    icon: "🌐",
+    color: "text-sky-500",
+    bg: "bg-sky-500/10 hover:bg-sky-500/20",
+    border: "border-sky-500/30",
+  },
+  {
+    id: "chat",
+    label: "Chat",
+    description: "General conversational AI",
+    icon: "💬",
+    color: "text-muted-foreground",
+    bg: "bg-secondary/80 hover:bg-secondary",
+    border: "border-border",
+  },
+] as const;
+
+type AgentId = (typeof AGENTS)[number]["id"];
+
 interface ChatAiProps {
   onSend?: (
     text: string,
     projectId?: string,
     webSearchSites?: string[],
+    intentHint?: string,
   ) => void;
   disabled?: boolean;
   initialProject?: string;
@@ -57,7 +118,12 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const [selectedProject, setSelectedProject] = useState<string>(initialProject || "");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
+  const [mentionedAgent, setMentionedAgent] = useState<AgentId | null>(null);
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStart, setMentionStart] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -68,20 +134,88 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
     }
   }, [message]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowMentionDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setMessage(val);
+
+    // Detect @ trigger
+    const cursor = e.target.selectionStart ?? val.length;
+    const textBeforeCursor = val.slice(0, cursor);
+    const lastAt = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAt >= 0) {
+      const textAfterAt = textBeforeCursor.slice(lastAt + 1);
+      // Only trigger if no spaces after @
+      if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
+        setMentionStart(lastAt);
+        setMentionQuery(textAfterAt.toLowerCase());
+        setShowMentionDropdown(true);
+        return;
+      }
+    }
+    setShowMentionDropdown(false);
+  };
+
+  const filteredAgents = AGENTS.filter(
+    (a) =>
+      mentionQuery === "" ||
+      a.id.includes(mentionQuery) ||
+      a.label.toLowerCase().includes(mentionQuery),
+  );
+
+  const selectAgent = (agent: (typeof AGENTS)[number]) => {
+    // Replace the @query in message with empty string (tag handles the display)
+    if (mentionStart >= 0) {
+      const before = message.slice(0, mentionStart);
+      const after = message.slice(mentionStart + 1 + mentionQuery.length);
+      setMessage((before + after).trimStart());
+    }
+    setMentionedAgent(agent.id);
+    setShowMentionDropdown(false);
+    textareaRef.current?.focus();
+  };
+
+  const clearAgent = () => setMentionedAgent(null);
+
   const handleSend = useCallback(() => {
     if (!message.trim() || disabled) return;
     onSend?.(
       message.trim(),
       selectedProject || undefined,
       webSearch ? sites : undefined,
+      mentionedAgent ?? undefined,
     );
     setMessage("");
-  }, [message, disabled, selectedProject, onSend, webSearch, sites]);
+    setMentionedAgent(null);
+  }, [message, disabled, selectedProject, onSend, webSearch, sites, mentionedAgent]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Navigate dropdown with arrows
+    if (showMentionDropdown) {
+      if (e.key === "Escape") {
+        setShowMentionDropdown(false);
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (showMentionDropdown && filteredAgents.length > 0) {
+        selectAgent(filteredAgents[0]);
+      } else {
+        handleSend();
+      }
     }
   };
 
@@ -102,11 +236,46 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
   if (isLoading || !projects) return null;
 
+  const activeAgent = mentionedAgent ? AGENTS.find((a) => a.id === mentionedAgent) : null;
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4">
       <div className="relative w-full group">
+        {/* @mention dropdown */}
+        {showMentionDropdown && filteredAgents.length > 0 && (
+          <div
+            ref={dropdownRef}
+            className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+          >
+            <div className="px-3 py-2 border-b border-border/60">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Mention Agent
+              </p>
+            </div>
+            {filteredAgents.map((agent) => (
+              <button
+                key={agent.id}
+                onClick={() => selectAgent(agent)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent/60 transition-colors text-left group/item"
+              >
+                <span className="text-lg">{agent.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${agent.color}`}>
+                      @{agent.label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {agent.description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
-          {/* Top row: project selector */}
+          {/* Top row: project selector + active agent badge */}
           <div className="flex items-center gap-2 px-3 pt-3">
             <Select
               value={selectedProject || projects[0]?._id}
@@ -129,17 +298,44 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Active agent badge */}
+            {activeAgent && (
+              <div
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${activeAgent.bg} ${activeAgent.border} ${activeAgent.color} transition-all`}
+              >
+                <span>{activeAgent.icon}</span>
+                <span>@{activeAgent.label}</span>
+                <button
+                  onClick={clearAgent}
+                  className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Hint text when no agent selected */}
+            {!activeAgent && (
+              <span className="text-[10px] text-muted-foreground/40 ml-auto mr-1 hidden sm:block">
+                Type @ to mention an agent
+              </span>
+            )}
           </div>
 
           {/* Textarea */}
           <Textarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleMessageChange}
             onKeyDown={handleKeyDown}
             rows={1}
             className="border-none shadow-none focus-visible:ring-0 resize-none min-h-[44px] max-h-[200px] px-4 py-3 text-sm placeholder:text-muted-foreground/50"
-            placeholder="Ask anything about your project..."
+            placeholder={
+              activeAgent
+                ? `Ask ${activeAgent.label} anything...`
+                : "Ask anything about your project..."
+            }
           />
 
           {/* Bottom row */}

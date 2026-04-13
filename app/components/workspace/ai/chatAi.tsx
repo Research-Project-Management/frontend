@@ -12,9 +12,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { ArrowUp, Square, Globe, X, Plus, ChevronDown, Zap, Bot } from "lucide-react";
+import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
+import { AGENT_CONFIGS } from "~/types/chat";
+import type { AgentId } from "~/types/chat";
 
 const DEFAULT_ACADEMIC_SITES = [
   // Primary academic sources
@@ -39,66 +41,6 @@ const DEFAULT_ACADEMIC_SITES = [
   "medrxiv.org",
 ];
 
-/** Available agents that can be @mentioned */
-const AGENTS = [
-  {
-    id: "action",
-    label: "Action",
-    description: "Workspace ops: tasks, projects, pages",
-    icon: "⚡",
-    color: "text-amber-500",
-    bg: "bg-amber-500/10 hover:bg-amber-500/20",
-    border: "border-amber-500/30",
-  },
-  {
-    id: "rag",
-    label: "RAG",
-    description: "Search your uploaded documents",
-    icon: "📄",
-    color: "text-blue-500",
-    bg: "bg-blue-500/10 hover:bg-blue-500/20",
-    border: "border-blue-500/30",
-  },
-  {
-    id: "analyze",
-    label: "Analyze",
-    description: "Data analysis & research review",
-    icon: "🔬",
-    color: "text-emerald-500",
-    bg: "bg-emerald-500/10 hover:bg-emerald-500/20",
-    border: "border-emerald-500/30",
-  },
-  {
-    id: "latex",
-    label: "LaTeX",
-    description: "LaTeX code & equation generation",
-    icon: "📐",
-    color: "text-violet-500",
-    bg: "bg-violet-500/10 hover:bg-violet-500/20",
-    border: "border-violet-500/30",
-  },
-  {
-    id: "web_search",
-    label: "Web Search",
-    description: "Search academic & general web",
-    icon: "🌐",
-    color: "text-sky-500",
-    bg: "bg-sky-500/10 hover:bg-sky-500/20",
-    border: "border-sky-500/30",
-  },
-  {
-    id: "chat",
-    label: "Chat",
-    description: "General conversational AI",
-    icon: "💬",
-    color: "text-muted-foreground",
-    bg: "bg-secondary/80 hover:bg-secondary",
-    border: "border-border",
-  },
-] as const;
-
-type AgentId = (typeof AGENTS)[number]["id"];
-
 interface ChatAiProps {
   onSend?: (
     text: string,
@@ -122,6 +64,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionStart, setMentionStart] = useState(-1);
+  const [highlightIdx, setHighlightIdx] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -161,20 +104,21 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
         setMentionStart(lastAt);
         setMentionQuery(textAfterAt.toLowerCase());
         setShowMentionDropdown(true);
+        setHighlightIdx(0);
         return;
       }
     }
     setShowMentionDropdown(false);
   };
 
-  const filteredAgents = AGENTS.filter(
+  const filteredAgents = AGENT_CONFIGS.filter(
     (a) =>
       mentionQuery === "" ||
       a.id.includes(mentionQuery) ||
       a.label.toLowerCase().includes(mentionQuery),
   );
 
-  const selectAgent = (agent: (typeof AGENTS)[number]) => {
+  const selectAgent = (agent: (typeof AGENT_CONFIGS)[number]) => {
     // Replace the @query in message with empty string (tag handles the display)
     if (mentionStart >= 0) {
       const before = message.slice(0, mentionStart);
@@ -183,6 +127,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
     }
     setMentionedAgent(agent.id);
     setShowMentionDropdown(false);
+    setHighlightIdx(0);
     textareaRef.current?.focus();
   };
 
@@ -202,21 +147,45 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // Navigate dropdown with arrows
-    if (showMentionDropdown) {
+    if (showMentionDropdown && filteredAgents.length > 0) {
       if (e.key === "Escape") {
         setShowMentionDropdown(false);
         e.preventDefault();
         return;
       }
-    }
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (showMentionDropdown && filteredAgents.length > 0) {
-        selectAgent(filteredAgents[0]);
-      } else {
-        handleSend();
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIdx((prev) => (prev + 1) % filteredAgents.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIdx((prev) =>
+          prev <= 0 ? filteredAgents.length - 1 : prev - 1,
+        );
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]);
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]);
+        return;
       }
     }
+
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleQuickPrompt = (prompt: string) => {
+    setMessage(prompt);
+    textareaRef.current?.focus();
   };
 
   const addSite = () => {
@@ -236,7 +205,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
   if (isLoading || !projects) return null;
 
-  const activeAgent = mentionedAgent ? AGENTS.find((a) => a.id === mentionedAgent) : null;
+  const activeAgent = mentionedAgent ? AGENT_CONFIGS.find((a) => a.id === mentionedAgent) : null;
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4">
@@ -245,26 +214,28 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
         {showMentionDropdown && filteredAgents.length > 0 && (
           <div
             ref={dropdownRef}
-            className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+            className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
           >
             <div className="px-3 py-2 border-b border-border/60">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Mention Agent
               </p>
             </div>
-            {filteredAgents.map((agent) => (
+            {filteredAgents.map((agent, i) => (
               <button
                 key={agent.id}
                 onClick={() => selectAgent(agent)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent/60 transition-colors text-left group/item"
+                onMouseEnter={() => setHighlightIdx(i)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left ${
+                  i === highlightIdx
+                    ? "bg-accent/80"
+                    : "hover:bg-accent/60"
+                }`}
               >
-                <span className="text-lg">{agent.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${agent.color}`}>
-                      @{agent.label}
-                    </span>
-                  </div>
+                  <div className="flex-1 min-w-0">
+                  <span className="text-sm font-semibold text-foreground/80">
+                    @{agent.label}
+                  </span>
                   <p className="text-[11px] text-muted-foreground truncate">
                     {agent.description}
                   </p>
@@ -288,7 +259,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
+                {projects.map((project: { _id: string; name: string; avatar?: string }) => (
                   <SelectItem key={project._id} value={project._id}>
                     <div className="flex items-center gap-2">
                       {project.avatar}
@@ -302,9 +273,8 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
             {/* Active agent badge */}
             {activeAgent && (
               <div
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${activeAgent.bg} ${activeAgent.border} ${activeAgent.color} transition-all`}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-foreground/80 transition-all animate-in fade-in-0 zoom-in-95 duration-200"
               >
-                <span>{activeAgent.icon}</span>
                 <span>@{activeAgent.label}</span>
                 <button
                   onClick={clearAgent}
@@ -337,6 +307,21 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 : "Ask anything about your project..."
             }
           />
+
+          {/* Quick-action chips — show when agent is selected and input is empty */}
+          {activeAgent && !message.trim() && (
+            <div className="flex flex-wrap gap-1.5 px-4 pb-2 animate-in fade-in-0 duration-200">
+              {activeAgent.quickPrompts.slice(0, 4).map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => handleQuickPrompt(prompt)}
+                  className="text-[11px] px-2.5 py-1 rounded-full border border-border/50 bg-secondary/40 hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Bottom row */}
           <div className="flex items-center justify-between px-3 pb-3">

@@ -69,7 +69,7 @@ export default function CalendarView({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-primary" />
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 className="text-xl font-bold text-foreground">
               {format(currentMonth, "MMMM yyyy")}
             </h3>
           </div>
@@ -85,7 +85,7 @@ export default function CalendarView({
             variant="outline"
             size="sm"
             onClick={goToToday}
-            className="h-8 px-3 text-xs font-medium border-gray-200 hover:border-primary hover:text-primary"
+            className="h-8 px-3 text-xs font-medium"
           >
             Today
           </Button>
@@ -93,7 +93,7 @@ export default function CalendarView({
             variant="outline"
             size="icon"
             onClick={goToPreviousMonth}
-            className="h-8 w-8 border-gray-200 hover:border-primary hover:text-primary"
+            className="h-8 w-8"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -101,7 +101,7 @@ export default function CalendarView({
             variant="outline"
             size="icon"
             onClick={goToNextMonth}
-            className="h-8 w-8 border-gray-200 hover:border-primary hover:text-primary"
+            className="h-8 w-8"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -109,9 +109,9 @@ export default function CalendarView({
       </div>
 
       {/* Calendar Grid */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="border border-border rounded-xl overflow-hidden">
         {/* Day Headers */}
-        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+        <div className="grid grid-cols-7 bg-muted/50 border-b border-border">
           {[
             { short: "Sun", isWeekend: true },
             { short: "Mon", isWeekend: false },
@@ -124,7 +124,9 @@ export default function CalendarView({
             <div
               key={day.short}
               className={`py-3 text-center text-xs font-semibold uppercase tracking-wide ${
-                day.isWeekend ? "text-red-400" : "text-gray-500"
+                day.isWeekend
+                  ? "text-destructive/60"
+                  : "text-muted-foreground"
               }`}
             >
               {day.short}
@@ -133,7 +135,7 @@ export default function CalendarView({
         </div>
 
         {/* Calendar Days */}
-        <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
+        <div className="grid grid-cols-7 divide-x divide-y divide-border/50">
           {calendarDays.map((day, idx) => {
             const dateKey = format(day, "yyyy-MM-dd");
             const dayTasks = tasksByDate.get(dateKey) || [];
@@ -153,12 +155,12 @@ export default function CalendarView({
                 key={idx}
                 className={`min-h-32.5 p-2.5 flex flex-col transition-colors ${
                   !isCurrentMonth
-                    ? "bg-gray-50/70"
+                    ? "bg-muted/30"
                     : isThisToday
                       ? "bg-primary/5"
                       : isWeekendDay
-                        ? "bg-slate-50/60"
-                        : "bg-white hover:bg-gray-50/80"
+                        ? "bg-muted/20"
+                        : "bg-background hover:bg-accent/30"
                 }`}
               >
                 {/* Day Number */}
@@ -166,19 +168,19 @@ export default function CalendarView({
                   <span
                     className={`text-sm font-semibold flex items-center justify-center w-7 h-7 rounded-full ${
                       !isCurrentMonth
-                        ? "text-gray-300"
+                        ? "text-muted-foreground/30"
                         : isThisToday
-                          ? "bg-primary text-white shadow-sm"
+                          ? "bg-primary text-primary-foreground"
                           : isWeekendDay
-                            ? "text-red-400"
-                            : "text-gray-700"
+                            ? "text-destructive/60"
+                            : "text-foreground"
                     }`}
                   >
                     {format(day, "d")}
                   </span>
                   <div className="flex items-center gap-1">
                     {overdueCount > 0 && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-bold">
+                      <span className="text-[9px] px-1.5 py-0.5 bg-destructive/10 text-destructive rounded-full font-bold">
                         {overdueCount} late
                       </span>
                     )}
@@ -200,7 +202,7 @@ export default function CalendarView({
                     />
                   ))}
                   {dayTasks.length > 3 && (
-                    <div className="text-[10px] text-gray-400 text-center py-0.5 font-medium hover:text-primary cursor-default">
+                    <div className="text-[10px] text-muted-foreground text-center py-0.5 font-medium hover:text-primary cursor-default">
                       +{dayTasks.length - 3} more
                     </div>
                   )}
@@ -215,15 +217,15 @@ export default function CalendarView({
       <div className="flex items-center gap-4 mt-3 px-1">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-primary/20 border border-primary/30" />
-          <span className="text-xs text-gray-500">In progress</span>
+          <span className="text-xs text-muted-foreground">In progress</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-200" />
-          <span className="text-xs text-gray-500">Overdue</span>
+          <span className="w-2.5 h-2.5 rounded-sm bg-destructive/15 border border-destructive/25" />
+          <span className="text-xs text-muted-foreground">Overdue</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-100 border border-emerald-200" />
-          <span className="text-xs text-gray-500">Completed</span>
+          <span className="w-2.5 h-2.5 rounded-sm bg-green-500/15 border border-green-500/25" />
+          <span className="text-xs text-muted-foreground">Completed</span>
         </div>
       </div>
     </div>
@@ -250,9 +252,9 @@ function CalendarTaskItem({
       to={`/${workspaceId}/projects/${projectData?._id || task.project}/tasks`}
       className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[10px] font-medium truncate transition-all group ${
         isCompleted
-          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+          ? "bg-green-500/8 text-green-600 hover:bg-green-500/15 border border-green-500/15"
           : isOverdue
-            ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+            ? "bg-destructive/8 text-destructive hover:bg-destructive/15 border border-destructive/15"
             : "bg-primary/8 text-primary hover:bg-primary/15 border border-primary/20"
       }`}
       title={task.title}

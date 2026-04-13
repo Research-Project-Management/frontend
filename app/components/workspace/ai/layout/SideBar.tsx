@@ -8,8 +8,17 @@ import {
   Pencil,
   Check,
   X,
+  Pin,
+  PinOff,
+  Sparkles,
 } from "lucide-react";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useParams, useNavigate, useLocation } from "react-router";
 import {
   Tooltip,
@@ -22,6 +31,8 @@ import {
   deleteChatSession,
   renameChatSession,
 } from "~/query/chat-ai";
+
+// ── Time grouping ───────────────────────────────────────────────────────────────
 
 function timeGroup(updatedAt: string): "today" | "week" | "month" | "older" {
   const diff = Date.now() - new Date(updatedAt).getTime();
@@ -50,6 +61,23 @@ function groupChats(chats: ChatSession[]) {
   return groups;
 }
 
+// ── Pinned chats storage ────────────────────────────────────────────────────────
+
+function getPinnedIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem("flux-ai-pinned-chats");
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function savePinnedIds(ids: Set<string>) {
+  localStorage.setItem("flux-ai-pinned-chats", JSON.stringify([...ids]));
+}
+
+// ── Main SideBar ────────────────────────────────────────────────────────────────
+
 export default function SideBar() {
   const navigate = useNavigate();
   const { workspaceId, chatId } = useParams();
@@ -59,6 +87,7 @@ export default function SideBar() {
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(getPinnedIds);
 
   const fetchChats = useCallback(() => {
     if (!workspaceId) return;
@@ -80,6 +109,13 @@ export default function SideBar() {
     e.stopPropagation();
     await deleteChatSession(id).catch(console.error);
     setChats((p) => p.filter((c) => c._id !== id));
+    // Clean from pinned
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      savePinnedIds(next);
+      return next;
+    });
     if (chatId === id) navigate(`/${workspaceId}/ai`);
   };
 
@@ -100,10 +136,36 @@ export default function SideBar() {
     setRenamingId(null);
   };
 
-  const filtered = chats.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase()),
+  const togglePin = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      savePinnedIds(next);
+      return next;
+    });
+  };
+
+  // Filter + group
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return chats.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        (c.lastMessage && c.lastMessage.toLowerCase().includes(q)),
+    );
+  }, [chats, search]);
+
+  const pinned = useMemo(
+    () => filtered.filter((c) => pinnedIds.has(c._id)),
+    [filtered, pinnedIds],
   );
-  const groups = groupChats(filtered);
+  const unpinned = useMemo(
+    () => filtered.filter((c) => !pinnedIds.has(c._id)),
+    [filtered, pinnedIds],
+  );
+  const groups = useMemo(() => groupChats(unpinned), [unpinned]);
 
   return (
     <aside
@@ -116,18 +178,24 @@ export default function SideBar() {
         className={`flex items-center gap-2 px-3 py-3 ${collapsed ? "justify-center" : "justify-between"}`}
       >
         {!collapsed && (
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-            Chats
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-foreground/80 tracking-tight">
+              History
+            </span>
+          </div>
         )}
         <div
-          className={`flex items-center gap-1 ${collapsed ? "flex-col" : ""}`}
+          className={`flex items-center gap-0.5 ${collapsed ? "flex-col" : ""}`}
         >
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleNewChat}
-                className="flex items-center justify-center size-7 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                className={`flex items-center justify-center rounded-lg text-primary-foreground transition-all ${
+                  collapsed
+                    ? "size-8 bg-primary hover:bg-primary/90"
+                    : "size-7 bg-primary hover:bg-primary/90"
+                }`}
               >
                 <Plus className="size-4" />
               </button>
@@ -158,15 +226,15 @@ export default function SideBar() {
 
       {/* Search */}
       {!collapsed && (
-        <div className="px-3 py-2">
+        <div className="px-3 pb-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
             <input
               type="text"
-              placeholder="Search…"
+              placeholder="Search chats…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-secondary/50 border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/40"
+              className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-secondary/50 border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/40 transition-colors"
             />
           </div>
         </div>
@@ -210,11 +278,39 @@ export default function SideBar() {
           </div>
         ) : (
           <div className="flex flex-col">
+            {/* Pinned section */}
+            {pinned.length > 0 && (
+              <div className="mb-1">
+                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5 flex items-center gap-1">
+                  <Pin className="size-2.5" />
+                  Pinned
+                </p>
+                {pinned.map((chat) => (
+                  <ChatItem
+                    key={chat._id}
+                    chat={chat}
+                    isActive={chatId === chat._id}
+                    isPinned
+                    isRenaming={renamingId === chat._id}
+                    renameValue={renameValue}
+                    onRenameChange={setRenameValue}
+                    onSelect={() => navigate(`/${workspaceId}/ai/${chat._id}`)}
+                    onDelete={(e) => handleDelete(e, chat._id)}
+                    onStartRename={(e) => startRename(e, chat)}
+                    onCommitRename={() => commitRename(chat._id)}
+                    onCancelRename={() => setRenamingId(null)}
+                    onTogglePin={(e) => togglePin(e, chat._id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Time-grouped sections */}
             {(["today", "week", "month", "older"] as const).map((key) => {
               const group = groups[key];
               if (!group.length) return null;
               return (
-                <div key={key} className="mb-2">
+                <div key={key} className="mb-1">
                   <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5">
                     {GROUP_LABELS[key]}
                   </p>
@@ -223,6 +319,7 @@ export default function SideBar() {
                       key={chat._id}
                       chat={chat}
                       isActive={chatId === chat._id}
+                      isPinned={false}
                       isRenaming={renamingId === chat._id}
                       renameValue={renameValue}
                       onRenameChange={setRenameValue}
@@ -233,6 +330,7 @@ export default function SideBar() {
                       onStartRename={(e) => startRename(e, chat)}
                       onCommitRename={() => commitRename(chat._id)}
                       onCancelRename={() => setRenamingId(null)}
+                      onTogglePin={(e) => togglePin(e, chat._id)}
                     />
                   ))}
                 </div>
@@ -245,9 +343,12 @@ export default function SideBar() {
   );
 }
 
+// ── Chat Item ───────────────────────────────────────────────────────────────────
+
 function ChatItem({
   chat,
   isActive,
+  isPinned,
   isRenaming,
   renameValue,
   onRenameChange,
@@ -256,9 +357,11 @@ function ChatItem({
   onStartRename,
   onCommitRename,
   onCancelRename,
+  onTogglePin,
 }: {
   chat: ChatSession;
   isActive: boolean;
+  isPinned: boolean;
   isRenaming: boolean;
   renameValue: string;
   onRenameChange: (v: string) => void;
@@ -267,6 +370,7 @@ function ChatItem({
   onStartRename: (e: React.MouseEvent) => void;
   onCommitRename: () => void;
   onCancelRename: () => void;
+  onTogglePin: (e: React.MouseEvent) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -276,9 +380,9 @@ function ChatItem({
 
   return (
     <div
-      className={`group relative mt-2 flex items-center gap-1 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-100 ${
+      className={`group relative flex items-center gap-2 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-100 ${
         isActive
-          ? "bg-primary/10 text-primary"
+          ? "bg-[#3370ff]/10 text-[#3370ff] dark:bg-[#3370ff]/15"
           : "text-foreground/70 hover:bg-secondary/60 hover:text-foreground"
       }`}
       onClick={!isRenaming ? onSelect : undefined}
@@ -334,6 +438,17 @@ function ChatItem({
         </div>
       ) : (
         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={onTogglePin}
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+            title={isPinned ? "Unpin" : "Pin"}
+          >
+            {isPinned ? (
+              <PinOff className="size-3" />
+            ) : (
+              <Pin className="size-3" />
+            )}
+          </button>
           <button
             onClick={onStartRename}
             className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"

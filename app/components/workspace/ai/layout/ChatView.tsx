@@ -36,6 +36,8 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import type { ChatMessage, SourceItem, AgentAction } from "~/types/chat";
+import { AGENT_CONFIGS } from "~/types/chat";
+import type { AgentId } from "~/types/chat";
 import {
   streamChatResponse,
   getChatSession,
@@ -52,7 +54,7 @@ import { useChatMode } from "~/contexts/ChatModeContext";
 const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   chat: {
     label: "General Chat",
-    color: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+    color: "bg-secondary/80 text-muted-foreground",
   },
   rag: {
     label: "Document Search",
@@ -60,11 +62,11 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   },
   analyze: {
     label: "Analysis",
-    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
   },
   latex: {
     label: "LaTeX",
-    color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   },
   task: {
     label: "Task Planning",
@@ -72,11 +74,11 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   },
   web_search: {
     label: "Web Search",
-    color: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+    color: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
   },
   action: {
     label: "Workspace Agent",
-    color: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+    color: "bg-[#3370ff]/12 text-[#3370ff]",
   },
 };
 
@@ -335,7 +337,7 @@ function TypingIndicator() {
   );
 }
 
-// ── Screens ─────────────────────────────────────────────────────────────────────
+// ── Welcome Screen with Agent Cards ─────────────────────────────────────────────
 
 /** Shown when the user arrives at /ai with no prior messages. */
 function WelcomeScreen({
@@ -344,28 +346,83 @@ function WelcomeScreen({
   initialMessage,
   initialProject,
 }: {
-  onSend: (text: string, projectId?: string, webSearchSites?: string[]) => void;
+  onSend: (text: string, projectId?: string, webSearchSites?: string[], intentHint?: string) => void;
   disabled: boolean;
   initialMessage?: string;
   initialProject?: string;
 }) {
+  const handleAgentPrompt = (agentId: AgentId, prompt: string) => {
+    onSend(prompt, undefined, undefined, agentId);
+  };
+
+  // Pick the 4 most useful agents for the welcome screen
+  const featuredAgents = AGENT_CONFIGS.filter((a) =>
+    ["action", "rag", "analyze", "web_search"].includes(a.id)
+  );
+
   return (
-    <div className="h-full flex flex-col items-center justify-center py-12">
-      <div className="flex group flex-col items-center justify-center mb-16 w-full max-w-xl px-4">
+    <div className="h-full flex flex-col items-center justify-center overflow-y-auto">
+      {/* Hero */}
+      <div className="flex group flex-col items-center mb-10">
         <img
           src="/Chat.svg"
           alt="Flux AI"
-          className="size-24 group-hover:rotate-180 transition-transform duration-1000"
+          className="size-16 mb-4 group-hover:rotate-180 transition-transform duration-1000"
         />
-        <div className="max-w-sm w-full p-5 rounded-xl text-center">
-          <h3 className="font-bold text-2xl mb-1">Ask Flux AI</h3>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Chat with your project documentation and Flux data.
-          </p>
+        <h3 className="font-semibold text-xl mb-1.5">Ask Flux AI</h3>
+        <p className="text-xs text-muted-foreground text-center max-w-xs leading-relaxed">
+          Chat with your docs, manage your workspace, or search the web.
+        </p>
+      </div>
+
+      {/* Agent capability cards — 2×2 grid */}
+      <div className="w-full max-w-xl px-6 mb-10">
+        <div className="grid grid-cols-2 gap-3">
+          {featuredAgents.map((agent) => (
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              onPromptClick={(prompt) => handleAgentPrompt(agent.id, prompt)}
+            />
+          ))}
         </div>
       </div>
+
       <div className="w-full">
         <ChatAi onSend={onSend} disabled={disabled} initialProject={initialProject} initialMessage={initialMessage} />
+      </div>
+    </div>
+  );
+}
+
+/** A single agent capability card on the welcome page */
+function AgentCard({
+  agent,
+  onPromptClick,
+}: {
+  agent: (typeof AGENT_CONFIGS)[number];
+  onPromptClick: (prompt: string) => void;
+}) {
+  return (
+    <div
+      className={`rounded-xl border ${agent.border} p-4 transition-all hover:border-opacity-60 hover:shadow-sm group/card cursor-default ${agent.bg.split(" ")[0]}`}
+    >
+      <p className={`text-[11px] font-bold mb-1.5 tracking-wide uppercase ${agent.color}`}>
+        {agent.label}
+      </p>
+      <p className="text-[11px] text-muted-foreground mb-4 leading-relaxed">
+        {agent.description}
+      </p>
+      <div className="flex flex-col gap-1.5">
+        {agent.quickPrompts.slice(0, 2).map((prompt) => (
+          <button
+            key={prompt}
+            onClick={() => onPromptClick(prompt)}
+            className="text-[11px] text-left px-2.5 py-1.5 rounded-lg bg-background/70 hover:bg-background border border-border/40 hover:border-border/70 text-foreground/65 hover:text-foreground transition-all truncate"
+          >
+            {prompt}
+          </button>
+        ))}
       </div>
     </div>
   );

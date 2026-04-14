@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import StickyNote from "../note/StickyNote";
 import type { Note } from "../types/note.type";
 import { NOTE_COLOR_CYCLE } from "../types/noteColor.type";
@@ -47,6 +47,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import React from "react";
 
 export default function StickyLayout() {
   const { workspaceId } = useParams();
@@ -57,7 +58,9 @@ export default function StickyLayout() {
     "saved" | "saving" | "error"
   >("saved");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [orderedNotes, setOrderedNotes] = useState<Note[]>([]);
+  // Local drag-reorder: stores the reordered ID list after drag-end.
+  // Reset to null whenever server data changes so we pick up new/deleted notes.
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const { data: notes = [], isLoading } = useStickies(
@@ -77,9 +80,11 @@ export default function StickyLayout() {
     } else if (updateSticky.isError) setSavingStatus("error");
   }, [updateSticky.isPending, updateSticky.isSuccess, updateSticky.isError]);
 
+  // Reset drag order when server data changes (new/deleted notes).
+  const noteIdsKey = notes.map((n) => n._id).join(",");
   useEffect(() => {
-    setOrderedNotes(notes);
-  }, [notes]);
+    setDragOrder(null);
+  }, [noteIdsKey]);
 
   const getNextColor = (prevNotes: Note[]): Note["color"] => {
     if (prevNotes.length === 0) return NOTE_COLOR_CYCLE[0];
@@ -101,18 +106,28 @@ export default function StickyLayout() {
     });
   };
 
+  // ── Stable callback refs ──
+  // useMutation returns a new object every time its internal state changes
+  // (isPending → isSuccess → idle). Using refs ensures handleUpdateNote /
+  // handleDeleteNote have a STABLE identity so React.memo on StickyNote
+  // actually prevents re-renders of all sibling notes.
+  const updateStickyRef = useRef(updateSticky);
+  updateStickyRef.current = updateSticky;
+  const deleteStickyRef = useRef(deleteSticky);
+  deleteStickyRef.current = deleteSticky;
+
   const handleUpdateNote = useCallback(
     (id: string, updatedFields: Partial<Note>) => {
-      updateSticky.mutate({ stickyId: id, updates: updatedFields });
+      updateStickyRef.current.mutate({ stickyId: id, updates: updatedFields });
     },
-    [updateSticky],
+    [],
   );
 
   const handleDeleteNote = useCallback(
     (id: string) => {
-      deleteSticky.mutate(id);
+      deleteStickyRef.current.mutate(id);
     },
-    [deleteSticky],
+    [],
   );
 
   const sensors = useSensors(
@@ -127,14 +142,24 @@ export default function StickyLayout() {
     setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setOrderedNotes((prev) => {
-      const oldIdx = prev.findIndex((n) => n._id === active.id);
-      const newIdx = prev.findIndex((n) => n._id === over.id);
-      return arrayMove(prev, oldIdx, newIdx);
+    setDragOrder((prev) => {
+      const ids = prev ?? notes.map((n) => n._id);
+      const oldIdx = ids.indexOf(String(active.id));
+      const newIdx = ids.indexOf(String(over.id));
+      return arrayMove(ids, oldIdx, newIdx);
     });
-  }, []);
+  }, [notes]);
 
-  const displayNotes = orderedNotes.length > 0 ? orderedNotes : notes;
+  // Compute display order — either server order or user's drag order.
+  // This is a pure derivation (useMemo), NOT a state update, so it
+  // won't trigger an extra render cycle like the previous useEffect did.
+  const displayNotes = useMemo(() => {
+    if (!dragOrder) return notes;
+    const map = new Map(notes.map((n) => [n._id, n]));
+    return dragOrder
+      .map((id) => map.get(id))
+      .filter((n): n is Note => n !== undefined);
+  }, [notes, dragOrder]);
 
   const filteredNotes = useMemo(
     () =>
@@ -372,6 +397,7 @@ export default function StickyLayout() {
                           note={note}
                           onUpdate={handleUpdateNote}
                           onDelete={handleDeleteNote}
+                          isOverlay
                         />
                       </div>
                     ) : null;
@@ -385,7 +411,7 @@ export default function StickyLayout() {
   );
 }
 
-function SortableNote({
+const SortableNote = memo(function SortableNote({
   note,
   onUpdate,
   onDelete,
@@ -413,15 +439,23 @@ function SortableNote({
     pointerEvents: isDragging ? ("none" as const) : undefined,
   };
 
+  const dragHandleProps = useMemo(
+    () => ({
+      ...attributes,
+      ...listeners,
+    }),
+    [attributes, listeners],
+  );
+
   return (
     <div ref={setNodeRef} style={style}>
       <StickyNote
         note={note}
         onUpdate={onUpdate}
         onDelete={onDelete}
-        dragHandleProps={{ ...attributes, ...listeners }}
+        dragHandleProps={dragHandleProps}
         isDragging={isDragging}
       />
     </div>
   );
-}
+});

@@ -110,7 +110,7 @@ export default function Create() {
           setIsUploadingAvatar(false);
           setAvatarFile(null);
           setAvatar(null);
-          setUploadError("Không lấy được upload URL. Vui lòng thử lại.");
+          setUploadError("Failed to get upload URL. Please try again.");
           return;
         }
 
@@ -126,7 +126,7 @@ export default function Create() {
           setIsUploadingAvatar(false);
           setAvatarFile(null);
           setAvatar(null);
-          setUploadError("Upload file thất bại. Vui lòng thử lại.");
+          setUploadError("File upload failed. Please try again.");
           return;
         }
 
@@ -145,7 +145,7 @@ export default function Create() {
       setIsUploadingAvatar(false);
       setAvatarFile(null);
       setAvatar(null);
-      setUploadError("Có lỗi khi upload avatar. Vui lòng thử lại.");
+      setUploadError("Error uploading avatar. Please try again.");
     }
   };
 
@@ -205,7 +205,7 @@ export default function Create() {
                     {isUploadingAvatar ? (
                       <>
                         <Loader2 className="mr-2 size-4 animate-spin" />
-                        Đang upload...
+                        Uploading...
                       </>
                     ) : (
                       "Upload Image"

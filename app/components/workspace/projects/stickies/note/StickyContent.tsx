@@ -6,7 +6,7 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Extension } from "@tiptap/core";
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 
 const TaskKeyboardBehavior = Extension.create({
   name: "taskKeyboardBehavior",
@@ -16,7 +16,7 @@ const TaskKeyboardBehavior = Extension.create({
         const { editor } = this;
         if (!editor.isActive("taskItem")) return false;
 
-        // tạo task mới (Plane/Notion style)
+        // Create new task (Plane/Notion style)
         return editor.commands.splitListItem("taskItem");
       },
 
@@ -27,17 +27,17 @@ const TaskKeyboardBehavior = Extension.create({
         const { state } = editor;
         const { $from } = state.selection;
 
-        // chỉ xử lý khi cursor ở đầu block
+        // Only handle when cursor is at the start of block
         if ($from.parentOffset !== 0) return false;
 
-        // nếu task rỗng -> thoát về paragraph
+        // If task is empty -> exit to paragraph
         const isEmpty =
           $from.parent.content.size === 0 ||
           $from.parent.textContent.trim().length === 0;
 
         if (!isEmpty) return false;
 
-        // convert về paragraph (fallback nếu clearNodes không có)
+        // Convert to paragraph (fallback if clearNodes is not available)
         return (
           editor.chain().focus().clearNodes().run() ||
           editor.chain().focus().setNode("paragraph").run()
@@ -51,14 +51,62 @@ interface StickyContentProps {
   note: Note;
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onReady?: (editor: Editor | null) => void;
+  isOverlay?: boolean;
 }
 
 export default memo(function StickyContent({
   note,
   onUpdate,
   onReady,
+  isOverlay,
+}: StickyContentProps) {
+  const [activated, setActivated] = useState(false);
+
+  const handleActivate = useCallback(() => {
+    if (!activated) setActivated(true);
+  }, [activated]);
+
+  // Use raw HTML preview when it's just viewing/dragging to save ~100ms per note.
+  // We wrap it in ProseMirror class so it looks 100% identical to the real TipTap!
+  if (!activated || isOverlay) {
+    const rawHtml = note.content && note.content !== "<p></p>" 
+      ? note.content 
+      : '<p class="is-editor-empty" data-placeholder="Click to type here"><br class="ProseMirror-trailingBreak"></p>';
+
+    return (
+      <div
+        className="flex-1 px-4 py-3 overflow-hidden overflow-y-auto cursor-text flex flex-col"
+        onClick={isOverlay ? undefined : handleActivate}
+        onFocus={isOverlay ? undefined : handleActivate}
+      >
+        <div className="flex-1 w-full bg-transparent text-lg leading-relaxed outline-none min-h-[24px]
+                        [&_.ProseMirror]:min-h-full [&_.ProseMirror]:bg-transparent [&_.ProseMirror]:outline-none">
+           <div 
+             className="ProseMirror" 
+             dangerouslySetInnerHTML={{ __html: rawHtml }} 
+           />
+        </div>
+      </div>
+    );
+  }
+
+  // Once activated by click, mount the actual heavy TipTap editor
+  return <ActiveEditor note={note} onUpdate={onUpdate} onReady={onReady} />;
+});
+
+const ActiveEditor = memo(function ActiveEditor({
+  note,
+  onUpdate,
+  onReady,
 }: StickyContentProps) {
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Stable refs to prevent unneeded re-renders on socket updates
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
+  const noteIdRef = useRef(note._id);
+  noteIdRef.current = note._id;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -74,11 +122,14 @@ export default memo(function StickyContent({
       }),
     ],
     content: note.content || "",
+    autofocus: "end",
     onUpdate: ({ editor }) => {
       if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
 
       updateTimerRef.current = setTimeout(() => {
-        onUpdate(note._id, { content: editor.getHTML() });
+        onUpdateRef.current(noteIdRef.current, { 
+          content: editor.getHTML() 
+        });
       }, 1000);
     },
     editorProps: {
@@ -93,12 +144,13 @@ export default memo(function StickyContent({
     return () => onReady?.(null);
   }, [editor, onReady]);
 
+  // Sync server content to editor
   useEffect(() => {
     if (!editor) return;
-    if (editor.isFocused) return; // Don't overwrite while user is typing
+    if (editor.isFocused) return; 
     const next = note.content || "";
     if (editor.getHTML() !== next) {
-      editor.commands.setContent(next, false);
+      editor.commands.setContent(next, { emitUpdate: false });
     }
   }, [note.content, editor]);
 

@@ -180,7 +180,7 @@ export default function GeneralPage() {
             title="Delete workspace?"
             description="Are you sure you want to delete this workspace? This action cannot be undone."
             confirmText="Delete"
-            cancelText="Dismiss"
+            cancelText="Cancel"
             loading={deleteMutation.isPending}
           />
         </div>

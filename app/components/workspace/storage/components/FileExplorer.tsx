@@ -34,7 +34,7 @@ type FileExplorerProps = {
   currentFolder?: string | null;
   breadcrumbs?: Array<{ id: string | null; name: string }>;
   workspaceId?: string;
-  // Thêm workspaceId riêng cho workspace-level uploads
+  // Separate workspaceId for workspace-level uploads
   wsId?: string;
 
   // Actions
@@ -137,15 +137,17 @@ export default function FileExplorer({
     const matchesSearch = file.filename
       .toLowerCase()
       .includes(searchText.toLowerCase());
+      
+    const fileSource = classifySource(file);
+    
     const matchesSource =
       sourceFilter.kind === "all" ||
-      (sourceFilter.kind === "workspace" &&
-        classifySource(file).kind === "workspace") ||
-      (sourceFilter.kind === "shared" &&
-        classifySource(file).kind === "shared") ||
+      (sourceFilter.kind === "workspace" && fileSource.kind === "workspace") ||
+      (sourceFilter.kind === "shared" && fileSource.kind === "shared") ||
       (sourceFilter.kind === "project" &&
-        classifySource(file).kind === "project" &&
-        classifySource(file).projectId === sourceFilter.projectId);
+        fileSource.kind === "project" &&
+        fileSource.projectId === sourceFilter.projectId);
+        
     return matchesSearch && matchesSource;
   });
 

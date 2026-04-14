@@ -44,7 +44,7 @@ export function TaskHeader({
     <div className="flex items-center justify-between px-7 py-5 border-b border-[#f3f3f3] bg-white sticky top-0 z-20 shrink-0">
       <Select value={columnId} onValueChange={setColumnId}>
         <SelectTrigger className="h-9 w-auto min-w-30 rounded-[6px] border-0 bg-[#091e420f] px-3 text-[14px] font-semibold text-[#172b4d] shadow-none hover:bg-[#091e421a] focus:ring-0 transition-colors">
-          <SelectValue placeholder="Chọn cột" />
+          <SelectValue placeholder="Select column" />
         </SelectTrigger>
         <SelectContent className="rounded-xl border-border/50 shadow-xl">
           {columns.map((column) => {

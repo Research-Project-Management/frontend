@@ -90,7 +90,7 @@ export default function Task() {
     );
 
     if (hasUnassignedTask) {
-      options.push({ id: "__unassigned__", name: "Chưa giao" });
+      options.push({ id: "__unassigned__", name: "Unassigned" });
     }
 
     return options;
@@ -264,7 +264,7 @@ export default function Task() {
         accentColor: payload.selectedColor,
         isDefault: payload.isDefault,
       },
-      { 
+      {
         onSuccess: () => {
           toast.success("Column created");
           closeSectionModal();
@@ -276,7 +276,7 @@ export default function Task() {
   const handleUpdateColumn = (columnId: string, title: string, accentColor?: string) => {
     updateColumnMutation.mutate(
       { projectId: projectId!, columnId, title, accentColor },
-      { 
+      {
         onSuccess: () => {
           toast.success("Column updated");
           closeSectionModal();
@@ -307,7 +307,7 @@ export default function Task() {
       const colId = deletingColumn._id ?? deletingColumn.id ?? "";
       deleteColumnMutation.mutate(
         { projectId: projectId!, columnId: colId },
-        { 
+        {
           onSuccess: () => {
             toast.success("Column deleted");
             closeDeleteModal();

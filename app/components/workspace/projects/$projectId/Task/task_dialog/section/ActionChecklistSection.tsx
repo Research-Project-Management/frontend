@@ -17,7 +17,7 @@ export function ActionChecklistSection({
   onAddChecklist,
 }: ActionChecklistSectionProps) {
   const [open, setOpen] = useState(false);
-  const [checklistTitle, setChecklistTitle] = useState("Việc cần làm");
+  const [checklistTitle, setChecklistTitle] = useState("To-do");
 
   const actionBtnClass =
     "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
@@ -25,7 +25,7 @@ export function ActionChecklistSection({
   const handleAddChecklist = () => {
     if (!checklistTitle.trim()) return;
     onAddChecklist(checklistTitle);
-    setChecklistTitle("Việc cần làm");
+    setChecklistTitle("To-do");
     setOpen(false);
   };
 
@@ -40,7 +40,7 @@ export function ActionChecklistSection({
               : actionBtnClass
           }
         >
-          <CheckSquare className="mr-2 h-4 w-4" />Việc cần làm
+          <CheckSquare className="mr-2 h-4 w-4" />Checklist
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -51,7 +51,7 @@ export function ActionChecklistSection({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           <span className="text-sm font-semibold text-center flex-1">
-            Thêm danh sách công việc
+            Add checklist
           </span>
           <Button
             variant="ghost"
@@ -65,7 +65,7 @@ export function ActionChecklistSection({
         <div className="p-4 space-y-4">
           <div className="space-y-2">
             <Label className="text-[13px] font-semibold text-foreground">
-              Tiêu đề
+              Title
             </Label>
             <Input
               value={checklistTitle}
@@ -78,7 +78,7 @@ export function ActionChecklistSection({
             className="w-fit px-6 bg-primary hover:bg-primary/90"
             onClick={handleAddChecklist}
           >
-            Thêm
+            Add
           </Button>
         </div>
       </PopoverContent>

@@ -10,6 +10,7 @@ import {
   apiGet,
   apiPut,
 } from "~/lib/api";
+import { toast } from "sonner";
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
@@ -131,14 +132,16 @@ export const syncWorkspaceIntoCaches = (
   queryClient.setQueriesData(
     { queryKey: ["workspace"] },
     (current: WorkspaceDetailQueryData) => {
-      if (current?.workspace?._id === workspacePatch._id) {
+      if (!current) return current;
+
+      if ("workspace" in current && current.workspace?._id === workspacePatch._id) {
         return {
           ...current,
           workspace: mergeWorkspace(current.workspace, workspacePatch),
         };
       }
 
-      if ((current as any)?._id === workspacePatch._id) {
+      if ("_id" in current && current._id === workspacePatch._id) {
         return mergeWorkspace(current, workspacePatch);
       }
 
@@ -202,6 +205,9 @@ export const useAddWorkspaceMember = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
     },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to add member", { id: "ws-member-error" });
+    },
   });
 };
 
@@ -213,6 +219,9 @@ export const useUpdateWorkspaceMemberRole = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
     },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update member role", { id: "ws-member-error" });
+    },
   });
 };
 
@@ -223,6 +232,9 @@ export const useRemoveWorkspaceMember = () => {
       apiPut(`/api/workspace/${workspaceId}/remove-member`, { userId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to remove member", { id: "ws-member-error" });
     },
   });
 };
@@ -254,18 +266,19 @@ export const useUpdateWorkspace = () => {
         previousWorkspacesQueries,
       };
     },
-    onError: (_error, _variables, context) => {
+    onSuccess: (data) => {
+      if (data?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      }
+    },
+    onError: (error: any, _variables, context) => {
       context?.previousWorkspaceQueries?.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
       context?.previousWorkspacesQueries?.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
-    },
-    onSuccess: (data) => {
-      if (data?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, data.workspace);
-      }
+      toast.error(error.message || "Failed to update workspace", { id: "ws-error" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
@@ -288,10 +301,14 @@ export const useDeleteWorkspace = () => {
 
       return { previousWorkspaces };
     },
-    onError: (_error, _workspaceId, context) => {
+    onError: (error: any, _workspaceId, context) => {
       context?.previousWorkspaces?.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
+      toast.error(error.message || "Failed to delete workspace", { id: "ws-error" });
+    },
+    onSuccess: () => {
+      toast.success("Workspace removed", { id: "ws-action" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });

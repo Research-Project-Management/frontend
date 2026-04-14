@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { FolderPlus } from "lucide-react";
 import {
   Dialog,
@@ -31,17 +32,8 @@ export default function CreateFolderDialog({
   workspaceId,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
-  const [isClosing, setIsClosing] = useState(false);
   const createFolderMutation = useCreateFolder();
 
-  const closeWithAnimation = (onClosed?: () => void) => {
-    setIsClosing(true);
-    window.setTimeout(() => {
-      onOpenChange(false);
-      setIsClosing(false);
-      onClosed?.();
-    }, 180);
-  };
 
   const handleCreate = async () => {
     if (!folderName.trim()) return;
@@ -54,21 +46,18 @@ export default function CreateFolderDialog({
         workspaceId,
         parentId,
       });
-      window.setTimeout(() => {
-        closeWithAnimation(() => setFolderName(""));
-      }, 220);
+      toast.success(`Created folder "${folderName}"`);
+      onOpenChange(false);
+      setFolderName("");
     } catch (error) {
+      toast.error("Failed to create folder");
       console.error("Error creating folder:", error);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={`sm:max-w-md transition-all duration-200 ${
-          isClosing ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
-        }`}
-      >
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderPlus className="h-5 w-5" />
@@ -92,7 +81,7 @@ export default function CreateFolderDialog({
                   handleCreate();
                 }
               }}
-              disabled={createFolderMutation.isPending || isClosing}
+              disabled={createFolderMutation.isPending}
               autoFocus
             />
           </div>
@@ -102,15 +91,16 @@ export default function CreateFolderDialog({
           <Button
             variant="outline"
             onClick={() => {
-              closeWithAnimation(() => setFolderName(""));
+              onOpenChange(false);
+              setFolderName("");
             }}
-            disabled={createFolderMutation.isPending || isClosing}
+            disabled={createFolderMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!folderName.trim() || createFolderMutation.isPending || isClosing}
+            disabled={!folderName.trim() || createFolderMutation.isPending}
           >
             {createFolderMutation.isPending ? "Creating..." : "Create Folder"}
           </Button>

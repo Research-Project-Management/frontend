@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths(), svgr(), devtoolsJson()],
   appType: "spa",
   server: {
-    port: 2916,
+    port: 5173,
     strictPort: true,
   },
   build: {
@@ -18,25 +18,25 @@ export default defineConfig({
         manualChunks(id) {
           // Core React ecosystem
           if (id.includes("node_modules/react/") ||
-              id.includes("node_modules/react-dom/") ||
-              id.includes("node_modules/react-router/") ||
-              id.includes("node_modules/scheduler/")) {
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/react-router/") ||
+            id.includes("node_modules/scheduler/")) {
             return "vendor-react";
           }
           // TipTap editor
           if (id.includes("node_modules/@tiptap/") ||
-              id.includes("node_modules/prosemirror") ||
-              id.includes("node_modules/@hocuspocus/")) {
+            id.includes("node_modules/prosemirror") ||
+            id.includes("node_modules/@hocuspocus/")) {
             return "vendor-tiptap";
           }
           // PDF viewer
           if (id.includes("node_modules/react-pdf/") ||
-              id.includes("node_modules/pdfjs-dist/")) {
+            id.includes("node_modules/pdfjs-dist/")) {
             return "vendor-pdf";
           }
           // Monaco editor
           if (id.includes("node_modules/monaco-editor/") ||
-              id.includes("node_modules/@monaco-editor/")) {
+            id.includes("node_modules/@monaco-editor/")) {
             return "vendor-monaco";
           }
           // DnD kit

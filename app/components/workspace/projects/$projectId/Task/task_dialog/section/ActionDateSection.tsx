@@ -255,7 +255,7 @@ export function ActionDateSection({
   const hasValidDueTime = !hasDueDate || DUE_TIME_PATTERN.test(dueTime);
   const dueTimeError =
     hasDueDate && !isDueTimeDraftValid(dueTime)
-      ? "Nhập giờ theo định dạng hh:mm."
+      ? "Enter time in hh:mm format."
       : null;
 
   const canSaveDate =
@@ -281,7 +281,7 @@ export function ActionDateSection({
               : resolvedActionBtnClass
           }
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />Ngày
+          <CalendarIcon className="mr-2 h-4 w-4" />Date
         </Button>
       </PopoverTrigger>
 
@@ -304,7 +304,7 @@ export function ActionDateSection({
         style={{ maxHeight: "min(82vh, 760px)" }}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/50 bg-white px-4 py-3 shrink-0">
-          <span className="text-sm font-semibold text-center flex-1">Ngày</span>
+          <span className="text-sm font-semibold text-center flex-1">Date</span>
           <Button variant="ghost" size="icon" className="size-8" onClick={() => onOpenChange(false)}>
             <X className="size-4" />
           </Button>
@@ -327,14 +327,14 @@ export function ActionDateSection({
                 <Button variant="ghost" size="icon" className="size-7" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                   <ChevronLeft className="size-4" />
                 </Button>
-                <span className="text-sm font-bold">Tháng {format(currentMonth, "M yyyy")}</span>
+                <span className="text-sm font-bold">{format(currentMonth, "MMMM yyyy")}</span>
                 <Button variant="ghost" size="icon" className="size-7" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
 
               <div className="grid grid-cols-7 gap-1 mb-1">
-                {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
                   <div key={d} className="text-[11px] font-bold text-center py-1 text-muted-foreground uppercase">
                     {d}
                   </div>
@@ -365,7 +365,7 @@ export function ActionDateSection({
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[13px] font-bold text-muted-foreground">Ngày bắt đầu</Label>
+                <Label className="text-[13px] font-bold text-muted-foreground">Start date</Label>
                 <div className="flex items-center gap-3">
                   <Checkbox
                     checked={hasStartDate}
@@ -392,7 +392,7 @@ export function ActionDateSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[13px] font-bold text-muted-foreground">Ngày hết hạn</Label>
+                <Label className="text-[13px] font-bold text-muted-foreground">Due date</Label>
                 <div className="flex items-center gap-3">
                   <Checkbox
                     checked={hasDueDate}
@@ -441,44 +441,44 @@ export function ActionDateSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[13px] font-bold text-muted-foreground">Định kỳ</Label>
+                <Label className="text-[13px] font-bold text-muted-foreground">Recurrence</Label>
                 <Select value={tempRecurrence} onValueChange={(value) => setTempRecurrence(value as TaskRecurrence)} disabled={!hasDueDate}>
                   <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-md bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
-                    <SelectValue placeholder="Không bao giờ" />
+                    <SelectValue placeholder="Never" />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" className="z-140 rounded-xl border-border/50 shadow-xl max-h-75 overflow-y-auto">
-                    <SelectItem value="none" className="py-2.5">Không bao giờ</SelectItem>
-                    <SelectItem value="daily" className="py-2.5">Hàng ngày</SelectItem>
-                    <SelectItem value="mon-fri" className="py-2.5">Từ thứ Hai đến thứ Sáu</SelectItem>
-                    <SelectItem value="weekly" className="py-2.5">Hàng tuần</SelectItem>
-                    <SelectItem value="monthly-day" className="py-2.5">Hàng tháng vào {format(tempEndDate || new Date(), "d")}</SelectItem>
-                    <SelectItem value="monthly-week" className="py-2.5">Hàng tháng vào {format(tempEndDate || new Date(), "d EEEE")}</SelectItem>
+                    <SelectItem value="none" className="py-2.5">Never</SelectItem>
+                    <SelectItem value="daily" className="py-2.5">Daily</SelectItem>
+                    <SelectItem value="mon-fri" className="py-2.5">Monday to Friday</SelectItem>
+                    <SelectItem value="weekly" className="py-2.5">Weekly</SelectItem>
+                    <SelectItem value="monthly-day" className="py-2.5">Monthly on the {format(tempEndDate || new Date(), "do")}</SelectItem>
+                    <SelectItem value="monthly-week" className="py-2.5">Monthly on {format(tempEndDate || new Date(), "EEEE 'the' do")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[13px] font-bold text-muted-foreground">Thiết lập Nhắc nhở</Label>
+                <Label className="text-[13px] font-bold text-muted-foreground">Set reminder</Label>
                 <Select value={tempReminder} onValueChange={(value) => setTempReminder(value as TaskReminder)} disabled={!hasDueDate}>
                   <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-md bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
-                    <SelectValue placeholder="1 Ngày trước" />
+                    <SelectValue placeholder="1 day before" />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" className="z-140 rounded-xl border-border/50 shadow-xl max-h-75 overflow-y-auto">
-                    <SelectItem value="none" className="py-2.5">Không có</SelectItem>
-                    <SelectItem value="at-time" className="py-2.5">Vào thời điểm ngày hết hạn</SelectItem>
-                    <SelectItem value="5m" className="py-2.5">5 Phút trước</SelectItem>
-                    <SelectItem value="10m" className="py-2.5">10 Phút trước</SelectItem>
-                    <SelectItem value="15m" className="py-2.5">15 Phút trước</SelectItem>
-                    <SelectItem value="1h" className="py-2.5">1 Giờ trước</SelectItem>
-                    <SelectItem value="2h" className="py-2.5">2 Giờ trước</SelectItem>
-                    <SelectItem value="1day" className="py-2.5">1 Ngày trước</SelectItem>
-                    <SelectItem value="2day" className="py-2.5">2 Ngày trước</SelectItem>
+                    <SelectItem value="none" className="py-2.5">None</SelectItem>
+                    <SelectItem value="at-time" className="py-2.5">At time of due date</SelectItem>
+                    <SelectItem value="5m" className="py-2.5">5 minutes before</SelectItem>
+                    <SelectItem value="10m" className="py-2.5">10 minutes before</SelectItem>
+                    <SelectItem value="15m" className="py-2.5">15 minutes before</SelectItem>
+                    <SelectItem value="1h" className="py-2.5">1 hour before</SelectItem>
+                    <SelectItem value="2h" className="py-2.5">2 hours before</SelectItem>
+                    <SelectItem value="1day" className="py-2.5">1 day before</SelectItem>
+                    <SelectItem value="2day" className="py-2.5">2 days before</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <p className="text-[13px] text-muted-foreground leading-snug px-1 pt-1">
-                Nhắc nhở sẽ được gửi đến tất cả các thành viên và người theo dõi thẻ này.
+                Reminders will be sent to all members and watchers of this card.
               </p>
 
               <div className="space-y-3 pt-3 pb-1">
@@ -487,14 +487,14 @@ export function ActionDateSection({
                   onClick={handleSaveDate}
                   disabled={!canSaveDate}
                 >
-                  Lưu
+                  Save
                 </Button>
                 <Button
                   variant="secondary"
                   className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-11 rounded-md border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
                   onClick={handleClearDate}
                 >
-                  Gỡ bỏ
+                  Remove
                 </Button>
               </div>
             </div>

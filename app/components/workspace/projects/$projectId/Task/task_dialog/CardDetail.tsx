@@ -71,27 +71,27 @@ function formatActivityTime(value?: string | Date) {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
-  
-  // "vừa xong" for within 2 minutes
+
+  // "just now" for within 2 minutes
   if (diffMinutes < 2) {
-    return "vừa xong";
+    return "just now";
   }
-  
+
   if (diffMinutes < 60) {
-    return `${diffMinutes} phút trước`;
+    return `${diffMinutes} minutes ago`;
   }
-  
+
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours} giờ trước`;
+    return `${diffHours} hours ago`;
   }
-  
+
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) {
-    return `${diffDays} ngày trước`;
+    return `${diffDays} days ago`;
   }
-  
-  return date.toLocaleString("vi-VN", {
+
+  return date.toLocaleString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     day: "numeric",
@@ -160,17 +160,17 @@ function getAttachmentTypeLabel(attachment: Attachment) {
 
 function formatAttachmentMeta(createdAt: string) {
   const createdDate = new Date(createdAt);
-  if (Number.isNaN(createdDate.getTime())) return "Đã thêm";
+  if (Number.isNaN(createdDate.getTime())) return "Added";
 
   const diffInMinutes = Math.floor((Date.now() - createdDate.getTime()) / 60000);
-  if (diffInMinutes < 1) return "Đã thêm vừa xong";
-  if (diffInMinutes < 60) return `Đã thêm ${diffInMinutes} phút trước`;
+  if (diffInMinutes < 1) return "Added just now";
+  if (diffInMinutes < 60) return `Added ${diffInMinutes} minutes ago`;
 
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `Đã thêm ${diffInHours} giờ trước`;
+  if (diffInHours < 24) return `Added ${diffInHours} hours ago`;
 
   const diffInDays = Math.floor(diffInHours / 24);
-  return `Đã thêm ${diffInDays} ngày trước`;
+  return `Added ${diffInDays} days ago`;
 }
 
 type AttachmentMenuItem = {
@@ -263,7 +263,7 @@ function ChecklistBlock({
           onClick={() => setShowDeleteConfirm(true)}
           className="rounded-md bg-[#f1f2f4] px-3 py-1.5 text-[13px] font-medium text-[#172b4d] hover:bg-[#eaecef]"
         >
-          Xóa
+          Delete
         </button>
       </div>
 
@@ -301,7 +301,7 @@ function ChecklistBlock({
                       className="h-9 bg-[#0c66e4] px-4 text-white hover:bg-[#0c66e4]/90 shadow-none"
                       onClick={handleSaveEditItem}
                     >
-                      Lưu
+                      Save
                     </Button>
                     <Button
                       type="button"
@@ -312,7 +312,7 @@ function ChecklistBlock({
                         setEditingItemTitle("");
                       }}
                     >
-                      Hủy
+                      Cancel
                     </Button>
                   </div>
                 </div>
@@ -320,7 +320,7 @@ function ChecklistBlock({
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
                   className="inline-flex size-7 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#c9372c]"
-                  aria-label={`Xóa mục ${item.title}`}
+                  aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
                 </button>
@@ -344,7 +344,7 @@ function ChecklistBlock({
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
                   className="inline-flex size-7 items-center justify-center rounded-lg text-[#44546f] opacity-0 transition-colors hover:bg-[#091e420f] hover:text-[#c9372c] group-hover:opacity-100"
-                  aria-label={`Xóa mục ${item.title}`}
+                  aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
                 </button>
@@ -352,7 +352,7 @@ function ChecklistBlock({
             )
           ))
         ) : (
-          <p className="text-[13px] text-[#6b778c]">Chưa có mục nào.</p>
+          <p className="text-[13px] text-[#6b778c]">No items yet.</p>
         )}
       </div>
 
@@ -361,7 +361,7 @@ function ChecklistBlock({
           <input
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
-            placeholder="Thêm một mục..."
+            placeholder="Add an item..."
             className="h-9 w-full rounded-lg border border-[#d9d9d9] px-3 text-[14px] shadow-none"
             autoFocus
           />
@@ -371,7 +371,7 @@ function ChecklistBlock({
               className="h-9 bg-[#0c66e4] text-white hover:bg-[#0c66e4]/90 shadow-none"
               onClick={handleAddItem}
             >
-              Thêm
+              Add
             </Button>
             <Button
               type="button"
@@ -382,7 +382,7 @@ function ChecklistBlock({
                 setShowNewItemInput(false);
               }}
             >
-              Hủy
+              Cancel
             </Button>
           </div>
         </div>
@@ -393,7 +393,7 @@ function ChecklistBlock({
           className="h-9 w-fit bg-[#f1f2f4] px-4 text-[14px] font-medium text-[#172b4d] shadow-none hover:bg-[#eaecef]"
           onClick={() => setShowNewItemInput(true)}
         >
-          Thêm một mục
+          Add an item
         </Button>
       )}
 
@@ -405,10 +405,10 @@ function ChecklistBlock({
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
               <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
-                Xóa danh sách việc cần làm?
+                Delete checklist?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                Mục này sẽ bị xóa khỏi thẻ và không thể khôi phục.
+                This item will be removed from the card and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -422,7 +422,7 @@ function ChecklistBlock({
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleteConfirming}
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 type="button"
@@ -430,7 +430,7 @@ function ChecklistBlock({
                 onClick={handleConfirmDelete}
                 disabled={isDeleteConfirming}
               >
-                Xóa
+                Delete
               </Button>
             </DialogFooter>
           </div>
@@ -576,7 +576,7 @@ export function TaskDialog({
   const commentActivities = useMemo<ActivityEntry[]>(() => {
     const commentEntries = taskComments.map((comment) => ({
       id: comment._id,
-      author: comment.author?.name || "Người dùng",
+      author: comment.author?.name || "User",
       authorInitials: getUserInitials(comment.author?.name),
       avatarUrl: comment.author?.avatar || null,
       content: comment.content,
@@ -592,7 +592,7 @@ export function TaskDialog({
 
     const auditLogEntries = taskActivity.map((log: TaskActivityLog) => ({
       id: log._id,
-      author: log.actor?.name || "Người dùng",
+      author: log.actor?.name || "User",
       authorInitials: getUserInitials(log.actor?.name),
       avatarUrl: log.actor?.avatar || null,
       content: log.description,
@@ -831,11 +831,11 @@ export function TaskDialog({
       prev.map((list) =>
         list._id === checklistId
           ? {
-              ...list,
-              items: list.items.map((item) =>
-                item._id === itemId ? { ...item, title: trimmedTitle } : item
-              ),
-            }
+            ...list,
+            items: list.items.map((item) =>
+              item._id === itemId ? { ...item, title: trimmedTitle } : item
+            ),
+          }
           : list
       )
     );
@@ -869,7 +869,7 @@ export function TaskDialog({
       const textarea = commentTextareaRef.current;
       const realCursor = textarea?.selectionStart ?? commentCaretPosition;
       const safeCursor = Math.max(0, Math.min(realCursor, current.length));
-      
+
       if (current.includes(attachment.name)) return current;
 
       const next = `${current.slice(0, safeCursor)}${attachment.name}${current.slice(safeCursor)}`;
@@ -917,10 +917,10 @@ export function TaskDialog({
   };
 
   const attachmentMenuItems: AttachmentMenuItem[] = [
-    { id: "edit", label: "Sửa" },
-    { id: "comment", label: "Nhận xét" },
-    { id: "download", label: "Tải xuống" },
-    { id: "remove", label: "Loại bỏ", tone: "danger" },
+    { id: "edit", label: "Edit" },
+    { id: "comment", label: "Comment" },
+    { id: "download", label: "Download" },
+    { id: "remove", label: "Remove", tone: "danger" },
   ];
 
   return (
@@ -936,9 +936,9 @@ export function TaskDialog({
           maxHeight: "92vh",
         }}
       >
-        <DialogTitle className="sr-only">Chi tiết thẻ</DialogTitle>
+        <DialogTitle className="sr-only">Card details</DialogTitle>
 
-          <div className="flex min-h-0 flex-col bg-white">
+        <div className="flex min-h-0 flex-col bg-white">
           <TaskHeader
             columnId={columnId}
             setColumnId={handleColumnChange}
@@ -961,16 +961,14 @@ export function TaskDialog({
                         <button
                           type="button"
                           onClick={handleToggleCompleted}
-                          className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
-                            completed
-                              ? "border-[#6a9923] bg-[#6a9923] text-white"
-                              : "border-[#8c8c8c] bg-white text-transparent hover:border-[#172b4d]"
-                          }`}
+                          className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${completed
+                            ? "border-[#6a9923] bg-[#6a9923] text-white"
+                            : "border-[#8c8c8c] bg-white text-transparent hover:border-[#172b4d]"
+                            }`}
                         >
                           <Check
-                            className={`h-4 w-4 stroke-3 ${
-                              completed ? "opacity-100" : "opacity-0"
-                            }`}
+                            className={`h-4 w-4 stroke-3 ${completed ? "opacity-100" : "opacity-0"
+                              }`}
                           />
                         </button>
                       </TooltipTrigger>
@@ -978,7 +976,7 @@ export function TaskDialog({
                         side="top"
                         className="bg-[#172b4d] text-white border-none rounded-[6px] text-[12px] font-medium py-1.5 px-3"
                       >
-                        {completed ? "Đánh dấu chưa hoàn tất" : "Đánh dấu hoàn tất"}
+                        {completed ? "Mark as incomplete" : "Mark as complete"}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -991,10 +989,9 @@ export function TaskDialog({
                       e.currentTarget.style.height = "auto";
                       e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                     }}
-                    placeholder="Nhập tiêu đề thẻ..."
-                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-lg border-none bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-[#999] transition-all hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] ${
-                      completed ? "text-[#6b778c]" : "text-[#172b4d]"
-                    }`}
+                    placeholder="Enter card title..."
+                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-lg border-none bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-[#999] transition-all hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] ${completed ? "text-[#6b778c]" : "text-[#172b4d]"
+                      }`}
                   />
                 </div>
 
@@ -1036,7 +1033,7 @@ export function TaskDialog({
                           <line x1="17" y1="18" x2="3" y2="18"></line>
                         </svg>
                       </div>
-                      <h3 className="text-[17px] font-bold text-[#172b4d]">Mô tả</h3>
+                      <h3 className="text-[17px] font-bold text-[#172b4d]">Description</h3>
                     </div>
 
                     <textarea
@@ -1049,7 +1046,7 @@ export function TaskDialog({
                         descriptionDraftRef.current = description;
                         setShowDescriptionActions(true);
                       }}
-                      placeholder="Thêm mô tả chi tiết hơn..."
+                      placeholder="Add a more detailed description..."
                       className="min-h-35 w-full resize-none rounded-xl bg-transparent border border-[#d0d7e2] px-4 py-3 text-[15px] text-[#172b4d] shadow-none outline-none placeholder:text-[#6b778c] transition-all duration-200 hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] focus:border-[#3884ff]"
                     />
                     {showDescriptionActions ? (
@@ -1060,7 +1057,7 @@ export function TaskDialog({
                           onClick={handleSaveDescription}
                           disabled={!description.trim()}
                         >
-                          Lưu
+                          Save
                         </Button>
                         <Button
                           type="button"
@@ -1068,7 +1065,7 @@ export function TaskDialog({
                           className="h-9 px-3 text-[#44546f] transition-all duration-200 hover:bg-[#091e420f] active:scale-[0.98] disabled:opacity-60"
                           onClick={handleCancelDescription}
                         >
-                          Hủy
+                          Cancel
                         </Button>
                       </div>
                     ) : null}
@@ -1076,111 +1073,109 @@ export function TaskDialog({
 
                   {attachments.length > 0 ? (
                     <div className="mt-10">
-                    <div className="mb-4 flex items-center gap-2">
-                      <Paperclip className="size-4 text-[#44546f]" />
-                      <h3 className="text-[16px] font-bold text-[#172b4d]">
-                        Các tập tin đính kèm
-                      </h3>
-                    </div>
-                    <div className="space-y-3 pl-1">
-                      {attachments.map((item) => (
-                        <div
-                          key={item.id}
-                          className="group flex items-center justify-between gap-4 rounded-xl px-2 py-2 transition-colors hover:bg-[#091e420a]"
-                        >
-                          <div className="flex min-w-0 flex-1 items-center gap-4">
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[#f3f4f6] text-[15px] font-bold text-[#5b6472] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
-                              {getAttachmentTypeLabel(item)}
+                      <div className="mb-4 flex items-center gap-2">
+                        <Paperclip className="size-4 text-[#44546f]" />
+                        <h3 className="text-[16px] font-bold text-[#172b4d]">
+                          Attachments
+                        </h3>
+                      </div>
+                      <div className="space-y-3 pl-1">
+                        {attachments.map((item) => (
+                          <div
+                            key={item.id}
+                            className="group flex items-center justify-between gap-4 rounded-xl px-2 py-2 transition-colors hover:bg-[#091e420a]"
+                          >
+                            <div className="flex min-w-0 flex-1 items-center gap-4">
+                              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[#f3f4f6] text-[15px] font-bold text-[#5b6472] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+                                {getAttachmentTypeLabel(item)}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-[#172b4d] hover:underline"
+                                  title={item.name}
+                                >
+                                  {item.name}
+                                </a>
+                                <p className="mt-1 text-[12px] text-[#6b778c]">
+                                  {formatAttachmentMeta(item.createdAt)}
+                                </p>
+                              </div>
                             </div>
 
-                            <div className="min-w-0 flex-1">
+                            <div className="flex shrink-0 items-center gap-1 self-stretch">
                               <a
                                 href={item.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-[#172b4d] hover:underline"
-                                title={item.name}
-                              >
-                                {item.name}
-                              </a>
-                              <p className="mt-1 text-[12px] text-[#6b778c]">
-                                {formatAttachmentMeta(item.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-1 self-stretch">
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex size-8 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
-                              aria-label={`Mở ${item.name}`}
-                            >
-                              <ExternalLink className="size-4" />
-                            </a>
-                            <div className="relative" data-attachment-menu-root="true">
-                              <button
-                                type="button"
-                                onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
                                 className="inline-flex size-8 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
-                                aria-label={`Tùy chọn ${item.name}`}
+                                aria-label={`Open ${item.name}`}
                               >
-                                <MoreHorizontal className="size-4" />
-                              </button>
+                                <ExternalLink className="size-4" />
+                              </a>
+                              <div className="relative" data-attachment-menu-root="true">
+                                <button
+                                  type="button"
+                                  onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
+                                  className="inline-flex size-8 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
+                                  aria-label={`Options for ${item.name}`}
+                                >
+                                  <MoreHorizontal className="size-4" />
+                                </button>
 
-                              {activeAttachmentMenuId === item.id ? (
-                                <div
-                                  className={`absolute right-0 z-30 w-44 rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ${
-                                    attachmentMenuPlacement === "up"
+                                {activeAttachmentMenuId === item.id ? (
+                                  <div
+                                    className={`absolute right-0 z-30 w-44 rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ${attachmentMenuPlacement === "up"
                                       ? "bottom-full mb-2"
                                       : "top-full mt-2"
-                                  }`}
-                                >
-                                  {attachmentMenuItems.map((menuItem) => (
-                                    <button
-                                      key={menuItem.id}
-                                      type="button"
-                                      onClick={() => {
-                                        if (menuItem.id === "edit") {
-                                          handleOpenRenameAttachment(item);
-                                          return;
-                                        }
+                                      }`}
+                                  >
+                                    {attachmentMenuItems.map((menuItem) => (
+                                      <button
+                                        key={menuItem.id}
+                                        type="button"
+                                        onClick={() => {
+                                          if (menuItem.id === "edit") {
+                                            handleOpenRenameAttachment(item);
+                                            return;
+                                          }
 
-                                        if (menuItem.id === "comment") {
-                                          handleCommentAttachment(item);
-                                          return;
-                                        }
+                                          if (menuItem.id === "comment") {
+                                            handleCommentAttachment(item);
+                                            return;
+                                          }
 
-                                        if (menuItem.id === "download") {
-                                          handleDownloadAttachment(item);
-                                          return;
-                                        }
+                                          if (menuItem.id === "download") {
+                                            handleDownloadAttachment(item);
+                                            return;
+                                          }
 
-                                        if (menuItem.id === "remove") {
-                                          handleRemoveAttachment(item.id);
+                                          if (menuItem.id === "remove") {
+                                            handleRemoveAttachment(item.id);
+                                            setActiveAttachmentMenuId(null);
+                                            return;
+                                          }
+
                                           setActiveAttachmentMenuId(null);
-                                          return;
-                                        }
-
-                                        setActiveAttachmentMenuId(null);
-                                      }}
-                                      className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-[14px] transition-colors ${
-                                        menuItem.tone === "danger"
+                                        }}
+                                        className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-[14px] transition-colors ${menuItem.tone === "danger"
                                           ? "text-[#c9372c] hover:bg-[#fff1f0]"
                                           : "text-[#172b4d] hover:bg-[#f4f5f7]"
-                                      }`}
-                                    >
-                                      {menuItem.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
+                                          }`}
+                                      >
+                                        {menuItem.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
 
@@ -1250,10 +1245,10 @@ export function TaskDialog({
             <div className="p-6">
               <DialogHeader className="space-y-2 text-left">
                 <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
-                  Đổi tên tài liệu
+                  Rename document
                 </DialogTitle>
                 <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                  Cập nhật tên hiển thị của file đính kèm này.
+                  Update the display name of this attachment.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1262,7 +1257,7 @@ export function TaskDialog({
                   value={renameAttachmentName}
                   onChange={(e) => setRenameAttachmentName(e.target.value)}
                   className="h-10 w-full rounded-xl border border-[#d9d9d9] px-4 text-[14px] text-[#172b4d] outline-none focus:border-[#0c66e4]"
-                  placeholder="Nhập tên file mới"
+                  placeholder="Enter new file name"
                   autoFocus
                 />
               </div>
@@ -1279,7 +1274,7 @@ export function TaskDialog({
                     setRenameAttachmentName("");
                   }}
                 >
-                  Hủy
+                  Cancel
                 </Button>
                 <Button
                   type="button"
@@ -1287,7 +1282,7 @@ export function TaskDialog({
                   onClick={handleConfirmRenameAttachment}
                   disabled={!renameAttachmentName.trim()}
                 >
-                  Lưu
+                  Save
                 </Button>
               </DialogFooter>
             </div>

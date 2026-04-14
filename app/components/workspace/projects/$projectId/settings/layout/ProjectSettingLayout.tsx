@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation, useParams } from "react-router";
+import { motion, LayoutGroup } from "framer-motion";
 
 export default function ProjectSettingLayout() {
   const { workspaceId, projectId } = useParams();
@@ -15,29 +16,38 @@ export default function ProjectSettingLayout() {
   return (
     <div className="flex-1 min-w-0 flex flex-col h-full bg-background overflow-hidden relative">
       <header className="flex flex-col border-b border-border z-10 shrink-0">
-        <div 
-          className="flex items-center w-full max-w-3xl mx-auto px-8" 
-          style={{ paddingLeft: "calc(var(--header-offset, 0px) + 2rem)" }}
-        >
-          {tabs.map((tab) => {
-            const isActive =
-              location.pathname === tab.to ||
-              (tab.to !== basePath && location.pathname.startsWith(tab.to + "/"));
-            return (
-              <Link
-                key={tab.label}
-                to={tab.to}
-                className={`flex-1 text-center pt-4 pb-3 border-b-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                }`}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-        </div>
+        <LayoutGroup id="project-settings-tabs">
+          <div 
+            className="flex items-center w-full max-w-3xl mx-auto px-8" 
+            style={{ paddingLeft: "calc(var(--header-offset, 0px) + 2rem)" }}
+          >
+            {tabs.map((tab) => {
+              const isActive =
+                location.pathname === tab.to ||
+                (tab.to !== basePath && location.pathname.startsWith(tab.to + "/"));
+              return (
+                <Link
+                  key={tab.label}
+                  to={tab.to}
+                  className={`relative flex-1 text-center pt-4 pb-3 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span className="relative z-10">{tab.label}</span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabUnderline"
+                      className="absolute bottom-[-2px] left-0 right-0 h-[2px] bg-primary z-20"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </LayoutGroup>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto w-full relative">

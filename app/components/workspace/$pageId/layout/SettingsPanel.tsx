@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 // ── Setting row components ──────────────────────────────────────────────────
 
@@ -108,22 +109,19 @@ function SegmentedControl<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex border border-border rounded-md overflow-hidden text-xs">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            "px-2.5 py-1 transition-colors",
-            value === opt.value
-              ? "bg-foreground text-background font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary",
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
+    <Tabs value={value} onValueChange={(v) => onChange(v as T)} variant="pill">
+      <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
+        {options.map((opt) => (
+          <TabsTrigger 
+            key={opt.value} 
+            value={opt.value}
+            className="text-[11px] px-2 py-1"
+          >
+            {opt.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -139,7 +137,6 @@ function MainFileSelect({
   onChange: (v: string) => void;
 }) {
   if (options.length === 0) {
-    // No project files loaded yet — fallback to plain text input
     return (
       <input
         type="text"
@@ -205,28 +202,22 @@ export default function SettingsPanel() {
 
   const { texFiles } = usePageContext();
 
-  // ── Auto-select main.tex when tex files are first loaded ─────────────────
   useEffect(() => {
     if (texFiles.length === 0) return;
 
     if (texFiles.includes("main.tex")) {
-      // Auto-select main.tex silently
       setMainFile("main.tex");
     } else if (!texFiles.includes(mainFile)) {
-      // Current mainFile doesn't exist in this project → warn user
       toast.warning("Please select a main file for compilation", {
         description: "No \"main.tex\" found. Choose the root .tex file from the Settings panel.",
         duration: 6000,
-        id: "select-main-file", // deduplicate toasts
+        id: "select-main-file",
       });
     }
-    // Only run when texFiles list changes (e.g. on project load)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [texFiles]);
 
   return (
     <div className="h-full w-[280px] border-l border-border bg-background flex flex-col shrink-0">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
         <span className="text-sm font-semibold">Settings</span>
         <button
@@ -237,9 +228,7 @@ export default function SettingsPanel() {
         </button>
       </div>
 
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto py-3 space-y-4">
-        {/* ── Compiler ── */}
         <SettingGroup label="Compiler">
           <SettingRow icon={Cpu} label="Engine" description="LaTeX compiler">
             <SegmentedControl<LaTeXEngine>
@@ -265,38 +254,21 @@ export default function SettingsPanel() {
             />
           </SettingRow>
 
-          <SettingRow
-            icon={RefreshCw}
-            label="Auto compile"
-            description="Compile on save"
-          >
+          <SettingRow icon={RefreshCw} label="Auto compile" description="Compile on save">
             <Toggle checked={autoCompile} onChange={setAutoCompile} />
           </SettingRow>
 
-          <SettingRow
-            icon={HardDrive}
-            label="Use cache"
-            description="Incremental builds"
-          >
+          <SettingRow icon={HardDrive} label="Use cache" description="Incremental builds">
             <Toggle checked={useCache} onChange={setUseCache} />
           </SettingRow>
 
-          <SettingRow
-            icon={FileText}
-            label="Main file"
-            description="Root document"
-          >
-            <MainFileSelect
-              value={mainFile}
-              options={texFiles}
-              onChange={setMainFile}
-            />
+          <SettingRow icon={FileText} label="Main file" description="Root document">
+            <MainFileSelect value={mainFile} options={texFiles} onChange={setMainFile} />
           </SettingRow>
         </SettingGroup>
 
         <Separator />
 
-        {/* ── Editor ── */}
         <SettingGroup label="Editor">
           <SettingRow icon={editorTheme === "light" ? Sun : Moon} label="Theme">
             <SegmentedControl<"light" | "dark">
@@ -317,9 +289,7 @@ export default function SettingsPanel() {
               >
                 <Minus className="size-3" />
               </button>
-              <span className="text-xs font-mono w-6 text-center">
-                {fontSize}
-              </span>
+              <span className="text-xs font-mono w-6 text-center">{fontSize}</span>
               <button
                 onClick={() => setFontSize(Math.min(24, fontSize + 1))}
                 className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"

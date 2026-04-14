@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "~/components/ui/button";
 import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
 import { toast } from "sonner";
@@ -156,11 +157,14 @@ function ItemActions({
     setIsDeleting(true);
     try {
       await Promise.resolve(onDelete(item._id));
+      toast.success(isTrash ? "Deleted permanently" : "Moved to trash");
       setIsDeleteDone(true);
       window.setTimeout(() => {
         setIsDeleteModalOpen(false);
         setIsDeleteDone(false);
       }, 180);
+    } catch (err) {
+      toast.error(isTrash ? "Failed to delete" : "Failed to move to trash");
     } finally {
       window.setTimeout(() => {
         setIsDeleting(false);
@@ -182,7 +186,10 @@ function ItemActions({
   };
 
   return (
-    <>
+    <div
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -285,7 +292,7 @@ function ItemActions({
         cancelText="Cancel"
         loading={isDeleting}
       />
-    </>
+    </div>
   );
 }
 
@@ -335,17 +342,23 @@ export function StorageListView({
         </div>
       ) : (
         <div className="divide-y divide-border/30">
-          {items.map((item) => {
-            const fileType = getFileType(item);
-            return (
-              <div
-                key={item._id}
-                draggable={!item.isFolder && !!onDragStartFile}
-                onDragStart={(e) => {
-                  if (!item.isFolder && onDragStartFile) {
-                    onDragStartFile(item, e);
-                  }
-                }}
+          <AnimatePresence initial={false}>
+            {items.map((item) => {
+              const fileType = getFileType(item);
+              return (
+                <motion.div
+                  key={item._id}
+                  layout
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -10, transition: { duration: 0.15 } }}
+                  transition={{ duration: 0.2 }}
+                  draggable={!item.isFolder && !!onDragStartFile}
+                  onDragStart={(e: any) => {
+                    if (!item.isFolder && onDragStartFile) {
+                      onDragStartFile(item, e);
+                    }
+                  }}
                 onDragOver={(e) => {
                   if (item.isFolder && onDropOnFolder) {
                     e.preventDefault();
@@ -368,7 +381,7 @@ export function StorageListView({
                 } ${
                   dragOverFolderId === item._id ? "bg-primary/10 ring-1 ring-primary/30" : ""
                 }`}
-                onClick={() => {
+                onClick={(e) => {
                   if (item.isFolder) {
                     onFolderClick?.(item);
                   } else {
@@ -433,9 +446,10 @@ export function StorageListView({
                     isTrash={isTrash}
                   />
                 </div>
-              </div>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
       )}
     </div>
@@ -467,17 +481,23 @@ export function StorageGridView({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-      {items.map((item) => {
-        const fileType = getFileType(item);
-        return (
-          <div
-            key={item._id}
-            draggable={!item.isFolder && !!onDragStartFile}
-            onDragStart={(e) => {
-              if (!item.isFolder && onDragStartFile) {
-                onDragStartFile(item, e);
-              }
-            }}
+      <AnimatePresence initial={false}>
+        {items.map((item) => {
+          const fileType = getFileType(item);
+          return (
+            <motion.div
+              key={item._id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.2 }}
+              draggable={!item.isFolder && !!onDragStartFile}
+                onDragStart={(e: any) => {
+                if (!item.isFolder && onDragStartFile) {
+                  onDragStartFile(item, e);
+                }
+              }}
             onDragOver={(e) => {
               if (item.isFolder && onDropOnFolder) {
                 e.preventDefault();
@@ -500,7 +520,7 @@ export function StorageGridView({
             } ${
               dragOverFolderId === item._id ? "border-primary bg-primary/10 ring-2 ring-primary/30" : ""
             }`}
-            onClick={() => {
+            onClick={(e) => {
               if (item.isFolder) {
                 onFolderClick?.(item);
               } else {
@@ -566,9 +586,10 @@ export function StorageGridView({
                 )}
               </div>
             </div>
-          </div>
-        );
-      })}
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }

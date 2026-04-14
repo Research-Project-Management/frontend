@@ -81,7 +81,7 @@ export default function GeneralSettings() {
             title="Delete project?"
             description="Are you sure you want to delete this project? All data including tasks, pages, and files will be permanently removed."
             confirmText="Delete"
-            cancelText="Dismiss"
+            cancelText="Cancel"
             loading={deleteProjectMutation.isPending}
           />
         </div>
@@ -220,9 +220,9 @@ function DangerZone({
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="destructive"
           onClick={onDelete}
-          className="shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          className="shrink-0 transition-colors hover:bg-red-700"
         >
           Delete
         </Button>

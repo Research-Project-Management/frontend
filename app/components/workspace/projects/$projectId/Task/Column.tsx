@@ -1,8 +1,4 @@
 import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
 import { Plus, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -169,68 +165,63 @@ export function Column({
           isOver ? "bg-primary/5 ring-2 ring-primary/20 ring-inset" : ""
         }`}
       >
-        <SortableContext
-          items={cards.map((c) => c._id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {cards.map((card) => (
-            <Card
-              key={card._id}
-              card={card}
-              currentUserId={currentUserId}
-              currentUserAvatar={currentUserAvatar}
-              onEdit={onEditCard}
-              onDelete={onDeleteCard}
-              onDuplicate={onDuplicateCard}
-              onJoin={onJoinCard}
-              onLeave={onLeaveCard}
-              onToggleComplete={onToggleCardCompleted}
+        {cards.map((card) => (
+          <Card
+            key={card._id}
+            card={card}
+            currentUserId={currentUserId}
+            currentUserAvatar={currentUserAvatar}
+            onEdit={onEditCard}
+            onDelete={onDeleteCard}
+            onDuplicate={onDuplicateCard}
+            onJoin={onJoinCard}
+            onLeave={onLeaveCard}
+            onToggleComplete={onToggleCardCompleted}
+          />
+        ))}
+
+        {isQuickAddOpen ? (
+          <div className="w-full">
+            <input
+              ref={quickAddInputRef}
+              type="text"
+              value={quickAddTitle}
+              onChange={(event) => setQuickAddTitle(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleQuickAddSubmit();
+                }
+
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  handleCloseQuickAdd();
+                }
+              }}
+              placeholder="Enter a title or paste a link"
+              className="h-12 w-full rounded-lg border border-[#d0d7e2] px-3 text-[15px] text-[#172b4d] outline-none transition-colors placeholder:text-[#7a869a] focus:border-[#388bff]"
             />
-          ))}
 
-          {isQuickAddOpen ? (
-            <div className="w-full">
-              <input
-                ref={quickAddInputRef}
-                type="text"
-                value={quickAddTitle}
-                onChange={(event) => setQuickAddTitle(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    handleQuickAddSubmit();
-                  }
-
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    handleCloseQuickAdd();
-                  }
-                }}
-                placeholder="Nhập tiêu đề hoặc dán liên kết"
-                className="h-12 w-full rounded-lg border border-[#d0d7e2] px-3 text-[15px] text-[#172b4d] outline-none transition-colors placeholder:text-[#7a869a] focus:border-[#388bff]"
-              />
-
-              <div className="mt-2.5 flex items-center gap-2">
-                <Button
-                  type="button"
-                  className="h-8 rounded-md bg-[#0c66e4] px-3 text-[13px] text-white hover:bg-[#0c66e4]/90"
-                  onClick={handleQuickAddSubmit}
-                  disabled={!quickAddTitle.trim()}
-                >
-                  Thêm
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-8 rounded-md px-2.5 text-[13px] text-[#44546f] hover:bg-[#091e420f]"
-                  onClick={handleCloseQuickAdd}
-                >
-                  Hủy
-                </Button>
-              </div>
+            <div className="mt-2.5 flex items-center gap-2">
+              <Button
+                type="button"
+                className="h-8 rounded-md bg-[#0c66e4] px-3 text-[13px] text-white hover:bg-[#0c66e4]/90"
+                onClick={handleQuickAddSubmit}
+                disabled={!quickAddTitle.trim()}
+              >
+                Add
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 rounded-md px-2.5 text-[13px] text-[#44546f] hover:bg-[#091e420f]"
+                onClick={handleCloseQuickAdd}
+              >
+                Cancel
+              </Button>
             </div>
-          ) : null}
-        </SortableContext>
+          </div>
+        ) : null}
         {cards.length === 0 && !isQuickAddOpen && (
           <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
             No tasks

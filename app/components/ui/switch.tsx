@@ -1,5 +1,5 @@
-import * as React from "react"
 import * as SwitchPrimitive from "@radix-ui/react-switch"
+import { motion } from "framer-motion"
 
 import { cn } from "~/lib/utils"
 
@@ -17,11 +17,25 @@ function Switch({
       {...props}
     >
       <SwitchPrimitive.Thumb
+        asChild
         data-slot="switch-thumb"
         className={cn(
-          "bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0"
+          "bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full shadow-lg ring-0"
         )}
-      />
+      >
+        <motion.span
+          layout
+          transition={{
+            type: "spring",
+            stiffness: 500,
+            damping: 30
+          }}
+          className={cn(
+            "block size-4 rounded-full bg-inherit",
+            "data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0"
+          )}
+        />
+      </SwitchPrimitive.Thumb>
     </SwitchPrimitive.Root>
   )
 }

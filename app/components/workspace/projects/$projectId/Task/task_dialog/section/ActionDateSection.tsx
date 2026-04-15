@@ -117,7 +117,7 @@ export function ActionDateSection({
 
   const resolvedActionBtnClass =
     actionBtnClass ??
-    "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
 
   useEffect(() => {
     if (!open) return;
@@ -277,7 +277,7 @@ export function ActionDateSection({
           variant="outline"
           className={
             open
-              ? "h-10 rounded-xl border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
+              ? "h-10 rounded-sm border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
               : resolvedActionBtnClass
           }
         >
@@ -300,7 +300,7 @@ export function ActionDateSection({
             e.preventDefault();
           }
         }}
-        className="z-120 flex w-80 min-h-0 flex-col overflow-hidden rounded-xl border-border/50 p-0 shadow-xl transition-all duration-200 ease-out"
+        className="z-120 flex w-80 min-h-0 flex-col overflow-hidden rounded-sm border-border/50 p-0 shadow-xl transition-all duration-200 ease-out"
         style={{ maxHeight: "min(82vh, 760px)" }}
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/50 bg-white px-4 py-3 shrink-0">
@@ -354,7 +354,7 @@ export function ActionDateSection({
                     <button
                       key={i}
                       onClick={() => handleDateClick(day)}
-                      className={`h-9 text-sm flex items-center justify-center rounded-lg transition-all relative ${!isSameMonth(day, currentMonth) ? "text-muted-foreground/30" : "text-foreground hover:bg-accent/50 cursor-pointer"} ${isInRange ? "bg-[#091e4214] text-[#172b4d]" : ""} ${isSelectedStart || isSelectedEnd ? "bg-[#091e4224] text-[#172b4d] font-bold" : ""} ${isActive ? "ring-2 ring-inset ring-foreground shadow-sm" : ""} ${isToday(day) && !isSelectedStart && !isSelectedEnd ? "text-[#0052cc] border-b-2 border-[#0052cc] rounded-none font-bold" : ""}`}
+                      className={`h-9 text-sm flex items-center justify-center rounded-sm transition-all relative ${!isSameMonth(day, currentMonth) ? "text-muted-foreground/30" : "text-foreground hover:bg-zinc-100 cursor-pointer"} ${isInRange ? "bg-zinc-100 text-zinc-900" : ""} ${isSelectedStart || isSelectedEnd ? "bg-zinc-200 text-black font-bold" : ""} ${isActive ? "ring-2 ring-inset ring-black shadow-sm" : ""} ${isToday(day) && !isSelectedStart && !isSelectedEnd ? "text-black border-b-2 border-black rounded-none font-bold" : ""}`}
                     >
                       {format(day, "d")}
                     </button>
@@ -376,7 +376,7 @@ export function ActionDateSection({
                       }
                       disableStartDate();
                     }}
-                    className="size-5 rounded-lg border-[#091e4224] data-[state=checked]:bg-[#0052cc] data-[state=checked]:border-[#0052cc]"
+                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-black data-[state=checked]:border-black"
                   />
                   <div className="flex items-center gap-2 grow">
                     <Input
@@ -384,7 +384,7 @@ export function ActionDateSection({
                       value={tempStartDate && hasStartDate ? format(tempStartDate, "d/M/yyyy") : ""}
                       onClick={ensureStartDateEnabled}
                       readOnly
-                      className={`h-11 text-[15px] transition-all shadow-none cursor-pointer rounded-md flex-1 ${activeInput === "start" ? "ring-2 ring-primary/20 border-primary bg-white" : "bg-[#091e4208] border-none"}`}
+                      className={`h-11 text-[15px] transition-all shadow-none cursor-pointer rounded-sm flex-1 ${activeInput === "start" ? "ring-2 ring-black/20 border-black bg-white" : "bg-[#091e4208] border-none"}`}
                     />
                     <div className="w-20 shrink-0" />
                   </div>
@@ -403,7 +403,7 @@ export function ActionDateSection({
                       }
                       disableDueDate();
                     }}
-                    className="size-5 rounded-lg border-[#091e4224] data-[state=checked]:bg-[#0052cc] data-[state=checked]:border-[#0052cc]"
+                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-black data-[state=checked]:border-black"
                   />
 
                   <div className="flex items-center gap-2 grow">
@@ -411,7 +411,7 @@ export function ActionDateSection({
                       value={tempEndDate && hasDueDate ? format(tempEndDate, "d/M/yyyy") : ""}
                       onClick={ensureDueDateEnabled}
                       readOnly
-                      className={`h-11 text-[15px] transition-all shadow-none flex-1 cursor-pointer rounded-md ${activeInput === "end" ? "ring-2 ring-primary/20 border-primary bg-white" : "bg-[#091e4208] border-none"}`}
+                      className={`h-11 text-[15px] transition-all shadow-none flex-1 cursor-pointer rounded-sm ${activeInput === "end" ? "ring-2 ring-black/20 border-black bg-white" : "bg-[#091e4208] border-none"}`}
                     />
 
                     <Input
@@ -433,7 +433,7 @@ export function ActionDateSection({
                       maxLength={5}
                       aria-invalid={!!dueTimeError}
                       disabled={!hasDueDate}
-                      className={`h-11 text-[15px] focus-visible:ring-1 w-20 shrink-0 px-3 bg-white rounded-md text-center disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground ${dueTimeError ? "border-destructive text-destructive focus-visible:ring-destructive/20" : "border-[#091e4224]"}`}
+                      className={`h-11 text-[15px] focus-visible:ring-1 w-20 shrink-0 px-3 bg-white rounded-sm text-center disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground ${dueTimeError ? "border-destructive text-destructive focus-visible:ring-destructive/20" : "border-[#091e4224]"}`}
                     />
                   </div>
                 </div>
@@ -443,10 +443,10 @@ export function ActionDateSection({
               <div className="space-y-2">
                 <Label className="text-[13px] font-bold text-muted-foreground">Định kỳ</Label>
                 <Select value={tempRecurrence} onValueChange={(value) => setTempRecurrence(value as TaskRecurrence)} disabled={!hasDueDate}>
-                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-md bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
+                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-sm bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
                     <SelectValue placeholder="Không bao giờ" />
                   </SelectTrigger>
-                  <SelectContent position="popper" side="bottom" className="z-140 rounded-xl border-border/50 shadow-xl max-h-75 overflow-y-auto">
+                  <SelectContent position="popper" side="bottom" className="z-140 rounded-sm border-border/50 shadow-xl max-h-75 overflow-y-auto">
                     <SelectItem value="none" className="py-2.5">Không bao giờ</SelectItem>
                     <SelectItem value="daily" className="py-2.5">Hàng ngày</SelectItem>
                     <SelectItem value="mon-fri" className="py-2.5">Từ thứ Hai đến thứ Sáu</SelectItem>
@@ -460,10 +460,10 @@ export function ActionDateSection({
               <div className="space-y-2">
                 <Label className="text-[13px] font-bold text-muted-foreground">Thiết lập Nhắc nhở</Label>
                 <Select value={tempReminder} onValueChange={(value) => setTempReminder(value as TaskReminder)} disabled={!hasDueDate}>
-                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-md bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
+                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-sm bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
                     <SelectValue placeholder="1 Ngày trước" />
                   </SelectTrigger>
-                  <SelectContent position="popper" side="bottom" className="z-140 rounded-xl border-border/50 shadow-xl max-h-75 overflow-y-auto">
+                  <SelectContent position="popper" side="bottom" className="z-140 rounded-sm border-border/50 shadow-xl max-h-75 overflow-y-auto">
                     <SelectItem value="none" className="py-2.5">Không có</SelectItem>
                     <SelectItem value="at-time" className="py-2.5">Vào thời điểm ngày hết hạn</SelectItem>
                     <SelectItem value="5m" className="py-2.5">5 Phút trước</SelectItem>
@@ -483,7 +483,7 @@ export function ActionDateSection({
 
               <div className="space-y-3 pt-3 pb-1">
                 <Button
-                  className="w-full bg-[#0052cc] hover:bg-[#004bb3] text-white font-semibold h-11 rounded-md shadow-sm transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
+                  className="w-full bg-black hover:bg-black/90 text-white font-semibold h-11 rounded-sm shadow-sm transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
                   onClick={handleSaveDate}
                   disabled={!canSaveDate}
                 >
@@ -491,7 +491,7 @@ export function ActionDateSection({
                 </Button>
                 <Button
                   variant="secondary"
-                  className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-11 rounded-md border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
+                  className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-11 rounded-sm border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
                   onClick={handleClearDate}
                 >
                   Gỡ bỏ

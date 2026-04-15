@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
 import { useParams } from "react-router";
 import TopBar from "./TopBar";
+import Topbar from "../overview/Topbar";
 import BoardView from "./views/BoardView";
 import ListView from "./views/ListView";
+import CalendarView from "./views/CalendarView";
 import { TaskDialog } from "./task_dialog/CardDetail";
 import CreateModal, { type SectionData } from "./modals/CreateModal";
 import DeleteModal from "./modals/DeleteModal";
@@ -17,6 +19,7 @@ import {
   useUpdateColumn,
 } from "~/query/task";
 import { useProjectDetails } from "~/query/project";
+import { useProjects } from "~/hooks/useWorkspace";
 import type {
   Task as TaskType,
   Column,
@@ -26,8 +29,9 @@ import { resolveTaskColumnId } from "~/types/task";
 import { Skeleton } from "~/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from "~/hooks/useAuth";
+import { KanbanSquare } from "lucide-react";
 
-type ViewMode = "board" | "list";
+type ViewMode = "board" | "list" | "calendar";
 type AssigneeFilterOption = {
   id: string;
   name: string;
@@ -36,7 +40,7 @@ type AssigneeFilterOption = {
 
 export default function Task() {
   const { user: currentUser } = useAuth();
-  const { projectId } = useParams();
+  const { workspaceId, projectId } = useParams();
   const { data, isLoading } = useProjectTasks(projectId!);
   const { data: projectData } = useProjectDetails(projectId!);
 
@@ -50,9 +54,11 @@ export default function Task() {
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>("board");
-  const [searchText, setSearchText] = useState("");
   const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>([]);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+
+  const { projects } = useProjects();
+  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -96,30 +102,20 @@ export default function Task() {
     return options;
   }, [allTasks]);
 
-  // Filtered tasks
   const tasks = useMemo(() => {
-    let filtered = allTasks;
-
-    if (searchText) {
-      const q = searchText.toLowerCase();
-      filtered = filtered.filter(
-        (t) => t.title.toLowerCase().includes(q),
-      );
+    if (selectedColumnIds.length === 0 && selectedAssigneeIds.length === 0) {
+      return allTasks;
     }
-
-    if (selectedColumnIds.length > 0) {
-      filtered = filtered.filter((t) => selectedColumnIds.includes(t.columnId));
-    }
-
-    if (selectedAssigneeIds.length > 0) {
-      filtered = filtered.filter((t) => {
+    
+    return allTasks.filter((t) => {
+      if (selectedColumnIds.length > 0 && !selectedColumnIds.includes(t.columnId)) return false;
+      if (selectedAssigneeIds.length > 0) {
         const assigneeId = t.assignee?._id ?? "__unassigned__";
-        return selectedAssigneeIds.includes(assigneeId);
-      });
-    }
-
-    return filtered;
-  }, [allTasks, searchText, selectedColumnIds, selectedAssigneeIds]);
+        if (!selectedAssigneeIds.includes(assigneeId)) return false;
+      }
+      return true;
+    });
+  }, [allTasks, selectedColumnIds, selectedAssigneeIds]);
 
   const tasksByColumnId = useMemo(() => {
     const grouped = new Map<string, TaskType[]>();
@@ -134,6 +130,10 @@ export default function Task() {
     return grouped;
   }, [tasks]);
 
+  const hasActiveTaskFilters = Boolean(
+    selectedColumnIds.length > 0 || selectedAssigneeIds.length > 0
+  );
+
   const visibleColumns = useMemo(() => {
     if (selectedColumnIds.length > 0) {
       return columns.filter((column) =>
@@ -141,7 +141,7 @@ export default function Task() {
       );
     }
 
-    if (!searchText.trim()) {
+    if (!hasActiveTaskFilters) {
       return columns;
     }
 
@@ -149,21 +149,24 @@ export default function Task() {
     return columns.filter((column) =>
       taskColumnIds.has(resolveTaskColumnId(column)),
     );
-  }, [columns, selectedColumnIds, searchText, tasks]);
-  const hasActiveTaskFilters =
-    Boolean(searchText.trim()) ||
-    selectedColumnIds.length > 0 ||
-    selectedAssigneeIds.length > 0;
+  }, [columns, selectedColumnIds, hasActiveTaskFilters, tasks]);
 
   /* Handlers */
-  const handleOpenAddDialog = (columnId: string, title?: string) => {
+  const handleOpenAddDialog = (
+    columnId: string,
+    title?: string,
+    dueDate?: string,
+  ) => {
     const quickTitle = title?.trim();
 
     if (quickTitle) {
+      if (createTaskMutation.isPending) return;
+      
       createTaskMutation.mutate({
         projectId: projectId!,
         columnId,
         title: quickTitle,
+        dueDate,
       });
       return;
     }
@@ -171,6 +174,7 @@ export default function Task() {
     setDialogCard({
       columnId,
       title: title?.trim() || "",
+      dueDate,
     });
     setDialogOpen(true);
   };
@@ -262,7 +266,6 @@ export default function Task() {
         projectId: projectId!,
         title: payload.sectionName,
         accentColor: payload.selectedColor,
-        isDefault: payload.isDefault,
       },
       { 
         onSuccess: () => {
@@ -371,17 +374,35 @@ export default function Task() {
     });
   };
 
+  const handleAssignExistingTasksToDate = (
+    taskIds: string[],
+    dueDate: string,
+  ) => {
+    if (taskIds.length === 0) return;
+
+    taskIds.forEach((taskId) => {
+      updateTaskMutation.mutate({
+        taskId,
+        projectId: projectId!,
+        dueDate,
+      });
+    });
+
+    toast.success(
+      taskIds.length === 1
+        ? "Task added to calendar"
+        : `${taskIds.length} tasks added to calendar`,
+    );
+  };
+
 
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col h-full animate-in fade-in duration-300">
-        <div className="px-4 py-2 flex items-center gap-2 border-b border-border">
-          <Skeleton className="h-8 w-20 rounded-lg" />
-          <Skeleton className="h-8 w-40 rounded-lg" />
-          <div className="flex-1" />
-          <Skeleton className="h-8 w-20 rounded-lg" />
+        <div className="px-4 h-13 flex items-center gap-2 border-b border-border">
+          <Skeleton className="h-6 w-48" />
         </div>
-        <div className="flex-1 flex gap-5 p-6">
+        <div className="flex-1 flex gap-5 p-6 overflow-hidden">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-72 space-y-3">
               <Skeleton className="h-8 w-full rounded" />
@@ -396,22 +417,25 @@ export default function Task() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <header className="shrink-0 border-b border-border">
-        <TopBar
-          viewMode={viewMode}
-          onViewChange={setViewMode}
-          searchText={searchText}
-          onSearchChange={setSearchText}
-          columns={columns}
-          selectedColumnIds={selectedColumnIds}
-          onColumnFilterChange={setSelectedColumnIds}
-          assignees={assigneeFilterOptions}
-          selectedAssigneeIds={selectedAssigneeIds}
-          onAssigneeFilterChange={setSelectedAssigneeIds}
-          onCreateSection={handleOpenAddSectionModal}
-        />
-      </header>
+    <div className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
+      <Topbar
+        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
+        title="Tasks"
+        Icon={KanbanSquare}
+        actions={
+          <TopBar
+            viewMode={viewMode}
+            onViewChange={setViewMode}
+            columns={columns}
+            selectedColumnIds={selectedColumnIds}
+            onColumnFilterChange={setSelectedColumnIds}
+            assignees={assigneeFilterOptions}
+            selectedAssigneeIds={selectedAssigneeIds}
+            onAssigneeFilterChange={setSelectedAssigneeIds}
+            onCreateSection={handleOpenAddSectionModal}
+          />
+        }
+      />
 
       {visibleColumns.length === 0 && hasActiveTaskFilters ? (
         <div className="flex flex-1 items-center justify-center px-6 py-10">
@@ -441,10 +465,12 @@ export default function Task() {
           onMoveCard={handleMoveCard}
           onDeleteColumn={handleOpenDeleteModal}
           onUpdateColumn={handleOpenRenameModal}
+          isAddingCard={createTaskMutation.isPending}
         />
-      ) : (
-        <div className="flex-1 overflow-auto px-6 py-4">
+      ) : viewMode === "list" ? (
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           <ListView
+            projectId={projectId!}
             tasksByColumnId={tasksByColumnId}
             columns={visibleColumns}
             currentUserId={currentUser?._id ?? null}
@@ -455,6 +481,20 @@ export default function Task() {
             onDuplicateCard={handleDuplicateCard}
             onJoinCard={handleJoinCard}
             onLeaveCard={handleLeaveCard}
+            isAddingCard={createTaskMutation.isPending}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+          <CalendarView
+            tasks={allTasks}
+            columns={columns}
+            workspaceId={workspaceId ?? ""}
+            projectId={projectId ?? ""}
+            onAddCard={handleOpenAddDialog}
+            onOpenCardDetail={handleOpenEditDialog}
+            onAssignExistingTasks={handleAssignExistingTasksToDate}
+            isAddingCard={createTaskMutation.isPending}
           />
         </div>
       )}
@@ -486,7 +526,6 @@ export default function Task() {
         initialData={editingColumn ? {
           sectionName: editingColumn.title,
           selectedColor: editingColumn.accentColor,
-          isDefault: editingColumn.isDefault,
         } : undefined}
         isLoading={createColumnMutation.isPending || updateColumnMutation.isPending}
       />
@@ -496,7 +535,7 @@ export default function Task() {
         onClose={closeDeleteModal}
         onConfirm={handleColumnDeleteConfirm}
         title={`Delete "${deletingColumn?.title}"`}
-        confirmLabel="Delete column"
+        confirmLabel="Delete"
         isLoading={deleteColumnMutation.isPending}
       />
 
@@ -506,7 +545,7 @@ export default function Task() {
         onConfirm={handleTaskDeleteConfirm}
         title="Delete task"
         message="Are you sure you want to delete this task? This action cannot be undone."
-        confirmLabel="Delete task"
+        confirmLabel="Delete"
         isLoading={deleteTaskMutation.isPending}
       />
     </div>

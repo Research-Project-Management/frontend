@@ -32,6 +32,7 @@ type BoardViewProps = {
   onMoveCard: (taskId: string, newColumnId: string) => void;
   onDeleteColumn: (columnId: string) => void;
   onUpdateColumn: (columnId: string) => void;
+  isAddingCard?: boolean;
 };
 
 export default function BoardView({
@@ -50,6 +51,7 @@ export default function BoardView({
   onMoveCard,
   onDeleteColumn,
   onUpdateColumn,
+  isAddingCard,
 }: BoardViewProps) {
   const [activeCard, setActiveCard] = useState<Task | null>(null);
 
@@ -104,6 +106,7 @@ export default function BoardView({
                 onToggleCardCompleted={onToggleCardCompleted}
                 onDelete={() => onDeleteColumn(columnId)}
                 onUpdate={() => onUpdateColumn(columnId)}
+                onAddDisabled={isAddingCard}
               />
             );
           })}

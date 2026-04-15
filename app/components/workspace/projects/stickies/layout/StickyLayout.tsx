@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import StickyNote from "../note/StickyNote";
 import type { Note } from "../types/note.type";
 import { NOTE_COLOR_CYCLE } from "../types/noteColor.type";
@@ -9,27 +9,19 @@ import {
   useUpdateSticky,
   useDeleteSticky,
 } from "~/query/sticky";
-import { useTags } from "~/query/tag";
 import {
   Layers2,
   Plus,
   Search,
-  Filter,
   Loader2,
   CheckCircle2,
   AlertCircle,
+  ChevronRight,
 } from "lucide-react";
+import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import ManageTagsModal from "../modals/ManageTagsModal";
+import { useProjects } from "~/hooks/useWorkspace";
 import {
   DndContext,
   DragOverlay,
@@ -49,10 +41,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 export default function StickyLayout() {
-  const { workspaceId } = useParams();
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const { workspaceId, projectId } = useParams();
+  const { projects } = useProjects();
+  const currentProject = projects?.find((p) => p._id === projectId);
   const [searchQuery, setSearchQuery] = useState("");
-  const [manageTagsOpen, setManageTagsOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [savingStatus, setSavingStatus] = useState<
     "saved" | "saving" | "error"
   >("saved");
@@ -60,11 +54,7 @@ export default function StickyLayout() {
   const [orderedNotes, setOrderedNotes] = useState<Note[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const { data: notes = [], isLoading } = useStickies(
-    workspaceId || "",
-    selectedTags,
-  );
-  const { data: tags = [] } = useTags(workspaceId || "");
+  const { data: notes = [], isLoading } = useStickies(workspaceId || "");
   const createSticky = useCreateSticky();
   const updateSticky = useUpdateSticky();
   const deleteSticky = useDeleteSticky();
@@ -147,12 +137,6 @@ export default function StickyLayout() {
     [displayNotes, searchQuery],
   );
 
-  const handleTagToggle = (tagId: string, checked: boolean) => {
-    setSelectedTags((prev) =>
-      checked ? [...prev, tagId] : prev.filter((id) => id !== tagId),
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
@@ -171,114 +155,31 @@ export default function StickyLayout() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* ── Combined header + toolbar ── */}
-      <header className="shrink-0 border-b border-border/60 bg-background">
-        <div className="flex items-center gap-3 px-5 h-13">
-          {/* Left: title + count */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="font-semibold text-sm">Stickies</span>
-            {filteredNotes.length > 0 && (
-              <span className="text-xs text-muted-foreground/60 tabular-nums">
-                {filteredNotes.length}
-              </span>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="h-4 w-px bg-border/60 shrink-0" />
-
-          {/* Center: search */}
-          <div className="relative flex-1 max-w-72">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
-            <Input
-              type="text"
-              placeholder="Search stickies…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-sm bg-secondary/40 border-border/40 focus-visible:ring-primary/30"
-            />
-          </div>
-
-          {/* Tags filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-8 border-border/40 text-xs gap-1.5 shrink-0 ${
-                  selectedTags.length > 0
-                    ? "border-primary/40 bg-primary/5 text-primary"
-                    : ""
-                }`}
-              >
-                <Filter className="h-3.5 w-3.5" />
-                Tags
-                {selectedTags.length > 0 && (
-                  <span className="flex items-center justify-center h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                    {selectedTags.length}
+      <header className="shrink-0 border-b border-border/60 bg-background/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 h-13">
+          <div className="flex items-center gap-2.5">
+            {projectId && currentProject ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-base leading-none">
+                    {currentProject.avatar}
                   </span>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-50">
-              <DropdownMenuLabel className="text-xs">
-                Filter by Tag
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {tags.length === 0 ? (
-                <div className="py-4 text-center text-xs text-muted-foreground">
-                  No tags yet
+                  <span className="text-sm font-semibold text-primary truncate max-w-[120px]">
+                    {currentProject.name}
+                  </span>
                 </div>
-              ) : (
-                <div className="max-h-65 overflow-y-auto">
-                  {tags.map((tag) => (
-                    <DropdownMenuCheckboxItem
-                      key={tag._id}
-                      checked={selectedTags.includes(tag._id)}
-                      onCheckedChange={(c) => handleTagToggle(tag._id, c)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: tag.color }}
-                        />
-                        <span className="text-xs">{tag.name}</span>
-                      </div>
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </div>
-              )}
-              {selectedTags.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <div className="p-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-center text-xs h-7"
-                      onClick={() => setSelectedTags([])}
-                    >
-                      Clear all
-                    </Button>
-                  </div>
-                </>
-              )}
-              <DropdownMenuSeparator />
-              <div className="p-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start text-xs h-7"
-                  onClick={() => setManageTagsOpen(true)}
-                >
-                  Manage tags
-                </Button>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <ChevronRight className="size-3.5 text-muted-foreground/50" />
+              </>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <Layers2 className="size-4.5 text-primary" />
+              <h1 className="text-sm font-semibold text-primary transition-all duration-300">
+                Stickies
+              </h1>
+            </div>
+          </div>
 
-          {/* Right: save status + new button */}
-          <div className="flex items-center gap-2 ml-auto shrink-0">
+          <div className="flex items-center gap-3 ml-auto shrink-0">
             {savingStatus === "saving" && (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -298,10 +199,52 @@ export default function StickyLayout() {
               </span>
             )}
 
+            {/* Expandable Search */}
+            <div
+              className={cn(
+                "relative flex items-center transition-all duration-300 ease-in-out overflow-hidden h-8",
+                isSearchExpanded ? "w-64" : "w-8",
+              )}
+            >
+              {isSearchExpanded ? (
+                <div className="relative w-full">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                  <Input
+                    ref={inputRef}
+                    placeholder="Search stickies..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={() => !searchQuery && setIsSearchExpanded(false)}
+                    className="pl-8 pr-8 h-8 text-[13px] rounded-sm border border-border/60 bg-background focus-visible:ring-0 shadow-none w-full"
+                    autoFocus
+                  />
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setIsSearchExpanded(false);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  >
+                    <Plus className="size-3.5 rotate-45" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-sm hover:bg-secondary/60"
+                  onClick={() => setIsSearchExpanded(true)}
+                >
+                  <Search className="size-4" />
+                </Button>
+              )}
+            </div>
+
             <Button
               onClick={handleAddNote}
               size="sm"
-              className="h-8 gap-1.5 text-xs"
+              className="h-8 gap-1.5 text-xs font-semibold"
               disabled={createSticky.isPending}
             >
               {createSticky.isPending ? (
@@ -315,29 +258,22 @@ export default function StickyLayout() {
         </div>
       </header>
 
-      <ManageTagsModal
-        open={manageTagsOpen}
-        onClose={() => setManageTagsOpen(false)}
-      />
-
       <main className="flex-1 overflow-auto p-5">
         {filteredNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="w-14 h-14 rounded-2xl bg-secondary/60 flex items-center justify-center">
               <Layers2 className="h-7 w-7 text-muted-foreground/30" />
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                {searchQuery || selectedTags.length > 0
-                  ? "No stickies match your filters"
-                  : "No stickies yet"}
+            <p className="text-sm font-medium text-muted-foreground">
+              {searchQuery
+                ? "No stickies match your filters"
+                : "No stickies yet"}
+            </p>
+            {!searchQuery && (
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Click "New Sticky" to get started
               </p>
-              {!searchQuery && selectedTags.length === 0 && (
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  Click "New Sticky" to get started
-                </p>
-              )}
-            </div>
+            )}
           </div>
         ) : (
           <DndContext
@@ -394,21 +330,14 @@ function SortableNote({
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onDelete: (id: string) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: note._id,
-  });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({
+      id: note._id,
+    });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    // When dragging: hide the original slot (DragOverlay renders the visible ghost)
     opacity: isDragging ? 0 : 1,
     pointerEvents: isDragging ? ("none" as const) : undefined,
   };

@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "~/components/ui/dialog";
 import TopBar from "../layout/TopBar";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ShieldCheck } from "lucide-react";
 
 type Permission = {
   resource: string;
@@ -197,7 +197,7 @@ export default function RolesPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-border">
+      <div className="px-4 h-13 border-b border-border flex items-center">
           <Skeleton className="h-5 w-20" />
         </div>
         <div className="p-6 space-y-3">
@@ -210,8 +210,8 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <TopBar title="Roles" description="Manage workspace roles and permissions" />
+    <div className="flex flex-col h-full overflow-hidden">
+      <TopBar title="Roles" Icon={ShieldCheck} />
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto space-y-6">

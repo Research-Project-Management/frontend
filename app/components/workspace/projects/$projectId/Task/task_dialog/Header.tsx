@@ -43,10 +43,10 @@ export function TaskHeader({
   return (
     <div className="flex items-center justify-between px-7 py-5 border-b border-[#f3f3f3] bg-white sticky top-0 z-20 shrink-0">
       <Select value={columnId} onValueChange={setColumnId}>
-        <SelectTrigger className="h-9 w-auto min-w-30 rounded-[6px] border-0 bg-[#091e420f] px-3 text-[14px] font-semibold text-[#172b4d] shadow-none hover:bg-[#091e421a] focus:ring-0 transition-colors">
+        <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-[#091e420f] px-3 text-[14px] font-semibold text-[#172b4d] shadow-none hover:bg-[#091e421a] focus:ring-0 transition-colors">
           <SelectValue placeholder="Chọn cột" />
         </SelectTrigger>
-        <SelectContent className="rounded-xl border-border/50 shadow-xl">
+        <SelectContent className="rounded-sm border-border/50 shadow-xl">
           {columns.map((column) => {
             const value = resolveTaskColumnId(column);
             return (
@@ -64,14 +64,14 @@ export function TaskHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 rounded-xl text-[#44546f] hover:bg-[#091e420f]"
+              className="size-10 rounded-sm text-[#44546f] hover:bg-[#091e420f]"
             >
               <MoreHorizontal className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 rounded-xl border-border/50 shadow-xl p-1.5">
+          <DropdownMenuContent align="end" className="w-56 rounded-sm border-border/50 shadow-xl p-1.5">
             {onDuplicate && (
-              <DropdownMenuItem onClick={onDuplicate} className="rounded-lg py-2.5">
+              <DropdownMenuItem onClick={onDuplicate} className="rounded-sm py-2.5">
                 <Copy className="mr-3 h-4 w-4 opacity-70" />
                 <span>Duplicate</span>
               </DropdownMenuItem>
@@ -79,7 +79,7 @@ export function TaskHeader({
             {currentUserId && onJoin && onLeave ? (
               <DropdownMenuItem
                 onClick={isCurrentUserAssignee ? onLeave : onJoin}
-                className="rounded-lg py-2.5"
+                className="rounded-sm py-2.5"
               >
                 {isCurrentUserAssignee ? (
                   <UserMinus className="mr-3 h-4 w-4 opacity-70" />
@@ -92,7 +92,7 @@ export function TaskHeader({
             {onDelete && (
               <DropdownMenuItem
                 onClick={onDelete}
-                className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2.5"
+                className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-sm py-2.5"
               >
                 <Trash2 className="mr-3 h-4 w-4 opacity-70" />
                 <span>Delete</span>
@@ -104,7 +104,7 @@ export function TaskHeader({
         <Button
           variant="ghost"
           size="icon"
-          className="size-10 rounded-xl text-[#44546f] hover:bg-[#091e420f]"
+          className="size-10 rounded-sm text-[#44546f] hover:bg-[#091e420f]"
           onClick={onClose}
         >
           <X className="h-5 w-5" />

@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   LayoutGrid,
   List,
+  CalendarDays,
   Search,
   Plus,
   SlidersHorizontal,
@@ -9,16 +10,13 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import type { Column } from "~/types/task";
 import { resolveTaskColumnColor, resolveTaskColumnId } from "~/types/task";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 
-type ViewMode = "board" | "list";
+type ViewMode = "board" | "list" | "calendar";
 type AssigneeFilterOption = {
   id: string;
   name: string;
@@ -28,8 +26,6 @@ type AssigneeFilterOption = {
 type TopBarProps = {
   viewMode: ViewMode;
   onViewChange: (mode: ViewMode) => void;
-  searchText: string;
-  onSearchChange: (text: string) => void;
   columns: Column[];
   selectedColumnIds: string[];
   onColumnFilterChange: (columnIds: string[]) => void;
@@ -42,8 +38,6 @@ type TopBarProps = {
 export default function TopBar({
   viewMode,
   onViewChange,
-  searchText,
-  onSearchChange,
   columns,
   selectedColumnIds,
   onColumnFilterChange,
@@ -79,47 +73,50 @@ export default function TopBar({
   };
 
   return (
-    <div className="px-4 py-2">
-      <div className="flex items-center gap-2">
-        {/* View toggle */}
-        <div className="flex items-center bg-muted rounded-lg p-0.5">
-          <button
-            onClick={() => onViewChange("board")}
-            className={`p-1.5 rounded-md transition-colors ${viewMode === "board" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            title="Board view"
-          >
-            <LayoutGrid className="size-4" />
-          </button>
-          <button
-            onClick={() => onViewChange("list")}
-            className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            title="List view"
-          >
-            <List className="size-4" />
-          </button>
-        </div>
+    <div className="flex items-center gap-1.5">
+          {/* View toggle */}
+          <div className="flex h-8 items-center overflow-hidden rounded-sm border border-border bg-background">
+            <button
+              onClick={() => onViewChange("board")}
+              className={`p-2 transition-colors ${
+                viewMode === "board"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+              title="Board view"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+            <button
+              onClick={() => onViewChange("list")}
+              className={`p-2 transition-colors ${
+                viewMode === "list"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+              title="List view"
+            >
+              <List className="size-4" />
+            </button>
+            <button
+              onClick={() => onViewChange("calendar")}
+              className={`p-2 transition-colors ${
+                viewMode === "calendar"
+                  ? "bg-black text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+              title="Calendar view"
+            >
+              <CalendarDays className="size-4" />
+            </button>
+          </div>
 
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchText}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-sm bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
-          />
-        </div>
-
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-1.5">
           <Popover open={filterOpen} onOpenChange={setFilterOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground"
+                className="h-8 w-8 rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Filter tasks"
               >
                 <SlidersHorizontal className="size-3.5" />
@@ -127,11 +124,10 @@ export default function TopBar({
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="w-64 max-w-[calc(100vw-1.5rem)] rounded-xl border-border/70 p-2 shadow-lg"
+              className="w-64 max-w-[calc(100vw-1.5rem)] rounded-sm border-border/70 p-2 shadow-lg"
             >
               <div className="px-2 py-1">
                 <p className="text-sm font-semibold text-foreground">Filter tasks</p>
-                <p className="text-xs text-muted-foreground">Filter by column and assignee</p>
               </div>
 
               {activeColumns.length > 0 ? (
@@ -172,7 +168,7 @@ export default function TopBar({
                   onClick={() => {
                     onColumnFilterChange([]);
                   }}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors ${
                     selectedColumnIds.length === 0
                       ? "bg-accent text-foreground"
                       : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
@@ -198,7 +194,7 @@ export default function TopBar({
                       key={columnId}
                       type="button"
                       onClick={() => toggleColumnFilter(columnId)}
-                      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                      className={`flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors ${
                         isActive
                           ? "bg-accent text-foreground"
                           : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
@@ -243,7 +239,7 @@ export default function TopBar({
                   onClick={() => {
                     onAssigneeFilterChange([]);
                   }}
-                  className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors ${
                     selectedAssigneeIds.length === 0
                       ? "bg-accent text-foreground"
                       : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
@@ -266,7 +262,7 @@ export default function TopBar({
                         key={assignee.id}
                         type="button"
                         onClick={() => toggleAssigneeFilter(assignee.id)}
-                        className={`flex w-full min-w-0 items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                        className={`flex w-full min-w-0 items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors ${
                           isActive
                             ? "bg-accent text-foreground"
                             : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
@@ -289,16 +285,14 @@ export default function TopBar({
           </Popover>
 
           <Button
-            variant="ghost"
+            variant="default"
             size="sm"
             onClick={onCreateSection}
-            className="gap-1.5 h-8 text-xs"
+            className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-[filter] hover:brightness-110"
           >
             <Plus className="size-3.5" />
             New Column
           </Button>
-        </div>
-      </div>
     </div>
   );
 }

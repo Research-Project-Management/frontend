@@ -1,27 +1,22 @@
-import { FileText, Grid3X3, List, Search, Plus } from "lucide-react";
+import { FileText, Grid3X3, List, Search, Plus, PenLine, ChevronRight } from "lucide-react";
 import React, { useState, useMemo } from "react";
 import { useParams } from "react-router";
 import PageItem from "./PageItem";
+import { useProjects } from "~/hooks/useWorkspace";
 import { useWorkspacePages, useProjectPages } from "~/query/page";
 import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Button } from "~/components/ui/button";
 import CreatePageDialog from "./CreatePageDialog";
 import { cn } from "~/lib/utils";
 
-type SortOption = "modified" | "created" | "title";
-
 export default function PagesManager({ projectId }: { projectId?: string }) {
   const { workspaceId } = useParams();
+  const { projects } = useProjects();
+  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("modified");
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
   const {
     data: wPages,
@@ -47,15 +42,11 @@ export default function PagesManager({ projectId }: { projectId?: string }) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter((p) => p.title?.toLowerCase().includes(q));
     }
-    return [...filtered].sort((a, b) => {
-      if (sortBy === "title") return a.title.localeCompare(b.title);
-      if (sortBy === "created")
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }, [allPages, searchQuery, sortBy]);
+    return [...filtered].sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  }, [allPages, searchQuery]);
 
   if (isLoading) {
     return (
@@ -90,38 +81,72 @@ export default function PagesManager({ projectId }: { projectId?: string }) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* ── Sticky top bar ─────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-3 flex justify-between items-center">
-        <div className="flex gap-3 items-center">
-          {/* Search */}
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search pages…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8! text-sm"
-            />
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 h-13 flex justify-between items-center">
+        <div className="flex items-center gap-2.5">
+          {projectId && currentProject ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-base leading-none">
+                  {currentProject.avatar}
+                </span>
+                <span className="text-sm font-semibold text-primary truncate max-w-[120px]">
+                  {currentProject.name}
+                </span>
+              </div>
+              <ChevronRight className="size-3.5 text-muted-foreground/50" />
+            </>
+          ) : null}
+          <div className="flex items-center gap-2">
+            <PenLine className="size-4.5 text-primary" />
+            <h1 className="text-sm font-semibold text-primary transition-all duration-300">
+              All Pages
+            </h1>
           </div>
-
-          {/* Sort */}
-          <Select
-            value={sortBy}
-            onValueChange={(v) => setSortBy(v as SortOption)}
-          >
-            <SelectTrigger className="w-40 h-8! text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="modified">Last modified</SelectItem>
-              <SelectItem value="created">Date created</SelectItem>
-              <SelectItem value="title">Title (A–Z)</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Search */}
+          <div
+            className={cn(
+              "relative flex items-center transition-all duration-300 ease-in-out overflow-hidden h-8",
+              isSearchExpanded ? "w-64" : "w-8",
+            )}
+          >
+            {isSearchExpanded ? (
+              <div className="relative w-full">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Input
+                  autoFocus
+                  type="text"
+                  placeholder="Search pages..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => !searchQuery && setIsSearchExpanded(false)}
+                  className="pl-8 pr-8 h-8! text-[13px] rounded-sm border border-border/60 bg-background focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/60"
+                />
+                <button
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setSearchQuery("");
+                    setIsSearchExpanded(false);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
+                >
+                  <Plus className="size-3.5 rotate-45" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 hover:bg-muted"
+                onClick={() => setIsSearchExpanded(true)}
+              >
+                <Search className="size-4 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
+
           {/* View toggle */}
           <div className="flex items-center h-8 rounded-md border border-border overflow-hidden shrink-0">
             <button

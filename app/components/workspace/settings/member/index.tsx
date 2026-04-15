@@ -100,9 +100,8 @@ export default function MemberPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="px-8 pt-8 pb-6 border-b border-border">
+      <div className="px-4 h-13 border-b border-border flex items-center">
           <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-4 w-64 mt-2" />
         </div>
         <div className="flex-1 px-8 py-8 space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -123,7 +122,7 @@ export default function MemberPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar title="Members" description={`Manage members of "${workspace.name}" workspace.`} />
+      <TopBar title="Members" Icon={Users} />
       <div className="flex-1 px-8 py-8 space-y-6 flex flex-col overflow-hidden">
         <div className="flex justify-between items-center">
           <div />

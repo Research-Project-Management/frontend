@@ -14,7 +14,6 @@ import { Switch } from "~/components/ui/switch";
 export type SectionData = {
   sectionName: string;
   selectedColor: string;
-  isDefault: boolean;
 };
 
 interface CreateModalProps {
@@ -46,34 +45,31 @@ export default function CreateModal({
 }: CreateModalProps) {
   const [sectionName, setSectionName] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
-  const [isDefault, setIsDefault] = useState(false);
+  // Đã loại bỏ isDefault
 
   useEffect(() => {
     if (isOpen) {
       setSectionName(initialData?.sectionName || "");
       setSelectedColor(initialData?.selectedColor || COLORS[0].value);
-      setIsDefault(initialData?.isDefault || false);
     }
   }, [isOpen, initialData]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!sectionName.trim()) return;
-    
     onSubmit({
       sectionName: sectionName.trim(),
       selectedColor,
-      isDefault,
     });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border border-gray-100">
+      <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 shadow-2xl rounded-sm">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-lg font-semibold text-gray-900">
-              {mode === "create" ? "New Column" : "Rename Column"}
+            <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
+              {mode === "create" ? "New Column" : "Edit Column"}
             </DialogTitle>
           </DialogHeader>
 
@@ -81,7 +77,7 @@ export default function CreateModal({
             <div className="space-y-2.5">
               <Label
                 htmlFor="section-name"
-                className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                className="text-[12px] font-bold text-[#44546f] uppercase tracking-wider"
               >
                 Column Name
               </Label>
@@ -91,12 +87,12 @@ export default function CreateModal({
                 value={sectionName}
                 onChange={(e) => setSectionName(e.target.value)}
                 autoFocus
-                className="h-10 text-sm font-medium focus-visible:ring-1 focus-visible:ring-gray-300"
+                className="h-9 text-[14px] font-medium text-[#172b4d] rounded-sm border-zinc-200 shadow-none focus-visible:ring-0 focus-visible:border-black"
               />
             </div>
 
             <div className="space-y-3">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <Label className="text-[12px] font-bold text-[#44546f] uppercase tracking-wider">
                 Accent Color
               </Label>
               <div className="flex items-center space-x-3.5">
@@ -106,11 +102,11 @@ export default function CreateModal({
                     onClick={() => setSelectedColor(color.value)}
                     type="button"
                     className={`
-                      w-6.5 h-6.5 rounded-full transition-all duration-200 focus:outline-none
-                      ${color.border ? "border border-gray-200" : ""}
+                      w-6.5 h-6.5 rounded-full transition-all duration-200 focus:outline-none cursor-pointer
+                      ${color.border ? "border border-[#d9d9d9]" : "border border-transparent"}
                       ${
                         selectedColor.toLowerCase() === color.value.toLowerCase()
-                          ? "ring-2 ring-offset-2 ring-gray-900 scale-100"
+                          ? "ring-2 ring-offset-2 ring-black scale-100"
                           : "hover:scale-110"
                       }
                     `}
@@ -122,24 +118,24 @@ export default function CreateModal({
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-row items-center justify-end gap-2 sm:justify-end">
+          <div className="border-[#ececec] px-6 py-4 bg-white flex flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={onClose}
               disabled={isLoading}
-              className="h-9 px-4 text-sm font-medium text-gray-600 hover:text-gray-900"
+              className="h-9 px-4 text-[14px] font-medium text-[#44546f] hover:bg-[#091e420f] shadow-none rounded-sm"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="h-9 px-6 text-sm font-medium bg-gray-900 text-white hover:bg-gray-800"
+              className="h-9 px-6 text-[14px] font-medium bg-black text-white hover:bg-black/90 shadow-none rounded-sm transition-all duration-200 active:scale-[0.98]"
               disabled={!sectionName.trim() || isLoading}
             >
-              {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create" : "Save Changes")}
+              {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create" : "Save")}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

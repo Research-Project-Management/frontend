@@ -49,7 +49,7 @@ export function ActionLabelsSection({
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const resolvedActionBtnClass =
     actionBtnClass ??
-    "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]";
 
   const filteredLabelPool = useMemo(() => {
     return labelPool.filter((label) =>
@@ -141,7 +141,7 @@ export function ActionLabelsSection({
           </div>
 
           <div ref={contentScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-6">
-            <div className="h-10 rounded-md shadow-none w-full flex items-center px-3" style={{ backgroundColor: selectedEditColor }}>
+            <div className="h-10 rounded-sm shadow-none w-full flex items-center px-3" style={{ backgroundColor: selectedEditColor }}>
               {editingTitle ? (
                 <span className="text-xs font-bold text-white truncate max-w-full drop-shadow-sm">
                   {editingTitle}
@@ -154,7 +154,7 @@ export function ActionLabelsSection({
               <Input
                 value={editingTitle}
                 onChange={(e) => setEditingTitle(e.target.value)}
-                className="h-10 border-[#091e4224] focus-visible:ring-2 ring-primary/20 shadow-none border-none bg-accent/20"
+                className="h-10 border-[#091e4224] focus-visible:ring-2 ring-black/20 shadow-none border-none bg-accent/20"
               />
             </div>
 
@@ -165,7 +165,7 @@ export function ActionLabelsSection({
                   <button
                     key={item.name}
                     onClick={() => setSelectedEditColor(item.color)}
-                    className="h-8 rounded-lg relative transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+                    className="h-8 rounded-sm relative transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
                     style={{ backgroundColor: item.color }}
                   >
                     {selectedEditColor === item.color ? (
@@ -177,10 +177,10 @@ export function ActionLabelsSection({
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-4">
-              <Button onClick={handleSaveEditLabel} className="bg-[#0c66e4] hover:bg-[#0c66e4]/90 text-white font-semibold h-10 px-6 rounded-md shadow-sm">
+              <Button onClick={handleSaveEditLabel} className="bg-black hover:bg-black/90 text-white font-semibold h-10 px-6 rounded-sm shadow-sm">
                 Lưu
               </Button>
-              <Button onClick={handleDeleteLabelFromTask} variant="destructive" className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-10 px-6 rounded-md shadow-sm">
+              <Button onClick={handleDeleteLabelFromTask} variant="destructive" className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-10 px-6 rounded-sm shadow-sm">
                 Xóa
               </Button>
             </div>
@@ -203,7 +203,7 @@ export function ActionLabelsSection({
             placeholder="Tìm nhãn..."
             value={labelSearch}
             onChange={(e) => setLabelSearch(e.target.value)}
-            className="h-10 border-[#0052cc] focus-visible:ring-2 ring-[#0052cc]/20 transition-all shadow-none"
+            className="h-10 border-black focus-visible:ring-2 ring-black/20 transition-all shadow-none"
           />
 
           <div className="space-y-3">
@@ -214,13 +214,13 @@ export function ActionLabelsSection({
                   <Checkbox
                     checked={labels.includes(item.id)}
                     onCheckedChange={(checked) => setLabelSelected(item.id, checked === true)}
-                    className="size-5 rounded-lg border-[#091e4224] data-[state=checked]:bg-[#172b4d] data-[state=checked]:border-[#172b4d]"
+                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-black data-[state=checked]:border-black"
                   />
 
                   <button
                     type="button"
                     onClick={() => setLabelSelected(item.id, !labels.includes(item.id))}
-                    className="h-10 flex-1 rounded-md transition-all hover:opacity-85 active:scale-[0.98] shadow-none flex items-center px-3"
+                    className="h-10 flex-1 rounded-sm transition-all hover:opacity-85 active:scale-[0.98] shadow-none flex items-center px-3"
                     style={{ backgroundColor: item.color }}
                   >
                     {item.title ? (
@@ -246,7 +246,7 @@ export function ActionLabelsSection({
           <Button
             variant="secondary"
             onClick={handleCreateNewLabel}
-            className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-10 rounded-md border-none shadow-none transition-all"
+            className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-10 rounded-sm border-none shadow-none transition-all"
           >
             Tạo nhãn mới
           </Button>
@@ -268,7 +268,7 @@ export function ActionLabelsSection({
           variant="outline"
           className={
             open
-              ? "h-10 rounded-xl border-none bg-[#172b4d] px-4 text-[14px] font-semibold text-white shadow-none"
+              ? "h-10 rounded-sm border-none bg-black px-4 text-[14px] font-semibold text-white shadow-none"
               : resolvedActionBtnClass
           }
         >
@@ -295,7 +295,7 @@ export function ActionLabelsSection({
             e.preventDefault();
           }
         }}
-        className="z-100 flex max-h-[82vh] w-80 min-h-0 flex-col overflow-hidden rounded-xl border-border/50 p-0 shadow-xl"
+        className="z-100 flex max-h-[82vh] w-80 min-h-0 flex-col overflow-hidden rounded-sm border-border/50 p-0 shadow-xl"
         style={{ maxHeight: "min(82vh, 760px)" }}
       >
         {renderLabelsContent()}

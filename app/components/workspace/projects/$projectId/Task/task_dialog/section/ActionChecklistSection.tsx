@@ -20,7 +20,7 @@ export function ActionChecklistSection({
   const [checklistTitle, setChecklistTitle] = useState("Việc cần làm");
 
   const actionBtnClass =
-    "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
 
   const handleAddChecklist = () => {
     if (!checklistTitle.trim()) return;
@@ -36,7 +36,7 @@ export function ActionChecklistSection({
           variant="outline"
           className={
             open
-              ? "h-10 rounded-xl border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
+              ? "h-10 rounded-sm border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
               : actionBtnClass
           }
         >
@@ -47,7 +47,7 @@ export function ActionChecklistSection({
         align="start"
         side="bottom"
         sideOffset={-14}
-        className="w-80 p-0 rounded-xl shadow-xl border-border/50 overflow-hidden flex flex-col z-100"
+        className="w-80 p-0 rounded-sm shadow-xl border-border/50 overflow-hidden flex flex-col z-100"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           <span className="text-sm font-semibold text-center flex-1">
@@ -56,7 +56,7 @@ export function ActionChecklistSection({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-md"
+            className="h-8 w-8 rounded-sm"
             onClick={() => setOpen(false)}
           >
             <X className="h-4 w-4" />
@@ -71,11 +71,11 @@ export function ActionChecklistSection({
               value={checklistTitle}
               onChange={(e) => setChecklistTitle(e.target.value)}
               autoFocus
-              className="h-10 focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-10 focus-visible:ring-1 focus-visible:ring-black"
             />
           </div>
           <Button
-            className="w-fit px-6 bg-primary hover:bg-primary/90"
+            className="w-fit px-6 bg-black text-white hover:bg-black/90"
             onClick={handleAddChecklist}
           >
             Thêm

@@ -193,11 +193,7 @@ export default function WorkspaceRolesPage() {
                         <Lock className="size-3 text-muted-foreground" />
                       )}
                     </h3>
-                    {role.isDefault && (
-                      <Badge variant="secondary" className="text-xs mt-0.5">
-                        Default
-                      </Badge>
-                    )}
+                    {/* Đã loại bỏ badge Default vì không còn isDefault */}
                   </div>
                 </div>
 

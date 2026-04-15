@@ -52,7 +52,7 @@ export function ActionAttachmentSection({
         variant="outline"
         className={
           actionBtnClass ??
-          "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]"
+          "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]"
         }
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}

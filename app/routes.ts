@@ -30,12 +30,12 @@ export default [
     layout("./components/workspace/projects/layout/ProjectsLayout.tsx", [
       route(":workspaceId", "./routes/workspace/$workspaceId.tsx"),
       route(
-        ":workspaceId/pages",
-        "./routes/workspace/$workspaceId/pages/index.tsx",
+        ":workspaceId/works/your-work",
+        "./routes/workspace/$workspaceId/works/your-work.tsx",
       ),
       route(
-        ":workspaceId/works",
-        "./routes/workspace/$workspaceId/works/index.tsx",
+        ":workspaceId/pages",
+        "./routes/workspace/$workspaceId/pages/index.tsx",
       ),
       route(
         ":workspaceId/stickies",

@@ -162,7 +162,24 @@ export const useUpdateTask = () => {
         queryClient.setQueryData<ProjectTasksData>(["tasks", newValues.projectId], {
           ...previousData,
           tasks: previousData.tasks.map((task) =>
-            task._id === newValues.taskId ? { ...task, ...optimisticFields } : task,
+            task._id === newValues.taskId
+              ? {
+                  ...task,
+                  ...optimisticFields,
+                  dueDate:
+                    optimisticFields.dueDate === null
+                      ? undefined
+                      : optimisticFields.dueDate,
+                  startDate:
+                    (optimisticFields as any).startDate === null
+                      ? undefined
+                      : (optimisticFields as any).startDate,
+                  endDate:
+                    (optimisticFields as any).endDate === null
+                      ? undefined
+                      : (optimisticFields as any).endDate,
+                }
+              : task,
           ),
         });
       }

@@ -10,10 +10,10 @@ import {
   Pin,
   Plus,
   Settings,
-  UserStar,
   Layers2,
   RotateCcw,
   ChartBarBig,
+  UserStar,
 } from "lucide-react";
 import React, { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
@@ -62,8 +62,8 @@ const MODULE_ORDER: ProjectModuleKey[] = [
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
   overview: { label: "Overview", icon: ChartBarBig },
   tasks: { label: "Tasks", icon: KanbanSquare },
-  cycles: { label: "Cycles", icon: RotateCcw },
   pages: { label: "Pages", icon: PenLine },
+  cycles: { label: "Cycles", icon: RotateCcw },
   storage: { label: "Storage", icon: Cloud },
   settings: { label: "Settings", icon: Settings },
   stickies: { label: "Stickies", icon: Layers2 },
@@ -74,21 +74,29 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const sidebarItems = [
-    { label: "Home", icon: Home, to: "/" + workspaceId },
     {
-      label: "Your works",
+      label: "Home",
+      icon: Home,
+      to: "/" + workspaceId,
+      matchPrefixes: ["/" + workspaceId],
+    },
+    {
+      label: "Your Work",
       icon: UserStar,
-      to: "/" + workspaceId + "/works",
+      to: "/" + workspaceId + "/works/your-work",
+      matchPrefixes: ["/" + workspaceId + "/works/your-work"],
     },
     {
       label: "All Pages",
       icon: PenLine,
       to: "/" + workspaceId + "/pages",
+      matchPrefixes: ["/" + workspaceId + "/pages"],
     },
     {
       label: "Stickies",
       icon: Layers2,
       to: "/" + workspaceId + "/stickies",
+      matchPrefixes: ["/" + workspaceId + "/stickies"],
     },
   ];
 
@@ -110,7 +118,17 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
         {sidebarItems.map((item) => {
-          const isActive = location.pathname === item.to;
+          const isActive = item.matchPrefixes.some((prefix) => {
+            if (item.label === "Home") {
+              return (
+                location.pathname === prefix || location.pathname === prefix + "/"
+              );
+            }
+            return (
+              location.pathname === prefix ||
+              location.pathname.startsWith(prefix + "/")
+            );
+          });
           return (
             <Link
               to={item.to}

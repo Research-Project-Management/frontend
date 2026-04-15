@@ -162,34 +162,38 @@ export default function CyclePage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-6 space-y-4 animate-in fade-in duration-300">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-7 w-40" />
-          <Skeleton className="h-8 w-28 rounded-lg" />
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 p-6 space-y-4 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="h-8 w-28 rounded-lg" />
+          </div>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
         </div>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 w-full rounded-xl" />
-        ))}
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Research Cycles</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Manage your research phases, milestones, and deliverables
-            </p>
+    <div className="flex flex-col h-full overflow-hidden">
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          {/* Header Content */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Research Cycles</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Manage your research phases, milestones, and deliverables
+              </p>
+            </div>
+            <Button onClick={openCreate} size="sm" className="gap-1.5">
+              <Plus className="size-4" />
+              New Cycle
+            </Button>
           </div>
-          <Button onClick={openCreate} size="sm" className="gap-1.5">
-            <Plus className="size-4" />
-            New Cycle
-          </Button>
-        </div>
 
         {/* Cycle timeline */}
         {cycles.length === 0 ? (
@@ -516,5 +520,7 @@ export default function CyclePage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  </div>
+);
 }
+

@@ -8,6 +8,7 @@ import {
   HardDrive,
   CalendarDays,
   ArrowUpRight,
+  ChartBarBig,
 } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
@@ -15,6 +16,7 @@ import { Progress } from "~/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { getRoleName } from "~/lib/utils";
 import { memo } from "react";
+import Topbar from "./Topbar";
 
 function getInitials(name: string) {
   return name
@@ -76,6 +78,7 @@ export default function ProjectOverview() {
   const { projectId, workspaceId } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, error } = useProjectOverview(projectId!);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const formatSize = useMemo(
     () => (bytes: number) => {
@@ -145,16 +148,20 @@ export default function ProjectOverview() {
   const { project, stats } = data;
 
   return (
-    <div className="flex-1 p-6 space-y-10 overflow-y-auto">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">
-            {project.description || "No description provided."}
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Topbar
+        project={{ name: project.name, avatar: project.avatar }}
+        title="Overview"
+        Icon={ChartBarBig}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+        {project.description && (
+          <p className="text-muted-foreground max-w-3xl -mb-4">
+            {project.description}
           </p>
-        </div>
-      </div>
+        )}
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -324,5 +331,6 @@ export default function ProjectOverview() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

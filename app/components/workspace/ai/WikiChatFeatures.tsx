@@ -19,6 +19,7 @@ import {
   useEffect,
   type DragEvent,
 } from "react";
+import { useParams } from "react-router";
 import { Switch } from "~/components/ui/switch";
 import {
   Tooltip,
@@ -71,6 +72,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function WikiChatFeatures() {
+  const { chatId } = useParams<{ chatId?: string }>();
   const {
     sources,
     addSource,
@@ -145,7 +147,7 @@ export default function WikiChatFeatures() {
         toUpload.map(async (fileObj, i) => {
           const { tempId } = entries[i];
           try {
-            const result = await uploadDocument(fileObj);
+            const result = await uploadDocument(fileObj, chatId);
             // Register in context — this makes it appear in the sources list
             addSource(result.id, fileObj.name);
             setFluxDataEnabled(true);

@@ -522,6 +522,8 @@ export default function ChatView() {
           signal: controller.signal,
           projectId,
           workspaceId,
+          // RAG isolation — scope retrieval to this chat session only
+          chatId: chatId ?? undefined,
           documentIds:
             fluxDataEnabled && enabledDocumentIds.length > 0
               ? enabledDocumentIds

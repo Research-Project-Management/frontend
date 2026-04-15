@@ -106,6 +106,8 @@ export const useUpdateProject = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["project-overview", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-header", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects-header"] });
     },
   });
 };

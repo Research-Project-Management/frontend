@@ -15,6 +15,8 @@ import {
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
+import { AGENT_CONFIGS } from "~/types/chat";
+import type { AgentId } from "~/types/chat";
 
 const DEFAULT_ACADEMIC_SITES = [
   // Primary academic sources
@@ -44,6 +46,7 @@ interface ChatAiProps {
     text: string,
     projectId?: string,
     webSearchSites?: string[],
+    intentHint?: string,
   ) => void;
   disabled?: boolean;
   initialProject?: string;
@@ -57,7 +60,13 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const [selectedProject, setSelectedProject] = useState<string>(initialProject || "");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
+  const [mentionedAgent, setMentionedAgent] = useState<AgentId | null>(null);
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStart, setMentionStart] = useState(-1);
+  const [highlightIdx, setHighlightIdx] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -68,21 +77,115 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
     }
   }, [message]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowMentionDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setMessage(val);
+
+    // Detect @ trigger
+    const cursor = e.target.selectionStart ?? val.length;
+    const textBeforeCursor = val.slice(0, cursor);
+    const lastAt = textBeforeCursor.lastIndexOf("@");
+
+    if (lastAt >= 0) {
+      const textAfterAt = textBeforeCursor.slice(lastAt + 1);
+      // Only trigger if no spaces after @
+      if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
+        setMentionStart(lastAt);
+        setMentionQuery(textAfterAt.toLowerCase());
+        setShowMentionDropdown(true);
+        setHighlightIdx(0);
+        return;
+      }
+    }
+    setShowMentionDropdown(false);
+  };
+
+  const filteredAgents = AGENT_CONFIGS.filter(
+    (a) =>
+      mentionQuery === "" ||
+      a.id.includes(mentionQuery) ||
+      a.label.toLowerCase().includes(mentionQuery),
+  );
+
+  const selectAgent = (agent: (typeof AGENT_CONFIGS)[number]) => {
+    // Replace the @query in message with empty string (tag handles the display)
+    if (mentionStart >= 0) {
+      const before = message.slice(0, mentionStart);
+      const after = message.slice(mentionStart + 1 + mentionQuery.length);
+      setMessage((before + after).trimStart());
+    }
+    setMentionedAgent(agent.id);
+    setShowMentionDropdown(false);
+    setHighlightIdx(0);
+    textareaRef.current?.focus();
+  };
+
+  const clearAgent = () => setMentionedAgent(null);
+
   const handleSend = useCallback(() => {
     if (!message.trim() || disabled) return;
     onSend?.(
       message.trim(),
       selectedProject || undefined,
       webSearch ? sites : undefined,
+      mentionedAgent ?? undefined,
     );
     setMessage("");
-  }, [message, disabled, selectedProject, onSend, webSearch, sites]);
+    setMentionedAgent(null);
+  }, [message, disabled, selectedProject, onSend, webSearch, sites, mentionedAgent]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Navigate dropdown with arrows
+    if (showMentionDropdown && filteredAgents.length > 0) {
+      if (e.key === "Escape") {
+        setShowMentionDropdown(false);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setHighlightIdx((prev) => (prev + 1) % filteredAgents.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setHighlightIdx((prev) =>
+          prev <= 0 ? filteredAgents.length - 1 : prev - 1,
+        );
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]);
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleQuickPrompt = (prompt: string) => {
+    setMessage(prompt);
+    textareaRef.current?.focus();
   };
 
   const addSite = () => {
@@ -102,11 +205,48 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
   if (isLoading || !projects) return null;
 
+  const activeAgent = mentionedAgent ? AGENT_CONFIGS.find((a) => a.id === mentionedAgent) : null;
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4">
       <div className="relative w-full group">
+        {/* @mention dropdown */}
+        {showMentionDropdown && filteredAgents.length > 0 && (
+          <div
+            ref={dropdownRef}
+            className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
+          >
+            <div className="px-3 py-2 border-b border-border/60">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Mention Agent
+              </p>
+            </div>
+            {filteredAgents.map((agent, i) => (
+              <button
+                key={agent.id}
+                onClick={() => selectAgent(agent)}
+                onMouseEnter={() => setHighlightIdx(i)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left ${
+                  i === highlightIdx
+                    ? "bg-accent/80"
+                    : "hover:bg-accent/60"
+                }`}
+              >
+                  <div className="flex-1 min-w-0">
+                  <span className="text-sm font-semibold text-foreground/80">
+                    @{agent.label}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {agent.description}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
-          {/* Top row: project selector */}
+          {/* Top row: project selector + active agent badge */}
           <div className="flex items-center gap-2 px-3 pt-3">
             <Select
               value={selectedProject || projects[0]?._id}
@@ -119,7 +259,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
+                {projects.map((project: { _id: string; name: string; avatar?: string }) => (
                   <SelectItem key={project._id} value={project._id}>
                     <div className="flex items-center gap-2">
                       {project.avatar}
@@ -129,18 +269,59 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Active agent badge */}
+            {activeAgent && (
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-foreground/80 transition-all animate-in fade-in-0 zoom-in-95 duration-200"
+              >
+                <span>@{activeAgent.label}</span>
+                <button
+                  onClick={clearAgent}
+                  className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Hint text when no agent selected */}
+            {!activeAgent && (
+              <span className="text-[10px] text-muted-foreground/40 ml-auto mr-1 hidden sm:block">
+                Type @ to mention an agent
+              </span>
+            )}
           </div>
 
           {/* Textarea */}
           <Textarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleMessageChange}
             onKeyDown={handleKeyDown}
             rows={1}
             className="border-none shadow-none focus-visible:ring-0 resize-none min-h-[44px] max-h-[200px] px-4 py-3 text-sm placeholder:text-muted-foreground/50"
-            placeholder="Ask anything about your project..."
+            placeholder={
+              activeAgent
+                ? `Ask ${activeAgent.label} anything...`
+                : "Ask anything about your project..."
+            }
           />
+
+          {/* Quick-action chips — show when agent is selected and input is empty */}
+          {activeAgent && !message.trim() && (
+            <div className="flex flex-wrap gap-1.5 px-4 pb-2 animate-in fade-in-0 duration-200">
+              {activeAgent.quickPrompts.slice(0, 4).map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => handleQuickPrompt(prompt)}
+                  className="text-[11px] px-2.5 py-1 rounded-full border border-border/50 bg-secondary/40 hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Bottom row */}
           <div className="flex items-center justify-between px-3 pb-3">

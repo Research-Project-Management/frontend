@@ -170,6 +170,7 @@ export default function CreateProject({
     }) => apiPost(`/api/workspace/${workspaceId}/project`, data),
     onSuccess() {
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["projects-header", workspaceId] });
       // Reset
       setName("");
       setAvatar("📁");

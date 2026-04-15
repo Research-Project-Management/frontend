@@ -3,8 +3,9 @@
  *
  * Shows a compact card for each tool the agent called, with:
  * - Tool name + status indicator (spinner / success / error)
+ * - Color-coded border by category (read/create/update/delete/analyze)
  * - Collapsed input/output details (expandable)
- * - Special handling for create_task, list_tasks etc.
+ * - Smart summaries for all tool types
  */
 
 import { useState, memo } from "react";
@@ -15,8 +16,26 @@ import {
   AlertCircle,
   Wrench,
 } from "lucide-react";
-import type { AgentAction } from "~/types/chat";
-import { TOOL_LABELS } from "~/types/chat";
+import type { AgentAction, ToolCategory } from "~/types/chat";
+import { TOOL_LABELS, TOOL_CATEGORY_COLORS } from "~/types/chat";
+
+// ── Category border colors for the left accent ─────────────────────────────────
+
+const CATEGORY_BORDER: Record<ToolCategory, string> = {
+  read:    "border-l-[#3370ff]/70",
+  create:  "border-l-emerald-500/70",
+  update:  "border-l-amber-500/70",
+  delete:  "border-l-red-500/70",
+  analyze: "border-l-violet-500/70",
+};
+
+const CATEGORY_BG: Record<ToolCategory, string> = {
+  read:    "bg-[#3370ff]/[0.04]",
+  create:  "bg-emerald-500/[0.04]",
+  update:  "bg-amber-500/[0.04]",
+  delete:  "bg-red-500/[0.04]",
+  analyze: "bg-violet-500/[0.04]",
+};
 
 // ── Tool Result Renderers ───────────────────────────────────────────────────────
 
@@ -28,79 +47,114 @@ function getToolSummary(
   if (!output) return null;
   if (output.error) return `Error: ${output.message || "Unknown error"}`;
 
-  // Task created
+  // Generic count-based summaries
+  const countKeys: Record<string, string> = {
+    tasks: "tasks", projects: "projects", members: "members",
+    cycles: "cycles", pages: "pages", stickies: "sticky notes",
+    tags: "tags", comments: "comments", versions: "versions",
+    results: "results", users: "users",
+  };
+
+  for (const [key, label] of Object.entries(countKeys)) {
+    if (output[key] && Array.isArray(output[key])) {
+      return `Found ${(output[key] as unknown[]).length} ${label}`;
+    }
+  }
+
+  // Task-specific
   if (tool === "create_task" && output.task) {
     const task = output.task as Record<string, unknown>;
     return `Created "${task.title}" → ${task.columnId || "todo"}`;
   }
-
-  // Task updated
   if (tool === "update_task" && output.task) {
     const task = output.task as Record<string, unknown>;
     return `Updated "${task.title}"`;
   }
+  if (tool === "delete_task" && output.success) return "Task deleted";
 
-  // Task deleted
-  if (tool === "delete_task" && output.success) {
-    return "Task deleted successfully";
+  // Task columns format
+  if (tool === "list_tasks" && output.columns && typeof output.columns === "object") {
+    const cols = output.columns as Record<string, unknown[]>;
+    const total = Object.values(cols).reduce(
+      (a, b) => a + (Array.isArray(b) ? b.length : 0), 0,
+    );
+    return `Found ${total} tasks`;
   }
 
-  // List tasks
-  if (tool === "list_tasks") {
-    if (output.columns && typeof output.columns === "object") {
-      const cols = output.columns as Record<string, unknown[]>;
-      const total = Object.values(cols).reduce(
-        (a, b) => a + (Array.isArray(b) ? b.length : 0),
-        0,
-      );
-      return `Found ${total} tasks`;
-    }
-    if (output.tasks && Array.isArray(output.tasks)) {
-      return `Found ${output.tasks.length} tasks`;
-    }
-  }
-
-  // Project overview
+  // Project
   if (tool === "get_project_overview" && output.project) {
     const p = output.project as Record<string, unknown>;
     return `${p.name || "Project"} overview loaded`;
   }
-
-  // List members
-  if (tool === "list_members" && output.members) {
-    const members = output.members as unknown[];
-    return `Found ${members.length} members`;
+  if (tool === "get_project_details" && output.project) {
+    const p = output.project as Record<string, unknown>;
+    return `${p.name || "Project"} details loaded`;
   }
+  if (tool === "update_project" && output.success) return "Project updated";
+  if (tool === "add_project_member" && output.success) return "Member added";
+  if (tool === "remove_project_member" && output.success) return "Member removed";
+  if (tool === "update_member_role" && output.success) return "Role updated";
 
-  // Search
-  if (tool === "search_workspace") {
-    return "Search complete";
+  // Workspace
+  if (tool === "get_workspace_overview" && (output.workspace || output.overview)) return "Overview loaded";
+  if (tool === "get_workspace_activity" && output.activities) {
+    const acts = output.activities as unknown[];
+    return `${acts.length} recent activities`;
   }
+  if (tool === "search_workspace") return "Search complete";
 
   // Cycles
   if (tool === "create_cycle" && output.cycle) {
     const c = output.cycle as Record<string, unknown>;
     return `Created cycle "${c.name}"`;
   }
-  if (tool === "list_cycles" && output.cycles) {
-    const cycles = output.cycles as unknown[];
-    return `Found ${cycles.length} cycles`;
+  if (tool === "get_cycle_details" && output.cycle) {
+    const c = output.cycle as Record<string, unknown>;
+    return `${c.name || "Cycle"} details loaded`;
   }
+  if (tool === "update_cycle" && output.success) return "Cycle updated";
+  if (tool === "delete_cycle" && output.success) return "Cycle deleted";
 
   // Pages
-  if (tool === "list_pages" && output.pages) {
-    const pages = output.pages as unknown[];
-    return `Found ${pages.length} pages`;
+  if (tool === "create_page" && output.page) return "Page created";
+  if (tool === "update_page" && output.success) return "Page updated";
+  if (tool === "delete_page" && output.success) return "Page deleted";
+  if (tool === "get_page_content" && output.page) {
+    const p = output.page as Record<string, unknown>;
+    return `"${p.title || "Page"}" loaded`;
   }
 
   // Stickies
-  if (tool === "create_sticky" && output.sticky) {
-    return "Sticky note created";
+  if (tool === "create_sticky" && output.sticky) return "Sticky created";
+  if (tool === "update_sticky" && output.success) return "Sticky updated";
+  if (tool === "delete_sticky" && output.success) return "Sticky deleted";
+
+  // Tags
+  if (tool === "create_tag" && output.tag) return "Tag created";
+  if (tool === "delete_tag" && output.success) return "Tag deleted";
+
+  // Comments
+  if (tool === "add_task_comment" && output.comment) return "Comment added";
+  if (tool === "add_page_comment" && output.comment) return "Comment added";
+
+  // Users
+  if (tool === "get_current_user" && output.user) return "User info loaded";
+
+  // Analysis
+  if (tool === "get_workload_distribution") return "Workload analysis ready";
+  if (tool === "get_overdue_report") return "Overdue report ready";
+  if (tool === "get_project_velocity") return "Velocity data ready";
+  if (tool === "generate_team_summary") return "Team summary ready";
+
+  // My tasks
+  if (tool === "get_my_tasks" && output.tasks) {
+    const tasks = output.tasks as unknown[];
+    return `Found ${tasks.length} assigned tasks`;
   }
-  if (tool === "list_stickies" && output.stickies) {
-    const s = output.stickies as unknown[];
-    return `Found ${s.length} sticky notes`;
-  }
+  if (tool === "summarize_member_tasks") return "Workload summary ready";
+
+  // Generic success
+  if (output.success) return "Done";
 
   return null;
 }
@@ -121,7 +175,9 @@ const ActionCard = memo(function ActionCard({
   const toolInfo = TOOL_LABELS[action.tool] ?? {
     label: action.tool,
     icon: "🔧",
+    category: "read" as ToolCategory,
   };
+  const category = toolInfo.category;
   const isStart = action.type === "tool_start";
   const isEnd = action.type === "tool_end";
   const hasError =
@@ -131,7 +187,9 @@ const ActionCard = memo(function ActionCard({
   const summary = isEnd ? getToolSummary(action.tool, action.output) : null;
 
   return (
-    <div className="rounded-xl border border-border/50 bg-secondary/20 overflow-hidden transition-all duration-200 hover:border-border/80">
+    <div
+      className={`rounded-xl border border-border/50 border-l-2 overflow-hidden transition-all duration-200 hover:border-border/80 ${CATEGORY_BORDER[category]} ${CATEGORY_BG[category]}`}
+    >
       {/* Header */}
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -146,9 +204,8 @@ const ActionCard = memo(function ActionCard({
           <Check className="size-3.5 shrink-0 text-emerald-500" />
         )}
 
-        {/* Tool icon + label */}
-        <span className="text-sm shrink-0">{toolInfo.icon}</span>
-        <span className="text-xs font-medium text-foreground/80 flex-1 truncate">
+        {/* Tool label */}
+        <span className={`text-xs font-medium flex-1 truncate ${TOOL_CATEGORY_COLORS[category]}`}>
           {toolInfo.label}
         </span>
 
@@ -212,7 +269,7 @@ export function ActionCardsGroup({
 }: ActionCardsGroupProps) {
   if (actions.length === 0) return null;
 
-  // Group paired tool_start + tool_end events by tool name
+  // Group paired tool_start + tool_end events by tool name + index
   const paired: {
     tool: string;
     start?: AgentAction;

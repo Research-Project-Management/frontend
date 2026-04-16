@@ -29,10 +29,10 @@ function ChatAiContent() {
 
         {/* Right Panel — Sources (Wiki Mode Only) */}
         {mode === "wiki" && (
-          <aside className="shrink-0 w-68 border-l border-border/60 bg-background flex flex-col overflow-hidden">
+          <aside className="shrink-0 w-68 border-l-2 border-border/80 bg-sidebar flex flex-col overflow-hidden ">
             {/* Header */}
-            <div className="px-4 py-3.5 border-b border-border/60">
-              <h2 className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground/60">
+            <div className="px-4 py-3.5 bg-sidebar">
+              <h2 className="text-[11px] font-bold tracking-widest uppercase text-foreground/70">
                 Sources
               </h2>
             </div>

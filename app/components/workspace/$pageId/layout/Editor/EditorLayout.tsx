@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useRef, useEffect } from "react";
+import React, { createContext, useContext, useRef, useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router";
 import { usePage, useSyncProjectToCompiler } from "~/query/page";
+import type { Page } from "~/types/page";
 import { Skeleton } from "~/components/ui/skeleton";
 import Editor from "./Editor";
 import TabBar from "./TabBar";
@@ -8,6 +9,7 @@ import type { editor } from "monaco-editor";
 import { usePageContext, type AssetInfo } from "../PageContext";
 import { useSocketRoom } from "~/hooks/useSocketRoom";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
+import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
 
 // ── Inline image viewer rendered inside the editor column ──────────────────
@@ -101,17 +103,29 @@ export default function EditorLayout() {
   const activePage = childPage ?? parentPage;
   const isLoading = parentLoading || (fileId ? childLoading : false);
 
-  const { getEditorContent, setCurrentPage, editorRef, selectedAsset } = usePageContext();
+  const { getEditorContent, setCurrentPage, editorRef, selectedAsset, compileRef } = usePageContext();
+  const { autoCompile } = useEditorSettingsStore();
 
   // True when the current ?file= param points to an image asset (not a page).
   const isAssetTab = !!fileId && !!selectedAsset && selectedAsset._id === fileId;
-  // True when a child file is loaded — i.e., the editor should show a file, not the root page.
-  // When this is false (all tabs closed or initial state), show EmptyEditorState instead.
+
+  // Keep the last opened child page so that when all tabs are closed the editor
+  // doesn't go blank — it continues to show the content of the last closed file.
+  const lastActivePageRef = useRef<Page | null>(null);
+  const [lastActivePage, setLastActivePage] = useState<Page | null>(null);
+
+  // True when a real child file is being viewed now.
   const hasChildFile = !!activePage && activePage._id !== pageId;
+
+  // The page to actually render: current child file, or the last one seen.
+  const displayPage = hasChildFile ? activePage : lastActivePage;
+
   const { openTab, closeAllForProject } = useEditorTabsStore();
   const syncProjectMutation = useSyncProjectToCompiler();
   // Track whether we've already synced this session for this root page
   const syncedPageRef = useRef<string | null>(null);
+  // Track whether we've already fired the initial auto-compile for this root page
+  const autoCompileFiredRef = useRef<string | null>(null);
   // Track previous pageId so we can clean up its tabs when navigating away
   const prevPageIdRef = useRef<string | null>(null);
 
@@ -169,6 +183,19 @@ export default function EditorLayout() {
     syncProjectMutation.mutate({ pageId });
   }, [pageId, activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-compile on first open when autoCompile is enabled.
+  // Fires once per root page visit, after sync completes (small delay).
+  useEffect(() => {
+    if (!autoCompile) return;
+    if (!pageId || autoCompileFiredRef.current === pageId) return;
+    if (!activePage || !activePage._id) return;
+    autoCompileFiredRef.current = pageId;
+    // Small delay to let the sync complete and the editor mount
+    const timer = setTimeout(() => {
+      compileRef.current?.();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [pageId, activePage?._id, autoCompile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync the ROOT page into shared context so sidebar/toolbar can access project metadata.
   // We intentionally use parentPage (root), NOT activePage (child file), because:
@@ -188,6 +215,9 @@ export default function EditorLayout() {
     if (!activePage || !pageId) return;
     if (activePage._id === pageId) return; // root page is not a tab
     openTab(pageId, { id: activePage._id, title: activePage.title });
+    // Remember this page so we can keep showing it after the tab is closed
+    lastActivePageRef.current = activePage;
+    setLastActivePage(activePage);
   }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -242,11 +272,12 @@ export default function EditorLayout() {
     <EditorContext.Provider value={{ editorRef }}>
       <div className="h-full w-full overflow-hidden flex flex-col">
         {/* Tab bar — keyed by rootPageId so each LaTeX page-project is isolated */}
-        {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage._id} />}
+        {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage?._id ?? ""} />}
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />
-        ) : hasChildFile ? (
-          <Editor page={activePage} />
+        ) : displayPage ? (
+          // Keep Monaco mounted with the last active file even after all tabs close
+          <Editor page={displayPage} />
         ) : (
           <EmptyEditorState />
         )}

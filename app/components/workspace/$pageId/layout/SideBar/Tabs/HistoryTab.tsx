@@ -180,7 +180,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
     <div className="flex flex-col h-full overflow-hidden select-none">
       {/* Header */}
       <div className="flex items-center justify-between px-3 h-8 shrink-0">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        <span className="font-semibold text-lg text-muted-foreground uppercase tracking-wide">
           History
         </span>
         {onClose && (

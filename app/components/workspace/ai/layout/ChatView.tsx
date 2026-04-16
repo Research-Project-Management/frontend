@@ -266,7 +266,7 @@ const MessageBubble = memo(function MessageBubble({
       <div
         className={`group relative ${
           isUser
-            ? "max-w-[85%] bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-2.5"
+            ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-4 py-2.5 border border-zinc-200 dark:border-zinc-600"
             : "max-w-[90%]"
         }`}
       >
@@ -579,6 +579,8 @@ export default function ChatView() {
           signal: controller.signal,
           projectId,
           workspaceId,
+          // RAG isolation — scope retrieval to this chat session only
+          chatId: chatId ?? undefined,
           documentIds:
             fluxDataEnabled && enabledDocumentIds.length > 0
               ? enabledDocumentIds

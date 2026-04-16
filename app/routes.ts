@@ -30,6 +30,10 @@ export default [
     layout("./components/workspace/projects/layout/ProjectsLayout.tsx", [
       route(":workspaceId", "./routes/workspace/$workspaceId.tsx"),
       route(
+        ":workspaceId/works/your-work",
+        "./routes/workspace/$workspaceId/works/your-work.tsx",
+      ),
+      route(
         ":workspaceId/pages",
         "./routes/workspace/$workspaceId/pages/index.tsx",
       ),
@@ -95,6 +99,10 @@ export default [
         route(
           ":workspaceId/projects/:projectId/settings/modules",
           "./routes/workspace/$workspaceId/project/$projectId/settings/modules.tsx",
+        ),
+        route(
+          ":workspaceId/projects/:projectId/settings/model",
+          "./routes/workspace/$workspaceId/project/$projectId/settings/model.tsx",
         ),
       ]),
     ]),

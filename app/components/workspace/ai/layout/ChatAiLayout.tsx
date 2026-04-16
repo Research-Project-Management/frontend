@@ -29,7 +29,7 @@ function ChatAiContent() {
 
         {/* Right Panel — Sources (Wiki Mode Only) */}
         {mode === "wiki" && (
-          <aside className="shrink-0 w-68 border-l-2 border-border/80 bg-sidebar flex flex-col overflow-hidden shadow-[-4px_0_12px_0_rgba(0,0,0,0.06)]">
+          <aside className="shrink-0 w-68 border-l-2 border-border/80 bg-sidebar flex flex-col overflow-hidden ">
             {/* Header */}
             <div className="px-4 py-3.5 bg-sidebar">
               <h2 className="text-[11px] font-bold tracking-widest uppercase text-foreground/70">

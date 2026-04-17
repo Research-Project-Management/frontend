@@ -471,6 +471,8 @@ export default function ChatView() {
   // prevents WelcomeScreen from re-appearing when session creation fails
   const [chatStarted, setChatStarted] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // projectId của session hiện tại — được đọc khi load history
+  const [sessionProjectId, setSessionProjectId] = useState<string | undefined>(undefined);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef("");
@@ -504,6 +506,7 @@ export default function ChatView() {
       setChatStarted(false);
       setSaveError(false);
       setFluxDataEnabled(false);
+      setSessionProjectId(undefined);
       clearSources();
       abortRef.current?.abort();
       abortRef.current = null;
@@ -531,6 +534,10 @@ export default function ChatView() {
             sources,
           })),
         );
+        // Lưu projectId của session để truyền cho dropdown trong ChatAi
+        if (session.projectId) {
+          setSessionProjectId(session.projectId);
+        }
         // Restore uploaded document IDs so the AI still has context from prior uploads
         if (session.documentIds?.length > 0) {
           restoreSourceIds(session.documentIds);
@@ -803,7 +810,7 @@ export default function ChatView() {
 
       {/* Input */}
       <div className="shrink-0 border-t bg-background/80 backdrop-blur-sm p-4">
-        <ChatAi onSend={handleSend} disabled={isStreaming} />
+        <ChatAi onSend={handleSend} disabled={isStreaming} initialProject={sessionProjectId} />
       </div>
     </div>
   );

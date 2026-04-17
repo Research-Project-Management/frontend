@@ -179,7 +179,7 @@ export default function SideBar() {
       >
         {!collapsed && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-foreground/80 tracking-tight">
+            <span className="text-lg font-semibold text-foreground/80 tracking-tight">
               History
             </span>
           </div>

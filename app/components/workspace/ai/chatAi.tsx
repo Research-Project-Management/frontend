@@ -57,6 +57,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const { projects, isLoading } = useProjects();
   const [message, setMessage] = useState(initialMessage || "");
   const [webSearch, setWebSearch] = useState(false);
+  // Nếu chưa có initialProject, để trống — sẽ được set khi projects load xong (effect bên dưới)
   const [selectedProject, setSelectedProject] = useState<string>(initialProject || "");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
@@ -76,6 +77,19 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
         Math.min(textareaRef.current.scrollHeight, 200) + "px";
     }
   }, [message]);
+
+  // Sync selectedProject:
+  //  - khi initialProject được truyền xuống (ví dụ sau khi load session hắtờ)
+  //  - hoặc khi projects lần đầu được fetch và selectedProject chưa được chọn
+  //    (đảm bảo state khớp với việc hiển thị của Select)
+  useEffect(() => {
+    if (initialProject) {
+      setSelectedProject(initialProject);
+    } else if (!selectedProject && projects && projects.length > 0) {
+      setSelectedProject(projects[0]._id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProject, projects]);
 
   // Close dropdown on outside click
   useEffect(() => {

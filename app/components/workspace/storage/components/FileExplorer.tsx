@@ -34,7 +34,7 @@ type FileExplorerProps = {
   currentFolder?: string | null;
   breadcrumbs?: Array<{ id: string | null; name: string }>;
   workspaceId?: string;
-  // Separate workspaceId for workspace-level uploads
+  // Thêm workspaceId riêng cho workspace-level uploads
   wsId?: string;
 
   // Actions

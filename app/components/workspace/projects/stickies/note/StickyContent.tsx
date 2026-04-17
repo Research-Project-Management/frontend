@@ -16,7 +16,7 @@ const TaskKeyboardBehavior = Extension.create({
         const { editor } = this;
         if (!editor.isActive("taskItem")) return false;
 
-        // Create new task (Plane/Notion style)
+        // tạo task mới (Plane/Notion style)
         return editor.commands.splitListItem("taskItem");
       },
 
@@ -27,17 +27,17 @@ const TaskKeyboardBehavior = Extension.create({
         const { state } = editor;
         const { $from } = state.selection;
 
-        // Only handle when cursor is at the start of block
+        // chỉ xử lý khi cursor ở đầu block
         if ($from.parentOffset !== 0) return false;
 
-        // If task is empty -> exit to paragraph
+        // nếu task rỗng -> thoát về paragraph
         const isEmpty =
           $from.parent.content.size === 0 ||
           $from.parent.textContent.trim().length === 0;
 
         if (!isEmpty) return false;
 
-        // Convert to paragraph (fallback if clearNodes is not available)
+        // convert về paragraph (fallback nếu clearNodes không có)
         return (
           editor.chain().focus().clearNodes().run() ||
           editor.chain().focus().setNode("paragraph").run()

@@ -20,6 +20,8 @@ export async function* streamChatResponse(
     intentHint?: string;
     webSearchSites?: string[];
     workspaceId?: string;
+    /** Chat session ID — scopes RAG retrieval to this session only */
+    chatId?: string;
     onMeta?: (meta: {
       agent: string;
       intent: string;
@@ -43,6 +45,8 @@ export async function* streamChatResponse(
       intent_hint: options?.intentHint,
       web_search_sites: options?.webSearchSites ?? null,
       workspace_id: options?.workspaceId ?? null,
+      // RAG isolation — scopes retrieval to this chat session only
+      chat_id: options?.chatId ?? null,
     }),
     signal: options?.signal,
   });
@@ -277,11 +281,16 @@ export async function deleteChatSession(chatId: string): Promise<void> {
 
 export async function uploadDocument(
   file: File,
+  chatId?: string,
 ): Promise<{ id: string; title: string; chunk_count: number }> {
   const form = new FormData();
   form.append("file", file, file.name);
   form.append("title", file.name);
-  const res = await fetch(`${API_URL}/api/ai/documents/upload`, {
+  // Pass chatId as query param so RPM-BE can inject it into the multipart
+  // forwarded to Flux-AI, scoping the RAG chunks to this session.
+  const url = new URL(`${API_URL}/api/ai/documents/upload`);
+  if (chatId) url.searchParams.set("chatId", chatId);
+  const res = await fetch(url.toString(), {
     method: "POST",
     credentials: "include",
     body: form,

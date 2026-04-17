@@ -307,7 +307,6 @@ export function ActionCardsGroup({
   return (
     <div className="space-y-1.5 my-2">
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/50 pl-1">
-        <Wrench className="size-3" />
         <span>Agent Actions</span>
         {isStreaming && (
           <Loader2 className="size-3 animate-spin text-primary ml-1" />

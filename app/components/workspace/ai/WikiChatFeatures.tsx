@@ -18,6 +18,7 @@ import {
   useEffect,
   type DragEvent,
 } from "react";
+import { useParams } from "react-router";
 import {
   Tooltip,
   TooltipContent,
@@ -68,6 +69,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function WikiChatFeatures() {
+  const { chatId } = useParams<{ chatId?: string }>();
   const {
     sources,
     addSource,
@@ -130,7 +132,8 @@ export default function WikiChatFeatures() {
         toUpload.map(async (fileObj, i) => {
           const { tempId } = entries[i];
           try {
-            const result = await uploadDocument(fileObj);
+            const result = await uploadDocument(fileObj, chatId);
+            // Register in context — this makes it appear in the sources list
             addSource(result.id, fileObj.name);
             setFluxDataEnabled(true);
             setUploading((prev) => prev.filter((e) => e.tempId !== tempId));
@@ -146,7 +149,7 @@ export default function WikiChatFeatures() {
         }),
       );
     },
-    [sources, addSource, setFluxDataEnabled],
+    [sources, addSource, setFluxDataEnabled, chatId],
   );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragging(true); };

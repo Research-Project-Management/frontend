@@ -57,6 +57,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const { projects, isLoading } = useProjects();
   const [message, setMessage] = useState(initialMessage || "");
   const [webSearch, setWebSearch] = useState(false);
+  // Nếu chưa có initialProject, để trống — sẽ được set khi projects load xong (effect bên dưới)
   const [selectedProject, setSelectedProject] = useState<string>(initialProject || "");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
@@ -76,6 +77,19 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
         Math.min(textareaRef.current.scrollHeight, 200) + "px";
     }
   }, [message]);
+
+  // Sync selectedProject:
+  //  - khi initialProject được truyền xuống (ví dụ sau khi load session hắtờ)
+  //  - hoặc khi projects lần đầu được fetch và selectedProject chưa được chọn
+  //    (đảm bảo state khớp với việc hiển thị của Select)
+  useEffect(() => {
+    if (initialProject) {
+      setSelectedProject(initialProject);
+    } else if (!selectedProject && projects && projects.length > 0) {
+      setSelectedProject(projects[0]._id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProject, projects]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -214,9 +228,9 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
         {showMentionDropdown && filteredAgents.length > 0 && (
           <div
             ref={dropdownRef}
-            className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
+            className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-md border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
           >
-            <div className="px-3 py-2 border-b border-border/60">
+            <div className="px-3 py-2 ">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Mention Agent
               </p>
@@ -226,17 +240,17 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 key={agent.id}
                 onClick={() => selectAgent(agent)}
                 onMouseEnter={() => setHighlightIdx(i)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors text-left ${
+                className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${
                   i === highlightIdx
                     ? "bg-accent/80"
                     : "hover:bg-accent/60"
                 }`}
               >
                   <div className="flex-1 min-w-0">
-                  <span className="text-sm font-semibold text-foreground/80">
+                  <span className="text-xs font-semibold text-foreground/80">
                     @{agent.label}
                   </span>
-                  <p className="text-[11px] text-muted-foreground truncate">
+                  <p className="text-[10px] text-muted-foreground truncate">
                     {agent.description}
                   </p>
                 </div>

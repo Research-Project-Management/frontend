@@ -38,6 +38,10 @@ export default [
         "./routes/workspace/$workspaceId/pages/index.tsx",
       ),
       route(
+        ":workspaceId/works",
+        "./routes/workspace/$workspaceId/works/index.tsx",
+      ),
+      route(
         ":workspaceId/stickies",
         "./routes/workspace/$workspaceId/stickies/index.tsx",
       ),
@@ -95,6 +99,10 @@ export default [
         route(
           ":workspaceId/projects/:projectId/settings/modules",
           "./routes/workspace/$workspaceId/project/$projectId/settings/modules.tsx",
+        ),
+        route(
+          ":workspaceId/projects/:projectId/settings/model",
+          "./routes/workspace/$workspaceId/project/$projectId/settings/model.tsx",
         ),
       ]),
     ]),

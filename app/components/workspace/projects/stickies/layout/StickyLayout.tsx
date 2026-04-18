@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import StickyNote from "../note/StickyNote";
 import type { Note } from "../types/note.type";
 import { NOTE_COLOR_CYCLE } from "../types/noteColor.type";
@@ -9,15 +9,7 @@ import {
   useUpdateSticky,
   useDeleteSticky,
 } from "~/query/sticky";
-import {
-  Layers2,
-  Plus,
-  Search,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  ChevronRight,
-} from "lucide-react";
+import { Layers2, Loader2 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -39,20 +31,21 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import Topbar from "~/components/workspace/projects/$projectId/overview/Topbar";
+import TopBar from "./TopBar";
 
 export default function StickyLayout() {
   const { workspaceId, projectId } = useParams();
   const { projects } = useProjects();
-  const currentProject = projects?.find((p) => p._id === projectId);
+  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const [savingStatus, setSavingStatus] = useState<
     "saved" | "saving" | "error"
   >("saved");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [orderedNotes, setOrderedNotes] = useState<Note[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { data: notes = [], isLoading } = useStickies(workspaceId || "");
   const createSticky = useCreateSticky();
@@ -128,13 +121,19 @@ export default function StickyLayout() {
 
   const filteredNotes = useMemo(
     () =>
-      displayNotes.filter(
-        (note) =>
+      displayNotes.filter((note) => {
+        const matchesSearch =
           !searchQuery ||
           note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          note.content?.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-    [displayNotes, searchQuery],
+          note.content?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesTags =
+          selectedTags.length === 0 ||
+          (note.tags && note.tags.some((tag) => selectedTags.includes(tag._id)));
+
+        return matchesSearch && matchesTags;
+      }),
+    [displayNotes, searchQuery, selectedTags],
   );
 
   if (isLoading) {
@@ -155,108 +154,27 @@ export default function StickyLayout() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <header className="shrink-0 border-b border-border/60 bg-background/80 backdrop-blur-md sticky top-0 z-10">
-        <div className="flex items-center justify-between px-4 h-13">
-          <div className="flex items-center gap-2.5">
-            {projectId && currentProject ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="text-base leading-none">
-                    {currentProject.avatar}
-                  </span>
-                  <span className="text-sm font-semibold text-primary truncate max-w-[120px]">
-                    {currentProject.name}
-                  </span>
-                </div>
-                <ChevronRight className="size-3.5 text-muted-foreground/50" />
-              </>
-            ) : null}
-            <div className="flex items-center gap-2">
-              <Layers2 className="size-4.5 text-primary" />
-              <h1 className="text-sm font-semibold text-primary transition-all duration-300">
-                Stickies
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 ml-auto shrink-0">
-            {savingStatus === "saving" && (
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Saving
-              </span>
-            )}
-            {savingStatus === "saved" && lastSavedAt && (
-              <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-                <CheckCircle2 className="h-3 w-3" />
-                Saved
-              </span>
-            )}
-            {savingStatus === "error" && (
-              <span className="flex items-center gap-1.5 text-xs text-destructive">
-                <AlertCircle className="h-3 w-3" />
-                Error
-              </span>
-            )}
-
-            {/* Expandable Search */}
-            <div
-              className={cn(
-                "relative flex items-center transition-all duration-300 ease-in-out overflow-hidden h-8",
-                isSearchExpanded ? "w-64" : "w-8",
-              )}
-            >
-              {isSearchExpanded ? (
-                <div className="relative w-full">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                  <Input
-                    ref={inputRef}
-                    placeholder="Search stickies..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onBlur={() => !searchQuery && setIsSearchExpanded(false)}
-                    className="pl-8 pr-8 h-8 text-[13px] rounded-sm border border-border/60 bg-background focus-visible:ring-0 shadow-none w-full"
-                    autoFocus
-                  />
-                  <button
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setSearchQuery("");
-                      setIsSearchExpanded(false);
-                    }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                  >
-                    <Plus className="size-3.5 rotate-45" />
-                  </button>
-                </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-sm hover:bg-secondary/60"
-                  onClick={() => setIsSearchExpanded(true)}
-                >
-                  <Search className="size-4" />
-                </Button>
-              )}
-            </div>
-
-            <Button
-              onClick={handleAddNote}
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-semibold"
-              disabled={createSticky.isPending}
-            >
-              {createSticky.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Plus className="h-3.5 w-3.5" />
-              )}
-              New Sticky
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Topbar
+        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
+        title="Stickies"
+        Icon={Layers2}
+        actions={
+          <TopBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            savingStatus={savingStatus}
+            lastSavedAt={lastSavedAt}
+            onAddNote={handleAddNote}
+            isAddingNote={createSticky.isPending}
+            selectedTags={selectedTags}
+            onToggleTag={(tagId) =>
+              setSelectedTags((prev) =>
+                prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+              )
+            }
+          />
+        }
+      />
 
       <main className="flex-1 overflow-auto p-5">
         {filteredNotes.length === 0 ? (

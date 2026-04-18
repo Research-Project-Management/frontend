@@ -7,12 +7,14 @@ import {
 
 export default [
   index("routes/home.tsx"),
+  
 
   layout("./components/auth/AuthLayout.tsx", [
     route("callback", "./routes/callback.tsx"),
     route("login", "./routes/login.tsx"),
     route("register", "./routes/register.tsx"),
     route("forgot-password", "./routes/forgot-password.tsx"),
+    route("contact-sales", "./routes/contact-sales.tsx"),
   ]),
 
   // redirect to workspaceId if logged in and has workspace

@@ -11,7 +11,9 @@ export const useAuth = () => {
   // Không fetch user khi đang ở các trang auth
   const isAuthPage = location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/register") ||
-    location.pathname.startsWith("/forgot-password");
+    location.pathname.startsWith("/forgot-password") ||
+    location.pathname.startsWith("/contact-sales");
+
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["currentUser"],

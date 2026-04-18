@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths(), svgr(), devtoolsJson()],
   appType: "spa",
   server: {
-    port: 5173,
+    port: 2916,
     strictPort: true,
     allowedHosts: ["flux.aisq.dev"]
   },

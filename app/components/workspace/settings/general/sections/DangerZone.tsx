@@ -19,9 +19,9 @@ export default function DangerZone({ onDelete }: DangerZoneProps) {
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="destructive"
           onClick={onDelete}
-          className="shrink-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          className="shrink-0 transition-colors hover:bg-red-700"
         >
           Delete
         </Button>

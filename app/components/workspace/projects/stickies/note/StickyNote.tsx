@@ -12,6 +12,7 @@ interface StickyNoteProps {
   onDelete: (id: string) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
   isDragging?: boolean;
+  isOverlay?: boolean;
 }
 
 const StickyNote = memo(function StickyNote({
@@ -20,6 +21,7 @@ const StickyNote = memo(function StickyNote({
   onDelete,
   dragHandleProps,
   isDragging,
+  isOverlay,
 }: StickyNoteProps) {
   const colorConfig = NOTE_COLOR_MAP[note.color];
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -110,7 +112,7 @@ const StickyNote = memo(function StickyNote({
       </div>
 
       {/* Content */}
-      <StickyContent note={note} onUpdate={onUpdate} onReady={setEditor} />
+      <StickyContent note={note} onUpdate={onUpdate} onReady={setEditor} isOverlay={isOverlay} />
 
       {/* Toolbar — show on group-hover */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
@@ -122,6 +124,14 @@ const StickyNote = memo(function StickyNote({
         />
       </div>
     </div>
+  );
+}, (prev, next) => {
+  return (
+    prev.note === next.note &&
+    prev.isDragging === next.isDragging &&
+    prev.isOverlay === next.isOverlay &&
+    prev.onUpdate === next.onUpdate &&
+    prev.onDelete === next.onDelete
   );
 });
 

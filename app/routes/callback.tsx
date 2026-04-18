@@ -21,7 +21,7 @@ export default function Callback() {
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-        <p>Đang đăng nhập...</p>
+        <p>Signing in...</p>
       </div>
     </div>
   );

@@ -312,11 +312,10 @@ export default function RoleDetailPage() {
                     return (
                       <label
                         key={action.value}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md border cursor-pointer transition-colors ${
-                          checked
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md border cursor-pointer transition-colors ${checked
                             ? "bg-primary/10 border-primary"
                             : "hover:bg-muted"
-                        } ${role.isSystem ? "cursor-not-allowed opacity-60" : ""}`}
+                          } ${role.isSystem ? "cursor-not-allowed opacity-60" : ""}`}
                       >
                         <Checkbox
                           checked={checked}

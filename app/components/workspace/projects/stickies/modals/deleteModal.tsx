@@ -33,23 +33,8 @@ export default function DeleteModal({
 }: DeleteModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-      <DialogOverlay
-        className="absolute inset-0
-          bg-black/15 backdrop-blur-[0.5px]
-          data-[state=open]:animate-in data-[state=open]:fade-in-0
-          data-[state=closed]:animate-out data-[state=closed]:fade-out-0
-          data-[state=open]:duration-200 data-[state=closed]:duration-150
-        "
-      />
 
-      <DialogContent
-        className="
-          max-w-[560px] p-0 overflow-hidden
-          data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
-          data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
-          data-[state=open]:duration-200 data-[state=closed]:duration-200
-        "
-      >
+      <DialogContent className="max-w-[560px] p-0 overflow-hidden">
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
             <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-red-50">

@@ -96,7 +96,9 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
     try {
       const stream = streamChatResponse(apiMessages, {
-        projectId: currentPage?.projectId ?? undefined,
+        projectId: typeof currentPage?.project === "string" 
+          ? currentPage.project 
+          : currentPage?.project?._id,
         signal: abortControllerRef.current.signal,
       });
 

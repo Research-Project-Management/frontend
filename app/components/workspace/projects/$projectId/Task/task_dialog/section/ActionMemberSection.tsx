@@ -52,7 +52,7 @@ export function ActionMemberSection({
           }
         >
           <UserPlus className="mr-2 h-4 w-4" />
-          <span>Thành viên</span>
+          <span>Members</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -62,7 +62,7 @@ export function ActionMemberSection({
         className="w-72 rounded-xl p-0 shadow-xl border-border/50 flex flex-col z-100"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
-          <span className="text-sm font-semibold text-center flex-1">Thành viên</span>
+          <span className="text-sm font-semibold text-center flex-1">Members</span>
           <Button
             variant="ghost"
             size="icon"
@@ -75,7 +75,7 @@ export function ActionMemberSection({
         <div className="p-3">
           <div className="relative">
             <Input
-              placeholder="Tìm kiếm các thành viên"
+              placeholder="Search members"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 pr-8"
@@ -83,7 +83,7 @@ export function ActionMemberSection({
           </div>
           <div className="mt-4">
             <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Thành viên của bảng
+              Board members
             </h4>
             <div className="space-y-1">
               {filteredMembers.map((m: any) => (

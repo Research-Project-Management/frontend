@@ -14,6 +14,8 @@ import { SocketProvider } from "./contexts/SocketProvider";
 import { Toaster } from "sonner";
 import NavigationProgress from "~/components/ui/NavigationProgress";
 import { TooltipProvider } from "~/components/ui/tooltip";
+import { SplashLoader } from "~/components/ui/SplashLoader";
+import { useState, useEffect } from "react";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/Flux.svg" },
@@ -30,6 +32,14 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  useEffect(() => {
+    // Initial splash delay for premium feel
+    const timer = setTimeout(() => setIsInitialLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -39,6 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body suppressHydrationWarning>
+        <SplashLoader isLoading={isInitialLoading} />
         <QueryProvider>
           <SocketProvider>
             <TooltipProvider delayDuration={200}>
@@ -47,7 +58,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </TooltipProvider>
           </SocketProvider>
         </QueryProvider>
-        <Toaster position="top-right" richColors duration={3000} />
+        <Toaster 
+          position="top-right" 
+          richColors 
+          expand={false}
+          visibleToasts={3}
+          closeButton
+          duration={3000} 
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--background))',
+              color: 'hsl(var(--foreground))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '12px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              backdropFilter: 'blur(8px)',
+            },
+            className: 'flux-toast',
+          }}
+        />
         <ScrollRestoration />
         <Scripts />
       </body>

@@ -32,7 +32,7 @@ export function ActionAttachmentSection({
       setAttachments((prev) => [...prev, newAttachment]);
     } catch (error) {
       console.error("Upload failed", error);
-      setUploadError("Không thể tải tệp lên. Vui lòng thử lại.");
+      setUploadError("Failed to upload file. Please try again.");
     } finally {
       e.target.value = "";
     }
@@ -58,7 +58,7 @@ export function ActionAttachmentSection({
         disabled={isUploading}
       >
         <Paperclip className="mr-2 h-4 w-4" />
-        {isUploading ? "Đang tải lên..." : "Đính kèm"}
+        {isUploading ? "Uploading..." : "Attach"}
       </Button>
       {uploadError ? (
         <p className="text-[12px] text-[#c9372c]">{uploadError}</p>

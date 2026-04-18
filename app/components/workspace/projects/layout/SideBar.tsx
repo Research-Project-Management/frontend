@@ -15,8 +15,10 @@ import {
   RotateCcw,
   ChartBarBig,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import { Link, useLocation, useParams } from "react-router";
+import { cn } from "~/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -73,6 +75,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const { workspaceId } = useParams();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const id = useId();
   const sidebarItems = [
     { label: "Home", icon: Home, to: "/" + workspaceId },
     {
@@ -108,37 +111,45 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-1">
-        {sidebarItems.map((item) => {
-          const isActive = location.pathname === item.to;
-          return (
-            <Link
-              to={item.to}
-              key={item.label}
-              className={`flex items-center gap-2 p-2 rounded-sm ${
-                isActive
-                  ? "bg-secondary text-primary font-medium"
-                  : "hover:bg-secondary/60"
-              }`}
-            >
-              <item.icon
-                className={`size-4 ${
-                  isActive ? "text-primary" : "text-primary/80"
-                }`}
-              />
-              <span
-                className={`text-sm ${
-                  isActive
-                    ? "font-medium text-primary"
-                    : "font-medium text-primary/90"
-                }`}
+      <LayoutGroup id={`sb-nav-${id}`}>
+        <nav className="flex flex-col gap-1">
+          {sidebarItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            return (
+              <Link
+                to={item.to}
+                key={item.label}
+                className="flex items-center gap-2 p-2 rounded-sm relative group/item hover:bg-muted/30 transition-colors"
               >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+                {isActive && (
+                  <motion.div
+                    layoutId={`sb-nav-active-${id}`}
+                    className="absolute inset-0 bg-secondary rounded-sm"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <item.icon
+                  className={cn(
+                    "size-4 relative z-10",
+                    isActive ? "text-primary" : "text-primary/80",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-sm relative z-10",
+                    isActive
+                      ? "font-medium text-primary"
+                      : "font-medium text-primary/90",
+                  )}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </LayoutGroup>
 
       {/* Projects Section */}
       <nav className="mt-4 select-none">
@@ -201,20 +212,25 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                       <Link
                         to={moduleLink}
                         key={moduleKey}
-                        className={`flex items-center gap-2 pl-8 pr-2 py-1.5 rounded-sm text-sm ${
-                          isModuleActive
-                            ? "bg-secondary text-primary font-medium"
-                            : "hover:bg-accent text-muted-foreground hover:text-foreground"
-                        }`}
+                        className="flex items-center gap-2 pl-8 pr-2 py-1.5 rounded-sm text-sm relative group/module hover:bg-muted/30 transition-colors"
                       >
+                        {isModuleActive && (
+                          <motion.div
+                            layoutId={`sb-module-active-${project._id}`}
+                            className="absolute inset-0 bg-secondary rounded-sm"
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                          />
+                        )}
                         <module.icon
-                          className={`size-4 ${
+                          className={cn(
+                            "size-4 relative z-10",
                             isModuleActive
                               ? "text-primary"
-                              : "text-muted-foreground"
-                          }`}
+                              : "text-muted-foreground",
+                          )}
                         />
-                        <span>{module.label}</span>
+                        <span className="relative z-10">{module.label}</span>
                       </Link>
                     );
                   })}

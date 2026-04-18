@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import type { Page, PageVersion, PageEvent } from "../types/page";
 import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import { useSocket } from "~/contexts/SocketProvider";
+import { toast } from "sonner";
 
 // ── Workspace Pages ───────────────────────────────────────────────────────────
 
@@ -72,14 +73,7 @@ export const useProjectPages = (projectId: string, status?: string, search?: str
 // ── Single Page ───────────────────────────────────────────────────────────────
 
 const fetchPage = async (pageId: string) => {
-  console.log("[fetchPage] Fetching page:", pageId);
   const data = await apiGet<{ page: Page }>(`/api/pages/${pageId}`);
-  console.log("[fetchPage] Page fetched:", { 
-    _id: data.page._id, 
-    title: data.page.title, 
-    contentLength: data.page.content?.length || 0,
-    hasMainFile: !!data.page.mainFile,
-  });
   return data.page;
 };
 
@@ -127,7 +121,6 @@ export const useCreatePage = () => {
       const data = await apiPost<{ page: Page; mainFile?: Page }>(
         `/api/project/${projectId}/pages`, { title, content, status },
       );
-      console.log("[useCreatePage] Backend response:", data);
       return {
         page: data.page,
         mainFile: data.mainFile || null,
@@ -135,23 +128,17 @@ export const useCreatePage = () => {
         mainFileId: (data.mainFile?._id ?? null) as string | null,
       };
     },
-    onSuccess: (data, variables) => {
-      console.log("[useCreatePage] onSuccess:", data);
-      
-      // Clear ALL page-related caches to ensure fresh data
+    onSuccess: (data) => {
       queryClient.clear();
-      
-      // Force set fresh data immediately
       if (data.rootPageId && data.page) {
         queryClient.setQueryData(["page", data.rootPageId], data.page);
       }
-      
       if (data.mainFileId && data.mainFile) {
         queryClient.setQueryData(["page", data.mainFileId], data.mainFile);
       }
     },
     onError: (error: any) => {
-      console.error("[useCreatePage] onError:", error);
+      toast.error(error.message || "Failed to create page", { id: "page-error" });
     },
   });
 };
@@ -164,6 +151,10 @@ export const useDeletePage = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pages", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+      toast.success("Page removed", { id: "page-action" });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete page", { id: "page-error" });
     },
   });
 };
@@ -177,6 +168,9 @@ export const useUpdatePageContent = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.setQueryData(["page", variables.pageId], data);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to save content", { id: "page-save-error" });
     },
   });
 };
@@ -192,6 +186,9 @@ export const useUpdatePageTitle = () => {
       queryClient.setQueryData(["page", variables.pageId], data);
       queryClient.invalidateQueries({ queryKey: ["pages"] });
       queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update title", { id: "page-error" });
     },
   });
 };
@@ -243,6 +240,10 @@ export const useCreatePageFile = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["page-files", variables.parentPageId] });
+      toast.success("File created successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create file");
     },
   });
 };
@@ -258,6 +259,10 @@ export const useSetPageMainFile = () => {
       queryClient.setQueryData(["page", variables.pageId], data);
       queryClient.invalidateQueries({ queryKey: ["pages"] });
       queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+      toast.success("Main file updated");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update main file");
     },
   });
 };
@@ -270,32 +275,25 @@ export const useUpdatePageThumbnail = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pages"] });
       queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+      toast.success("Thumbnail updated");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update thumbnail");
     },
   });
 };
 
-// ── File uploads are now handled via /api/files/* (project storage) ─────────
-
-/**
- * Sync all .tex files of a root page-project from MongoDB to the LaTeX compiler.
- * Call this when opening the page editor to ensure the compiler has fresh content
- * (handles compiler restart / new deployment scenarios).
- */
 export const useSyncProjectToCompiler = () =>
   useMutation({
     mutationFn: ({ pageId }: { pageId: string }) =>
       apiPost(`/api/pages/${pageId}/sync-project`, {}),
+    onSuccess: () => {
+      toast.success("Project synced to compiler");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to sync project");
+    },
   });
-
-
-
-
-
-
-
-
-
-
 
 // ── Version control ───────────────────────────────────────────────────────────
 
@@ -323,6 +321,10 @@ export const useSavePageVersion = () => {
       if (variables.rootPageId) {
         queryClient.invalidateQueries({ queryKey: ["project-history", variables.rootPageId] });
       }
+      toast.success("Version saved successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to save version");
     },
   });
 };
@@ -337,6 +339,10 @@ export const useRestorePageVersion = () => {
     onSuccess: (restoredPage, variables) => {
       queryClient.invalidateQueries({ queryKey: ["page", variables.pageId] });
       queryClient.setQueryData(["page", variables.pageId], restoredPage);
+      toast.success("Version restored successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to restore version");
     },
   });
 };
@@ -348,6 +354,10 @@ export const useDeletePageVersion = () => {
       apiDelete(`/api/pages/${pageId}/versions/${versionId}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["page-versions", variables.pageId] });
+      toast.success("Version deleted successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete version");
     },
   });
 };
@@ -380,6 +390,10 @@ export const useRestoreProjectToEvent = () => {
           old ? { ...old, content: r.content } : old,
         );
       });
+      toast.success("Project restored to historical event");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to restore project");
     },
   });
 };

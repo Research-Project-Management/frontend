@@ -133,43 +133,43 @@ function CardContent({
   const metadataItems = [
     hasDueDate
       ? {
-          key: "due",
-          icon: Clock3,
-          label: dueDateIsOverdue ? "Đã hết hạn" : "Chưa hết hạn",
-          text: dueDateDisplayText,
-        }
+        key: "due",
+        icon: Clock3,
+        label: dueDateIsOverdue ? "Overdue" : "Not overdue",
+        text: dueDateDisplayText,
+      }
       : null,
     hasDescription
       ? {
-          key: "description",
-          icon: AlignLeft,
-          label: "Đã có mô tả",
-          text: "",
-        }
+        key: "description",
+        icon: AlignLeft,
+        label: "Has description",
+        text: "",
+      }
       : null,
     commentCount > 0
       ? {
-          key: "comments",
-          icon: MessageSquare,
-          label: "Bình luận",
-          text: String(commentCount),
-        }
+        key: "comments",
+        icon: MessageSquare,
+        label: "Comments",
+        text: String(commentCount),
+      }
       : null,
     attachmentCount > 0
       ? {
-          key: "attachments",
-          icon: Paperclip,
-          label: "Các tập tin đính kèm",
-          text: String(attachmentCount),
-        }
+        key: "attachments",
+        icon: Paperclip,
+        label: "Attachments",
+        text: String(attachmentCount),
+      }
       : null,
     checklistTotal > 0
       ? {
-          key: "checklist",
-          icon: CheckSquare,
-          label: "Danh sách công việc",
-          text: `${checklistDone}/${checklistTotal}`,
-        }
+        key: "checklist",
+        icon: CheckSquare,
+        label: "Checklist",
+        text: `${checklistDone}/${checklistTotal}`,
+      }
       : null,
   ].filter(Boolean) as Array<{
     key: string;
@@ -259,7 +259,7 @@ function CardContent({
           onMouseDown={(event) => event.stopPropagation()}
           onTouchStart={(event) => event.stopPropagation()}
           className="mb-2 flex w-full flex-wrap items-center gap-1.5 pl-0.5 pr-8 text-left"
-          aria-label="Bật tắt hiển thị chi tiết nhãn"
+          aria-label="Toggle label details"
         >
           {visibleLabels.map((label) => {
             const hasTitle = label.title.trim().length > 0;
@@ -267,11 +267,10 @@ function CardContent({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className={`inline-flex h-4 items-center rounded-[6px] px-2 text-[11px] font-semibold leading-none text-[#172b4d] ${
-                  hasTitle ? "w-fit max-w-full" : "min-w-12"
-                }`}
+                className={`inline-flex h-4 items-center rounded-[6px] px-2 text-[11px] font-semibold leading-none text-[#172b4d] ${hasTitle ? "w-fit max-w-full" : "min-w-12"
+                  }`}
                 style={{ backgroundColor: label.color }}
-                title={hasTitle ? label.title : "Nhãn"}
+                title={hasTitle ? label.title : "Label"}
               >
                 {hasTitle ? <span className="max-w-full truncate">{label.title}</span> : null}
               </span>
@@ -280,7 +279,7 @@ function CardContent({
                 key={label.id}
                 className="inline-flex h-2.5 w-11 rounded-full transition-all duration-200"
                 style={{ backgroundColor: label.color }}
-                title={hasTitle ? label.title : "Nhãn"}
+                title={hasTitle ? label.title : "Label"}
               />
             );
           })}
@@ -298,26 +297,23 @@ function CardContent({
             onToggleComplete?.(card);
           }}
           disabled={card.permissions?.canEdit === false}
-          aria-label={card.completed ? "Đánh dấu chưa hoàn tất" : "Đánh dấu hoàn tất"}
-          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
-            card.completed
+          aria-label={card.completed ? "Mark as incomplete" : "Mark as complete"}
+          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${card.completed
               ? "border-[#6a9923] bg-[#6a9923] text-white"
               : "border-[#6b778c] bg-white text-transparent"
-          } ${card.permissions?.canEdit === false ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+            } ${card.permissions?.canEdit === false ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
         >
           <Check
-            className={`h-3 w-3 stroke-3 ${
-              card.completed ? "opacity-100" : "opacity-0"
-            }`}
+            className={`h-3 w-3 stroke-3 ${card.completed ? "opacity-100" : "opacity-0"
+              }`}
           />
         </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 pr-8">
             <h4
-              className={`min-w-0 flex-1 wrap-break-word text-[14px] font-semibold leading-5 tracking-tight ${
-                card.completed ? "text-[#6b778c] line-through" : "text-[#172b4d]"
-              }`}
+              className={`min-w-0 flex-1 wrap-break-word text-[14px] font-semibold leading-5 tracking-tight ${card.completed ? "text-[#6b778c] line-through" : "text-[#172b4d]"
+                }`}
             >
               {card.title}
             </h4>
@@ -414,7 +410,9 @@ export function Card({
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
+    zIndex: isDragging ? 100 : undefined,
+    pointerEvents: isDragging ? "none" : ("auto" as any),
   };
 
   return (

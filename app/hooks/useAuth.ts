@@ -7,11 +7,11 @@ import { fetchUser } from "~/query/user";
 export const useAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Không fetch user khi đang ở các trang auth
-  const isAuthPage = location.pathname.startsWith("/login") || 
-                     location.pathname.startsWith("/register") || 
-                     location.pathname.startsWith("/forgot-password");
+  const isAuthPage = location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/register") ||
+    location.pathname.startsWith("/forgot-password");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["currentUser"],
@@ -28,7 +28,7 @@ export const useAuth = () => {
     }
   }, [isError, navigate, isAuthPage]);
 
-  return {user: data, isLoading, isError };
+  return { user: data, isLoading, isError };
 };
 
 export default useAuth;

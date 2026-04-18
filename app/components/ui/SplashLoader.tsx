@@ -47,9 +47,6 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
             <h1 className="text-2xl font-bold tracking-tighter sm:text-3xl italic">
               FLUX
             </h1>
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-[0.3em]">
-              Research. Production. Management.
-            </p>
           </motion.div>
 
           {/* Loading bar */}

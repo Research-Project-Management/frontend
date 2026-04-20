@@ -11,6 +11,7 @@ import { Input } from "~/components/ui/input";
 import type { StorageItem } from "../types";
 import { getFileType, getFileIcon, getFileColor, formatFileSize, formatDate } from "../pages/SharedComponents";
 import { useBlobUrl, downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { resolveFileUrl } from "~/lib/api";
 import {
   searchCrossref, lookupDoi, useUpdateFileMetadata,
   type CrossrefWork,
@@ -108,7 +109,8 @@ function usePdfData(item: StorageItem | null) {
 
     (async () => {
       try {
-        const response = await fetch(item.url!, { credentials: "include" });
+        const resolvedUrl = resolveFileUrl(item.url);
+        const response = await fetch(resolvedUrl!, { credentials: "include" });
         if (!response.ok) throw new Error("Failed to fetch PDF");
         const arrayBuffer = await response.arrayBuffer();
         if (cancelled) return;
@@ -255,9 +257,10 @@ function usePdfData(item: StorageItem | null) {
 
   // Just render preview for already-saved metadata
   const renderPdfPreview = useCallback(async (fileItem: StorageItem) => {
-    if (!fileItem.url) return;
-    try {
-      const response = await fetch(fileItem.url, { credentials: "include" });
+      const resolvedUrl = resolveFileUrl(fileItem.url);
+      if (!resolvedUrl) return;
+      try {
+        const response = await fetch(resolvedUrl, { credentials: "include" });
       if (!response.ok) return;
       const arrayBuffer = await response.arrayBuffer();
 
@@ -384,8 +387,9 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
   } = usePdfData(item);
 
   const isImage = item ? getFileType(item) === "image" : false;
+  const resolvedItemUrl = resolveFileUrl(item?.url);
   const { blobUrl: imageBlobUrl, loading: imageLoading } = useBlobUrl(
-    item && isImage && item.url ? item.url : null,
+    item && isImage && resolvedItemUrl ? resolvedItemUrl : null,
   );
 
   // Crossref search state
@@ -407,9 +411,9 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
   const isPdf = item.filename.toLowerCase().endsWith(".pdf") || item.mimeType === "application/pdf";
 
   const handleDownload = async () => {
-    if (!item.url) return;
+    if (!resolvedItemUrl) return;
     try {
-      await downloadFileAsBlob(item.url, item.filename);
+      await downloadFileAsBlob(resolvedItemUrl, item.filename);
     } catch {
       onDownload(item);
     }
@@ -530,7 +534,7 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
                 </div>
               ) : (
                 <img
-                  src={imageBlobUrl || item.url || ""}
+                  src={imageBlobUrl || resolvedItemUrl || ""}
                   alt={item.filename}
                   className="w-full h-48 object-contain bg-white dark:bg-black/20 cursor-pointer"
                   onClick={() => onPreview?.(item)}

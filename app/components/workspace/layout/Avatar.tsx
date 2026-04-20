@@ -1,7 +1,7 @@
 import React from "react";
 import { useBlobUrl } from "~/hooks/useBlobUrl";
 import { cn } from "~/lib/utils";
-import { API_URL } from "~/lib/api";
+import { API_URL, resolveFileUrl } from "~/lib/api";
 
 type AvatarProps = {
   src?: string | null;
@@ -11,9 +11,10 @@ type AvatarProps = {
 };
 
 export const Avatar = ({ src, name, className, fallbackType = "user" }: AvatarProps) => {
-  // Only use useBlobUrl for internal proxy URLs that require authentication
-  const isInternalProxy = src?.startsWith("/api/files/") || (src && src.includes("/api/files/"));
-  const fullUrl = isInternalProxy && src?.startsWith("/") ? `${API_URL}${src}` : src;
+  // Normalize the URL — handles relative paths and legacy localhost URLs
+  const normalizedSrc = resolveFileUrl(src) ?? src;
+  const isInternalProxy = normalizedSrc?.includes("/api/files/");
+  const fullUrl = normalizedSrc ?? undefined;
 
   // We only call useBlobUrl if it's an internal proxy URL
   const { blobUrl, loading } = useBlobUrl(isInternalProxy ? fullUrl : null);

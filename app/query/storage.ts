@@ -178,7 +178,7 @@ export const uploadFile = async (
                 });
 
                 if (thumbUploadResponse.ok) {
-                    thumbnailUrl = `${API_URL}/api/files/${thumbPath}`;
+                    thumbnailUrl = `/api/files/${thumbPath}`;
                 }
             }
         } catch (e) {
@@ -192,7 +192,7 @@ export const uploadFile = async (
         filename: file.name,
         size: file.size,
         mimeType: file.type,
-        url: `${API_URL}/api/files/${path}`,
+        url: `/api/files/${path}`,
         thumbnail: thumbnailUrl,
         parentId: params.parentId || null,
     });
@@ -473,7 +473,7 @@ export const useUploadFileForEditor = () => {
       });
       if (!uploadRes.ok) throw new Error("Upload to R2 failed");
 
-      const fileUrl = `${API_URL}/api/files/${path}`;
+      const fileUrl = `/api/files/${path}`;
 
       // 3. Save metadata — backend fetches from R2 and syncs to compiler automatically
       //    when parentPageId is provided.

@@ -121,12 +121,12 @@ export default function Topbar({
           style={{ paddingLeft: "var(--header-offset, 0px)" }}
         >
           {project && (
-            <div className="flex items-center gap-0.5">
+            <div ref={triggerRef} className="flex items-center gap-0.5">
               {/* Click trigger: project avatar + name only */}
               <div className="relative">
                 <div
-                  ref={triggerRef}
-                  className="flex items-center gap-2 min-w-0 px-1.5 py-0.5 select-none"
+                  onClick={handleTogglePopover}
+                  className="flex items-center gap-2 min-w-0 px-1.5 py-0.5 select-none cursor-pointer hover:bg-accent/40 rounded-sm transition-colors"
                 >
                   <ProjectAvatar avatar={project.avatar} name={project.name} />
                   <span className="text-sm font-semibold text-primary truncate max-w-[120px]">

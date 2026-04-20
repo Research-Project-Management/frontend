@@ -28,7 +28,7 @@ export default function ProjectSettingLayout() {
         title="Settings"
         Icon={Settings}
         centerContent={
-          <nav className="flex h-full max-w-full items-stretch overflow-x-auto">
+          <nav className="flex h-full max-w-full items-stretch overflow-visible">
             {tabs.map((tab) => {
               const isActive = activeTab.to === tab.to;
 
@@ -44,7 +44,7 @@ export default function ProjectSettingLayout() {
                 >
                   {tab.label}
                   <span
-                    className={`absolute inset-x-0 bottom-[-1px] h-0.5 transition-opacity ${
+                    className={`absolute inset-x-0 bottom-0 h-0.5 transition-opacity ${
                       isActive ? "bg-foreground opacity-100" : "bg-transparent opacity-0"
                     }`}
                   />

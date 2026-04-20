@@ -23,8 +23,11 @@ import {
   ChevronDown,
   ChevronRight,
   Target,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import Topbar from "../overview/Topbar";
+import { useProjects } from "~/hooks/useWorkspace";
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -61,6 +64,9 @@ export default function CyclePage() {
   const createMutation = useCreateCycle();
   const updateMutation = useUpdateCycle();
   const deleteMutation = useDeleteCycle();
+
+  const { projects } = useProjects();
+  const currentProject = projects?.find((p: any) => p._id === projectId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
@@ -178,23 +184,20 @@ export default function CyclePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <Topbar
+        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
+        title="Cycles"
+        Icon={RotateCcw}
+        actions={
+          <Button onClick={openCreate} size="sm" className="h-8 gap-1.5 text-xs">
+            <Plus className="size-3.5" />
+            New Cycle
+          </Button>
+        }
+      />
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
-          {/* Header Content */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">Research Cycles</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Manage your research phases, milestones, and deliverables
-              </p>
-            </div>
-            <Button onClick={openCreate} size="sm" className="gap-1.5">
-              <Plus className="size-4" />
-              New Cycle
-            </Button>
-          </div>
-
         {/* Cycle timeline */}
         {cycles.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-border rounded-xl">

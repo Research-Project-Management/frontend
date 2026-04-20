@@ -6,7 +6,7 @@ import { Cloud, ChevronRight } from 'lucide-react';
 export default function StorageLayout() {
     const { projectId } = useParams();
     const { projects } = useProjects();
-    const currentProject = projects?.find((p) => p._id === projectId);
+    const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
 
     return (
         <div className="h-full flex overflow-hidden">

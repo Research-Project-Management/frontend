@@ -15,8 +15,9 @@ import {
   ChartBarBig,
   UserStar,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Collapsible,
   CollapsibleContent,
@@ -100,7 +101,26 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
     },
   ];
 
-  const { projects }: { projects: Project[]; isLoading: boolean } = useProjects();
+  const { projects }: { projects?: Project[]; isLoading: boolean } = useProjects();
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (projects) {
+      const activeProject = projects.find(p => location.pathname.includes(`/projects/${p._id}`));
+      if (activeProject) {
+        setExpandedProjects(prev => new Set(prev).add(activeProject._id));
+      }
+    }
+  }, [location.pathname, projects]);
+
+  const toggleProject = (id: string) => {
+    setExpandedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
@@ -184,12 +204,16 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
               No projects found
             </p>
           )}
-          {projects &&
-            projects.map((project, index) => (
+          {(projects ?? []).map((project) => {
+              const isOpen = expandedProjects.has(project._id);
+              const projectModules = project.modules ?? [];
+              
+              return (
               <Collapsible
                 className="w-full group"
                 key={project._id}
-                defaultOpen={index === 0}
+                open={isOpen}
+                onOpenChange={() => toggleProject(project._id)}
               >
                 <div className="flex w-full justify-between items-center gap-2 p-2 rounded-sm hover:bg-accent transition-colors">
                   <CollapsibleTrigger asChild>
@@ -209,7 +233,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                 </div>
                 <CollapsibleContent className="overflow-hidden space-y-1 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
                   {MODULE_ORDER.filter((moduleKey) =>
-                    project.modules.includes(moduleKey),
+                    projectModules.includes(moduleKey),
                   ).map((moduleKey) => {
                     const module = modulesConfig[moduleKey];
                     if (!module) return null;
@@ -238,7 +262,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   })}
                 </CollapsibleContent>
               </Collapsible>
-            ))}
+            )})}
         </div>
       </nav>
 

@@ -103,11 +103,11 @@ export default [
       ]),
     ]),
     layout("./components/workspace/settings/layout/SettingLayout.tsx", [
-        route(":workspaceId/settings", "./routes/workspace/$workspaceId/settings/index.tsx"),
-        route(":workspaceId/settings/profile", "./routes/workspace/$workspaceId/settings/profile.tsx"),
-        route(":workspaceId/settings/members", "./routes/workspace/$workspaceId/settings/members.tsx"),
-        route(":workspaceId/settings/roles", "./routes/workspace/$workspaceId/settings/roles.tsx"),
-      ]),
+      route(":workspaceId/settings", "./routes/workspace/$workspaceId/settings/index.tsx"),
+      route(":workspaceId/settings/profile", "./routes/workspace/$workspaceId/settings/profile.tsx"),
+      route(":workspaceId/settings/members", "./routes/workspace/$workspaceId/settings/members.tsx"),
+      route(":workspaceId/settings/roles", "./routes/workspace/$workspaceId/settings/roles.tsx"),
+    ]),
 
     layout("./components/workspace/ai/layout/ChatAiLayout.tsx", [
       route(":workspaceId/ai", "./routes/workspace/$workspaceId/ai/index.tsx"),

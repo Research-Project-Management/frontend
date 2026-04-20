@@ -1,19 +1,13 @@
-import { Outlet, useLocation, useParams, useNavigate } from "react-router";
+import { Link, Outlet, useLocation, useParams } from "react-router";
 import { useProjects } from "~/hooks/useWorkspace";
-import { Settings, ChevronDown } from "lucide-react";
+import { Settings } from "lucide-react";
 import Topbar from "../../overview/Topbar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 
 export default function ProjectSettingLayout() {
   const { workspaceId, projectId } = useParams();
+  const location = useLocation();
   const { projects } = useProjects();
-  const currentProject = projects?.find((p) => p._id === projectId);
-  const navigate = useNavigate();
+  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
   const basePath = `/${workspaceId}/projects/${projectId}/settings`;
 
   const tabs = [
@@ -33,26 +27,31 @@ export default function ProjectSettingLayout() {
         project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
         title="Settings"
         Icon={Settings}
-        actions={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 text-xs font-semibold text-primary/80 bg-background hover:bg-secondary/40 px-3 py-1.5 rounded-sm transition-all cursor-pointer outline-none border border-border/50">
-                {activeTab.label}
-                <ChevronDown size={14} className="text-muted-foreground/60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {tabs.map((tab) => (
-                <DropdownMenuItem
-                  key={tab.label}
-                  onClick={() => navigate(tab.to)}
-                  className={activeTab.label === tab.label ? "bg-muted font-medium" : ""}
+        centerContent={
+          <nav className="flex h-full max-w-full items-stretch overflow-x-auto">
+            {tabs.map((tab) => {
+              const isActive = activeTab.to === tab.to;
+
+              return (
+                <Link
+                  key={tab.to}
+                  to={tab.to}
+                  className={`relative flex h-full min-w-[110px] items-center justify-center px-4 text-center text-sm font-medium whitespace-nowrap transition-colors ${
+                    isActive
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
                   {tab.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <span
+                    className={`absolute inset-x-0 bottom-[-1px] h-0.5 transition-opacity ${
+                      isActive ? "bg-foreground opacity-100" : "bg-transparent opacity-0"
+                    }`}
+                  />
+                </Link>
+              );
+            })}
+          </nav>
         }
       />
 

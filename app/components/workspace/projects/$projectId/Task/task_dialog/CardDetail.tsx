@@ -72,26 +72,26 @@ function formatActivityTime(value?: string | Date) {
   const diffMs = now.getTime() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
   
-  // "vừa xong" for within 2 minutes
+  // "just now" for within 2 minutes
   if (diffMinutes < 2) {
-    return "vừa xong";
+    return "just now";
   }
-  
+ 
   if (diffMinutes < 60) {
-    return `${diffMinutes} phút trước`;
+    return `${diffMinutes}m ago`;
   }
-  
+ 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours} giờ trước`;
+    return `${diffHours}h ago`;
   }
-  
+ 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) {
-    return `${diffDays} ngày trước`;
+    return `${diffDays}d ago`;
   }
-  
-  return date.toLocaleString("vi-VN", {
+ 
+  return date.toLocaleString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     day: "numeric",
@@ -160,17 +160,17 @@ function getAttachmentTypeLabel(attachment: Attachment) {
 
 function formatAttachmentMeta(createdAt: string) {
   const createdDate = new Date(createdAt);
-  if (Number.isNaN(createdDate.getTime())) return "Đã thêm";
-
+  if (Number.isNaN(createdDate.getTime())) return "Added";
+ 
   const diffInMinutes = Math.floor((Date.now() - createdDate.getTime()) / 60000);
-  if (diffInMinutes < 1) return "Đã thêm vừa xong";
-  if (diffInMinutes < 60) return `Đã thêm ${diffInMinutes} phút trước`;
-
+  if (diffInMinutes < 1) return "Added just now";
+  if (diffInMinutes < 60) return `Added ${diffInMinutes}m ago`;
+ 
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `Đã thêm ${diffInHours} giờ trước`;
-
+  if (diffInHours < 24) return `Added ${diffInHours}h ago`;
+ 
   const diffInDays = Math.floor(diffInHours / 24);
-  return `Đã thêm ${diffInDays} ngày trước`;
+  return `Added ${diffInDays}d ago`;
 }
 
 type AttachmentMenuItem = {
@@ -263,7 +263,7 @@ function ChecklistBlock({
           onClick={() => setShowDeleteConfirm(true)}
           className="rounded-md bg-[#f1f2f4] px-3 py-1.5 text-[13px] font-medium text-[#172b4d] hover:bg-[#eaecef]"
         >
-          Xóa
+          Delete
         </button>
       </div>
 
@@ -301,7 +301,7 @@ function ChecklistBlock({
                       className="h-9 bg-black px-4 text-white hover:bg-black/90 shadow-none"
                       onClick={handleSaveEditItem}
                     >
-                      Lưu
+                      Save
                     </Button>
                     <Button
                       type="button"
@@ -312,7 +312,7 @@ function ChecklistBlock({
                         setEditingItemTitle("");
                       }}
                     >
-                      Hủy
+                      Cancel
                     </Button>
                   </div>
                 </div>
@@ -320,7 +320,7 @@ function ChecklistBlock({
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
                   className="inline-flex size-7 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#c9372c]"
-                  aria-label={`Xóa mục ${item.title}`}
+                  aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
                 </button>
@@ -344,7 +344,7 @@ function ChecklistBlock({
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
                   className="inline-flex size-7 items-center justify-center rounded-sm text-[#44546f] opacity-0 transition-colors hover:bg-[#091e420f] hover:text-[#c9372c] group-hover:opacity-100"
-                  aria-label={`Xóa mục ${item.title}`}
+                  aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
                 </button>
@@ -352,7 +352,7 @@ function ChecklistBlock({
             )
           ))
         ) : (
-          <p className="text-[13px] text-[#6b778c]">Chưa có mục nào.</p>
+          <p className="text-[13px] text-[#6b778c]">No items yet.</p>
         )}
       </div>
 
@@ -361,7 +361,7 @@ function ChecklistBlock({
           <input
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
-            placeholder="Thêm một mục..."
+            placeholder="Add an item..."
             className="h-9 w-full rounded-sm border border-[#d9d9d9] px-3 text-[14px] shadow-none"
             autoFocus
           />
@@ -371,7 +371,7 @@ function ChecklistBlock({
               className="h-9 bg-black text-white hover:bg-black/90 shadow-none"
               onClick={handleAddItem}
             >
-              Thêm
+              Add
             </Button>
             <Button
               type="button"
@@ -382,7 +382,7 @@ function ChecklistBlock({
                 setShowNewItemInput(false);
               }}
             >
-              Hủy
+              Cancel
             </Button>
           </div>
         </div>
@@ -393,7 +393,7 @@ function ChecklistBlock({
           className="h-9 w-fit bg-[#f1f2f4] px-4 text-[14px] font-medium text-[#172b4d] shadow-none hover:bg-[#eaecef]"
           onClick={() => setShowNewItemInput(true)}
         >
-          Thêm một mục
+          Add an item
         </Button>
       )}
 
@@ -405,10 +405,10 @@ function ChecklistBlock({
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
               <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
-                Xóa danh sách việc cần làm?
+                Delete checklist?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                Mục này sẽ bị xóa khỏi thẻ và không thể khôi phục.
+                This will be removed from the card and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -422,7 +422,7 @@ function ChecklistBlock({
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleteConfirming}
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 type="button"
@@ -430,7 +430,7 @@ function ChecklistBlock({
                 onClick={handleConfirmDelete}
                 disabled={isDeleteConfirming}
               >
-                Xóa
+                Delete
               </Button>
             </DialogFooter>
           </div>
@@ -576,7 +576,7 @@ export function TaskDialog({
   const commentActivities = useMemo<ActivityEntry[]>(() => {
     const commentEntries = taskComments.map((comment) => ({
       id: comment._id,
-      author: comment.author?.name || "Người dùng",
+      author: comment.author?.name || "User",
       authorInitials: getUserInitials(comment.author?.name),
       avatarUrl: comment.author?.avatar || null,
       content: comment.content,
@@ -592,7 +592,7 @@ export function TaskDialog({
 
     const auditLogEntries = taskActivity.map((log: TaskActivityLog) => ({
       id: log._id,
-      author: log.actor?.name || "Người dùng",
+      author: log.actor?.name || "User",
       authorInitials: getUserInitials(log.actor?.name),
       avatarUrl: log.actor?.avatar || null,
       content: log.description,
@@ -917,10 +917,10 @@ export function TaskDialog({
   };
 
   const attachmentMenuItems: AttachmentMenuItem[] = [
-    { id: "edit", label: "Sửa" },
-    { id: "comment", label: "Nhận xét" },
-    { id: "download", label: "Tải xuống" },
-    { id: "remove", label: "Loại bỏ", tone: "danger" },
+    { id: "edit", label: "Edit" },
+    { id: "comment", label: "Comment" },
+    { id: "download", label: "Download" },
+    { id: "remove", label: "Remove", tone: "danger" },
   ];
 
   return (
@@ -936,7 +936,7 @@ export function TaskDialog({
           maxHeight: "92vh",
         }}
       >
-        <DialogTitle className="sr-only">Chi tiết thẻ</DialogTitle>
+        <DialogTitle className="sr-only">Card detail</DialogTitle>
 
           <div className="flex min-h-0 flex-col bg-white">
           <TaskHeader
@@ -978,7 +978,7 @@ export function TaskDialog({
                         side="top"
                         className="bg-[#172b4d] text-white border-none rounded-sm text-[12px] font-medium py-1.5 px-3"
                       >
-                        {completed ? "Đánh dấu chưa hoàn tất" : "Đánh dấu hoàn tất"}
+                        {completed ? "Mark as incomplete" : "Mark as complete"}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -991,7 +991,7 @@ export function TaskDialog({
                       e.currentTarget.style.height = "auto";
                       e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                     }}
-                    placeholder="Nhập tiêu đề thẻ..."
+                    placeholder="Enter card title..."
                     className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border-none bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-[#999] transition-all hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] ${
                       completed ? "text-[#6b778c]" : "text-[#172b4d]"
                     }`}
@@ -1036,7 +1036,7 @@ export function TaskDialog({
                           <line x1="17" y1="18" x2="3" y2="18"></line>
                         </svg>
                       </div>
-                      <h3 className="text-[17px] font-bold text-[#172b4d]">Mô tả</h3>
+                      <h3 className="text-[17px] font-bold text-[#172b4d]">Description</h3>
                     </div>
 
                     <textarea
@@ -1049,7 +1049,7 @@ export function TaskDialog({
                         descriptionDraftRef.current = description;
                         setShowDescriptionActions(true);
                       }}
-                      placeholder="Thêm mô tả chi tiết hơn..."
+                      placeholder="Add a more detailed description..."
                       className="min-h-35 w-full resize-none rounded-sm bg-transparent border border-[#d0d7e2] px-4 py-3 text-[15px] text-[#172b4d] shadow-none outline-none placeholder:text-[#6b778c] transition-all duration-200 hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] focus:border-[#3884ff]"
                     />
                     {showDescriptionActions ? (
@@ -1060,7 +1060,7 @@ export function TaskDialog({
                           onClick={handleSaveDescription}
                           disabled={!description.trim()}
                         >
-                          Lưu
+                          Save
                         </Button>
                         <Button
                           type="button"
@@ -1068,7 +1068,7 @@ export function TaskDialog({
                           className="h-9 px-3 text-[#44546f] transition-all duration-200 hover:bg-[#091e420f] active:scale-[0.98] disabled:opacity-60"
                           onClick={handleCancelDescription}
                         >
-                          Hủy
+                          Cancel
                         </Button>
                       </div>
                     ) : null}
@@ -1079,7 +1079,7 @@ export function TaskDialog({
                     <div className="mb-4 flex items-center gap-2">
                       <Paperclip className="size-4 text-[#44546f]" />
                       <h3 className="text-[16px] font-bold text-[#172b4d]">
-                        Các tập tin đính kèm
+                        Attachments
                       </h3>
                     </div>
                     <div className="space-y-3 pl-1">
@@ -1115,7 +1115,7 @@ export function TaskDialog({
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex size-8 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
-                              aria-label={`Mở ${item.name}`}
+                              aria-label={`Open ${item.name}`}
                             >
                               <ExternalLink className="size-4" />
                             </a>
@@ -1124,7 +1124,7 @@ export function TaskDialog({
                                 type="button"
                                 onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
                                 className="inline-flex size-8 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
-                                aria-label={`Tùy chọn ${item.name}`}
+                                aria-label={`Options for ${item.name}`}
                               >
                                 <MoreHorizontal className="size-4" />
                               </button>
@@ -1250,10 +1250,10 @@ export function TaskDialog({
             <div className="p-6">
               <DialogHeader className="space-y-2 text-left">
                 <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
-                  Đổi tên tài liệu
+                  Rename attachment
                 </DialogTitle>
                 <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                  Cập nhật tên hiển thị của file đính kèm này.
+                  Update the display name for this attachment.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1262,7 +1262,7 @@ export function TaskDialog({
                   value={renameAttachmentName}
                   onChange={(e) => setRenameAttachmentName(e.target.value)}
                   className="h-10 w-full rounded-sm border border-zinc-200 px-4 text-[14px] text-zinc-900 outline-none focus:border-black"
-                  placeholder="Nhập tên file mới"
+                  placeholder="Enter new file name"
                   autoFocus
                 />
               </div>
@@ -1279,7 +1279,7 @@ export function TaskDialog({
                     setRenameAttachmentName("");
                   }}
                 >
-                  Hủy
+                  Cancel
                 </Button>
                 <Button
                   type="button"
@@ -1287,7 +1287,7 @@ export function TaskDialog({
                   onClick={handleConfirmRenameAttachment}
                   disabled={!renameAttachmentName.trim()}
                 >
-                  Lưu
+                  Save
                 </Button>
               </DialogFooter>
             </div>

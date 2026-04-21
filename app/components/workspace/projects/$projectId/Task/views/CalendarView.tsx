@@ -204,7 +204,7 @@ export default function CalendarView({
       : format(currentMonth, "MMMM yyyy");
 
   const dayCellMinHeight = layoutMode === "week" ? 750 : 150;
-  // Đã loại bỏ defaultColumnId vì không còn cột mặc định
+  // Removed defaultColumnId as there's no more default column
 
   const handleOpenQuickAdd = (dateKey: string) => {
     setQuickAddDateKey(dateKey);
@@ -223,7 +223,7 @@ export default function CalendarView({
     if (!trimmedTitle) return;
 
     const dateKeyToSubmit = quickAddDateKey;
-    // Luôn lấy cột đầu tiên nếu cần, không còn khái niệm default
+    // Always take the first column if needed, no more concept of default
     const columnIdToSubmit = columns.length > 0 ? resolveTaskColumnId(columns[0]) : "";
     setQuickAddDateKey(null);
     setQuickAddTitle("");

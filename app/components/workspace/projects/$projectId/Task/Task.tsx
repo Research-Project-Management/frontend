@@ -96,7 +96,7 @@ export default function Task() {
     );
 
     if (hasUnassignedTask) {
-      options.push({ id: "__unassigned__", name: "Chưa giao" });
+      options.push({ id: "__unassigned__", name: "Unassigned" });
     }
 
     return options;

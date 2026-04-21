@@ -272,7 +272,7 @@ export function TaskActivities({
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#44546f]"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           </div>
           <h3 className="text-[16px] font-bold text-[#172b4d]">
-            Nhận xét và hoạt động
+            Comments & Activity
           </h3>
         </div>
 
@@ -281,7 +281,7 @@ export function TaskActivities({
           className="h-8 rounded-sm bg-[#091e420f] px-3 text-[13px] font-bold text-[#172b4d] shadow-none hover:bg-[#091e421a] transition-colors border-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
-          {showDetailActivity ? "Ẩn chi tiết" : "Hiện chi tiết"}
+          {showDetailActivity ? "Hide details" : "Show details"}
         </Button>
       </div>
 
@@ -314,7 +314,7 @@ export function TaskActivities({
 
               setShowCommentActions(false);
             }}
-            placeholder={canComment ? "Viết bình luận..." : "Lưu thẻ trước khi bình luận"}
+            placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
             disabled={!canComment}
             className="min-h-11.5 rounded-sm border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] text-[#333] shadow-none transition-all duration-200 focus-visible:ring-0"
           />
@@ -336,7 +336,7 @@ export function TaskActivities({
                     aria-hidden="true"
                   />
                 ) : null}
-                Lưu
+                Save
               </Button>
               <Button
                 type="button"
@@ -345,7 +345,7 @@ export function TaskActivities({
                 onClick={handleCancelComment}
                 disabled={isSavingComment}
               >
-                Hủy
+                Cancel
               </Button>
             </div>
           ) : null}
@@ -355,13 +355,13 @@ export function TaskActivities({
       <div className="px-5 pb-5 pt-4">
         {activityLoading ? (
           <div className="mb-3 rounded-sm bg-[#f4f5f7] px-3 py-2 text-[13px] text-[#44546f]">
-            Đang tải hoạt động...
+            Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
           <div className="mb-3 rounded-lg bg-[#fff1f0] px-3 py-2 text-[13px] text-[#c9372c]">
-            Không thể tải hoạt động. Vui lòng thử lại.
+            Could not load activity. Please try again.
           </div>
         ) : null}
 
@@ -414,7 +414,7 @@ export function TaskActivities({
                                     aria-hidden="true"
                                   />
                                 ) : null}
-                                Lưu
+                                Save
                               </Button>
                               <Button
                                 type="button"
@@ -423,7 +423,7 @@ export function TaskActivities({
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
-                                Hủy
+                                Cancel
                               </Button>
                             </div>
                           </div>
@@ -442,8 +442,8 @@ export function TaskActivities({
                               <button
                                 type="button"
                                 className="inline-flex size-6 items-center justify-center rounded-full text-[#44546f] transition-colors hover:bg-zinc-200 hover:text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                                aria-label="Mở danh sách cảm xúc"
-                                title="Mở danh sách cảm xúc"
+                                aria-label="Open reaction picker"
+                                title="Open reaction picker"
                                 onClick={() =>
                                   setReactionPickerCommentId((current) =>
                                     current === item.id ? null : item.id
@@ -460,7 +460,7 @@ export function TaskActivities({
                                     className="rounded px-1 py-0.5 transition-colors hover:bg-zinc-200 hover:underline focus:outline-none focus:ring-2 focus:ring-zinc-400"
                                     onClick={() => handleStartEditComment(item.id, item.content)}
                                   >
-                                    Chỉnh sửa
+                                    Edit
                                   </button>
                                 </>
                               ) : null}
@@ -472,7 +472,7 @@ export function TaskActivities({
                                     className="rounded px-1 py-0.5 transition-colors hover:bg-[#fff1f0] hover:underline hover:text-[#c9372c] focus:outline-none focus:ring-2 focus:ring-[#f6c7c2]"
                                     onClick={() => setDeleteCommentId(item.id)}
                                   >
-                                    Xóa
+                                    Delete
                                   </button>
                                 </>
                               ) : null}
@@ -486,7 +486,7 @@ export function TaskActivities({
                                         type="button"
                                         className="flex size-10 items-center justify-center rounded-full text-[24px] transition-transform duration-200 hover:scale-110 hover:bg-[#f4f5f7] active:scale-95"
                                         onClick={() => handlePickReaction(item.id, emoji)}
-                                        aria-label={`Chọn cảm xúc ${emoji}`}
+                                        aria-label={`Pick reaction ${emoji}`}
                                       >
                                         {emoji}
                                       </button>
@@ -504,9 +504,9 @@ export function TaskActivities({
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
                         <p className="mt-1.5 text-[14px]">
-                          {item.timestamp === "vừa xong" ? (
+                          {item.timestamp === "just now" ? (
                             <a href="#" className="text-[#2563eb] hover:underline cursor-pointer" onClick={(e) => e.preventDefault()}>
-                              vừa xong
+                              just now
                             </a>
                           ) : (
                             <span className="text-[#2563eb]">{item.timestamp}</span>
@@ -521,11 +521,11 @@ export function TaskActivities({
           </div>
         ) : canComment ? (
           <div className="py-10 text-center text-[14px] text-[#888]">
-            Chưa có hoạt động nào
+            No activity yet
           </div>
         ) : (
           <div className="py-10 text-center text-[14px] text-[#888]">
-            Hãy thêm bình luận hoặc xem hoạt động
+            Add a comment or view activity
           </div>
         )}
       </div>
@@ -540,10 +540,10 @@ export function TaskActivities({
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
               <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
-                Xóa bình luận?
+                Delete comment?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                Bình luận này sẽ bị xóa khỏi danh sách và không thể khôi phục.
+                This comment will be removed and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -556,7 +556,7 @@ export function TaskActivities({
                 className="h-9 px-4 text-[#44546f] hover:bg-[#091e420f]"
                 onClick={() => setDeleteCommentId(null)}
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 type="button"
@@ -564,7 +564,7 @@ export function TaskActivities({
                 onClick={handleConfirmDeleteComment}
                 disabled={isDeleteCommentRunning}
               >
-                Xóa
+                Delete
               </Button>
             </DialogFooter>
           </div>

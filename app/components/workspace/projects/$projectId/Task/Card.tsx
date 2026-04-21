@@ -42,7 +42,7 @@ function formatDueDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
 
-  return date.toLocaleDateString("vi-VN", {
+  return date.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
   });
@@ -135,7 +135,7 @@ function CardContent({
       ? {
           key: "due",
           icon: Clock3,
-          label: dueDateIsOverdue ? "Đã hết hạn" : "Chưa hết hạn",
+          label: dueDateIsOverdue ? "Overdue" : "Due Soon",
           text: dueDateDisplayText,
         }
       : null,
@@ -143,7 +143,7 @@ function CardContent({
       ? {
           key: "description",
           icon: AlignLeft,
-          label: "Đã có mô tả",
+          label: "Description available",
           text: "",
         }
       : null,
@@ -151,7 +151,7 @@ function CardContent({
       ? {
           key: "comments",
           icon: MessageSquare,
-          label: "Bình luận",
+          label: "Comments",
           text: String(commentCount),
         }
       : null,
@@ -159,7 +159,7 @@ function CardContent({
       ? {
           key: "attachments",
           icon: Paperclip,
-          label: "Các tập tin đính kèm",
+          label: "Attachments",
           text: String(attachmentCount),
         }
       : null,
@@ -167,7 +167,7 @@ function CardContent({
       ? {
           key: "checklist",
           icon: CheckSquare,
-          label: "Danh sách công việc",
+          label: "Checklist",
           text: `${checklistDone}/${checklistTotal}`,
         }
       : null,
@@ -256,11 +256,11 @@ function CardContent({
           onMouseDown={(event) => event.stopPropagation()}
           onTouchStart={(event) => event.stopPropagation()}
           className="mb-2 flex w-full flex-wrap items-center gap-1.5 pl-0.5 pr-8 text-left"
-          aria-label="Bật tắt hiển thị chi tiết nhãn"
+          aria-label="Toggle label details display"
         >
           {visibleLabels.map((label) => {
             const hasTitle = label.title.trim().length > 0;
-
+ 
             return showLabelDetails ? (
               <span
                 key={label.id}
@@ -268,7 +268,7 @@ function CardContent({
                   hasTitle ? "w-fit max-w-full" : "min-w-12"
                 }`}
                 style={{ backgroundColor: label.color }}
-                title={hasTitle ? label.title : "Nhãn"}
+                title={hasTitle ? label.title : "Label"}
               >
                 {hasTitle ? <span className="max-w-full truncate">{label.title}</span> : null}
               </span>
@@ -277,7 +277,7 @@ function CardContent({
                 key={label.id}
                 className="inline-flex h-2.5 w-11 rounded-full transition-all duration-200"
                 style={{ backgroundColor: label.color }}
-                title={hasTitle ? label.title : "Nhãn"}
+                title={hasTitle ? label.title : "Label"}
               />
             );
           })}
@@ -295,7 +295,7 @@ function CardContent({
             onToggleComplete?.(card);
           }}
           disabled={card.permissions?.canEdit === false}
-          aria-label={card.completed ? "Đánh dấu chưa hoàn tất" : "Đánh dấu hoàn tất"}
+          aria-label={card.completed ? "Mark as incomplete" : "Mark as complete"}
           className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border-[1.5px] transition-all ${
             card.completed
               ? "border-black bg-black text-white"

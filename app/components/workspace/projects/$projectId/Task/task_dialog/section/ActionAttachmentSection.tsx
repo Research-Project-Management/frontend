@@ -32,37 +32,37 @@ export function ActionAttachmentSection({
       setAttachments((prev) => [...prev, newAttachment]);
     } catch (error) {
       console.error("Upload failed", error);
-      setUploadError("Không thể tải tệp lên. Vui lòng thử lại.");
-    } finally {
-      e.target.value = "";
-    }
-  };
-
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        onChange={handleFileSelect}
-        disabled={isUploading}
-      />
-      <Button
-        type="button"
-        variant="outline"
-        className={
-          actionBtnClass ??
-          "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]"
-        }
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isUploading}
-      >
-        <Paperclip className="mr-2 h-4 w-4" />
-        {isUploading ? "Đang tải lên..." : "Đính kèm"}
-      </Button>
-      {uploadError ? (
-        <p className="text-[12px] text-[#c9372c]">{uploadError}</p>
-      ) : null}
+       setUploadError("Upload failed. Please try again.");
+     } finally {
+       e.target.value = "";
+     }
+   };
+ 
+   return (
+     <div className="flex min-w-0 flex-col gap-1.5">
+       <input
+         ref={fileInputRef}
+         type="file"
+         className="hidden"
+         onChange={handleFileSelect}
+         disabled={isUploading}
+       />
+       <Button
+         type="button"
+         variant="outline"
+         className={
+           actionBtnClass ??
+           "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]"
+         }
+         onClick={() => fileInputRef.current?.click()}
+         disabled={isUploading}
+       >
+         <Paperclip className="mr-2 h-4 w-4" />
+         {isUploading ? "Uploading..." : "Attachment"}
+       </Button>
+       {uploadError ? (
+         <p className="text-[12px] text-[#c9372c]">{uploadError}</p>
+       ) : null}
     </div>
   );
 }

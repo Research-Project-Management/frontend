@@ -209,14 +209,14 @@ export function TaskActions({
         <div className="flex flex-wrap items-start gap-4 sm:gap-5">
           {assigneeId && assignee ? (
             <div className="min-w-27.5 space-y-2">
-              <p className="text-[14px] font-semibold text-[#5e6c84]">Thành viên</p>
+              <p className="text-[14px] font-semibold text-[#5e6c84]">Members</p>
               <div className="flex items-center gap-2">
                 <Popover open={memberActionPopoverOpen} onOpenChange={setMemberActionPopoverOpen}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
                       className="rounded-full"
-                      aria-label={`Tùy chọn thành viên ${assignee.user.name}`}
+                      aria-label={`Options for member ${assignee.user.name}`}
                     >
                       <Avatar className="size-9">
                         <AvatarImage src={assignee.user.avatar} />
@@ -240,7 +240,7 @@ export function TaskActions({
                       }}
                       className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-[#c9372c] transition-colors hover:bg-[#fff1f0]"
                     >
-                      Gỡ bỏ khỏi thẻ
+                      Remove from card
                     </button>
                   </PopoverContent>
                 </Popover>
@@ -258,7 +258,7 @@ export function TaskActions({
 
           {sortedActiveLabels.length > 0 ? (
             <div className="min-w-30 space-y-2">
-              <p className="text-[14px] font-semibold text-[#5e6c84]">Nhãn</p>
+              <p className="text-[14px] font-semibold text-[#5e6c84]">Labels</p>
               <div className="flex items-start gap-2">
                 <div className="flex max-w-65 flex-wrap items-center gap-2">
                   {sortedActiveLabels.map((item) => {
@@ -295,7 +295,7 @@ export function TaskActions({
           {dateBadgeText ? (
             <div className="min-w-45 space-y-2">
               <p className="text-[14px] font-semibold text-[#5e6c84]">
-                {formattedDueDateBadge ? "Ngày hết hạn" : "Ngày bắt đầu"}
+                {formattedDueDateBadge ? "Due date" : "Start date"}
               </p>
               <button
                 type="button"
@@ -309,7 +309,7 @@ export function TaskActions({
                 <span className="truncate">{dateBadgeText}</span>
                 {isDueDateOverdue ? (
                   <span className="inline-flex h-5 items-center rounded-sm bg-[#c9372c] px-1.5 text-[12px] font-semibold text-white">
-                    Quá hạn
+                    Overdue
                   </span>
                 ) : null}
                 <ChevronDown className="size-4 shrink-0" />

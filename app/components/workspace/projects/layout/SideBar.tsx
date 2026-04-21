@@ -1,8 +1,6 @@
 import {
-  LayoutDashboard,
   ChevronRight,
   Cloud,
-  Ellipsis,
   Home,
   KanbanSquare,
   PanelLeftClose,
@@ -15,7 +13,8 @@ import {
   ChartBarBig,
   UserStar,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import type { LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
 import {
   Collapsible,
@@ -24,7 +23,6 @@ import {
 } from "@/components/ui/collapsible";
 import { useProjects } from "~/hooks/useWorkspace";
 import type { Project } from "~/types/project";
-import type { LucideIcon } from "lucide-react";
 
 import {
   DialogTrigger,
@@ -34,11 +32,6 @@ import {
   DialogContent,
 } from "~/components/ui/dialog";
 import CreateProject from "./CreateProject";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-
 
 type ProjectModuleKey =
   | "overview"
@@ -59,7 +52,10 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "settings",
 ];
 
-const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
+const modulesConfig: Record<
+  ProjectModuleKey,
+  { label: string; icon: LucideIcon }
+> = {
   overview: { label: "Overview", icon: ChartBarBig },
   tasks: { label: "Tasks", icon: KanbanSquare },
   pages: { label: "Pages", icon: PenLine },
@@ -100,8 +96,9 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
     },
   ];
 
-  const { projects }: { projects?: Project[]; isLoading: boolean } = useProjects();
-  
+  const { projects }: { projects?: Project[]; isLoading: boolean } =
+    useProjects();
+
   // Persistent state for expanded projects
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
     if (typeof window !== "undefined") {
@@ -115,22 +112,26 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   useEffect(() => {
     localStorage.setItem(
       "sidebar_expanded_projects",
-      JSON.stringify(Array.from(expandedProjects))
+      JSON.stringify(Array.from(expandedProjects)),
     );
   }, [expandedProjects]);
 
   // Expand active project on navigation
   useEffect(() => {
-    if (projects) {
-      const activeProject = projects.find(p => location.pathname.includes(`/projects/${p._id}`));
-      if (activeProject && !expandedProjects.has(activeProject._id)) {
-        setExpandedProjects(prev => new Set(prev).add(activeProject._id));
-      }
-    }
+    const activeProject = projects?.find((project) =>
+      location.pathname.includes(`/projects/${project._id}`),
+    );
+
+    if (!activeProject) return;
+
+    setExpandedProjects((prev) => {
+      if (prev.has(activeProject._id)) return prev;
+      return new Set(prev).add(activeProject._id);
+    });
   }, [location.pathname, projects]);
 
   const toggleProject = (id: string) => {
-    setExpandedProjects(prev => {
+    setExpandedProjects((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -221,10 +222,10 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
             </p>
           )}
           {(projects ?? []).map((project) => {
-              const isOpen = expandedProjects.has(project._id);
-              const projectModules = project.modules ?? [];
-              
-              return (
+            const isOpen = expandedProjects.has(project._id);
+            const projectModules = project.modules ?? [];
+
+            return (
               <Collapsible
                 className="w-full group"
                 key={project._id}
@@ -278,7 +279,8 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   })}
                 </CollapsibleContent>
               </Collapsible>
-            )})}
+            );
+          })}
         </div>
       </nav>
 

@@ -45,7 +45,7 @@ export default function CreateModal({
 }: CreateModalProps) {
   const [sectionName, setSectionName] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
-  // Đã loại bỏ isDefault
+  // Removed isDefault
 
   useEffect(() => {
     if (isOpen) {

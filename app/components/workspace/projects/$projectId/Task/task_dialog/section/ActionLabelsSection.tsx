@@ -134,7 +134,7 @@ export function ActionLabelsSection({
             <Button variant="ghost" size="icon" className="size-8" onClick={() => setLabelsView("list")}>
               <ChevronLeft className="size-4" />
             </Button>
-            <span className="text-sm font-semibold text-center flex-1">Chỉnh sửa nhãn</span>
+            <span className="text-sm font-semibold text-center flex-1">Edit label</span>
             <Button variant="ghost" size="icon" className="size-8" onClick={() => onOpenChange(false)}>
               <X className="size-4" />
             </Button>
@@ -150,7 +150,7 @@ export function ActionLabelsSection({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[13px] font-bold text-muted-foreground uppercase">Tiêu đề</Label>
+              <Label className="text-[13px] font-bold text-muted-foreground uppercase">Title</Label>
               <Input
                 value={editingTitle}
                 onChange={(e) => setEditingTitle(e.target.value)}
@@ -159,7 +159,7 @@ export function ActionLabelsSection({
             </div>
 
             <div className="space-y-3">
-              <Label className="text-[13px] font-bold text-muted-foreground uppercase">Chọn một màu</Label>
+              <Label className="text-[13px] font-bold text-muted-foreground uppercase">Select a color</Label>
               <div className="grid grid-cols-5 gap-2">
                 {AVAILABLE_LABEL_COLORS.map((item) => (
                   <button
@@ -178,10 +178,10 @@ export function ActionLabelsSection({
 
             <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-4">
               <Button onClick={handleSaveEditLabel} className="bg-black hover:bg-black/90 text-white font-semibold h-10 px-6 rounded-sm shadow-sm">
-                Lưu
+                Save
               </Button>
               <Button onClick={handleDeleteLabelFromTask} variant="destructive" className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-10 px-6 rounded-sm shadow-sm">
-                Xóa
+                Delete
               </Button>
             </div>
           </div>
@@ -192,7 +192,7 @@ export function ActionLabelsSection({
     return (
       <div className="flex h-full min-h-0 flex-col animate-in fade-in slide-in-from-left-2 duration-200">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
-          <span className="text-sm font-semibold text-center flex-1">Nhãn</span>
+          <span className="text-sm font-semibold text-center flex-1">Labels</span>
           <Button variant="ghost" size="icon" className="size-8" onClick={() => onOpenChange(false)}>
             <X className="size-4" />
           </Button>
@@ -200,14 +200,14 @@ export function ActionLabelsSection({
 
         <div ref={contentScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
           <Input
-            placeholder="Tìm nhãn..."
+            placeholder="Search labels..."
             value={labelSearch}
             onChange={(e) => setLabelSearch(e.target.value)}
             className="h-10 border-black focus-visible:ring-2 ring-black/20 transition-all shadow-none"
           />
 
           <div className="space-y-3">
-            <h4 className="text-[13px] font-bold text-muted-foreground">Nhãn</h4>
+            <h4 className="text-[13px] font-bold text-muted-foreground">Labels</h4>
             <div className="space-y-2">
               {filteredLabelPool.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 group">
@@ -248,7 +248,7 @@ export function ActionLabelsSection({
             onClick={handleCreateNewLabel}
             className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-10 rounded-sm border-none shadow-none transition-all"
           >
-            Tạo nhãn mới
+            Create a new label
           </Button>
         </div>
       </div>
@@ -272,7 +272,7 @@ export function ActionLabelsSection({
               : resolvedActionBtnClass
           }
         >
-          <Tag className="mr-2 h-4 w-4" />Nhãn
+          <Tag className="mr-2 h-4 w-4" />Labels
         </Button>
       </PopoverTrigger>
 

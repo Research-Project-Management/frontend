@@ -263,13 +263,13 @@ export default function CyclePage() {
                           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             <CalendarDays className="size-3" />
                             {cycle.startDate &&
-                              new Date(cycle.startDate).toLocaleDateString("vi-VN", {
+                              new Date(cycle.startDate).toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "2-digit",
                               })}
                             {cycle.startDate && cycle.endDate && " → "}
                             {cycle.endDate &&
-                              new Date(cycle.endDate).toLocaleDateString("vi-VN", {
+                              new Date(cycle.endDate).toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "2-digit",
                               })}
@@ -339,7 +339,7 @@ export default function CyclePage() {
                                 </span>
                                 {ms.dueDate && (
                                   <span className="text-[10px] text-muted-foreground shrink-0">
-                                    {new Date(ms.dueDate).toLocaleDateString("vi-VN")}
+                                    {new Date(ms.dueDate).toLocaleDateString("en-GB")}
                                   </span>
                                 )}
                               </button>

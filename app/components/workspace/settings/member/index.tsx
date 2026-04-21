@@ -232,7 +232,7 @@ export default function MemberPage() {
                     <td className="px-6 py-5 text-muted-foreground text-[13px] font-medium">
                       {new Date(
                         member.joinedAt || Date.now(),
-                      ).toLocaleDateString("vi-VN", {
+                      ).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "2-digit",
                         year: "numeric",

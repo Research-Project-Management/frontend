@@ -8,7 +8,7 @@ import { Input } from "~/components/ui/input";
 interface TopbarProps {
   project?: {
     name: string;
-    avatar: string;
+    avatar?: string;
   };
   title: string;
   Icon: LucideIcon;
@@ -18,7 +18,7 @@ interface TopbarProps {
   onSearchChange?: (query: string) => void;
 }
 
-function ProjectAvatar({ avatar, name }: { avatar: string; name: string }) {
+function ProjectAvatar({ avatar, name }: { avatar?: string; name: string }) {
   if (!avatar) return null;
 
   const isUrl =
@@ -117,7 +117,7 @@ export default function Topbar({
   return (
       <header className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch px-4 h-13 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50 shrink-0 transition-all duration-300 gap-3">
         <div
-          className="flex h-full items-center gap-4 min-w-0"
+          className="flex h-full items-center gap-2 min-w-0"
           style={{ paddingLeft: "var(--header-offset, 0px)" }}
         >
           {project && (

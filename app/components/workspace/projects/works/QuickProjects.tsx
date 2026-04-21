@@ -38,7 +38,7 @@ export default function QuickProjects() {
                   {project.modules?.length || 0} modules active
                 </p>
               </div>
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-all shrink-0" />
+              <ChevronRight className="h-3.5 w-3.5 text-primary/60 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 shrink-0" />
             </Link>
           );
         })}

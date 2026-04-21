@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams } from "react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { API_URL } from "~/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspace } from "~/query/workspace";
+import { 
+  useRoles, 
+  useCreateRole, 
+  useUpdateRole, 
+  useDeleteRole 
+} from "~/query/role";
 import { toast } from "sonner";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
@@ -14,9 +19,25 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "~/components/ui/dialog";
 import TopBar from "../layout/TopBar";
-import { Plus, Trash2, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Search, MoreHorizontal } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { Badge } from "~/components/ui/badge";
+import DeleteModal from "../general/components/deleteModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
+import { Separator } from "~/components/ui/separator";
 
 type Permission = {
   resource: string;
@@ -46,91 +67,39 @@ const RESOURCES = [
 
 const ACTIONS = ["create", "read", "update", "delete", "manage", "invite"];
 
-function useRoles(workspaceId: string) {
-  const { workspace } = useWorkspace(workspaceId);
-  return useQuery({
-    queryKey: ["roles", workspace?._id],
-    queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/roles/${workspace?._id}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch roles");
-      return res.json() as Promise<{ roles: Role[] }>;
-    },
-    enabled: !!workspace?._id,
-  });
-}
+
 
 export default function RolesPage() {
   const { workspaceId } = useParams();
   const { workspace } = useWorkspace(workspaceId!);
-  const { data, isLoading } = useRoles(workspaceId!);
+  const { data, isLoading } = useRoles(workspace?._id || "");
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [formName, setFormName] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formColor, setFormColor] = useState("#6366f1");
   const [formPerms, setFormPerms] = useState<Permission[]>([]);
 
-  const roles = data?.roles || [];
+  const roles = useMemo(() => {
+    if (!data) return [];
+    const priority: Record<string, number> = {
+      owner: 1,
+      admin: 2,
+      member: 3,
+    };
+    return [...data].sort((a, b) => {
+      const pA = priority[a.name.toLowerCase()] || 99;
+      const pB = priority[b.name.toLowerCase()] || 99;
+      return pA - pB;
+    });
+  }, [data]);
 
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch(`${API_URL}/api/roles/${workspace?._id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
-      setDialogOpen(false);
-      toast.success("Role created");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ roleId, ...data }: any) => {
-      const res = await fetch(
-        `${API_URL}/api/roles/${workspace?._id}/${roleId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        },
-      );
-      if (!res.ok) throw new Error((await res.json()).error);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
-      setDialogOpen(false);
-      toast.success("Role updated");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (roleId: string) => {
-      const res = await fetch(
-        `${API_URL}/api/roles/${workspace?._id}/${roleId}`,
-        { method: "DELETE", credentials: "include" },
-      );
-      if (!res.ok) throw new Error((await res.json()).error);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
-      toast.success("Role deleted");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  const createMutation = useCreateRole(workspace?._id || "");
+  const updateMutation = useUpdateRole(workspace?._id || "");
+  const deleteMutation = useDeleteRole(workspace?._id || "");
 
   const openCreate = () => {
     setEditingRole(null);
@@ -159,9 +128,21 @@ export default function RolesPage() {
       permissions: formPerms,
     };
     if (editingRole) {
-      updateMutation.mutate({ roleId: editingRole._id, ...payload });
+      updateMutation.mutate({ roleId: editingRole._id, ...payload }, {
+        onSuccess: () => {
+          setDialogOpen(false);
+          toast.success("Role updated");
+          queryClient.invalidateQueries({ queryKey: ["roles", workspace?._id] });
+        }
+      });
     } else {
-      createMutation.mutate(payload);
+      createMutation.mutate(payload, {
+        onSuccess: () => {
+          setDialogOpen(false);
+          toast.success("Role created");
+          queryClient.invalidateQueries({ queryKey: ["roles", workspace?._id] });
+        }
+      });
     }
   };
 
@@ -198,9 +179,9 @@ export default function RolesPage() {
     return (
       <div className="flex flex-col h-full">
       <div className="px-4 h-13 border-b border-border flex items-center">
-          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-6 w-24" />
         </div>
-        <div className="p-6 space-y-3">
+        <div className="p-8 space-y-8">
           <Skeleton className="h-12 w-full rounded-lg" />
           <Skeleton className="h-12 w-full rounded-lg" />
           <Skeleton className="h-12 w-full rounded-lg" />
@@ -211,97 +192,175 @@ export default function RolesPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TopBar title="Roles" Icon={ShieldCheck} />
+      <TopBar
+        title="Roles"
+        Icon={ShieldCheck}
+        actions={
+          <Button
+            onClick={openCreate}
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-semibold"
+          >
+            <Plus className="size-3.5" />
+            New Role
+          </Button>
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Actions */}
-          <div className="flex justify-end">
-            <Button onClick={openCreate} size="sm" className="gap-1.5">
-              <Plus className="size-3.5" />
-              New Role
-            </Button>
-          </div>
-
-          {/* Roles table */}
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+      <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background/50">
+        <div className="border border-border/60 rounded-lg bg-card/30 backdrop-blur-sm shadow-sm overflow-hidden">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-muted/50 sticky top-0 z-10">
+              <tr>
+                  <th className="text-left px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
                     Role
                   </th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                  <th className="text-left px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
                     Description
                   </th>
-                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                  <th className="text-left px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
                     Permissions
                   </th>
-                  <th className="w-16" />
+                  <th className="px-6 py-4 border-b border-border/60 w-16" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/40">
                 {roles.map((role) => (
                   <tr
                     key={role._id}
                     onClick={() => openEdit(role)}
-                    className={`transition-colors ${role.isSystem ? "" : "hover:bg-accent/30 cursor-pointer"}`}
+                    className={cn(
+                      "transition-all duration-200 group",
+                      role.isSystem ? "" : "hover:bg-accent/40 cursor-pointer"
+                    )}
                   >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="size-2 rounded-full shrink-0"
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="size-2 rounded-full shrink-0 shadow-sm"
                           style={{ backgroundColor: role.color }}
                         />
-                        <span className="font-medium text-foreground">
-                          {role.name}
-                        </span>
-                        {role.isSystem && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                            System
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[15px] text-foreground tracking-tight">
+                              {role.name}
+                            </span>
+                            {role.isSystem && (
+                              <Badge variant="secondary" className="px-1.5 py-0 h-4 text-[9px] font-bold uppercase tracking-wider bg-zinc-100 text-zinc-500 border-none">
+                                System
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-muted-foreground text-[13px] max-w-xs truncate font-medium">
+                      {role.description || <span className="opacity-30 italic">No description</span>}
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-wrap items-center gap-2 max-w-[500px]">
+                        {role.permissions.length > 0 ? (
+                          <>
+                            {role.permissions.slice(0, 4).map((p) => (
+                              <div
+                                key={p.resource}
+                                className="px-2.5 py-1 rounded-[4px] bg-[#f2f2f2] text-[#666] text-[11px] font-medium border border-transparent shadow-none"
+                              >
+                                {p.resource}: {p.actions.join(", ")}
+                              </div>
+                            ))}
+                            {role.permissions.length > 4 && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[11px] text-[#888] hover:text-primary font-bold pl-1 transition-all hover:underline"
+                                  >
+                                    +{role.permissions.length - 4} more
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent 
+                                  className="w-72 p-0 shadow-2xl border-border/40 bg-background/95 backdrop-blur-xl overflow-hidden rounded-xl" 
+                                  align="start"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <div className="p-3 space-y-3">
+                                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground px-1">All Permissions</h4>
+                                    
+                                    <div className="grid gap-2 max-h-[280px] overflow-y-auto pr-1">
+                                      {role.permissions.map((p) => (
+                                        <div key={p.resource} className="p-2 gap-2 flex flex-col bg-[#f9f9f9] border border-border/20 rounded-lg">
+                                          <div className="flex items-center gap-1.5 px-0.5">
+                                            <div className="size-1 rounded-full bg-primary/60" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80 capitalize">
+                                              {p.resource}
+                                            </span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1">
+                                            {p.actions.map(a => (
+                                              <span key={a} className="text-[9px] text-[#666] capitalize bg-white px-2 py-0.5 rounded border border-border/30 font-medium">
+                                                {a}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground/40 italic">
+                            No permissions defined
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs max-w-xs truncate">
-                      {role.description}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {role.permissions.slice(0, 4).map((p) => (
-                          <span
-                            key={p.resource}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground"
-                          >
-                            {p.resource}: {p.actions.join(", ")}
-                          </span>
-                        ))}
-                        {role.permissions.length > 4 && (
-                          <span className="text-[10px] text-muted-foreground">
-                            +{role.permissions.length - 4} more
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-5 text-right">
                       {!role.isSystem && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm("Delete this role?"))
-                              deleteMutation.mutate(role._id);
-                          }}
-                          className="p-1 text-muted-foreground hover:text-destructive transition-colors rounded"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1.5 text-muted-foreground hover:text-foreground transition-all rounded-sm hover:bg-accent opacity-0 group-hover:opacity-100"
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-32">
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRoleToDelete(role);
+                              }}
+                            >
+                              <Trash2 className="mr-2 size-3.5" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </table>
+          {roles.length === 0 && (
+            <div className="p-20 text-center flex flex-col items-center gap-3">
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center">
+                <ShieldCheck className="size-6 text-muted-foreground/50" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">No roles found</p>
+                <p className="text-xs text-muted-foreground italic">
+                  Create your first custom role to get started
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -399,6 +458,26 @@ export default function RolesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Delete Confirmation Dialog */}
+      <DeleteModal
+        isOpen={!!roleToDelete}
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={() => {
+          if (roleToDelete) {
+            deleteMutation.mutate(roleToDelete._id, {
+              onSuccess: () => {
+                setRoleToDelete(null);
+                toast.success("Role deleted");
+              }
+            });
+          }
+        }}
+        title={`Delete "${roleToDelete?.name}" role?`}
+        description="Are you sure you want to delete this role? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

@@ -18,11 +18,14 @@ export default function UpcomingSection({
   // Sort: Tasks closest to deadline first (including overdue)
   const upcomingTasks = tasks
     .filter(t => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(t.dueDate);
         const assigneeId = typeof t.assignee === 'object' ? t.assignee?._id : t.assignee;
-        return assigneeId === user?._id && t.dueDate && t.columnId !== "done";
+        return assigneeId === user?._id && t.dueDate && t.columnId !== "done" && dueDate >= today;
     })
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-    .slice(0, 4);
+    .slice(0, 8); // Showing up to 8 for better visibility since "7 days" limit is gone
 
   const getRelativeDate = (date: Date) => {
     const today = new Date();

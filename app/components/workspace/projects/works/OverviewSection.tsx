@@ -31,11 +31,11 @@ function OverviewCard({ title, value, icon, variant = "default" }: OverviewCardP
 
 export default function OverviewSection({ 
     assigned = 0,
-    dueNext7Days = 0,
+    upcomingCount = 0,
     completed = 0
 }: { 
     assigned?: number;
-    dueNext7Days?: number;
+    upcomingCount?: number;
     completed?: number;
 }) {
   return (
@@ -48,8 +48,8 @@ export default function OverviewSection({
           icon={<UserCheck className="h-4 w-4" />}
         />
         <OverviewCard 
-          title="Upcoming (7 days)" 
-          value={dueNext7Days}
+          title="Upcoming" 
+          value={upcomingCount}
           icon={<Clock className="h-4 w-4" />}
         />
         <OverviewCard 

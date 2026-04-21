@@ -1,4 +1,4 @@
-import { UserStar, ChevronDown, Clock3, MessageSquare, CheckSquare, ChevronRight } from "lucide-react";
+import { UserStar, ChevronDown, Clock3, MessageSquare, CheckSquare, ChevronRight, Check } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router";
 import { useWorkspaceTasks } from "~/query/task";
@@ -9,6 +9,7 @@ import {
 } from "~/types/task";
 import { useProjects } from "~/hooks/useWorkspace";
 import useAuth from "~/hooks/useAuth";
+import { cn } from "~/lib/utils";
 import Topbar from "../Topbar";
 import OverviewSection from "../OverviewSection";
 import QuickProjects from "../QuickProjects";
@@ -29,7 +30,8 @@ type HeaderTab = (typeof TABS)[number];
 export default function YourWorks() {
   const { workspaceId } = useParams();
   const { user } = useAuth();
-  const { data: tasks = [], isLoading: isLoadingTasks } = useWorkspaceTasks(workspaceId || "");
+  const { data: tasksData = [], isLoading: isLoadingTasks } = useWorkspaceTasks(workspaceId || "");
+  const tasks = tasksData as any[];
   const { projects = [], isLoading: isLoadingProjects } = useProjects();
   const [activeTab, setActiveTab] = useState<HeaderTab>("Summary");
 
@@ -37,34 +39,37 @@ export default function YourWorks() {
   const [selectedTask, setSelectedTask] = useState<{ taskId: string; projectId: string } | null>(null);
 
   const personalTasks = useMemo(() => {
-    if (!user) return { assigned: [], dueNext7Days: [], upcoming: [], completed: [] };
+    if (!user) return { assigned: [], upcomingCount: 0, upcoming: [], completed: [] };
     
     const now = new Date();
-    const endOf7Days = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    endOf7Days.setDate(endOf7Days.getDate() + 7);
-    endOf7Days.setHours(23, 59, 59, 999);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     const assigned = tasks.filter((t: any) => {
       const assigneeId = typeof t.assignee === 'object' ? t.assignee?._id : t.assignee;
       return assigneeId === user._id;
     });
 
-    const dueNext7Days = assigned.filter((t: any) => {
-      if (t.columnId === 'done' || !t.dueDate) return false;
-      const d = new Date(t.dueDate);
-      // Include everything due before OR on the 7th day (includes overdue)
-      return d <= endOf7Days;
-    });
-
     const upcoming = assigned
-      .filter((t: any) => t.columnId !== 'done' && t.dueDate)
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+      .filter((t: any) => {
+        if (t.columnId === 'done' || !t.dueDate) return false;
+        const d = new Date(t.dueDate);
+        return d >= today; // Only future or today's tasks
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.dueDate).getTime();
+        const timeB = new Date(b.dueDate).getTime();
+        return timeA - timeB;
+      });
 
     const completed = assigned
       .filter((t: any) => t.columnId === 'done')
-      .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+      .sort((a, b) => {
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return timeB - timeA;
+      });
 
-    return { assigned, dueNext7Days, upcoming, completed };
+    return { assigned, upcomingCount: upcoming.length, upcoming, completed };
   }, [tasks, user]);
 
   // Map Project IDs to Names
@@ -104,43 +109,58 @@ export default function YourWorks() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+      <div className="h-full flex flex-col min-h-0 overflow-hidden bg-background">
         <Topbar title="Your works" Icon={UserStar} />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <Skeleton className="h-32 rounded-xl" />
             <Skeleton className="h-32 rounded-xl" />
             <Skeleton className="h-32 rounded-xl" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-4">
+          </div>
+          <div className="grid gap-4 md:grid-cols-4">
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-24 rounded-xl" />
             <Skeleton className="h-24 rounded-xl" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-background">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden bg-background">
       <Topbar title="Your works" Icon={UserStar}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 text-sm font-medium text-primary hover:bg-muted/50 px-2 py-1 rounded-sm transition-colors cursor-pointer outline-none">
-              {activeTab}
-              <ChevronDown size={14} className="text-muted-foreground/60" />
+            <button className="flex h-8 items-center gap-2 px-3 select-none cursor-pointer border border-border/50 bg-background rounded-sm text-[13px] font-medium text-foreground/70 transition-all hover:bg-secondary/40 hover:text-foreground outline-none group opacity-100">
+              <span className="truncate">
+                {activeTab}
+              </span>
+              <ChevronDown size={14} className="text-foreground/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 shadow-lg">
-            {TABS.map((tab) => (
-              <DropdownMenuItem
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`cursor-pointer ${activeTab === tab ? "bg-muted font-medium" : ""}`}
-              >
-                {tab}
-              </DropdownMenuItem>
-            ))}
+          <DropdownMenuContent align="end" className="w-48 p-1 shadow-xl border-border/40 bg-background/95 backdrop-blur-xl rounded-md">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <DropdownMenuItem
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-all duration-200",
+                    isActive 
+                      ? "bg-secondary text-foreground font-semibold" 
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="text-[13px] tracking-wide">
+                    {tab}
+                  </span>
+                  {isActive && <Check className="size-3.5 text-primary stroke-[3px]" />}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </Topbar>
@@ -150,7 +170,7 @@ export default function YourWorks() {
           <>
             <OverviewSection 
                 assigned={personalTasks.assigned.length} 
-                dueNext7Days={personalTasks.dueNext7Days.length}
+                upcomingCount={personalTasks.upcomingCount}
                 completed={personalTasks.completed.length}
             />
             <QuickProjects />

@@ -102,12 +102,29 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   const { projects }: { projects?: Project[]; isLoading: boolean } = useProjects();
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  
+  // Persistent state for expanded projects
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar_expanded_projects");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
 
+  // Save to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem(
+      "sidebar_expanded_projects",
+      JSON.stringify(Array.from(expandedProjects))
+    );
+  }, [expandedProjects]);
+
+  // Expand active project on navigation
   useEffect(() => {
     if (projects) {
       const activeProject = projects.find(p => location.pathname.includes(`/projects/${p._id}`));
-      if (activeProject) {
+      if (activeProject && !expandedProjects.has(activeProject._id)) {
         setExpandedProjects(prev => new Set(prev).add(activeProject._id));
       }
     }

@@ -385,7 +385,7 @@ export default function CalendarView({
                   <span
                     className={
                       isThisToday
-                        ? "inline-flex size-6 items-center justify-center rounded-full bg-black text-[11px] font-semibold leading-none tracking-tight text-white"
+                        ? "inline-flex size-6 items-center justify-center rounded-full bg-black text-[11px] font-semibold text-white pt-[1px]"
                         : `text-[11px] font-medium leading-none tracking-tight ${dayTextClass}`
                     }
                   >

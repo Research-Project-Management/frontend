@@ -262,18 +262,16 @@ export const useUpdateWorkspaceMemberRole = () => {
 
       return { previousWorkspaceQueries };
     },
-    onError: (_err, _variables, context) => {
-      context?.previousWorkspaceQueries?.forEach(([queryKey, data]) => {
+    onError: (error: any, _variables: any, context: any) => {
+      context?.previousWorkspaceQueries?.forEach(([queryKey, data]: [any, any]) => {
         queryClient.setQueryData(queryKey, data);
       });
+      toast.error(error.message || "Failed to update member role", { id: "ws-member-error" });
     },
-    onSettled: (_data, _error, variables) => {
+    onSettled: (_data, _error, _variables) => {
       queryClient.invalidateQueries({
         queryKey: ["workspace"],
       });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update member role", { id: "ws-member-error" });
     },
   });
 };

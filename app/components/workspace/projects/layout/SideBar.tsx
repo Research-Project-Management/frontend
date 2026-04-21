@@ -70,6 +70,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const { workspaceId } = useParams();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const id = useId();
   const sidebarItems = [
     {
       label: "Home",

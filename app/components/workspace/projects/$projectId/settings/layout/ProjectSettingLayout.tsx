@@ -3,8 +3,6 @@ import { useProjects } from "~/hooks/useWorkspace";
 import { Settings } from "lucide-react";
 import Topbar from "../../overview/Topbar";
 import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
-import { Settings } from "lucide-react";
-import Topbar from "../../overview/Topbar";
 
 export default function ProjectSettingLayout() {
   const { workspaceId, projectId } = useParams();

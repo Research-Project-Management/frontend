@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Collapsible,
   CollapsibleContent,

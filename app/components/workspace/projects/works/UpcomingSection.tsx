@@ -15,17 +15,22 @@ export default function UpcomingSection({
   const { user } = useAuth();
   const { data: tasks = [], isLoading } = useWorkspaceTasks(workspaceId || "");
 
-  // Sort: Tasks closest to deadline first (including overdue)
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Sort: Tasks closest to deadline first (excluding overdue as per business rules)
   const upcomingTasks = tasks
     .filter(t => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const dueDate = new Date(t.dueDate);
+        if (!t.dueDate || t.columnId === "done") return false;
+        
+        const d = new Date(t.dueDate);
+        const taskDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
         const assigneeId = typeof t.assignee === 'object' ? t.assignee?._id : t.assignee;
-        return assigneeId === user?._id && t.dueDate && t.columnId !== "done" && dueDate >= today;
+        
+        return assigneeId === user?._id && taskDate >= today;
     })
     .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-    .slice(0, 8); // Showing up to 8 for better visibility since "7 days" limit is gone
+    .slice(0, 8);
 
   const getRelativeDate = (date: Date) => {
     const today = new Date();

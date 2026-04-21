@@ -35,7 +35,6 @@ export default function Menu() {
     const id = { major: 1, minor: 1 };
     ed.executeEdits("menu", [
       {
-        identifier: id,
         range: selection!,
         text: snippet,
         forceMoveMarkers: true,
@@ -107,7 +106,6 @@ export default function Menu() {
     const text = ed.getModel()?.getValueInRange(sel) ?? "";
     ed.executeEdits("menu", [
       {
-        identifier: { major: 1, minor: 1 },
         range: sel,
         text: `${before}${text}${after}`,
         forceMoveMarkers: true,

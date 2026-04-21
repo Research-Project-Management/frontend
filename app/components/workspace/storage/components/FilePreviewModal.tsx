@@ -18,6 +18,7 @@ import {
 import type { StorageItem } from "../types";
 import { getFileType, formatFileSize, formatDate } from "../pages/SharedComponents";
 import { useBlobUrl, downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { resolveFileUrl } from "~/lib/api";
 
 interface FilePreviewModalProps {
   item: StorageItem | null;
@@ -41,16 +42,18 @@ export default function FilePreviewModal({
   const isAudio = fileType === "audio";
   const isPreviewable = isImage || isPdf || isVideo || isAudio;
 
-  const { blobUrl, loading } = useBlobUrl(open && item.url ? item.url : null);
+  const resolvedUrl = resolveFileUrl(item.url);
+
+  const { blobUrl, loading } = useBlobUrl(open && resolvedUrl ? resolvedUrl : null);
 
   const handleDownload = async () => {
-    if (!item.url) return;
+    if (!resolvedUrl) return;
     try {
-      await downloadFileAsBlob(item.url, item.filename);
+      await downloadFileAsBlob(resolvedUrl, item.filename);
     } catch (err) {
       console.error("Download failed:", err);
       // Fallback: open in new tab
-      window.open(item.url, "_blank");
+      window.open(resolvedUrl, "_blank");
     }
   };
 
@@ -81,10 +84,10 @@ export default function FilePreviewModal({
                 <Download className="size-4 mr-2" />
                 Download
               </Button>
-              {item.url && (
+              {resolvedUrl && (
                 <Button size="sm" variant="outline" asChild>
                   <a
-                    href={item.url}
+                    href={resolvedUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

@@ -44,7 +44,6 @@ export default function UploadDialog({
 }: UploadDialogProps) {
   const [files, setFiles] = useState<FileWithProgress[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateFilename, setDuplicateFilename] = useState("");
 
@@ -53,14 +52,7 @@ export default function UploadDialog({
     ((action: DuplicateAction) => void) | null
   >(null);
 
-  const closeWithAnimation = (onClosed?: () => void) => {
-    setIsClosing(true);
-    window.setTimeout(() => {
-      onOpenChange(false);
-      setIsClosing(false);
-      onClosed?.();
-    }, 180);
-  };
+
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -126,6 +118,8 @@ export default function UploadDialog({
   const uploadFiles = async () => {
     const existingNames = new Set(files.map((f) => f.file.name));
     let hasError = false;
+    let successCount = 0;
+    let lastSuccessName = "";
 
     for (let i = 0; i < files.length; i++) {
       if (files[i].status !== "pending") continue;
@@ -206,6 +200,8 @@ export default function UploadDialog({
         });
 
         existingNames.add(fileToUpload.name);
+        successCount++;
+        lastSuccessName = fileToUpload.name;
 
         setFiles((prev) =>
           prev.map((f, idx) =>
@@ -234,10 +230,17 @@ export default function UploadDialog({
       }
     }
 
+    if (successCount > 0) {
+      if (successCount === 1) {
+        toast.success(`Uploaded "${lastSuccessName}"`);
+      } else {
+        toast.success(`Successfully uploaded ${successCount} files`);
+      }
+    }
+
     if (!hasError && files.length > 0) {
-      window.setTimeout(() => {
-        closeWithAnimation(() => setFiles([]));
-      }, 260);
+      onOpenChange(false);
+      setFiles([]);
     }
   };
 
@@ -292,11 +295,7 @@ export default function UploadDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className={`sm:max-w-2xl transition-all duration-200 ${
-            isClosing ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"
-          }`}
-        >
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Upload Files</DialogTitle>
             <DialogDescription>
@@ -325,13 +324,13 @@ export default function UploadDialog({
                 onChange={handleFileSelect}
                 className="hidden"
                 id="file-upload"
-                disabled={isUploading || isClosing}
+                disabled={isUploading}
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById("file-upload")?.click()}
-                disabled={isUploading || isClosing}
+                disabled={isUploading}
               >
                 Browse Files
               </Button>
@@ -375,7 +374,7 @@ export default function UploadDialog({
                           variant="ghost"
                           size="sm"
                           onClick={() => removeFile(index)}
-                          disabled={isUploading || isClosing}
+                          disabled={isUploading}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -391,8 +390,11 @@ export default function UploadDialog({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => closeWithAnimation(() => setFiles([]))}
-              disabled={isUploading || isClosing}
+              onClick={() => {
+                onOpenChange(false);
+                setFiles([]);
+              }}
+              disabled={isUploading}
             >
               Cancel
             </Button>
@@ -402,7 +404,6 @@ export default function UploadDialog({
                 !hasFiles ||
                 isUploading ||
                 allComplete ||
-                isClosing ||
                 pendingCount === 0
               }
             >

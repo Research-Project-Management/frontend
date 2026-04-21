@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useId } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import { useSearchParams } from "react-router";
 import { X } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -74,15 +75,20 @@ function TabItem({ tab, isActive, rootPageId }: TabItemProps) {
       className={cn(
         "group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none",
         "border-r border-border/50 min-w-0 max-w-[180px] shrink-0",
-        "transition-colors",
+        "transition-all",
         isActive
           ? "bg-background text-foreground"
-          : "bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+          : "bg-muted/30 text-muted-foreground hover:bg-background/50 hover:text-foreground/80",
       )}
     >
       {/* Active indicator — top border */}
       {isActive && (
-        <span className="absolute inset-x-0 top-0 h-[2px] bg-primary rounded-b-sm" />
+        <motion.span
+          layoutId={`editor-tab-active-${rootPageId}`}
+          className="absolute inset-x-0 top-0 h-[2px] bg-primary rounded-b-sm"
+          initial={false}
+          transition={{ type: "spring", stiffness: 500, damping: 35 }}
+        />
       )}
 
       {/* File colour dot */}
@@ -128,19 +134,21 @@ export default function TabBar({ rootPageId, activeFileId }: TabBarProps) {
   if (tabs.length === 0) return null;
 
   return (
-    <div
-      role="tablist"
-      aria-label="Open files"
-      className="flex h-8 bg-secondary border-b border-border overflow-x-auto shrink-0 scrollbar-none"
-    >
-      {tabs.map((tab) => (
-        <TabItem
-          key={tab.id}
-          tab={tab}
-          isActive={tab.id === activeFileId}
-          rootPageId={rootPageId}
-        />
-      ))}
-    </div>
+    <LayoutGroup id={`tab-bar-${rootPageId}`}>
+      <div
+        role="tablist"
+        aria-label="Open files"
+        className="flex h-8 bg-secondary border-b border-border overflow-x-auto shrink-0 scrollbar-none"
+      >
+        {tabs.map((tab) => (
+          <TabItem
+            key={tab.id}
+            tab={tab}
+            isActive={tab.id === activeFileId}
+            rootPageId={rootPageId}
+          />
+        ))}
+      </div>
+    </LayoutGroup>
   );
 }

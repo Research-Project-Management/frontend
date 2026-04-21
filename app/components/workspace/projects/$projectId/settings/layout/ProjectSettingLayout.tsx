@@ -2,6 +2,9 @@ import { Link, Outlet, useLocation, useParams } from "react-router";
 import { useProjects } from "~/hooks/useWorkspace";
 import { Settings } from "lucide-react";
 import Topbar from "../../overview/Topbar";
+import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
+import { Settings } from "lucide-react";
+import Topbar from "../../overview/Topbar";
 
 export default function ProjectSettingLayout() {
   const { workspaceId, projectId } = useParams();
@@ -28,36 +31,51 @@ export default function ProjectSettingLayout() {
         title="Settings"
         Icon={Settings}
         centerContent={
-          <nav className="flex h-full max-w-full items-stretch overflow-visible">
-            {tabs.map((tab) => {
-              const isActive = activeTab.to === tab.to;
+          <LayoutGroup id="project-settings-tabs">
+            <nav className="flex h-full max-w-full items-stretch overflow-visible">
+              {tabs.map((tab) => {
+                const isActive = activeTab.to === tab.to;
 
-              return (
-                <Link
-                  key={tab.to}
-                  to={tab.to}
-                  className={`relative flex h-full min-w-[110px] items-center justify-center px-4 text-center text-sm font-medium whitespace-nowrap transition-colors ${
-                    isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {tab.label}
-                  <span
-                    className={`absolute inset-x-0 bottom-0 h-0.5 transition-opacity ${
-                      isActive ? "bg-foreground opacity-100" : "bg-transparent opacity-0"
+                return (
+                  <Link
+                    key={tab.to}
+                    to={tab.to}
+                    className={`relative flex h-full min-w-[110px] items-center justify-center px-4 text-center text-sm font-medium whitespace-nowrap transition-colors ${
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
-                  />
-                </Link>
-              );
-            })}
-          </nav>
+                  >
+                    <span className="relative z-10">{tab.label}</span>
+                    {isActive ? (
+                      <motion.div
+                        layoutId="activeTabUnderline"
+                        className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground z-20"
+                        transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                      />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
+          </LayoutGroup>
         }
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto w-full relative">
         <div className="h-full bg-background">
-          <Outlet />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="h-full w-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

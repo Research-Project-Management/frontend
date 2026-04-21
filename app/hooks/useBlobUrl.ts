@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { resolveFileUrl } from "~/lib/api";
 
 /**
  * Fetches a file URL with credentials and returns a blob URL.
@@ -27,7 +28,10 @@ export function useBlobUrl(url: string | undefined | null) {
     setLoading(true);
     setError(null);
 
-    fetch(url, { credentials: "include" })
+    // Normalize URL — handles legacy localhost URLs, relative paths, etc.
+    const resolvedUrl = resolveFileUrl(url) ?? url;
+
+    fetch(resolvedUrl, { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
         return res.blob();
@@ -63,7 +67,8 @@ export async function downloadFileAsBlob(
   url: string,
   filename: string,
 ): Promise<void> {
-  const response = await fetch(url, { credentials: "include" });
+  const resolvedUrl = resolveFileUrl(url) ?? url;
+  const response = await fetch(resolvedUrl, { credentials: "include" });
   if (!response.ok) throw new Error(`Download failed: ${response.status}`);
 
   const blob = await response.blob();

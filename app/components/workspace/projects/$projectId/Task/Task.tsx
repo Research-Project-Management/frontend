@@ -267,7 +267,7 @@ export default function Task() {
         title: payload.sectionName,
         accentColor: payload.selectedColor,
       },
-      { 
+      {
         onSuccess: () => {
           toast.success("Column created");
           closeSectionModal();
@@ -279,7 +279,7 @@ export default function Task() {
   const handleUpdateColumn = (columnId: string, title: string, accentColor?: string) => {
     updateColumnMutation.mutate(
       { projectId: projectId!, columnId, title, accentColor },
-      { 
+      {
         onSuccess: () => {
           toast.success("Column updated");
           closeSectionModal();
@@ -310,7 +310,7 @@ export default function Task() {
       const colId = deletingColumn._id ?? deletingColumn.id ?? "";
       deleteColumnMutation.mutate(
         { projectId: projectId!, columnId: colId },
-        { 
+        {
           onSuccess: () => {
             toast.success("Column deleted");
             closeDeleteModal();

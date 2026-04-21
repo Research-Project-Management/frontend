@@ -150,7 +150,7 @@ export default function SearchCommandPalette({ open, onOpenChange }: SearchComma
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50"
+        className="fixed inset-0 bg-black/55 z-50"
         onClick={() => onOpenChange(false)}
       />
 

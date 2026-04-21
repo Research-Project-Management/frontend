@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Note } from "../components/workspace/projects/stickies/types/note.type";
 import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import { useSocket } from "~/contexts/SocketProvider";
+import { toast } from "sonner";
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
@@ -18,25 +19,32 @@ export const useStickies = (workspaceId: string, tags?: string[]) => {
   const queryClient = useQueryClient();
   const socket = useSocket();
 
+  // Keep a stable ref to the tags array so socket handlers always see the latest value
+  // without needing tags in the useEffect dependency array (which would re-subscribe on every change).
+  const tagsRef = useRef(tags);
+  tagsRef.current = tags;
+
   useEffect(() => {
     if (!socket || !workspaceId) return;
     socket.emit("join:workspace", workspaceId);
 
-    const qKey = ["stickies", workspaceId, tags];
-
     const onCreated = ({ sticky }: { sticky: Note }) => {
+      const qKey = ["stickies", workspaceId, tagsRef.current];
       queryClient.setQueryData<Note[]>(qKey, (old = []) =>
         old.some((s) => s._id === sticky._id) ? old : [sticky, ...old],
       );
     };
     const onUpdated = ({ sticky }: { sticky: Note }) => {
-      queryClient.setQueryData<Note[]>(qKey, (old = []) =>
-        old.map((s) => (s._id === sticky._id ? sticky : s)),
+      // Update ALL matching stickies queries for this workspace (regardless of tag filter)
+      queryClient.setQueriesData<Note[]>(
+        { queryKey: ["stickies", workspaceId] },
+        (old = []) => old.map((s) => (s._id === sticky._id ? sticky : s)),
       );
     };
     const onDeleted = ({ stickyId }: { stickyId: string }) => {
-      queryClient.setQueryData<Note[]>(qKey, (old = []) =>
-        old.filter((s) => s._id !== stickyId),
+      queryClient.setQueriesData<Note[]>(
+        { queryKey: ["stickies", workspaceId] },
+        (old = []) => old.filter((s) => s._id !== stickyId),
       );
     };
 
@@ -50,7 +58,7 @@ export const useStickies = (workspaceId: string, tags?: string[]) => {
       socket.off("sticky:updated", onUpdated);
       socket.off("sticky:deleted", onDeleted);
     };
-  }, [socket, workspaceId, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [socket, workspaceId, queryClient]);
 
   return useQuery({
     queryKey: ["stickies", workspaceId, tags],
@@ -76,27 +84,37 @@ export const useCreateSticky = () => {
     }) => apiPost(`/api/workspace/${workspaceId}/stickies`, { title, content, color, position, tags }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["stickies", variables.workspaceId] });
+      toast.success("Note added", { id: "sticky-action" });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to create sticky note", { id: "sticky-error" });
     },
   });
 };
 
 export const useUpdateSticky = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ stickyId, updates }: { stickyId: string; updates: Partial<Note> }) =>
       apiPut(`/api/stickies/${stickyId}`, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stickies"] });
+    // No invalidateQueries here — the socket "sticky:updated" event already
+    // updates the cache via setQueriesData. Calling invalidateQueries would
+    // trigger a redundant network refetch and a second full re-render,
+    // which is the main source of the 200-400ms "message handler" violations.
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update sticky note", { id: "sticky-error" });
     },
   });
 };
 
 export const useDeleteSticky = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (stickyId: string) => apiDelete(`/api/stickies/${stickyId}`),
+    // Socket "sticky:deleted" handles the cache update.
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stickies"] });
+      toast.success("Note removed", { id: "sticky-action" });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to delete sticky note", { id: "sticky-error" });
     },
   });
 };

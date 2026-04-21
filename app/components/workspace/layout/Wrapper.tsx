@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import Flux from "~/assets/Flux.svg?react";
 
 import {
@@ -318,17 +319,21 @@ export function SelectWorkspaces() {
 }
 
 export function SideBar() {
+  const id = useId();
   return (
-    <div className="flex flex-col p-2 gap-4">
-      {sidebarItems.map((item) => (
-        <ItemSideBar
-          key={item.label}
-          icon={item.icon}
-          label={item.label}
-          to={item.to}
-        />
-      ))}
-    </div>
+    <LayoutGroup id={id}>
+      <div className="flex flex-col p-2 gap-4">
+        {sidebarItems.map((item) => (
+          <ItemSideBar
+            key={item.label}
+            icon={item.icon}
+            label={item.label}
+            to={item.to}
+            instanceId={id}
+          />
+        ))}
+      </div>
+    </LayoutGroup>
   );
 }
 
@@ -336,10 +341,12 @@ export function ItemSideBar({
   icon: Icon,
   label,
   to = "#",
+  instanceId,
 }: {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   to?: string;
+  instanceId: string;
 }) {
   const { workspaceId } = useParams();
   const location = useLocation();
@@ -373,17 +380,25 @@ export function ItemSideBar({
     <Link
       to={fullPath}
       className={cn(
-        "flex flex-col items-center space-y-2 p-1 rounded-sm cursor-pointer",
-        isActive ? "text-primary" : "text-primary/60",
+        "flex flex-col items-center space-y-2 p-1 rounded-sm cursor-pointer relative group",
+        isActive ? "text-primary" : "text-primary/60 hover:text-primary/80",
       )}
     >
-      <Icon
-        className={cn(
-          "size-9 rounded-md p-2",
-          isActive ? "bg-primary/10" : "hover:bg-primary/10",
+      <div className="relative size-9 flex items-center justify-center">
+        {isActive && (
+          <motion.div
+            layoutId={`sidebar-active-${instanceId}`}
+            className="absolute inset-0 bg-primary/10 rounded-md"
+            initial={false}
+            transition={{ type: "spring", stiffness: 450, damping: 35 }}
+          />
         )}
-      />
-      <span className="text-xs font-medium">{label}</span>
+        {!isActive && (
+          <div className="absolute inset-0 bg-primary/5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
+        <Icon className={cn("size-full p-2 relative z-10 transition-transform group-hover:scale-110")} />
+      </div>
+      <span className="text-xs font-medium z-10">{label}</span>
     </Link>
   );
 }

@@ -1120,15 +1120,13 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     (files: File[], folderId: string) => {
       if (!parentPageId) return;
       const tabProjectId = (parentPage?.project as any)?._id ?? "";
-      setUploadingAssets(true);
-      let done = 0;
+      setUploadingCount((prev) => prev + files.length);
       files.forEach((file) => {
         uploadFileMutation.mutate(
           { file, projectId: tabProjectId, workspaceId, parentPageId, parentId: folderId },
           {
             onSettled: () => {
-              done++;
-              if (done === files.length) setUploadingAssets(false);
+              setUploadingCount((prev) => Math.max(0, prev - 1));
             },
           },
         );

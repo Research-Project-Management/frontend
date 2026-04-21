@@ -1,5 +1,33 @@
 
-export const API_URL =import.meta.env.VITE_API_URL;
+export const API_URL = import.meta.env.VITE_API_URL;
+
+/**
+ * Normalizes a file URL stored in the database to always use the current API_URL.
+ *
+ * Handles three cases:
+ *   1. Relative path:  "/api/files/..."       → "${API_URL}/api/files/..."
+ *   2. Legacy absolute: "http://localhost:.../api/files/..." → "${API_URL}/api/files/..."
+ *   3. Correct absolute: "https://rpm.aisq.dev/api/files/..." → returned as-is
+ */
+export function resolveFileUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  // Already a relative path
+  if (url.startsWith("/api/files/")) {
+    return `${API_URL}${url}`;
+  }
+
+  // Absolute URL — extract the /api/files/... path and reattach to current API_URL
+  // This fixes legacy records that stored localhost or an old domain
+  const match = url.match(/\/api\/files\/(.+)/);
+  if (match) {
+    return `${API_URL}/api/files/${match[1]}`;
+  }
+
+  // External URL (e.g. ui-avatars, gravatar) — return as-is
+  return url;
+}
+
 
 // ── Custom error class ────────────────────────────────────────────────────────
 

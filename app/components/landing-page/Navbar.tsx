@@ -39,6 +39,12 @@ export default function Navbar() {
           {/* Action Buttons */}
           <div className="hidden md:flex items-center gap-2">
             <Link
+              to="/contact-sales"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact Sales
+            </Link>
+            <Link
               to="/login"
               className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -71,6 +77,13 @@ export default function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-2">
+              <Link
+                to="/contact-sales"
+                className="px-4 py-2.5 text-sm font-medium text-center border border-border rounded-lg hover:bg-secondary transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Contact Sales
+              </Link>
               <Link
                 to="/login"
                 className="px-4 py-2.5 text-sm font-medium text-center border border-border rounded-lg hover:bg-secondary transition-colors"

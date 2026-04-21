@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useId } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import {
   Home,
   File,
@@ -10,10 +11,12 @@ import {
   HardDrive,
 } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router";
+import { cn } from "~/lib/utils";
 
 export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const { workspaceId, projectId } = useParams();
   const location = useLocation();
+  const id = useId();
 
   // Determine if we're in project or workspace context
   const basePath = projectId
@@ -43,37 +46,36 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
       </div>
 
       {/* Storage Navigation */}
-      <nav className="flex flex-col gap-1">
-        {storageItems.map((item) => {
-          const isActive = location.pathname === item.to;
-          return (
-            <Link
-              to={item.to}
-              key={item.label}
-              className={`flex items-center gap-2 p-2 rounded-sm ${
-                isActive
-                  ? "bg-secondary text-primary font-medium"
-                  : "hover:bg-secondary/60"
-              }`}
-            >
-              <item.icon
-                className={`size-4 ${
-                  isActive ? "text-primary" : "text-primary/80"
-                }`}
-              />
-              <span
-                className={`text-sm ${
-                  isActive
-                    ? "font-medium text-primary"
-                    : "font-medium text-primary/90"
-                }`}
+      <LayoutGroup id={`storage-nav-${id}`}>
+        <nav className="flex flex-col gap-1">
+          {storageItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            return (
+              <Link
+                to={item.to}
+                key={item.label}
+                className="flex items-center gap-2 p-2 rounded-sm text-sm relative group/item hover:bg-muted/30 transition-colors"
               >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+                {isActive && (
+                  <motion.div
+                    layoutId={`storage-nav-active-${id}`}
+                    className="absolute inset-0 bg-secondary rounded-sm"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <item.icon
+                  className={cn(
+                    "size-4 relative z-10",
+                    isActive ? "text-primary" : "text-primary/80",
+                  )}
+                />
+                <span className="relative z-10">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </LayoutGroup>
 
       {/* Storage Info */}
       <div className="px-2 py-4 border-t border-secondary mt-4 hidden">

@@ -45,6 +45,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.16.1",
+    "framer-motion": "^12.38.0",
     "isbot": "^5.1.31",
     "lucide-react": "^0.553.0",
     "monaco-editor": "^0.55.1",

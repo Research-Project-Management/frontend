@@ -70,7 +70,7 @@ export default function ProjectTeam() {
   const handleUpdateRole = (userId: string, newRole: string) => {
     updateRoleMutation.mutate(
       { projectId: projectId!, userId, newRole },
-      {   
+      {
         onSuccess: () => {
           toast.success("Member role updated successfully");
         },
@@ -202,10 +202,10 @@ export default function ProjectTeam() {
                       style={
                         roleColor
                           ? {
-                              backgroundColor: `${roleColor}20`,
-                              color: roleColor,
-                              borderColor: roleColor,
-                            }
+                            backgroundColor: `${roleColor}20`,
+                            color: roleColor,
+                            borderColor: roleColor,
+                          }
                           : undefined
                       }
                     >
@@ -222,45 +222,45 @@ export default function ProjectTeam() {
                       currentUser &&
                       currentUser._id !== member.user._id &&
                       currentUser.email !== member.user.email && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Change Role</DropdownMenuLabel>
-                          <DropdownMenuRadioGroup
-                            value={roleName}
-                            onValueChange={(val) =>
-                              handleUpdateRole(member.user._id, val)
-                            }
-                          >
-                            <DropdownMenuRadioItem value="manager">
-                              Manager
-                            </DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="member">
-                              Member
-                            </DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="viewer">
-                              Viewer
-                            </DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600 focus:text-red-600"
-                            onClick={() => handleRemoveMember(member.user._id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Remove from Project
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Change Role</DropdownMenuLabel>
+                            <DropdownMenuRadioGroup
+                              value={roleName}
+                              onValueChange={(val) =>
+                                handleUpdateRole(member.user._id, val)
+                              }
+                            >
+                              <DropdownMenuRadioItem value="manager">
+                                Manager
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="member">
+                                Member
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="viewer">
+                                Viewer
+                              </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600"
+                              onClick={() => handleRemoveMember(member.user._id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remove from Project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                   </td>
                 </tr>
               );

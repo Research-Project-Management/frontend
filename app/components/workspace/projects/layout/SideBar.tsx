@@ -14,7 +14,8 @@ import {
   UserStar,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import { Link, useLocation, useParams } from "react-router";
 import {
   Collapsible,
@@ -153,47 +154,53 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-1">
-        {sidebarItems.map((item) => {
-          const isActive = item.matchPrefixes.some((prefix) => {
-            if (item.label === "Home") {
+      <LayoutGroup id={`sb-nav-${id}`}>
+        <nav className="flex flex-col gap-1">
+          {sidebarItems.map((item) => {
+            const isActive = item.matchPrefixes.some((prefix) => {
+              if (item.label === "Home") {
+                return (
+                  location.pathname === prefix || location.pathname === prefix + "/"
+                );
+              }
               return (
-                location.pathname === prefix || location.pathname === prefix + "/"
+                location.pathname === prefix ||
+                location.pathname.startsWith(prefix + "/")
               );
-            }
+            });
             return (
-              location.pathname === prefix ||
-              location.pathname.startsWith(prefix + "/")
-            );
-          });
-          return (
-            <Link
-              to={item.to}
-              key={item.label}
-              className={`flex items-center gap-2 p-2 rounded-sm ${
-                isActive
-                  ? "bg-secondary text-primary font-medium"
-                  : "hover:bg-secondary/60"
-              }`}
-            >
-              <item.icon
-                className={`size-4 ${
-                  isActive ? "text-primary" : "text-primary/80"
-                }`}
-              />
-              <span
-                className={`text-sm ${
-                  isActive
-                    ? "font-medium text-primary"
-                    : "font-medium text-primary/90"
-                }`}
+              <Link
+                to={item.to}
+                key={item.label}
+                className="relative flex items-center gap-2 p-2 rounded-sm group/item hover:bg-secondary/60 transition-colors"
               >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+                {isActive && (
+                  <motion.div
+                    layoutId={`sb-nav-active-${id}`}
+                    className="absolute inset-0 bg-secondary rounded-sm"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <item.icon
+                  className={`size-4 relative z-10 ${
+                    isActive ? "text-primary" : "text-primary/80"
+                  }`}
+                />
+                <span
+                  className={`text-sm relative z-10 ${
+                    isActive
+                      ? "font-medium text-primary"
+                      : "font-medium text-primary/90"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </LayoutGroup>
 
       {/* Projects Section */}
       <nav className="mt-4 select-none">

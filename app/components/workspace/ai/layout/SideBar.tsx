@@ -18,8 +18,11 @@ import React, {
   useCallback,
   useRef,
   useMemo,
+  useId,
 } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import { useParams, useNavigate, useLocation } from "react-router";
+import { cn } from "~/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -82,6 +85,7 @@ export default function SideBar() {
   const navigate = useNavigate();
   const { workspaceId, chatId } = useParams();
   const location = useLocation();
+  const id = useId();
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [chats, setChats] = useState<ChatSession[]>([]);
@@ -277,66 +281,70 @@ export default function SideBar() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col">
-            {/* Pinned section */}
-            {pinned.length > 0 && (
-              <div className="mb-1">
-                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5 flex items-center gap-1">
-                  <Pin className="size-2.5" />
-                  Pinned
-                </p>
-                {pinned.map((chat) => (
-                  <ChatItem
-                    key={chat._id}
-                    chat={chat}
-                    isActive={chatId === chat._id}
-                    isPinned
-                    isRenaming={renamingId === chat._id}
-                    renameValue={renameValue}
-                    onRenameChange={setRenameValue}
-                    onSelect={() => navigate(`/${workspaceId}/ai/${chat._id}`)}
-                    onDelete={(e) => handleDelete(e, chat._id)}
-                    onStartRename={(e) => startRename(e, chat)}
-                    onCommitRename={() => commitRename(chat._id)}
-                    onCancelRename={() => setRenamingId(null)}
-                    onTogglePin={(e) => togglePin(e, chat._id)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Time-grouped sections */}
-            {(["today", "week", "month", "older"] as const).map((key) => {
-              const group = groups[key];
-              if (!group.length) return null;
-              return (
-                <div key={key} className="mb-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5">
-                    {GROUP_LABELS[key]}
+          <LayoutGroup id={`ai-chats-${id}`}>
+            <div className="flex flex-col">
+              {/* Pinned section */}
+              {pinned.length > 0 && (
+                <div className="mb-1">
+                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5 flex items-center gap-1">
+                    <Pin className="size-2.5" />
+                    Pinned
                   </p>
-                  {group.map((chat) => (
+                  {pinned.map((chat) => (
                     <ChatItem
                       key={chat._id}
                       chat={chat}
                       isActive={chatId === chat._id}
-                      isPinned={false}
+                      isPinned
                       isRenaming={renamingId === chat._id}
                       renameValue={renameValue}
                       onRenameChange={setRenameValue}
-                      onSelect={() =>
-                        navigate(`/${workspaceId}/ai/${chat._id}`)
-                      }
+                      onSelect={() => navigate(`/${workspaceId}/ai/${chat._id}`)}
                       onDelete={(e) => handleDelete(e, chat._id)}
                       onStartRename={(e) => startRename(e, chat)}
                       onCommitRename={() => commitRename(chat._id)}
                       onCancelRename={() => setRenamingId(null)}
                       onTogglePin={(e) => togglePin(e, chat._id)}
+                      layoutId={`ai-chat-active-${id}`}
                     />
                   ))}
                 </div>
-              );
-            })}
-          </div>
+              )}
+
+              {/* Time-grouped sections */}
+              {(["today", "week", "month", "older"] as const).map((key) => {
+                const group = groups[key];
+                if (!group.length) return null;
+                return (
+                  <div key={key} className="mb-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5">
+                      {GROUP_LABELS[key]}
+                    </p>
+                    {group.map((chat) => (
+                      <ChatItem
+                        key={chat._id}
+                        chat={chat}
+                        isActive={chatId === chat._id}
+                        isPinned={false}
+                        isRenaming={renamingId === chat._id}
+                        renameValue={renameValue}
+                        onRenameChange={setRenameValue}
+                        onSelect={() =>
+                          navigate(`/${workspaceId}/ai/${chat._id}`)
+                        }
+                        onDelete={(e) => handleDelete(e, chat._id)}
+                        onStartRename={(e) => startRename(e, chat)}
+                        onCommitRename={() => commitRename(chat._id)}
+                        onCancelRename={() => setRenamingId(null)}
+                        onTogglePin={(e) => togglePin(e, chat._id)}
+                        layoutId={`ai-chat-active-${id}`}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </LayoutGroup>
         )}
       </div>
     </aside>
@@ -358,6 +366,7 @@ function ChatItem({
   onCommitRename,
   onCancelRename,
   onTogglePin,
+  layoutId,
 }: {
   chat: ChatSession;
   isActive: boolean;
@@ -371,6 +380,7 @@ function ChatItem({
   onCommitRename: () => void;
   onCancelRename: () => void;
   onTogglePin: (e: React.MouseEvent) => void;
+  layoutId: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -380,13 +390,22 @@ function ChatItem({
 
   return (
     <div
-      className={`group relative flex items-center gap-2 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-100 ${
+      className={cn(
+        "group relative mt-1 flex items-center gap-1 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-200",
         isActive
-          ? "bg-[#3370ff]/10 text-[#3370ff] dark:bg-[#3370ff]/15"
-          : "text-foreground/70 hover:bg-secondary/60 hover:text-foreground"
-      }`}
+          ? "text-primary"
+          : "text-foreground/70 hover:bg-muted/40 hover:text-foreground",
+      )}
       onClick={!isRenaming ? onSelect : undefined}
     >
+      {isActive && (
+        <motion.div
+          layoutId={layoutId}
+          className="absolute inset-0 bg-primary/10 rounded-lg"
+          initial={false}
+          transition={{ type: "spring", stiffness: 500, damping: 35 }}
+        />
+      )}
       <div className="flex-1 min-w-0">
         {isRenaming ? (
           <input

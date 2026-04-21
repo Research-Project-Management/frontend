@@ -1,4 +1,5 @@
 import {
+  closestCorners,
   DndContext,
   DragOverlay,
   PointerSensor,
@@ -83,6 +84,7 @@ export default function BoardView({
     <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
       <DndContext
         sensors={sensors}
+        collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -112,9 +114,9 @@ export default function BoardView({
           })}
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeCard ? (
-            <div className="opacity-50">
+            <div className="opacity-80 shadow-2xl scale-105 transition-transform duration-200">
               <CardUI card={activeCard} />
             </div>
           ) : null}

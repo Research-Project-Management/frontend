@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
 import { Document, Page, pdfjs } from "react-pdf";
 import {
   AlertCircle,
@@ -643,7 +643,6 @@ export default function Viewer() {
 
   // pageId from URL is always the project root (never changes when switching files).
   const { pageId: urlPageId } = useParams<{ pageId: string }>();
-  const [searchParams] = useSearchParams();
   const parentPageIdRef = useRef<string | null>(null);
   parentPageIdRef.current = urlPageId ?? null;
 

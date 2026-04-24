@@ -94,7 +94,10 @@ function getFileIcon(filename: string) {
 function getStorageIcon(item: StorageItem) {
   const mime = item.mimeType ?? "";
   const ext = item.filename.split(".").pop()?.toLowerCase() ?? "";
-  if (mime.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "svg", "webp", "eps"].includes(ext))
+  if (
+    mime.startsWith("image/") ||
+    ["png", "jpg", "jpeg", "gif", "svg", "webp", "eps"].includes(ext)
+  )
     return { icon: Image, color: "text-amber-500" };
   if (ext === "pdf" || mime === "application/pdf")
     return { icon: FileText, color: "text-rose-500" };
@@ -277,7 +280,7 @@ function StorageFolderNode({
   onUploadToFolder?: (files: File[], folderId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  
+
   // IMPORTANT: Log when folder is clicked and children are fetched
   // NOTE: projectId here is actually the parentPageId (root page ID)
   const { data: children, isLoading } = useProjectFilesEditor(
@@ -358,7 +361,10 @@ function StorageFolderNode({
             onChange={setRenameValue}
             onCommit={() => {
               const n = renameValue.trim();
-              if (!n) { setRenamingId(null); return; }
+              if (!n) {
+                setRenamingId(null);
+                return;
+              }
               renameFileMutation.mutate(
                 { fileId: folder._id, name: n },
                 { onSuccess: () => setRenamingId(null) },
@@ -473,9 +479,7 @@ function StorageFileRow({
         e.dataTransfer.setData("application/x-asset-id", item._id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      onClick={() =>
-        isImage ? onPreview(item) : onInsertAsset(item.filename)
-      }
+      onClick={() => (isImage ? onPreview(item) : onInsertAsset(item.filename))}
       title={
         isImage
           ? `Click to preview ${item.filename}`
@@ -493,7 +497,10 @@ function StorageFileRow({
           onChange={setRenameValue}
           onCommit={() => {
             const n = renameValue.trim();
-            if (!n) { setRenamingId(null); return; }
+            if (!n) {
+              setRenamingId(null);
+              return;
+            }
             renameFileMutation.mutate(
               { fileId: item._id, name: n },
               { onSuccess: () => setRenamingId(null) },
@@ -567,7 +574,8 @@ const TEX_EXTS = new Set([
 export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentPage, editorRef, setTexFiles, setSelectedAsset } = usePageContext();
+  const { currentPage, editorRef, setTexFiles, setSelectedAsset } =
+    usePageContext();
   const { openTab } = useEditorTabsStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -597,19 +605,22 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // pageId from URL is always the project root page after the routing refactor.
   const parentPageId: string | null = pageId ?? null;
 
-  const { data: parentPage, isLoading: parentPageLoading } = usePage(parentPageId ?? "");
+  const { data: parentPage, isLoading: parentPageLoading } = usePage(
+    parentPageId ?? "",
+  );
 
   // IMPORTANT: Use parentPageId (root page) as the key for fetching files
   // Each root page has its own independent file system
   // projectId is derived from parentPage for tab management
   const projectId = (parentPage?.project as any)?._id ?? "";
-  const mainFileId = parentPage?.mainFile && typeof parentPage.mainFile === "object"
-    ? parentPage.mainFile._id
-    : (parentPage?.mainFile as string | null | undefined) ?? null;
+  const mainFileId =
+    parentPage?.mainFile && typeof parentPage.mainFile === "object"
+      ? parentPage.mainFile._id
+      : ((parentPage?.mainFile as string | null | undefined) ?? null);
 
-  console.log("[FilesTab] Current state:", { 
-    parentPageId, 
-    projectId, 
+  console.log("[FilesTab] Current state:", {
+    parentPageId,
+    projectId,
     mainFileId,
     parentPageTitle: parentPage?.title,
     currentPageTitle: currentPage?.title,
@@ -635,8 +646,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   // Storage files (images, pdfs, etc.) - FETCH BY PARENT PAGE ID, NOT PROJECT ID
   // Each root page has its own independent file system
-  const { data: projectFiles, isLoading: projectFilesLoading, refetch: refetchProjectFiles } =
-    useProjectFilesEditor(parentPageId || null, undefined);
+  const {
+    data: projectFiles,
+    isLoading: projectFilesLoading,
+    refetch: refetchProjectFiles,
+  } = useProjectFilesEditor(parentPageId || null, undefined);
 
   // Refetch project files when parentPageId changes
   useEffect(() => {
@@ -648,26 +662,33 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   // Log project files when loaded
   useEffect(() => {
-    console.log("[FilesTab] Storage files loaded:", projectFiles?.length || 0, "files for page:", parentPageId);
+    console.log(
+      "[FilesTab] Storage files loaded:",
+      projectFiles?.length || 0,
+      "files for page:",
+      parentPageId,
+    );
   }, [projectFiles, parentPageId]);
   const uploadFileMutation = useUploadFileForEditor();
   const createFolderMutation = useCreateFolderForEditor();
 
-
-
-  const handleOpenPreview = useCallback((item: StorageItem) => {
-    const asset: AssetInfo = {
-      _id: item._id,
-      filename: item.filename,
-      url: item.url,
-      mimeType: item.mimeType,
-      size: item.size,
-    };
-    setSelectedAsset(asset);
-    // Register the image as a tab and navigate to it via ?file=
-    if (parentPageId) openTab(parentPageId, { id: item._id, title: item.filename });
-    setSearchParams({ file: item._id });
-  }, [parentPageId, openTab, setSearchParams, setSelectedAsset]);
+  const handleOpenPreview = useCallback(
+    (item: StorageItem) => {
+      const asset: AssetInfo = {
+        _id: item._id,
+        filename: item.filename,
+        url: item.url,
+        mimeType: item.mimeType,
+        size: item.size,
+      };
+      setSelectedAsset(asset);
+      // Register the image as a tab and navigate to it via ?file=
+      if (parentPageId)
+        openTab(parentPageId, { id: item._id, title: item.filename });
+      setSearchParams({ file: item._id });
+    },
+    [parentPageId, openTab, setSearchParams, setSelectedAsset],
+  );
 
   const handleFileClick = (fileId: string, title: string) => {
     // Don't re-open the already-active file
@@ -862,9 +883,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     setPendingUploads([]);
 
     const folderItems = uploads.filter((p) => p.name.includes("/"));
-    const flatItems   = uploads.filter((p) => !p.name.includes("/"));
-    const texFlat     = flatItems.filter(({ name }) => TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()));
-    const assetFlat   = flatItems.filter(({ name }) => !TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()));
+    const flatItems = uploads.filter((p) => !p.name.includes("/"));
+    const texFlat = flatItems.filter(({ name }) =>
+      TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
+    );
+    const assetFlat = flatItems.filter(
+      ({ name }) =>
+        !TEX_EXTS.has("." + (name.split(".").pop() ?? "").toLowerCase()),
+    );
 
     const totalFiles = texFlat.length + assetFlat.length + folderItems.length;
     if (totalFiles === 0) return;
@@ -887,9 +913,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         const reader = new FileReader();
         reader.onload = () => {
           createFileMutation.mutate(
-            { parentPageId, title: name.trim() || file.name, content: reader.result as string },
             {
-              onSuccess: (f) => { lastTexId = f._id; },
+              parentPageId,
+              title: name.trim() || file.name,
+              content: reader.result as string,
+            },
+            {
+              onSuccess: (f) => {
+                lastTexId = f._id;
+              },
               onSettled: () => {
                 texDone++;
                 if (texDone === texFlat.length && lastTexId) {
@@ -907,7 +939,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     // ── Flat non-tex assets ───────────────────────────────────────────────
     if (assetFlat.length && projectId) {
       assetFlat.forEach(({ file, name }) => {
-        const renamedFile = name !== file.name ? new File([file], name, { type: file.type }) : file;
+        const renamedFile =
+          name !== file.name
+            ? new File([file], name, { type: file.type })
+            : file;
         uploadFileMutation.mutate(
           { file: renamedFile, projectId, workspaceId, parentPageId },
           { onSettled: onFileSettled },
@@ -930,24 +965,38 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           const folderIdMap: Record<string, string> = {};
 
           for (const folderPath of sortedPaths) {
-            const parts      = folderPath.split("/");
+            const parts = folderPath.split("/");
             const folderName = parts[parts.length - 1];
             const parentPath = parts.slice(0, -1).join("/");
-            const parentId   = parentPath ? folderIdMap[parentPath] : undefined;
-            const created    = await createFolderMutation.mutateAsync(
-              { name: folderName, projectId, workspaceId, parentId, parentPageId },
-            );
-            folderIdMap[folderPath] = (created as any).folder?._id ?? (created as any)._id;
+            const parentId = parentPath ? folderIdMap[parentPath] : undefined;
+            const created = await createFolderMutation.mutateAsync({
+              name: folderName,
+              projectId,
+              workspaceId,
+              parentId,
+              parentPageId,
+            });
+            folderIdMap[folderPath] =
+              (created as any).folder?._id ?? (created as any)._id;
           }
 
           for (const { file, name } of folderItems) {
-            const parts      = name.split("/");
-            const fileName   = parts[parts.length - 1];
+            const parts = name.split("/");
+            const fileName = parts[parts.length - 1];
             const folderPath = parts.slice(0, -1).join("/");
-            const parentId   = folderIdMap[folderPath];
-            const renamedFile = fileName !== file.name ? new File([file], fileName, { type: file.type }) : file;
+            const parentId = folderIdMap[folderPath];
+            const renamedFile =
+              fileName !== file.name
+                ? new File([file], fileName, { type: file.type })
+                : file;
             uploadFileMutation.mutate(
-              { file: renamedFile, projectId, workspaceId, parentPageId, parentId },
+              {
+                file: renamedFile,
+                projectId,
+                workspaceId,
+                parentPageId,
+                parentId,
+              },
               { onSettled: onFileSettled },
             );
           }
@@ -1123,7 +1172,13 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setUploadingCount((prev) => prev + files.length);
       files.forEach((file) => {
         uploadFileMutation.mutate(
-          { file, projectId: tabProjectId, workspaceId, parentPageId, parentId: folderId },
+          {
+            file,
+            projectId: tabProjectId,
+            workspaceId,
+            parentPageId,
+            parentId: folderId,
+          },
           {
             onSettled: () => {
               setUploadingCount((prev) => Math.max(0, prev - 1));
@@ -1156,7 +1211,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         />
 
         {/* ── Header toolbar ─────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border/60">
+        <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border/60 mb-1">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Explorer
           </span>
@@ -1295,10 +1350,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 if (!f.isFolder) fileItems.push({ kind: "asset", data: f });
               });
               fileItems.sort((a, b) => {
-                const nameA =
-                  a.kind === "tex" ? a.data.title : a.data.filename;
-                const nameB =
-                  b.kind === "tex" ? b.data.title : b.data.filename;
+                const nameA = a.kind === "tex" ? a.data.title : a.data.filename;
+                const nameB = b.kind === "tex" ? b.data.title : b.data.filename;
                 return nameA.localeCompare(nameB);
               });
 
@@ -1329,39 +1382,39 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               }
 
               return items.map((item) => {
-    if (item.kind === "folder") {
-      return (
-        <StorageFolderNode
-          key={item.data._id}
-          folder={item.data}
-          projectId={parentPageId || ""}
-          depth={0}
-          onInsertAsset={handleInsertAsset}
-          onPreview={handleOpenPreview}
-          onUploadToFolder={handleUploadToFolder}
-        />
-      );
-    }
+                if (item.kind === "folder") {
+                  return (
+                    <StorageFolderNode
+                      key={item.data._id}
+                      folder={item.data}
+                      projectId={parentPageId || ""}
+                      depth={0}
+                      onInsertAsset={handleInsertAsset}
+                      onPreview={handleOpenPreview}
+                      onUploadToFolder={handleUploadToFolder}
+                    />
+                  );
+                }
 
-    if (item.kind === "asset") {
-      return (
-        <StorageFileRow
-          key={item.data._id}
-          item={item.data}
-          depth={0}
-          onInsertAsset={handleInsertAsset}
-          onPreview={handleOpenPreview}
-        />
-      );
-    }
+                if (item.kind === "asset") {
+                  return (
+                    <StorageFileRow
+                      key={item.data._id}
+                      item={item.data}
+                      depth={0}
+                      onInsertAsset={handleInsertAsset}
+                      onPreview={handleOpenPreview}
+                    />
+                  );
+                }
 
-    // kind === "tex"
-    const file = item.data;
-    const isActive = file._id === pageId;
-    const isMain = file._id === mainFileId;
-    const { icon: FileIcon, color: fileColor } = getFileIcon(
-      file.title,
-    );
+                // kind === "tex"
+                const file = item.data;
+                const isActive = file._id === pageId;
+                const isMain = file._id === mainFileId;
+                const { icon: FileIcon, color: fileColor } = getFileIcon(
+                  file.title,
+                );
                 return (
                   <div
                     key={file._id}
@@ -1584,7 +1637,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           </div>
         </DialogContent>
       </Dialog>
-
     </>
   );
 }

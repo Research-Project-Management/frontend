@@ -684,25 +684,35 @@ export default function Editor({ page }: EditorProps) {
       const domNode = editor.getDomNode();
       if (!domNode) return;
       const rect = domNode.getBoundingClientRect();
-      const lineHeight = editor.getOption(
-        monaco.editor.EditorOption.lineHeight,
-      );
-      const scrollTop = editor.getScrollTop();
-      const scrollLeft = editor.getScrollLeft();
       const layoutInfo = editor.getLayoutInfo();
-      // pixel y of selection start line (top)
-      const lineTop =
-        rect.top +
-        layoutInfo.lineNumbersLeft +
-        (sel.startLineNumber - 1) * lineHeight -
-        scrollTop;
+      const scrollLeft = editor.getScrollLeft();
+
+      // Use Monaco's built-in API to get the exact pixel position of the selection start line
+      const visiblePos = editor.getScrolledVisiblePosition({
+        lineNumber: sel.startLineNumber,
+        column: sel.startColumn,
+      });
+
       const TOOLBAR_H = 36;
-      const rawY = lineTop - TOOLBAR_H - 6;
+      const GAP = 8;
+
+      let rawY: number;
+      if (visiblePos) {
+        // visiblePos.top is relative to the editor DOM node top
+        rawY = rect.top + visiblePos.top - TOOLBAR_H - GAP;
+      } else {
+        // Fallback: approximate with lineHeight
+        const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight);
+        const scrollTop = editor.getScrollTop();
+        const lineTop = rect.top + layoutInfo.contentTop + (sel.startLineNumber - 1) * lineHeight - scrollTop;
+        rawY = lineTop - TOOLBAR_H - GAP;
+      }
       const clampedY = Math.max(rect.top + 4, rawY);
+
       // x: centre over selection, clamped to viewport
       const contentLeft = rect.left + layoutInfo.contentLeft - scrollLeft;
       const midX = contentLeft + ((sel.startColumn + sel.endColumn) / 2) * 7.8;
-      const TOOLBAR_W = 152;
+      const TOOLBAR_W = 160;
       const clampedX = Math.min(
         Math.max(midX - TOOLBAR_W / 2, rect.left + 4),
         rect.right - TOOLBAR_W - 4,

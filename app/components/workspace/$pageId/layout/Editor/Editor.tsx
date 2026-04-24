@@ -704,7 +704,7 @@ export default function Editor({ page }: EditorProps) {
         // Fallback: approximate with lineHeight
         const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight);
         const scrollTop = editor.getScrollTop();
-        const lineTop = rect.top + layoutInfo.contentTop + (sel.startLineNumber - 1) * lineHeight - scrollTop;
+        const lineTop = rect.top + (sel.startLineNumber - 1) * lineHeight - scrollTop;
         rawY = lineTop - TOOLBAR_H - GAP;
       }
       const clampedY = Math.max(rect.top + 4, rawY);

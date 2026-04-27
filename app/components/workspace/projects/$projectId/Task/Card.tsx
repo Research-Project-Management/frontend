@@ -42,7 +42,7 @@ function formatDueDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
 
-  return date.toLocaleDateString("vi-VN", {
+  return date.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
   });
@@ -93,7 +93,7 @@ function CardContent({
   onToggleComplete?: (card: Task) => void;
 }) {
   const [showLabelDetails, setShowLabelDetails] = useState(false);
-  const accentColor = DEFAULT_TASK_COLUMN_COLORS[card.columnId] || "#6366f1";
+
   const startDateText = formatDueDate(card.startDate);
   const dueDateText = formatDueDate(card.dueDate);
   const dueDateDisplayText =
@@ -133,43 +133,43 @@ function CardContent({
   const metadataItems = [
     hasDueDate
       ? {
-        key: "due",
-        icon: Clock3,
-        label: dueDateIsOverdue ? "Overdue" : "Not overdue",
-        text: dueDateDisplayText,
-      }
+          key: "due",
+          icon: Clock3,
+          label: dueDateIsOverdue ? "Overdue" : "Due Soon",
+          text: dueDateDisplayText,
+        }
       : null,
     hasDescription
       ? {
-        key: "description",
-        icon: AlignLeft,
-        label: "Has description",
-        text: "",
-      }
+          key: "description",
+          icon: AlignLeft,
+          label: "Description available",
+          text: "",
+        }
       : null,
     commentCount > 0
       ? {
-        key: "comments",
-        icon: MessageSquare,
-        label: "Comments",
-        text: String(commentCount),
-      }
+          key: "comments",
+          icon: MessageSquare,
+          label: "Comments",
+          text: String(commentCount),
+        }
       : null,
     attachmentCount > 0
       ? {
-        key: "attachments",
-        icon: Paperclip,
-        label: "Attachments",
-        text: String(attachmentCount),
-      }
+          key: "attachments",
+          icon: Paperclip,
+          label: "Attachments",
+          text: String(attachmentCount),
+        }
       : null,
     checklistTotal > 0
       ? {
-        key: "checklist",
-        icon: CheckSquare,
-        label: "Checklist",
-        text: `${checklistDone}/${checklistTotal}`,
-      }
+          key: "checklist",
+          icon: CheckSquare,
+          label: "Checklist",
+          text: `${checklistDone}/${checklistTotal}`,
+        }
       : null,
   ].filter(Boolean) as Array<{
     key: string;
@@ -179,11 +179,8 @@ function CardContent({
   }>;
 
   return (
-    <div className="group relative min-w-0 rounded-[12px] border border-[#d9d9d9] bg-white px-3.5 py-3 shadow-[0_1px_0_rgba(9,30,66,0.04)] transition-all hover:border-[#c9c9c9] hover:bg-[#fbfbfb] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-      <div
-        className="absolute left-0 top-0 h-full w-1 rounded-l-[12px]"
-        style={{ backgroundColor: accentColor }}
-      />
+    <div className="group relative min-w-0 rounded-sm border border-zinc-200 bg-white px-3.5 py-3 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md">
+
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -191,7 +188,7 @@ function CardContent({
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-[#5e6c84] opacity-0 transition-opacity hover:text-[#172b4d] focus-visible:opacity-100 group-hover:opacity-100"
+            className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-900 focus-visible:opacity-100 group-hover:opacity-100"
             aria-label="More task actions"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
@@ -259,16 +256,17 @@ function CardContent({
           onMouseDown={(event) => event.stopPropagation()}
           onTouchStart={(event) => event.stopPropagation()}
           className="mb-2 flex w-full flex-wrap items-center gap-1.5 pl-0.5 pr-8 text-left"
-          aria-label="Toggle label details"
+          aria-label="Toggle label details display"
         >
           {visibleLabels.map((label) => {
             const hasTitle = label.title.trim().length > 0;
-
+ 
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className={`inline-flex h-4 items-center rounded-[6px] px-2 text-[11px] font-semibold leading-none text-[#172b4d] ${hasTitle ? "w-fit max-w-full" : "min-w-12"
-                  }`}
+                className={`inline-flex h-4 items-center rounded-sm px-2 text-[11px] font-semibold leading-none text-zinc-900 ${
+                  hasTitle ? "w-fit max-w-full" : "min-w-12"
+                }`}
                 style={{ backgroundColor: label.color }}
                 title={hasTitle ? label.title : "Label"}
               >
@@ -298,22 +296,25 @@ function CardContent({
           }}
           disabled={card.permissions?.canEdit === false}
           aria-label={card.completed ? "Mark as incomplete" : "Mark as complete"}
-          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${card.completed
-              ? "border-[#6a9923] bg-[#6a9923] text-white"
-              : "border-[#6b778c] bg-white text-transparent"
-            } ${card.permissions?.canEdit === false ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border-[1.5px] transition-all ${
+            card.completed
+              ? "border-black bg-black text-white"
+              : "border-zinc-300 bg-white text-transparent"
+          } ${card.permissions?.canEdit === false ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
         >
           <Check
-            className={`h-3 w-3 stroke-3 ${card.completed ? "opacity-100" : "opacity-0"
-              }`}
+            className={`h-3 w-3 stroke-3 ${
+              card.completed ? "opacity-100" : "opacity-0"
+            }`}
           />
         </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 pr-8">
             <h4
-              className={`min-w-0 flex-1 wrap-break-word text-[14px] font-semibold leading-5 tracking-tight ${card.completed ? "text-[#6b778c] line-through" : "text-[#172b4d]"
-                }`}
+              className={`min-w-0 flex-1 wrap-break-word text-[14px] font-medium leading-5 tracking-tight ${
+                card.completed ? "text-zinc-400 line-through" : "text-zinc-900"
+              }`}
             >
               {card.title}
             </h4>
@@ -335,7 +336,7 @@ function CardContent({
                     return (
                       <div
                         key={item.key}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-[6px] bg-[#c9372c] px-2 py-1 text-[12px] font-semibold text-white"
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-[#c9372c] px-2 py-1 text-[12px] font-semibold text-white"
                         title={hoverText}
                         aria-label={hoverText}
                       >
@@ -350,8 +351,8 @@ function CardContent({
                       key={item.key}
                       className={
                         hasText
-                          ? "inline-flex items-center gap-1.5 text-[12px] font-medium text-[#5e6c84]"
-                          : "inline-flex size-5 items-center justify-center text-[#5e6c84]"
+                          ? "inline-flex items-center gap-1.5 text-[12px] font-medium text-zinc-500"
+                          : "inline-flex size-5 items-center justify-center text-zinc-400"
                       }
                       title={hoverText}
                       aria-label={hoverText}
@@ -368,7 +369,7 @@ function CardContent({
               {assignee ? (
                 <div className="flex shrink-0 items-center justify-end">
                   <div
-                    className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#ffab00] text-[10px] font-bold text-white"
+                    className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-zinc-700"
                     title={assignee.name}
                   >
                     {resolvedAssigneeAvatar ? (
@@ -410,9 +411,7 @@ export function Card({
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0 : 1,
-    zIndex: isDragging ? 100 : undefined,
-    pointerEvents: isDragging ? "none" : ("auto" as any),
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (

@@ -11,7 +11,6 @@ export type Role = {
   workspace: string;
   project?: string;
   permissions: Permission[];
-  isDefault: boolean;
   isSystem: boolean;
   color: string;
   createdBy: {

@@ -35,10 +35,10 @@ import { cn } from "~/lib/utils";
 import { API_URL } from "~/lib/api";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore, type CompileMode, type LaTeXEngine } from "~/stores/editor-settings";
-import { useEditorTabsStore } from "~/stores/editor-tabs";
+
 import { toast } from "sonner";
 import { useUpdatePageThumbnail, useSyncProjectToCompiler } from "~/query/page";
-import { useSearchParams } from "react-router";
+
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -636,22 +636,15 @@ export default function Viewer() {
     scrollToLineRef,
   } = usePageContext();
   const { engine, compileMode, setCompileMode, mainFile } = useEditorSettingsStore();
-  const { getTabs, getActive } = useEditorTabsStore();
+
 
   const saveThumbnailMutation = useUpdatePageThumbnail();
   const syncProjectMutation = useSyncProjectToCompiler();
 
   // pageId from URL is always the project root (never changes when switching files).
   const { pageId: urlPageId } = useParams<{ pageId: string }>();
-  const [searchParams] = useSearchParams();
   const parentPageIdRef = useRef<string | null>(null);
   parentPageIdRef.current = urlPageId ?? null;
-
-  // Derive the currently active file title from the tabs store so we can check
-  // whether it matches mainFile before allowing compilation.
-  const activeFileId = searchParams.get("file") ?? getActive(urlPageId ?? "");
-  const activeTabs = getTabs(urlPageId ?? "");
-  const activeFileTitle = activeTabs.find((t) => t.id === activeFileId)?.title ?? null;
 
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
@@ -734,17 +727,6 @@ export default function Viewer() {
       if (!source.trim()) return;
     }
 
-    // In project mode: block compilation when the active tab is not the main file.
-    // Users must compile from main.tex (or whichever is set as mainFile).
-    if (isProjectMode && activeFileTitle && activeFileTitle !== (mainFile || "main.tex")) {
-      toast.warning(`Hãy chuyển sang file ${mainFile || "main.tex"} để compile`, {
-        description: `Đang mở "${activeFileTitle}" — chỉ có thể compile từ file chính.`,
-        id: "compile-wrong-file",
-        duration: 4000,
-      });
-      return;
-    }
-
     setIsCompiling(true);
     setCompileLog(null);
     setShowLog(false);
@@ -754,17 +736,24 @@ export default function Viewer() {
       // The autosave is debounced (1s), so if the user edits and immediately
       // compiles, the compiler folder still has stale content.  We do an
       // immediate save here to guarantee the compiler always sees the latest.
-      if (isProjectMode && currentPage?._id) {
-        const latestContent = getEditorContent.current?.() ?? "";
-        try {
-          await fetch(`${API_URL}/api/pages/${currentPage._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ content: latestContent }),
-          });
-        } catch (syncErr) {
-          console.warn("[compile] pre-compile save failed, compiling anyway:", syncErr);
+      //
+      // IMPORTANT: Only save when the editor is actually mounted (getEditorContent
+      // is non-null).  In "viewer-only" layout the Monaco editor is unmounted, so
+      // getEditorContent.current is null.  Saving in that case would write an
+      // empty string to the DB and wipe the file content.
+      if (isProjectMode && currentPage?._id && getEditorContent.current !== null) {
+        const latestContent = getEditorContent.current();
+        if (latestContent) {
+          try {
+            await fetch(`${API_URL}/api/pages/${currentPage._id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ content: latestContent }),
+            });
+          } catch (syncErr) {
+            console.warn("[compile] pre-compile save failed, compiling anyway:", syncErr);
+          }
         }
       }
 

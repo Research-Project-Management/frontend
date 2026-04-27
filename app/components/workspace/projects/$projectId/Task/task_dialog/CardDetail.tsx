@@ -71,27 +71,27 @@ function formatActivityTime(value?: string | Date) {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
-
+  
   // "just now" for within 2 minutes
   if (diffMinutes < 2) {
     return "just now";
   }
-
+ 
   if (diffMinutes < 60) {
-    return `${diffMinutes} minutes ago`;
+    return `${diffMinutes}m ago`;
   }
-
+ 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours} hours ago`;
+    return `${diffHours}h ago`;
   }
-
+ 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) {
-    return `${diffDays} days ago`;
+    return `${diffDays}d ago`;
   }
-
-  return date.toLocaleString("en-US", {
+ 
+  return date.toLocaleString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     day: "numeric",
@@ -161,16 +161,16 @@ function getAttachmentTypeLabel(attachment: Attachment) {
 function formatAttachmentMeta(createdAt: string) {
   const createdDate = new Date(createdAt);
   if (Number.isNaN(createdDate.getTime())) return "Added";
-
+ 
   const diffInMinutes = Math.floor((Date.now() - createdDate.getTime()) / 60000);
   if (diffInMinutes < 1) return "Added just now";
-  if (diffInMinutes < 60) return `Added ${diffInMinutes} minutes ago`;
-
+  if (diffInMinutes < 60) return `Added ${diffInMinutes}m ago`;
+ 
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `Added ${diffInHours} hours ago`;
-
+  if (diffInHours < 24) return `Added ${diffInHours}h ago`;
+ 
   const diffInDays = Math.floor(diffInHours / 24);
-  return `Added ${diffInDays} days ago`;
+  return `Added ${diffInDays}d ago`;
 }
 
 type AttachmentMenuItem = {
@@ -271,7 +271,7 @@ function ChecklistBlock({
         <span className="text-[12px] font-semibold text-[#6b778c] min-w-8">{progress}%</span>
         <div className="flex-1 h-1.5 rounded-full bg-[#e9edf3] overflow-hidden">
           <div
-            className="h-full bg-[#0c66e4] transition-all"
+            className="h-full bg-black transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -286,19 +286,19 @@ function ChecklistBlock({
                   type="checkbox"
                   checked={item.completed}
                   onChange={() => onToggleItem(item._id)}
-                  className="mt-2 size-4 rounded-sm border-[#b8c1cc] text-[#0c66e4] focus:ring-0"
+                  className="mt-2 size-4 rounded-sm border-zinc-300 text-black focus:ring-0"
                 />
                 <div className="flex-1 space-y-2">
                   <input
                     value={editingItemTitle}
                     onChange={(e) => setEditingItemTitle(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-[#d9d9d9] px-3 text-[14px] shadow-none outline-none focus:border-[#0c66e4]"
+                    className="h-9 w-full rounded-sm border border-zinc-200 px-3 text-[14px] shadow-none outline-none focus:border-black"
                     autoFocus
                   />
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
-                      className="h-9 bg-[#0c66e4] px-4 text-white hover:bg-[#0c66e4]/90 shadow-none"
+                      className="h-9 bg-black px-4 text-white hover:bg-black/90 shadow-none"
                       onClick={handleSaveEditItem}
                     >
                       Save
@@ -319,7 +319,7 @@ function ChecklistBlock({
                 <button
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
-                  className="inline-flex size-7 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#c9372c]"
+                  className="inline-flex size-7 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#c9372c]"
                   aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
@@ -331,7 +331,7 @@ function ChecklistBlock({
                   type="checkbox"
                   checked={item.completed}
                   onChange={() => onToggleItem(item._id)}
-                  className="size-4 rounded-sm border-[#b8c1cc] text-[#0c66e4] focus:ring-0"
+                  className="size-4 rounded-sm border-zinc-300 text-black focus:ring-0"
                 />
                 <button
                   type="button"
@@ -343,7 +343,7 @@ function ChecklistBlock({
                 <button
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
-                  className="inline-flex size-7 items-center justify-center rounded-lg text-[#44546f] opacity-0 transition-colors hover:bg-[#091e420f] hover:text-[#c9372c] group-hover:opacity-100"
+                  className="inline-flex size-7 items-center justify-center rounded-sm text-[#44546f] opacity-0 transition-colors hover:bg-[#091e420f] hover:text-[#c9372c] group-hover:opacity-100"
                   aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
@@ -362,13 +362,13 @@ function ChecklistBlock({
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
             placeholder="Add an item..."
-            className="h-9 w-full rounded-lg border border-[#d9d9d9] px-3 text-[14px] shadow-none"
+            className="h-9 w-full rounded-sm border border-[#d9d9d9] px-3 text-[14px] shadow-none"
             autoFocus
           />
           <div className="flex items-center gap-2">
             <Button
               type="button"
-              className="h-9 bg-[#0c66e4] text-white hover:bg-[#0c66e4]/90 shadow-none"
+              className="h-9 bg-black text-white hover:bg-black/90 shadow-none"
               onClick={handleAddItem}
             >
               Add
@@ -399,7 +399,7 @@ function ChecklistBlock({
 
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent
-          className={`max-w-110 rounded-[18px] border-0 p-0 shadow-2xl transition-all duration-200 ${isDeleteConfirming ? "scale-[0.99] opacity-90" : "scale-100 opacity-100"}`}
+          className={`max-w-110 rounded-sm border-0 p-0 shadow-2xl transition-all duration-200 ${isDeleteConfirming ? "scale-[0.99] opacity-90" : "scale-100 opacity-100"}`}
           showCloseButton={false}
         >
           <div className="p-6">
@@ -408,7 +408,7 @@ function ChecklistBlock({
                 Delete checklist?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                This item will be removed from the card and cannot be recovered.
+                This will be removed from the card and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -831,11 +831,11 @@ export function TaskDialog({
       prev.map((list) =>
         list._id === checklistId
           ? {
-            ...list,
-            items: list.items.map((item) =>
-              item._id === itemId ? { ...item, title: trimmedTitle } : item
-            ),
-          }
+              ...list,
+              items: list.items.map((item) =>
+                item._id === itemId ? { ...item, title: trimmedTitle } : item
+              ),
+            }
           : list
       )
     );
@@ -869,7 +869,7 @@ export function TaskDialog({
       const textarea = commentTextareaRef.current;
       const realCursor = textarea?.selectionStart ?? commentCaretPosition;
       const safeCursor = Math.max(0, Math.min(realCursor, current.length));
-
+      
       if (current.includes(attachment.name)) return current;
 
       const next = `${current.slice(0, safeCursor)}${attachment.name}${current.slice(safeCursor)}`;
@@ -928,7 +928,7 @@ export function TaskDialog({
       <DialogContent
         ref={dialogScrollRef}
         showCloseButton={false}
-        className="max-h-[92vh] overflow-y-auto rounded-[20px] border-0 p-0 shadow-2xl"
+        className="max-h-[92vh] overflow-y-auto rounded-sm border-0 p-0 shadow-2xl"
         style={{
           width: "min(1320px, 96vw)",
           maxWidth: "1320px",
@@ -936,9 +936,9 @@ export function TaskDialog({
           maxHeight: "92vh",
         }}
       >
-        <DialogTitle className="sr-only">Card details</DialogTitle>
+        <DialogTitle className="sr-only">Card detail</DialogTitle>
 
-        <div className="flex min-h-0 flex-col bg-white">
+          <div className="flex min-h-0 flex-col bg-white">
           <TaskHeader
             columnId={columnId}
             setColumnId={handleColumnChange}
@@ -961,20 +961,22 @@ export function TaskDialog({
                         <button
                           type="button"
                           onClick={handleToggleCompleted}
-                          className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${completed
-                            ? "border-[#6a9923] bg-[#6a9923] text-white"
-                            : "border-[#8c8c8c] bg-white text-transparent hover:border-[#172b4d]"
-                            }`}
+                          className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
+                            completed
+                              ? "border-[#6a9923] bg-[#6a9923] text-white"
+                              : "border-[#8c8c8c] bg-white text-transparent hover:border-[#172b4d]"
+                          }`}
                         >
                           <Check
-                            className={`h-4 w-4 stroke-3 ${completed ? "opacity-100" : "opacity-0"
-                              }`}
+                            className={`h-4 w-4 stroke-3 ${
+                              completed ? "opacity-100" : "opacity-0"
+                            }`}
                           />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent
                         side="top"
-                        className="bg-[#172b4d] text-white border-none rounded-[6px] text-[12px] font-medium py-1.5 px-3"
+                        className="bg-[#172b4d] text-white border-none rounded-sm text-[12px] font-medium py-1.5 px-3"
                       >
                         {completed ? "Mark as incomplete" : "Mark as complete"}
                       </TooltipContent>
@@ -990,8 +992,9 @@ export function TaskDialog({
                       e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                     }}
                     placeholder="Enter card title..."
-                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-lg border-none bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-[#999] transition-all hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] ${completed ? "text-[#6b778c]" : "text-[#172b4d]"
-                      }`}
+                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border-none bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-[#999] transition-all hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] ${
+                      completed ? "text-[#6b778c]" : "text-[#172b4d]"
+                    }`}
                   />
                 </div>
 
@@ -1047,13 +1050,13 @@ export function TaskDialog({
                         setShowDescriptionActions(true);
                       }}
                       placeholder="Add a more detailed description..."
-                      className="min-h-35 w-full resize-none rounded-xl bg-transparent border border-[#d0d7e2] px-4 py-3 text-[15px] text-[#172b4d] shadow-none outline-none placeholder:text-[#6b778c] transition-all duration-200 hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] focus:border-[#3884ff]"
+                      className="min-h-35 w-full resize-none rounded-sm bg-transparent border border-[#d0d7e2] px-4 py-3 text-[15px] text-[#172b4d] shadow-none outline-none placeholder:text-[#6b778c] transition-all duration-200 hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] focus:border-[#3884ff]"
                     />
                     {showDescriptionActions ? (
                       <div className="mt-3 flex items-center gap-2 transition-all duration-200">
                         <Button
                           type="button"
-                          className="h-9 bg-[#0c66e4] px-4 text-white shadow-none transition-all duration-200 hover:bg-[#0c66e4]/90 active:scale-[0.98] disabled:opacity-60"
+                          className="h-9 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
                           onClick={handleSaveDescription}
                           disabled={!description.trim()}
                         >
@@ -1073,109 +1076,111 @@ export function TaskDialog({
 
                   {attachments.length > 0 ? (
                     <div className="mt-10">
-                      <div className="mb-4 flex items-center gap-2">
-                        <Paperclip className="size-4 text-[#44546f]" />
-                        <h3 className="text-[16px] font-bold text-[#172b4d]">
-                          Attachments
-                        </h3>
-                      </div>
-                      <div className="space-y-3 pl-1">
-                        {attachments.map((item) => (
-                          <div
-                            key={item.id}
-                            className="group flex items-center justify-between gap-4 rounded-xl px-2 py-2 transition-colors hover:bg-[#091e420a]"
-                          >
-                            <div className="flex min-w-0 flex-1 items-center gap-4">
-                              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[#f3f4f6] text-[15px] font-bold text-[#5b6472] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
-                                {getAttachmentTypeLabel(item)}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <a
-                                  href={item.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-[#172b4d] hover:underline"
-                                  title={item.name}
-                                >
-                                  {item.name}
-                                </a>
-                                <p className="mt-1 text-[12px] text-[#6b778c]">
-                                  {formatAttachmentMeta(item.createdAt)}
-                                </p>
-                              </div>
+                    <div className="mb-4 flex items-center gap-2">
+                      <Paperclip className="size-4 text-[#44546f]" />
+                      <h3 className="text-[16px] font-bold text-[#172b4d]">
+                        Attachments
+                      </h3>
+                    </div>
+                    <div className="space-y-3 pl-1">
+                      {attachments.map((item) => (
+                        <div
+                          key={item.id}
+                          className="group flex items-center justify-between gap-4 rounded-sm px-2 py-2 transition-colors hover:bg-[#091e420a]"
+                        >
+                          <div className="flex min-w-0 flex-1 items-center gap-4">
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm bg-[#f3f4f6] text-[15px] font-bold text-[#5b6472] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+                              {getAttachmentTypeLabel(item)}
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-1 self-stretch">
+                            <div className="min-w-0 flex-1">
                               <a
                                 href={item.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex size-8 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
-                                aria-label={`Open ${item.name}`}
+                                className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-[#172b4d] hover:underline"
+                                title={item.name}
                               >
-                                <ExternalLink className="size-4" />
+                                {item.name}
                               </a>
-                              <div className="relative" data-attachment-menu-root="true">
-                                <button
-                                  type="button"
-                                  onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
-                                  className="inline-flex size-8 items-center justify-center rounded-lg text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
-                                  aria-label={`Options for ${item.name}`}
-                                >
-                                  <MoreHorizontal className="size-4" />
-                                </button>
-
-                                {activeAttachmentMenuId === item.id ? (
-                                  <div
-                                    className={`absolute right-0 z-30 w-44 rounded-xl border border-[#e5e7eb] bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ${attachmentMenuPlacement === "up"
-                                      ? "bottom-full mb-2"
-                                      : "top-full mt-2"
-                                      }`}
-                                  >
-                                    {attachmentMenuItems.map((menuItem) => (
-                                      <button
-                                        key={menuItem.id}
-                                        type="button"
-                                        onClick={() => {
-                                          if (menuItem.id === "edit") {
-                                            handleOpenRenameAttachment(item);
-                                            return;
-                                          }
-
-                                          if (menuItem.id === "comment") {
-                                            handleCommentAttachment(item);
-                                            return;
-                                          }
-
-                                          if (menuItem.id === "download") {
-                                            handleDownloadAttachment(item);
-                                            return;
-                                          }
-
-                                          if (menuItem.id === "remove") {
-                                            handleRemoveAttachment(item.id);
-                                            setActiveAttachmentMenuId(null);
-                                            return;
-                                          }
-
-                                          setActiveAttachmentMenuId(null);
-                                        }}
-                                        className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-[14px] transition-colors ${menuItem.tone === "danger"
-                                          ? "text-[#c9372c] hover:bg-[#fff1f0]"
-                                          : "text-[#172b4d] hover:bg-[#f4f5f7]"
-                                          }`}
-                                      >
-                                        {menuItem.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                ) : null}
-                              </div>
+                              <p className="mt-1 text-[12px] text-[#6b778c]">
+                                {formatAttachmentMeta(item.createdAt)}
+                              </p>
                             </div>
                           </div>
-                        ))}
-                      </div>
+
+                          <div className="flex shrink-0 items-center gap-1 self-stretch">
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex size-8 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
+                              aria-label={`Open ${item.name}`}
+                            >
+                              <ExternalLink className="size-4" />
+                            </a>
+                            <div className="relative" data-attachment-menu-root="true">
+                              <button
+                                type="button"
+                                onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
+                                className="inline-flex size-8 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
+                                aria-label={`Options for ${item.name}`}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </button>
+
+                              {activeAttachmentMenuId === item.id ? (
+                                <div
+                                  className={`absolute right-0 z-30 w-44 rounded-sm border border-[#e5e7eb] bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ${
+                                    attachmentMenuPlacement === "up"
+                                      ? "bottom-full mb-2"
+                                      : "top-full mt-2"
+                                  }`}
+                                >
+                                  {attachmentMenuItems.map((menuItem) => (
+                                    <button
+                                      key={menuItem.id}
+                                      type="button"
+                                      onClick={() => {
+                                        if (menuItem.id === "edit") {
+                                          handleOpenRenameAttachment(item);
+                                          return;
+                                        }
+
+                                        if (menuItem.id === "comment") {
+                                          handleCommentAttachment(item);
+                                          return;
+                                        }
+
+                                        if (menuItem.id === "download") {
+                                          handleDownloadAttachment(item);
+                                          return;
+                                        }
+
+                                        if (menuItem.id === "remove") {
+                                          handleRemoveAttachment(item.id);
+                                          setActiveAttachmentMenuId(null);
+                                          return;
+                                        }
+
+                                        setActiveAttachmentMenuId(null);
+                                      }}
+                                      className={`flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] transition-colors ${
+                                        menuItem.tone === "danger"
+                                          ? "text-[#c9372c] hover:bg-[#fff1f0]"
+                                          : "text-[#172b4d] hover:bg-[#f4f5f7]"
+                                      }`}
+                                    >
+                                      {menuItem.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     </div>
                   ) : null}
 
@@ -1241,14 +1246,14 @@ export function TaskDialog({
             setRenameAttachmentName("");
           }
         }}>
-          <DialogContent className="max-w-130 rounded-[18px] border-0 p-0 shadow-2xl" showCloseButton={false}>
+          <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
             <div className="p-6">
               <DialogHeader className="space-y-2 text-left">
                 <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
-                  Rename document
+                  Rename attachment
                 </DialogTitle>
                 <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                  Update the display name of this attachment.
+                  Update the display name for this attachment.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1256,7 +1261,7 @@ export function TaskDialog({
                 <input
                   value={renameAttachmentName}
                   onChange={(e) => setRenameAttachmentName(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-[#d9d9d9] px-4 text-[14px] text-[#172b4d] outline-none focus:border-[#0c66e4]"
+                  className="h-10 w-full rounded-sm border border-zinc-200 px-4 text-[14px] text-zinc-900 outline-none focus:border-black"
                   placeholder="Enter new file name"
                   autoFocus
                 />
@@ -1278,7 +1283,7 @@ export function TaskDialog({
                 </Button>
                 <Button
                   type="button"
-                  className="h-9 bg-[#0c66e4] px-4 text-white shadow-none hover:bg-[#0c66e4]/90"
+                  className="h-9 bg-black px-4 text-white shadow-none hover:bg-black/90"
                   onClick={handleConfirmRenameAttachment}
                   disabled={!renameAttachmentName.trim()}
                 >

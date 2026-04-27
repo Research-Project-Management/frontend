@@ -30,7 +30,7 @@ export function ActionMemberSection({
 
   const resolvedActionBtnClass =
     actionBtnClass ??
-    "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
 
   const filteredMembers = useMemo(
     () =>
@@ -47,7 +47,7 @@ export function ActionMemberSection({
           variant="outline"
           className={
             open
-              ? "h-10 rounded-xl border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
+              ? "h-10 rounded-sm border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
               : resolvedActionBtnClass
           }
         >
@@ -59,7 +59,7 @@ export function ActionMemberSection({
         align="start"
         side="bottom"
         sideOffset={-14}
-        className="w-72 rounded-xl p-0 shadow-xl border-border/50 flex flex-col z-100"
+        className="w-72 rounded-sm p-0 shadow-xl border-border/50 flex flex-col z-100"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           <span className="text-sm font-semibold text-center flex-1">Members</span>
@@ -93,7 +93,7 @@ export function ActionMemberSection({
                     setAssigneeId(m.user._id);
                     onOpenChange(false);
                   }}
-                  className={`size-full flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors hover:bg-accent/50 text-left ${assigneeId === m.user._id ? "bg-accent/50 ring-1 ring-primary/20" : ""}`}
+                  className={`size-full flex items-center gap-3 px-2 py-1.5 rounded-sm transition-colors hover:bg-accent/50 text-left ${assigneeId === m.user._id ? "bg-accent/50 ring-1 ring-zinc-300" : ""}`}
                 >
                   <Avatar className="size-8">
                     <AvatarImage src={m.user.avatar} />

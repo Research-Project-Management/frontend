@@ -2,7 +2,6 @@ export type Column = {
   id: string;
   _id?: string;
   title: string;
-  isDefault: boolean;
   accentColor?: string;
 };
 
@@ -10,13 +9,7 @@ export function resolveTaskColumnId(column?: Pick<Column, "id" | "_id"> | null) 
   return column?.id ?? column?._id ?? "";
 }
 
-export const DEFAULT_TASK_COLUMN_IDS = [
-  "backlog",
-  "todo",
-  "doing",
-  "review",
-  "done",
-];
+// Đã loại bỏ DEFAULT_TASK_COLUMN_IDS vì không còn dùng
 
 export type TaskLabel = {
   id: string;

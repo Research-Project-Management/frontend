@@ -1,4 +1,5 @@
 import TopBar from "../layout/TopBar";
+import { Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -39,9 +40,8 @@ export default function GeneralPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-border">
+      <div className="px-4 h-13 border-b border-border flex items-center">
           <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-56 mt-2" />
         </div>
         <div className="flex-1 px-8 py-8 space-y-6 max-w-3xl">
           <div className="flex items-center gap-5">
@@ -141,7 +141,7 @@ export default function GeneralPage() {
     <div className="flex flex-col h-full overflow-hidden">
       <TopBar
         title="General"
-        description="Manage your workspace profile, settings, and preferences."
+        Icon={Settings}
       />
       <div className="flex-1 overflow-y-auto">
         <div className="px-8 py-8 space-y-8 max-w-3xl">

@@ -2,19 +2,19 @@ import { useParams, useNavigate } from "react-router";
 import { useMemo, useState } from "react";
 import { useProjectOverview } from "~/query/project";
 import {
-  Users,
-  FileText,
-  CheckSquare,
   HardDrive,
   CalendarDays,
-  ArrowUpRight,
+  ChartBarBig,
+  CheckSquare,
+  Users,
 } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Button } from "~/components/ui/button";
 import { Progress } from "~/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { getRoleName } from "~/lib/utils";
 import { memo } from "react";
+import Topbar from "./Topbar";
+import ProjectRecentActivity from "./RecentActivity";
 
 function getInitials(name: string) {
   return name
@@ -76,6 +76,7 @@ export default function ProjectOverview() {
   const { projectId, workspaceId } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, error } = useProjectOverview(projectId!);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const formatSize = useMemo(
     () => (bytes: number) => {
@@ -145,16 +146,20 @@ export default function ProjectOverview() {
   const { project, stats } = data;
 
   return (
-    <div className="flex-1 p-6 space-y-10 overflow-y-auto">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl">
-            {project.description || "No description provided."}
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Topbar
+        project={{ name: project.name, avatar: project.avatar }}
+        title="Overview"
+        Icon={ChartBarBig}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+        {project.description && (
+          <p className="text-muted-foreground max-w-3xl -mb-4">
+            {project.description}
           </p>
-        </div>
-      </div>
+        )}
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -250,44 +255,14 @@ export default function ProjectOverview() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
-        {/* Recent Files */}
+        {/* Project Activity */}
         <div className="col-span-4">
-          <Section title="Recent Files">
-            {stats.files.recent.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground text-sm">
-                No files yet.
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                {stats.files.recent.map((file) => (
-                  <div
-                    key={file._id}
-                    className="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-secondary/50 transition-all duration-200 cursor-pointer group border border-transparent hover:border-border/50"
-                  >
-                    <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-primary/5 text-primary group-hover:bg-primary/10 transition-colors">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 grid gap-0.5">
-                      <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
-                        {file.filename}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(file.createdAt).toLocaleDateString()} • by{" "}
-                        {file.author?.name}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => window.open(file.url, "_blank")}
-                    >
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+          <Section title="Recent Activity">
+            <ProjectRecentActivity
+              projectId={projectId!}
+              workspaceId={workspaceId!}
+              recentFiles={stats.files.recent}
+            />
           </Section>
         </div>
 
@@ -324,5 +299,6 @@ export default function ProjectOverview() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

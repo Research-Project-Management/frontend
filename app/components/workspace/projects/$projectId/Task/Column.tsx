@@ -1,6 +1,10 @@
 import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
-import { Plus, MoreHorizontal, Trash2, Pencil } from "lucide-react";
+import { Plus, MoreHorizontal, Trash2, Pencil, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +15,6 @@ import {
 import { Card } from "./Card";
 import type { Task, Column as ColumnType } from "~/types/task";
 import {
-  DEFAULT_TASK_COLUMN_IDS,
   resolveTaskColumnColor,
   resolveTaskColumnId,
 } from "~/types/task";
@@ -30,6 +33,7 @@ type ColumnProps = {
   onToggleCardCompleted?: (card: Task) => void;
   onDelete?: () => void;
   onUpdate?: () => void;
+  onAddDisabled?: boolean;
 };
 
 export function Column({
@@ -46,15 +50,14 @@ export function Column({
   onToggleCardCompleted,
   onDelete,
   onUpdate,
+  onAddDisabled,
 }: ColumnProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const quickAddInputRef = useRef<HTMLInputElement | null>(null);
   const columnId = resolveTaskColumnId(column);
   const columnColor = resolveTaskColumnColor(columnId, column.accentColor);
-  const canManage =
-    !DEFAULT_TASK_COLUMN_IDS.includes(columnId) &&
-    (column.isDefault === false || columnId.startsWith("col-"));
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
   });
@@ -77,157 +80,249 @@ export function Column({
     const trimmedTitle = quickAddTitle.trim();
     if (!trimmedTitle) return;
 
-    onAdd(columnId, trimmedTitle);
+    // Reset local state before calling onAdd to prevent UI/batching conflicts
     setQuickAddTitle("");
     setIsQuickAddOpen(false);
+    
+    onAdd(columnId, trimmedTitle);
   };
 
-  return (
-    <div className="flex flex-col w-80 shrink-0 bg-linear-to-b from-card to-card/80 backdrop-blur-sm border border-border rounded-xl shadow-md hover:shadow-lg transition-shadow">
-      <div className="px-4 pt-4 pb-2">
-        <div 
-          className="flex w-full items-center justify-between px-3 py-2.5 rounded-t-md relative"
-          style={{ 
-            backgroundColor: `${columnColor}08`,
-            borderBottom: `2px solid ${columnColor}20`
-          }}
+  /* ── Collapsed state ──────────────────────────────────────────────── */
+  if (isCollapsed) {
+    return (
+      <div className="flex flex-col items-center w-10 shrink-0 bg-[#f4f5f7] rounded-sm py-2.5 gap-2.5">
+        {/* 1. Color dot */}
+        <div
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: columnColor }}
+        />
+
+        {/* 2. Title (vertical) */}
+        <span
+          className="text-[13px] font-semibold text-zinc-800 max-h-36 overflow-hidden"
+          style={{ writingMode: "vertical-lr" }}
         >
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          {column.title}
+        </span>
+
+        {/* 3. Count (vertical) */}
+        <span
+          className="text-[12px] text-zinc-500"
+          style={{ writingMode: "vertical-lr", textOrientation: "upright" }}
+        >
+          {cards.length}
+        </span>
+
+        {/* 4. Expand icon */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d] shrink-0"
+          onClick={() => setIsCollapsed(false)}
+          aria-label="Expand column"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </Button>
+
+        {/* 5. Add button */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d] shrink-0"
+          onClick={() => {
+            setIsCollapsed(false);
+            handleOpenQuickAdd();
+          }}
+          aria-label="Add card"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+
+        {/* 6. More options */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900 shrink-0"
+              aria-label="More column actions"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="bottom" className="w-48">
+            <DropdownMenuItem onClick={() => {
+              setIsCollapsed(false);
+              onUpdate?.();
+            }}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onDelete?.()}
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+    );
+  }
+
+
+  /* ── Expanded state ───────────────────────────────────────────────── */
+  return (
+    <div className={`flex flex-col w-85 shrink-0 rounded-sm transition-colors ${isOver ? "bg-zinc-200/60" : "bg-[#f4f5f7]"}`}>
+      <div className="px-3 pt-3 pb-1">
+        <div className="flex w-full items-center justify-between px-1 pb-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <div
-              className="w-1 h-5 rounded-full shrink-0"
+              className="size-2.5 rounded-full shrink-0"
               style={{ backgroundColor: columnColor }}
             />
             
             <h3 
-              className="text-sm font-semibold text-foreground truncate cursor-pointer hover:text-primary transition-colors"
-              onClick={() => canManage && onUpdate?.()}
+              className="text-[14px] font-semibold text-zinc-900 truncate cursor-pointer hover:text-black transition-colors"
+              onClick={() => onUpdate?.()}
             >
               {column.title}
             </h3>
             
             <span
-              className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1.5 text-[11px] font-medium shrink-0"
-              style={{
-                backgroundColor: `${columnColor}18`,
-                color: columnColor,
-              }}
+              className="text-[13px] text-zinc-500 font-normal shrink-0"
             >
               {cards.length}
             </span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 ml-2">
+          <div className="flex items-center gap-0.5 shrink-0 ml-2">
+            {/* Collapse icon */}
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d]"
+              onClick={() => setIsCollapsed(true)}
+              aria-label="Collapse column"
+            >
+              <Minimize2 className="h-3.5 w-3.5" />
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d]"
               onClick={handleOpenQuickAdd}
               aria-label="Add card"
             >
               <Plus className="h-4 w-4" />
             </Button>
 
-            {canManage ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                    aria-label="More column actions"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => onUpdate?.()}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Rename column
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => onDelete?.()}
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete column
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"
+                  aria-label="More column actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => onUpdate?.()}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDelete?.()}
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto px-3 pb-3 space-y-2.5 min-h-50 rounded-b-xl transition-colors ${
-          isOver ? "bg-primary/5 ring-2 ring-primary/20 ring-inset" : ""
-        }`}
+        className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 min-h-32 rounded-b-sm"
       >
-        {cards.map((card) => (
-          <Card
-            key={card._id}
-            card={card}
-            currentUserId={currentUserId}
-            currentUserAvatar={currentUserAvatar}
-            onEdit={onEditCard}
-            onDelete={onDeleteCard}
-            onDuplicate={onDuplicateCard}
-            onJoin={onJoinCard}
-            onLeave={onLeaveCard}
-            onToggleComplete={onToggleCardCompleted}
-          />
-        ))}
-
-        {isQuickAddOpen ? (
-          <div className="w-full">
-            <input
-              ref={quickAddInputRef}
-              type="text"
-              value={quickAddTitle}
-              onChange={(event) => setQuickAddTitle(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  handleQuickAddSubmit();
-                }
-
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  handleCloseQuickAdd();
-                }
-              }}
-              placeholder="Enter a title or paste a link"
-              className="h-12 w-full rounded-lg border border-[#d0d7e2] px-3 text-[15px] text-[#172b4d] outline-none transition-colors placeholder:text-[#7a869a] focus:border-[#388bff]"
+        <SortableContext
+          items={cards.map((c) => c._id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {cards.map((card) => (
+            <Card
+              key={card._id}
+              card={card}
+              currentUserId={currentUserId}
+              currentUserAvatar={currentUserAvatar}
+              onEdit={onEditCard}
+              onDelete={onDeleteCard}
+              onDuplicate={onDuplicateCard}
+              onJoin={onJoinCard}
+              onLeave={onLeaveCard}
+              onToggleComplete={onToggleCardCompleted}
             />
+          ))}
 
-            <div className="mt-2.5 flex items-center gap-2">
-              <Button
-                type="button"
-                className="h-8 rounded-md bg-[#0c66e4] px-3 text-[13px] text-white hover:bg-[#0c66e4]/90"
-                onClick={handleQuickAddSubmit}
-                disabled={!quickAddTitle.trim()}
-              >
-                Add
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-8 rounded-md px-2.5 text-[13px] text-[#44546f] hover:bg-[#091e420f]"
-                onClick={handleCloseQuickAdd}
-              >
-                Cancel
-              </Button>
+          {isQuickAddOpen ? (
+            <div className="w-full">
+              <input
+                ref={quickAddInputRef}
+                type="text"
+                value={quickAddTitle}
+                onChange={(event) => setQuickAddTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleQuickAddSubmit();
+                  }
+
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    handleCloseQuickAdd();
+                  }
+                }}
+                placeholder="What needs to be done?"
+                className="h-10 w-full rounded-sm border border-zinc-200 px-3 text-[14px] text-zinc-900 font-medium outline-none transition-colors placeholder:font-normal placeholder:text-zinc-400 focus:border-zinc-400 shadow-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                disabled={onAddDisabled}
+              />
+
+              <div className="mt-2 text-[12px] flex items-center justify-start gap-1.5">
+                <Button
+                  type="button"
+                  className="h-7 rounded-sm bg-black px-3 text-white hover:bg-black/90"
+                  onClick={handleQuickAddSubmit}
+                  disabled={!quickAddTitle.trim() || onAddDisabled}
+                >
+                  {onAddDisabled ? "Create..." : "Add"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-7 rounded-sm px-2.5 text-zinc-600 hover:bg-zinc-200/50"
+                  onClick={handleCloseQuickAdd}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : null}
-        {cards.length === 0 && !isQuickAddOpen && (
-          <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-            No tasks
-          </div>
-        )}
+          ) : null}
+        </SortableContext>
       </div>
     </div>
   );
 }
+

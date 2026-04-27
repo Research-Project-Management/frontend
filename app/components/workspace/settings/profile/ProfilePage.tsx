@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Github, CheckCircle2, XCircle } from "lucide-react";
+import { User, Camera, Loader2, Github, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import TopBar from "../layout/TopBar";
@@ -141,10 +141,9 @@ export default function ProfilePage() {
   if (isLoadingUser || !user) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <TopBar
-          title="Profile"
-          description="Manage your personal profile and security."
-        />
+        <div className="px-4 h-13 border-b border-border flex items-center">
+          <Skeleton className="h-6 w-32" />
+        </div>
         <div className="flex-1 overflow-y-auto">
           <div className="px-8 py-8 space-y-8 max-w-3xl">
             <div className="flex items-center gap-5">
@@ -181,7 +180,7 @@ export default function ProfilePage() {
     <div className="flex flex-col h-full overflow-hidden">
       <TopBar
         title="Profile"
-        description="Manage your personal profile and security."
+        Icon={User}
       />
       <div className="flex-1 overflow-y-auto">
         <div className="px-8 py-8 space-y-8 max-w-3xl">

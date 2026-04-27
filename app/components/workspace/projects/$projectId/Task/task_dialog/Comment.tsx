@@ -49,7 +49,7 @@ function renderCommentContent(
                 href={matchedAttachmentUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[#2563eb] underline decoration-[#2563eb] decoration-1 underline-offset-2 hover:text-[#1d4ed8]"
+                className="text-zinc-900 underline decoration-zinc-900 decoration-1 underline-offset-2 hover:text-black"
               >
                 {segment}
               </a>
@@ -64,7 +64,7 @@ function renderCommentContent(
                   href={part}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[#2563eb] underline decoration-[#2563eb] decoration-1 underline-offset-2 hover:text-[#1d4ed8]"
+                  className="text-zinc-900 underline decoration-zinc-900 decoration-1 underline-offset-2 hover:text-black"
                 >
                   {part}
                 </a>
@@ -272,13 +272,13 @@ export function TaskActivities({
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#44546f]"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           </div>
           <h3 className="text-[16px] font-bold text-[#172b4d]">
-            Comments and activity
+            Comments & Activity
           </h3>
         </div>
 
         <Button
           variant="secondary"
-          className="h-8 rounded-[6px] bg-[#091e420f] px-3 text-[13px] font-bold text-[#172b4d] shadow-none hover:bg-[#091e421a] transition-colors border-none"
+          className="h-8 rounded-sm bg-[#091e420f] px-3 text-[13px] font-bold text-[#172b4d] shadow-none hover:bg-[#091e421a] transition-colors border-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -314,9 +314,9 @@ export function TaskActivities({
 
               setShowCommentActions(false);
             }}
-            placeholder={canComment ? "Write a comment..." : "Save the card before commenting"}
+            placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
             disabled={!canComment}
-            className="min-h-11.5 rounded-[12px] border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] text-[#333] shadow-none transition-all duration-200 focus-visible:ring-0"
+            className="min-h-11.5 rounded-sm border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] text-[#333] shadow-none transition-all duration-200 focus-visible:ring-0"
           />
 
           {canComment && showCommentActions ? (
@@ -326,7 +326,7 @@ export function TaskActivities({
             >
               <Button
                 type="button"
-                className="h-9 min-w-16 bg-[#0c66e4] px-4 text-white shadow-none transition-all duration-200 hover:bg-[#0c66e4]/90 active:scale-[0.98] disabled:opacity-60"
+                className="h-9 min-w-16 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
                 onClick={handleSaveComment}
                 disabled={!commentText.trim() || isSavingComment}
               >
@@ -354,14 +354,14 @@ export function TaskActivities({
 
       <div className="px-5 pb-5 pt-4">
         {activityLoading ? (
-          <div className="mb-3 rounded-lg bg-[#f4f5f7] px-3 py-2 text-[13px] text-[#44546f]">
+          <div className="mb-3 rounded-sm bg-[#f4f5f7] px-3 py-2 text-[13px] text-[#44546f]">
             Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
           <div className="mb-3 rounded-lg bg-[#fff1f0] px-3 py-2 text-[13px] text-[#c9372c]">
-            Failed to load activity. Please try again.
+            Could not load activity. Please try again.
           </div>
         ) : null}
 
@@ -379,7 +379,7 @@ export function TaskActivities({
                 <div key={item.id} className="flex items-start gap-2.5">
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-[#dbeafe] text-[14px] font-bold text-[#1e3a8a]">
+                    <AvatarFallback className="bg-zinc-200 text-[14px] font-bold text-zinc-800">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -389,7 +389,7 @@ export function TaskActivities({
                       <>
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-[#172b4d]">{item.author}</span>
-                          <span className="ml-0.5 text-[14px] text-[#2563eb]">{item.timestamp}</span>
+                          <span className="ml-0.5 text-[14px] text-zinc-500">{item.timestamp}</span>
                         </div>
 
                         {isEditing ? (
@@ -397,14 +397,14 @@ export function TaskActivities({
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-11.5 rounded-[12px] border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] text-[#333] shadow-none transition-all duration-200 focus-visible:ring-0"
+                              className="min-h-11.5 rounded-sm border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] text-[#333] shadow-none transition-all duration-200 focus-visible:ring-0"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
                             <div className="flex items-center gap-2">
                               <Button
                                 type="button"
-                                className="h-9 min-w-16 bg-[#0c66e4] px-4 text-white shadow-none transition-all duration-200 hover:bg-[#0c66e4]/90 active:scale-[0.98] disabled:opacity-60"
+                                className="h-9 min-w-16 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
@@ -429,7 +429,7 @@ export function TaskActivities({
                           </div>
                         ) : (
                           <>
-                            <div className="mt-1.5 rounded-[12px] border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] leading-6 text-[#333] shadow-none whitespace-pre-wrap break-words">
+                            <div className="mt-1.5 rounded-sm border border-[#d0d7e2] bg-white px-4 py-3 text-[15px] leading-6 text-[#333] shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
@@ -441,9 +441,9 @@ export function TaskActivities({
                             <div className="relative mt-1.5 inline-flex items-center gap-2 text-[13px] text-[#44546f]">
                               <button
                                 type="button"
-                                className="inline-flex size-6 items-center justify-center rounded-full text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d] focus:outline-none focus:ring-2 focus:ring-[#3884ff]"
-                                aria-label="Open reactions"
-                                title="Open reactions"
+                                className="inline-flex size-6 items-center justify-center rounded-full text-[#44546f] transition-colors hover:bg-zinc-200 hover:text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                                aria-label="Open reaction picker"
+                                title="Open reaction picker"
                                 onClick={() =>
                                   setReactionPickerCommentId((current) =>
                                     current === item.id ? null : item.id
@@ -457,7 +457,7 @@ export function TaskActivities({
                                   <span className="text-[#b0b7c3]">•</span>
                                   <button
                                     type="button"
-                                    className="rounded px-1 py-0.5 transition-colors hover:bg-[#091e420f] hover:underline focus:outline-none focus:ring-2 focus:ring-[#3884ff]"
+                                    className="rounded px-1 py-0.5 transition-colors hover:bg-zinc-200 hover:underline focus:outline-none focus:ring-2 focus:ring-zinc-400"
                                     onClick={() => handleStartEditComment(item.id, item.content)}
                                   >
                                     Edit
@@ -486,7 +486,7 @@ export function TaskActivities({
                                         type="button"
                                         className="flex size-10 items-center justify-center rounded-full text-[24px] transition-transform duration-200 hover:scale-110 hover:bg-[#f4f5f7] active:scale-95"
                                         onClick={() => handlePickReaction(item.id, emoji)}
-                                        aria-label={`Select reaction ${emoji}`}
+                                        aria-label={`Pick reaction ${emoji}`}
                                       >
                                         {emoji}
                                       </button>
@@ -536,14 +536,14 @@ export function TaskActivities({
           if (!open) setDeleteCommentId(null);
         }}
       >
-        <DialogContent className="max-w-130 rounded-[18px] border-0 p-0 shadow-2xl" showCloseButton={false}>
+        <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
               <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
                 Delete comment?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
-                This comment will be permanently deleted and cannot be recovered.
+                This comment will be removed and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
           </div>

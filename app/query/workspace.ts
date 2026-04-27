@@ -224,13 +224,64 @@ export const useAddWorkspaceMember = () => {
 export const useUpdateWorkspaceMemberRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ workspaceId, userId, newRole }: { workspaceId: string; userId: string; newRole: string }) =>
-      apiPut(`/api/workspace/${workspaceId}/update-member-role`, { userId, newRole }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    mutationFn: ({
+      workspaceId,
+      userId,
+      newRole,
+    }: {
+      workspaceId: string;
+      userId: string;
+      newRole: string;
+    }) =>
+      apiPut(`/api/workspace/${workspaceId}/update-member-role`, {
+        userId,
+        newRole,
+      }),
+    onMutate: async ({ workspaceId, userId, newRole }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["workspace"] });
+
+      // Snapshot the previous value
+      const previousWorkspaceQueries = queryClient.getQueriesData({
+        queryKey: ["workspace"],
+      });
+
+      // Try to find the full role object in the "roles" cache for better optimistic UI (colors)
+      const rolesData: any = queryClient.getQueryData(["roles"]);
+      const roles = Array.isArray(rolesData) ? rolesData : rolesData?.roles || [];
+      const roleObject = roles.find((r: any) => r.name.toLowerCase() === newRole.toLowerCase());
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData(
+        { queryKey: ["workspace"] },
+        (old: any) => {
+          if (!old?.workspace?.members) return old;
+          return {
+            ...old,
+            workspace: {
+              ...old.workspace,
+              members: old.workspace.members.map((m: any) =>
+                m.user._id === userId 
+                  ? { ...m, role: roleObject ? { ...roleObject } : newRole } 
+                  : m
+              ),
+            },
+          };
+        }
+      );
+
+      return { previousWorkspaceQueries };
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables: any, context: any) => {
+      context?.previousWorkspaceQueries?.forEach(([queryKey, data]: [any, any]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
       toast.error(error.message || "Failed to update member role", { id: "ws-member-error" });
+    },
+    onSettled: (_data, _error, _variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["workspace"],
+      });
     },
   });
 };

@@ -51,29 +51,34 @@ export const useProjectTasks = (projectId: string) => {
     socket.emit("join:project", projectId);
 
     const onCreated = ({ task }: { task: Task }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old = { tasks: [], columns: [], projectName: "" }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
         if (old.tasks.some((t) => t._id === task._id)) return old;
         return { ...old, tasks: [...old.tasks, task] };
       });
     };
     const onUpdated = ({ task }: { task: Task }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old = { tasks: [], columns: [], projectName: "" }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
         return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
       });
     };
     const onDeleted = ({ taskId }: { taskId: string }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old = { tasks: [], columns: [], projectName: "" }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
         return { ...old, tasks: old.tasks.filter((t) => t._id !== taskId) };
       });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
     };
     const onColumnCreated = ({ columns }: { columns: Column[] }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old = { tasks: [], columns: [], projectName: "" }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
         return { ...old, columns };
       });
     };
     const onColumnUpdated = ({ columns }: { columns: Column[] }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old = { tasks: [], columns: [], projectName: "" }) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+        if (!old) return old;
         return { ...old, columns };
       });
     };
@@ -128,10 +133,9 @@ export const useCreateTask = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
-      toast.success("Task created");
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to create task", { id: "task-error" });
+      toast.error(error?.message || "Failed to create task");
     },
   });
 };
@@ -142,27 +146,50 @@ export const useUpdateTask = () => {
     mutationFn: ({ taskId, projectId, ...data }: { taskId: string; projectId: string } & TaskMutationInput) =>
       apiPut(`/api/tasks/${taskId}`, data),
     onMutate: async (newValues) => {
-      const { projectId, taskId, ...optimisticFields } = newValues;
-      
-      await queryClient.cancelQueries({ queryKey: ["tasks", projectId] });
-      const previousData = queryClient.getQueryData<ProjectTasksData>(["tasks", projectId]);
-
+      await queryClient.cancelQueries({ queryKey: ["tasks", newValues.projectId] });
+      const previousData = queryClient.getQueryData<ProjectTasksData>(["tasks", newValues.projectId]);
       if (previousData) {
-        queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], {
+        const {
+          taskId,
+          projectId,
+          assignee,
+          cycle,
+          parentTask,
+          checklists,
+          ...optimisticFields
+        } = newValues;
+
+        queryClient.setQueryData<ProjectTasksData>(["tasks", newValues.projectId], {
           ...previousData,
           tasks: previousData.tasks.map((task) =>
-            task._id === taskId ? ({ ...task, ...optimisticFields } as Task) : task,
+            task._id === newValues.taskId
+              ? {
+                  ...task,
+                  ...optimisticFields,
+                  dueDate:
+                    optimisticFields.dueDate === null
+                      ? undefined
+                      : optimisticFields.dueDate,
+                  startDate:
+                    (optimisticFields as any).startDate === null
+                      ? undefined
+                      : (optimisticFields as any).startDate,
+                  endDate:
+                    (optimisticFields as any).endDate === null
+                      ? undefined
+                      : (optimisticFields as any).endDate,
+                }
+              : task,
           ),
         });
       }
-
       return { previousData };
     },
-    onError: (error: any, variables, context) => {
+    onError: (error: any, newValues, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(["tasks", variables.projectId], context.previousData);
+        queryClient.setQueryData(["tasks", newValues.projectId], context.previousData);
       }
-      toast.error(error?.message || "Failed to update task", { id: "task-error" });
+      toast.error(error?.message || "Failed to update task");
     },
     onSettled: (_, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
@@ -187,16 +214,14 @@ export const useDeleteTask = () => {
       }
       return { previousData };
     },
-    onError: (error: any, variables, context) => {
+    onError: (_err, variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(["tasks", variables.projectId], context.previousData);
       }
-      toast.error(error?.message || "Failed to delete task", { id: "task-error" });
     },
     onSettled: (_, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
-      toast.success("Task removed");
     },
   });
 };
@@ -209,10 +234,6 @@ export const useDuplicateTask = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
-      toast.success("Task duplicated");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to duplicate task", { id: "task-error" });
     },
   });
 };
@@ -224,10 +245,9 @@ export const useCreateColumn = () => {
       apiPost(`/api/project/${projectId}/columns`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
-      toast.success("Section created");
     },
     onError: (err: any) => {
-      toast.error(err?.message || "Failed to create section", { id: "col-error" });
+      toast.error(err?.message || "Failed to create column");
     },
   });
 };
@@ -239,10 +259,9 @@ export const useDeleteColumn = () => {
       apiDelete(`/api/project/${projectId}/columns/${columnId}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
-      toast.success("Section removed");
     },
     onError: (err: any) => {
-      toast.error(err?.message || "Failed to delete section", { id: "col-error" });
+      toast.error(err?.message || "Failed to delete column");
     },
   });
 };
@@ -256,7 +275,7 @@ export const useUpdateColumn = () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
     },
     onError: (err: any) => {
-      toast.error(err?.message || "Failed to update section", { id: "col-error" });
+      toast.error(err?.message || "Failed to update column");
     },
   });
 };
@@ -386,7 +405,7 @@ export const useCreateTaskComment = () => {
       queryClient.invalidateQueries({ queryKey: ["task-comment-count", variables.taskId] });
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to add comment", { id: "comment-error" });
+      toast.error(error?.message || "Failed to create comment");
     },
   });
 };
@@ -401,7 +420,7 @@ export const useUpdateTaskComment = () => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", variables.taskId] });
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to update comment", { id: "comment-error" });
+      toast.error(error?.message || "Failed to update comment");
     },
   });
 };
@@ -417,7 +436,7 @@ export const useDeleteTaskComment = () => {
       queryClient.invalidateQueries({ queryKey: ["task-comment-count", variables.taskId] });
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to delete comment", { id: "comment-error" });
+      toast.error(error?.message || "Failed to delete comment");
     },
   });
 };
@@ -431,9 +450,6 @@ export const useAddTaskCommentReply = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", variables.taskId] });
     },
-    onError: (error: any) => {
-      toast.error(error?.message || "Failed to add reply", { id: "comment-error" });
-    },
   });
 };
 
@@ -445,9 +461,6 @@ export const useDeleteTaskCommentReply = () => {
       apiDelete(`/api/tasks/${taskId}/comments/${commentId}/replies/${replyId}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", variables.taskId] });
-    },
-    onError: (error: any) => {
-      toast.error(error?.message || "Failed to delete reply", { id: "comment-error" });
     },
   });
 };
@@ -464,7 +477,7 @@ export const useReactTaskComment = () => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", variables.taskId] });
     },
     onError: (error: any) => {
-      toast.error(error?.message || "Failed to update reaction", { id: "reaction-error" });
+      toast.error(error?.message || "Failed to update reaction");
     },
   });
 };

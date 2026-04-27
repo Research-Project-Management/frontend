@@ -143,7 +143,7 @@ function SortableItem({
       <Switch
         checked={config.visible}
         onCheckedChange={onToggle}
-        className="shrink-0 data-[state=checked]:bg-black"
+        className="shrink-0"
       />
     </div>
   );

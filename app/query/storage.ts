@@ -460,12 +460,23 @@ export const useUploadFileForEditor = () => {
       const timestamp = Date.now();
       const fileName = `${workspaceId}/${timestamp}-${file.name}`;
 
-      // 1. Get presigned URL
+      // 1. Read file as base64 on the client (used for compiler sync — avoids
+      //    the backend having to re-download from R2)
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Strip the data URL prefix (e.g. "data:image/png;base64,")
+          resolve(result.split(",")[1] ?? result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // 2. Upload to R2 (backup / CDN access)
       const { url: presignedUrl, path } = await apiPost<{ url: string; path: string }>(
         `/api/files/presign`, { fileName },
       );
-
-      // 2. Upload to R2
       const uploadRes = await fetch(presignedUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type || "application/octet-stream" },
@@ -475,8 +486,8 @@ export const useUploadFileForEditor = () => {
 
       const fileUrl = `/api/files/${path}`;
 
-      // 3. Save metadata — backend fetches from R2 and syncs to compiler automatically
-      //    when parentPageId is provided.
+      // 3. Save metadata + send base64 so backend can sync to compiler
+      //    immediately without re-fetching from R2.
       await apiPost(`/api/files/upload`, {
         filename: file.name,
         size: file.size,
@@ -485,11 +496,12 @@ export const useUploadFileForEditor = () => {
         workspaceId,
         projectId,
         parentId: parentId || null,
-        parentPageId,   // ← backend will sync to compiler and associate with page
+        parentPageId,   // ← associate with LaTeX page-project
+        fileBase64,     // ← skip R2 re-download in backend compiler sync
       });
     },
     onSuccess: (_, variables) => {
-      // Invalidate queries based on parentPageId, not projectId
+      // Invalidate queries based on parentPageId
       if (variables.parentPageId) {
         queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
       } else if (variables.projectId) {
@@ -498,6 +510,7 @@ export const useUploadFileForEditor = () => {
     },
   });
 };
+
 
 
 export const useCreateFolderForEditor = () => {

@@ -77,7 +77,9 @@ export function TopBar() {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const { workspaces } = useWorkspaces();
-  const currentWorkspace = (workspaces ?? []).find((w: any) => w.url === workspaceId) as any;
+  const currentWorkspace = (workspaces ?? []).find(
+    (w: any) => w.url === workspaceId,
+  ) as any;
 
   // Fetch projects for project switcher
   const { data: projectsData } = useQuery({
@@ -124,7 +126,10 @@ export function TopBar() {
       {/* Center: Breadcrumb in white rounded container */}
       <div className="flex items-center gap-1.5 bg-background rounded-lg px-3 py-1.5 border border-border/50">
         {/* Flux Logo */}
-        <Link to={`/${workspaceId}`} className="shrink-0 hover:opacity-80 transition-opacity">
+        <Link
+          to={`/${workspaceId}`}
+          className="shrink-0 hover:opacity-80 transition-opacity"
+        >
           <Flux className="size-5" />
         </Link>
 
@@ -148,7 +153,9 @@ export function TopBar() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-52">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Actions</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Actions
+                </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => navigate("/create")}>
                   <PlusCircle className="mr-2 size-4" />
                   Create Workspace
@@ -158,7 +165,9 @@ export function TopBar() {
                   Manage Workspaces
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Switch</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Switch
+                </DropdownMenuLabel>
                 {(workspaces ?? []).map((ws: any) => (
                   <DropdownMenuItem
                     key={ws._id}
@@ -193,17 +202,23 @@ export function TopBar() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-52">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Actions</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Actions
+                </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => navigate(`/${workspaceId}`)}>
                   <PlusCircle className="mr-2 size-4" />
                   Create Project
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Switch</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Switch
+                </DropdownMenuLabel>
                 {(projects ?? []).map((p: any) => (
                   <DropdownMenuItem
                     key={p._id}
-                    onClick={() => navigate(`/${workspaceId}/projects/${p._id}/overview`)}
+                    onClick={() =>
+                      navigate(`/${workspaceId}/projects/${p._id}/overview`)
+                    }
                     className={p._id === projectId ? "bg-muted" : ""}
                   >
                     <span className="truncate">{p.name}</span>
@@ -217,7 +232,7 @@ export function TopBar() {
 
       {/* Right: Inbox + User */}
       <div className="flex-1 flex items-center justify-end gap-3">
-        <InboxIcon className="size-10 p-2 hover:bg-primary/10 rounded-sm text-primary/60 cursor-pointer" />
+        <InboxIcon className="size-10 p-2 hover:bg-primary/10 rounded-sm text-primary/60 cursor-pointer hidden" />
         {!isLoading && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -242,7 +257,11 @@ export function TopBar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => workspaceId && navigate(`/${workspaceId}/settings/profile`)}>
+              <DropdownMenuItem
+                onClick={() =>
+                  workspaceId && navigate(`/${workspaceId}/settings/profile`)
+                }
+              >
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
@@ -396,7 +415,11 @@ export function ItemSideBar({
         {!isActive && (
           <div className="absolute inset-0 bg-primary/5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
-        <Icon className={cn("size-full p-2 relative z-10 transition-transform group-hover:scale-110")} />
+        <Icon
+          className={cn(
+            "size-full p-2 relative z-10 transition-transform group-hover:scale-110",
+          )}
+        />
       </div>
       <span className="text-xs font-medium z-10">{label}</span>
     </Link>

@@ -83,7 +83,7 @@ export function TaskActions({
   const [memberPopoverOpen, setMemberPopoverOpen] = useState(false);
   const [memberActionPopoverOpen, setMemberActionPopoverOpen] = useState(false);
   const actionBtnClass =
-    "h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]";
 
   useEffect(() => {
     persistTaskLabelPool(labelPool);
@@ -126,14 +126,14 @@ export function TaskActions({
     if (!dueDate) return null;
     const d = parseISO(dueDate);
     if (!isValid(d)) return null;
-    return format(d, "HH:mm MMM d");
+    return format(d, "HH:mm d 'thg' M");
   }, [dueDate]);
 
   const formattedStartDateBadge = useMemo(() => {
     if (!startDate) return null;
     const d = parseISO(startDate);
     if (!isValid(d)) return null;
-    return format(d, "MMM d");
+    return format(d, "d 'thg' M");
   }, [startDate]);
 
   const dateBadgeText = useMemo(() => {
@@ -216,7 +216,7 @@ export function TaskActions({
                     <button
                       type="button"
                       className="rounded-full"
-                      aria-label={`Member options for ${assignee.user.name}`}
+                      aria-label={`Options for member ${assignee.user.name}`}
                     >
                       <Avatar className="size-9">
                         <AvatarImage src={assignee.user.avatar} />
@@ -230,7 +230,7 @@ export function TaskActions({
                     align="start"
                     side="top"
                     sideOffset={8}
-                    className="z-140 w-48 rounded-xl border-border/50 p-1.5 shadow-xl"
+                    className="z-140 w-48 rounded-sm border-border/50 p-1.5 shadow-xl"
                   >
                     <button
                       type="button"
@@ -238,7 +238,7 @@ export function TaskActions({
                         setAssigneeId(null);
                         setMemberActionPopoverOpen(false);
                       }}
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[14px] text-[#c9372c] transition-colors hover:bg-[#fff1f0]"
+                      className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-[#c9372c] transition-colors hover:bg-[#fff1f0]"
                     >
                       Remove from card
                     </button>
@@ -270,8 +270,8 @@ export function TaskActions({
                         onClick={() => setLabelsPopoverOpen(true)}
                         className={
                           hasTitle
-                            ? "inline-flex h-10 max-w-45 items-center rounded-md px-4 text-[15px] leading-none font-medium text-[#14532d] transition-opacity hover:opacity-90"
-                            : "inline-flex h-10 w-11 items-center justify-center rounded-md transition-opacity hover:opacity-90"
+                            ? "inline-flex h-10 max-w-45 items-center rounded-sm px-4 text-[15px] leading-none font-medium text-[#14532d] transition-opacity hover:opacity-90"
+                            : "inline-flex h-10 w-11 items-center justify-center rounded-sm transition-opacity hover:opacity-90"
                         }
                         style={{ backgroundColor: item.color }}
                       >
@@ -300,14 +300,15 @@ export function TaskActions({
               <button
                 type="button"
                 onClick={() => setDatePopoverOpen(true)}
-                className={`inline-flex h-10 max-w-full items-center gap-2 rounded-md px-4 text-[16px] leading-none font-medium transition-colors ${isDueDateOverdue
+                className={`inline-flex h-10 max-w-full items-center gap-2 rounded-sm px-4 text-[16px] leading-none font-medium transition-colors ${
+                  isDueDateOverdue
                     ? "bg-[#ffeceb] text-[#5d1f1a] hover:bg-[#ffd9d6]"
                     : "bg-[#d1d5db] text-[#1f2937] hover:bg-[#c7ccd5]"
-                  }`}
+                }`}
               >
                 <span className="truncate">{dateBadgeText}</span>
                 {isDueDateOverdue ? (
-                  <span className="inline-flex h-5 items-center rounded-[4px] bg-[#c9372c] px-1.5 text-[12px] font-semibold text-white">
+                  <span className="inline-flex h-5 items-center rounded-sm bg-[#c9372c] px-1.5 text-[12px] font-semibold text-white">
                     Overdue
                   </span>
                 ) : null}

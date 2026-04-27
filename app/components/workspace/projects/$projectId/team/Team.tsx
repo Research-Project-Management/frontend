@@ -20,6 +20,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { Skeleton } from "~/components/ui/skeleton";
 import Loading from "~/components/ui/Loading";
 import { getRoleName, getRoleColor } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -98,7 +99,15 @@ export default function ProjectTeam() {
     }
   };
 
-  if (isProjectLoading || isWorkspaceLoading) return <Loading />;
+  if (isProjectLoading || isWorkspaceLoading) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 p-6 space-y-6 flex flex-col items-center justify-center">
+          <Loading />
+        </div>
+      </div>
+    );
+  }
   if (!project) return <div>Project not found</div>;
 
   const filteredMembers = project.members.filter(
@@ -111,15 +120,17 @@ export default function ProjectTeam() {
     userRole === "manager" || userRole === "owner" || userRole === "admin"; // Project manager or Workspace admin/owner
 
   return (
-    <div className="flex-1 p-6 space-y-6 flex flex-col h-full overflow-hidden">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Project Team</h1>
-          <p className="text-muted-foreground">
-            Manage who has access to this project. {project.members.length}{" "}
-            {project.members.length === 1 ? "member" : "members"}
-          </p>
-        </div>
+    <div className="flex flex-col h-full overflow-hidden">
+
+      <div className="flex-1 p-6 space-y-6 flex flex-col overflow-hidden">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold">Project Team</h2>
+            <p className="text-muted-foreground">
+              Manage who has access to this project. {project.members.length}{" "}
+              {project.members.length === 1 ? "member" : "members"}
+            </p>
+          </div>
         {canManageTeam && (
           <Button onClick={() => setAddMemberOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
@@ -261,6 +272,7 @@ export default function ProjectTeam() {
             No members found matching "{searchTerm}"
           </div>
         )}
+        </div>
       </div>
 
       <AddMemberDialog

@@ -1,8 +1,6 @@
 import {
-  LayoutDashboard,
   ChevronRight,
   Cloud,
-  Ellipsis,
   Home,
   KanbanSquare,
   PanelLeftClose,
@@ -10,15 +8,15 @@ import {
   Pin,
   Plus,
   Settings,
-  UserStar,
   Layers2,
   RotateCcw,
   ChartBarBig,
+  UserStar,
 } from "lucide-react";
-import React, { useState, useId } from "react";
+import type { LucideIcon } from "lucide-react";
+import { useEffect, useState, useId } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { Link, useLocation, useParams } from "react-router";
-import { cn } from "~/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,7 +24,6 @@ import {
 } from "@/components/ui/collapsible";
 import { useProjects } from "~/hooks/useWorkspace";
 import type { Project } from "~/types/project";
-import type { LucideIcon } from "lucide-react";
 
 import {
   DialogTrigger,
@@ -36,11 +33,6 @@ import {
   DialogContent,
 } from "~/components/ui/dialog";
 import CreateProject from "./CreateProject";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-
 
 type ProjectModuleKey =
   | "overview"
@@ -61,11 +53,14 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "settings",
 ];
 
-const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
+const modulesConfig: Record<
+  ProjectModuleKey,
+  { label: string; icon: LucideIcon }
+> = {
   overview: { label: "Overview", icon: ChartBarBig },
   tasks: { label: "Tasks", icon: KanbanSquare },
-  cycles: { label: "Cycles", icon: RotateCcw },
   pages: { label: "Pages", icon: PenLine },
+  cycles: { label: "Cycles", icon: RotateCcw },
   storage: { label: "Storage", icon: Cloud },
   settings: { label: "Settings", icon: Settings },
   "my-note": { label: "My Notes", icon: Layers2 },
@@ -77,25 +72,74 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const sidebarItems = [
-    { label: "Home", icon: Home, to: "/" + workspaceId },
     {
-      label: "Your works",
+      label: "Home",
+      icon: Home,
+      to: "/" + workspaceId,
+      matchPrefixes: ["/" + workspaceId],
+    },
+    {
+      label: "Your Work",
       icon: UserStar,
-      to: "/" + workspaceId + "/works",
+      to: "/" + workspaceId + "/works/your-work",
+      matchPrefixes: ["/" + workspaceId + "/works/your-work"],
     },
     {
       label: "All Pages",
       icon: PenLine,
       to: "/" + workspaceId + "/pages",
+      matchPrefixes: ["/" + workspaceId + "/pages"],
     },
     {
       label: "Stickies",
       icon: Layers2,
       to: "/" + workspaceId + "/stickies",
+      matchPrefixes: ["/" + workspaceId + "/stickies"],
     },
   ];
 
-  const { projects }: { projects: Project[]; isLoading: boolean } = useProjects();
+  const { projects }: { projects?: Project[]; isLoading: boolean } =
+    useProjects();
+
+  // Persistent state for expanded projects
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar_expanded_projects");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
+
+  // Save to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem(
+      "sidebar_expanded_projects",
+      JSON.stringify(Array.from(expandedProjects)),
+    );
+  }, [expandedProjects]);
+
+  // Expand active project on navigation
+  useEffect(() => {
+    const activeProject = projects?.find((project) =>
+      location.pathname.includes(`/projects/${project._id}`),
+    );
+
+    if (!activeProject) return;
+
+    setExpandedProjects((prev) => {
+      if (prev.has(activeProject._id)) return prev;
+      return new Set(prev).add(activeProject._id);
+    });
+  }, [location.pathname, projects]);
+
+  const toggleProject = (id: string) => {
+    setExpandedProjects((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
@@ -114,12 +158,22 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
       <LayoutGroup id={`sb-nav-${id}`}>
         <nav className="flex flex-col gap-1">
           {sidebarItems.map((item) => {
-            const isActive = location.pathname === item.to;
+            const isActive = item.matchPrefixes.some((prefix) => {
+              if (item.label === "Home") {
+                return (
+                  location.pathname === prefix || location.pathname === prefix + "/"
+                );
+              }
+              return (
+                location.pathname === prefix ||
+                location.pathname.startsWith(prefix + "/")
+              );
+            });
             return (
               <Link
                 to={item.to}
                 key={item.label}
-                className="flex items-center gap-2 p-2 rounded-sm relative group/item hover:bg-muted/30 transition-colors"
+                className="relative flex items-center gap-2 p-2 rounded-sm group/item hover:bg-secondary/60 transition-colors"
               >
                 {isActive && (
                   <motion.div
@@ -130,18 +184,16 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   />
                 )}
                 <item.icon
-                  className={cn(
-                    "size-4 relative z-10",
-                    isActive ? "text-primary" : "text-primary/80",
-                  )}
+                  className={`size-4 relative z-10 ${
+                    isActive ? "text-primary" : "text-primary/80"
+                  }`}
                 />
                 <span
-                  className={cn(
-                    "text-sm relative z-10",
+                  className={`text-sm relative z-10 ${
                     isActive
                       ? "font-medium text-primary"
-                      : "font-medium text-primary/90",
-                  )}
+                      : "font-medium text-primary/90"
+                  }`}
                 >
                   {item.label}
                 </span>
@@ -177,12 +229,16 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
               No projects found
             </p>
           )}
-          {projects &&
-            projects.map((project, index) => (
+          {(projects ?? []).map((project) => {
+            const isOpen = expandedProjects.has(project._id);
+            const projectModules = project.modules ?? [];
+
+            return (
               <Collapsible
                 className="w-full group"
                 key={project._id}
-                defaultOpen={index === 0}
+                open={isOpen}
+                onOpenChange={() => toggleProject(project._id)}
               >
                 <div className="flex w-full justify-between items-center gap-2 p-2 rounded-sm hover:bg-accent transition-colors">
                   <CollapsibleTrigger asChild>
@@ -206,9 +262,9 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                 <CollapsibleContent className="overflow-hidden space-y-1 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
                   {MODULE_ORDER.filter((moduleKey) => {
                     if (moduleKey === "my-note") {
-                      return project.modules.includes("my-note") || project.modules.includes("stickies");
+                      return projectModules.includes("my-note") || projectModules.includes("stickies");
                     }
-                    return project.modules.includes(moduleKey);
+                    return projectModules.includes(moduleKey);
                   }).map((moduleKey) => {
                     const module = modulesConfig[moduleKey];
                     if (!module) return null;
@@ -218,31 +274,27 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                       <Link
                         to={moduleLink}
                         key={moduleKey}
-                        className="flex items-center gap-2 pl-8 pr-2 py-1.5 rounded-sm text-sm relative group/module hover:bg-muted/30 transition-colors"
+                        className={`flex items-center gap-2 pl-8 pr-2 py-1.5 rounded-sm text-sm ${
+                          isModuleActive
+                            ? "bg-secondary text-primary font-medium"
+                            : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                        }`}
                       >
-                        {isModuleActive && (
-                          <motion.div
-                            layoutId={`sb-module-active-${project._id}`}
-                            className="absolute inset-0 bg-secondary rounded-sm"
-                            initial={false}
-                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                          />
-                        )}
                         <module.icon
-                          className={cn(
-                            "size-4 relative z-10",
+                          className={`size-4 ${
                             isModuleActive
                               ? "text-primary"
-                              : "text-muted-foreground",
-                          )}
+                              : "text-muted-foreground"
+                          }`}
                         />
-                        <span className="relative z-10">{module.label}</span>
+                        <span>{module.label}</span>
                       </Link>
                     );
                   })}
                 </CollapsibleContent>
               </Collapsible>
-            ))}
+            );
+          })}
         </div>
       </nav>
 

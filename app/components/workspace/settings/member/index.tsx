@@ -51,7 +51,8 @@ export default function MemberPage() {
 
   // Fetch Workspace Data
   const { workspace, isLoading, yourRole } = useWorkspace(workspaceUrl!);
-  const { data: roles } = useRoles(workspace?._id ?? "");
+  const { data: rolesData } = useRoles(workspace?._id ?? "");
+  const roles = Array.isArray(rolesData) ? rolesData : [];
 
   // Mutations
   const updateRoleMutation = useUpdateWorkspaceMemberRole();

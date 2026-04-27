@@ -48,7 +48,7 @@ type ProjectModuleKey =
   | "cycles"
   | "pages"
   | "storage"
-  | "stickies"
+  | "my-note"
   | "settings";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
@@ -57,7 +57,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "tasks",
   "cycles",
   "storage",
-  "stickies",
+  "my-note",
   "settings",
 ];
 
@@ -68,7 +68,7 @@ const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon 
   pages: { label: "Pages", icon: PenLine },
   storage: { label: "Storage", icon: Cloud },
   settings: { label: "Settings", icon: Settings },
-  stickies: { label: "Stickies", icon: Layers2 },
+  "my-note": { label: "My Notes", icon: Layers2 },
 };
 
 export default function SideBar({ onToggle }: { onToggle?: () => void }) {
@@ -186,10 +186,13 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
               >
                 <div className="flex w-full justify-between items-center gap-2 p-2 rounded-sm hover:bg-accent transition-colors">
                   <CollapsibleTrigger asChild>
-                    <button className="flex-1 text-sm font-medium text-foreground flex gap-1 items-center text-left cursor-pointer">
+                    <Link 
+                      to={`/${workspaceId}/projects/${project._id}/overview`}
+                      className="flex-1 text-sm font-medium text-foreground flex gap-1 items-center text-left cursor-pointer hover:text-primary transition-colors"
+                    >
                       <span className="text-base">{project.avatar}</span>
                       <span>{project.name}</span>
-                    </button>
+                    </Link>
                   </CollapsibleTrigger>
 
                   <div className="flex gap-1 items-center">
@@ -201,9 +204,12 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   </div>
                 </div>
                 <CollapsibleContent className="overflow-hidden space-y-1 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-                  {MODULE_ORDER.filter((moduleKey) =>
-                    project.modules.includes(moduleKey),
-                  ).map((moduleKey) => {
+                  {MODULE_ORDER.filter((moduleKey) => {
+                    if (moduleKey === "my-note") {
+                      return project.modules.includes("my-note") || project.modules.includes("stickies");
+                    }
+                    return project.modules.includes(moduleKey);
+                  }).map((moduleKey) => {
                     const module = modulesConfig[moduleKey];
                     if (!module) return null;
                     const moduleLink = `/${workspaceId}/projects/${project._id}/${moduleKey}`;

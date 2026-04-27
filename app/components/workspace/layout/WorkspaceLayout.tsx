@@ -4,6 +4,8 @@ import Wrapper from "./Wrapper";
 import { useWorkspaces } from "~/query/workspace";
 import { useWorkspace } from "~/hooks/useWorkspace";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useUser } from "~/hooks/useUser";
+import { useSocket } from "~/contexts/SocketProvider";
 
 function WorkspaceSkeleton() {
   return (
@@ -41,8 +43,18 @@ function WorkspaceSkeleton() {
 
 export default function WorkspaceLayout() {
   const navigate = useNavigate();
+  const socket = useSocket();
+  const { user } = useUser();
   const { workspaces, isLoading } = useWorkspaces();
   const { workspace, isLoading: workspaceLoading } = useWorkspace();
+
+  useEffect(() => {
+    if (!socket || !user?._id) return;
+    socket.emit("join:user", user._id);
+    return () => {
+      socket.emit("leave:user", user._id);
+    };
+  }, [socket, user?._id]);
 
   useEffect(() => {
     if (workspaceLoading) return;

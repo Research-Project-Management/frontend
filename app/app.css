@@ -5,9 +5,7 @@
   --cell-size: 24px;
   --cell-spacing: 4px;
   --cells: 3;
-  --total-size: calc(
-    var(--cells) * (var(--cell-size) + 2 * var(--cell-spacing))
-  );
+  --total-size: calc(var(--cells) * (var(--cell-size) + 2 * var(--cell-spacing)));
   display: flex;
   flex-wrap: wrap;
   width: var(--total-size);
@@ -110,13 +108,25 @@
 }
 
 @keyframes smooth-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes shimmer {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
 }
 
 button {
@@ -248,6 +258,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -292,27 +303,32 @@ body {
   }
 
   .flux-logo-shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0) 100%);
     background-size: 200% 100%;
     animation: flux-logo-shimmer 2s infinite;
   }
 }
 
 @keyframes flux-logo-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -323,6 +339,7 @@ body {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -333,6 +350,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -342,19 +360,23 @@ body {
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
 }
 
 @keyframes glow {
+
   0%,
   100% {
     filter: drop-shadow(0 0 10px rgba(251, 146, 60, 0.3));
   }
+
   50% {
     filter: drop-shadow(0 0 20px rgba(251, 146, 60, 0.6));
   }
@@ -371,14 +393,14 @@ html {
 
 /* Monaco editor comment glyph */
 .flux-comment-glyph {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%233370FF' stroke='%233370FF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E")
-    no-repeat center;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%233370FF' stroke='%233370FF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E") no-repeat center;
   background-size: 12px 12px;
   cursor: pointer;
   opacity: 1;
   transition: opacity 0.15s;
   border-radius: 10px;
 }
+
 .flux-comment-glyph:hover {
   opacity: 1;
 }

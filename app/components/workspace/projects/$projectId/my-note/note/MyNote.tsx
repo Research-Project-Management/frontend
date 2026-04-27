@@ -1,14 +1,12 @@
 import type { Note } from "../types/note.type";
 import { NOTE_COLOR_MAP } from "../types/noteColor.type";
-import StickyContent from "./StickyContent";
-import StickyToolbar from "./StickyToolbar";
-import { useState, useEffect, useRef, memo, useMemo } from "react";
+import MyNoteContent from "./MyNoteContent";
+import MyNoteToolbar from "./MyNoteToolbar";
+import { useState, useEffect, useRef, memo } from "react";
 import type { Editor } from "@tiptap/react";
-import { GripVertical, FolderKanban } from "lucide-react";
-import { useParams } from "react-router";
-import { useWorkspaceProjects } from "~/query/workspace";
+import { GripVertical } from "lucide-react";
 
-interface StickyNoteProps {
+interface MyNoteProps {
   note: Note;
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onDelete: (id: string) => void;
@@ -17,25 +15,18 @@ interface StickyNoteProps {
   isOverlay?: boolean;
 }
 
-const StickyNote = memo(function StickyNote({
+const MyNote = memo(function MyNote({
   note,
   onUpdate,
   onDelete,
   dragHandleProps,
   isDragging,
   isOverlay,
-}: StickyNoteProps) {
-  const { workspaceId } = useParams();
-  const { projects = [] } = useWorkspaceProjects(workspaceId || "");
+}: MyNoteProps) {
   const colorConfig = NOTE_COLOR_MAP[note.color];
   const [editor, setEditor] = useState<Editor | null>(null);
   const [localTitle, setLocalTitle] = useState(note.title || "");
   const titleFocusedRef = useRef(false);
-
-  const projectName = useMemo(() => {
-    if (!note.projectId) return null;
-    return projects.find(p => p._id === note.projectId)?.name;
-  }, [note.projectId, projects]);
 
   // Only sync title from server when not currently editing it
   useEffect(() => {
@@ -80,30 +71,21 @@ const StickyNote = memo(function StickyNote({
         style={topAccentStyle}
         {...dragHandleProps}
       >
-        {/* Project Badge or Tags in header */}
-        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-          {projectName && (
-             <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/10 text-[9px] font-bold uppercase tracking-wider shrink-0">
-               <FolderKanban className="h-2.5 w-2.5" />
-               {projectName}
-             </div>
+        {/* Tags in header */}
+        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+          {note.tags && note.tags.length > 0 ? (
+            note.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag._id}
+                className="px-1.5 py-0 text-[9px] rounded font-semibold text-white shrink-0"
+                style={{ backgroundColor: tag.color || "#aaa" }}
+              >
+                {tag.name}
+              </span>
+            ))
+          ) : (
+            <span className="text-[10px] opacity-40 italic">Project Note</span>
           )}
-          
-          <div className="flex items-center gap-1 overflow-hidden">
-            {note.tags && note.tags.length > 0 ? (
-              note.tags.slice(0, 2).map((tag) => (
-                <span
-                  key={tag._id}
-                  className="px-1.5 py-0 text-[9px] rounded font-semibold text-white shrink-0"
-                  style={{ backgroundColor: tag.color || "#aaa" }}
-                >
-                  {tag.name}
-                </span>
-              ))
-            ) : !projectName && (
-              <span className="text-[10px] opacity-40 italic">Sticky note</span>
-            )}
-          </div>
         </div>
         <GripVertical className="h-3.5 w-3.5 opacity-30 shrink-0" />
       </div>
@@ -130,11 +112,11 @@ const StickyNote = memo(function StickyNote({
       </div>
 
       {/* Content */}
-      <StickyContent note={note} onUpdate={onUpdate} onReady={setEditor} isOverlay={isOverlay} />
+      <MyNoteContent note={note} onUpdate={onUpdate} onReady={setEditor} isOverlay={isOverlay} />
 
       {/* Toolbar — show on group-hover */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-        <StickyToolbar
+        <MyNoteToolbar
           note={note}
           onUpdate={onUpdate}
           onDelete={onDelete}
@@ -153,4 +135,4 @@ const StickyNote = memo(function StickyNote({
   );
 });
 
-export default StickyNote;
+export default MyNote;

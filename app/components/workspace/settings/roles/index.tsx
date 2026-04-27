@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams } from "react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_URL } from "~/lib/api";
+import { useRoles } from "~/query/role";
 import { useWorkspace } from "~/query/workspace";
 import { toast } from "sonner";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -46,25 +47,10 @@ const RESOURCES = [
 
 const ACTIONS = ["create", "read", "update", "delete", "manage", "invite"];
 
-function useRoles(workspaceId: string) {
-  const { workspace } = useWorkspace(workspaceId);
-  return useQuery({
-    queryKey: ["roles", workspace?._id],
-    queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/roles/${workspace?._id}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch roles");
-      return res.json() as Promise<{ roles: Role[] }>;
-    },
-    enabled: !!workspace?._id,
-  });
-}
-
 export default function RolesPage() {
   const { workspaceId } = useParams();
   const { workspace } = useWorkspace(workspaceId!);
-  const { data, isLoading } = useRoles(workspaceId!);
+  const { data, isLoading } = useRoles(workspace?._id ?? "");
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -74,7 +60,7 @@ export default function RolesPage() {
   const [formColor, setFormColor] = useState("#6366f1");
   const [formPerms, setFormPerms] = useState<Permission[]>([]);
 
-  const roles = data?.roles || [];
+  const roles = data || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {

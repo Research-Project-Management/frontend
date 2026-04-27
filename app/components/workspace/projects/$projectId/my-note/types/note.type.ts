@@ -23,7 +23,5 @@ export interface Note {
     x: number;
     y: number;
   };
-  projectId?: string;
-  category?: 'sticky' | 'note';
 }
 

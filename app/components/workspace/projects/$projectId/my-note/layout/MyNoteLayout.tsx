@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
-import StickyNote from "../note/StickyNote";
+import MyNote from "../note/MyNote";
 import type { Note } from "../types/note.type";
 import { NOTE_COLOR_CYCLE } from "../types/noteColor.type";
 import { useParams } from "react-router";
 import {
-  useStickies,
-  useCreateSticky,
-  useUpdateSticky,
-  useDeleteSticky,
-} from "~/query/sticky";
+  useMyNotes,
+  useCreateMyNote,
+  useUpdateMyNote,
+  useDeleteMyNote,
+} from "~/query/my-note";
 import { useTags } from "~/query/tag";
 import {
   Layers2,
@@ -48,9 +48,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function StickyLayout() {
-  const { workspaceId } = useParams();
+export default function MyNoteLayout() {
+  const { workspaceId, projectId } = useParams();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
@@ -58,29 +59,26 @@ export default function StickyLayout() {
     "saved" | "saving" | "error"
   >("saved");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  // Local drag-reorder: stores the reordered ID list after drag-end.
-  // Reset to null whenever server data changes so we pick up new/deleted notes.
   const [dragOrder, setDragOrder] = useState<string[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const { data: notes = [], isLoading } = useStickies(
-    workspaceId || "",
+  const { data: notes = [], isLoading } = useMyNotes(
+    projectId || "",
     selectedTags
   );
   const { data: tags = [] } = useTags(workspaceId || "");
-  const createSticky = useCreateSticky();
-  const updateSticky = useUpdateSticky();
-  const deleteSticky = useDeleteSticky();
+  const createNote = useCreateMyNote();
+  const updateNote = useUpdateMyNote();
+  const deleteNote = useDeleteMyNote();
 
   useEffect(() => {
-    if (updateSticky.isPending) setSavingStatus("saving");
-    else if (updateSticky.isSuccess) {
+    if (updateNote.isPending) setSavingStatus("saving");
+    else if (updateNote.isSuccess) {
       setSavingStatus("saved");
       setLastSavedAt(new Date());
-    } else if (updateSticky.isError) setSavingStatus("error");
-  }, [updateSticky.isPending, updateSticky.isSuccess, updateSticky.isError]);
+    } else if (updateNote.isError) setSavingStatus("error");
+  }, [updateNote.isPending, updateNote.isSuccess, updateNote.isError]);
 
-  // Reset drag order when server data changes (new/deleted notes).
   const noteIdsKey = notes.map((n) => n._id).join(",");
   useEffect(() => {
     setDragOrder(null);
@@ -96,37 +94,30 @@ export default function StickyLayout() {
   };
 
   const handleAddNote = () => {
-    if (!workspaceId) return;
-    createSticky.mutate({
-      workspaceId,
+    if (!projectId) return;
+    createNote.mutate({
+      projectId,
       content: "<p></p>",
       color: getNextColor(notes),
       title: "",
-      position: { x: 0, y: 0 },
-      category: 'sticky'
     });
   };
 
-  // ── Stable callback refs ──
-  // useMutation returns a new object every time its internal state changes
-  // (isPending → isSuccess → idle). Using refs ensures handleUpdateNote /
-  // handleDeleteNote have a STABLE identity so React.memo on StickyNote
-  // actually prevents re-renders of all sibling notes.
-  const updateStickyRef = useRef(updateSticky);
-  updateStickyRef.current = updateSticky;
-  const deleteStickyRef = useRef(deleteSticky);
-  deleteStickyRef.current = deleteSticky;
+  const updateNoteRef = useRef(updateNote);
+  updateNoteRef.current = updateNote;
+  const deleteNoteRef = useRef(deleteNote);
+  deleteNoteRef.current = deleteNote;
 
   const handleUpdateNote = useCallback(
     (id: string, updatedFields: Partial<Note>) => {
-      updateStickyRef.current.mutate({ stickyId: id, updates: updatedFields });
+      updateNoteRef.current.mutate({ noteId: id, updates: updatedFields });
     },
     [],
   );
 
   const handleDeleteNote = useCallback(
     (id: string) => {
-      deleteStickyRef.current.mutate(id);
+      deleteNoteRef.current.mutate(id);
     },
     [],
   );
@@ -151,9 +142,6 @@ export default function StickyLayout() {
     });
   }, [notes]);
 
-  // Compute display order — either server order or user's drag order.
-  // This is a pure derivation (useMemo), NOT a state update, so it
-  // won't trigger an extra render cycle like the previous useEffect did.
   const displayNotes = useMemo(() => {
     if (!dragOrder) return notes;
     const map = new Map(notes.map((n) => [n._id, n]));
@@ -184,12 +172,12 @@ export default function StickyLayout() {
       <div className="flex flex-col h-full">
         <div className="shrink-0 border-b border-border/60 px-5 h-13 flex items-center">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">Stickies</span>
+            <span className="font-semibold text-sm">My Notes</span>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm">Loading stickies…</span>
+          <span className="text-sm">Loading notes…</span>
         </div>
       </div>
     );
@@ -197,12 +185,10 @@ export default function StickyLayout() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* ── Combined header + toolbar ── */}
       <header className="shrink-0 border-b border-border/60 bg-background">
         <div className="flex items-center gap-3 px-5 h-13">
-          {/* Left: title + count */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="font-semibold text-sm">Stickies</span>
+            <span className="font-semibold text-sm">My Notes</span>
             {filteredNotes.length > 0 && (
               <span className="text-xs text-muted-foreground/60 tabular-nums">
                 {filteredNotes.length}
@@ -210,22 +196,19 @@ export default function StickyLayout() {
             )}
           </div>
 
-          {/* Divider */}
           <div className="h-4 w-px bg-border/60 shrink-0" />
 
-          {/* Center: search */}
           <div className="relative flex-1 max-w-72">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
             <Input
               type="text"
-              placeholder="Search stickies…"
+              placeholder="Search notes…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-8 text-sm bg-secondary/40 border-border/40 focus-visible:ring-primary/30"
             />
           </div>
 
-          {/* Tags filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -303,7 +286,6 @@ export default function StickyLayout() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Right: save status + new button */}
           <div className="flex items-center gap-2 ml-auto shrink-0">
             {savingStatus === "saving" && (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -328,14 +310,14 @@ export default function StickyLayout() {
               onClick={handleAddNote}
               size="sm"
               className="h-8 gap-1.5 text-xs"
-              disabled={createSticky.isPending}
+              disabled={createNote.isPending}
             >
-              {createSticky.isPending ? (
+              {createNote.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Plus className="h-3.5 w-3.5" />
               )}
-              New Sticky
+              New Note
             </Button>
           </div>
         </div>
@@ -355,15 +337,19 @@ export default function StickyLayout() {
             <div>
               <p className="text-sm font-medium text-muted-foreground">
                 {searchQuery || selectedTags.length > 0
-                  ? "No stickies match your filters"
-                  : "No stickies yet"}
+                  ? "No project notes match your filters"
+                  : "No project notes yet"}
               </p>
               {!searchQuery && selectedTags.length === 0 && (
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  Click "New Sticky" to get started
+                <p className="text-xs text-muted-foreground/60 mt-1 max-w-48 mx-auto">
+                  Capture project-specific ideas and tasks here.
                 </p>
               )}
             </div>
+            <Button onClick={handleAddNote} variant="outline" size="sm" className="mt-2 h-8 border-dashed border-muted-foreground/30 hover:border-primary/50 text-xs">
+              <Plus className="h-3 w-3 mr-1.5" />
+              Create your first note
+            </Button>
           </div>
         ) : (
           <DndContext
@@ -376,14 +362,19 @@ export default function StickyLayout() {
               items={filteredNotes.map((n) => n._id)}
               strategy={rectSortingStrategy}
             >
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 items-start">
-                {filteredNotes.map((note) => (
-                  <SortableNote
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6 items-start pb-20">
+                {filteredNotes.map((note, index) => (
+                  <div
                     key={note._id}
-                    note={note}
-                    onUpdate={handleUpdateNote}
-                    onDelete={handleDeleteNote}
-                  />
+                    className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                    style={{ animationDelay: `${index * 40}ms` }}
+                  >
+                    <SortableNote
+                      note={note}
+                      onUpdate={handleUpdateNote}
+                      onDelete={handleDeleteNote}
+                    />
+                  </div>
                 ))}
               </div>
             </SortableContext>
@@ -394,7 +385,7 @@ export default function StickyLayout() {
                     const note = filteredNotes.find((n) => n._id === activeId);
                     return note ? (
                       <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
-                        <StickyNote
+                        <MyNote
                           note={note}
                           onUpdate={handleUpdateNote}
                           onDelete={handleDeleteNote}
@@ -435,7 +426,6 @@ const SortableNote = memo(function SortableNote({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    // When dragging: hide the original slot (DragOverlay renders the visible ghost)
     opacity: isDragging ? 0 : 1,
     pointerEvents: isDragging ? ("none" as const) : undefined,
   };
@@ -450,7 +440,7 @@ const SortableNote = memo(function SortableNote({
 
   return (
     <div ref={setNodeRef} style={style}>
-      <StickyNote
+      <MyNote
         note={note}
         onUpdate={onUpdate}
         onDelete={onDelete}

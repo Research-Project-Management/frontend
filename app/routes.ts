@@ -7,7 +7,7 @@ import {
 
 export default [
   index("routes/home.tsx"),
-  
+
 
   layout("./components/auth/AuthLayout.tsx", [
     route("callback", "./routes/callback.tsx"),
@@ -48,8 +48,8 @@ export default [
         "./routes/workspace/$workspaceId/stickies/index.tsx",
       ),
       route(
-        ":workspaceId/projects/:projectId/stickies",
-        "./routes/workspace/$workspaceId/project/$projectId/stickies.tsx",
+        ":workspaceId/projects/:projectId/my-note",
+        "./routes/workspace/$workspaceId/project/$projectId/my-note.tsx",
       ),
       route(
         ":workspaceId/projects/:projectId/tasks",
@@ -62,6 +62,12 @@ export default [
       route(
         ":workspaceId/projects/:projectId/overview",
         "./routes/workspace/$workspaceId/project/$projectId/overview.tsx",
+        { id: "project-overview" }
+      ),
+      route(
+        ":workspaceId/projects/:projectId",
+        "./routes/workspace/$workspaceId/project/$projectId/overview.tsx",
+        { id: "project-root" }
       ),
 
       route(
@@ -109,11 +115,11 @@ export default [
       ]),
     ]),
     layout("./components/workspace/settings/layout/SettingLayout.tsx", [
-        route(":workspaceId/settings", "./routes/workspace/$workspaceId/settings/index.tsx"),
-        route(":workspaceId/settings/profile", "./routes/workspace/$workspaceId/settings/profile.tsx"),
-        route(":workspaceId/settings/members", "./routes/workspace/$workspaceId/settings/members.tsx"),
-        route(":workspaceId/settings/roles", "./routes/workspace/$workspaceId/settings/roles.tsx"),
-      ]),
+      route(":workspaceId/settings", "./routes/workspace/$workspaceId/settings/index.tsx"),
+      route(":workspaceId/settings/profile", "./routes/workspace/$workspaceId/settings/profile.tsx"),
+      route(":workspaceId/settings/members", "./routes/workspace/$workspaceId/settings/members.tsx"),
+      route(":workspaceId/settings/roles", "./routes/workspace/$workspaceId/settings/roles.tsx"),
+    ]),
 
     layout("./components/workspace/ai/layout/ChatAiLayout.tsx", [
       route(":workspaceId/ai", "./routes/workspace/$workspaceId/ai/index.tsx"),

@@ -60,7 +60,8 @@ export default function WorkspaceRolesPage() {
     yourRole,
   } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?._id;
-  const { data: roles, isLoading: rolesLoading } = useRoles(workspaceId!);
+  const { data: rolesData, isLoading: rolesLoading } = useRoles(workspaceId!);
+  const roles = Array.isArray(rolesData) ? rolesData : [];
 
   // Mutations
   const createRoleMutation = useCreateRole(workspaceId!);
@@ -89,11 +90,11 @@ export default function WorkspaceRolesPage() {
   if (!workspace) return <div className="p-6 text-muted-foreground">Workspace not found</div>;
 
   const filteredRoles =
-    roles?.filter(
+    roles.filter(
       (role: Role) =>
         role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         role.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-    ) || [];
+    );
 
   const canManage = yourRole === "owner" || yourRole === "admin";
 

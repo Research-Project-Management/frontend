@@ -195,6 +195,16 @@ export const useWorkspace = (workspaceUrl: string) => {
   return { workspace: data?.workspace, yourRole: data?.yourRole, isLoading, error };
 };
 
+export const useWorkspaceProjects = (workspaceId: string) => {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["workspace-projects", workspaceId],
+    queryFn: ({ signal }) => fetchProjectsByWorkspaceId(workspaceId, signal),
+    enabled: !!workspaceId,
+  });
+
+  return { projects: (data?.projects || []) as any[], isLoading, error };
+};
+
 // ── Workspace Member Management ───────────────────────────────────────────────
 
 export const useAddWorkspaceMember = () => {

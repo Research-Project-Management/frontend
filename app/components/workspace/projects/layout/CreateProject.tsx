@@ -26,7 +26,7 @@ type ProjectModuleKey =
   | "cycles"
   | "pages"
   | "storage"
-  | "stickies"
+  | "my-note"
   | "settings";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
@@ -35,7 +35,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "tasks",
   "cycles",
   "storage",
-  "stickies",
+  "my-note",
   "settings",
 ];
 
@@ -51,7 +51,7 @@ const ALL_MODULES: {
   { id: "tasks", label: "Tasks" },
   { id: "cycles", label: "Cycles" },
   { id: "storage", label: "Storage" },
-  { id: "stickies", label: "Stickies" },
+  { id: "my-note", label: "My Notes" },
   { id: "settings", label: "Settings", locked: true },
 ];
 
@@ -88,7 +88,7 @@ const TEMPLATES: Template[] = [
     name: "Writing & Docs",
     description: "Focus on writing with notes & sticky boards",
     icon: BookOpen,
-    modules: ["overview", "pages", "storage", "stickies", "settings"],
+    modules: ["overview", "pages", "storage", "my-note", "settings"],
     accent: "ring-amber-500/60",
   },
   {

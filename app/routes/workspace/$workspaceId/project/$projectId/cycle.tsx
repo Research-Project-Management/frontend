@@ -1,9 +1,9 @@
-import CyclePage from "~/components/workspace/projects/$projectId/Cycle/CyclePage";
+import { CycleLayout } from "~/components/workspace/projects/$projectId/Cycle/layout/CycleLayout";
 
 export function meta() {
   return [{ title: "Research Cycles · Flux" }];
 }
 
-export default function CycleRoute() {
-  return <CyclePage />;
+export default function CyclePage() {
+  return <CycleLayout />;
 }

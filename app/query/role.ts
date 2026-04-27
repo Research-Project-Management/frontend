@@ -8,9 +8,12 @@ export function useRoles(workspaceId: string) {
   return useQuery({
     queryKey: ["roles", workspaceId],
     queryFn: async () => {
-      const data = await apiGet<{ roles: Role[] }>(`/api/roles/${workspaceId}`);
-      return data.roles;
+      const data = await apiGet<{ roles: Role[] } | Role[]>(
+        `/api/roles/${workspaceId}`,
+      );
+      return Array.isArray(data) ? data : (data.roles ?? []);
     },
+    select: (data) => (Array.isArray(data) ? data : []),
     enabled: !!workspaceId,
   });
 }

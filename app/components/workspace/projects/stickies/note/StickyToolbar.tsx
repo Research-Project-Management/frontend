@@ -49,7 +49,8 @@ export default function StickyToolbar({
     // Based on Sticky model, updates usually replace array.
     // note.tags is Tag[] from populate.
 
-    const currentTagIds = note.tags.map((t) => t._id);
+    const currentTagIds = (note.tags || []).map((t) => (typeof t === 'string' ? t : t._id));
+
     let newTagIds;
     if (currentTagIds.includes(tagId)) {
       newTagIds = currentTagIds.filter((id) => id !== tagId);
@@ -98,7 +99,7 @@ export default function StickyToolbar({
           <ListTodo size={14} />
         </ToolbarBtn>
         <TagPicker
-          selectedTagIds={note.tags.map((t) => t._id)}
+          selectedTagIds={(note.tags || []).map((t) => (typeof t === 'string' ? t : t._id))}
           onToggleTag={handleToggleTag}
         />
         {isColorOpen && (

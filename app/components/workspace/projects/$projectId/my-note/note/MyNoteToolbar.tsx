@@ -5,7 +5,6 @@ import type { Editor } from "@tiptap/react";
 import ColorModal from "../modals/ColorModal";
 import DeleteModal from "../modals/deleteModal";
 import TagPicker from "./TagPicker";
-import { cn } from "~/lib/utils";
 
 interface MyNoteToolbarProps {
   note: Note;
@@ -44,7 +43,7 @@ export default function MyNoteToolbar({
   }
 
   const handleToggleTag = (tagId: string) => {
-    const currentTagIds = (note.tags || []).map((t) => t._id);
+    const currentTagIds = (note.tags || []).map((t) => (typeof t === 'string' ? t : t._id));
     let newTagIds;
     if (currentTagIds.includes(tagId)) {
       newTagIds = currentTagIds.filter((id) => id !== tagId);
@@ -55,57 +54,50 @@ export default function MyNoteToolbar({
   };
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-background/80 backdrop-blur-md border border-border/40 rounded-full shadow-lg shadow-black/5 ring-1 ring-black/5 animate-in fade-in zoom-in duration-300">
-      <div ref={ref} className="relative flex items-center gap-0.5 px-1">
+    <div className="h-9 px-3 pb-2 flex items-center justify-between border-t border-black/5">
+      <div ref={ref} className="relative flex items-center gap-0.5">
         <ToolbarBtn
           title="Color"
           onClick={() => setActiveModal((m) => (m === "color" ? null : "color"))}
         >
-          <Palette size={15} />
+          <Palette size={14} />
         </ToolbarBtn>
-        <div className="w-px h-4 bg-border/40 mx-0.5" />
         <ToolbarBtn
           title="Bold"
           onClick={() => editor?.chain().focus().toggleBold().run()}
           disabled={!editor}
-          active={editor?.isActive("bold")}
         >
-          <Bold size={15} />
+          <Bold size={14} />
         </ToolbarBtn>
         <ToolbarBtn
           title="Italic"
           onClick={() => editor?.chain().focus().toggleItalic().run()}
           disabled={!editor}
-          active={editor?.isActive("italic")}
         >
-          <Italic size={15} />
+          <Italic size={14} />
         </ToolbarBtn>
         <ToolbarBtn
           title="Task list"
           onClick={() => editor?.chain().focus().toggleTaskList().run()}
           disabled={!editor}
-          active={editor?.isActive("taskList")}
         >
-          <ListTodo size={15} />
+          <ListTodo size={14} />
         </ToolbarBtn>
-        <div className="w-px h-4 bg-border/40 mx-0.5" />
         <TagPicker
-          selectedTagIds={(note.tags || []).map((t) => t._id)}
+          selectedTagIds={(note.tags || []).map((t) => (typeof t === 'string' ? t : t._id))}
           onToggleTag={handleToggleTag}
         />
         {isColorOpen && (
-          <ColorModal note={note} onUpdate={onUpdate} onClose={closeModal} isToolbar />
+          <ColorModal note={note} onUpdate={onUpdate} onClose={closeModal} />
         )}
       </div>
-
-      <div className="w-px h-4 bg-border/40" />
 
       <ToolbarBtn
         title="Delete"
         onClick={() => setActiveModal("delete")}
         danger
       >
-        <Trash2 size={15} />
+        <Trash2 size={14} />
       </ToolbarBtn>
 
       <DeleteModal
@@ -128,14 +120,12 @@ function ToolbarBtn({
   onClick,
   disabled,
   danger,
-  active,
 }: {
   children: React.ReactNode;
   title: string;
   onClick?: () => void;
   disabled?: boolean;
   danger?: boolean;
-  active?: boolean;
 }) {
   return (
     <button
@@ -143,11 +133,11 @@ function ToolbarBtn({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={cn(
-        "flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 disabled:opacity-30",
-        active ? "bg-primary/10 text-primary" : "text-muted-foreground/60 hover:text-foreground hover:bg-secondary/60",
-        danger && "hover:text-destructive hover:bg-destructive/10"
-      )}
+      className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors disabled:opacity-30 ${
+        danger
+          ? "text-current opacity-50 hover:opacity-100 hover:text-red-500 hover:bg-red-50"
+          : "text-current opacity-50 hover:opacity-100 hover:bg-black/10"
+      }`}
     >
       {children}
     </button>

@@ -1,29 +1,79 @@
 import { useMemo, type ReactNode } from "react";
 import { 
-  CalendarDays, 
-  ChevronRight, 
   ChevronDown,
-  PlayCircle, 
-  CircleDashed, 
+  Trash2,
+  Clock3,
+  MoreHorizontal,
+  ChevronRight,
+  PlayCircle,
+  CircleDashed,
   CheckCircle2,
-  Trash2 
+  CalendarDays
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import type { Cycle } from "~/types/task";
 import { PHASE_CONFIG as STATIC_PHASE_CONFIG } from "~/types/task";
 
-type DerivedStatus = "active" | "upcoming" | "completed";
+export type DerivedStatus = "active" | "upcoming" | "completed";
 
 function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+    <div className="h-1.5 w-16 bg-zinc-100 rounded-full overflow-hidden">
       <div
         className="h-full rounded-full transition-all duration-500 ease-out"
         style={{
           width: `${value}%`,
-          backgroundColor: value === 100 ? "#22c55e" : value > 50 ? "#3b82f6" : "#eab308",
+          backgroundColor: value === 100 ? "#22c55e" : value > 0 ? "#3b82f6" : "#e4e4e7",
         }}
       />
+    </div>
+  );
+}
+
+function EmptyState({ status }: { status: DerivedStatus }) {
+  const configs = {
+    active: {
+      title: "No active cycle",
+      description: "An active cycle includes any period that encompasses today's date within its range. Find the progress and details of the active cycle here.",
+      image: "https://flux.aisq.dev/mol-yf3ozm" // Placeholder for the illustration URL seen in user's image
+    },
+    upcoming: {
+      title: "No upcoming cycles",
+      description: "Cycles that are scheduled for the future will appear here. Plan your upcoming work by creating a new cycle.",
+      image: ""
+    },
+    completed: {
+      title: "No completed cycles",
+      description: "Past cycles that have reached their due date will be moved here for reference and reporting.",
+      image: ""
+    }
+  }[status];
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-6 bg-white text-center">
+      {status === 'active' && (
+         <div className="mb-6 opacity-80">
+            <svg width="200" height="120" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="70" y="20" width="80" height="50" rx="4" fill="#F4F5F7" />
+              <rect x="70" y="30" width="80" height="50" rx="4" fill="#F4F5F7" stroke="#EBEDF0" />
+              <rect x="70" y="40" width="80" height="50" rx="4" fill="white" stroke="#EBEDF0" />
+              <circle cx="110" cy="65" r="18" stroke="#333" strokeWidth="1.5" />
+              <path d="M106 65V58H114V72H106V65Z" fill="#EBEDF0" />
+              <rect x="40" y="60" width="30" height="8" rx="4" fill="#F4F5F7" />
+              <rect x="150" y="30" width="30" height="15" rx="4" fill="#F4F5F7" />
+            </svg>
+         </div>
+      )}
+      <h3 className="text-[15px] font-semibold text-zinc-900 mb-2">{configs.title}</h3>
+      <p className="text-[13px] text-muted-foreground max-w-[440px] leading-relaxed">
+        {configs.description}
+      </p>
     </div>
   );
 }
@@ -55,105 +105,78 @@ export function Item({
     return { label: "Custom", color: "#6b7280", icon: "📋" };
   }, [phases, cycle.phase]);
 
+  const dateText = useMemo(() => {
+    if (!cycle.startDate && !cycle.endDate) return null;
+    const start = cycle.startDate ? new Date(cycle.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+    const end = cycle.endDate ? new Date(cycle.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+    return start && end && cycle.endDate ? `${start} - ${end}, ${new Date(cycle.endDate).getFullYear()}` : start || end;
+  }, [cycle.startDate, cycle.endDate]);
+
   return (
-    <div className="group border border-transparent hover:border-border rounded-xl bg-card/50 hover:bg-card transition-all overflow-hidden shadow-sm hover:shadow-md">
-      <div className="flex items-center gap-3 px-4 py-3">
-        <button
-          onClick={onToggleExpand}
-          className="flex-1 flex items-center gap-3 text-left min-w-0"
-        >
-          <span
-            className="size-9 rounded-lg flex items-center justify-center text-sm shrink-0 shadow-sm"
-            style={{ backgroundColor: `${phaseConfig.color}15`, color: phaseConfig.color }}
-          >
-            {phaseConfig.icon}
-          </span>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onToggleExpand}
+      className="w-full flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-zinc-50/80 transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-b border-border/40 relative last:border-b-0"
+    >
+      <div className="size-4.5 rounded-full border shrink-0 flex items-center justify-center text-[10px]" style={{ color: phaseConfig.color, borderColor: `${phaseConfig.color}40` }}>
+         {phaseConfig.icon || <CircleDashed className="size-3" />}
+      </div>
+      
+      <div className="flex-1 min-w-0 flex items-center gap-3">
+        <span className="text-[13px] font-medium text-zinc-700 truncate group-hover:text-black">
+          {cycle.name}
+        </span>
+      </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground truncate">
-                {cycle.name}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 mt-0.5">
-              <span
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight"
-                style={{
-                  color: phaseConfig.color,
-                  backgroundColor: `${phaseConfig.color}10`,
-                }}
-              >
-                {phaseConfig.label}
-              </span>
-              {(cycle.startDate || cycle.endDate) && (
-                <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-                  <CalendarDays className="size-3" />
-                  {cycle.startDate &&
-                    new Date(cycle.startDate).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                  {cycle.startDate && cycle.endDate && " → "}
-                  {cycle.endDate &&
-                    new Date(cycle.endDate).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                </span>
-              )}
-            </div>
-          </div>
+      {dateText && (
+        <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium shrink-0 px-2 py-1 bg-zinc-50 rounded-sm border border-border/50">
+          <CalendarDays className="size-3" />
+          <span className="whitespace-nowrap">{dateText}</span>
+        </span>
+      )}
 
-          <div className="flex items-center gap-4 shrink-0 pr-2">
-            <div className="w-16">
-              <ProgressBar value={cycle.stats?.progress || 0} />
-            </div>
-          </div>
-        </button>
+      <div className="flex items-center gap-4 shrink-0 px-2">
+         <ProgressBar value={cycle.stats?.progress || 0} />
+      </div>
 
-        <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-            className="size-8 p-0 hover:bg-primary/10 hover:text-primary"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40 rounded-sm">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <ChevronRight className="mr-2 h-4 w-4" /> View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Cycle
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 pt-2 border-t border-border/50 space-y-4 animate-in slide-in-from-top-2 fade-in duration-300 ml-12">
+        <div className="absolute left-0 right-0 top-full bg-zinc-50/30 border-b border-border/40 px-12 py-3 z-10 animate-in fade-in slide-in-from-top-1 duration-200 pointer-events-auto shadow-sm">
           {cycle.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed mb-2">
               {cycle.description}
             </p>
           )}
-
-          <div className="flex items-center gap-6 text-sm font-medium">
-            <span className="text-muted-foreground">
-              <strong className="text-foreground">{cycle.stats?.totalTasks || 0}</strong> tasks
-            </span>
-            <span className="text-muted-foreground">
-              <strong className="text-green-600">{cycle.stats?.completedTasks || 0}</strong> completed
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={onEdit} className="text-xs h-7.5 px-3 font-medium">
-              Edit Details
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDelete}
-              className="text-xs h-7.5 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 font-medium"
-            >
-              <Trash2 className="size-3.5 mr-1.5" />
-              Delete Cycle
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="h-7 text-[11px] px-3">
+            Open Cycle
+          </Button>
         </div>
       )}
     </div>
@@ -178,49 +201,51 @@ export function ListViewGroup({
   const config = {
     active: { 
       label: "Active cycle", 
-      icon: <PlayCircle className="size-5 text-orange-500 fill-orange-500/20" />, 
+      icon: (
+        <div className="relative size-4.5">
+          <div className="absolute inset-0 rounded-full border-2 border-orange-500/30" />
+          <div className="absolute inset-0 rounded-full border-2 border-orange-500 clip-path-half" style={{ clipPath: 'inset(0 0 0 50%)' }} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="size-2 rounded-full bg-orange-500" />
+          </div>
+        </div>
+      ), 
     },
     upcoming: { 
       label: "Upcoming cycle", 
-      icon: <CircleDashed className="size-5 text-blue-500" />, 
+      icon: <CircleDashed className="size-4.5 text-blue-500" />, 
     },
     completed: { 
       label: "Completed cycle", 
-      icon: <CheckCircle2 className="size-5 text-green-500 fill-green-500/20" />, 
+      icon: <CheckCircle2 className="size-4.5 text-green-600 fill-green-600/10" />, 
     },
   }[status];
 
   return (
-    <div className="space-y-1.5">
-      <button
+    <div className="flex flex-col bg-[#f4f5f7]">
+      <div 
+        className="flex items-center gap-3 px-3 py-2.5 transition-colors group cursor-pointer hover:bg-zinc-200/50"
         onClick={onToggle}
-        className="w-full flex items-center justify-between py-3 px-4 hover:bg-accent/40 transition-all rounded-xl group select-none"
       >
-        <div className="flex items-center gap-3">
-          <div className="transition-transform group-hover:scale-110 duration-200">
-            {config.icon}
-          </div>
-          <span className="text-sm font-semibold text-foreground tracking-tight">
-            {config.label}
-          </span>
-          {count > 0 && (
-            <span className="text-[11px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full ml-1">
-              {count}
-            </span>
-          )}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="shrink-0">{config.icon}</div>
+          <span className="text-[13.5px] font-semibold text-zinc-700">{config.label}</span>
+          {count > 0 && <span className="text-[12px] text-zinc-400 font-normal">{count}</span>}
         </div>
         <ChevronDown 
-          className={`size-4 text-muted-foreground transition-all duration-300 ${
-            isExpanded ? "rotate-0 opacity-100" : "-rotate-90 opacity-50"
+          className={`size-4 text-zinc-400 transition-all duration-300 ${
+            isExpanded ? "rotate-0" : "-rotate-90"
           }`} 
         />
-      </button>
+      </div>
 
       {isExpanded && (
-        <div className="space-y-3 px-1 pb-6 animate-in slide-in-from-top-2 fade-in duration-300">
+        <div className="bg-white border-t border-border/40 divide-y divide-border/40">
           {children}
         </div>
       )}
     </div>
   );
 }
+
+export { EmptyState };

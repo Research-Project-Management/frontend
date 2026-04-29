@@ -8,6 +8,7 @@ import {
   Pin,
   Plus,
   Settings,
+  StickyNote,
   Layers2,
   RotateCcw,
   ChartBarBig,
@@ -63,7 +64,7 @@ const modulesConfig: Record<
   cycles: { label: "Cycles", icon: RotateCcw },
   storage: { label: "Storage", icon: Cloud },
   settings: { label: "Settings", icon: Settings },
-  "my-note": { label: "My Notes", icon: Layers2 },
+  "my-note": { label: "Notes", icon: StickyNote },
 };
 
 export default function SideBar({ onToggle }: { onToggle?: () => void }) {

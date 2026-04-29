@@ -19,7 +19,13 @@ interface TopbarProps {
 }
 
 function ProjectAvatar({ avatar, name }: { avatar?: string; name: string }) {
-  if (!avatar) return null;
+  if (!avatar) {
+    return (
+      <div className="size-5 flex items-center justify-center rounded-sm bg-amber-100/50">
+        <FolderKanban className="size-3.5 text-amber-600" />
+      </div>
+    );
+  }
 
   const isUrl =
     avatar.startsWith("http") ||
@@ -28,14 +34,14 @@ function ProjectAvatar({ avatar, name }: { avatar?: string; name: string }) {
 
   if (isUrl) {
     return (
-      <div className="size-6 shrink-0 overflow-hidden rounded-sm">
+      <div className="size-5 shrink-0 overflow-hidden rounded-sm border border-border/50">
         <img src={avatar} alt={name} className="h-full w-full object-cover" />
       </div>
     );
   }
 
   return (
-    <span className="text-base leading-none shrink-0" title={name}>
+    <span className="text-sm leading-none shrink-0" title={name}>
       {avatar}
     </span>
   );
@@ -66,7 +72,6 @@ export default function Topbar({
   const { projects = [] } = useProjects();
 
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -122,108 +127,99 @@ export default function Topbar({
         >
           {project && (
             <div ref={triggerRef} className="flex items-center gap-0.5">
-              {/* Click trigger: project avatar + name only */}
-              <div className="relative">
-                <div
-                  onClick={handleTogglePopover}
-                  className="flex items-center gap-2 min-w-0 px-1.5 py-0.5 select-none cursor-pointer hover:bg-accent/40 rounded-sm transition-colors"
-                >
-                  <ProjectAvatar avatar={project.avatar} name={project.name} />
-                  <span className="text-sm font-semibold text-primary truncate max-w-[120px]">
-                    {project.name}
-                  </span>
-                </div>
-
-                {/* Popover dropdown */}
-                {popoverOpen && (
+              <div className="flex items-center gap-1">
+                <div className="relative">
                   <div
-                    ref={popoverRef}
-                    className="absolute left-0 top-full mt-1.5 w-56 rounded-lg border border-border bg-popover shadow-xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                    onClick={handleTogglePopover}
+                    className="flex items-center gap-2 min-w-0 px-2 py-1 select-none cursor-pointer hover:bg-accent/40 rounded-md transition-colors group"
                   >
-                    {/* Search box */}
-                    <div className="p-2 border-b border-border/60">
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-                        <Input
-                          autoFocus
-                          value={searchValue}
-                          onChange={(e) => setSearchValue(e.target.value)}
-                          placeholder="Search"
-                          className="pl-8 h-8 text-sm rounded-sm focus-visible:ring-0 focus-visible:border-border"
-                        />
+                    <ProjectAvatar avatar={project.avatar} name={project.name} />
+                    <span className="text-sm font-medium text-muted-foreground group-hover:text-primary truncate max-w-[150px] transition-colors">
+                      {project.name}
+                    </span>
+                  </div>
+
+                  {/* Popover dropdown */}
+                  {popoverOpen && (
+                    <div
+                      ref={popoverRef}
+                      className="absolute left-0 top-full mt-1.5 w-56 rounded-lg border border-border bg-popover shadow-xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+                    >
+                      {/* Search box */}
+                      <div className="p-2 border-b border-border/60">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                          <Input
+                            autoFocus
+                            value={searchValue}
+                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Search"
+                            className="pl-8 h-8 text-sm rounded-sm focus-visible:ring-0 focus-visible:border-border"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Project list */}
+                      <div className="max-h-60 overflow-y-auto py-1">
+                        {filteredProjects.length === 0 ? (
+                          <p className="text-xs text-muted-foreground px-3 py-4 text-center">
+                            No projects found
+                          </p>
+                        ) : (
+                          filteredProjects.map((proj: any) => {
+                            const isActive = proj._id === projectId;
+                            return (
+                              <button
+                                key={proj._id}
+                                onClick={() => handleProjectClick(proj)}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
+                                  isActive
+                                    ? "bg-accent/60 text-foreground"
+                                    : "text-foreground/80 hover:bg-accent hover:text-foreground"
+                                }`}
+                              >
+                                <span className="shrink-0 text-base leading-none w-5 flex items-center justify-center">
+                                  {isEmojiAvatar(proj.avatar) ? (
+                                    proj.avatar
+                                  ) : proj.avatar ? (
+                                    <img
+                                      src={proj.avatar}
+                                      alt={proj.name}
+                                      className="size-4 rounded-sm object-cover"
+                                    />
+                                  ) : (
+                                    <FolderKanban className="size-4 text-muted-foreground" />
+                                  )}
+                                </span>
+                                <span className="flex-1 truncate font-medium">
+                                  {proj.name}
+                                </span>
+                                {isActive && (
+                                  <Check className="size-3.5 text-primary shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* Project list */}
-                    <div className="max-h-60 overflow-y-auto py-1">
-                      {filteredProjects.length === 0 ? (
-                        <p className="text-xs text-muted-foreground px-3 py-4 text-center">
-                          No projects found
-                        </p>
-                      ) : (
-                        filteredProjects.map((proj: any) => {
-                          const isActive = proj._id === projectId;
-                          return (
-                            <button
-                              key={proj._id}
-                              onClick={() => handleProjectClick(proj)}
-                              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
-                                isActive
-                                  ? "bg-accent/60 text-foreground"
-                                  : "text-foreground/80 hover:bg-accent hover:text-foreground"
-                              }`}
-                            >
-                              <span className="shrink-0 text-base leading-none w-5 flex items-center justify-center">
-                                {isEmojiAvatar(proj.avatar) ? (
-                                  proj.avatar
-                                ) : proj.avatar ? (
-                                  <img
-                                    src={proj.avatar}
-                                    alt={proj.name}
-                                    className="size-4 rounded-sm object-cover"
-                                  />
-                                ) : (
-                                  <FolderKanban className="size-4 text-muted-foreground" />
-                                )}
-                              </span>
-                              <span className="flex-1 truncate font-medium">
-                                {proj.name}
-                              </span>
-                              {isActive && (
-                                <Check className="size-3.5 text-primary shrink-0" />
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
+                <div className="flex items-center justify-center p-1">
+                  <ChevronRight
+                    className={`size-3.5 text-muted-foreground/40 transition-transform duration-200 ${
+                      popoverOpen ? "rotate-90" : ""
+                    }`}
+                  />
+                </div>
               </div>
-
-              {/* Chevron button — hover here shows bg + rotation, click opens popover */}
-              <button
-                onClick={handleTogglePopover}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                className={`p-1 rounded-sm cursor-pointer transition-all outline-none ${
-                  isHovered || popoverOpen
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground/40"
-                }`}
-              >
-                <ChevronRight
-                  className={`size-3.5 transition-transform duration-200 ${
-                    isHovered || popoverOpen ? "rotate-90" : ""
-                  }`}
-                />
-              </button>
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <Icon className="size-4.5 text-primary" />
-            <h1 className="text-sm font-semibold text-primary tracking-tight transition-all duration-300">
+          <div className="flex items-center gap-2 ml-1">
+            <Icon className="size-4 text-foreground/80" />
+            <h1 className="text-[13px] font-semibold text-foreground tracking-tight">
               {title}
             </h1>
           </div>

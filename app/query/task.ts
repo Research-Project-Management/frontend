@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Task, Column, TaskMutationInput, TaskActivityLog } from "../types/task";
+import type { Task, Column, TaskMutationInput, TaskActivityLog, Cycle } from "../types/task";
 import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import { useSocket } from "~/contexts/SocketProvider";
 import { toast } from "sonner";
@@ -9,12 +9,13 @@ export type ProjectTasksData = {
   tasks: Task[];
   columns: Column[];
   projectName: string;
+  cycles: Cycle[];
 };
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
-export const fetchProjectTasks = (projectId: string) =>
-  apiGet<ProjectTasksData>(`/api/project/${projectId}/tasks`);
+export const fetchProjectTasks = (projectId: string, cycleId?: string) =>
+  apiGet<ProjectTasksData>(`/api/project/${projectId}/tasks${cycleId ? `?cycle=${cycleId}` : ""}`);
 
 export const fetchWorkspaceTasks = async (workspaceId: string) => {
   const data = await apiGet<{ tasks: Task[] }>(`/api/workspace/${workspaceId}/tasks`);
@@ -23,12 +24,12 @@ export const fetchWorkspaceTasks = async (workspaceId: string) => {
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
-export const useProjectTasks = (projectId: string) => {
+export const useProjectTasks = (projectId: string, cycleId?: string) => {
   const queryClient = useQueryClient();
   const socket = useSocket();
 
   const updateTaskCommentCount = (taskId: string, delta: number) => {
-    queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+    queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
       if (!old) return old;
 
       return {
@@ -51,33 +52,33 @@ export const useProjectTasks = (projectId: string) => {
     socket.emit("join:project", projectId);
 
     const onCreated = ({ task }: { task: Task }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         if (old.tasks.some((t) => t._id === task._id)) return old;
         return { ...old, tasks: [...old.tasks, task] };
       });
     };
     const onUpdated = ({ task }: { task: Task }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
       });
     };
     const onDeleted = ({ taskId }: { taskId: string }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, tasks: old.tasks.filter((t) => t._id !== taskId) };
       });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
     };
     const onColumnCreated = ({ columns }: { columns: Column[] }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, columns };
       });
     };
     const onColumnUpdated = ({ columns }: { columns: Column[] }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId], (old) => {
+      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, columns };
       });
@@ -107,11 +108,11 @@ export const useProjectTasks = (projectId: string) => {
       socket.off("task-comment:created", onTaskCommentCreated);
       socket.off("task-comment:deleted", onTaskCommentDeleted);
     };
-  }, [socket, projectId, queryClient]);
+  }, [socket, projectId, cycleId, queryClient]);
 
   return useQuery({
-    queryKey: ["tasks", projectId],
-    queryFn: () => fetchProjectTasks(projectId),
+    queryKey: ["tasks", projectId, cycleId],
+    queryFn: () => fetchProjectTasks(projectId, cycleId),
     enabled: !!projectId,
   });
 };

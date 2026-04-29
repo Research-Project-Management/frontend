@@ -5,7 +5,7 @@ export interface Tag {
   id?: string;
   name: string;
   color: string;
-  projectId: string;
+  projectId?: string;
 }
 
 export interface Note {

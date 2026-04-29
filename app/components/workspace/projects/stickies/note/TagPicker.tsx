@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { useTags } from "~/query/tag";
+import { useTags } from "~/query/sticky";
 import { useParams } from "react-router";
 import { cn } from "~/lib/utils";
 

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "react-router";
-import { useProject } from "~/query/project";
-import { useTags } from "~/query/tag";
+import { useProjects } from "~/hooks/useWorkspace";
+import { useTags } from "~/query/sticky";
 import { useProjectCycles, useCreateCycle, useUpdateCycle, useDeleteCycle } from "~/query/cycle";
 import type { Cycle } from "~/types/task";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -21,20 +21,15 @@ import {
   GraduationCap 
 } from "lucide-react";
 
-// Sections
-import { PhaseSection } from "../sections/PhaseSection";
-import { MembersSection } from "../sections/MembersSection";
-import { LabelsSection } from "../sections/LabelsSection";
-import { DatesSection } from "../sections/DatesSection";
-import { Item, ListViewGroup } from "../sections/ListViewSection";
+import { Item, ListViewGroup, EmptyState, type DerivedStatus } from "../sections/ListViewSection";
+import { Target } from "lucide-react";
 
 // Modals
 import { DeleteModal } from "../modals/DeleteModal";
 import { CreateModal } from "../modals/CreateModal";
 import { EditModal } from "../modals/EditModal";
-import { Topbar } from "./Topbar";
-
-type DerivedStatus = "active" | "upcoming" | "completed";
+import Topbar from "~/components/workspace/projects/$projectId/overview/Topbar";
+import TopBar from "./Topbar";
 
 const INITIAL_PHASES = [
   { id: "search", icon: <Search className="size-4" />, label: "Topic Selection", color: "#4bce97" },
@@ -75,25 +70,33 @@ export function CycleLayout() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [cycleToDelete, setCycleToDelete] = useState<string | null>(null);
 
-  const { data: projectData } = useProject(projectId!);
+  const { projects } = useProjects();
+  const projectData = projects?.find((p: any) => p._id === projectId);
   const { data: workspaceTags = [] } = useTags(workspaceId!);
   const cycles = data?.cycles || [];
 
   const groupedCycles = useMemo(() => {
     const groups: Record<DerivedStatus, Cycle[]> = { active: [], upcoming: [], completed: [] };
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
     cycles.forEach((cycle) => {
       let status: DerivedStatus = "upcoming";
       if (cycle.startDate && cycle.endDate) {
         const start = parseISO(cycle.startDate);
         const end = parseISO(cycle.endDate);
-        if (isToday(start) || isToday(end) || (isAfter(new Date(), start) && isBefore(new Date(), end))) {
-          status = "active";
-        } else if (isBefore(new Date(), start)) {
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+
+        if (isBefore(now, start)) {
           status = "upcoming";
-        } else {
+        } else if (isAfter(now, end)) {
           status = "completed";
+        } else {
+          status = "active";
         }
       } else {
+        // Fallback for cycles without dates
         status = cycle.status === "completed" ? "completed" : cycle.status === "active" ? "active" : "upcoming";
       }
       groups[status].push(cycle);
@@ -181,18 +184,51 @@ export function CycleLayout() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
-      <Topbar onAddCycle={openCreate} />
+      <Topbar
+        project={projectData ? { name: projectData.name, avatar: projectData.avatar } : undefined}
+        title="Cycles"
+        Icon={Target}
+        actions={
+          <TopBar 
+            onAddCycle={openCreate} 
+            searchQuery={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
+        }
+      />
       <main className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar">
-        <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
-          {isLoading ? <div className="space-y-6"><Skeleton className="h-12 w-full rounded-sm" /></div> : (
-            <div className="space-y-4">
+        <div className="px-6 py-4">
+          {isLoading ? (
+            <div className="space-y-6">
+              <Skeleton className="h-12 w-full rounded-sm" />
+            </div>
+          ) : (
+            <div className="border border-border/80 overflow-hidden flex flex-col divide-y divide-border/80 mt-2">
               {(["active", "upcoming", "completed"] as DerivedStatus[]).map((status) => (
-                <ListViewGroup key={status} status={status} count={groupedCycles[status].length} isExpanded={sectionsExpanded[status]} onToggle={() => toggleSection(status)}>
+                <ListViewGroup
+                  key={status}
+                  status={status}
+                  count={groupedCycles[status].length}
+                  isExpanded={sectionsExpanded[status]}
+                  onToggle={() => toggleSection(status)}
+                >
                   {groupedCycles[status].length === 0 ? (
-                    <div className="text-center py-10 text-xs text-muted-foreground border border-dashed rounded-sm mx-2 bg-muted/5">No {status} cycles found</div>
-                  ) : groupedCycles[status].map((cycle) => (
-                    <Item key={cycle._id} cycle={cycle} phases={phases} isExpanded={expandedCycleId === cycle._id} onToggleExpand={() => setExpandedCycleId(expandedCycleId === cycle._id ? null : cycle._id)} onEdit={() => openEdit(cycle)} onDelete={() => handleDelete(cycle._id)} />
-                  ))}
+                    <EmptyState status={status} />
+                  ) : (
+                    groupedCycles[status].map((cycle) => (
+                      <Item
+                        key={cycle._id}
+                        cycle={cycle}
+                        phases={phases}
+                        isExpanded={expandedCycleId === cycle._id}
+                        onToggleExpand={() =>
+                          setExpandedCycleId(expandedCycleId === cycle._id ? null : cycle._id)
+                        }
+                        onEdit={() => openEdit(cycle)}
+                        onDelete={() => handleDelete(cycle._id)}
+                      />
+                    ))
+                  )}
                 </ListViewGroup>
               ))}
             </div>

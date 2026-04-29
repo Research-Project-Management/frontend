@@ -9,7 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Checkbox } from "~/components/ui/checkbox";
-import { useTags, useUpdateTag, useDeleteTag, useCreateTag } from "~/query/tag";
+import { useTags, useUpdateTag, useDeleteTag, useCreateTag } from "~/query/sticky";
 import { useParams } from "react-router";
 import type { Tag as TagType } from "../types/note.type";
 

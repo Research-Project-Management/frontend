@@ -106,7 +106,7 @@ function ModulesList({
     },
     {
       id: "my-note",
-      name: "My Notes",
+      name: "Notes",
       description: "Personal and project-specific notes",
     },
     {

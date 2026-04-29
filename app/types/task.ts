@@ -293,6 +293,8 @@ export type Cycle = {
   phase: CyclePhase;
   milestones: CycleMilestone[];
   deliverables: CycleDeliverable[];
+  members?: string[];
+  labels?: string[];
   order: number;
   author: {
     _id: string;

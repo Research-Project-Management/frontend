@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from "~/query/tag";
+import { useTags, useCreateTag, useUpdateTag, useDeleteTag } from "~/query/sticky";
 import { useParams } from "react-router";
 
 const AVAILABLE_LABEL_COLORS = [

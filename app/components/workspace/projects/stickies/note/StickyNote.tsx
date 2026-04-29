@@ -4,9 +4,10 @@ import StickyContent from "./StickyContent";
 import StickyToolbar from "./StickyToolbar";
 import { useState, useEffect, useRef, memo, useMemo } from "react";
 import type { Editor } from "@tiptap/react";
-import { GripVertical, FolderKanban } from "lucide-react";
+import { GripVertical, FolderKanban, FileText } from "lucide-react";
 import { useParams } from "react-router";
 import { useWorkspaceProjects } from "~/query/workspace";
+import { useStickyChildren } from "~/query/sticky";
 
 interface StickyNoteProps {
   note: Note;
@@ -32,12 +33,17 @@ const StickyNote = memo(function StickyNote({
   const [localTitle, setLocalTitle] = useState(note.title || "");
   const titleFocusedRef = useRef(false);
 
+  // Load children only for parent stickies (not for project notes or overlay)
+  const isParentSticky = note.category !== "note";
+  const { data: children = [] } = useStickyChildren(
+    isParentSticky && !isOverlay ? note._id : undefined
+  );
+
   const projectName = useMemo(() => {
     if (!note.projectId) return null;
-    return projects.find(p => p._id === note.projectId)?.name;
+    return projects.find((p) => p._id === note.projectId)?.name;
   }, [note.projectId, projects]);
 
-  // Only sync title from server when not currently editing it
   useEffect(() => {
     if (titleFocusedRef.current) return;
     if (note.title !== undefined && note.title !== localTitle) {
@@ -45,7 +51,6 @@ const StickyNote = memo(function StickyNote({
     }
   }, [note.title]);
 
-  // Debounce title update
   useEffect(() => {
     if (!titleFocusedRef.current) return;
     const timer = setTimeout(() => {
@@ -56,7 +61,6 @@ const StickyNote = memo(function StickyNote({
     return () => clearTimeout(timer);
   }, [localTitle, note._id, note.title, onUpdate]);
 
-  // Derive a slightly darker shade for the top accent
   const topAccentStyle = {
     backgroundColor: colorConfig.bg,
     filter: "brightness(0.88)",
@@ -64,45 +68,40 @@ const StickyNote = memo(function StickyNote({
 
   return (
     <div
-      className={`group relative flex flex-col rounded overflow-hidden transition-all duration-200 ${
+      className={`group relative flex flex-col rounded overflow-hidden transition-[box-shadow,background-color,transform] duration-200 ${
         isDragging
           ? "shadow-md scale-[1.02] rotate-1"
           : "hover:shadow-md hover:-translate-y-0.5"
       }`}
-      style={{
-        backgroundColor: colorConfig.bg,
-        color: colorConfig.text,
-      }}
+      style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
     >
       {/* Top accent bar + drag handle */}
       <div
-        className="h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing active:outline-0 select-none"
+        className="min-h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing active:outline-0 select-none"
         style={topAccentStyle}
         {...dragHandleProps}
       >
-        {/* Project Badge or Tags in header */}
         <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
           {projectName && (
-             <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/10 text-[9px] font-bold uppercase tracking-wider shrink-0">
-               <FolderKanban className="h-2.5 w-2.5" />
-               {projectName}
-             </div>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/10 text-[9px] font-bold uppercase tracking-wider shrink-0">
+              <FolderKanban className="h-2.5 w-2.5" />
+              {projectName}
+            </div>
           )}
-          
-          <div className="flex items-center gap-1 overflow-hidden">
+          <div className="flex items-center gap-1 flex-wrap overflow-hidden min-h-6">
             {note.tags && note.tags.length > 0 ? (
-              note.tags.slice(0, 2).map((tag) => (
+              note.tags.map((tag) => (
                 <span
                   key={tag._id}
-                  className="px-1.5 py-0 text-[9px] rounded font-semibold text-white shrink-0"
+                  className="px-1.5 py-0.5 text-[9px] rounded font-semibold text-white shrink-0"
                   style={{ backgroundColor: tag.color || "#aaa" }}
                 >
                   {tag.name}
                 </span>
               ))
-            ) : !projectName && (
+            ) : !projectName ? (
               <span className="text-[10px] opacity-40 italic">Sticky note</span>
-            )}
+            ) : null}
           </div>
         </div>
         <GripVertical className="h-3.5 w-3.5 opacity-30 shrink-0" />
@@ -114,14 +113,10 @@ const StickyNote = memo(function StickyNote({
           type="text"
           value={localTitle}
           onChange={(e) => setLocalTitle(e.target.value)}
-          onFocus={() => {
-            titleFocusedRef.current = true;
-          }}
+          onFocus={() => { titleFocusedRef.current = true; }}
           onBlur={() => {
             titleFocusedRef.current = false;
-            if (localTitle !== note.title) {
-              onUpdate(note._id, { title: localTitle });
-            }
+            if (localTitle !== note.title) onUpdate(note._id, { title: localTitle });
           }}
           placeholder="Title…"
           className="w-full bg-transparent border-none outline-none font-bold text-base placeholder:opacity-40"
@@ -132,25 +127,43 @@ const StickyNote = memo(function StickyNote({
       {/* Content */}
       <StickyContent note={note} onUpdate={onUpdate} onReady={setEditor} isOverlay={isOverlay} />
 
-      {/* Toolbar — show on group-hover */}
+      {/* Linked project notes (children) */}
+      {children.length > 0 && (
+        <div
+          className="mx-3 mb-2 mt-1 rounded border border-black/10 overflow-hidden"
+          style={{ backgroundColor: "rgba(0,0,0,0.06)" }}
+        >
+          <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider opacity-50 border-b border-black/10">
+            Project Notes ({children.length})
+          </div>
+          <div className="flex flex-col divide-y divide-black/5 max-h-32 overflow-y-auto">
+            {children.map((link) => (
+              <div key={link._id} className="flex items-center gap-2 px-2.5 py-1.5">
+                <FileText className="h-3 w-3 opacity-40 shrink-0" />
+                <span className="text-[11px] font-medium truncate flex-1 opacity-80">
+                  {link.note.title || "Untitled"}
+                </span>
+                {link.project && (
+                  <span className="text-[9px] opacity-40 shrink-0">{link.project.name}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-        <StickyToolbar
-          note={note}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          editor={editor}
-        />
+        <StickyToolbar note={note} onUpdate={onUpdate} onDelete={onDelete} editor={editor} />
       </div>
     </div>
   );
-}, (prev, next) => {
-  return (
-    prev.note === next.note &&
-    prev.isDragging === next.isDragging &&
-    prev.isOverlay === next.isOverlay &&
-    prev.onUpdate === next.onUpdate &&
-    prev.onDelete === next.onDelete
-  );
-});
+}, (prev, next) =>
+  prev.note === next.note &&
+  prev.isDragging === next.isDragging &&
+  prev.isOverlay === next.isOverlay &&
+  prev.onUpdate === next.onUpdate &&
+  prev.onDelete === next.onDelete
+);
 
 export default StickyNote;

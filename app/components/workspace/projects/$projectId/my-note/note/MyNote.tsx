@@ -55,7 +55,7 @@ const MyNote = memo(function MyNote({
 
   return (
     <div
-      className={`group relative flex flex-col rounded overflow-hidden transition-all duration-200 ${
+      className={`group relative flex flex-col rounded overflow-hidden transition-[box-shadow,background-color,transform] duration-200 ${
         isDragging
           ? "shadow-md scale-[1.02] rotate-1"
           : "hover:shadow-md hover:-translate-y-0.5"
@@ -67,25 +67,27 @@ const MyNote = memo(function MyNote({
     >
       {/* Top accent bar + drag handle */}
       <div
-        className="h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing active:outline-0 select-none"
+        className="min-h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing active:outline-0 select-none"
         style={topAccentStyle}
         {...dragHandleProps}
       >
         {/* Tags in header */}
-        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
-          {note.tags && note.tags.length > 0 ? (
-            note.tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag._id}
-                className="px-1.5 py-0 text-[9px] rounded font-semibold text-white shrink-0"
-                style={{ backgroundColor: tag.color || "#aaa" }}
-              >
-                {tag.name}
-              </span>
-            ))
-          ) : (
-            <span className="text-[10px] opacity-40 italic">Project Note</span>
-          )}
+        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1 flex-wrap overflow-hidden min-h-6">
+            {note.tags && note.tags.length > 0 ? (
+              note.tags.map((tag) => (
+                <span
+                  key={tag._id}
+                  className="px-1.5 py-0.5 text-[9px] rounded font-semibold text-white shrink-0"
+                  style={{ backgroundColor: tag.color || "#aaa" }}
+                >
+                  {tag.name}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] opacity-40 italic">Project Note</span>
+            )}
+          </div>
         </div>
         <GripVertical className="h-3.5 w-3.5 opacity-30 shrink-0" />
       </div>

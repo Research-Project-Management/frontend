@@ -51,7 +51,7 @@ const ALL_MODULES: {
   { id: "tasks", label: "Tasks" },
   { id: "cycles", label: "Cycles" },
   { id: "storage", label: "Storage" },
-  { id: "my-note", label: "My Notes" },
+  { id: "my-note", label: "Notes" },
   { id: "settings", label: "Settings", locked: true },
 ];
 

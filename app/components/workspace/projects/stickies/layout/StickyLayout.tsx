@@ -8,6 +8,7 @@ import {
   useCreateSticky,
   useUpdateSticky,
   useDeleteSticky,
+  useReorderStickies,
 } from "~/query/sticky";
 import { Layers2, Loader2 } from "lucide-react";
 import { cn } from "~/lib/utils";
@@ -43,7 +44,8 @@ export default function StickyLayout() {
     "saved" | "saving" | "error"
   >("saved");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [orderedNotes, setOrderedNotes] = useState<Note[]>([]);
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -54,6 +56,7 @@ export default function StickyLayout() {
   const createSticky = useCreateSticky();
   const updateSticky = useUpdateSticky();
   const deleteSticky = useDeleteSticky();
+  const reorderStickies = useReorderStickies();
 
   useEffect(() => {
     if (updateSticky.isPending) setSavingStatus("saving");
@@ -63,9 +66,11 @@ export default function StickyLayout() {
     } else if (updateSticky.isError) setSavingStatus("error");
   }, [updateSticky.isPending, updateSticky.isSuccess, updateSticky.isError]);
 
+  // Reset drag order when the underlying notes change (e.g., deletion/addition)
   useEffect(() => {
-    setOrderedNotes(notes);
-  }, [notes]);
+    setDragOrder(null);
+  }, [notes.map(n => n._id).join(",")]);
+
 
   const getNextColor = (prevNotes: Note[]): Note["color"] => {
     if (prevNotes.length === 0) return NOTE_COLOR_CYCLE[0];
@@ -114,14 +119,25 @@ export default function StickyLayout() {
     setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setOrderedNotes((prev) => {
-      const oldIdx = prev.findIndex((n) => n._id === active.id);
-      const newIdx = prev.findIndex((n) => n._id === over.id);
-      return arrayMove(prev, oldIdx, newIdx);
-    });
-  }, []);
+    
+    const oldIdx = notes.findIndex((n) => n._id === String(active.id));
+    const newIdx = notes.findIndex((n) => n._id === String(over.id));
+    
+    if (oldIdx !== -1 && newIdx !== -1) {
+      const newOrderIds = arrayMove(notes.map(n => n._id), oldIdx, newIdx);
+      setDragOrder(newOrderIds);
+      reorderStickies.mutate(newOrderIds);
+    }
+  }, [notes, reorderStickies]);
 
-  const displayNotes = orderedNotes.length > 0 ? orderedNotes : notes;
+  const displayNotes = useMemo(() => {
+    if (!dragOrder) return notes;
+    const map = new Map(notes.map((n) => [n._id, n]));
+    return dragOrder
+      .map((id) => map.get(id))
+      .filter((n): n is Note => n !== undefined);
+  }, [notes, dragOrder]);
+
 
   const filteredNotes = useMemo(
     () =>
@@ -133,7 +149,7 @@ export default function StickyLayout() {
 
         const matchesTags =
           selectedTags.length === 0 ||
-          (note.tags && note.tags.some((tag) => selectedTags.includes(tag._id)));
+          (note.tags && selectedTags.every((tagId) => note.tags.some(t => t._id === tagId)));
 
         return matchesSearch && matchesTags;
       }),

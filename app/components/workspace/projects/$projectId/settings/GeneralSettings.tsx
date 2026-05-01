@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import {
@@ -7,13 +7,14 @@ import {
   useUpdateProject,
   type Project,
 } from "~/query/project";
-import { useWorkspace } from "~/query/workspace";
+import { useWorkspace, useWorkspaceProjects } from "~/query/workspace";
 import { Loader2 } from "lucide-react";
 import Loading from "~/components/ui/Loading";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { Switch } from "~/components/ui/switch";
 import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
 
 export default function GeneralSettings() {
@@ -22,19 +23,31 @@ export default function GeneralSettings() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const deleteProjectMutation = useDeleteProject();
 
-  const { data: projectData, isLoading: isProjectLoading } = useProjectDetails(
+  const { data: projectData, isLoading: isProjectLoading, isError: isProjectError } = useProjectDetails(
     projectId!,
   );
   const {
-    workspace,
     isLoading: isWorkspaceLoading,
     yourRole: workspaceRole,
   } = useWorkspace(workspaceId!);
 
-  const project = projectData?.project as Project;
-  const userRole = projectData?.yourRole;
+  const { projects, isLoading: isProjectsLoading } = useWorkspaceProjects(workspaceId!);
 
-  if (isProjectLoading || isWorkspaceLoading) return <Loading />;
+  const project = useMemo(() => {
+    // 1. Try data from direct fetch
+    const p = (projectData?.project || projectData) as Project;
+    if (p && p._id) return p;
+
+    // 2. Fallback to projects list from workspace
+    if (projects) {
+      return projects.find((p: any) => p._id === projectId || p.url === projectId) as Project;
+    }
+    return null;
+  }, [projectData, projects, projectId]);
+
+  const userRole = projectData?.yourRole || projectData?.role;
+
+  if ((isProjectLoading && !project) || isWorkspaceLoading || (isProjectsLoading && !projects)) return <Loading />;
   if (!project) return <div className="p-6">Project not found</div>;
 
   const canManage =
@@ -65,7 +78,7 @@ export default function GeneralSettings() {
             onClose={() => setIsDeleteOpen(false)}
             onConfirm={() => {
               deleteProjectMutation.mutate(
-                { projectId: projectId! },
+                { projectId: project._id }, // Use actual ID from project object
                 {
                   onSuccess: () => {
                     setIsDeleteOpen(false);
@@ -102,12 +115,27 @@ function GeneralForm({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [avatar, setAvatar] = useState(project.avatar || "");
+  const [parallelEnabled, setParallelEnabled] = useState(project.parallel_cycles_enabled ?? false);
 
   const updateProjectMutation = useUpdateProject();
 
+  // Reset form when project changes (important for fallback logic)
+  useEffect(() => {
+    setName(project.name);
+    setDescription(project.description);
+    setAvatar(project.avatar || "");
+    setParallelEnabled(project.parallel_cycles_enabled ?? false);
+  }, [project]);
+
   const handleSave = () => {
     updateProjectMutation.mutate(
-      { projectId, name, description, avatar },
+      { 
+        projectId: project._id, // Use actual ID
+        name, 
+        description, 
+        avatar,
+        parallel_cycles_enabled: parallelEnabled 
+      } as any,
       {
         onSuccess: () => {
           toast.success("Project settings updated successfully");
@@ -122,7 +150,8 @@ function GeneralForm({
   const hasChanges =
     name !== project.name ||
     description !== project.description ||
-    avatar !== (project.avatar || "");
+    avatar !== (project.avatar || "") ||
+    parallelEnabled !== (project.parallel_cycles_enabled ?? false);
 
   return (
     <div className="space-y-6">
@@ -176,6 +205,21 @@ function GeneralForm({
           rows={4}
           className="resize-none"
         />
+      </div>
+
+      <div className="pt-2">
+        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/5">
+          <div className="space-y-0.5">
+            <Label htmlFor="parallel-cycles" className="text-sm font-semibold">Parallel Cycles</Label>
+            <p className="text-xs text-muted-foreground">Allow multiple active cycles at the same time.</p>
+          </div>
+          <Switch
+            id="parallel-cycles"
+            checked={parallelEnabled}
+            onCheckedChange={setParallelEnabled}
+            disabled={!canManage}
+          />
+        </div>
       </div>
 
       {canManage && (

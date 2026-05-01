@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "react-router";
-import { useProjects } from "~/hooks/useWorkspace";
+import { useWorkspace, useProjects } from "~/hooks/useWorkspace";
+import { useProjectDetails } from "~/query/project";
 import { useTags } from "~/query/sticky";
 import { useProjectCycles, useCreateCycle, useUpdateCycle, useDeleteCycle } from "~/query/cycle";
 import type { Cycle } from "~/types/task";
@@ -18,8 +19,10 @@ import {
   BarChart3, 
   FileText, 
   RefreshCw, 
-  GraduationCap 
+  GraduationCap,
+  RotateCcw
 } from "lucide-react";
+import { SearchIcon, BooksIcon, PuzzleIcon, DataIcon, AnalysisIcon, WritingIcon, RevisionIcon, SubmissionIcon } from "../components/ScientificIcons";
 
 import { Item, ListViewGroup, EmptyState, type DerivedStatus } from "../sections/ListViewSection";
 import { Target } from "lucide-react";
@@ -29,21 +32,23 @@ import { DeleteModal } from "../modals/DeleteModal";
 import { CreateModal } from "../modals/CreateModal";
 import { EditModal } from "../modals/EditModal";
 import Topbar from "~/components/workspace/projects/$projectId/overview/Topbar";
-import TopBar from "./Topbar";
+import TopBar from "./TopBar";
 
 const INITIAL_PHASES = [
-  { id: "search", icon: <Search className="size-4" />, label: "Topic Selection", color: "#4bce97" },
-  { id: "book", icon: <Book className="size-4" />, label: "Literature Review", color: "#9f8fef" },
-  { id: "settings", icon: <Settings className="size-4" />, label: "Methodology", color: "#579dff" },
-  { id: "database", icon: <Database className="size-4" />, label: "Data Collection", color: "#f5cd47" },
-  { id: "analysis", icon: <BarChart3 className="size-4" />, label: "Data Analysis", color: "#fea362" },
-  { id: "writing", icon: <FileText className="size-4" />, label: "Writing", color: "#f87168" },
-  { id: "refresh", icon: <RefreshCw className="size-4" />, label: "Review & Revision", color: "#60c6d2" },
-  { id: "cap", icon: <GraduationCap className="size-4" />, label: "Submission / Defense", color: "#44546f" },
+  { id: "search", icon: <SearchIcon />, label: "Topic Selection", color: "#4bce97" },
+  { id: "book", icon: <BooksIcon />, label: "Literature Review", color: "#9f8fef" },
+  { id: "settings", icon: <PuzzleIcon />, label: "Methodology", color: "#579dff" },
+  { id: "database", icon: <DataIcon />, label: "Data Collection", color: "#f5cd47" },
+  { id: "analysis", icon: <AnalysisIcon />, label: "Data Analysis", color: "#fea362" },
+  { id: "writing", icon: <WritingIcon />, label: "Writing", color: "#f87168" },
+  { id: "refresh", icon: <RevisionIcon />, label: "Review & Revision", color: "#60c6d2" },
+  { id: "cap", icon: <SubmissionIcon />, label: "Submission / Defense", color: "#44546f" },
 ];
 
 export function CycleLayout() {
   const { projectId, workspaceId } = useParams();
+  const { projects } = useProjects();
+  const currentProject = projects?.find((p: any) => p._id === projectId);
   const [phases, setPhases] = useState(INITIAL_PHASES);
   const { data, isLoading } = useProjectCycles(projectId!);
   const createMutation = useCreateCycle();
@@ -70,8 +75,7 @@ export function CycleLayout() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [cycleToDelete, setCycleToDelete] = useState<string | null>(null);
 
-  const { projects } = useProjects();
-  const projectData = projects?.find((p: any) => p._id === projectId);
+  const { data: projectData } = useProjectDetails(projectId!);
   const { data: workspaceTags = [] } = useTags(workspaceId!);
   const cycles = data?.cycles || [];
 
@@ -82,7 +86,11 @@ export function CycleLayout() {
 
     cycles.forEach((cycle) => {
       let status: DerivedStatus = "upcoming";
-      if (cycle.startDate && cycle.endDate) {
+      
+      // Manual end always wins
+      if (cycle.ended_at) {
+        status = "completed";
+      } else if (cycle.startDate && cycle.endDate) {
         const start = parseISO(cycle.startDate);
         const end = parseISO(cycle.endDate);
         start.setHours(0, 0, 0, 0);
@@ -140,6 +148,42 @@ export function CycleLayout() {
       toast.error("Start date cannot be after end date");
       return;
     }
+
+    // Parallel cycle constraint check
+    if (projectData && projectData.parallel_cycles_enabled === false) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      // 1. Calculate if the being-saved cycle is Active
+      let isNewActive = false;
+      if (formStart && formEnd) {
+        const start = new Date(formStart);
+        const end = new Date(formEnd);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        isNewActive = !isBefore(now, start) && !isAfter(now, end);
+      }
+
+      // 2. If it's active, check for existing active cycles
+      if (isNewActive) {
+        const existingActive = cycles.find((c) => {
+          if (editingCycle && c._id === editingCycle._id) return false;
+          if (!c.startDate || !c.endDate) return false;
+          const s = parseISO(c.startDate);
+          const e = parseISO(c.endDate);
+          s.setHours(0, 0, 0, 0);
+          e.setHours(0, 0, 0, 0);
+          return !isBefore(now, s) && !isAfter(now, e);
+        });
+
+        if (existingActive) {
+          toast.error(`Project only allows one active cycle at a time. (Existing: ${existingActive.name})`, {
+            id: "parallel-error",
+          });
+          return;
+        }
+      }
+    }
     const payload = {
       name: formName,
       description: formDescription,
@@ -182,12 +226,25 @@ export function CycleLayout() {
   };
 
 
+  const isEditingReadOnly = useMemo(() => {
+    if (!editingCycle) return false;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (editingCycle.ended_at) return true;
+    if (editingCycle.startDate && editingCycle.endDate) {
+      const end = parseISO(editingCycle.endDate);
+      end.setHours(0, 0, 0, 0);
+      return isAfter(now, end);
+    }
+    return editingCycle.status === "completed";
+  }, [editingCycle]);
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
       <Topbar
-        project={projectData ? { name: projectData.name, avatar: projectData.avatar } : undefined}
+        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
         title="Cycles"
-        Icon={Target}
+        Icon={RotateCcw}
         actions={
           <TopBar 
             onAddCycle={openCreate} 
@@ -220,6 +277,7 @@ export function CycleLayout() {
                         key={cycle._id}
                         cycle={cycle}
                         phases={phases}
+                        isReadOnly={status === "completed"}
                         isExpanded={expandedCycleId === cycle._id}
                         onToggleExpand={() =>
                           setExpandedCycleId(expandedCycleId === cycle._id ? null : cycle._id)
@@ -254,8 +312,6 @@ export function CycleLayout() {
           setFormMembers={setFormMembers}
           formLabels={formLabels}
           setFormLabels={setFormLabels}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           phases={phases}
           setPhases={setPhases}
           projectData={projectData}
@@ -280,13 +336,12 @@ export function CycleLayout() {
           setFormMembers={setFormMembers}
           formLabels={formLabels}
           setFormLabels={setFormLabels}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           phases={phases}
           setPhases={setPhases}
           projectData={projectData}
           workspaceTags={workspaceTags}
           onSave={handleSave}
+          isReadOnly={isEditingReadOnly}
         />
       )}
 

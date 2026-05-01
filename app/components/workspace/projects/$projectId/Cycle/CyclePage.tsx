@@ -28,6 +28,8 @@ import {
 import { toast } from "sonner";
 import Topbar from "../overview/Topbar";
 import { useProjects } from "~/hooks/useWorkspace";
+import { PhaseIconRenderer } from "./components/PhaseIconRenderer";
+import { useProjectDetails } from "~/query/project";
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -67,6 +69,7 @@ export default function CyclePage() {
 
   const { projects } = useProjects();
   const currentProject = projects?.find((p: any) => p._id === projectId);
+  const { data: projectDetails } = useProjectDetails(projectId!);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
@@ -235,12 +238,12 @@ export default function CyclePage() {
                     )}
 
                     {/* Phase icon */}
-                    <span
-                      className="size-8 rounded-lg flex items-center justify-center text-sm shrink-0"
-                      style={{ backgroundColor: `${phaseConfig.color}15` }}
-                    >
-                      {phaseConfig.icon}
-                    </span>
+                    <PhaseIconRenderer 
+                      phaseId={cycle.phase}
+                      icon={phaseConfig.icon}
+                      color={phaseConfig.color}
+                      size="md"
+                    />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

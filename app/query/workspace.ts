@@ -212,11 +212,19 @@ export const useAddWorkspaceMember = () => {
   return useMutation({
     mutationFn: ({ workspaceId, userId, role = "member" }: { workspaceId: string; userId: string; role?: string }) =>
       apiPut(`/api/workspace/${workspaceId}/add-member`, { userId, role }),
-    onSuccess: () => {
+    onMutate: () => {
+      toast.loading("Adding member...", { id: "ws-member-action" });
+    },
+    onSuccess: (data) => {
+      if (data?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      }
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      toast.success("Member added", { id: "ws-member-action" });
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to add member", { id: "ws-member-error" });
+      toast.error(error.message || "Failed to add member", { id: "ws-member-action" });
     },
   });
 };
@@ -238,6 +246,8 @@ export const useUpdateWorkspaceMemberRole = () => {
         newRole,
       }),
     onMutate: async ({ workspaceId, userId, newRole }) => {
+      toast.loading("Updating member role...", { id: "ws-member-action" });
+
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["workspace"] });
 
@@ -247,7 +257,7 @@ export const useUpdateWorkspaceMemberRole = () => {
       });
 
       // Try to find the full role object in the "roles" cache for better optimistic UI (colors)
-      const rolesData: any = queryClient.getQueryData(["roles"]);
+      const rolesData: any = queryClient.getQueryData(["roles", workspaceId]);
       const roles = Array.isArray(rolesData) ? rolesData : rolesData?.roles || [];
       const roleObject = roles.find((r: any) => r.name.toLowerCase() === newRole.toLowerCase());
 
@@ -276,7 +286,13 @@ export const useUpdateWorkspaceMemberRole = () => {
       context?.previousWorkspaceQueries?.forEach(([queryKey, data]: [any, any]) => {
         queryClient.setQueryData(queryKey, data);
       });
-      toast.error(error.message || "Failed to update member role", { id: "ws-member-error" });
+      toast.error(error.message || "Failed to update member role", { id: "ws-member-action" });
+    },
+    onSuccess: (data) => {
+      if (data?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      }
+      toast.success("Member role updated", { id: "ws-member-action" });
     },
     onSettled: (_data, _error, _variables) => {
       queryClient.invalidateQueries({
@@ -291,11 +307,19 @@ export const useRemoveWorkspaceMember = () => {
   return useMutation({
     mutationFn: ({ workspaceId, userId }: { workspaceId: string; userId: string }) =>
       apiPut(`/api/workspace/${workspaceId}/remove-member`, { userId }),
-    onSuccess: () => {
+    onMutate: () => {
+      toast.loading("Removing member...", { id: "ws-member-action" });
+    },
+    onSuccess: (data) => {
+      if (data?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      }
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      toast.success("Member removed", { id: "ws-member-action" });
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to remove member", { id: "ws-member-error" });
+      toast.error(error.message || "Failed to remove member", { id: "ws-member-action" });
     },
   });
 };

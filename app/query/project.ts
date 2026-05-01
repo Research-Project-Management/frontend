@@ -18,6 +18,7 @@ export type Project = {
     joinedAt: string;
   }[];
   createdBy: { _id: string; name: string; email: string; avatar?: string };
+  parallel_cycles_enabled: boolean;
   createdAt: string;
   updatedAt: string;
 };

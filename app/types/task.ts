@@ -9,8 +9,6 @@ export function resolveTaskColumnId(column?: Pick<Column, "id" | "_id"> | null) 
   return column?.id ?? column?._id ?? "";
 }
 
-// Đã loại bỏ DEFAULT_TASK_COLUMN_IDS vì không còn dùng
-
 export type TaskLabel = {
   id: string;
   color: string;
@@ -295,6 +293,7 @@ export type Cycle = {
   deliverables: CycleDeliverable[];
   members?: string[];
   labels?: string[];
+  ended_at?: string;
   order: number;
   author: {
     _id: string;
@@ -340,15 +339,15 @@ export type TaskActivityLog = {
     avatar?: string;
   };
   action:
-    | "task_created"
-    | "assignee_added"
-    | "assignee_removed"
-    | "assignee_changed"
-    | "column_moved"
-    | "attachments_changed"
-    | "due_date_changed"
-    | "completed_status_changed"
-    | "checklist_changed";
+  | "task_created"
+  | "assignee_added"
+  | "assignee_removed"
+  | "assignee_changed"
+  | "column_moved"
+  | "attachments_changed"
+  | "due_date_changed"
+  | "completed_status_changed"
+  | "checklist_changed";
   previous_value?: any;
   new_value?: any;
   description: string;

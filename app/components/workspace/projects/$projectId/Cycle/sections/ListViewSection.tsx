@@ -8,7 +8,8 @@ import {
   PlayCircle,
   CircleDashed,
   CheckCircle2,
-  CalendarDays
+  CalendarDays,
+  Lock
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import type { Cycle } from "~/types/task";
 import { PHASE_CONFIG as STATIC_PHASE_CONFIG } from "~/types/task";
+import { PhaseIconRenderer } from "../components/PhaseIconRenderer";
 
 export type DerivedStatus = "active" | "upcoming" | "completed";
 
@@ -41,17 +43,14 @@ function EmptyState({ status }: { status: DerivedStatus }) {
     active: {
       title: "No active cycle",
       description: "An active cycle includes any period that encompasses today's date within its range. Find the progress and details of the active cycle here.",
-      image: "https://flux.aisq.dev/mol-yf3ozm" // Placeholder for the illustration URL seen in user's image
     },
     upcoming: {
       title: "No upcoming cycles",
       description: "Cycles that are scheduled for the future will appear here. Plan your upcoming work by creating a new cycle.",
-      image: ""
     },
     completed: {
       title: "No completed cycles",
       description: "Past cycles that have reached their due date will be moved here for reference and reporting.",
-      image: ""
     }
   }[status];
 
@@ -85,6 +84,7 @@ interface ItemProps {
   onToggleExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  isReadOnly?: boolean;
 }
 
 export function Item({
@@ -94,6 +94,7 @@ export function Item({
   onToggleExpand,
   onEdit,
   onDelete,
+  isReadOnly = false,
 }: ItemProps) {
   const phaseConfig = useMemo(() => {
     const dynamic = phases.find(p => p.id === cycle.phase);
@@ -117,16 +118,23 @@ export function Item({
       role="button"
       tabIndex={0}
       onClick={onToggleExpand}
-      className="w-full flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-zinc-50/80 transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-b border-border/40 relative last:border-b-0"
+      className={`w-full flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-zinc-50/80 transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-b border-border/40 relative last:border-b-0 ${isReadOnly ? 'opacity-90' : ''}`}
     >
-      <div className="size-4.5 rounded-full border shrink-0 flex items-center justify-center text-[10px]" style={{ color: phaseConfig.color, borderColor: `${phaseConfig.color}40` }}>
-         {phaseConfig.icon || <CircleDashed className="size-3" />}
-      </div>
+      <PhaseIconRenderer 
+        phaseId={cycle.phase}
+        icon={phaseConfig.icon}
+        color={phaseConfig.color}
+        size="sm"
+        className="!size-6.5 !bg-transparent"
+      />
       
       <div className="flex-1 min-w-0 flex items-center gap-3">
         <span className="text-[13px] font-medium text-zinc-700 truncate group-hover:text-black">
           {cycle.name}
         </span>
+        {isReadOnly && (
+           <Lock className="size-3 text-zinc-400 shrink-0" />
+        )}
       </div>
 
       {dateText && (
@@ -141,30 +149,42 @@ export function Item({
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 rounded-sm">
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-              <ChevronRight className="mr-2 h-4 w-4" /> View Details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Cycle
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {!isReadOnly ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-sm">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <ChevronRight className="mr-2 h-4 w-4" /> View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Cycle
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all text-zinc-400"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {isExpanded && (
@@ -175,7 +195,7 @@ export function Item({
             </p>
           )}
           <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="h-7 text-[11px] px-3">
-            Open Cycle
+            {isReadOnly ? "View Cycle" : "Open Cycle"}
           </Button>
         </div>
       )}

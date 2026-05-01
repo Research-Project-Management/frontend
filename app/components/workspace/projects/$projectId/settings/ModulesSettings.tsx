@@ -6,7 +6,7 @@ import {
   useUpdateProject,
   type Project,
 } from "~/query/project";
-import { useWorkspace } from "~/query/workspace";
+import { useWorkspace, useWorkspaceProjects } from "~/query/workspace";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import Loading from "~/components/ui/Loading";
 import { Button } from "~/components/ui/button";
@@ -40,11 +40,23 @@ export default function ModulesSettings() {
     isLoading: isWorkspaceLoading,
     yourRole: workspaceRole,
   } = useWorkspace(workspaceId!);
+  const { projects, isLoading: isProjectsLoading } = useWorkspaceProjects(workspaceId!);
 
-  const project = projectData?.project as Project;
-  const userRole = projectData?.yourRole;
+  const project = useMemo(() => {
+    // 1. Try data from direct fetch
+    const p = (projectData?.project || projectData) as Project;
+    if (p && p._id) return p;
 
-  if (isProjectLoading || isWorkspaceLoading) return <Loading />;
+    // 2. Fallback to projects list from workspace
+    if (projects) {
+      return projects.find((p: any) => p._id === projectId || p.url === projectId) as Project;
+    }
+    return null;
+  }, [projectData, projects, projectId]);
+
+  const userRole = projectData?.yourRole || projectData?.role;
+
+  if ((isProjectLoading && !project) || isWorkspaceLoading || (isProjectsLoading && !projects)) return <Loading />;
   if (!project) return <div className="p-6">Project not found</div>;
 
   const canManage =
@@ -54,16 +66,12 @@ export default function ModulesSettings() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-
-
-
-
       <div className="flex-1 overflow-y-auto">
         <div className="px-8 py-8 max-w-3xl mx-auto">
           <ModulesList
             project={project}
             canManage={canManage}
-            projectId={projectId!}
+            projectId={project._id}
           />
         </div>
       </div>
@@ -127,6 +135,7 @@ function ModulesList({
     selectedModules.add("settings");
     return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
   }, [project.modules]);
+
   const [selectedModules, setSelectedModules] = useState<ProjectModuleKey[]>(
     normalizedProjectModules,
   );

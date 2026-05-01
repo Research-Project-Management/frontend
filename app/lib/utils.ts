@@ -13,18 +13,26 @@ export function cn(...inputs: ClassValue[]) {
 export function getRoleName(member: any): string {
   if (!member) return "member";
   
+  let roleName = "member";
+
   // Handle legacy string role
   if (typeof member.role === "string") {
-    return member.role;
+    roleName = member.role;
   }
-  
   // Handle new role object
-  if (member.role && typeof member.role === "object") {
-    return member.role.name || member.legacyRole || "member";
+  else if (member.role && typeof member.role === "object") {
+    roleName = member.role.name || member.legacyRole || "member";
   }
-  
-  // Fallback to legacyRole or default
-  return member.legacyRole || "member";
+  // Fallback
+  else {
+    roleName = member.legacyRole || "member";
+  }
+
+  // If the role name is a 24-char hex string (ObjectId), it's probably not intended for display
+  const isHexId = /^[0-9a-fA-F]{24}$/.test(roleName);
+  if (isHexId) return "member";
+
+  return roleName;
 }
 
 /**

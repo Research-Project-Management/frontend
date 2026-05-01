@@ -1,12 +1,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useWorkspace,
   useAddWorkspaceMember,
   useUpdateWorkspaceMemberRole,
   useRemoveWorkspaceMember,
+  syncWorkspaceIntoCaches,
 } from "~/query/workspace";
 import { useRoles } from "~/query/role";
+import { useSocket } from "~/contexts/SocketProvider";
+import { useSocketRoom } from "~/hooks/useSocketRoom";
 import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { getRoleName, getRoleColor, cn } from "~/lib/utils";
@@ -37,6 +41,8 @@ import DeleteModal from "../general/components/deleteModal";
 
 export default function MemberPage() {
   const { workspaceId: workspaceUrl } = useParams();
+  const queryClient = useQueryClient();
+  const socket = useSocket();
   const [searchTerm, setSearchTerm] = useState("");
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -47,12 +53,42 @@ export default function MemberPage() {
   const { workspace, isLoading, yourRole } = useWorkspace(workspaceUrl!);
   const { data: rolesData } = useRoles(workspace?._id ?? "");
   const roles = Array.isArray(rolesData) ? rolesData : [];
+  useSocketRoom("workspace", workspace?._id);
 
   // Mutations
   const updateRoleMutation = useUpdateWorkspaceMemberRole();
   const removeMemberMutation = useRemoveWorkspaceMember();
 
   const members = workspace?.members || [];
+  const existingMemberIds = useMemo<Set<string>>(
+    () =>
+      new Set(
+        members
+          .map((m: any) => m.user?._id)
+          .filter((id: unknown): id is string => typeof id === "string"),
+      ),
+    [members],
+  );
+
+  useEffect(() => {
+    if (!socket || !workspace?._id) return;
+
+    const handleMembersChanged = (payload: any) => {
+      if (payload?.workspaceId !== workspace._id) return;
+
+      if (payload.workspace) {
+        syncWorkspaceIntoCaches(queryClient, payload.workspace);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceUrl] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    };
+
+    socket.on("workspace:members-changed", handleMembersChanged);
+    return () => {
+      socket.off("workspace:members-changed", handleMembersChanged);
+    };
+  }, [queryClient, socket, workspace?._id, workspaceUrl]);
 
   const filteredMembers = useMemo(
     () =>
@@ -270,7 +306,7 @@ export default function MemberPage() {
                                     return (priority[a.name.toLowerCase()] || 99) - (priority[b.name.toLowerCase()] || 99);
                                   })
                                   .map((r) => {
-                                    const isSelected = roleName === r.name;
+                                    const isSelected = roleName.toLowerCase() === r.name.toLowerCase();
                                     return (
                                       <DropdownMenuItem
                                         key={r._id}
@@ -332,6 +368,7 @@ export default function MemberPage() {
           open={addMemberOpen}
           onOpenChange={setAddMemberOpen}
           workspaceId={workspace._id}
+          existingMemberIds={existingMemberIds}
         />
 
         <DeleteModal
@@ -357,10 +394,12 @@ function AddWorkspaceMemberDialog({
   open,
   onOpenChange,
   workspaceId,
+  existingMemberIds,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   workspaceId: string;
+  existingMemberIds: Set<string>;
 }) {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -389,7 +428,10 @@ function AddWorkspaceMemberDialog({
           },
         );
         const data = await response.json();
-        setSearchResults(data.users || []);
+        const users = data.users || [];
+        // Filter out users already in the workspace
+        const filtered = users.filter((u: any) => !existingMemberIds.has(u._id));
+        setSearchResults(filtered);
       } catch (e) {
         console.error("Search error", e);
         setSearchResults([]);
@@ -402,7 +444,7 @@ function AddWorkspaceMemberDialog({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [search]); // Only re-run when search changes
+  }, [search, existingMemberIds]); // Re-run when search or existingMemberIds changes
 
   const handleAdd = async (userId: string) => {
     try {

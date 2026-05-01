@@ -270,7 +270,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                     const module = modulesConfig[moduleKey];
                     if (!module) return null;
                     const moduleLink = `/${workspaceId}/projects/${project._id}/${moduleKey}`;
-                    const isModuleActive = location.pathname === moduleLink;
+                    const isModuleActive = location.pathname === moduleLink || location.pathname.startsWith(moduleLink + "/");
                     return (
                       <Link
                         to={moduleLink}

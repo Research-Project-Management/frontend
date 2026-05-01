@@ -31,45 +31,45 @@ export default function TopBar({
 
   return (
     <div className="flex items-center gap-3 shrink-0">
-      {/* Expandable Search */}
       <div
         className={cn(
-          "relative flex items-center transition-all duration-300 ease-in-out overflow-hidden h-8",
-          isSearchExpanded ? "w-64" : "w-8",
+          "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-sm overflow-hidden group",
+          isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
         )}
+        onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
       >
-        {isSearchExpanded ? (
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              placeholder="Search stickies..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              onBlur={() => !searchQuery && setIsSearchExpanded(false)}
-              className="pl-8 pr-8 h-8 text-[13px] rounded-sm border border-border/60 bg-background focus-visible:ring-0 shadow-none w-full"
-              autoFocus
-            />
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onSearchChange("");
-                setIsSearchExpanded(false);
-              }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-            >
-              <Plus className="size-3.5 rotate-45" />
-            </button>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-sm hover:bg-secondary/60"
-            onClick={() => setIsSearchExpanded(true)}
+        <Search 
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 z-10",
+            isSearchExpanded || searchQuery 
+              ? "left-2.5 translate-x-0 text-muted-foreground/50" 
+              : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
+          )} 
+        />
+        <Input
+          ref={inputRef}
+          placeholder="Search by title"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onBlur={() => !searchQuery && setIsSearchExpanded(false)}
+          className={cn(
+            "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-all pl-8 pr-8",
+            isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+          autoFocus={isSearchExpanded}
+        />
+        {(isSearchExpanded || searchQuery) && (
+          <button
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSearchChange("");
+              setIsSearchExpanded(false);
+            }}
+            className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           >
-            <Search className="size-4" />
-          </Button>
+            <Plus className="size-3.5 rotate-45" />
+          </button>
         )}
       </div>
 

@@ -163,11 +163,9 @@ export const DatesSection = ({ formStart, formEnd, setFormStart, setFormEnd, tri
     <Popover>
       <PopoverTrigger asChild>
         {trigger || (
-          <button className="h-10 rounded-[8px] border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] hover:bg-[#f7f7f7] flex items-center gap-2 transition-colors outline-none">
+          <button className="h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] hover:bg-[#f7f7f7] flex items-center gap-2 transition-colors outline-none">
             <CalendarDays className="size-4 text-[#44546f]" />
-            <span>{formStart ? format(parseISO(formStart), 'dd MMM yyyy') : "Start date"}</span>
-            <span className="text-gray-300">→</span>
-            <span>{formEnd ? format(parseISO(formEnd), 'dd MMM yyyy') : "End date"}</span>
+            Dates
           </button>
         )}
       </PopoverTrigger>

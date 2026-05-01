@@ -7,8 +7,9 @@ import { useWorkspacePages, useProjectPages } from "~/query/page";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Button } from "~/components/ui/button";
-import CreatePageDialog from "./CreatePageDialog";
 import { cn } from "~/lib/utils";
+import CreatePageDialog from "./CreatePageDialog";
+import Topbar from "../$projectId/overview/Topbar";
 
 export default function PagesManager({ projectId }: { projectId?: string }) {
   const { workspaceId } = useParams();
@@ -81,100 +82,84 @@ export default function PagesManager({ projectId }: { projectId?: string }) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 h-13 flex justify-between items-center">
-        <div className="flex items-center gap-2.5">
-          {projectId && currentProject ? (
-            <>
-              <div className="flex items-center gap-2">
-                <span className="text-base leading-none">
-                  {currentProject.avatar}
-                </span>
-                <span className="text-sm font-semibold text-primary truncate max-w-[120px]">
-                  {currentProject.name}
-                </span>
-              </div>
-              <ChevronRight className="size-3.5 text-muted-foreground/50" />
-            </>
-          ) : null}
-          <div className="flex items-center gap-2">
-            <PenLine className="size-4.5 text-primary" />
-            <h1 className="text-sm font-semibold text-primary transition-all duration-300">
-              All Pages
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div
-            className={cn(
-              "relative flex items-center transition-all duration-300 ease-in-out overflow-hidden h-8",
-              isSearchExpanded ? "w-64" : "w-8",
-            )}
-          >
-            {isSearchExpanded ? (
-              <div className="relative w-full">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <Input
-                  autoFocus
-                  type="text"
-                  placeholder="Search pages..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onBlur={() => !searchQuery && setIsSearchExpanded(false)}
-                  className="pl-8 pr-8 h-8! text-[13px] rounded-sm border border-border/60 bg-background focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/60"
-                />
+      <Topbar
+        project={projectId && currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
+        title={projectId ? "Pages" : "All Pages"}
+        Icon={PenLine}
+        actions={
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div
+              className={cn(
+                "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-sm overflow-hidden group",
+                isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
+              )}
+              onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
+            >
+              <Search 
+                className={cn(
+                  "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 z-10",
+                  isSearchExpanded || searchQuery 
+                    ? "left-2.5 translate-x-0 text-muted-foreground/50" 
+                    : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
+                )} 
+              />
+              <Input
+                autoFocus={isSearchExpanded}
+                type="text"
+                placeholder="Search by title"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => !searchQuery && setIsSearchExpanded(false)}
+                className={cn(
+                  "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-all pl-8 pr-8",
+                  isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}
+              />
+              {(isSearchExpanded || searchQuery) && (
                 <button
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setSearchQuery("");
                     setIsSearchExpanded(false);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
+                  className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
                 >
                   <Plus className="size-3.5 rotate-45" />
                 </button>
-              </div>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 hover:bg-muted"
-                onClick={() => setIsSearchExpanded(true)}
-              >
-                <Search className="size-4 text-muted-foreground" />
-              </Button>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* View toggle */}
-          <div className="flex items-center h-8 rounded-md border border-border overflow-hidden shrink-0">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={cn(
-                "p-2 transition-colors",
-                viewMode === "grid"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <Grid3X3 className="size-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "p-2 transition-colors",
-                viewMode === "list"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              <List className="size-4" />
-            </button>
+            {/* View toggle */}
+            <div className="flex items-center h-8 rounded-md border border-border overflow-hidden shrink-0">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "p-2 transition-colors",
+                  viewMode === "grid"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Grid3X3 className="size-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "p-2 transition-colors",
+                  viewMode === "list"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <List className="size-4" />
+              </button>
+            </div>
+            <CreatePageDialog defaultProjectId={projectId} />
           </div>
-          <CreatePageDialog defaultProjectId={projectId} />
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Content ────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-6 py-6">

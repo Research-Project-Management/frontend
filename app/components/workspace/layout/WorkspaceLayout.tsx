@@ -6,6 +6,7 @@ import { useWorkspace } from "~/hooks/useWorkspace";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useUser } from "~/hooks/useUser";
 import { useSocket } from "~/contexts/SocketProvider";
+import { useQueryClient } from "@tanstack/react-query";
 
 function WorkspaceSkeleton() {
   return (
@@ -43,6 +44,7 @@ function WorkspaceSkeleton() {
 
 export default function WorkspaceLayout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const socket = useSocket();
   const { user } = useUser();
   const { workspaces, isLoading } = useWorkspaces();
@@ -50,11 +52,18 @@ export default function WorkspaceLayout() {
 
   useEffect(() => {
     if (!socket || !user?._id) return;
+    const handleWorkspacesChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace"] });
+    };
+
     socket.emit("join:user", user._id);
+    socket.on("user:workspaces-changed", handleWorkspacesChanged);
     return () => {
+      socket.off("user:workspaces-changed", handleWorkspacesChanged);
       socket.emit("leave:user", user._id);
     };
-  }, [socket, user?._id]);
+  }, [queryClient, socket, user?._id]);
 
   useEffect(() => {
     if (workspaceLoading) return;

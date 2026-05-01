@@ -8,7 +8,7 @@ export default function ProjectSettingLayout() {
   const { workspaceId, projectId } = useParams();
   const location = useLocation();
   const { projects } = useProjects();
-  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
+  const currentProject = projects?.find((p: { _id: string | undefined; url?: string }) => p._id === projectId || (p as any).url === projectId);
   const basePath = `/${workspaceId}/projects/${projectId}/settings`;
 
   const tabs = [

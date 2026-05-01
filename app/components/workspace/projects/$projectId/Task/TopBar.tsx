@@ -5,7 +5,7 @@ import {
   CalendarDays,
   Search,
   Plus,
-  SlidersHorizontal,
+  Filter,
   Check,
   X,
 } from "lucide-react";
@@ -115,11 +115,12 @@ export default function TopBar({
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                size="sm"
+                className="h-8 gap-1.5 px-3 rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Filter tasks"
               >
-                <SlidersHorizontal className="size-3.5" />
+                <Filter className="size-3.5" />
+                <span className="text-xs font-medium">Filters</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent

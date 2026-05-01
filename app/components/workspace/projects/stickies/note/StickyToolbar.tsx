@@ -1,10 +1,10 @@
-import type { Note } from "../types/note.type";
+import type { Note } from "~/types/sticky";
 import { Palette, Bold, Italic, ListTodo, Trash2 } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
-import ColorModal from "../modals/ColorModal";
-import DeleteModal from "../modals/deleteModal";
-import TagPicker from "./TagPicker";
+import ColorModal from "../section/ColorModal";
+import DeleteModal from "../section/deleteModal";
+import LabelPicker from "./LabelPicker";
 
 interface StickyToolbarProps {
   note: Note;
@@ -44,26 +44,17 @@ export default function StickyToolbar({
     setActiveModal(null);
   }
 
-  const handleToggleTag = (tagId: string) => {
-    // note.tags contains Tag objects (populated), but for update we usually just send IDs or rely on backend logic.
-    // Based on Sticky model, updates usually replace array.
-    // note.tags is Tag[] from populate.
+  const handleToggleLabel = (labelId: string) => {
+    const currentLabelIds = (note.labels || []).map((l) => (typeof l === 'string' ? l : l._id));
 
-    const currentTagIds = (note.tags || []).map((t) => (typeof t === 'string' ? t : t._id));
-
-    let newTagIds;
-    if (currentTagIds.includes(tagId)) {
-      newTagIds = currentTagIds.filter((id) => id !== tagId);
+    let newLabelIds;
+    if (currentLabelIds.includes(labelId)) {
+      newLabelIds = currentLabelIds.filter((id) => id !== labelId);
     } else {
-      newTagIds = [...currentTagIds, tagId];
+      newLabelIds = [...currentLabelIds, labelId];
     }
 
-    onUpdate(note._id, { tags: newTagIds as any }); // Cast needed because Partial<Note> expects Tag[] but API often accepts IDs.
-    // Actually, frontend Note type has Tag[]. We might need to handle this mismatch or ensure API response updates Note correctly.
-    // The updateSticky in sticky.ts sends json body. Backend expects IDs for `tags` field (ref ObjectId).
-    // So sending array of strings is correct for Backend.
-    // However, optimistically updating FE state might be tricky if we don't have the full Tag object immediately.
-    // React Query invalidation will fix it quickly.
+    onUpdate(note._id, { labels: newLabelIds as any });
   };
 
   return (
@@ -98,9 +89,9 @@ export default function StickyToolbar({
         >
           <ListTodo size={14} />
         </ToolbarBtn>
-        <TagPicker
-          selectedTagIds={(note.tags || []).map((t) => (typeof t === 'string' ? t : t._id))}
-          onToggleTag={handleToggleTag}
+        <LabelPicker
+          selectedLabelIds={(note.labels || []).map((l) => (typeof l === 'string' ? l : l._id))}
+          onToggleLabel={handleToggleLabel}
         />
         {isColorOpen && (
           <ColorModal note={note} onUpdate={onUpdate} onClose={closeModal} />

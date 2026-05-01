@@ -1,5 +1,5 @@
 import "../css/tiptap.css";
-import type { Note } from "../types/note.type";
+import type { Note } from "~/types/sticky";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";

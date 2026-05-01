@@ -2,11 +2,11 @@ import { useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router";
 import { Plus, ArrowRight, Loader2 } from "lucide-react";
 import { useStickies, useCreateSticky, useDeleteSticky } from "~/query/sticky";
-import type { Note } from "../../stickies/types/note.type";
 import {
+  type Note,
   NOTE_COLOR_MAP,
   NOTE_COLOR_CYCLE,
-} from "../../stickies/types/noteColor.type";
+} from "~/types/sticky";
 import HomeSection from "../HomeSection";
 
 // Strip HTML tags → plain text for preview

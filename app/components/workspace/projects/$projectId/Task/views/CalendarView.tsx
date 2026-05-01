@@ -6,6 +6,7 @@ import {
   Plus,
   Search,
   X,
+  FolderKanban,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -42,6 +43,7 @@ import {
 import { Checkbox } from "~/components/ui/checkbox";
 import type { Column, Task } from "~/types/task";
 import { resolveTaskColumnId, resolveTaskColumnColor } from "~/types/task";
+import { cn } from "~/lib/utils";
 
 
 type CalendarViewProps = {
@@ -420,7 +422,11 @@ export default function CalendarView({
                       <button
                         type="button"
                         onClick={() => handleOpenAddTaskMenu(dateKey)}
-                        className={`${dayTasks.length > 0 ? "mt-1.5" : "mt-0"} flex w-full items-center gap-1.5 rounded-sm px-2 py-1.5 text-[11.5px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-200/60 hover:text-zinc-900 active:bg-zinc-200/80 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto`}
+                        className={cn(
+                          dayTasks.length > 0 ? "mt-1.5" : "mt-0",
+                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-[11.5px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-200/60 hover:text-zinc-900 active:bg-zinc-200/80",
+                          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
+                        )}
                       >
                         <Plus className="size-3.5 shrink-0" />
                         <span>Add task</span>
@@ -433,14 +439,16 @@ export default function CalendarView({
                     >
                       <DropdownMenuItem
                         onSelect={() => handleAddWorkItem(dateKey)}
-                        className="rounded-sm px-3 py-2 text-[13px] font-normal text-zinc-700"
+                        className="rounded-sm px-3 py-2 text-[13px] font-medium text-zinc-700 flex items-center gap-2.5 cursor-pointer outline-none hover:bg-zinc-50"
                       >
+                        <Plus className="size-3.5 text-zinc-400" />
                         Add task
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onSelect={() => handleAddExistingWorkItem(dateKey)}
-                        className="rounded-sm px-3 py-2 text-[13px] font-normal text-zinc-700"
+                        className="rounded-sm px-3 py-2 text-[13px] font-medium text-zinc-700 flex items-center gap-2.5 cursor-pointer outline-none hover:bg-zinc-50"
                       >
+                        <FolderKanban className="size-3.5 text-zinc-400" />
                         Add existing task
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -570,7 +578,16 @@ export default function CalendarView({
                         className="size-4 shrink-0 rounded-[2px] border-zinc-300 bg-white data-[state=checked]:border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
                       />
                       <div className="flex flex-1 items-center gap-2.5 min-w-0">
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-zinc-900">
+                        {(() => {
+                          const col = columns.find(c => c.id === task.columnId || c._id?.toString() === task.columnId);
+                          if (!col) return null;
+                          return (
+                            <span className="shrink-0 text-[11px] font-medium text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded-[2px] truncate max-w-[80px]">
+                              {col.title}
+                            </span>
+                          );
+                        })()}
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-zinc-900 transition-colors">
                           {task.title}
                         </span>
                       </div>

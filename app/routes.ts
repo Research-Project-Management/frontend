@@ -44,8 +44,8 @@ export default [
         "./routes/workspace/$workspaceId/stickies/index.tsx",
       ),
       route(
-        ":workspaceId/projects/:projectId/my-note",
-        "./routes/workspace/$workspaceId/project/$projectId/my-note.tsx",
+        ":workspaceId/projects/:projectId/stickies",
+        "./routes/workspace/$workspaceId/project/$projectId/stickies.tsx",
       ),
       route(
         ":workspaceId/projects/:projectId/tasks",
@@ -54,6 +54,10 @@ export default [
       route(
         ":workspaceId/projects/:projectId/cycles",
         "./routes/workspace/$workspaceId/project/$projectId/cycle.tsx",
+      ),
+      route(
+        ":workspaceId/projects/:projectId/cycles/:cycleId",
+        "./routes/workspace/$workspaceId/project/$projectId/cycle-detail.tsx",
       ),
       route(
         ":workspaceId/projects/:projectId/overview",

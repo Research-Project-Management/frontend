@@ -15,103 +15,6 @@ export type TaskLabel = {
   title: string;
 };
 
-export const INITIAL_LABEL_POOL: TaskLabel[] = [
-  { id: "L1", color: "#4bce97", title: "" },
-  { id: "L2", color: "#f5cd47", title: "" },
-  { id: "L3", color: "#fea362", title: "" },
-  { id: "L4", color: "#f87168", title: "" },
-  { id: "L5", color: "#9f8fef", title: "" },
-  { id: "L6", color: "#579dff", title: "" },
-  { id: "L7", color: "#60c6d2", title: "" },
-];
-
-const TASK_LABEL_POOL_STORAGE_KEY = "flux.task.label-pool.v1";
-
-function isTaskLabel(value: unknown): value is TaskLabel {
-  if (!value || typeof value !== "object") return false;
-
-  const candidate = value as Partial<TaskLabel>;
-  return (
-    typeof candidate.id === "string" &&
-    candidate.id.trim().length > 0 &&
-    typeof candidate.color === "string" &&
-    candidate.color.trim().length > 0 &&
-    typeof candidate.title === "string"
-  );
-}
-
-export function getTaskLabelPool(): TaskLabel[] {
-  if (typeof window === "undefined") return INITIAL_LABEL_POOL;
-
-  try {
-    const raw = window.localStorage.getItem(TASK_LABEL_POOL_STORAGE_KEY);
-    if (!raw) return INITIAL_LABEL_POOL;
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return INITIAL_LABEL_POOL;
-
-    const customLabels = parsed.filter(isTaskLabel);
-    if (customLabels.length === 0) return INITIAL_LABEL_POOL;
-
-    const merged = new Map(INITIAL_LABEL_POOL.map((label) => [label.id, label]));
-    for (const label of customLabels) {
-      merged.set(label.id, label);
-    }
-
-    return Array.from(merged.values());
-  } catch {
-    return INITIAL_LABEL_POOL;
-  }
-}
-
-export function persistTaskLabelPool(labelPool: TaskLabel[]) {
-  if (typeof window === "undefined") return;
-
-  try {
-    const uniqueById = new Map<string, TaskLabel>();
-    for (const label of labelPool) {
-      if (!isTaskLabel(label)) continue;
-      uniqueById.set(label.id, label);
-    }
-
-    const initialById = new Map(INITIAL_LABEL_POOL.map((label) => [label.id, label]));
-    const customLabels = Array.from(uniqueById.values()).filter((label) => {
-      const initial = initialById.get(label.id);
-      if (!initial) return true;
-
-      return initial.color !== label.color || initial.title !== label.title;
-    });
-
-    if (customLabels.length === 0) {
-      window.localStorage.removeItem(TASK_LABEL_POOL_STORAGE_KEY);
-      return;
-    }
-
-    window.localStorage.setItem(TASK_LABEL_POOL_STORAGE_KEY, JSON.stringify(customLabels));
-  } catch {
-    // Ignore persistence failures so task editing remains usable.
-  }
-}
-
-export function resolveTaskLabels(labels: string[]): TaskLabel[] {
-  const labelPool = getTaskLabelPool();
-
-  return labels
-    .map(
-      (id) =>
-        labelPool.find((label) => label.id === id) ?? {
-          id,
-          color: "#8590a2",
-          title: "",
-        }
-    )
-    .sort((a, b) => {
-      const indexA = labelPool.findIndex((label) => label.id === a.id);
-      const indexB = labelPool.findIndex((label) => label.id === b.id);
-
-      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-    });
-}
 
 export const DEFAULT_TASK_COLUMN_COLORS: Record<string, string> = {
   backlog: "#6366F1",
@@ -182,7 +85,7 @@ export type Task = {
     _id: string;
     name: string;
     avatar?: string;
-  };
+  } | null;
   dueDate?: string;
   labels: string[];
   rank: number;

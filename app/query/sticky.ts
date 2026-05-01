@@ -1,54 +1,44 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Note, Tag } from "../components/workspace/projects/stickies/types/note.type";
 import { apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
-import { useParams } from "react-router";
 import { toast } from "sonner";
+import { useParams } from "react-router";
+import type { Sticky, StickyChildLink } from "~/types/sticky";
+import { useCreateLabel, useLabelsQuery } from "./label";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+const stickiesKey = (workspaceId: string, labels?: string[], projectId?: string, category?: string) => 
+  ["stickies", workspaceId, { labels, projectId, category }];
 
-export interface StickyChildLink {
-  _id: string;
-  workspace: string;
-  parentSticky: string;
-  project: {
-    _id: string;
-    name: string;
-    avatar?: string;
-  };
-  note: Note;
-  createdAt: string;
-  updatedAt: string;
-}
+const projectStickiesKey = (projectId: string | undefined, labels?: string[]) =>
+  labels ? ["project-stickies", projectId, labels] : ["project-stickies", projectId];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const stickiesKey = (workspaceId: string | undefined, tags?: string[], projectId?: string, category?: string) => 
-  ["stickies", workspaceId, tags, projectId, category] as const;
-
-const getStickyProjectId = (note: Note): string => {
-  const project = (note as any).projectId;
-  if (!project) return "";
-  if (typeof project === "string") return project;
-  return String(project._id || project);
+const getStickyProjectId = (sticky: Sticky) => {
+  const projectId = sticky.projectId;
+  return typeof projectId === "string" ? projectId : projectId?._id;
 };
 
-const invalidateAllStickies = (queryClient: any, workspaceId?: string, projectId?: string) => {
+const invalidateAllStickies = (queryClient: any, workspaceId: string | undefined, projectId?: string) => {
   queryClient.invalidateQueries({ queryKey: ["stickies", workspaceId] });
-  if (projectId) {
-    queryClient.invalidateQueries({ queryKey: ["my-notes", projectId] });
-  }
 };
 
-// ── Fetch ─────────────────────────────────────────────────────────────────────
+// ── Fetchers ──────────────────────────────────────────────────────────────────
 
-export const fetchStickies = async (workspaceId: string, tags?: string[], projectId?: string, category?: string) => {
+export const fetchStickies = async (workspaceId: string, labels?: string[], projectId?: string, category?: string) => {
   const params = new URLSearchParams();
-  if (tags?.length) params.append("tags", tags.join(","));
+  if (labels?.length) labels.forEach((labelId) => params.append("labels", labelId));
   if (projectId) params.append("projectId", projectId);
   if (category) params.append("category", category);
 
   const queryStr = params.toString() ? `?${params.toString()}` : "";
-  const data = await apiGet<{ stickies: Note[] }>(`/api/workspace/${workspaceId}/stickies${queryStr}`);
+  const data = await apiGet<{ stickies: Sticky[] }>(`/api/workspace/${workspaceId}/stickies${queryStr}`);
+  return data.stickies;
+};
+
+export const fetchProjectStickies = async (projectId: string, labels?: string[]) => {
+  const params = new URLSearchParams();
+  if (labels?.length) params.set("labels", labels.join(","));
+
+  const queryStr = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiGet<{ stickies: Sticky[] }>(`/api/project/${projectId}/stickies${queryStr}`);
   return data.stickies;
 };
 
@@ -57,21 +47,25 @@ export const fetchStickyChildren = async (stickyId: string) => {
   return data.children;
 };
 
-export const fetchTags = async (workspaceId: string) => {
-  const data = await apiGet<{ tags: Tag[] }>(`/api/workspace/${workspaceId}/tags`);
-  return data.tags;
-};
-
 // ── Query Hooks ───────────────────────────────────────────────────────────────
 
-export const useStickies = (workspaceId: string, tags?: string[], projectId?: string, category?: string) => {
-  const queryKey = stickiesKey(workspaceId, tags, projectId, category);
+export const useStickies = (workspaceId: string, labels?: string[], projectId?: string, category?: string) => {
+  const queryKey = stickiesKey(workspaceId, labels, projectId, category);
 
   return useQuery({
     queryKey,
-    queryFn: () => fetchStickies(workspaceId, tags, projectId, category),
+    queryFn: () => fetchStickies(workspaceId, labels, projectId, category),
     enabled: !!workspaceId,
     staleTime: 30_000,
+  });
+};
+
+export const useProjectStickies = (projectId: string, workspaceId: string, labels?: string[]) => {
+  return useQuery({
+    queryKey: projectStickiesKey(projectId, labels),
+    queryFn: () => fetchProjectStickies(projectId, labels),
+    enabled: !!projectId && !!workspaceId && /^[0-9a-fA-F]{24}$/.test(projectId),
+    staleTime: 60_000,
   });
 };
 
@@ -83,13 +77,6 @@ export const useStickyChildren = (stickyId?: string) => {
   });
 };
 
-export const useTags = (workspaceId: string) =>
-  useQuery({
-    queryKey: ["tags", workspaceId],
-    queryFn: () => fetchTags(workspaceId),
-    enabled: !!workspaceId,
-  });
-
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export const useCreateSticky = () => {
@@ -97,17 +84,20 @@ export const useCreateSticky = () => {
   return useMutation({
     mutationFn: (variables: {
       workspaceId: string;
+      projectId?: string;
+      parentStickyId?: string;
       title?: string;
       content: string;
       color?: string;
       position?: { x: number; y: number };
-      tags?: string[];
-      projectId?: string;
-      category?: 'sticky' | 'note';
-    }) => apiPost<{ sticky: Note }>(`/api/workspace/${variables.workspaceId}/stickies`, variables),
+      labels?: string[];
+    }) => apiPost<{ sticky: Sticky }>(`/api/workspace/${variables.workspaceId}/stickies`, variables),
     onSuccess: (data, variables) => {
       invalidateAllStickies(queryClient, variables.workspaceId, variables.projectId);
-      toast.success(variables.category === 'note' ? "Note added" : "Sticky added", { id: "sticky-action" });
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: projectStickiesKey(variables.projectId) });
+      }
+      toast.success(variables.projectId ? "Project sticky added" : "Sticky added", { id: "sticky-action" });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to save", { id: "sticky-error" });
@@ -120,14 +110,14 @@ export const useUpdateSticky = () => {
   const { workspaceId } = useParams();
   
   return useMutation({
-    mutationFn: ({ stickyId, updates }: { stickyId: string; updates: Partial<Note> }) =>
-      apiPut<{ sticky: Note }>(`/api/stickies/${stickyId}`, updates),
+    mutationFn: ({ stickyId, updates }: { stickyId: string; updates: Partial<Sticky> }) =>
+      apiPut<{ sticky: Sticky }>(`/api/stickies/${stickyId}`, updates),
     
     onMutate: async ({ stickyId, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["stickies", workspaceId] });
-      const previousNotes = queryClient.getQueryData<Note[]>(["stickies", workspaceId]);
+      const previousNotes = queryClient.getQueryData<Sticky[]>(["stickies", workspaceId]);
 
-      queryClient.setQueriesData<Note[]>(
+      queryClient.setQueriesData<Sticky[]>(
         { queryKey: ["stickies", workspaceId] },
         (old) => {
           if (!old) return old;
@@ -135,16 +125,18 @@ export const useUpdateSticky = () => {
             if (n._id !== stickyId) return n;
             const updatedNote = { ...n, ...updates };
 
-            if (updates.tags) {
-              const allTags = queryClient.getQueryData<any[]>(["tags", workspaceId]) || [];
-              updatedNote.tags = (updates.tags as any).map((tagId: string) => 
-                allTags.find(t => t._id === tagId) || n.tags?.find(t => t._id === tagId) || { _id: tagId, name: "...", color: "#aaa" }
+            if (updates.labels) {
+              const pId = getStickyProjectId(n);
+              const allLabels = queryClient.getQueryData<any[]>(["labels", workspaceId, "sticky", pId]) || [];
+              updatedNote.labels = (updates.labels as any).map((labelId: string) => 
+                allLabels.find((l: any) => l._id === labelId) || n.labels?.find((l: any) => l._id === labelId) || { _id: labelId, name: "...", color: "#aaa" }
               );
             }
-            return updatedNote as Note;
+            return updatedNote as Sticky;
           });
         }
       );
+
       return { previousNotes };
     },
     onError: (err, _vars, context) => {
@@ -156,6 +148,9 @@ export const useUpdateSticky = () => {
     onSettled: (data) => {
       const pId = data?.sticky ? getStickyProjectId(data.sticky) : undefined;
       invalidateAllStickies(queryClient, workspaceId, pId);
+      if (pId) {
+        queryClient.invalidateQueries({ queryKey: projectStickiesKey(pId) });
+      }
     },
   });
 };
@@ -168,9 +163,9 @@ export const useDeleteSticky = () => {
     onMutate: async (stickyId) => {
       const queryKey = ["stickies", workspaceId];
       await queryClient.cancelQueries({ queryKey });
-      const previousNotes = queryClient.getQueriesData<Note[]>({ queryKey });
+      const previousNotes = queryClient.getQueriesData<Sticky[]>({ queryKey });
       
-      queryClient.setQueriesData<Note[]>({ queryKey }, (old) => 
+      queryClient.setQueriesData<Sticky[]>({ queryKey }, (old) => 
         old?.filter((n) => n._id !== stickyId) || []
       );
       
@@ -187,6 +182,7 @@ export const useDeleteSticky = () => {
     },
     onSettled: () => {
       invalidateAllStickies(queryClient, workspaceId);
+      queryClient.invalidateQueries({ queryKey: ["project-stickies"] });
     },
   });
 };
@@ -203,17 +199,44 @@ export const useReorderStickies = () => {
   });
 };
 
+export const useReorderProjectStickies = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, stickyIds }: { projectId: string; stickyIds: string[] }) =>
+      apiPut(`/api/project/${projectId}/stickies/reorder`, { stickyIds }),
+    onMutate: async ({ projectId, stickyIds }) => {
+      const queryKey = projectStickiesKey(projectId);
+      await queryClient.cancelQueries({ queryKey });
+      const previousStickies = queryClient.getQueriesData<Sticky[]>({ queryKey });
+      queryClient.setQueriesData<Sticky[]>({ queryKey }, (old) => {
+        if (!old) return old;
+        const map = new Map(old.map((sticky) => [sticky._id, sticky]));
+        const reordered = stickyIds.map((id) => map.get(id)).filter(Boolean) as Sticky[];
+        return reordered.length === old.length ? reordered : old;
+      });
+      return { previousStickies };
+    },
+    onError: (err: any, _vars, context) => {
+      context?.previousStickies?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error(err.message || "Failed to save sticky order", { id: "sticky-error" });
+    },
+    onSettled: (_data, _error, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectStickiesKey(variables.projectId) });
+    },
+  });
+};
+
 export const useLinkStickyChild = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ stickyId, childNoteId }: { stickyId: string; childNoteId: string }) =>
-      apiPost<{ link: StickyChildLink }>(`/api/stickies/${stickyId}/children`, { childNoteId }),
+    mutationFn: ({ stickyId, childStickyId }: { stickyId: string; childStickyId: string }) =>
+      apiPost<{ link: StickyChildLink }>(`/api/stickies/${stickyId}/children`, { childStickyId }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["sticky-children", variables.stickyId] });
-      toast.success("Note linked", { id: "sticky-action" });
+      toast.success("Sticky linked", { id: "sticky-action" });
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to link note", { id: "sticky-error" });
+      toast.error(error.message || "Failed to link sticky", { id: "sticky-error" });
     },
   });
 };
@@ -221,60 +244,14 @@ export const useLinkStickyChild = () => {
 export const useUnlinkStickyChild = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ stickyId, noteId }: { stickyId: string; noteId: string }) =>
-      apiDelete(`/api/stickies/${stickyId}/children/${noteId}`),
+    mutationFn: ({ stickyId, childStickyId }: { stickyId: string; childStickyId: string }) =>
+      apiDelete(`/api/stickies/${stickyId}/children/${childStickyId}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["sticky-children", variables.stickyId] });
-      toast.success("Note unlinked", { id: "sticky-action" });
+      toast.success("Sticky unlinked", { id: "sticky-action" });
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to unlink note", { id: "sticky-error" });
-    },
-  });
-};
-
-export const useCreateTag = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ workspaceId, name, color }: { workspaceId: string; name: string; color?: string }) =>
-      apiPost<{ tag: Tag }>(`/api/workspace/${workspaceId}/tags`, { name, color }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tags", variables.workspaceId] });
-      toast.success("Tag created successfully");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to create tag");
-    },
-  });
-};
-
-export const useUpdateTag = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ tagId, name, color }: { tagId: string; name?: string; color?: string }) =>
-      apiPut<{ tag: Tag }>(`/api/tags/${tagId}`, { name, color }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
-      queryClient.invalidateQueries({ queryKey: ["stickies"] });
-      toast.success("Tag updated successfully");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update tag");
-    },
-  });
-};
-
-export const useDeleteTag = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (tagId: string) => apiDelete(`/api/tags/${tagId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tags"] });
-      queryClient.invalidateQueries({ queryKey: ["stickies"] });
-      toast.success("Tag deleted successfully");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to delete tag");
+      toast.error(error.message || "Failed to unlink sticky", { id: "sticky-error" });
     },
   });
 };

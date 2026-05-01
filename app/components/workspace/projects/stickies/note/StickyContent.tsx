@@ -1,4 +1,4 @@
-import type { Note } from "../types/note.type";
+import type { Note } from "~/types/sticky";
 import type { Editor } from "@tiptap/react";
 import { memo } from "react";
 import NoteEditor from "./NoteEditor";

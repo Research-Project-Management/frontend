@@ -21,5 +21,5 @@ export const useProjects = () => {
         enabled: !!workspaceId,
     });
 
-    return { projects: data?.projects, isLoading, isError };
+    return { projects: data?.projects ?? [], isLoading, isError };
 }

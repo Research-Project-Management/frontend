@@ -1,36 +1,31 @@
 import React from "react";
 import { 
+  Search, 
   Check, 
   ChevronLeft, 
-  Search,
   SquarePen, 
-  Tag, 
-  X
+  X 
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Checkbox } from "~/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "~/components/ui/popover";
 import { useParams } from "react-router";
 import { useLabels } from "~/hooks/useLabels";
 import { AVAILABLE_LABEL_COLORS } from "~/query/label";
 
-const LabelSelect = ({ 
-  selectedLabelIds = [], 
-  onChange, 
-  trigger 
-}: { 
-  selectedLabelIds: string[]; 
-  onChange: React.Dispatch<React.SetStateAction<string[]>>; 
-  trigger?: React.ReactNode;
-}) => {
+interface ManageLabelsSectionProps {
+  selectedLabels?: string[];
+  onToggleLabel?: (labelId: string) => void;
+  onClose?: () => void;
+}
+
+export default function ManageLabelsSection({ 
+  selectedLabels = [],
+  onToggleLabel,
+  onClose
+}: ManageLabelsSectionProps) {
   const { workspaceId, projectId } = useParams();
-  const [isOpen, setIsOpen] = React.useState(false);
 
   const {
     filteredLabels,
@@ -48,12 +43,10 @@ const LabelSelect = ({
     handleSave,
     handleDelete,
     isMutating
-  } = useLabels(workspaceId!, "cycle", projectId);
+  } = useLabels(workspaceId!, "sticky", projectId);
 
-  const toggleTag = (tagId: string) => {
-    onChange((prev) => 
-      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
-    );
+  const toggleLabel = (labelId: string) => {
+    onToggleLabel?.(labelId);
   };
 
   const handleScrollableWheel = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -67,21 +60,37 @@ const LabelSelect = ({
       return (
         <div className="flex h-full min-h-0 flex-col bg-white">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
-            <Button variant="ghost" size="icon" className="size-8" onClick={() => setView("list")} disabled={isMutating}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="size-8" 
+              onClick={() => setView("list")}
+              disabled={isMutating}
+            >
               <ChevronLeft className="size-4" />
             </Button>
             <span className="text-sm font-semibold text-center flex-1">
               {editingLabelId ? "Edit label" : "Create label"}
             </span>
-            <Button variant="ghost" size="icon" className="size-8" onClick={() => setIsOpen(false)} disabled={isMutating}>
-              <X className="size-4" />
-            </Button>
+            {onClose && (
+              <Button variant="ghost" size="icon" className="size-8" onClick={onClose} disabled={isMutating}>
+                <X className="size-4" />
+              </Button>
+            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 custom-scrollbar" onWheel={handleScrollableWheel}>
-            <div className="h-10 rounded-md shadow-none w-full flex items-center px-3" style={{ backgroundColor: selectedColor }}>
-              {editingName && <span className="text-xs font-bold text-white truncate max-w-full drop-shadow-sm">{editingName}</span>}
+            <div 
+              className="h-10 rounded-md shadow-none w-full flex items-center px-3 transition-colors duration-200" 
+              style={{ backgroundColor: selectedColor }}
+            >
+              {editingName && (
+                <span className="text-xs font-bold text-white truncate max-w-full drop-shadow-sm">
+                  {editingName}
+                </span>
+              )}
             </div>
+
             <div className="space-y-2">
               <Label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wide">Title</Label>
               <Input
@@ -92,18 +101,21 @@ const LabelSelect = ({
                 disabled={isMutating}
               />
             </div>
+
             <div className="space-y-3">
               <Label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wide">Select a color</Label>
               <div className="grid grid-cols-5 gap-2">
                 {AVAILABLE_LABEL_COLORS.map((item) => (
-                  <button 
-                    key={item.name} 
-                    onClick={() => setSelectedColor(item.color)} 
+                  <button
+                    key={item.name}
+                    onClick={() => setSelectedColor(item.color)}
                     disabled={isMutating}
-                    className="h-8 rounded-lg relative transition-transform hover:scale-105 active:scale-95 flex items-center justify-center disabled:opacity-50" 
+                    className="h-8 rounded-lg relative transition-all hover:scale-105 active:scale-95 flex items-center justify-center disabled:opacity-50"
                     style={{ backgroundColor: item.color }}
                   >
-                    {selectedColor === item.color && <Check className="size-4 text-white drop-shadow-md" />}
+                    {selectedColor === item.color && (
+                      <Check className="size-4 text-white drop-shadow-md" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -114,16 +126,16 @@ const LabelSelect = ({
             <Button 
               onClick={() => handleSave()} 
               disabled={isMutating || !editingName.trim()}
-              className="bg-black hover:bg-black/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-20"
+              className="bg-black hover:bg-black/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"
             >
               {isMutating ? "Save" : "Save"}
             </Button>
             {editingLabelId && (
               <Button 
-                onClick={() => handleDelete((id) => onChange(prev => prev.filter(p => p !== id)))} 
+                onClick={() => handleDelete((id) => toggleLabel(id))} 
                 variant="destructive" 
                 disabled={isMutating}
-                className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-20"
+                className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"
               >
                 {isMutating ? "Delete" : "Delete"}
               </Button>
@@ -134,11 +146,16 @@ const LabelSelect = ({
     }
 
     return (
-      <div className="flex flex-col bg-white overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           <span className="text-sm font-semibold text-center flex-1">Labels</span>
-          <Button variant="ghost" size="icon" className="size-7" onClick={() => setIsOpen(false)}><X className="size-4" /></Button>
+          {onClose && (
+            <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
+              <X className="size-4" />
+            </Button>
+          )}
         </div>
+
         <div className="shrink-0 bg-white px-4 pb-2 pt-4">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#44546f] z-10" />
@@ -150,56 +167,51 @@ const LabelSelect = ({
             />
           </div>
         </div>
+
         <div className="shrink-0 bg-white px-4 pt-2">
           <h4 className="text-[13px] font-bold text-muted-foreground uppercase tracking-wide">Labels</h4>
         </div>
 
         <div 
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-2 custom-scrollbar" 
-          style={{ maxHeight: "336px" }} 
+          style={{ maxHeight: "336px" }}
           onWheel={handleScrollableWheel}
         >
           <div className="space-y-2">
-            {filteredLabels.length > 0 ? (
+            {filteredLabels.length === 0 ? (
+              <div className="py-10 flex flex-col items-center justify-center text-center">
+                <p className="text-[13px] font-medium text-muted-foreground/60">
+                  {labelSearch ? "No labels match your search" : "No labels created yet"}
+                </p>
+              </div>
+            ) : (
               filteredLabels.map((label: any) => (
                 <div key={label._id} className="grid h-10 grid-cols-[20px_minmax(0,1fr)_32px] items-center gap-3 group">
                   <Checkbox 
-                    checked={selectedLabelIds.includes(label._id)} 
-                    onCheckedChange={() => toggleTag(label._id)} 
+                    checked={selectedLabels.includes(label._id)} 
+                    onCheckedChange={() => toggleLabel(label._id)}
                     className="size-5 rounded-lg border-[#091e4224] data-[state=checked]:bg-[#172b4d] data-[state=checked]:border-[#172b4d]" 
                   />
-                  <button 
-                    type="button" 
-                    onClick={() => toggleTag(label._id)} 
-                    className="flex h-10 min-w-0 items-center rounded-md px-3 shadow-none transition-all hover:opacity-85 active:scale-[0.98]" 
+                  <button
+                    type="button"
+                    onClick={() => toggleLabel(label._id)}
+                    className="flex h-10 min-w-0 items-center rounded-md px-3 shadow-none transition-all hover:opacity-85 active:scale-[0.98]"
                     style={{ backgroundColor: label.color }}
                   >
-                    <span className="min-w-0 max-w-full truncate text-xs font-bold text-white drop-shadow-sm">{label.name}</span>
+                    <span className="min-w-0 max-w-full truncate text-xs font-bold text-white drop-shadow-sm">
+                      {label.name}
+                    </span>
                   </button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleEdit(label)} 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(label)}
                     className="size-8 shrink-0 opacity-60 transition-opacity group-hover:opacity-100"
                   >
                     <SquarePen className="size-4 text-[#44546f]" />
                   </Button>
                 </div>
               ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-                <div className="size-12 rounded-full bg-[#f1f2f4] flex items-center justify-center mb-3">
-                  <Tag className="size-6 text-[#6b778c] opacity-50" />
-                </div>
-                <p className="text-[14px] font-medium text-[#172b4d]">
-                  {labelSearch ? "No labels found" : "No labels yet"}
-                </p>
-                <p className="text-[12px] text-[#6b778c] mt-1">
-                  {labelSearch 
-                    ? `We couldn't find any labels matching "${labelSearch}"`
-                    : "Create your first label to start organizing."}
-                </p>
-              </div>
             )}
           </div>
         </div>
@@ -207,7 +219,7 @@ const LabelSelect = ({
         <div className="shrink-0 border-t border-border/50 bg-muted/30 px-2 pb-3 pt-2">
           <Button 
             variant="secondary" 
-            onClick={handleCreateNew} 
+            onClick={handleCreateNew}
             className="h-10 w-full rounded-md border-none bg-[#091e420f] font-semibold text-[#172b4d] shadow-none transition-all hover:bg-[#091e421a]"
           >
             Create a new label
@@ -218,42 +230,8 @@ const LabelSelect = ({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={(val) => { setIsOpen(val); if(!val) setView("list"); }}>
-      <PopoverTrigger asChild>
-        {trigger || (
-          <Button variant="outline" className="h-10 rounded-xl border-border/50 bg-white px-4 text-[14px] font-semibold text-[#172b4d] shadow-none hover:bg-accent/50"><Tag className="mr-2 h-4 w-4" />Labels</Button>
-        )}
-      </PopoverTrigger>
-      <PopoverContent align="start" side="bottom" sideOffset={-150} className="z-[1000] flex w-80 min-h-0 flex-col overflow-hidden rounded-xl border-border/50 p-0 shadow-xl" style={{ height: view === "edit" ? 560 : "auto", maxHeight: "calc(100vh - 24px)" }}>
-        <div key={view} className="flex flex-col h-full animate-in fade-in duration-200">
-          {renderContent()}
-        </div>
-      </PopoverContent>
-    </Popover>
+    <div key={view} className="flex flex-col h-full animate-in fade-in duration-200">
+      {renderContent()}
+    </div>
   );
-};
-
-export const LabelsSection = ({ 
-  formLabels, 
-  setFormLabels, 
-  triggerRef 
-}: { 
-  formLabels: string[]; 
-  setFormLabels: React.Dispatch<React.SetStateAction<string[]>>; 
-  triggerRef?: React.Ref<HTMLButtonElement>; 
-}) => {
-  return (
-    <LabelSelect 
-      selectedLabelIds={formLabels} 
-      onChange={setFormLabels} 
-      trigger={
-        <button 
-          ref={triggerRef} 
-          className="h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] hover:bg-[#f7f7f7] flex items-center gap-2 transition-colors outline-none"
-        >
-          <Tag className="size-4 text-[#44546f]" /> Labels
-        </button>
-      } 
-    />
-  );
-};
+}

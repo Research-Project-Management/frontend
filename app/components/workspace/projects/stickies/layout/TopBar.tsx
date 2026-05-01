@@ -1,9 +1,14 @@
 import { useState, useRef } from "react";
-import { Plus, Search, Tag, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Search, Tag, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
-import ManageTagsModal from "../modals/ManageTagsModal";
+import ManageLabelsSection from "../section/ManageLabelsModal";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
 
 interface TopBarProps {
   searchQuery: string;
@@ -12,8 +17,9 @@ interface TopBarProps {
   lastSavedAt: Date | null;
   onAddNote: () => void;
   isAddingNote: boolean;
-  selectedTags: string[];
-  onToggleTag: (tagId: string) => void;
+  selectedLabels: string[];
+  onToggleLabel: (labelId: string) => void;
+  addLabel?: string;
 }
 
 export default function TopBar({
@@ -23,10 +29,12 @@ export default function TopBar({
   lastSavedAt,
   onAddNote,
   isAddingNote,
-  selectedTags,
-  onToggleTag,
+  selectedLabels,
+  onToggleLabel,
+  addLabel = "New Sticky",
 }: TopBarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [isLabelsOpen, setIsLabelsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -73,16 +81,25 @@ export default function TopBar({
         )}
       </div>
 
-      <ManageTagsModal selectedTags={selectedTags} onToggleTag={onToggleTag}>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1.5 text-xs font-medium"
-        >
-          <Tag className="size-3.5" />
-          Tags
-        </Button>
-      </ManageTagsModal>
+      <Popover open={isLabelsOpen} onOpenChange={setIsLabelsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs font-medium"
+          >
+            <Tag className="size-3.5" />
+            Labels
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" side="bottom" sideOffset={5} className="z-[1000] flex w-80 min-h-0 flex-col overflow-hidden rounded-xl border-border/50 p-0 shadow-xl">
+          <ManageLabelsSection 
+            selectedLabels={selectedLabels} 
+            onToggleLabel={onToggleLabel}
+            onClose={() => setIsLabelsOpen(false)}
+          />
+        </PopoverContent>
+      </Popover>
 
       <Button
         onClick={onAddNote}
@@ -95,7 +112,7 @@ export default function TopBar({
         ) : (
           <Plus className="h-3.5 w-3.5" />
         )}
-        New Sticky
+        {addLabel}
       </Button>
     </div>
   );

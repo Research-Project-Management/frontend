@@ -17,7 +17,7 @@ type ProjectModuleKey =
   | "cycles"
   | "pages"
   | "storage"
-  | "my-note"
+  | "stickies"
   | "settings";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
@@ -26,7 +26,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "tasks",
   "cycles",
   "storage",
-  "my-note",
+  "stickies",
   "settings",
 ];
 
@@ -113,9 +113,9 @@ function ModulesList({
       description: "File storage and management",
     },
     {
-      id: "my-note",
+      id: "stickies",
       name: "Notes",
-      description: "Personal and project-specific notes",
+      description: "Project notes and annotations",
     },
     {
       id: "settings",
@@ -127,10 +127,6 @@ function ModulesList({
 
   const normalizedProjectModules = useMemo(() => {
     const selectedModules = new Set(project.modules || []);
-    if (selectedModules.has("stickies")) {
-      selectedModules.delete("stickies");
-      selectedModules.add("my-note");
-    }
     selectedModules.add("overview");
     selectedModules.add("settings");
     return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));

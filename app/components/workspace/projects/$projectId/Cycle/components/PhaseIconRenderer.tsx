@@ -50,7 +50,6 @@ export const PhaseIconRenderer = ({
       style={{ backgroundColor: `${color}15` }}
     >
       {React.cloneElement(svgIcon as React.ReactElement, { 
-        // className: sizeClass,
         ...{className: sizeClass},
         ...{size: size === "sm" ? 16 : size === "md" ? 22 : 28 }
       })}

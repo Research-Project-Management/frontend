@@ -22,7 +22,8 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import type { Task } from "~/types/task";
-import { DEFAULT_TASK_COLUMN_COLORS, resolveTaskLabels } from "~/types/task";
+import { useParams } from "react-router";
+import { useLabelsQuery } from "~/query/label";
 
 type CardProps = {
   card: Task;
@@ -119,9 +120,16 @@ function CardContent({
     (acc, checklist) => acc + checklist.items.filter((item) => item.completed).length,
     0,
   );
-  const visibleLabels = resolveTaskLabels(card.labels || []).filter(
-    (label) => label.color,
-  );
+  
+  const { workspaceId, projectId } = useParams();
+  const { data: workspaceLabels = [] } = useLabelsQuery(workspaceId || "", "task", projectId);
+
+  const visibleLabels = (card.labels || [])
+    .map((id: string) => workspaceLabels.find((t: any) => t._id === id))
+    .filter(Boolean)
+    .map(t => ({ id: t!._id, color: t!.color, title: t!.name }))
+    .filter((label) => label.color);
+
   const assignee = card.assignee;
   const assigneeInitials = assignee ? getAssigneeInitials(assignee.name) : "";
   const isCurrentUserAssignee = Boolean(currentUserId && assignee?._id === currentUserId);

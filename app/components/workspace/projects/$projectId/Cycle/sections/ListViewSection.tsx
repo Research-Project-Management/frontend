@@ -9,7 +9,8 @@ import {
   CircleDashed,
   CheckCircle2,
   CalendarDays,
-  Lock
+  Lock,
+  Pencil
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -38,7 +39,18 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-function EmptyState({ status }: { status: DerivedStatus }) {
+function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?: string }) {
+  if (searchTerm?.trim()) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-6 bg-white text-center">
+        <h3 className="text-[14px] font-semibold text-zinc-900 mb-1">No cycles found</h3>
+        <p className="text-[12px] text-muted-foreground">
+          No cycles in <span className="font-medium text-zinc-600">{status}</span> section match "{searchTerm}"
+        </p>
+      </div>
+    );
+  }
+
   const configs = {
     active: {
       title: "No active cycle",
@@ -84,6 +96,7 @@ interface ItemProps {
   onToggleExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onNavigate: () => void;
   isReadOnly?: boolean;
 }
 
@@ -94,6 +107,7 @@ export function Item({
   onToggleExpand,
   onEdit,
   onDelete,
+  onNavigate,
   isReadOnly = false,
 }: ItemProps) {
   const phaseConfig = useMemo(() => {
@@ -117,7 +131,7 @@ export function Item({
     <div
       role="button"
       tabIndex={0}
-      onClick={onToggleExpand}
+      onClick={onNavigate}
       className={`w-full flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-zinc-50/80 transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-b border-border/40 relative last:border-b-0 ${isReadOnly ? 'opacity-90' : ''}`}
     >
       <PhaseIconRenderer 
@@ -164,13 +178,13 @@ export function Item({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40 rounded-sm">
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                <ChevronRight className="mr-2 h-4 w-4" /> View Details
+                <Pencil className="mr-2 h-4 w-4" /> Edit
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                 className="text-destructive focus:bg-destructive/10 focus:text-destructive"
               >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Cycle
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -194,7 +208,7 @@ export function Item({
               {cycle.description}
             </p>
           )}
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(); }} className="h-7 text-[11px] px-3">
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onNavigate(); }} className="h-7 text-[11px] px-3">
             {isReadOnly ? "View Cycle" : "Open Cycle"}
           </Button>
         </div>

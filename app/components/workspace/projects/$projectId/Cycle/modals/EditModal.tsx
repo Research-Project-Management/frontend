@@ -17,6 +17,8 @@ import { MembersSection } from "../sections/MembersSection";
 import { LabelsSection } from "../sections/LabelsSection";
 import { DatesSection } from "../sections/DatesSection";
 import { PhaseIconRenderer } from "../components/PhaseIconRenderer";
+import { useParams } from "react-router";
+import { useLabels } from "~/hooks/useLabels";
 
 interface EditModalProps {
   open: boolean;
@@ -37,10 +39,11 @@ interface EditModalProps {
   setFormLabels: React.Dispatch<React.SetStateAction<string[]>>;
   phases: any[];
   setPhases: (v: any[]) => void;
-  projectData: any;
-  workspaceTags: any[];
+  projectData?: any;
   onSave: () => void;
   isReadOnly?: boolean;
+  isSaving?: boolean;
+  hasParallelConflict?: boolean;
 }
 
 export const EditModal = ({
@@ -63,10 +66,13 @@ export const EditModal = ({
   phases,
   setPhases,
   projectData,
-  workspaceTags,
   onSave,
   isReadOnly = false,
+  isSaving = false,
+  hasParallelConflict = false,
 }: EditModalProps) => {
+  const { workspaceId, projectId } = useParams();
+  const { workspaceLabels } = useLabels(workspaceId!, "cycle", projectId);
   const labelsTriggerRef = useRef<HTMLButtonElement>(null);
   const phaseTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -120,7 +126,6 @@ export const EditModal = ({
             />
 
             <LabelsSection
-              workspaceTags={workspaceTags}
               formLabels={formLabels}
               setFormLabels={setFormLabels}
               triggerRef={labelsTriggerRef}
@@ -226,7 +231,7 @@ export const EditModal = ({
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <span className="text-[13px] font-semibold text-[#5e6c84]">Labels</span>
                 <LabelsDisplay
-                  tags={workspaceTags.filter(t => formLabels.includes(t._id))}
+                  tags={workspaceLabels.filter(t => formLabels.includes(t._id))}
                   onOpen={() => labelsTriggerRef.current?.click()}
                   disabled={isReadOnly}
                   showAddButton={!isReadOnly}
@@ -253,6 +258,11 @@ export const EditModal = ({
                     )}
                   </div>
                 } />
+                {hasParallelConflict && (
+                  <p className="text-[11px] font-medium text-[#c9372c] animate-in fade-in slide-in-from-top-1">
+                    Conflicts with another active cycle.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -281,9 +291,9 @@ export const EditModal = ({
             </Button>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-9 px-4 text-[#44546f] hover:bg-[#091e420f] transition-colors">Cancel</Button>
-              <Button onClick={onSave} disabled={!formName.trim()} className="h-9 bg-black px-5 text-white hover:bg-black/90 shadow-none font-medium transition-all active:scale-95">
-                Save changes
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving} className="h-9 px-4 text-[#44546f] hover:bg-[#091e420f] transition-colors">Cancel</Button>
+              <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-black px-5 text-white hover:bg-black/90 shadow-none font-medium transition-all active:scale-95">
+                {isSaving ? "Save changes" : "Save changes"}
               </Button>
             </>
           )}

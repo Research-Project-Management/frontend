@@ -13,8 +13,9 @@ import {
   RotateCcw,
   ChartBarBig,
   UserStar,
+  type LucideIcon,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+
 import { useEffect, useState, useId } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { Link, useLocation, useParams } from "react-router";
@@ -41,7 +42,7 @@ type ProjectModuleKey =
   | "cycles"
   | "pages"
   | "storage"
-  | "my-note"
+  | "stickies"
   | "settings";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
@@ -50,7 +51,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "tasks",
   "cycles",
   "storage",
-  "my-note",
+  "stickies",
   "settings",
 ];
 
@@ -59,12 +60,12 @@ const modulesConfig: Record<
   { label: string; icon: LucideIcon }
 > = {
   overview: { label: "Overview", icon: ChartBarBig },
-  tasks: { label: "Tasks", icon: KanbanSquare },
   pages: { label: "Pages", icon: PenLine },
+  tasks: { label: "Tasks", icon: KanbanSquare },
   cycles: { label: "Cycles", icon: RotateCcw },
   storage: { label: "Storage", icon: Cloud },
   settings: { label: "Settings", icon: Settings },
-  "my-note": { label: "Notes", icon: StickyNote },
+  "stickies": { label: "Notes", icon: StickyNote },
 };
 
 export default function SideBar({ onToggle }: { onToggle?: () => void }) {
@@ -261,12 +262,9 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   </div>
                 </div>
                 <CollapsibleContent className="overflow-hidden space-y-1 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-                  {MODULE_ORDER.filter((moduleKey) => {
-                    if (moduleKey === "my-note") {
-                      return projectModules.includes("my-note") || projectModules.includes("stickies");
-                    }
-                    return projectModules.includes(moduleKey);
-                  }).map((moduleKey) => {
+                  {MODULE_ORDER.filter((moduleKey) =>
+                    projectModules.includes(moduleKey)
+                  ).map((moduleKey) => {
                     const module = modulesConfig[moduleKey];
                     if (!module) return null;
                     const moduleLink = `/${workspaceId}/projects/${project._id}/${moduleKey}`;

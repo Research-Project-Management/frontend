@@ -8,6 +8,7 @@ import CalendarView from "./views/CalendarView";
 import { TaskDialog } from "./task_dialog/CardDetail";
 import CreateModal, { type SectionData } from "./modals/CreateModal";
 import DeleteModal from "./modals/DeleteModal";
+import { AddExistingTaskModal } from "./modals/AddExistingTaskModal";
 import {
   useProjectTasks,
   useCreateTask,
@@ -19,6 +20,7 @@ import {
   useUpdateColumn,
 } from "~/query/task";
 import { useProjectDetails } from "~/query/project";
+import { useProjectCycles } from "~/query/cycle";
 import { useProjects } from "~/hooks/useWorkspace";
 import type {
   Task as TaskType,
@@ -29,7 +31,15 @@ import { resolveTaskColumnId } from "~/types/task";
 import { Skeleton } from "~/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from "~/hooks/useAuth";
-import { KanbanSquare } from "lucide-react";
+import { KanbanSquare, ChevronDown, Check, Search, ChevronRight, RotateCcw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { useNavigate } from "react-router";
+import { cn } from "~/lib/utils";
 
 type ViewMode = "board" | "list" | "calendar";
 type AssigneeFilterOption = {
@@ -38,11 +48,14 @@ type AssigneeFilterOption = {
   avatar?: string;
 };
 
-export default function Task() {
+export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isReadOnly?: boolean }) {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { workspaceId, projectId } = useParams();
-  const { data, isLoading } = useProjectTasks(projectId!);
+  const { data, isLoading } = useProjectTasks(projectId!, cycleId);
   const { data: projectData } = useProjectDetails(projectId!);
+  const { data: cyclesData } = useProjectCycles(projectId!);
+  const currentCycle = cyclesData?.cycles.find(c => c._id === cycleId);
 
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();
@@ -71,6 +84,8 @@ export default function Task() {
   const [sectionModalMode, setSectionModalMode] = useState<"create" | "edit">("create");
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false);
+  const [cycleSearchTerm, setCycleSearchTerm] = useState("");
 
   const allTasks = data?.tasks ?? [];
   const columns = data?.columns ?? [];
@@ -167,6 +182,8 @@ export default function Task() {
         columnId,
         title: quickTitle,
         dueDate,
+        cycle: cycleId,
+        assignee: null,
       });
       return;
     }
@@ -175,6 +192,8 @@ export default function Task() {
       columnId,
       title: title?.trim() || "",
       dueDate,
+      cycle: cycleId as any,
+      assignee: null,
     });
     setDialogOpen(true);
   };
@@ -215,6 +234,7 @@ export default function Task() {
     createTaskMutation.mutate(
       {
         projectId: projectId!,
+        cycle: cycleId,
         ...cardData,
       },
       {
@@ -396,6 +416,8 @@ export default function Task() {
   };
 
 
+  const isCycleEmpty = cycleId && allTasks.length === 0 && !isLoading;
+
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col h-full animate-in fade-in duration-300">
@@ -420,8 +442,81 @@ export default function Task() {
     <div className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
       <Topbar
         project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
-        title="Tasks"
-        Icon={KanbanSquare}
+        title={cycleId && currentCycle ? "Cycles" : "Tasks"}
+        onTitleClick={cycleId ? () => navigate(`/${workspaceId}/projects/${projectId}/cycles`) : undefined}
+        Icon={cycleId ? RotateCcw : KanbanSquare}
+        count={allTasks.length}
+        titleExtra={
+          cycleId && currentCycle ? (
+            <div className="flex items-center h-full">
+              {/* Separator from "Cycles" */}
+              <ChevronRight className="size-3.5 text-muted-foreground/20 ml-0.5" />
+              
+              <DropdownMenu onOpenChange={() => setCycleSearchTerm("")}>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center gap-2.5 px-2 py-1 rounded-sm hover:bg-zinc-100/80 data-[state=open]:bg-zinc-100 cursor-pointer transition-all group ml-1">
+                    <RotateCcw className="size-3.5 text-foreground/80 group-hover:text-black group-data-[state=open]:text-black transition-colors" />
+                    <span className="text-[13px] font-semibold text-foreground group-hover:text-black group-data-[state=open]:text-black tracking-tight whitespace-nowrap">
+                      {currentCycle.name}
+                    </span>
+                    {allTasks.length > 0 && (
+                      <div className="px-1.5 py-0.5 rounded-sm bg-zinc-100 text-muted-foreground text-[11px] font-medium leading-none min-w-[18px] flex items-center justify-center border border-zinc-200/50 ml-0.5">
+                        {allTasks.length}
+                      </div>
+                    )}
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64 p-0 rounded-sm border border-border bg-popover shadow-xl z-[100] overflow-hidden">
+                   {/* Search Box */}
+                   <div className="p-2 border-b border-zinc-100 bg-zinc-50/50">
+                      <div className="relative flex items-center h-8 rounded-sm border border-zinc-200 bg-white overflow-hidden focus-within:border-zinc-300 transition-colors">
+                        <Search className="absolute left-2 size-3.5 text-zinc-400" />
+                        <input
+                          type="text"
+                          value={cycleSearchTerm}
+                          onChange={(e) => setCycleSearchTerm(e.target.value)}
+                          placeholder="Search cycles..."
+                          autoFocus
+                          className="h-full w-full pl-7 pr-2 text-[12px] bg-transparent outline-none placeholder:text-zinc-400 text-zinc-700"
+                          onKeyDown={(e) => e.stopPropagation()} // Prevent closing on space
+                        />
+                      </div>
+                   </div>
+
+                   <div className="max-h-60 overflow-y-auto custom-scrollbar py-1">
+                     {cyclesData?.cycles
+                       .filter(c => c.name.toLowerCase().includes(cycleSearchTerm.toLowerCase()))
+                       .map((cycle) => {
+                         const isActive = cycle._id === cycleId;
+                         return (
+                           <DropdownMenuItem
+                             key={cycle._id}
+                             onSelect={() => {
+                               navigate(`/${workspaceId}/projects/${projectId}/cycles/${cycle._id}`);
+                               setCycleSearchTerm("");
+                             }}
+                             className={cn(
+                               "flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors outline-none",
+                               isActive ? "bg-zinc-100/80 text-foreground font-medium" : "text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
+                             )}
+                           >
+                             <RotateCcw className={cn("size-3.5 shrink-0", isActive ? "text-foreground" : "text-muted-foreground/40")} />
+                             <span className="text-[13px] truncate flex-1">{cycle.name}</span>
+                             {isActive && <Check className="size-3.5 ml-auto text-foreground/40" />}
+                           </DropdownMenuItem>
+                         );
+                       })}
+                     {cyclesData?.cycles.filter(c => c.name.toLowerCase().includes(cycleSearchTerm.toLowerCase())).length === 0 && (
+                       <div className="px-3 py-4 text-center">
+                         <span className="text-[12px] text-zinc-400">No cycles found</span>
+                       </div>
+                     )}
+                   </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : undefined
+        }
         actions={
           <TopBar
             viewMode={viewMode}
@@ -437,7 +532,41 @@ export default function Task() {
         }
       />
 
-      {visibleColumns.length === 0 && hasActiveTaskFilters ? (
+      {isCycleEmpty ? (
+        <div className="flex flex-1 flex-col items-center justify-center p-6 bg-white animate-in fade-in zoom-in-95 duration-500">
+           <div className="mb-8 opacity-90 scale-110">
+              <svg width="220" height="130" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="70" y="20" width="80" height="50" rx="4" fill="#F4F5F7" />
+                <rect x="70" y="30" width="80" height="50" rx="4" fill="#F4F5F7" stroke="#EBEDF0" />
+                <rect x="70" y="40" width="80" height="50" rx="4" fill="white" stroke="#EBEDF0" />
+                <circle cx="110" cy="65" r="18" stroke="#333" strokeWidth="1.5" />
+                <path d="M106 65V58H114V72H106V65Z" fill="#EBEDF0" />
+                <rect x="40" y="60" width="30" height="8" rx="4" fill="#F4F5F7" />
+                <rect x="150" y="30" width="30" height="15" rx="4" fill="#F4F5F7" />
+              </svg>
+           </div>
+           <h3 className="text-[15px] font-bold text-zinc-900 mb-2 tracking-tight">
+             No tasks to show in this cycle
+           </h3>
+           <p className="text-[13px] text-muted-foreground max-w-[440px] text-center mb-8 leading-relaxed">
+             Create tasks to begin monitoring your team's progress this cycle and achieve your goals on time.
+           </p>
+           <div className="flex items-center gap-3">
+             <button
+               onClick={() => handleOpenAddDialog(columns[0]?._id || columns[0]?.id || "")}
+               className="h-9 px-4 bg-black text-white rounded-sm text-[13px] font-semibold hover:bg-zinc-800 transition-all shadow-sm active:scale-[0.98]"
+             >
+               Create task
+             </button>
+             <button
+               onClick={() => setIsAddExistingModalOpen(true)}
+               className="h-9 px-4 bg-white border border-border text-foreground rounded-sm text-[13px] font-semibold hover:bg-zinc-50 transition-all active:scale-[0.98]"
+             >
+               Add existing task
+             </button>
+           </div>
+        </div>
+      ) : visibleColumns.length === 0 && hasActiveTaskFilters ? (
         <div className="flex flex-1 items-center justify-center px-6 py-10">
           <div className="max-w-sm text-center">
             <p className="text-sm font-semibold text-foreground">
@@ -548,6 +677,17 @@ export default function Task() {
         confirmLabel="Delete"
         isLoading={deleteTaskMutation.isPending}
       />
+
+      {cycleId && (
+        <AddExistingTaskModal
+          open={isAddExistingModalOpen}
+          onOpenChange={setIsAddExistingModalOpen}
+          projectId={projectId!}
+          currentCycleId={cycleId}
+          columns={columns}
+          members={members}
+        />
+      )}
     </div>
   );
 }

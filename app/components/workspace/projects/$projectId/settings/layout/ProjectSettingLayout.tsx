@@ -30,7 +30,7 @@ export default function ProjectSettingLayout() {
         Icon={Settings}
         centerContent={
           <LayoutGroup id="project-settings-tabs">
-            <nav className="flex h-full max-w-full items-stretch overflow-visible">
+            <nav className="flex h-13 max-w-full items-stretch overflow-visible justify-center">
               {tabs.map((tab) => {
                 const isActive = activeTab.to === tab.to;
 
@@ -48,7 +48,7 @@ export default function ProjectSettingLayout() {
                     {isActive ? (
                       <motion.div
                         layoutId="activeTabUnderline"
-                        className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground z-20"
+                        className="absolute -bottom-[1px] inset-x-0 h-[3px] bg-foreground z-20 rounded-t-sm"
                         transition={{ type: "spring", stiffness: 500, damping: 35 }}
                       />
                     ) : null}

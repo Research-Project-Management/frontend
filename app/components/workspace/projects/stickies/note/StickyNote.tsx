@@ -1,5 +1,4 @@
-import type { Note } from "../types/note.type";
-import { NOTE_COLOR_MAP } from "../types/noteColor.type";
+import { type Note, NOTE_COLOR_MAP } from "~/types/sticky";
 import StickyContent from "./StickyContent";
 import StickyToolbar from "./StickyToolbar";
 import { useState, useEffect, useRef, memo, useMemo } from "react";
@@ -33,8 +32,8 @@ const StickyNote = memo(function StickyNote({
   const [localTitle, setLocalTitle] = useState(note.title || "");
   const titleFocusedRef = useRef(false);
 
-  // Load children only for parent stickies (not for project notes or overlay)
-  const isParentSticky = note.category !== "note";
+  // Load children only for workspace stickies (not for project-scoped stickies or overlay)
+  const isParentSticky = !note.projectId && note.scope !== "project" && note.category !== "note";
   const { data: children = [] } = useStickyChildren(
     isParentSticky && !isOverlay ? note._id : undefined
   );
@@ -89,18 +88,16 @@ const StickyNote = memo(function StickyNote({
             </div>
           )}
           <div className="flex items-center gap-1 flex-wrap overflow-hidden min-h-6">
-            {note.tags && note.tags.length > 0 ? (
-              note.tags.map((tag) => (
+            {note.labels && note.labels.length > 0 ? (
+              note.labels.map((label) => (
                 <span
-                  key={tag._id}
+                  key={label._id}
                   className="px-1.5 py-0.5 text-[9px] rounded font-semibold text-white shrink-0"
-                  style={{ backgroundColor: tag.color || "#aaa" }}
+                  style={{ backgroundColor: label.color || "#aaa" }}
                 >
-                  {tag.name}
+                  {label.name}
                 </span>
               ))
-            ) : !projectName ? (
-              <span className="text-[10px] opacity-40 italic">Sticky note</span>
             ) : null}
           </div>
         </div>
@@ -134,14 +131,14 @@ const StickyNote = memo(function StickyNote({
           style={{ backgroundColor: "rgba(0,0,0,0.06)" }}
         >
           <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider opacity-50 border-b border-black/10">
-            Project Notes ({children.length})
+            Notes ({children.length})
           </div>
           <div className="flex flex-col divide-y divide-black/5 max-h-32 overflow-y-auto">
             {children.map((link) => (
               <div key={link._id} className="flex items-center gap-2 px-2.5 py-1.5">
                 <FileText className="h-3 w-3 opacity-40 shrink-0" />
                 <span className="text-[11px] font-medium truncate flex-1 opacity-80">
-                  {link.note.title || "Untitled"}
+                  {(link.sticky || link.note)?.title || "Untitled"}
                 </span>
                 {link.project && (
                   <span className="text-[9px] opacity-40 shrink-0">{link.project.name}</span>

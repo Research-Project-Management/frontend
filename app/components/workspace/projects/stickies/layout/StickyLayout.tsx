@@ -1,19 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import StickyNote from "../note/StickyNote";
-import type { Note } from "../types/note.type";
-import { NOTE_COLOR_CYCLE } from "../types/noteColor.type";
+import { type Note, NOTE_COLOR_CYCLE } from "~/types/sticky";
 import { useParams } from "react-router";
-import {
-  useStickies,
-  useCreateSticky,
-  useUpdateSticky,
-  useDeleteSticky,
-  useReorderStickies,
-} from "~/query/sticky";
-import { Layers2, Loader2 } from "lucide-react";
-import { cn } from "~/lib/utils";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { useSticky } from "~/hooks/useSticky";
+import { Layers2, Loader2, StickyNote as StickyNoteIcon } from "lucide-react";
 import { useProjects } from "~/hooks/useWorkspace";
 import {
   DndContext,
@@ -35,10 +25,16 @@ import { CSS } from "@dnd-kit/utilities";
 import Topbar from "~/components/workspace/projects/$projectId/overview/Topbar";
 import TopBar from "./TopBar";
 
-export default function StickyLayout() {
-  const { workspaceId, projectId } = useParams();
+interface StickyLayoutProps {
+  scope?: "workspace" | "project";
+}
+
+export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps) {
+  const { workspaceId, projectId: routeProjectId } = useParams();
   const { projects } = useProjects();
-  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
+  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === routeProjectId);
+  const resolvedProjectId = currentProject?._id || routeProjectId || "";
+  const isProjectScope = scope === "project";
   const [searchQuery, setSearchQuery] = useState("");
   const [savingStatus, setSavingStatus] = useState<
     "saved" | "saving" | "error"
@@ -47,24 +43,32 @@ export default function StickyLayout() {
   const [dragOrder, setDragOrder] = useState<string[] | null>(null);
 
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
 
-  const { data: notes = [], isLoading } = useStickies(
-    workspaceId || "",
-    selectedTags
-  );
-  const createSticky = useCreateSticky();
-  const updateSticky = useUpdateSticky();
-  const deleteSticky = useDeleteSticky();
-  const reorderStickies = useReorderStickies();
+  const {
+    stickies: notes,
+    isLoading,
+    createMutation,
+    updateMutation,
+    deleteMutation,
+    reorderMutation,
+    reorderProjectMutation,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+    handleReorder
+  } = useSticky({ 
+    projectId: isProjectScope ? resolvedProjectId : undefined, 
+    labels: selectedLabels 
+  });
 
   useEffect(() => {
-    if (updateSticky.isPending) setSavingStatus("saving");
-    else if (updateSticky.isSuccess) {
+    if (updateMutation.isPending) setSavingStatus("saving");
+    else if (updateMutation.isSuccess) {
       setSavingStatus("saved");
       setLastSavedAt(new Date());
-    } else if (updateSticky.isError) setSavingStatus("error");
-  }, [updateSticky.isPending, updateSticky.isSuccess, updateSticky.isError]);
+    } else if (updateMutation.isError) setSavingStatus("error");
+  }, [updateMutation.isPending, updateMutation.isSuccess, updateMutation.isError]);
 
   // Reset drag order when the underlying notes change (e.g., deletion/addition)
   useEffect(() => {
@@ -83,28 +87,26 @@ export default function StickyLayout() {
 
   const handleAddNote = () => {
     if (!workspaceId) return;
-    createSticky.mutate({
-      workspaceId,
+    handleCreate({
       content: "<p></p>",
       color: getNextColor(notes),
       title: "",
       position: { x: 0, y: 0 },
-      category: 'sticky'
     });
   };
 
   const handleUpdateNote = useCallback(
     (id: string, updatedFields: Partial<Note>) => {
-      updateSticky.mutate({ stickyId: id, updates: updatedFields });
+      handleUpdate(id, updatedFields);
     },
-    [updateSticky],
+    [handleUpdate],
   );
 
   const handleDeleteNote = useCallback(
     (id: string) => {
-      deleteSticky.mutate(id);
+      handleDelete(id);
     },
-    [deleteSticky],
+    [handleDelete],
   );
 
   const sensors = useSensors(
@@ -126,9 +128,9 @@ export default function StickyLayout() {
     if (oldIdx !== -1 && newIdx !== -1) {
       const newOrderIds = arrayMove(notes.map(n => n._id), oldIdx, newIdx);
       setDragOrder(newOrderIds);
-      reorderStickies.mutate(newOrderIds);
+      handleReorder(newOrderIds);
     }
-  }, [notes, reorderStickies]);
+  }, [notes, handleReorder]);
 
   const displayNotes = useMemo(() => {
     if (!dragOrder) return notes;
@@ -147,26 +149,36 @@ export default function StickyLayout() {
           note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           note.content?.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const matchesTags =
-          selectedTags.length === 0 ||
-          (note.tags && selectedTags.every((tagId) => note.tags.some(t => t._id === tagId)));
+        const matchesLabels =
+          selectedLabels.length === 0 ||
+          selectedLabels.every((labelId) => note.labels?.some((l) => l._id === labelId));
 
-        return matchesSearch && matchesTags;
+        return matchesSearch && matchesLabels;
       }),
-    [displayNotes, searchQuery, selectedTags],
+    [displayNotes, searchQuery, selectedLabels],
   );
+
+  const copy = {
+    title: isProjectScope ? "Notes" : "Stickies",
+    Icon: isProjectScope ? StickyNoteIcon : Layers2,
+    loading: isProjectScope ? "Loading notes..." : "Loading stickies...",
+    emptyFiltered: isProjectScope ? "No notes match your filters" : "No stickies match your filters",
+    empty: isProjectScope ? "No notes yet" : "No stickies yet",
+    cta: isProjectScope ? 'Click "New Note" to get started' : 'Click "New Sticky" to get started',
+    addLabel: isProjectScope ? "New Note" : "New Sticky",
+  };
 
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
         <div className="shrink-0 border-b border-border/60 px-5 h-13 flex items-center">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">Stickies</span>
+            <span className="font-semibold text-sm">{copy.title}</span>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm">Loading stickies…</span>
+          <span className="text-sm">{copy.loading}</span>
         </div>
       </div>
     );
@@ -176,8 +188,8 @@ export default function StickyLayout() {
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       <Topbar
         project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
-        title="Stickies"
-        Icon={Layers2}
+        title={copy.title}
+        Icon={copy.Icon}
         actions={
           <TopBar
             searchQuery={searchQuery}
@@ -185,11 +197,12 @@ export default function StickyLayout() {
             savingStatus={savingStatus}
             lastSavedAt={lastSavedAt}
             onAddNote={handleAddNote}
-            isAddingNote={createSticky.isPending}
-            selectedTags={selectedTags}
-            onToggleTag={(tagId) =>
-              setSelectedTags((prev) =>
-                prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+            isAddingNote={createMutation.isPending}
+            selectedLabels={selectedLabels}
+            addLabel={copy.addLabel}
+            onToggleLabel={(labelId) =>
+              setSelectedLabels((prev) =>
+                prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
               )
             }
           />
@@ -200,16 +213,16 @@ export default function StickyLayout() {
         {filteredNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="w-14 h-14 rounded-2xl bg-secondary/60 flex items-center justify-center">
-              <Layers2 className="h-7 w-7 text-muted-foreground/30" />
+              <copy.Icon className="h-7 w-7 text-muted-foreground/30" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">
               {searchQuery
-                ? "No stickies match your filters"
-                : "No stickies yet"}
+                ? copy.emptyFiltered
+                : copy.empty}
             </p>
             {!searchQuery && (
               <p className="text-xs text-muted-foreground/60 mt-1">
-                Click "New Sticky" to get started
+                {copy.cta}
               </p>
             )}
           </div>
@@ -258,7 +271,6 @@ export default function StickyLayout() {
     </div>
   );
 }
-
 function SortableNote({
   note,
   onUpdate,

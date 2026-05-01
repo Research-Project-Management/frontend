@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, memo, useRef } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   AlignLeft,
-  CalendarDays,
   CheckSquare,
   Clock3,
   Copy,
@@ -25,11 +24,12 @@ import {
   PRIORITY_CONFIG,
   resolveTaskColumnColor,
   resolveTaskColumnId,
-  resolveTaskLabels,
   type Priority,
   type Task,
   type Column,
 } from "~/types/task";
+import { useParams } from "react-router";
+import { useLabelsQuery } from "~/query/label";
 
 /* Helper Functions */
 function isValidDate(value?: string) {
@@ -100,6 +100,7 @@ const TaskRow = memo(({
   onLeaveCard,
   onDeleteCard,
   onToggleLabelDetails,
+  workspaceLabels,
 }: {
   task: Task;
   currentUserId?: string | null;
@@ -111,10 +112,15 @@ const TaskRow = memo(({
   onLeaveCard: (task: Task) => void;
   onDeleteCard: (task: Task) => void;
   onToggleLabelDetails: (taskId: string) => void;
+  workspaceLabels: any[];
 }) => {
   const visibleLabels = useMemo(() => 
-    resolveTaskLabels(task.labels || []).filter((l) => l.color),
-  [task.labels]);
+    (task.labels || [])
+      .map(id => workspaceLabels.find(t => t._id === id))
+      .filter(Boolean)
+      .map(t => ({ id: t!._id, color: t!.color, title: t!.name }))
+      .filter((l) => l.color),
+  [task.labels, workspaceLabels]);
 
   const dueDateInfo = useMemo(() => {
     const hasDueDate = task.dueDate && isValidDate(task.dueDate);
@@ -318,6 +324,8 @@ export default function ListView({
   isAddingCard,
   projectId,
 }: ListViewProps) {
+  const { workspaceId } = useParams();
+  const { data: workspaceLabels = [] } = useLabelsQuery(workspaceId || "", "task");
   const STORAGE_KEY = `flux.task.list.expanded.${projectId}`;
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
@@ -430,6 +438,7 @@ export default function ListView({
                         onLeaveCard={onLeaveCard}
                         onDeleteCard={onDeleteCard}
                         onToggleLabelDetails={toggleLabelDetails}
+                        workspaceLabels={workspaceLabels}
                       />
                     ))}
 

@@ -289,7 +289,7 @@ export default function TopBar({
             variant="default"
             size="sm"
             onClick={onCreateSection}
-            className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-[filter] hover:brightness-110"
+            className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all hover:bg-zinc-800 bg-black text-white"
           >
             <Plus className="size-3.5" />
             New Column

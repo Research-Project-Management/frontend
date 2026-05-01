@@ -7,25 +7,20 @@ import {
   type SetStateAction,
 } from "react";
 import { parseISO, isValid, format } from "date-fns";
-import { Button } from "@/components/ui/button";
+import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "~/components/ui/popover";
+import { useParams } from "react-router";
 import { useAuth } from "~/hooks/useAuth";
 import type {
   TaskRecurrence,
   TaskReminder,
-  TaskLabel,
 } from "~/types/task";
-import {
-  INITIAL_LABEL_POOL,
-  getTaskLabelPool,
-  persistTaskLabelPool,
-  resolveTaskLabels,
-} from "~/types/task";
+import { useLabelsQuery } from "~/query/label";
 import { ActionDateSection } from "./section/ActionDateSection";
 import { ActionLabelsSection } from "./section/ActionLabelsSection";
 import { ActionChecklistSection } from "./section/ActionChecklistSection";
@@ -76,18 +71,15 @@ export function TaskActions({
   onAddChecklist,
   setAttachments,
 }: TaskActionsProps) {
+  const { workspaceId, projectId } = useParams();
   const { user: currentUser } = useAuth();
-  const [labelPool, setLabelPool] = useState<TaskLabel[]>(() => getTaskLabelPool());
+  const { data: workspaceLabels = [] } = useLabelsQuery(workspaceId || "", "task", projectId);
   const [labelsPopoverOpen, setLabelsPopoverOpen] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [memberPopoverOpen, setMemberPopoverOpen] = useState(false);
   const [memberActionPopoverOpen, setMemberActionPopoverOpen] = useState(false);
   const actionBtnClass =
     "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]";
-
-  useEffect(() => {
-    persistTaskLabelPool(labelPool);
-  }, [labelPool]);
 
   const normalizedMembers = useMemo(() => {
     const list = members.map((m: any) => {
@@ -119,8 +111,10 @@ export function TaskActions({
   const assignee = normalizedMembers.find((m: any) => m.user._id === assigneeId);
 
   const sortedActiveLabels = useMemo(() => {
-    return labelPool.filter((label) => labels.includes(label.id));
-  }, [labelPool, labels]);
+    return workspaceLabels
+      .filter((label: any) => labels.includes(label._id))
+      .map((label: any) => ({ id: label._id, title: label.name, color: label.color }));
+  }, [workspaceLabels, labels]);
 
   const formattedDueDateBadge = useMemo(() => {
     if (!dueDate) return null;
@@ -153,11 +147,6 @@ export function TaskActions({
     return parsedDueDate.getTime() < Date.now();
   }, [formattedDueDateBadge, dueDate]);
 
-  const handleDeleteLabel = (labelId: string) => {
-    setLabelPool((prev) => prev.filter((label) => label.id !== labelId));
-    setLabels((prev) => prev.filter((id) => id !== labelId));
-  };
-
   const hasMetaContent =
     Boolean(assigneeId && assignee) ||
     sortedActiveLabels.length > 0 ||
@@ -172,9 +161,6 @@ export function TaskActions({
           onOpenChange={setLabelsPopoverOpen}
           labels={labels}
           setLabels={setLabels}
-          labelPool={labelPool}
-          setLabelPool={setLabelPool}
-          onDeleteLabel={handleDeleteLabel}
         />
 
         <ActionDateSection
@@ -275,7 +261,7 @@ export function TaskActions({
                         }
                         style={{ backgroundColor: item.color }}
                       >
-                        {hasTitle ? <span className="truncate">{item.title}</span> : null}
+                        {hasTitle ? <span className="truncate text-white drop-shadow-sm font-bold">{item.title}</span> : null}
                       </button>
                     );
                   })}

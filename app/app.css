@@ -404,3 +404,32 @@ html {
 .flux-comment-glyph:hover {
   opacity: 1;
 }
+
+/* Kanban Horizontal Scrollbar */
+.kanban-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #e4e4e7 transparent;
+}
+
+.kanban-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  cursor: pointer;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 24px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e4e4e7;
+  /* zinc-200 */
+  border-radius: 20px;
+  border: 2px solid white;
+  transition: all 0.2s;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #d4d4d8;
+  /* zinc-300 */
+}

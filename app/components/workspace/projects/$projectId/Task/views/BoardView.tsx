@@ -81,7 +81,7 @@ export default function BoardView({
   };
 
   return (
-    <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4">
+    <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4 kanban-scrollbar">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

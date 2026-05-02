@@ -277,7 +277,7 @@ export function ActionDateSection({
           variant="outline"
           className={
             open
-              ? "h-10 rounded-sm border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
+              ? "h-10 rounded-sm border-none bg-zinc-800 px-4 text-[15px] font-medium text-white shadow-none"
               : resolvedActionBtnClass
           }
         >
@@ -384,7 +384,7 @@ export function ActionDateSection({
                       value={tempStartDate && hasStartDate ? format(tempStartDate, "d/M/yyyy") : ""}
                       onClick={ensureStartDateEnabled}
                       readOnly
-                      className={`h-11 text-[15px] transition-all shadow-none cursor-pointer rounded-sm flex-1 ${activeInput === "start" ? "ring-2 ring-black/20 border-black bg-white" : "bg-[#091e4208] border-none"}`}
+                      className={`h-11 text-[15px] transition-all shadow-none cursor-pointer rounded-sm flex-1 ${activeInput === "start" ? "ring-2 ring-black/20 border-black bg-white" : "bg-zinc-50 border-none"}`}
                     />
                     <div className="w-20 shrink-0" />
                   </div>
@@ -411,7 +411,7 @@ export function ActionDateSection({
                       value={tempEndDate && hasDueDate ? format(tempEndDate, "d/M/yyyy") : ""}
                       onClick={ensureDueDateEnabled}
                       readOnly
-                      className={`h-11 text-[15px] transition-all shadow-none flex-1 cursor-pointer rounded-sm ${activeInput === "end" ? "ring-2 ring-black/20 border-black bg-white" : "bg-[#091e4208] border-none"}`}
+                      className={`h-11 text-[15px] transition-all shadow-none flex-1 cursor-pointer rounded-sm ${activeInput === "end" ? "ring-2 ring-black/20 border-black bg-white" : "bg-zinc-50 border-none"}`}
                     />
 
                     <Input
@@ -433,7 +433,7 @@ export function ActionDateSection({
                       maxLength={5}
                       aria-invalid={!!dueTimeError}
                       disabled={!hasDueDate}
-                      className={`h-11 text-[15px] focus-visible:ring-1 w-20 shrink-0 px-3 bg-white rounded-sm text-center disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground ${dueTimeError ? "border-destructive text-destructive focus-visible:ring-destructive/20" : "border-[#091e4224]"}`}
+                      className={`h-11 text-[15px] focus-visible:ring-1 w-20 shrink-0 px-3 bg-white rounded-sm text-center disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-muted-foreground ${dueTimeError ? "border-destructive text-destructive focus-visible:ring-destructive/20" : "border-border"}`}
                     />
                   </div>
                 </div>
@@ -443,7 +443,7 @@ export function ActionDateSection({
               <div className="space-y-2">
                 <Label className="text-[13px] font-bold text-muted-foreground">Recurrence</Label>
                 <Select value={tempRecurrence} onValueChange={(value) => setTempRecurrence(value as TaskRecurrence)} disabled={!hasDueDate}>
-                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-sm bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
+                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-border shadow-none rounded-sm bg-white w-full disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-muted-foreground">
                     <SelectValue placeholder="Never" />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" className="z-140 rounded-sm border-border/50 shadow-xl max-h-75 overflow-y-auto">
@@ -460,7 +460,7 @@ export function ActionDateSection({
               <div className="space-y-2">
                 <Label className="text-[13px] font-bold text-muted-foreground">Set reminder</Label>
                 <Select value={tempReminder} onValueChange={(value) => setTempReminder(value as TaskReminder)} disabled={!hasDueDate}>
-                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-[#d9d9d9] shadow-none rounded-sm bg-white w-full disabled:cursor-not-allowed disabled:bg-[#091e4208] disabled:text-muted-foreground">
+                  <SelectTrigger disabled={!hasDueDate} className="h-11 text-[15px] border-border shadow-none rounded-sm bg-white w-full disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-muted-foreground">
                     <SelectValue placeholder="1 Day before" />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" className="z-140 rounded-sm border-border/50 shadow-xl max-h-75 overflow-y-auto">
@@ -491,7 +491,7 @@ export function ActionDateSection({
                 </Button>
                 <Button
                   variant="secondary"
-                  className="w-full bg-[#091e420f] hover:bg-[#091e421a] text-[#172b4d] font-semibold h-11 rounded-sm border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
+                  className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-semibold h-11 rounded-sm border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
                   onClick={handleClearDate}
                 >
                   Remove

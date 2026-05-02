@@ -59,7 +59,7 @@ export default function GeneralSettings() {
     <div className="flex flex-col h-full overflow-hidden">
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-8 space-y-8 max-w-3xl mx-auto">
+        <div className="px-8 py-6 space-y-6 max-w-3xl mx-auto">
           <GeneralForm
             project={project}
             canManage={canManage}
@@ -154,7 +154,7 @@ function GeneralForm({
     parallelEnabled !== (project.parallel_cycles_enabled ?? false);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="space-y-1.5">
           <label
@@ -207,8 +207,8 @@ function GeneralForm({
         />
       </div>
 
-      <div className="pt-2">
-        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/5">
+      <div className="pt-1">
+        <div className="flex items-center justify-between p-2.5 rounded-sm border border-border bg-secondary/5">
           <div className="space-y-0.5">
             <Label htmlFor="parallel-cycles" className="text-sm font-semibold">Parallel Cycles</Label>
             <p className="text-xs text-muted-foreground">Allow multiple active cycles at the same time.</p>
@@ -251,7 +251,7 @@ function DangerZone({
   if (!canManage) return null;
 
   return (
-    <div className="rounded-lg border border-destructive/30 p-6">
+    <div className="rounded-sm border border-destructive/30 p-4">
       <div className="flex items-center justify-between gap-6">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold text-foreground">

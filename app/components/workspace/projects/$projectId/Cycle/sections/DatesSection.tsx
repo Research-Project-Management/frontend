@@ -10,7 +10,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   ChevronsLeft, 
-  ChevronsRight 
+  ChevronsRight,
+  ArrowRight
 } from "lucide-react";
 import { 
   format, addMonths, subMonths, startOfMonth, endOfMonth, 
@@ -76,7 +77,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
   };
 
   return (
-    <div className="p-4 w-[320px] bg-white rounded-xl shadow-2xl border border-border/50 animate-in fade-in zoom-in-95 duration-200">
+    <div className="p-4 w-[320px] bg-white rounded-sm shadow-2xl border border-border/50 animate-in fade-in zoom-in-95 duration-200">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="size-8 hover:bg-gray-100 transition-colors" onClick={() => setCurrentMonth(subYears(currentMonth, 1))}>
@@ -165,7 +166,11 @@ export const DatesSection = ({ formStart, formEnd, setFormStart, setFormEnd, tri
         {trigger || (
           <button className="h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] hover:bg-[#f7f7f7] flex items-center gap-2 transition-colors outline-none">
             <CalendarDays className="size-4 text-[#44546f]" />
-            Dates
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-500">Start date</span>
+              <ArrowRight className="size-3 text-zinc-400" />
+              <span className="text-zinc-500">End date</span>
+            </div>
           </button>
         )}
       </PopoverTrigger>

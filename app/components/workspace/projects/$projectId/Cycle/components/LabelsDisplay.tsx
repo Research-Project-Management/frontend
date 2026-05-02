@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React from "react";
 import { Plus } from "lucide-react";
 
 interface Tag {
@@ -32,55 +32,16 @@ export function LabelsDisplay({
   disabled = false,
   showAddButton = true,
 }: LabelsDisplayProps) {
-  // null = not yet measured (show all); number = first hidden index
-  const [hiddenStart, setHiddenStart] = useState<number | null>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useLayoutEffect(() => {
-    // Re-measure whenever tags or showAddButton change
-    setHiddenStart(null); // reset → triggers render with all chips
-
-    const raf = requestAnimationFrame(() => {
-      const btn = buttonRef.current;
-      if (!btn) return;
-
-      const containerRight = btn.getBoundingClientRect().right;
-      if (containerRight === 0) return;
-
-      // Right boundary: reserve space for badge + add button
-      const reserve = (showAddButton ? ADD_BTN_W : 0) + BADGE_W;
-      const threshold = containerRight - reserve;
-
-      const chipEls = btn.querySelectorAll<HTMLElement>("[data-chip-idx]");
-      let firstHidden: number | null = null;
-
-      chipEls.forEach((chip) => {
-        if (firstHidden !== null) return;
-        const chipRight = chip.getBoundingClientRect().right;
-        if (chipRight > threshold) {
-          firstHidden = parseInt(chip.getAttribute("data-chip-idx") ?? "0", 10);
-        }
-      });
-
-      setHiddenStart(firstHidden); // null = all fit; number = first overflow index
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [tags, showAddButton]);
-
-  // While hiddenStart is null, show everything (clipped by overflow-hidden)
-  // so the measurement DOM is present. After measurement, show only the fitting ones.
-  const isMeasuring = hiddenStart === null;
-  const visibleTags = isMeasuring ? tags : tags.slice(0, hiddenStart ?? tags.length);
-  const hiddenCount = isMeasuring ? 0 : tags.length - (hiddenStart ?? tags.length);
+  const LIMIT = 4;
+  const visibleTags = tags.slice(0, LIMIT);
+  const hiddenCount = tags.length > LIMIT ? tags.length - LIMIT : 0;
 
   return (
     <button
-      ref={buttonRef}
       type="button"
       disabled={disabled}
       onClick={onOpen}
-      className={`flex h-9 w-full min-w-0 items-center gap-1.5 overflow-hidden border-0 bg-transparent p-0 outline-none ${
+      className={`flex h-9 items-center gap-1.5 border-0 bg-transparent p-0 outline-none ${
         disabled ? "cursor-default" : "cursor-pointer"
       }`}
     >
@@ -88,16 +49,16 @@ export function LabelsDisplay({
         <div
           key={tag._id}
           data-chip-idx={i}
-          className="inline-flex h-7 shrink-0 items-center rounded px-2.5 text-[12px] font-semibold text-white shadow-sm"
+          className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-[12px] font-semibold text-white shadow-sm"
           style={{ backgroundColor: tag.color }}
         >
           <span className="whitespace-nowrap drop-shadow-sm">{tag.name}</span>
         </div>
       ))}
 
-      {/* Overflow badge — hidden during measurement pass */}
-      {!isMeasuring && hiddenCount > 0 && (
-        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded px-2 text-[12px] font-bold text-[#44546f] bg-[#e2e4e9]">
+      {/* Overflow badge */}
+      {hiddenCount > 0 && (
+        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-[12px] font-bold text-[#44546f] bg-[#e2e4e9]">
           +{hiddenCount}
         </div>
       )}

@@ -103,7 +103,7 @@ export default function Topbar({
   return (
     <header className="flex items-center px-4 h-13 border-b border-border bg-background sticky top-0 z-50 shrink-0 gap-0">
       {/* Left: Breadcrumbs */}
-      <div className="flex items-center min-w-0">
+      <div className="flex items-center min-w-0 flex-1">
         {project && (
           <div className="flex items-center">
             {/* Project Switcher Box */}
@@ -166,7 +166,7 @@ export default function Topbar({
             onTitleClick ? "hover:bg-zinc-100 cursor-pointer" : ""
           )}
         >
-          <Icon className="size-3.5 text-foreground/80" />
+          <Icon className="size-3.5 text-foreground/80 shrink-0 mt-[1px]" />
           <h1 className="text-[13px] font-semibold text-foreground tracking-tight whitespace-nowrap">
             {title}
           </h1>
@@ -182,12 +182,14 @@ export default function Topbar({
       </div>
 
       {/* Center: Extra content */}
-      <div className="flex-1 flex items-center justify-center min-w-0">
-        {centerContent}
+      <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto flex items-center h-full">
+          {centerContent}
+        </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center justify-end gap-3 min-w-0">
+      <div className="flex items-center justify-end gap-3 min-w-0 flex-1">
         {actions}
       </div>
     </header>

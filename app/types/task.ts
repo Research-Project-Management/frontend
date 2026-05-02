@@ -194,7 +194,6 @@ export type Cycle = {
   phase: CyclePhase;
   milestones: CycleMilestone[];
   deliverables: CycleDeliverable[];
-  members?: string[];
   labels?: string[];
   ended_at?: string;
   order: number;

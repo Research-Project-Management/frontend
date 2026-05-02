@@ -79,7 +79,7 @@ export function TaskActions({
   const [memberPopoverOpen, setMemberPopoverOpen] = useState(false);
   const [memberActionPopoverOpen, setMemberActionPopoverOpen] = useState(false);
   const actionBtnClass =
-    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none transition-colors hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-border bg-white px-4 text-[15px] font-medium text-zinc-900 shadow-none transition-colors hover:bg-zinc-100";
 
   const normalizedMembers = useMemo(() => {
     const list = members.map((m: any) => {
@@ -195,7 +195,7 @@ export function TaskActions({
         <div className="flex flex-wrap items-start gap-4 sm:gap-5">
           {assigneeId && assignee ? (
             <div className="min-w-27.5 space-y-2">
-              <p className="text-[14px] font-semibold text-[#5e6c84]">Members</p>
+              <p className="text-[14px] font-semibold text-zinc-500">Members</p>
               <div className="flex items-center gap-2">
                 <Popover open={memberActionPopoverOpen} onOpenChange={setMemberActionPopoverOpen}>
                   <PopoverTrigger asChild>
@@ -206,7 +206,7 @@ export function TaskActions({
                     >
                       <Avatar className="size-9">
                         <AvatarImage src={assignee.user.avatar} />
-                        <AvatarFallback className="bg-[#f59e0b] text-[13px] font-bold text-[#3f2200]">
+                        <AvatarFallback className="bg-zinc-100 text-[13px] font-bold text-zinc-900">
                           {assignee.user.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -224,7 +224,7 @@ export function TaskActions({
                         setAssigneeId(null);
                         setMemberActionPopoverOpen(false);
                       }}
-                      className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-[#c9372c] transition-colors hover:bg-[#fff1f0]"
+                      className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-red-600 transition-colors hover:bg-red-50"
                     >
                       Remove from card
                     </button>
@@ -234,7 +234,7 @@ export function TaskActions({
                   variant="ghost"
                   size="icon"
                   onClick={() => setMemberPopoverOpen(true)}
-                  className="size-9 rounded-full border-0 bg-[#e5e7eb] text-[#172b4d] shadow-none hover:bg-[#d9dde3]"
+                  className="size-9 rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
                 >
                   <Plus className="size-4" />
                 </Button>
@@ -244,7 +244,7 @@ export function TaskActions({
 
           {sortedActiveLabels.length > 0 ? (
             <div className="min-w-30 space-y-2">
-              <p className="text-[14px] font-semibold text-[#5e6c84]">Labels</p>
+              <p className="text-[14px] font-semibold text-zinc-500">Labels</p>
               <div className="flex items-start gap-2">
                 <div className="flex max-w-65 flex-wrap items-center gap-2">
                   {sortedActiveLabels.map((item) => {
@@ -270,7 +270,7 @@ export function TaskActions({
                   variant="ghost"
                   size="icon"
                   onClick={() => setLabelsPopoverOpen(true)}
-                  className="size-9 shrink-0 self-start rounded-full border-0 bg-[#e5e7eb] text-[#172b4d] shadow-none hover:bg-[#d9dde3]"
+                  className="size-9 shrink-0 self-start rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
                 >
                   <Plus className="size-4" />
                 </Button>
@@ -280,7 +280,7 @@ export function TaskActions({
 
           {dateBadgeText ? (
             <div className="min-w-45 space-y-2">
-              <p className="text-[14px] font-semibold text-[#5e6c84]">
+              <p className="text-[14px] font-semibold text-zinc-500">
                 {formattedDueDateBadge ? "Due date" : "Start date"}
               </p>
               <button
@@ -288,13 +288,13 @@ export function TaskActions({
                 onClick={() => setDatePopoverOpen(true)}
                 className={`inline-flex h-10 max-w-full items-center gap-2 rounded-sm px-4 text-[16px] leading-none font-medium transition-colors ${
                   isDueDateOverdue
-                    ? "bg-[#ffeceb] text-[#5d1f1a] hover:bg-[#ffd9d6]"
-                    : "bg-[#d1d5db] text-[#1f2937] hover:bg-[#c7ccd5]"
+                    ? "bg-red-50 text-red-900 hover:bg-red-100"
+                    : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
                 }`}
               >
                 <span className="truncate">{dateBadgeText}</span>
                 {isDueDateOverdue ? (
-                  <span className="inline-flex h-5 items-center rounded-sm bg-[#c9372c] px-1.5 text-[12px] font-semibold text-white">
+                  <span className="inline-flex h-5 items-center rounded-sm bg-red-600 px-1.5 text-[12px] font-semibold text-white">
                     Overdue
                   </span>
                 ) : null}

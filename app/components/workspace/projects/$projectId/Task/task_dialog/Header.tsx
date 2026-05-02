@@ -41,9 +41,9 @@ export function TaskHeader({
   onClose,
 }: TaskHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-7 py-5 border-b border-[#f3f3f3] bg-white sticky top-0 z-20 shrink-0">
+    <div className="flex items-center justify-between px-7 py-5 border-b border-border bg-white sticky top-0 z-20 shrink-0">
       <Select value={columnId} onValueChange={setColumnId}>
-        <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-[#091e420f] px-3 text-[14px] font-semibold text-[#172b4d] shadow-none hover:bg-[#091e421a] focus:ring-0 transition-colors">
+        <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-zinc-100 px-3 text-[14px] font-semibold text-zinc-900 shadow-none hover:bg-zinc-200 focus:ring-0 transition-colors">
           <SelectValue placeholder="Select status" />
         </SelectTrigger>
         <SelectContent className="rounded-sm border-border/50 shadow-xl">
@@ -64,7 +64,7 @@ export function TaskHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 rounded-sm text-[#44546f] hover:bg-[#091e420f]"
+              className="size-10 rounded-sm text-zinc-500 hover:bg-zinc-100"
             >
               <MoreHorizontal className="h-5 w-5" />
             </Button>
@@ -104,7 +104,7 @@ export function TaskHeader({
         <Button
           variant="ghost"
           size="icon"
-          className="size-10 rounded-sm text-[#44546f] hover:bg-[#091e420f]"
+          className="size-10 rounded-sm text-zinc-500 hover:bg-zinc-100"
           onClick={onClose}
         >
           <X className="h-5 w-5" />

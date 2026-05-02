@@ -42,7 +42,7 @@ function ProgressBar({ value }: { value: number }) {
 function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?: string }) {
   if (searchTerm?.trim()) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-6 bg-white text-center">
+      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <h3 className="text-[14px] font-semibold text-zinc-900 mb-1">No cycles found</h3>
         <p className="text-[12px] text-muted-foreground">
           No cycles in <span className="font-medium text-zinc-600">{status}</span> section match "{searchTerm}"
@@ -67,7 +67,7 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
   }[status];
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 bg-white text-center">
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       {status === 'active' && (
          <div className="mb-6 opacity-80">
             <svg width="200" height="120" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -256,7 +256,7 @@ export function ListViewGroup({
   }[status];
 
   return (
-    <div className="flex flex-col bg-[#f4f5f7]">
+    <div className="flex flex-col bg-transparent">
       <div 
         className="flex items-center gap-3 px-3 py-2.5 transition-colors group cursor-pointer hover:bg-zinc-200/50"
         onClick={onToggle}
@@ -274,7 +274,7 @@ export function ListViewGroup({
       </div>
 
       {isExpanded && (
-        <div className="bg-white border-t border-border/40 divide-y divide-border/40">
+        <div className="bg-transparent border-t border-border/40 divide-y divide-border/40">
           {children}
         </div>
       )}

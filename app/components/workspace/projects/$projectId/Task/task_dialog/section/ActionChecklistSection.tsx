@@ -20,7 +20,7 @@ export function ActionChecklistSection({
   const [checklistTitle, setChecklistTitle] = useState("Checklist");
 
   const actionBtnClass =
-    "h-10 rounded-sm border border-[#d9d9d9] bg-white px-4 text-[15px] font-medium text-[#333] shadow-none hover:bg-[#f7f7f7]";
+    "h-10 rounded-sm border border-border bg-white px-4 text-[15px] font-medium text-zinc-900 shadow-none hover:bg-zinc-100";
 
   const handleAddChecklist = () => {
     if (!checklistTitle.trim()) return;
@@ -36,7 +36,7 @@ export function ActionChecklistSection({
           variant="outline"
           className={
             open
-              ? "h-10 rounded-sm border-none bg-[#4c525e] px-4 text-[15px] font-medium text-white shadow-none"
+              ? "h-10 rounded-sm border-none bg-zinc-800 px-4 text-[15px] font-medium text-white shadow-none"
               : actionBtnClass
           }
         >

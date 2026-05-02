@@ -58,7 +58,7 @@ const TabsList = React.forwardRef<
         className={cn(
           "inline-flex items-center text-muted-foreground",
           variant === "underline" && "w-full justify-start border-b border-border bg-transparent p-0",
-          variant === "pill" && "h-9 justify-center rounded-lg bg-muted/50 p-1",
+          variant === "pill" && "h-9 justify-center rounded-sm bg-muted/50 p-1",
           className
         )}
         {...props}
@@ -82,7 +82,7 @@ const TabsTrigger = React.forwardRef<
       className={cn(
         "relative inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
         variant === "underline" && "px-4 py-3 data-[state=active]:text-foreground hover:text-foreground/80",
-        variant === "pill" && "flex-1 px-3 py-1 rounded-md text-muted-foreground data-[state=active]:text-primary-foreground hover:bg-muted/30 transition-colors duration-200",
+        variant === "pill" && "flex-1 px-3 py-1 rounded-sm text-muted-foreground data-[state=active]:text-primary-foreground hover:bg-muted/30 transition-colors duration-200",
         className
       )}
       {...props}
@@ -94,7 +94,7 @@ const TabsTrigger = React.forwardRef<
            className={cn(
               "absolute z-0",
               variant === "underline" && "bottom-0 left-0 right-0 h-[2px] bg-primary",
-              variant === "pill" && "inset-0 rounded-md bg-foreground shadow-sm"
+              variant === "pill" && "inset-0 rounded-sm bg-foreground shadow-sm"
            )}
            initial={false}
            transition={{ 

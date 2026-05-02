@@ -97,7 +97,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
               <Input
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
-                className="h-9 border-[#d9d9d9] bg-white shadow-none transition-all focus-visible:border-[#202222] focus-visible:ring-1 focus-visible:ring-[#202222]/20"
+                className="h-9 border-transparent bg-white shadow-none transition-all focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black/20"
                 autoFocus
                 disabled={isMutating}
               />
@@ -151,12 +151,12 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
         </div>
         <div className="shrink-0 bg-white px-4 pb-2 pt-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#44546f] z-10" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500 z-10" />
             <Input 
               placeholder="Search labels..." 
               value={labelSearch} 
               onChange={(e) => setLabelSearch(e.target.value)} 
-              className="h-9 border-[#d9d9d9] bg-white pl-9 text-[15px] shadow-none transition-all focus-visible:border-[#202222] focus-visible:ring-1 focus-visible:ring-[#202222]/20" 
+              className="h-9 border-transparent bg-white pl-9 text-[15px] shadow-none transition-all focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black/20" 
             />
           </div>
         </div>
@@ -176,7 +176,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
                   <Checkbox 
                     checked={labels.includes(label._id)} 
                     onCheckedChange={() => toggleTag(label._id)} 
-                    className="size-5 rounded-lg border-[#091e4224] data-[state=checked]:bg-[#172b4d] data-[state=checked]:border-[#172b4d]" 
+                    className="size-5 rounded-lg border-border data-[state=checked]:bg-black data-[state=checked]:border-black" 
                   />
                   <button 
                     type="button" 
@@ -192,19 +192,19 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
                     onClick={() => handleEdit(label)} 
                     className="size-8 shrink-0 opacity-60 transition-opacity group-hover:opacity-100"
                   >
-                    <SquarePen className="size-4 text-[#44546f]" />
+                    <SquarePen className="size-4 text-zinc-500" />
                   </Button>
                 </div>
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-                <div className="size-12 rounded-full bg-[#f1f2f4] flex items-center justify-center mb-3">
-                  <Tag className="size-6 text-[#6b778c] opacity-50" />
+                <div className="size-12 rounded-full bg-zinc-100 flex items-center justify-center mb-3">
+                  <Tag className="size-6 text-zinc-400 opacity-50" />
                 </div>
-                <p className="text-[14px] font-medium text-[#172b4d]">
+                <p className="text-[14px] font-medium text-zinc-900">
                   {labelSearch ? "No labels found" : "No labels yet"}
                 </p>
-                <p className="text-[12px] text-[#6b778c] mt-1">
+                <p className="text-[12px] text-zinc-500 mt-1">
                   {labelSearch 
                     ? `We couldn't find any labels matching "${labelSearch}"`
                     : "Create your first label to start organizing."}
@@ -218,7 +218,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
           <Button 
             variant="secondary" 
             onClick={handleCreateNew} 
-            className="h-10 w-full rounded-md border-none bg-[#091e420f] font-semibold text-[#172b4d] shadow-none transition-all hover:bg-[#091e421a]"
+            className="h-10 w-full rounded-md border-none bg-zinc-100 font-semibold text-zinc-900 shadow-none transition-all hover:bg-zinc-200"
           >
             Create a new label
           </Button>
@@ -234,7 +234,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
           "flex h-10 w-fit items-center gap-3 rounded-md px-4 text-sm font-medium transition-colors hover:bg-muted/50",
           actionBtnClass
         )}>
-          <Tag className="size-4 text-[#44546f]" />
+          <Tag className="size-4 text-zinc-500" />
           <span>Labels</span>
         </button>
       </PopoverTrigger>

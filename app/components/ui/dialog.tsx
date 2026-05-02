@@ -72,7 +72,7 @@ function DialogContent({
             mass: 0.8
           }}
           className={cn(
-            "bg-background fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-xl border p-6 shadow-2xl outline-none sm:max-w-lg",
+            "bg-background fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-sm border p-6 shadow-2xl outline-none sm:max-w-lg",
             "transform-gpu", // Hardware acceleration
             className
           )}

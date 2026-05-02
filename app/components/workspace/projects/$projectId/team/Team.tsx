@@ -131,7 +131,7 @@ export default function ProjectTeam() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white">
-      <div className="flex-1 p-6 space-y-6 flex flex-col overflow-hidden max-w-5xl mx-auto w-full">
+      <div className="flex-1 p-4 space-y-5 flex flex-col overflow-hidden max-w-3xl mx-auto w-full">
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-[17px] font-semibold text-zinc-900">Project Team</h2>
@@ -165,17 +165,17 @@ export default function ProjectTeam() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto border border-zinc-100 rounded-sm">
+      <div className="flex-1 overflow-auto border border-border rounded-sm">
         <table className="w-full text-[13px]">
-          <thead className="bg-muted sticky top-0 z-10 border-b border-zinc-100 text-zinc-500">
+          <thead className="bg-muted sticky top-0 z-10 border-b border-border text-zinc-500">
             <tr>
-              <th className="text-left p-3 font-medium pl-4">User</th>
-              <th className="text-left p-3 font-medium">Role</th>
-              <th className="text-left p-3 font-medium">Joined</th>
-              <th className="p-3 w-[50px] pr-4"></th>
+              <th className="text-left p-2.5 font-medium pl-4">User</th>
+              <th className="text-left p-2.5 font-medium">Role</th>
+              <th className="text-left p-2.5 font-medium">Joined</th>
+              <th className="p-2.5 w-[50px] pr-4"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100">
+          <tbody className="divide-y divide-border">
             {filteredMembers.map((member) => {
               const isCurrentUser = currentUser?._id === member.user?._id;
               const memberName = isCurrentUser ? (currentUser?.name || member.user?.name) : member.user?.name || "Unknown User";
@@ -188,9 +188,9 @@ export default function ProjectTeam() {
                   key={member.user?._id || Math.random()}
                   className="group hover:bg-zinc-50 transition-colors"
                 >
-                  <td className="p-3 pl-4">
+                  <td className="p-2.5 pl-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8 rounded-full border border-zinc-100">
+                      <Avatar className="h-8 w-8 rounded-full border border-border">
                         {memberAvatar && <AvatarImage src={memberAvatar} className="object-cover" />}
                         <AvatarFallback className="bg-zinc-100 text-zinc-500 text-[11px] font-medium">
                           {initials || "U"}
@@ -206,7 +206,7 @@ export default function ProjectTeam() {
                       </div>
                     </div>
                   </td>
-                  <td className="p-3">
+                  <td className="p-2.5">
                     <RoleDisplay 
                       member={member} 
                       roles={roles || []} 
@@ -214,12 +214,12 @@ export default function ProjectTeam() {
                       workspaceRole={workspaceRole}
                     />
                   </td>
-                  <td className="p-3 text-zinc-400 text-[12px]">
+                  <td className="p-2.5 text-zinc-400 text-[12px]">
                     {new Date(
                       member.joinedAt || Date.now(),
                     ).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
-                  <td className="p-3 text-right pr-4">
+                  <td className="p-2.5 text-right pr-4">
                     {canManageTeam &&
                       currentUser &&
                       !isCurrentUser && (

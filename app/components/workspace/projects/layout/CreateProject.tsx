@@ -73,7 +73,7 @@ const TEMPLATES: Template[] = [
     description: "Full research workflow with cycles & task tracking",
     icon: FlaskConical,
     modules: ["overview", "pages", "tasks", "cycles", "storage", "settings"],
-    accent: "ring-blue-500/60",
+    accent: "ring-zinc-900/80",
   },
   {
     id: "general",
@@ -81,7 +81,7 @@ const TEMPLATES: Template[] = [
     description: "Standard project management with tasks & files",
     icon: FolderKanban,
     modules: ["overview", "pages", "tasks", "storage", "settings"],
-    accent: "ring-emerald-500/60",
+    accent: "ring-zinc-900/80",
   },
   {
     id: "writing",
@@ -89,7 +89,7 @@ const TEMPLATES: Template[] = [
     description: "Focus on writing with project notes",
     icon: BookOpen,
     modules: ["overview", "pages", "storage", "stickies", "settings"],
-    accent: "ring-amber-500/60",
+    accent: "ring-zinc-900/80",
   },
   {
     id: "custom",
@@ -97,7 +97,7 @@ const TEMPLATES: Template[] = [
     description: "Start from scratch, pick your modules",
     icon: Blocks,
     modules: ["overview", "settings"],
-    accent: "ring-violet-500/60",
+    accent: "ring-zinc-900/80",
   },
 ];
 
@@ -212,7 +212,7 @@ export default function CreateProject({
                 type="button"
                 key={tpl.id}
                 onClick={() => handleTemplateSelect(tpl)}
-                className={`relative flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer
+                className={`relative flex flex-col items-start gap-1.5 p-3 rounded-sm border text-left transition-all duration-150 cursor-pointer
                   ${
                     isSelected
                       ? `border-transparent ring-2 ${tpl.accent} bg-accent/40`
@@ -250,7 +250,7 @@ export default function CreateProject({
           <div className="relative" ref={emojiRef}>
             <button
               type="button"
-              className="flex items-center justify-center w-12 h-12 text-2xl border rounded-xl cursor-pointer hover:bg-accent transition-colors shrink-0"
+              className="flex items-center justify-center w-12 h-12 text-2xl border rounded-sm cursor-pointer hover:bg-accent transition-colors shrink-0"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               {avatar}
@@ -304,7 +304,7 @@ export default function CreateProject({
                 key={mod.id}
                 onClick={() => handleModuleToggle(mod.id)}
                 disabled={isLocked}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 border
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all duration-150 border
                   ${
                     isActive
                       ? "bg-primary/10 text-primary border-primary/20"

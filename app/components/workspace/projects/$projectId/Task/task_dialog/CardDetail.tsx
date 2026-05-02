@@ -253,22 +253,22 @@ function ChecklistBlock({
     <div className="bg-white space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <CheckSquare className="size-5 text-[#172b4d]" />
-          <h4 className="text-[15px] font-bold leading-tight text-[#172b4d]">
+          <CheckSquare className="size-5 text-zinc-900" />
+          <h4 className="text-[15px] font-bold leading-tight text-zinc-900">
             {checklist.title}
           </h4>
         </div>
         <button
           type="button"
           onClick={() => setShowDeleteConfirm(true)}
-          className="rounded-md bg-[#f1f2f4] px-3 py-1.5 text-[13px] font-medium text-[#172b4d] hover:bg-[#eaecef]"
+          className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-zinc-900 hover:bg-zinc-200"
         >
           Delete
         </button>
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold text-[#6b778c] min-w-8">{progress}%</span>
+        <span className="text-[12px] font-semibold text-zinc-500 min-w-8">{progress}%</span>
         <div className="flex-1 h-1.5 rounded-full bg-[#e9edf3] overflow-hidden">
           <div
             className="h-full bg-black transition-all"
@@ -281,7 +281,7 @@ function ChecklistBlock({
         {checklist.items.length > 0 ? (
           checklist.items.map((item) => (
             editingItemId === item._id ? (
-              <div key={item._id} className="flex items-start gap-3 text-[14px] text-[#172b4d]">
+              <div key={item._id} className="flex items-start gap-3 text-[14px] text-zinc-900">
                 <input
                   type="checkbox"
                   checked={item.completed}
@@ -292,7 +292,7 @@ function ChecklistBlock({
                   <input
                     value={editingItemTitle}
                     onChange={(e) => setEditingItemTitle(e.target.value)}
-                    className="h-9 w-full rounded-sm border border-zinc-200 px-3 text-[14px] shadow-none outline-none focus:border-black"
+                    className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none outline-none focus:border-black"
                     autoFocus
                   />
                   <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ function ChecklistBlock({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-9 px-3 text-[#44546f] hover:bg-[#091e420f]"
+                      className="h-9 px-3 text-zinc-500 hover:bg-zinc-100"
                       onClick={() => {
                         setEditingItemId(null);
                         setEditingItemTitle("");
@@ -319,14 +319,14 @@ function ChecklistBlock({
                 <button
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
-                  className="inline-flex size-7 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#c9372c]"
+                  className="inline-flex size-7 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-red-600"
                   aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
                 </button>
               </div>
             ) : (
-              <div key={item._id} className="group flex items-center gap-3 text-[14px] text-[#172b4d]">
+              <div key={item._id} className="group flex items-center gap-3 text-[14px] text-zinc-900">
                 <input
                   type="checkbox"
                   checked={item.completed}
@@ -336,14 +336,14 @@ function ChecklistBlock({
                 <button
                   type="button"
                   onClick={() => handleStartEditItem(item._id, item.title)}
-                  className={item.completed ? "line-through text-[#6b778c] flex-1 text-left" : "text-[#172b4d] flex-1 text-left"}
+                  className={item.completed ? "line-through text-zinc-400 flex-1 text-left" : "text-zinc-900 flex-1 text-left"}
                 >
                   {item.title}
                 </button>
                 <button
                   type="button"
                   onClick={() => onDeleteItem(item._id)}
-                  className="inline-flex size-7 items-center justify-center rounded-sm text-[#44546f] opacity-0 transition-colors hover:bg-[#091e420f] hover:text-[#c9372c] group-hover:opacity-100"
+                  className="inline-flex size-7 items-center justify-center rounded-sm text-zinc-500 opacity-0 transition-colors hover:bg-zinc-100 hover:text-red-600 group-hover:opacity-100"
                   aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
@@ -362,7 +362,7 @@ function ChecklistBlock({
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
             placeholder="Add an item..."
-            className="h-9 w-full rounded-sm border border-[#d9d9d9] px-3 text-[14px] shadow-none"
+            className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none hover:bg-zinc-100"
             autoFocus
           />
           <div className="flex items-center gap-2">
@@ -376,7 +376,7 @@ function ChecklistBlock({
             <Button
               type="button"
               variant="ghost"
-              className="h-9 px-3 text-[#44546f] hover:bg-[#091e420f]"
+              className="h-9 px-3 text-zinc-500 hover:bg-zinc-100"
               onClick={() => {
                 setNewItemTitle("");
                 setShowNewItemInput(false);
@@ -390,7 +390,7 @@ function ChecklistBlock({
         <Button
           type="button"
           variant="secondary"
-          className="h-9 w-fit bg-[#f1f2f4] px-4 text-[14px] font-medium text-[#172b4d] shadow-none hover:bg-[#eaecef]"
+          className="h-9 w-fit bg-zinc-100 px-4 text-[14px] font-medium text-zinc-900 shadow-none hover:bg-zinc-200"
           onClick={() => setShowNewItemInput(true)}
         >
           Add an item
@@ -404,10 +404,10 @@ function ChecklistBlock({
         >
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
+              <DialogTitle className="text-[18px] font-bold text-zinc-900">
                 Delete checklist?
               </DialogTitle>
-              <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
+              <DialogDescription className="text-[14px] leading-6 text-zinc-500">
                 This will be removed from the card and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
@@ -418,7 +418,7 @@ function ChecklistBlock({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 px-4 text-[#44546f] hover:bg-[#091e420f]"
+                className="h-9 px-4 text-zinc-500 hover:bg-zinc-100"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleteConfirming}
               >
@@ -964,7 +964,7 @@ export function TaskDialog({
                           className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
                             completed
                               ? "border-[#6a9923] bg-[#6a9923] text-white"
-                              : "border-[#8c8c8c] bg-white text-transparent hover:border-[#172b4d]"
+                              : "border-zinc-400 bg-white text-transparent hover:border-zinc-900"
                           }`}
                         >
                           <Check
@@ -976,7 +976,7 @@ export function TaskDialog({
                       </TooltipTrigger>
                       <TooltipContent
                         side="top"
-                        className="bg-[#172b4d] text-white border-none rounded-sm text-[12px] font-medium py-1.5 px-3"
+                        className="bg-zinc-900 text-white border-none rounded-sm text-[12px] font-medium py-1.5 px-3"
                       >
                         {completed ? "Mark as incomplete" : "Mark as complete"}
                       </TooltipContent>
@@ -992,8 +992,8 @@ export function TaskDialog({
                       e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                     }}
                     placeholder="Enter card title..."
-                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border-none bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-[#999] transition-all hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] ${
-                      completed ? "text-[#6b778c]" : "text-[#172b4d]"
+                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border border-transparent bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-zinc-400 transition-all hover:bg-zinc-100 focus:bg-white focus:border-black focus:ring-0 focus-visible:ring-0 ${
+                      completed ? "text-zinc-400" : "text-zinc-900"
                     }`}
                   />
                 </div>
@@ -1029,14 +1029,14 @@ export function TaskDialog({
                           strokeWidth="2.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          className="text-[#44546f]"
+                          className="text-zinc-500"
                         >
                           <line x1="21" y1="6" x2="3" y2="6"></line>
                           <line x1="15" y1="12" x2="3" y2="12"></line>
                           <line x1="17" y1="18" x2="3" y2="18"></line>
                         </svg>
                       </div>
-                      <h3 className="text-[17px] font-bold text-[#172b4d]">Description</h3>
+                      <h3 className="text-[17px] font-bold text-zinc-900">Description</h3>
                     </div>
 
                     <textarea
@@ -1050,7 +1050,7 @@ export function TaskDialog({
                         setShowDescriptionActions(true);
                       }}
                       placeholder="Add a more detailed description..."
-                      className="min-h-35 w-full resize-none rounded-sm bg-transparent border border-[#d0d7e2] px-4 py-3 text-[15px] text-[#172b4d] shadow-none outline-none placeholder:text-[#6b778c] transition-all duration-200 hover:bg-[#091e420f] focus:bg-white focus:ring-2 focus:ring-[#3884ff] focus:border-[#3884ff]"
+                      className="min-h-35 w-full resize-none rounded-sm bg-transparent border border-zinc-200 px-4 py-3 text-[15px] text-zinc-900 shadow-none outline-none placeholder:text-zinc-400 transition-all duration-200 hover:bg-zinc-100 focus:bg-white focus:ring-0 focus:border-black focus-visible:ring-0"
                     />
                     {showDescriptionActions ? (
                       <div className="mt-3 flex items-center gap-2 transition-all duration-200">
@@ -1065,7 +1065,7 @@ export function TaskDialog({
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-9 px-3 text-[#44546f] transition-all duration-200 hover:bg-[#091e420f] active:scale-[0.98] disabled:opacity-60"
+                          className="h-9 px-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-60"
                           onClick={handleCancelDescription}
                         >
                           Cancel
@@ -1077,8 +1077,8 @@ export function TaskDialog({
                   {attachments.length > 0 ? (
                     <div className="mt-10">
                     <div className="mb-4 flex items-center gap-2">
-                      <Paperclip className="size-4 text-[#44546f]" />
-                      <h3 className="text-[16px] font-bold text-[#172b4d]">
+                      <Paperclip className="size-4 text-zinc-500" />
+                      <h3 className="text-[16px] font-bold text-zinc-900">
                         Attachments
                       </h3>
                     </div>
@@ -1086,10 +1086,10 @@ export function TaskDialog({
                       {attachments.map((item) => (
                         <div
                           key={item.id}
-                          className="group flex items-center justify-between gap-4 rounded-sm px-2 py-2 transition-colors hover:bg-[#091e420a]"
+                          className="group flex items-center justify-between gap-4 rounded-sm px-2 py-2 transition-colors hover:bg-zinc-100"
                         >
                           <div className="flex min-w-0 flex-1 items-center gap-4">
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm bg-[#f3f4f6] text-[15px] font-bold text-[#5b6472] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm bg-zinc-100 text-[15px] font-bold text-zinc-600 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
                               {getAttachmentTypeLabel(item)}
                             </div>
 
@@ -1098,12 +1098,12 @@ export function TaskDialog({
                                 href={item.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-[#172b4d] hover:underline"
+                                className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-zinc-900 hover:underline"
                                 title={item.name}
                               >
                                 {item.name}
                               </a>
-                              <p className="mt-1 text-[12px] text-[#6b778c]">
+                              <p className="mt-1 text-[12px] text-zinc-500">
                                 {formatAttachmentMeta(item.createdAt)}
                               </p>
                             </div>
@@ -1114,7 +1114,7 @@ export function TaskDialog({
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex size-8 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
+                              className="inline-flex size-8 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
                               aria-label={`Open ${item.name}`}
                             >
                               <ExternalLink className="size-4" />
@@ -1123,7 +1123,7 @@ export function TaskDialog({
                               <button
                                 type="button"
                                 onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
-                                className="inline-flex size-8 items-center justify-center rounded-sm text-[#44546f] transition-colors hover:bg-[#091e420f] hover:text-[#172b4d]"
+                                className="inline-flex size-8 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
                                 aria-label={`Options for ${item.name}`}
                               >
                                 <MoreHorizontal className="size-4" />
@@ -1131,7 +1131,7 @@ export function TaskDialog({
 
                               {activeAttachmentMenuId === item.id ? (
                                 <div
-                                  className={`absolute right-0 z-30 w-44 rounded-sm border border-[#e5e7eb] bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ${
+                                  className={`absolute right-0 z-30 w-44 rounded-sm border border-border bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.12)] ${
                                     attachmentMenuPlacement === "up"
                                       ? "bottom-full mb-2"
                                       : "top-full mt-2"
@@ -1167,8 +1167,8 @@ export function TaskDialog({
                                       }}
                                       className={`flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] transition-colors ${
                                         menuItem.tone === "danger"
-                                          ? "text-[#c9372c] hover:bg-[#fff1f0]"
-                                          : "text-[#172b4d] hover:bg-[#f4f5f7]"
+                                          ? "text-red-600 hover:bg-red-50"
+                                          : "text-zinc-900 hover:bg-zinc-100"
                                       }`}
                                     >
                                       {menuItem.label}
@@ -1249,10 +1249,10 @@ export function TaskDialog({
           <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
             <div className="p-6">
               <DialogHeader className="space-y-2 text-left">
-                <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
+                <DialogTitle className="text-[18px] font-bold text-zinc-900">
                   Rename attachment
                 </DialogTitle>
-                <DialogDescription className="text-[14px] leading-6 text-[#44546f]">
+                <DialogDescription className="text-[14px] leading-6 text-zinc-500">
                   Update the display name for this attachment.
                 </DialogDescription>
               </DialogHeader>
@@ -1261,19 +1261,19 @@ export function TaskDialog({
                 <input
                   value={renameAttachmentName}
                   onChange={(e) => setRenameAttachmentName(e.target.value)}
-                  className="h-10 w-full rounded-sm border border-zinc-200 px-4 text-[14px] text-zinc-900 outline-none focus:border-black"
+                  className="h-10 w-full rounded-sm border border-transparent px-4 text-[14px] text-zinc-900 outline-none focus:border-black"
                   placeholder="Enter new file name"
                   autoFocus
                 />
               </div>
             </div>
 
-            <div className="border-t border-[#ececec] px-6 py-4">
+            <div className="border-t border-border px-6 py-4">
               <DialogFooter className="flex items-center justify-end gap-2">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-9 px-4 text-[#44546f] hover:bg-[#091e420f]"
+                  className="h-9 px-4 text-zinc-500 hover:bg-zinc-100"
                   onClick={() => {
                     setRenameAttachmentId(null);
                     setRenameAttachmentName("");

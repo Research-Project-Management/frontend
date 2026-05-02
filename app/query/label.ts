@@ -57,14 +57,33 @@ export const useCreateLabel = () => {
       projectId?: string;
     }) =>
       apiPost<{ label?: Label; tag?: Label }>(`/api/workspace/${workspaceId}/labels`, { name, color, type, projectId }),
-    onSuccess: () => {
+    onMutate: async (newLabel) => {
+      await queryClient.cancelQueries({ queryKey: ["labels"] });
+      const previousLabels = queryClient.getQueryData(["labels"]);
+
+      queryClient.setQueriesData({ queryKey: ["labels"] }, (old: any) => {
+        const optimisticLabel = {
+          _id: "temp-id-" + Math.random(),
+          ...newLabel,
+          createdAt: new Date().toISOString(),
+        };
+        if (!Array.isArray(old)) return [optimisticLabel];
+        return [...old, optimisticLabel];
+      });
+
+      return { previousLabels };
+    },
+    onError: (error: any, __, context) => {
+      if (context?.previousLabels) {
+        queryClient.setQueryData(["labels"], context.previousLabels);
+      }
+      toast.error(error.message || "Failed to create label");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["labels"] });
       queryClient.invalidateQueries({ queryKey: ["stickies"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["cycles"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to create label");
     },
   });
 };
@@ -74,14 +93,34 @@ export const useUpdateLabel = () => {
   return useMutation({
     mutationFn: ({ labelId, name, color }: { labelId: string; name?: string; color?: string }) =>
       apiPut<{ label?: Label; tag?: Label }>(`/api/labels/${labelId}`, { name, color }),
-    onSuccess: () => {
+    onMutate: async (updatedLabel) => {
+      // Cancel refetches
+      await queryClient.cancelQueries({ queryKey: ["labels"] });
+
+      // Snapshot
+      const previousLabels = queryClient.getQueryData(["labels"]);
+
+      // Optimistically update
+      queryClient.setQueriesData({ queryKey: ["labels"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((label: Label) =>
+          label._id === updatedLabel.labelId ? { ...label, ...updatedLabel } : label
+        );
+      });
+
+      return { previousLabels };
+    },
+    onError: (error: any, __, context) => {
+      if (context?.previousLabels) {
+        queryClient.setQueryData(["labels"], context.previousLabels);
+      }
+      toast.error(error.message || "Failed to update label");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["labels"] });
       queryClient.invalidateQueries({ queryKey: ["stickies"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["cycles"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update label");
     },
   });
 };
@@ -90,14 +129,28 @@ export const useDeleteLabel = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (labelId: string) => apiDelete(`/api/labels/${labelId}`),
-    onSuccess: () => {
+    onMutate: async (labelId) => {
+      await queryClient.cancelQueries({ queryKey: ["labels"] });
+      const previousLabels = queryClient.getQueryData(["labels"]);
+
+      queryClient.setQueriesData({ queryKey: ["labels"] }, (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((label: Label) => label._id !== labelId);
+      });
+
+      return { previousLabels };
+    },
+    onError: (error: any, __, context) => {
+      if (context?.previousLabels) {
+        queryClient.setQueryData(["labels"], context.previousLabels);
+      }
+      toast.error(error.message || "Failed to delete label");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["labels"] });
       queryClient.invalidateQueries({ queryKey: ["stickies"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["cycles"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to delete label");
     },
   });
 };

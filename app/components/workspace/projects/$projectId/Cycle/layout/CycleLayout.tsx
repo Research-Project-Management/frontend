@@ -13,10 +13,9 @@ import { Item, ListViewGroup, EmptyState } from "../sections/ListViewSection";
 
 // Modals
 import { DeleteModal } from "../modals/DeleteModal";
-import { CreateModal } from "../modals/CreateModal";
-import { EditModal } from "../modals/EditModal";
+import { CycleModal } from "../modals/CycleModal";
 import Topbar from "~/components/workspace/projects/$projectId/overview/Topbar";
-import type { Cycle } from "~/types/task";
+import type { Cycle, CycleMilestone } from "~/types/task";
 import TopBar from "./Topbar";
 
 import { PHASE_CONFIG } from "~/types/task";
@@ -64,7 +63,6 @@ export function CycleLayout() {
   const [formStart, setFormStart] = useState("");
   const [formEnd, setFormEnd] = useState("");
   const [formPhase, setFormPhase] = useState<string>(PHASES[0].id);
-  const [formMembers, setFormMembers] = useState<string[]>([]);
   const [formLabels, setFormLabels] = useState<string[]>([]);
 
   // Derived Values (using reusable logic from useCycle)
@@ -86,7 +84,6 @@ export function CycleLayout() {
     setFormPhase(PHASES[0].id);
     setFormStart("");
     setFormEnd("");
-    setFormMembers([]);
     setFormLabels([]);
     setDialogOpen(true);
   };
@@ -98,7 +95,6 @@ export function CycleLayout() {
     setFormPhase(cycle.phase);
     setFormStart(cycle.startDate ? cycle.startDate.split("T")[0] : "");
     setFormEnd(cycle.endDate ? cycle.endDate.split("T")[0] : "");
-    setFormMembers(cycle.members || []);
     setFormLabels(cycle.labels || []);
     setDialogOpen(true);
   };
@@ -122,9 +118,7 @@ export function CycleLayout() {
       status: editingCycle?.status || "planned",
       startDate: formStart || undefined,
       endDate: formEnd || undefined,
-      members: formMembers,
       labels: formLabels,
-      milestones: editingCycle?.milestones || [],
     };
 
     if (editingCycle) {
@@ -182,7 +176,7 @@ export function CycleLayout() {
           ) : (
             <div className="mt-2">
               {cycles.length === 0 && !searchTerm ? (
-                <div className="flex flex-col items-center justify-center py-20 border border-dashed border-zinc-200 rounded-sm bg-white text-center">
+                <div className="flex flex-col items-center justify-center py-32 text-center">
                   <RotateCcw className="size-10 text-zinc-200 mb-4" strokeWidth={1.5} />
                   <h3 className="text-[16px] font-semibold text-zinc-900 mb-1.5">No cycles found</h3>
                   <p className="text-[13px] text-zinc-500 max-w-[400px] mb-6 leading-relaxed">
@@ -194,7 +188,7 @@ export function CycleLayout() {
                   </Button>
                 </div>
               ) : (
-                <div className="border border-border/80 overflow-hidden flex flex-col divide-y divide-border/80">
+                <div className="border border-border/80 overflow-hidden flex flex-col divide-y divide-border/80 bg-white">
                   {(["active", "upcoming", "completed"] as DerivedStatus[]).map((status) => (
                 <ListViewGroup
                   key={status}
@@ -233,58 +227,30 @@ export function CycleLayout() {
         </div>
       </main>
 
-      {!editingCycle ? (
-        <CreateModal 
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          formName={formName}
-          setFormName={setFormName}
-          formDescription={formDescription}
-          setFormDescription={setFormDescription}
-          formStart={formStart}
-          setFormStart={setFormStart}
-          formEnd={formEnd}
-          setFormEnd={setFormEnd}
-          formPhase={formPhase}
-          setFormPhase={setFormPhase}
-          formMembers={formMembers}
-          setFormMembers={setFormMembers}
-          formLabels={formLabels}
-          setFormLabels={setFormLabels}
-          phases={phases}
-          setPhases={setPhases}
-          projectData={projectData}
-          onSave={handleSave}
-          isSaving={createMutation.isPending}
-          hasParallelConflict={hasParallelConflict}
-        />
-      ) : (
-        <EditModal 
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          formName={formName}
-          setFormName={setFormName}
-          formDescription={formDescription}
-          setFormDescription={setFormDescription}
-          formStart={formStart}
-          setFormStart={setFormStart}
-          formEnd={formEnd}
-          setFormEnd={setFormEnd}
-          formPhase={formPhase}
-          setFormPhase={setFormPhase}
-          formMembers={formMembers}
-          setFormMembers={setFormMembers}
-          formLabels={formLabels}
-          setFormLabels={setFormLabels}
-          phases={phases}
-          setPhases={setPhases}
-          projectData={projectData}
-          onSave={handleSave}
-          isReadOnly={isCycleReadOnly(editingCycle)}
-          isSaving={updateMutation.isPending}
-          hasParallelConflict={hasParallelConflict}
-        />
-      )}
+      <CycleModal 
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        mode={editingCycle ? 'edit' : 'create'}
+        formName={formName}
+        setFormName={setFormName}
+        formDescription={formDescription}
+        setFormDescription={setFormDescription}
+        formStart={formStart}
+        setFormStart={setFormStart}
+        formEnd={formEnd}
+        setFormEnd={setFormEnd}
+        formPhase={formPhase}
+        setFormPhase={setFormPhase}
+        formLabels={formLabels}
+        setFormLabels={setFormLabels}
+        phases={phases}
+        setPhases={setPhases}
+        projectData={projectData}
+        onSave={handleSave}
+        isReadOnly={editingCycle ? isCycleReadOnly(editingCycle) : false}
+        isSaving={editingCycle ? updateMutation.isPending : createMutation.isPending}
+        hasParallelConflict={hasParallelConflict}
+      />
 
       <DeleteModal 
         open={isDeleteModalOpen} 

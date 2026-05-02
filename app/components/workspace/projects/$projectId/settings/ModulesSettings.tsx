@@ -67,7 +67,7 @@ export default function ModulesSettings() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-8 max-w-3xl mx-auto">
+        <div className="px-8 py-6 max-w-3xl mx-auto">
           <ModulesList
             project={project}
             canManage={canManage}
@@ -182,7 +182,7 @@ function ModulesList({
         {availableModules.map((module) => (
           <div
             key={module.id}
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 border ${
+            className={`flex items-center gap-4 px-4 py-1.5 rounded-sm transition-all duration-200 border ${
               selectedModules.includes(module.id)
                 ? "bg-primary/5 border-primary/20"
                 : "bg-secondary/10 border-transparent hover:bg-secondary/30"

@@ -49,7 +49,7 @@ function DropdownMenuContent({
           exit={{ opacity: 0, scale: 0.95, y: -5 }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
           className={cn(
-            "bg-popover text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-lg",
+            "bg-popover text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-sm border p-1 shadow-lg",
             className
           )}
         >
@@ -257,7 +257,7 @@ function DropdownMenuSubContent({
           exit={{ opacity: 0, scale: 0.95, x: 5 }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
           className={cn(
-            "bg-popover text-popover-foreground z-50 min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg",
+            "bg-popover text-popover-foreground z-50 min-w-[8rem] overflow-hidden rounded-sm border p-1 shadow-lg",
             className
           )}
         >

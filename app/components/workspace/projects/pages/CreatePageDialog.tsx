@@ -251,15 +251,15 @@ export default function CreatePageDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="shrink-0">
-          <Plus className="size-4 mr-1.5" />
-          New Document
+        <Button size="sm" className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white shrink-0">
+          <Plus className="size-3.5" />
+          Add Document
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New document</DialogTitle>
+          <DialogTitle>Add document</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 py-2">
@@ -352,7 +352,7 @@ export default function CreatePageDialog({
             {createPageMutation.isPending && (
               <Loader2 className="mr-2 size-4 animate-spin" />
             )}
-            Create
+            Add
           </Button>
         </DialogFooter>
       </DialogContent>

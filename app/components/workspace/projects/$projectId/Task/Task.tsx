@@ -19,6 +19,7 @@ import {
   useDeleteColumn,
   useUpdateColumn,
 } from "~/query/task";
+import { useLabelsQuery } from "~/query/label";
 import { useProjectDetails } from "~/query/project";
 import { useProjectCycles } from "~/query/cycle";
 import { useProjects } from "~/hooks/useWorkspace";
@@ -55,6 +56,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   const { data, isLoading } = useProjectTasks(projectId!, cycleId);
   const { data: projectData } = useProjectDetails(projectId!);
   const { data: cyclesData } = useProjectCycles(projectId!);
+  const { data: taskLabels = [] } = useLabelsQuery(workspaceId || "", "task", projectId);
   const currentCycle = cyclesData?.cycles.find(c => c._id === cycleId);
 
   const createTaskMutation = useCreateTask();
@@ -145,6 +147,15 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
     return grouped;
   }, [tasks]);
 
+  const taskLabelMap = useMemo(() => {
+    return new Map(
+      taskLabels.map((label) => [
+        label._id,
+        { _id: label._id, name: label.name, color: label.color },
+      ]),
+    );
+  }, [taskLabels]);
+
   const hasActiveTaskFilters = Boolean(
     selectedColumnIds.length > 0 || selectedAssigneeIds.length > 0
   );
@@ -184,6 +195,10 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
         dueDate,
         cycle: cycleId,
         assignee: null,
+      }, {
+        onSuccess: () => {
+          toast.success(cycleId ? "Task added to cycle" : "Task created");
+        }
       });
       return;
     }
@@ -239,6 +254,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
       },
       {
         onSuccess: (result: any) => {
+          toast.success(cycleId ? "Task added to cycle" : "Task created");
           if (result?.task?._id) {
             setDialogCard(result.task);
             return;
@@ -452,7 +468,11 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
               {/* Separator from "Cycles" */}
               <ChevronRight className="size-3.5 text-muted-foreground/20 ml-0.5" />
               
-              <DropdownMenu onOpenChange={() => setCycleSearchTerm("")}>
+              <DropdownMenu
+                onOpenChange={(open) => {
+                  if (!open) setCycleSearchTerm("");
+                }}
+              >
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2.5 px-2 py-1 rounded-sm hover:bg-zinc-100/80 data-[state=open]:bg-zinc-100 cursor-pointer transition-all group ml-1">
                     <RotateCcw className="size-3.5 text-foreground/80 group-hover:text-black group-data-[state=open]:text-black transition-colors" />
@@ -527,7 +547,9 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
             assignees={assigneeFilterOptions}
             selectedAssigneeIds={selectedAssigneeIds}
             onAssigneeFilterChange={setSelectedAssigneeIds}
-            onCreateSection={handleOpenAddSectionModal}
+            onAddTask={() => handleOpenAddDialog(resolveTaskColumnId(columns[0]))}
+            onAddExistingTask={cycleId ? () => setIsAddExistingModalOpen(true) : undefined}
+            isLoading={createTaskMutation.isPending}
           />
         }
       />
@@ -553,7 +575,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
            </p>
            <div className="flex items-center gap-3">
              <button
-               onClick={() => handleOpenAddDialog(columns[0]?._id || columns[0]?.id || "")}
+               onClick={() => handleOpenAddDialog(resolveTaskColumnId(columns[0]))}
                className="h-9 px-4 bg-black text-white rounded-sm text-[13px] font-semibold hover:bg-zinc-800 transition-all shadow-sm active:scale-[0.98]"
              >
                Create task
@@ -582,6 +604,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
           tasks={tasks}
           tasksByColumnId={tasksByColumnId}
           columns={visibleColumns}
+          labelMap={taskLabelMap}
           currentUserId={currentUser?._id ?? null}
           currentUserAvatar={currentUser?.avatar ?? undefined}
           onAddCard={handleOpenAddDialog}
@@ -594,7 +617,9 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
           onMoveCard={handleMoveCard}
           onDeleteColumn={handleOpenDeleteModal}
           onUpdateColumn={handleOpenRenameModal}
+          onCreateColumn={handleOpenAddSectionModal}
           isAddingCard={createTaskMutation.isPending}
+          cycleId={cycleId}
         />
       ) : viewMode === "list" ? (
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">

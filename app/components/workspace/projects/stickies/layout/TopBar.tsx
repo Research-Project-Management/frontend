@@ -104,13 +104,13 @@ export default function TopBar({
       <Button
         onClick={onAddNote}
         size="sm"
-        className="h-8 gap-1.5 text-xs font-semibold"
+        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-black/90"
         disabled={isAddingNote}
       >
         {isAddingNote ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="size-3.5" />
         )}
         {addLabel}
       </Button>

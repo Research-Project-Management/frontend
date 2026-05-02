@@ -114,34 +114,57 @@ export const useUpdateSticky = () => {
       apiPut<{ sticky: Sticky }>(`/api/stickies/${stickyId}`, updates),
     
     onMutate: async ({ stickyId, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ["stickies", workspaceId] });
-      const previousNotes = queryClient.getQueryData<Sticky[]>(["stickies", workspaceId]);
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["stickies"] });
+      await queryClient.cancelQueries({ queryKey: ["project-stickies"] });
 
-      queryClient.setQueriesData<Sticky[]>(
-        { queryKey: ["stickies", workspaceId] },
-        (old) => {
-          if (!old) return old;
-          return old.map((n) => {
-            if (n._id !== stickyId) return n;
-            const updatedNote = { ...n, ...updates };
+      // Snapshot the previous value
+      const previousWorkspaceStickies = queryClient.getQueriesData({ queryKey: ["stickies"] });
+      const previousProjectStickies = queryClient.getQueriesData({ queryKey: ["project-stickies"] });
 
-            if (updates.labels) {
-              const pId = getStickyProjectId(n);
-              const allLabels = queryClient.getQueryData<any[]>(["labels", workspaceId, "sticky", pId]) || [];
-              updatedNote.labels = (updates.labels as any).map((labelId: string) => 
-                allLabels.find((l: any) => l._id === labelId) || n.labels?.find((l: any) => l._id === labelId) || { _id: labelId, name: "...", color: "#aaa" }
-              );
-            }
-            return updatedNote as Sticky;
-          });
-        }
-      );
+      const updateStickyList = (old: Sticky[] | undefined) => {
+        if (!old) return old;
+        return old.map((n) => {
+          if (n._id !== stickyId) return n;
+          const updatedNote = { ...n, ...updates };
 
-      return { previousNotes };
+          // Optimistically update labels if they are being changed
+          if (updates.labels) {
+            // Scan ALL label queries in the cache to find the metadata for these label IDs
+            const allLabelQueries = queryClient.getQueriesData<any[]>({ queryKey: ["labels"] });
+            const labelMap = new Map();
+            
+            allLabelQueries.forEach(([_, labels]) => {
+              if (Array.isArray(labels)) {
+                labels.forEach(l => {
+                  if (l && l._id) labelMap.set(l._id, l);
+                });
+              }
+            });
+            
+            updatedNote.labels = (updates.labels as any).map((labelId: string) => 
+              labelMap.get(labelId) || 
+              n.labels?.find((l: any) => l._id === labelId) || 
+              { _id: labelId, name: "...", color: "#aaa" }
+            );
+          }
+          return updatedNote as Sticky;
+        });
+      };
+
+      // Optimistically update all matching queries
+      queryClient.setQueriesData<Sticky[]>({ queryKey: ["stickies"] }, updateStickyList);
+      queryClient.setQueriesData<Sticky[]>({ queryKey: ["project-stickies"] }, updateStickyList);
+
+      return { previousWorkspaceStickies, previousProjectStickies };
     },
     onError: (err, _vars, context) => {
-      if (context?.previousNotes) {
-        queryClient.setQueriesData({ queryKey: ["stickies", workspaceId] }, context.previousNotes);
+      // Rollback to previous state on error
+      if (context?.previousWorkspaceStickies) {
+        context.previousWorkspaceStickies.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      }
+      if (context?.previousProjectStickies) {
+        context.previousProjectStickies.forEach(([key, data]) => queryClient.setQueryData(key, data));
       }
       toast.error(err.message || "Failed to update sticky note", { id: "sticky-error" });
     },
@@ -190,38 +213,62 @@ export const useDeleteSticky = () => {
 export const useReorderStickies = () => {
   const queryClient = useQueryClient();
   const { workspaceId } = useParams();
+  
   return useMutation({
     mutationFn: (stickyIds: string[]) =>
       apiPut(`/api/workspace/${workspaceId}/stickies/reorder`, { stickyIds }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stickies", workspaceId] });
+    onMutate: async (stickyIds) => {
+      const queryKey = ["stickies", workspaceId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousNotes = queryClient.getQueriesData<Sticky[]>({ queryKey: ["stickies"] });
+
+      const reorderFn = (old: Sticky[] | undefined) => {
+        if (!old) return old;
+        const map = new Map(old.map((n) => [n._id, n]));
+        return stickyIds.map((id) => map.get(id)).filter(Boolean) as Sticky[];
+      };
+
+      queryClient.setQueriesData<Sticky[]>({ queryKey: ["stickies"] }, reorderFn);
+      
+      return { previousNotes };
+    },
+    onError: (err: any, _vars, context) => {
+      context?.previousNotes?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error(err.message || "Failed to save order", { id: "sticky-error" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["stickies"] });
     },
   });
 };
 
 export const useReorderProjectStickies = () => {
   const queryClient = useQueryClient();
+  const { workspaceId } = useParams();
+  
   return useMutation({
     mutationFn: ({ projectId, stickyIds }: { projectId: string; stickyIds: string[] }) =>
       apiPut(`/api/project/${projectId}/stickies/reorder`, { stickyIds }),
     onMutate: async ({ projectId, stickyIds }) => {
-      const queryKey = projectStickiesKey(projectId);
-      await queryClient.cancelQueries({ queryKey });
-      const previousStickies = queryClient.getQueriesData<Sticky[]>({ queryKey });
-      queryClient.setQueriesData<Sticky[]>({ queryKey }, (old) => {
+      await queryClient.cancelQueries({ queryKey: ["project-stickies", projectId] });
+      const previousNotes = queryClient.getQueriesData<Sticky[]>({ queryKey: ["project-stickies"] });
+
+      const reorderFn = (old: Sticky[] | undefined) => {
         if (!old) return old;
-        const map = new Map(old.map((sticky) => [sticky._id, sticky]));
-        const reordered = stickyIds.map((id) => map.get(id)).filter(Boolean) as Sticky[];
-        return reordered.length === old.length ? reordered : old;
-      });
-      return { previousStickies };
+        const map = new Map(old.map((n) => [n._id, n]));
+        return stickyIds.map((id) => map.get(id)).filter(Boolean) as Sticky[];
+      };
+
+      queryClient.setQueriesData<Sticky[]>({ queryKey: ["project-stickies"] }, reorderFn);
+      
+      return { previousNotes };
     },
     onError: (err: any, _vars, context) => {
-      context?.previousStickies?.forEach(([key, data]) => queryClient.setQueryData(key, data));
-      toast.error(err.message || "Failed to save sticky order", { id: "sticky-error" });
+      context?.previousNotes?.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      toast.error(err.message || "Failed to save order", { id: "sticky-error" });
     },
     onSettled: (_data, _error, variables) => {
-      queryClient.invalidateQueries({ queryKey: projectStickiesKey(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: ["project-stickies", variables.projectId] });
     },
   });
 };

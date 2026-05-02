@@ -77,10 +77,10 @@ export default function TopBar({
       <Button
         onClick={onAddCycle}
         size="sm"
-        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-[filter] hover:brightness-110 bg-black text-white hover:bg-black/90"
+        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-black/90"
       >
-        <Plus className="size-3.5 mt-[1px]" />
-        New Cycle
+        <Plus className="size-3.5" />
+        Add Cycle
       </Button>
     </div>
   );

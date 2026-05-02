@@ -35,11 +35,13 @@ export default function LabelPicker({ selectedLabelIds, onToggleLabel }: LabelPi
           type="button"
           title="Labels"
           className={cn(
-            "flex items-center text-gray-500 hover:text-gray-700 disabled:opacity-50",
-            selectedLabelIds.length > 0 && "text-primary"
+            "flex items-center justify-center w-7 h-7 rounded-md transition-all text-current",
+            open 
+              ? "opacity-100 bg-black/20" 
+              : "opacity-50 hover:opacity-100 hover:bg-black/10"
           )}
         >
-          <LabelIcon size={16} />
+          <LabelIcon size={14} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-2" align="start">

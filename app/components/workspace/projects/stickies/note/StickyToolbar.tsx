@@ -1,48 +1,47 @@
 import type { Note } from "~/types/sticky";
 import { Palette, Bold, Italic, ListTodo, Trash2 } from "lucide-react";
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import type { Editor } from "@tiptap/react";
+import { cn } from "~/lib/utils";
 import ColorModal from "../section/ColorModal";
 import DeleteModal from "../section/deleteModal";
 import LabelPicker from "./LabelPicker";
+import { ToolbarBtn } from "./ToolbarBtn";
 
 interface StickyToolbarProps {
   note: Note;
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onDelete: (id: string) => void;
   editor: Editor | null;
+  activeModal: string | null;
+  onActiveModalChange: (modal: any) => void;
 }
-
-type ActiveModal = "color" | "delete" | null;
 
 export default function StickyToolbar({
   note,
   onUpdate,
   onDelete,
   editor,
+  activeModal,
+  onActiveModalChange,
 }: StickyToolbarProps) {
-  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [, setRenderTick] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!editor) return;
+
+    const update = () => setRenderTick((t) => t + 1);
+    editor.on("transaction", update);
+    editor.on("selectionUpdate", update);
+
+    return () => {
+      editor.off("transaction", update);
+      editor.off("selectionUpdate", update);
+    };
+  }, [editor]);
 
   const isColorOpen = activeModal === "color";
   const isDeleteOpen = activeModal === "delete";
-
-  useEffect(() => {
-    if (!isColorOpen) return;
-
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setActiveModal(null);
-      }
-    }
-
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [isColorOpen]);
-
-  function closeModal() {
-    setActiveModal(null);
-  }
 
   const handleToggleLabel = (labelId: string) => {
     const currentLabelIds = (note.labels || []).map((l) => (typeof l === 'string' ? l : l._id));
@@ -58,19 +57,18 @@ export default function StickyToolbar({
   };
 
   return (
-    <div className="h-9 px-3 pb-2 flex items-center justify-between border-t border-black/5">
-      <div ref={ref} className="relative flex items-center gap-0.5">
-        <ToolbarBtn
-          title="Color"
-          onClick={() =>
-            setActiveModal((m) => (m === "color" ? null : "color"))
-          }
-        >
-          <Palette size={14} />
-        </ToolbarBtn>
+    <div className="h-10 px-4 flex items-center justify-between border-t border-black/5 rounded-b">
+      <div className="relative flex items-center gap-1.5">
+        <ColorModal 
+          note={note} 
+          onUpdate={onUpdate} 
+          isActive={isColorOpen}
+          onActiveChange={(open) => onActiveModalChange(open ? "color" : null)}
+        />
         <ToolbarBtn
           title="Bold"
           onClick={() => editor?.chain().focus().toggleBold().run()}
+          isActive={editor?.isActive("bold")}
           disabled={!editor}
         >
           <Bold size={14} />
@@ -78,6 +76,7 @@ export default function StickyToolbar({
         <ToolbarBtn
           title="Italic"
           onClick={() => editor?.chain().focus().toggleItalic().run()}
+          isActive={editor?.isActive("italic")}
           disabled={!editor}
         >
           <Italic size={14} />
@@ -85,6 +84,7 @@ export default function StickyToolbar({
         <ToolbarBtn
           title="Task list"
           onClick={() => editor?.chain().focus().toggleTaskList().run()}
+          isActive={editor?.isActive("taskList")}
           disabled={!editor}
         >
           <ListTodo size={14} />
@@ -93,14 +93,11 @@ export default function StickyToolbar({
           selectedLabelIds={(note.labels || []).map((l) => (typeof l === 'string' ? l : l._id))}
           onToggleLabel={handleToggleLabel}
         />
-        {isColorOpen && (
-          <ColorModal note={note} onUpdate={onUpdate} onClose={closeModal} />
-        )}
       </div>
 
       <ToolbarBtn
         title="Delete"
-        onClick={() => setActiveModal("delete")}
+        onClick={() => onActiveModalChange("delete")}
         danger
       >
         <Trash2 size={14} />
@@ -108,44 +105,14 @@ export default function StickyToolbar({
 
       <DeleteModal
         open={isDeleteOpen}
-        onCancel={closeModal}
+        onCancel={() => onActiveModalChange(null)}
         onConfirm={() => {
           onDelete(note._id);
-          closeModal();
+          onActiveModalChange(null);
         }}
         title="Delete Note"
         description="Are you sure you want to delete this note? This action cannot be undone."
       />
     </div>
-  );
-}
-
-function ToolbarBtn({
-  children,
-  title,
-  onClick,
-  disabled,
-  danger,
-}: {
-  children: React.ReactNode;
-  title: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center justify-center w-7 h-7 rounded-md transition-colors disabled:opacity-30 ${
-        danger
-          ? "text-current opacity-50 hover:opacity-100 hover:text-red-500 hover:bg-red-50"
-          : "text-current opacity-50 hover:opacity-100 hover:bg-black/10"
-      }`}
-    >
-      {children}
-    </button>
   );
 }

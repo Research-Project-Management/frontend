@@ -59,6 +59,16 @@ export const useProjectTasks = (projectId: string, cycleId?: string) => {
       });
     };
     const onUpdated = ({ task }: { task: Task }) => {
+      const hasPendingLocalUpdate = queryClient.isMutating({
+        mutationKey: ["update-task"],
+        predicate: (mutation) => {
+          const variables = mutation.state.variables as { taskId?: string } | undefined;
+          return variables?.taskId === task._id;
+        },
+      }) > 0;
+
+      if (hasPendingLocalUpdate) return;
+
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
@@ -144,56 +154,70 @@ export const useCreateTask = () => {
 export const useUpdateTask = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: ["update-task"],
     mutationFn: ({ taskId, projectId, ...data }: { taskId: string; projectId: string } & TaskMutationInput) =>
       apiPut(`/api/tasks/${taskId}`, data),
     onMutate: async (newValues) => {
       await queryClient.cancelQueries({ queryKey: ["tasks", newValues.projectId] });
-      const previousData = queryClient.getQueryData<ProjectTasksData>(["tasks", newValues.projectId]);
-      if (previousData) {
-        const {
-          taskId,
-          projectId,
-          assignee,
-          cycle,
-          parentTask,
-          checklists,
-          ...optimisticFields
-        } = newValues;
+      const previousQueries = queryClient.getQueriesData<ProjectTasksData>({
+        queryKey: ["tasks", newValues.projectId],
+      });
 
-        queryClient.setQueryData<ProjectTasksData>(["tasks", newValues.projectId], {
-          ...previousData,
-          tasks: previousData.tasks.map((task) =>
-            task._id === newValues.taskId
-              ? {
-                  ...task,
-                  ...optimisticFields,
-                  dueDate:
-                    optimisticFields.dueDate === null
-                      ? undefined
-                      : optimisticFields.dueDate,
-                  startDate:
-                    (optimisticFields as any).startDate === null
-                      ? undefined
-                      : (optimisticFields as any).startDate,
-                  endDate:
-                    (optimisticFields as any).endDate === null
-                      ? undefined
-                      : (optimisticFields as any).endDate,
-                }
-              : task,
-          ),
-        });
-      }
-      return { previousData };
+      const {
+        taskId,
+        projectId,
+        assignee,
+        cycle,
+        parentTask,
+        checklists,
+        ...optimisticFields
+      } = newValues;
+
+      queryClient.setQueriesData<ProjectTasksData>(
+        { queryKey: ["tasks", newValues.projectId] },
+        (old) => {
+          if (!old) return old;
+
+          return {
+            ...old,
+            tasks: old.tasks.map((task) =>
+              task._id === taskId
+                ? {
+                    ...task,
+                    ...optimisticFields,
+                    dueDate:
+                      optimisticFields.dueDate === null
+                        ? undefined
+                        : optimisticFields.dueDate,
+                    startDate:
+                      (optimisticFields as any).startDate === null
+                        ? undefined
+                        : (optimisticFields as any).startDate,
+                    endDate:
+                      (optimisticFields as any).endDate === null
+                        ? undefined
+                        : (optimisticFields as any).endDate,
+                  }
+                : task,
+            ),
+          };
+        },
+      );
+
+      return { previousQueries };
     },
     onError: (error: any, newValues, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(["tasks", newValues.projectId], context.previousData);
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
       }
       toast.error(error?.message || "Failed to update task");
     },
     onSettled: (_, _err, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      if (queryClient.isMutating({ mutationKey: ["update-task"] }) === 1) {
+        queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      }
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
     },
   });

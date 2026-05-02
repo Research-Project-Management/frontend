@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useDraggable } from "@dnd-kit/core";
+import React, { useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Check,
@@ -22,11 +22,16 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import type { Task } from "~/types/task";
-import { useParams } from "react-router";
-import { useLabelsQuery } from "~/query/label";
+
+export type TaskCardLabel = {
+  _id: string;
+  name: string;
+  color: string;
+};
 
 type CardProps = {
   card: Task;
+  labelMap?: Map<string, TaskCardLabel>;
   currentUserId?: string | null;
   currentUserAvatar?: string;
   onEdit?: (card: Task) => void;
@@ -76,6 +81,8 @@ function isOverdue(value?: string) {
 
 function CardContent({
   card,
+  labelMap,
+  isDragging,
   currentUserId,
   currentUserAvatar,
   onDuplicate,
@@ -85,6 +92,8 @@ function CardContent({
   onToggleComplete,
 }: {
   card: Task;
+  labelMap?: Map<string, TaskCardLabel>;
+  isDragging?: boolean;
   currentUserId?: string | null;
   currentUserAvatar?: string;
   onDuplicate?: (card: Task) => void;
@@ -121,11 +130,8 @@ function CardContent({
     0,
   );
   
-  const { workspaceId, projectId } = useParams();
-  const { data: workspaceLabels = [] } = useLabelsQuery(workspaceId || "", "task", projectId);
-
   const visibleLabels = (card.labels || [])
-    .map((id: string) => workspaceLabels.find((t: any) => t._id === id))
+    .map((id: string) => labelMap?.get(id))
     .filter(Boolean)
     .map(t => ({ id: t!._id, color: t!.color, title: t!.name }))
     .filter((label) => label.color);
@@ -187,7 +193,9 @@ function CardContent({
   }>;
 
   return (
-    <div className="group relative min-w-0 rounded-sm border border-zinc-200 bg-white px-3.5 py-3 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md">
+    <div className={`group relative min-w-0 rounded-sm border border-zinc-200 bg-white px-3.5 py-3 shadow-sm ${
+      !isDragging ? "transition-all hover:border-zinc-300 hover:shadow-md" : ""
+    }`}>
 
 
       <DropdownMenu>
@@ -400,8 +408,9 @@ function CardContent({
   );
 }
 
-export function Card({
+function CardComponent({
   card,
+  labelMap,
   currentUserId,
   currentUserAvatar,
   onEdit,
@@ -411,22 +420,27 @@ export function Card({
   onLeave,
   onToggleComplete,
 }: CardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({
       id: card._id,
-      data: { card },
+      data: { 
+        type: 'Task',
+        card 
+      },
     });
 
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
+    transition: transition || (!isDragging ? "transform 200ms cubic-bezier(0.2, 0, 0, 1.0)" : undefined),
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 10 : 0,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="cursor-pointer"
+      className={`cursor-pointer ${isDragging ? 'pointer-events-none' : ''}`}
       {...attributes}
       {...listeners}
       onClick={() => onEdit?.(card)}
@@ -441,6 +455,8 @@ export function Card({
     >
       <CardContent
         card={card}
+        labelMap={labelMap}
+        isDragging={isDragging}
         currentUserId={currentUserId}
         currentUserAvatar={currentUserAvatar}
         onDuplicate={onDuplicate}
@@ -453,4 +469,12 @@ export function Card({
   );
 }
 
-export { CardContent as CardUI };
+const CardMemo = React.memo(CardComponent);
+export function Card(props: CardProps) {
+  return <CardMemo {...props} />;
+}
+Card.displayName = "Card";
+
+export function CardUI(props: any) {
+  return <CardContent {...props} />;
+}

@@ -3,7 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, MoreHorizontal, Trash2, Pencil, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { Card } from "./Card";
+import { Card, type TaskCardLabel } from "./Card";
 import type { Task, Column as ColumnType } from "~/types/task";
 import {
   resolveTaskColumnColor,
@@ -22,6 +22,7 @@ import {
 type ColumnProps = {
   column: ColumnType;
   cards: Task[];
+  labelMap?: Map<string, TaskCardLabel>;
   currentUserId?: string | null;
   currentUserAvatar?: string;
   onAdd: (columnId: string, title?: string) => void;
@@ -31,14 +32,15 @@ type ColumnProps = {
   onJoinCard?: (card: Task) => void;
   onLeaveCard?: (card: Task) => void;
   onToggleCardCompleted?: (card: Task) => void;
-  onDelete?: () => void;
-  onUpdate?: () => void;
+  onDelete?: (columnId: string) => void;
+  onUpdate?: (columnId: string) => void;
   onAddDisabled?: boolean;
 };
 
-export function Column({
+function ColumnComponent({
   column,
   cards,
+  labelMap,
   currentUserId,
   currentUserAvatar,
   onAdd,
@@ -61,6 +63,7 @@ export function Column({
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
   });
+  const cardIds = useMemo(() => cards.map((card) => card._id), [cards]);
 
   useEffect(() => {
     if (!isQuickAddOpen) return;
@@ -91,29 +94,22 @@ export function Column({
   if (isCollapsed) {
     return (
       <div className="flex flex-col items-center w-10 shrink-0 bg-[#f4f5f7] rounded-sm py-2.5 gap-2.5">
-        {/* 1. Color dot */}
         <div
           className="w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: columnColor }}
         />
-
-        {/* 2. Title (vertical) */}
         <span
           className="text-[13px] font-semibold text-zinc-800 max-h-36 overflow-hidden"
           style={{ writingMode: "vertical-lr" }}
         >
           {column.title}
         </span>
-
-        {/* 3. Count (vertical) */}
         <span
           className="text-[12px] text-zinc-500"
           style={{ writingMode: "vertical-lr", textOrientation: "upright" }}
         >
           {cards.length}
         </span>
-
-        {/* 4. Expand icon */}
         <Button
           type="button"
           variant="ghost"
@@ -124,8 +120,6 @@ export function Column({
         >
           <Maximize2 className="h-3.5 w-3.5" />
         </Button>
-
-        {/* 5. Add button */}
         <Button
           type="button"
           variant="ghost"
@@ -139,8 +133,6 @@ export function Column({
         >
           <Plus className="h-4 w-4" />
         </Button>
-
-        {/* 6. More options */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -156,13 +148,13 @@ export function Column({
           <DropdownMenuContent align="start" side="bottom" className="w-48">
             <DropdownMenuItem onClick={() => {
               setIsCollapsed(false);
-              onUpdate?.();
+              onUpdate?.(columnId);
             }}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={() => onDelete?.()}
+              onClick={() => onDelete?.(columnId)}
               className="text-destructive focus:text-destructive focus:bg-destructive/10"
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -171,10 +163,8 @@ export function Column({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
     );
   }
-
 
   /* ── Expanded state ───────────────────────────────────────────────── */
   return (
@@ -186,14 +176,12 @@ export function Column({
               className="size-2.5 rounded-full shrink-0"
               style={{ backgroundColor: columnColor }}
             />
-            
             <h3 
               className="text-[14px] font-semibold text-zinc-900 truncate cursor-pointer hover:text-black transition-colors"
-              onClick={() => onUpdate?.()}
+              onClick={() => onUpdate?.(columnId)}
             >
               {column.title}
             </h3>
-            
             <span
               className="text-[13px] text-zinc-500 font-normal shrink-0"
             >
@@ -202,7 +190,6 @@ export function Column({
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0 ml-2">
-            {/* Collapse icon */}
             <Button
               type="button"
               variant="ghost"
@@ -238,12 +225,12 @@ export function Column({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => onUpdate?.()}>
+                <DropdownMenuItem onClick={() => onUpdate?.(columnId)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => onDelete?.()}
+                  onClick={() => onDelete?.(columnId)}
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -259,13 +246,14 @@ export function Column({
         className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 min-h-32 rounded-b-sm"
       >
         <SortableContext
-          items={cards.map((c) => c._id)}
+          items={cardIds}
           strategy={verticalListSortingStrategy}
         >
           {cards.map((card) => (
             <Card
               key={card._id}
               card={card}
+              labelMap={labelMap}
               currentUserId={currentUserId}
               currentUserAvatar={currentUserAvatar}
               onEdit={onEditCard}
@@ -307,7 +295,7 @@ export function Column({
                   onClick={handleQuickAddSubmit}
                   disabled={!quickAddTitle.trim() || onAddDisabled}
                 >
-                  {onAddDisabled ? "Create..." : "Add"}
+                  Add
                 </Button>
                 <Button
                   type="button"
@@ -325,4 +313,10 @@ export function Column({
     </div>
   );
 }
+
+const ColumnMemo = React.memo(ColumnComponent);
+export function Column(props: ColumnProps) {
+  return <ColumnMemo {...props} />;
+}
+Column.displayName = "Column";
 

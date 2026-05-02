@@ -8,6 +8,8 @@ import {
   Filter,
   Check,
   X,
+  FolderOpen,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -15,6 +17,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import type { Column } from "~/types/task";
 import { resolveTaskColumnColor, resolveTaskColumnId } from "~/types/task";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { cn } from "~/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 
 type ViewMode = "board" | "list" | "calendar";
 type AssigneeFilterOption = {
@@ -32,7 +41,9 @@ type TopBarProps = {
   assignees: AssigneeFilterOption[];
   selectedAssigneeIds: string[];
   onAssigneeFilterChange: (assigneeIds: string[]) => void;
-  onCreateSection: () => void;
+  onAddTask: () => void;
+  onAddExistingTask?: () => void;
+  isLoading?: boolean;
 };
 
 export default function TopBar({
@@ -44,7 +55,9 @@ export default function TopBar({
   assignees,
   selectedAssigneeIds,
   onAssigneeFilterChange,
-  onCreateSection,
+  onAddTask,
+  onAddExistingTask,
+  isLoading,
 }: TopBarProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const activeColumns = columns.filter((column) =>
@@ -285,15 +298,56 @@ export default function TopBar({
             </PopoverContent>
           </Popover>
 
-          <Button
-            variant="default"
-            size="sm"
-            onClick={onCreateSection}
-            className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all hover:bg-zinc-800 bg-black text-white"
-          >
-            <Plus className="size-3.5" />
-            New Column
-          </Button>
+          {onAddExistingTask ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={isLoading}
+                  className={cn(
+                    "h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white",
+                    isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-zinc-800"
+                  )}
+                >
+                  <Plus className="size-3.5" />
+                  Add task
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 p-1 rounded-sm shadow-xl border-border/40">
+                <DropdownMenuItem 
+                  onClick={onAddTask}
+                  disabled={isLoading}
+                  className="gap-2.5 py-2 cursor-pointer rounded-sm"
+                >
+                  <Plus className="size-3.5 text-muted-foreground" />
+                  <span className="text-[13px] font-medium">Add task</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={onAddExistingTask}
+                  disabled={isLoading}
+                  className="gap-2.5 py-2 cursor-pointer rounded-sm"
+                >
+                  <FolderOpen className="size-3.5 text-muted-foreground" />
+                  <span className="text-[13px] font-medium">Add existing task</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onAddTask}
+              disabled={isLoading}
+              className={cn(
+                "h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white",
+                isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-zinc-800"
+              )}
+            >
+              <Plus className="size-3.5" />
+              Add task
+            </Button>
+          )}
     </div>
   );
 }

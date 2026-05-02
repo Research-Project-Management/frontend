@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, memo, useMemo } from "react";
 import type { Editor } from "@tiptap/react";
 import { GripVertical, FolderKanban, FileText } from "lucide-react";
 import { useParams } from "react-router";
+import { cn } from "~/lib/utils";
 import { useWorkspaceProjects } from "~/query/workspace";
 import { useStickyChildren } from "~/query/sticky";
 
@@ -30,6 +31,7 @@ const StickyNote = memo(function StickyNote({
   const colorConfig = NOTE_COLOR_MAP[note.color];
   const [editor, setEditor] = useState<Editor | null>(null);
   const [localTitle, setLocalTitle] = useState(note.title || "");
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const titleFocusedRef = useRef(false);
 
   // Load children only for workspace stickies (not for project-scoped stickies or overlay)
@@ -67,16 +69,17 @@ const StickyNote = memo(function StickyNote({
 
   return (
     <div
-      className={`group relative flex flex-col rounded overflow-hidden transition-[box-shadow,background-color,transform] duration-200 ${
+      className={cn(
+        "group relative flex flex-col rounded",
         isDragging
-          ? "shadow-md scale-[1.02] rotate-1"
-          : "hover:shadow-md hover:-translate-y-0.5"
-      }`}
+          ? "shadow-md scale-[1.02] rotate-1 z-50 pointer-events-none"
+          : "transition-[box-shadow,background-color,transform] duration-200 hover:shadow-md hover:-translate-y-0.5"
+      )}
       style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
     >
       {/* Top accent bar + drag handle */}
       <div
-        className="min-h-7 flex items-center justify-between px-3 cursor-grab active:cursor-grabbing active:outline-0 select-none"
+        className="h-9 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing active:outline-0 select-none rounded-t"
         style={topAccentStyle}
         {...dragHandleProps}
       >
@@ -105,7 +108,7 @@ const StickyNote = memo(function StickyNote({
       </div>
 
       {/* Title */}
-      <div className="px-4 pt-3 pb-0">
+      <div className="px-4 pt-4 pb-0">
         <input
           type="text"
           value={localTitle}
@@ -127,7 +130,7 @@ const StickyNote = memo(function StickyNote({
       {/* Linked project notes (children) */}
       {children.length > 0 && (
         <div
-          className="mx-3 mb-2 mt-1 rounded border border-black/10 overflow-hidden"
+          className="mx-4 mb-2 mt-1 rounded border border-black/10 overflow-hidden"
           style={{ backgroundColor: "rgba(0,0,0,0.06)" }}
         >
           <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider opacity-50 border-b border-black/10">
@@ -150,8 +153,20 @@ const StickyNote = memo(function StickyNote({
       )}
 
       {/* Toolbar */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-        <StickyToolbar note={note} onUpdate={onUpdate} onDelete={onDelete} editor={editor} />
+      <div
+        className={cn(
+          "transition-opacity duration-150",
+          activeModal ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <StickyToolbar
+          note={note}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          editor={editor}
+          activeModal={activeModal}
+          onActiveModalChange={setActiveModal}
+        />
       </div>
     </div>
   );

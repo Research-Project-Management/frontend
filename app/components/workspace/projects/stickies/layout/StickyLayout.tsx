@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import StickyNote from "../note/StickyNote";
 import { type Note, NOTE_COLOR_CYCLE } from "~/types/sticky";
 import { useParams } from "react-router";
@@ -8,13 +8,16 @@ import { useProjects } from "~/hooks/useWorkspace";
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
-  PointerSensor,
+  closestCorners,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
+  defaultDropAnimationSideEffects,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { createPortal } from "react-dom";
 import {
   SortableContext,
   rectSortingStrategy,
@@ -40,8 +43,6 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
     "saved" | "saving" | "error"
   >("saved");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
-
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
 
@@ -69,12 +70,6 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
       setLastSavedAt(new Date());
     } else if (updateMutation.isError) setSavingStatus("error");
   }, [updateMutation.isPending, updateMutation.isSuccess, updateMutation.isError]);
-
-  // Reset drag order when the underlying notes change (e.g., deletion/addition)
-  useEffect(() => {
-    setDragOrder(null);
-  }, [notes.map(n => n._id).join(",")]);
-
 
   const getNextColor = (prevNotes: Note[]): Note["color"] => {
     if (prevNotes.length === 0) return NOTE_COLOR_CYCLE[0];
@@ -110,7 +105,8 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -127,23 +123,13 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
     
     if (oldIdx !== -1 && newIdx !== -1) {
       const newOrderIds = arrayMove(notes.map(n => n._id), oldIdx, newIdx);
-      setDragOrder(newOrderIds);
       handleReorder(newOrderIds);
     }
   }, [notes, handleReorder]);
 
-  const displayNotes = useMemo(() => {
-    if (!dragOrder) return notes;
-    const map = new Map(notes.map((n) => [n._id, n]));
-    return dragOrder
-      .map((id) => map.get(id))
-      .filter((n): n is Note => n !== undefined);
-  }, [notes, dragOrder]);
-
-
   const filteredNotes = useMemo(
     () =>
-      displayNotes.filter((note) => {
+      notes.filter((note) => {
         const matchesSearch =
           !searchQuery ||
           note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -155,7 +141,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
 
         return matchesSearch && matchesLabels;
       }),
-    [displayNotes, searchQuery, selectedLabels],
+    [notes, searchQuery, selectedLabels],
   );
 
   const copy = {
@@ -164,8 +150,8 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
     loading: isProjectScope ? "Loading notes..." : "Loading stickies...",
     emptyFiltered: isProjectScope ? "No notes match your filters" : "No stickies match your filters",
     empty: isProjectScope ? "No notes yet" : "No stickies yet",
-    cta: isProjectScope ? 'Click "New Note" to get started' : 'Click "New Sticky" to get started',
-    addLabel: isProjectScope ? "New Note" : "New Sticky",
+    cta: isProjectScope ? 'Click "Add Note" to get started' : 'Click "Add Sticky" to get started',
+    addLabel: isProjectScope ? "Add Note" : "Add Sticky",
   };
 
   if (isLoading) {
@@ -229,7 +215,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={closestCorners}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
@@ -249,29 +235,41 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
               </div>
             </SortableContext>
 
-            <DragOverlay dropAnimation={null}>
-              {activeId
-                ? (() => {
-                    const note = filteredNotes.find((n) => n._id === activeId);
-                    return note ? (
-                      <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
-                        <StickyNote
-                          note={note}
-                          onUpdate={handleUpdateNote}
-                          onDelete={handleDeleteNote}
-                        />
-                      </div>
-                    ) : null;
-                  })()
-                : null}
-            </DragOverlay>
+            {createPortal(
+              <DragOverlay dropAnimation={{
+                sideEffects: defaultDropAnimationSideEffects({
+                  styles: {
+                    active: {
+                      opacity: '0.5',
+                    },
+                  },
+                }),
+              }}>
+                {activeId
+                  ? (() => {
+                      const note = filteredNotes.find((n) => n._id === activeId);
+                      return note ? (
+                        <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
+                          <StickyNote
+                            note={note}
+                            onUpdate={handleUpdateNote}
+                            onDelete={handleDeleteNote}
+                            isDragging={true}
+                          />
+                        </div>
+                      ) : null;
+                    })()
+                  : null}
+              </DragOverlay>,
+              document.body
+            )}
           </DndContext>
         )}
       </main>
     </div>
   );
 }
-function SortableNote({
+const SortableNote = React.memo(({
   note,
   onUpdate,
   onDelete,
@@ -279,7 +277,7 @@ function SortableNote({
   note: Note;
   onUpdate: (id: string, updates: Partial<Note>) => void;
   onDelete: (id: string) => void;
-}) {
+}) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
       id: note._id,
@@ -287,9 +285,9 @@ function SortableNote({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0 : 1,
-    pointerEvents: isDragging ? ("none" as const) : undefined,
+    transition: transition || "transform 200ms cubic-bezier(0.2, 0, 0, 1.0)",
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 1 : 0,
   };
 
   return (
@@ -303,4 +301,6 @@ function SortableNote({
       />
     </div>
   );
-}
+});
+
+SortableNote.displayName = "SortableNote";

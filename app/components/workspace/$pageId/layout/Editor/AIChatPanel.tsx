@@ -10,21 +10,23 @@
  * Toggle visibility via the AI button in ToolBar.
  */
 
-import { useState, useRef, useEffect, useCallback, memo } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
+
 import {
   X,
   ArrowUp,
   Square,
   Copy,
   Check,
-  ChevronDown,
   FileCode2,
   Eye,
   Download,
   Trash2,
   Sparkles,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
+
 import { useParams } from "react-router";
 import type { editor as MonacoEditor } from "monaco-editor";
 import {
@@ -36,7 +38,8 @@ import {
   type PreviewCompileResult,
 } from "~/query/chat-ai";
 import type { ChatMessage } from "~/types/chat";
-import { renderMarkdown } from "../../ai/layout/renderMarkdown";
+import { useWorkspaceActionsStore } from "~/stores/workspace-actions";
+
 
 // ── LaTeX block detection ─────────────────────────────────────────────────────
 
@@ -168,7 +171,7 @@ const AssistantMessage = memo(function AssistantMessage({
   );
 });
 
-/** PDF preview modal */
+/** PDF preview modal — uses blob URL to avoid browser iframe data: restriction */
 function PDFPreviewModal({
   result,
   onClose,
@@ -180,20 +183,28 @@ function PDFPreviewModal({
   onInsert: () => void;
   suggestion: string;
 }) {
-  const pdfUrl = result.success
-    ? `data:application/pdf;base64,${result.pdf}`
-    : null;
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  // Build a blob URL from the base64 PDF (data: URLs are blocked inside <iframe>)
+  useEffect(() => {
+    if (!result.success || !result.pdf) { setBlobUrl(null); return; }
+    const bytes = Uint8Array.from(atob(result.pdf), (c) => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    setBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [result.pdf, result.success]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200">
-      <div className="bg-background border border-border rounded-2xl shadow-2xl w-[800px] max-w-[90vw] h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-background border border-border rounded-2xl shadow-2xl w-[820px] max-w-[92vw] h-[82vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <FileCode2 className="size-4 text-amber-500" />
             <span className="text-sm font-semibold">AI Suggestion Preview</span>
-            <span className="text-[10px] text-muted-foreground ml-1">
-              Isolated compile — does not affect your document
+            <span className="text-[10px] text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full ml-1">
+              Isolated — does not affect your document
             </span>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-secondary/80 transition-colors">
@@ -203,22 +214,33 @@ function PDFPreviewModal({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex">
-          {result.success && pdfUrl ? (
-            <iframe
-              src={pdfUrl}
+          {result.success && blobUrl ? (
+            <object
+              data={blobUrl}
+              type="application/pdf"
               className="w-full h-full"
-              title="PDF Preview"
-            />
+            >
+              <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                <p className="text-sm">PDF viewer unavailable.</p>
+                <a
+                  href={blobUrl}
+                  download="preview.pdf"
+                  className="text-xs text-primary underline"
+                >
+                  Download PDF
+                </a>
+              </div>
+            </object>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-6 gap-4">
               <div className="size-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                <X className="size-6 text-destructive" />
+                <AlertTriangle className="size-6 text-destructive" />
               </div>
               <div className="text-center">
                 <p className="font-semibold text-sm mb-1">Compilation failed</p>
-                <p className="text-xs text-muted-foreground mb-4">The AI suggestion has LaTeX errors</p>
-                <pre className="text-[10px] text-destructive/80 bg-destructive/5 rounded-lg px-3 py-2 max-h-40 overflow-y-auto text-left whitespace-pre-wrap">
-                  {result.log.slice(0, 800)}
+                <p className="text-xs text-muted-foreground mb-4">The AI suggestion contains LaTeX errors</p>
+                <pre className="text-[10px] text-destructive/80 bg-destructive/5 rounded-lg px-3 py-2 max-h-48 overflow-y-auto text-left whitespace-pre-wrap border border-destructive/20">
+                  {result.log.slice(0, 1200)}
                 </pre>
               </div>
             </div>
@@ -261,6 +283,7 @@ interface AIChatPanelProps {
 
 export default function AIChatPanel({ editorRef, filename, onClose }: AIChatPanelProps) {
   const { pageId, workspaceId } = useParams<{ pageId: string; workspaceId: string }>();
+  const { pendingAiText, setPendingAiText } = useWorkspaceActionsStore();
 
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -268,6 +291,7 @@ export default function AIChatPanel({ editorRef, filename, onClose }: AIChatPane
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Preview state
   const [previewPending, setPreviewPending] = useState(false);
@@ -280,6 +304,7 @@ export default function AIChatPanel({ editorRef, filename, onClose }: AIChatPane
   const streamRef = useRef("");
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
+
 
   // ── Load per-page chat on mount ─────────────────────────────────────────────
   useEffect(() => {
@@ -439,9 +464,19 @@ export default function AIChatPanel({ editorRef, filename, onClose }: AIChatPane
     [getEditorContext, pageId, workspaceId]
   );
 
-  // ── Clear history ───────────────────────────────────────────────────────────
+  // ── Auto-fill from pendingAiText (set by "Ask AI about this" context menu) ──
+  useEffect(() => {
+    if (pendingAiText) {
+      setInput(pendingAiText);
+      setPendingAiText("");
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [pendingAiText, setPendingAiText]);
+
+  // ── Clear history (with confirmation) ──────────────────────────────────────
   const handleClear = useCallback(async () => {
     if (!pageId) return;
+    setShowClearConfirm(false);
     setMessages([]);
     try {
       await clearPageChat(pageId);
@@ -449,6 +484,7 @@ export default function AIChatPanel({ editorRef, filename, onClose }: AIChatPane
       console.error("[AIChatPanel] Clear error:", err);
     }
   }, [pageId]);
+
 
   // ── Quick prompts ───────────────────────────────────────────────────────────
   const quickPrompts = [
@@ -472,15 +508,40 @@ export default function AIChatPanel({ editorRef, filename, onClose }: AIChatPane
               <p className="text-xs font-semibold">Flux AI</p>
               <p className="text-[10px] text-muted-foreground">LaTeX Editor Assistant</p>
             </div>
+            {messages.length > 0 && (
+              <span className="text-[9px] font-mono bg-secondary/80 text-muted-foreground px-1.5 py-0.5 rounded-full">
+                {messages.length} msg{messages.length !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={handleClear}
-              title="Clear chat history"
-              className="p-1.5 rounded-lg hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            {/* Clear with inline confirm */}
+            {showClearConfirm ? (
+              <div className="flex items-center gap-1 bg-destructive/10 border border-destructive/20 rounded-lg px-2 py-1">
+                <span className="text-[10px] text-destructive font-medium">Clear history?</span>
+                <button
+                  onClick={handleClear}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="text-[10px] px-1.5 py-0.5 rounded hover:bg-secondary/80 text-muted-foreground transition-colors"
+                >
+                  No
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => messages.length > 0 && setShowClearConfirm(true)}
+                title="Clear chat history"
+                disabled={messages.length === 0}
+                className="p-1.5 rounded-lg hover:bg-secondary/80 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"

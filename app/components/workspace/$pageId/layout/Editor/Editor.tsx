@@ -958,16 +958,15 @@ Your conclusions here.
             <button
               onClick={() => {
                 if (selFloating.text) setPendingAiText(selFloating.text);
-                document.dispatchEvent(
-                  new CustomEvent("flux:open-panel", { detail: "Ask AI" }),
-                );
+                // Open in-editor AI panel (fills input from pendingAiText)
+                document.dispatchEvent(new CustomEvent("flux:toggle-ai-panel"));
                 setSelFloating(null);
               }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-primary/80 hover:bg-accent hover:text-accent-foreground transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
               title="Ask Flux AI"
             >
-              <img src="/Chat.svg" alt="Flux AI Comment" className="size-3.5" />
-              <span>Ask Flux AI</span>
+              <Sparkles className="size-3.5" />
+              <span>Ask AI</span>
             </button>
           </div>,
           document.body,

@@ -432,9 +432,10 @@ export async function* streamEditorChat(
 // ── Isolated PDF preview compile ─────────────────────────────────────────────
 
 const COMPILER_URL =
-  typeof window !== "undefined"
+  import.meta.env.VITE_COMPILER_URL ||
+  (typeof window !== "undefined"
     ? (window as any).__COMPILER_URL__ ?? "http://localhost:8001"
-    : "http://localhost:8001";
+    : "http://localhost:8001");
 
 export interface PreviewCompileResult {
   pdf: string; // base64

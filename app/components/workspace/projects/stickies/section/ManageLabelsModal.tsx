@@ -18,14 +18,19 @@ interface ManageLabelsSectionProps {
   selectedLabels?: string[];
   onToggleLabel?: (labelId: string) => void;
   onClose?: () => void;
+  type?: string;
+  projectId?: string;
 }
 
 export default function ManageLabelsSection({ 
   selectedLabels = [],
   onToggleLabel,
-  onClose
+  onClose,
+  type = "sticky",
+  projectId: propProjectId
 }: ManageLabelsSectionProps) {
-  const { workspaceId, projectId } = useParams();
+  const { workspaceId, projectId: routeProjectId } = useParams();
+  const projectId = propProjectId !== undefined ? propProjectId : routeProjectId;
 
   const {
     filteredLabels,
@@ -43,7 +48,7 @@ export default function ManageLabelsSection({
     handleSave,
     handleDelete,
     isMutating
-  } = useLabels(workspaceId!, "sticky", projectId);
+  } = useLabels(workspaceId!, type, projectId);
 
   const toggleLabel = (labelId: string) => {
     onToggleLabel?.(labelId);

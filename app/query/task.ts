@@ -252,7 +252,7 @@ export const useBulkUpdateTasks = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, taskIds, data }: { projectId: string; taskIds: string[]; data: any }) =>
-      apiPut(`/api/projects/${projectId}/tasks/bulk`, { taskIds, data }),
+      apiPut(`/api/project/${projectId}/tasks/bulk`, { taskIds, data }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });

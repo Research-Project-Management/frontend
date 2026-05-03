@@ -69,10 +69,7 @@ export const StatusModal = ({
         className="max-w-[440px] p-0 overflow-hidden z-[101] rounded-sm border-0 shadow-2xl bg-white"
       >
         <div className="p-6">
-          <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
-            <div className={cn("mt-0.5 flex h-10 w-10 items-center justify-center rounded-full shrink-0", config.iconClass)}>
-              <Icon className="h-5 w-5" />
-            </div>
+          <DialogHeader className="space-y-1 text-left">
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold">{config.dialogTitle}</DialogTitle>
               <DialogDescription className="mt-1.5 text-[13.5px] text-zinc-500 leading-relaxed">

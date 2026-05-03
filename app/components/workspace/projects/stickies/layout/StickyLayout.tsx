@@ -48,7 +48,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
 
-  const { data: allLabels = [] } = useLabelsQuery(workspaceId || "", isProjectScope ? "task" : "sticky");
+  const { data: allLabels = [] } = useLabelsQuery(workspaceId || "", "sticky");
 
   // Remove selected labels that no longer exist
   useEffect(() => {
@@ -151,7 +151,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
 
         const matchesLabels =
           selectedLabels.length === 0 ||
-          selectedLabels.every((labelId) => note.labels?.some((l) => l._id === labelId));
+          selectedLabels.some((labelId) => note.labels?.some((l) => l._id === labelId));
 
         return matchesSearch && matchesLabels;
       }),
@@ -200,6 +200,8 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
             isAddingNote={createMutation.isPending}
             selectedLabels={selectedLabels}
             addLabel={copy.addLabel}
+            labelType="sticky"
+            projectId={undefined}
             onToggleLabel={(labelId) =>
               setSelectedLabels((prev) =>
                 prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
@@ -209,41 +211,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
         }
       />
 
-      {selectedLabels.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-5 py-2 border-b border-border/40 bg-zinc-50/30">
-          {selectedLabels.map((labelId) => {
-            const label = allLabels.find((l) => l._id === labelId);
-            if (!label) return null;
-            return (
-              <Badge
-                key={labelId}
-                variant="secondary"
-                className="h-6 gap-1.5 px-2 text-[11px] font-semibold bg-white border-zinc-200 text-zinc-700 shadow-sm hover:bg-zinc-50 transition-colors"
-              >
-                <div
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: label.color }}
-                />
-                {label.name}
-                <button
-                  onClick={() =>
-                    setSelectedLabels((prev) => prev.filter((id) => id !== labelId))
-                  }
-                  className="ml-0.5 hover:text-black transition-colors"
-                >
-                  <X className="size-3" />
-                </button>
-              </Badge>
-            );
-          })}
-          <button
-            onClick={() => setSelectedLabels([])}
-            className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline underline-offset-4 ml-1"
-          >
-            Clear all
-          </button>
-        </div>
-      )}
+
 
       <main className="flex-1 overflow-auto p-5">
         {filteredNotes.length === 0 ? (

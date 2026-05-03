@@ -35,7 +35,7 @@ export const fetchStickies = async (workspaceId: string, labels?: string[], proj
 
 export const fetchProjectStickies = async (projectId: string, labels?: string[]) => {
   const params = new URLSearchParams();
-  if (labels?.length) params.set("labels", labels.join(","));
+  if (labels?.length) labels.forEach((labelId) => params.append("labels", labelId));
 
   const queryStr = params.toString() ? `?${params.toString()}` : "";
   const data = await apiGet<{ stickies: Sticky[] }>(`/api/project/${projectId}/stickies${queryStr}`);

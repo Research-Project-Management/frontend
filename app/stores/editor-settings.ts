@@ -2,7 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type LaTeXEngine = "pdflatex" | "xelatex" | "lualatex";
-export type CompileMode = "normal" | "fast" | "draft";
+/** "full" = complete compile with images · "draft" = skip image rendering (faster) */
+export type CompileMode = "full" | "draft";
 export type LayoutMode = "split" | "editor-only" | "viewer-only";
 export type EditorTheme = "light" | "dark";
 
@@ -40,7 +41,7 @@ export const useEditorSettingsStore = create<EditorSettingsState>()(
   persist(
     (set) => ({
       engine: "pdflatex",
-      compileMode: "normal",
+      compileMode: "full",
       autoCompile: false,
       layout: "split",
       editorTheme: "light",

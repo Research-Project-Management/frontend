@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useRef, useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router";
-import { usePage, useSyncProjectToCompiler } from "~/query/page";
+import { usePage } from "~/query/page";
 import type { Page } from "~/types/page";
 import { Skeleton } from "~/components/ui/skeleton";
 import Editor from "./Editor";
@@ -109,21 +109,14 @@ export default function EditorLayout() {
   // True when the current ?file= param points to an image asset (not a page).
   const isAssetTab = !!fileId && !!selectedAsset && selectedAsset._id === fileId;
 
-  // Keep the last opened child page so that when all tabs are closed the editor
-  // doesn't go blank — it continues to show the content of the last closed file.
-  const lastActivePageRef = useRef<Page | null>(null);
-  const [lastActivePage, setLastActivePage] = useState<Page | null>(null);
-
   // True when a real child file is being viewed now.
   const hasChildFile = !!activePage && activePage._id !== pageId;
 
-  // The page to actually render: current child file, or the last one seen.
-  const displayPage = hasChildFile ? activePage : lastActivePage;
+  // The page to render: only when a child file is active. When no tab is open,
+  // displayPage is null and EditorLayout shows the EmptyEditorState.
+  const displayPage = hasChildFile ? activePage : null;
 
   const { openTab, closeAllForProject } = useEditorTabsStore();
-  const syncProjectMutation = useSyncProjectToCompiler();
-  // Track whether we've already synced this session for this root page
-  const syncedPageRef = useRef<string | null>(null);
   // Track whether we've already fired the initial auto-compile for this root page
   const autoCompileFiredRef = useRef<string | null>(null);
   // Track previous pageId so we can clean up its tabs when navigating away
@@ -172,16 +165,6 @@ export default function EditorLayout() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // On first load of a root page: sync all .tex files to the compiler so that
-  // compile works even after a compiler restart (without requiring a manual save).
-  useEffect(() => {
-    if (!pageId || syncedPageRef.current === pageId) return;
-    if (!activePage || !activePage._id) return;
-    
-    console.log("[EditorLayout] Syncing project to compiler:", { pageId, activePageId: activePage._id });
-    syncedPageRef.current = pageId;
-    syncProjectMutation.mutate({ pageId });
-  }, [pageId, activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-compile on first open when autoCompile is enabled.
   // Fires once per root page visit, after sync completes (small delay).
@@ -215,9 +198,6 @@ export default function EditorLayout() {
     if (!activePage || !pageId) return;
     if (activePage._id === pageId) return; // root page is not a tab
     openTab(pageId, { id: activePage._id, title: activePage.title });
-    // Remember this page so we can keep showing it after the tab is closed
-    lastActivePageRef.current = activePage;
-    setLastActivePage(activePage);
   }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
 

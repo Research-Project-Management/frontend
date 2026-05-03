@@ -42,6 +42,7 @@ import { useDebounce } from "~/hooks/useDebounce";
 import { useEditorContext } from "./EditorLayout";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
+import { useCompileStore } from "~/stores/compile";
 import { cn } from "~/lib/utils";
 import { useSocket } from "~/contexts/SocketProvider";
 import { usePagePresence } from "~/hooks/usePagePresence";
@@ -140,8 +141,9 @@ interface MenuAction {
 
 export default function Editor({ page }: EditorProps) {
   const { editorRef } = useEditorContext();
-  const { compileRef, isCompiling, scrollToLineRef, scrollToPdfLineRef } =
+  const { compileRef, scrollToLineRef, scrollToPdfLineRef } =
     usePageContext();
+  const { markDirty } = useCompileStore();
   const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useEditorSettingsStore();
   const [content, setContent] = useState(page.content || "");
   // Tracks the current page._id to detect tab switches
@@ -215,17 +217,18 @@ export default function Editor({ page }: EditorProps) {
     if (activePageIdRef.current !== page._id) return;
     if (debouncedContent === lastRemoteContentRef.current) return;
     if (debouncedContent && debouncedContent !== page.content) {
+      // Push into global dirty map so compile can flush ALL open tabs
+      markDirty(page._id, debouncedContent);
       updateMutation.mutate({ pageId: page._id, content: debouncedContent });
       // Mark that we want to auto-compile after this save confirms the sync.
       if (autoCompile) pendingCompileRef.current = true;
     }
   }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-compile: trigger compile after save mutation succeeds (sync is confirmed
-  // by the backend since it now awaits the compiler sync before responding).
-  // This replaces the old 3-second separate debounce which could fire before sync.
+  // Auto-compile: trigger compile after save mutation succeeds.
   useEffect(() => {
-    if (!autoCompile || isCompiling) return;
+    const { compileStatus } = useCompileStore.getState();
+    if (!autoCompile || compileStatus !== "idle") return;
     if (updateMutation.isSuccess && !updateMutation.isPending && pendingCompileRef.current) {
       pendingCompileRef.current = false;
       const timer = setTimeout(() => {

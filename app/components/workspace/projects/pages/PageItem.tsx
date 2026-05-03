@@ -106,7 +106,10 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
       ? page.mainFile.title
       : null;
 
-  const openEditor = () => navigate(`/editor/${mainFileId ?? page._id}`);
+  const openEditor = () =>
+    mainFileId
+      ? navigate(`/editor/${page._id}?file=${mainFileId}`)
+      : navigate(`/editor/${page._id}`);
 
   const ActionMenu = () => (
     <DropdownMenu>

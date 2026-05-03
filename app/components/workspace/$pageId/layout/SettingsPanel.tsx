@@ -242,11 +242,10 @@ export default function SettingsPanel() {
             />
           </SettingRow>
 
-          <SettingRow icon={Zap} label="Compile mode">
+          <SettingRow icon={Zap} label="Compile mode" description="Full = renders images">
             <SegmentedControl<CompileMode>
               options={[
-                { value: "normal", label: "Normal" },
-                { value: "fast", label: "Fast" },
+                { value: "full", label: "Full" },
                 { value: "draft", label: "Draft" },
               ]}
               value={compileMode}

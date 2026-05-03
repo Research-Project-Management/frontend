@@ -542,8 +542,8 @@ export default function Editor({ page }: EditorProps) {
         label: "Ask AI about this",
         action: () => {
           if (ctxSelText) setPendingAiText(ctxSelText);
-          // Open the in-editor AI chat panel (keyboard shortcut Ctrl+Alt+A)
-          document.dispatchEvent(new CustomEvent("flux:toggle-ai-panel"));
+          // Always open the AI panel (never close it) when asking about selection
+          document.dispatchEvent(new CustomEvent("flux:open-ai-panel"));
           closeMenu();
         },
       },
@@ -958,8 +958,8 @@ Your conclusions here.
             <button
               onClick={() => {
                 if (selFloating.text) setPendingAiText(selFloating.text);
-                // Open in-editor AI panel (fills input from pendingAiText)
-                document.dispatchEvent(new CustomEvent("flux:toggle-ai-panel"));
+                // Always OPEN the AI panel when asking about a selection
+                document.dispatchEvent(new CustomEvent("flux:open-ai-panel"));
                 setSelFloating(null);
               }}
               className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"

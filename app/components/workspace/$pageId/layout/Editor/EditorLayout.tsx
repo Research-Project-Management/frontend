@@ -101,11 +101,17 @@ export default function EditorLayout() {
   const [aiPanelOpen, setAIPanelOpen] = useState(false);
   const toggleAIPanel = () => setAIPanelOpen((v) => !v);
 
-  // Listen to the Ctrl+Alt+A shortcut dispatched by Monaco
+  // Listen to the Ctrl+Alt+A shortcut dispatched by Monaco (toggle)
   useEffect(() => {
-    const handler = () => setAIPanelOpen((v) => !v);
-    document.addEventListener("flux:toggle-ai-panel", handler);
-    return () => document.removeEventListener("flux:toggle-ai-panel", handler);
+    const toggle = () => setAIPanelOpen((v) => !v);
+    // flux:open-ai-panel always opens (used by "Ask AI about this" selections)
+    const open = () => setAIPanelOpen(true);
+    document.addEventListener("flux:toggle-ai-panel", toggle);
+    document.addEventListener("flux:open-ai-panel", open);
+    return () => {
+      document.removeEventListener("flux:toggle-ai-panel", toggle);
+      document.removeEventListener("flux:open-ai-panel", open);
+    };
   }, []);
 
 

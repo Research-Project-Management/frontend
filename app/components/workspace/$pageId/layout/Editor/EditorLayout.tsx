@@ -11,6 +11,7 @@ import { useSocketRoom } from "~/hooks/useSocketRoom";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
+import AIChatPanel from "./AIChatPanel";
 
 // ── Inline image viewer rendered inside the editor column ──────────────────
 
@@ -73,6 +74,9 @@ function EmptyEditorState() {
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
+  /** Toggle the AI chat panel open/closed */
+  toggleAIPanel: () => void;
+  aiPanelOpen: boolean;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -92,6 +96,18 @@ export default function EditorLayout() {
   // fileId from ?file=... = the child file currently being edited
   const [searchParams] = useSearchParams();
   const fileId = searchParams.get("file");
+
+  // AI Chat Panel state
+  const [aiPanelOpen, setAIPanelOpen] = useState(false);
+  const toggleAIPanel = () => setAIPanelOpen((v) => !v);
+
+  // Listen to the Ctrl+Alt+A shortcut dispatched by Monaco
+  useEffect(() => {
+    const handler = () => setAIPanelOpen((v) => !v);
+    document.addEventListener("flux:toggle-ai-panel", handler);
+    return () => document.removeEventListener("flux:toggle-ai-panel", handler);
+  }, []);
+
 
   // Always fetch the root page (needed for project metadata & tab bar)
   const { data: parentPage, isLoading: parentLoading } = usePage(pageId!);
@@ -249,18 +265,36 @@ export default function EditorLayout() {
   }
 
   return (
-    <EditorContext.Provider value={{ editorRef }}>
+    <EditorContext.Provider value={{ editorRef, toggleAIPanel, aiPanelOpen }}>
       <div className="h-full w-full overflow-hidden flex flex-col">
         {/* Tab bar — keyed by rootPageId so each LaTeX page-project is isolated */}
         {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage?._id ?? ""} />}
-        {isAssetTab ? (
-          <ImagePanel asset={selectedAsset!} />
-        ) : displayPage ? (
-          // Keep Monaco mounted with the last active file even after all tabs close
-          <Editor page={displayPage} />
-        ) : (
-          <EmptyEditorState />
-        )}
+        <div className="flex-1 overflow-hidden flex">
+          {/* Editor / Asset panel */}
+          <div className="flex-1 overflow-hidden">
+            {isAssetTab ? (
+              <ImagePanel asset={selectedAsset!} />
+            ) : displayPage ? (
+              <Editor page={displayPage} />
+            ) : (
+              <EmptyEditorState />
+            )}
+          </div>
+
+          {/* AI Chat Panel — collapsible right sidebar */}
+          {aiPanelOpen && (
+            <>
+              <div className="w-px bg-border shrink-0" />
+              <div className="w-[360px] shrink-0 overflow-hidden">
+                <AIChatPanel
+                  editorRef={editorRef}
+                  filename={displayPage?.title ?? "main.tex"}
+                  onClose={() => setAIPanelOpen(false)}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </EditorContext.Provider>
   );

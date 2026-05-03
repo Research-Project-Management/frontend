@@ -26,6 +26,7 @@ import {
   Redo,
   Scissors,
   Sigma,
+  Sparkles,
   Strikethrough,
   Subscript,
   Superscript,
@@ -189,7 +190,7 @@ interface ToolBarProps {
 }
 
 export default function ToolBar({ page }: ToolBarProps) {
-  const { editorRef } = useEditorContext();
+  const { editorRef, toggleAIPanel, aiPanelOpen } = useEditorContext();
   const [title, setTitle] = useState(page.title);
   const updateTitleMutation = useUpdatePageTitle();
 
@@ -451,6 +452,24 @@ export default function ToolBar({ page }: ToolBarProps) {
             shortcut="Ctrl+V"
             onClick={() => handleToolClick("Paste")}
           />
+          <div className="w-px h-4 bg-gray-200 mx-1 self-center shrink-0" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleAIPanel}
+                className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all duration-150",
+                  aiPanelOpen
+                    ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                    : "text-gray-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:text-amber-400 dark:hover:bg-amber-500/10"
+                )}
+              >
+                <Sparkles className="size-3.5" strokeWidth={1.8} />
+                AI
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Toggle AI Chat Panel</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

@@ -542,14 +542,14 @@ export default function Editor({ page }: EditorProps) {
         label: "Ask AI about this",
         action: () => {
           if (ctxSelText) setPendingAiText(ctxSelText);
-          document.dispatchEvent(
-            new CustomEvent("flux:open-panel", { detail: "Ask AI" }),
-          );
+          // Open the in-editor AI chat panel (keyboard shortcut Ctrl+Alt+A)
+          document.dispatchEvent(new CustomEvent("flux:toggle-ai-panel"));
           closeMenu();
         },
       },
     ],
   ];
+
 
   // Draw / update remote cursor content widgets whenever cursors or presence changes
   useEffect(() => {
@@ -746,10 +746,20 @@ export default function Editor({ page }: EditorProps) {
       compileRef.current?.(),
     );
 
+    // Ctrl+Alt+A → open/focus AI chat panel
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyA,
+      () => {
+        // Dispatch custom event so EditorLayout can toggle the AI panel
+        document.dispatchEvent(new CustomEvent("flux:toggle-ai-panel"));
+      },
+    );
+
     // Override F2 to show our custom rename confirmation dialog
     editor.addCommand(monaco.KeyCode.F2, () =>
       openRenameDialogLatestRef.current(),
     );
+
 
     // Configure editor options — use persisted store values so settings survive reloads.
     editor.updateOptions({

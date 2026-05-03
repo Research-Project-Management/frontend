@@ -329,3 +329,142 @@ export async function fetchDocumentContent(docId: string): Promise<{
     throw new Error(`Failed to fetch document content: ${res.status}`);
   return res.json();
 }
+
+// ── Per-page chat (LaTeX editor AI panel) ────────────────────────────────────
+
+/** Load (or auto-create) the AI chat session for a specific LaTeX editor page. */
+export async function getPageChat(
+  pageId: string,
+  workspaceId: string,
+): Promise<ChatSessionDetail> {
+  const res = await fetch(
+    `${API_URL}/api/ai/chats/page/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
+    { credentials: "include" },
+  );
+  if (!res.ok) throw new Error(`Failed to load page chat: ${res.status}`);
+  const data = await res.json();
+  return data.chat;
+}
+
+/** Clear all messages from a page's AI chat (does NOT delete the session). */
+export async function clearPageChat(pageId: string): Promise<void> {
+  const res = await fetch(
+    `${API_URL}/api/ai/chats/page/${encodeURIComponent(pageId)}`,
+    { method: "DELETE", credentials: "include" },
+  );
+  if (!res.ok) throw new Error(`Failed to clear page chat: ${res.status}`);
+}
+
+// ── Editor-specific streaming (latex_editor intent) ──────────────────────────
+
+export interface EditorStreamOptions {
+  chatId: string;
+  workspaceId: string;
+  projectId?: string;
+  /** Full content of the active .tex file */
+  fileContent?: string;
+  /** Name of the active .tex file */
+  filename?: string;
+  /** Text the user has selected in the editor */
+  selection?: string;
+  /** Lines surrounding the cursor position */
+  cursorContext?: string;
+  onMeta?: (meta: { agent: string; intent: string; sources?: SourceItem[] }) => void;
+  signal?: AbortSignal;
+}
+
+/** Stream an AI response from the latex_editor agent with full document context. */
+export async function* streamEditorChat(
+  messages: ChatMessage[],
+  opts: EditorStreamOptions,
+): AsyncGenerator<string, void, unknown> {
+  const response = await fetch(`${API_URL}/api/ai/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      messages,
+      intent_hint: "latex_editor",
+      chat_id: opts.chatId,
+      workspace_id: opts.workspaceId,
+      project_id: opts.projectId ?? null,
+      // Editor-specific fields
+      file_content: opts.fileContent ?? "",
+      filename: opts.filename ?? "main.tex",
+      selection: opts.selection ?? "",
+      cursor_context: opts.cursorContext ?? "",
+    }),
+    signal: opts.signal,
+  });
+
+  if (!response.ok) throw new Error(`Editor AI request failed: ${response.status}`);
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response body");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") return;
+        if (data.startsWith("[META]")) {
+          try { opts.onMeta?.(JSON.parse(data.slice(6))); } catch {}
+          continue;
+        }
+        if (data.startsWith("[ACTION]")) continue;
+        yield data.replace(/\\n/g, "\n");
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ── Isolated PDF preview compile ─────────────────────────────────────────────
+
+const COMPILER_URL =
+  typeof window !== "undefined"
+    ? (window as any).__COMPILER_URL__ ?? "http://localhost:8001"
+    : "http://localhost:8001";
+
+export interface PreviewCompileResult {
+  pdf: string; // base64
+  success: boolean;
+  log: string;
+}
+
+/**
+ * Compile an AI suggestion in isolation (without affecting project files).
+ * Sends request directly to Flux-Latex-Compiler /compile/preview.
+ */
+export async function compilePreview(opts: {
+  baseContent: string;
+  suggestion: string;
+  injectAtEnd?: boolean;
+  engine?: string;
+  sessionId: string;
+}): Promise<PreviewCompileResult> {
+  const res = await fetch(`${COMPILER_URL}/compile/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      base_content: opts.baseContent,
+      suggestion: opts.suggestion,
+      inject_at_end: opts.injectAtEnd ?? true,
+      engine: opts.engine ?? "pdflatex",
+      session_id: opts.sessionId,
+    }),
+  });
+  if (!res.ok) throw new Error(`Preview compile failed: ${res.status}`);
+  return res.json();
+}
+

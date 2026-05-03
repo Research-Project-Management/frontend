@@ -80,6 +80,10 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
     label: "Workspace Agent",
     color: "bg-[#3370ff]/12 text-[#3370ff]",
   },
+  latex_editor: {
+    label: "LaTeX Editor AI",
+    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  },
 };
 
 function AgentBadge({ agent }: { agent: string }) {

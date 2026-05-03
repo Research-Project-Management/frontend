@@ -3,8 +3,8 @@ import { FileText, CheckSquare, Activity as ActivityIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { useProjectTasks } from "~/query/task";
-import { useActivityFeed } from "~/query/workspace-home";
-import type { Activity } from "~/query/workspace-home";
+import { useActivityFeed } from "~/query/workspace";
+import type { Activity } from "~/query/workspace";
 
 
 

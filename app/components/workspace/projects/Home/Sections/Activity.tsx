@@ -1,7 +1,7 @@
 import React from "react";
 import HomeSection from "../HomeSection";
-import { useActivityFeed } from "~/query/workspace-home";
-import { useParams } from "react-router";
+import { useActivityFeed } from "~/query/workspace";
+import { useParams, Link } from "react-router";
 import { formatDistanceToNow } from "date-fns";
 import { Loader2, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -19,9 +19,16 @@ export default function Activity() {
       ) : activities && activities.length > 0 ? (
         <div className="space-y-2">
           {activities.map((activity, index) => (
-            <div
+            <Link
               key={index}
-              className="p-3 flex items-center gap-4 bg-card border border-border/40 rounded-lg"
+              to={
+                activity.type === "page_update" && activity.project
+                  ? `/${workspaceId}/projects/${activity.project._id}/pages/${activity.itemId}`
+                  : activity.project
+                  ? `/${workspaceId}/projects/${activity.project._id}/overview`
+                  : `/${workspaceId}`
+              }
+              className="p-3 flex items-center gap-4 bg-card border border-border/40 rounded-lg hover:bg-secondary/60 hover:border-border/60 transition-all group cursor-pointer"
             >
               <Avatar className="size-8">
                 <AvatarImage src={activity.user?.avatar} />
@@ -30,17 +37,22 @@ export default function Activity() {
                 </AvatarFallback>
               </Avatar>
               <p className="text-primary/60 flex-1">
-                <span className="font-semibold text-primary">
+                <span className="font-semibold text-primary group-hover:text-primary/80">
                   {activity.user?.name || "Someone"}
                 </span>{" "}
                 {activity.content}
               </p>
-              <span className="text-xs text-gray-500">
+              {activity.project && (
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-tighter shrink-0 group-hover:text-primary/40">
+                  {activity.project.name}
+                </span>
+              )}
+              <span className="text-xs text-gray-500 whitespace-nowrap">
                 {formatDistanceToNow(new Date(activity.time), {
                   addSuffix: true,
                 })}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       ) : (

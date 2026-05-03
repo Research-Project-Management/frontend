@@ -44,6 +44,7 @@ type TopBarProps = {
   onAddTask: () => void;
   onAddExistingTask?: () => void;
   isLoading?: boolean;
+  isReadOnly?: boolean;
 };
 
 export default function TopBar({
@@ -58,6 +59,7 @@ export default function TopBar({
   onAddTask,
   onAddExistingTask,
   isLoading,
+  isReadOnly,
 }: TopBarProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const activeColumns = columns.filter((column) =>
@@ -300,15 +302,12 @@ export default function TopBar({
 
           {onAddExistingTask ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild disabled={isReadOnly}>
                 <Button
                   variant="default"
                   size="sm"
-                  disabled={isLoading}
-                  className={cn(
-                    "h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white",
-                    isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-zinc-800"
-                  )}
+                  disabled={isLoading || isReadOnly}
+                  className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-zinc-800 disabled:opacity-100"
                 >
                   <Plus className="size-3.5" />
                   Add task
@@ -317,7 +316,7 @@ export default function TopBar({
               <DropdownMenuContent align="end" className="w-48 p-1 rounded-sm shadow-xl border-border/40">
                 <DropdownMenuItem 
                   onClick={onAddTask}
-                  disabled={isLoading}
+                  disabled={isLoading || isReadOnly}
                   className="gap-2.5 py-2 cursor-pointer rounded-sm"
                 >
                   <Plus className="size-3.5 text-muted-foreground" />
@@ -325,7 +324,7 @@ export default function TopBar({
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={onAddExistingTask}
-                  disabled={isLoading}
+                  disabled={isLoading || isReadOnly}
                   className="gap-2.5 py-2 cursor-pointer rounded-sm"
                 >
                   <FolderOpen className="size-3.5 text-muted-foreground" />
@@ -338,11 +337,8 @@ export default function TopBar({
               variant="default"
               size="sm"
               onClick={onAddTask}
-              disabled={isLoading}
-              className={cn(
-                "h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white",
-                isLoading ? "opacity-70 cursor-not-allowed" : "hover:bg-zinc-800"
-              )}
+              disabled={isLoading || isReadOnly}
+              className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-zinc-800 disabled:opacity-100"
             >
               <Plus className="size-3.5" />
               Add task

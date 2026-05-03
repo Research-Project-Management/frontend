@@ -5,9 +5,10 @@ interface OverviewCardProps {
   value: number | string;
   icon: React.ReactNode;
   variant?: "default" | "warning" | "success";
+  onClick?: () => void;
 }
 
-function OverviewCard({ title, value, icon, variant = "default" }: OverviewCardProps) {
+function OverviewCard({ title, value, icon, variant = "default", onClick }: OverviewCardProps) {
   const variantStyles = {
     default: "bg-primary/10 text-primary",
     warning: "bg-orange-500/10 text-orange-600",
@@ -15,7 +16,10 @@ function OverviewCard({ title, value, icon, variant = "default" }: OverviewCardP
   };
 
   return (
-    <div className="flex-1 p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 group">
+    <button 
+      onClick={onClick}
+      className="flex-1 p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 group text-left w-full outline-none hover:-translate-y-1"
+    >
       <div className="flex items-center gap-3 mb-2">
         <div className={`p-2 rounded-lg transition-colors ${variantStyles[variant]}`}>
           {icon}
@@ -25,18 +29,20 @@ function OverviewCard({ title, value, icon, variant = "default" }: OverviewCardP
         </span>
       </div>
       <div className="text-2xl font-bold pl-1">{value}</div>
-    </div>
+    </button>
   );
 }
 
 export default function OverviewSection({ 
     assigned = 0,
     upcomingCount = 0,
-    completed = 0
+    completed = 0,
+    onCardClick
 }: { 
     assigned?: number;
     upcomingCount?: number;
     completed?: number;
+    onCardClick?: (tab: "Assigned" | "Upcoming" | "Completed") => void;
 }) {
   return (
     <div className="w-full">
@@ -46,17 +52,20 @@ export default function OverviewSection({
           title="Task assigned" 
           value={assigned}
           icon={<UserCheck className="h-4 w-4" />}
+          onClick={() => onCardClick?.("Assigned")}
         />
         <OverviewCard 
           title="Upcoming" 
           value={upcomingCount}
           icon={<Clock className="h-4 w-4" />}
+          onClick={() => onCardClick?.("Upcoming")}
         />
         <OverviewCard 
           title="Completed" 
           value={completed}
           variant="success"
           icon={<CheckCircle2 className="h-4 w-4" />}
+          onClick={() => onCardClick?.("Completed")}
         />
       </div>
     </div>

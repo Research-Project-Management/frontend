@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
-import { useParams } from "react-router";
-import { useActivityFeed } from "~/query/workspace-home";
+import { useParams, Link } from "react-router";
+import { useActivityFeed } from "~/query/workspace";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 
 export default function RecentActivity({ 
@@ -25,12 +25,19 @@ export default function RecentActivity({
           <div className="text-center py-6 text-muted-foreground text-sm">No activity yet.</div>
         ) : (
           (limit > 0 ? activities.slice(0, limit) : activities).map((activity: any, idx: number) => {
-            const projectInfo = taskProjectMap[activity.itemId];
+            const projectInfo = activity.project || taskProjectMap[activity.itemId];
             
             return (
-              <div 
+              <Link 
                 key={activity._id || activity.id || idx} 
-                className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-secondary/50 transition-all duration-200 group border border-transparent hover:border-border/50"
+                to={
+                  activity.type === "page_update" && (activity.project || projectInfo)
+                    ? `/${workspaceId}/projects/${(activity.project?._id || projectInfo?.id)}/pages/${activity.itemId}`
+                    : (activity.project || projectInfo)
+                    ? `/${workspaceId}/projects/${(activity.project?._id || projectInfo?.id)}/overview`
+                    : `/${workspaceId}`
+                }
+                className="flex items-start gap-3 px-3 py-3 rounded-xl hover:bg-secondary/50 transition-all duration-200 group border border-transparent hover:border-border/50 cursor-pointer"
               >
                 <Avatar className="h-9 w-9 border border-border/50 shrink-0 mt-0.5">
                   <AvatarImage src={activity.user?.avatar} alt={activity.user?.name} />
@@ -58,7 +65,7 @@ export default function RecentActivity({
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             );
           })
         )}

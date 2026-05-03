@@ -53,7 +53,7 @@ export type ChecklistItem = {
   title: string;
   completed: boolean;
   assigneeId?: string;
-  dueDate?: string;
+  dueDate?: string | null;
 };
 
 export type Checklist = {
@@ -66,7 +66,7 @@ export type ChecklistItemInput = {
   title: string;
   completed: boolean;
   assigneeId?: string;
-  dueDate?: string;
+  dueDate?: string | null;
 };
 
 export type ChecklistInput = {
@@ -86,7 +86,8 @@ export type Task = {
     name: string;
     avatar?: string;
   } | null;
-  dueDate?: string;
+  dueDate?: string | null;
+  startDate?: string | null;
   labels: string[];
   rank: number;
   author: string;
@@ -104,7 +105,6 @@ export type Task = {
     identifier: string;
   } | null;
   identifier: string;
-  startDate?: string;
   recurrence?: TaskRecurrence;
   reminder?: TaskReminder;
   checklists?: Checklist[];
@@ -156,7 +156,8 @@ export type TaskMutationInput = Partial<
   parentTask?: string | null;
 };
 
-export type CyclePhase =
+export type CyclePhase = string;
+/*
   | "topic_selection"
   | "literature_review"
   | "methodology"
@@ -164,15 +165,15 @@ export type CyclePhase =
   | "data_analysis"
   | "writing"
   | "review_revision"
-  | "submission"
-  | "custom";
+  | "submission";
+*/
 
 export type CycleStatus = "planned" | "active" | "completed" | "cancelled";
 
 export type CycleMilestone = {
   _id?: string;
   title: string;
-  dueDate?: string;
+  dueDate?: string | null;
   completed: boolean;
 };
 
@@ -188,8 +189,8 @@ export type Cycle = {
   name: string;
   description: string;
   project: string;
-  startDate?: string;
-  endDate?: string;
+  startDate?: string | null;
+  endDate?: string | null;
   status: CycleStatus;
   phase: CyclePhase;
   milestones: CycleMilestone[];
@@ -202,16 +203,11 @@ export type Cycle = {
     name: string;
     avatar?: string;
   };
-  stats?: {
-    totalTasks: number;
-    completedTasks: number;
-    progress: number;
-  };
   createdAt: string;
   updatedAt: string;
 };
 
-export const PHASE_CONFIG: Record<CyclePhase, { label: string; color: string; icon: string }> = {
+export const PHASE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   topic_selection: { label: "Topic Selection", color: "#8b5cf6", icon: "🔍" },
   literature_review: { label: "Literature Review", color: "#3b82f6", icon: "📚" },
   methodology: { label: "Methodology", color: "#06b6d4", icon: "⚙️" },
@@ -220,7 +216,6 @@ export const PHASE_CONFIG: Record<CyclePhase, { label: string; color: string; ic
   writing: { label: "Writing", color: "#f97316", icon: "✍️" },
   review_revision: { label: "Review & Revision", color: "#f43f5e", icon: "🔄" },
   submission: { label: "Submission / Defense", color: "#10b981", icon: "🎓" },
-  custom: { label: "Custom", color: "#6b7280", icon: "📋" },
 };
 
 export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; icon: string }> = {

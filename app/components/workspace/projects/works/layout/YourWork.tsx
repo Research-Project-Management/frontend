@@ -167,11 +167,12 @@ export default function YourWorks() {
       
       <div className="flex-1 p-6 space-y-10 overflow-y-auto">
         {activeTab === "Summary" && (
-          <>
+          <div className="space-y-10 animate-fade-in animate-slide-up">
             <OverviewSection 
                 assigned={personalTasks.assigned.length} 
                 upcomingCount={personalTasks.upcomingCount}
                 completed={personalTasks.completed.length}
+                onCardClick={(tab) => setActiveTab(tab)}
             />
             <QuickProjects />
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
@@ -182,23 +183,31 @@ export default function YourWorks() {
                   <UpcomingSection onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
                </div>
             </div>
-          </>
+          </div>
         )}
 
         {activeTab === "Assigned" && (
-          <TaskListView title="Assigned to you" tasks={personalTasks.assigned} onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+          <div className="animate-fade-in animate-slide-up">
+            <TaskListView title="Assigned to you" tasks={personalTasks.assigned} onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+          </div>
         )}
 
         {activeTab === "Upcoming" && (
-          <TaskListView title="Upcoming deadlines" tasks={personalTasks.upcoming} onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+          <div className="animate-fade-in animate-slide-up">
+            <TaskListView title="Upcoming deadlines" tasks={personalTasks.upcoming} onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+          </div>
         )}
 
         {activeTab === "Completed" && (
-          <TaskListView title="Recently completed" tasks={personalTasks.completed} onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+          <div className="animate-fade-in animate-slide-up">
+            <TaskListView title="Recently completed" tasks={personalTasks.completed} onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+          </div>
         )}
 
         {activeTab === "Activity" && (
-          <RecentActivity taskProjectMap={taskProjectMap} limit={0} />
+          <div className="animate-fade-in animate-slide-up">
+            <RecentActivity taskProjectMap={taskProjectMap} limit={0} />
+          </div>
         )}
       </div>
 

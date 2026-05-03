@@ -1,13 +1,20 @@
 import React, { useMemo, useRef } from "react";
 import { LabelsDisplay } from "../components/LabelsDisplay";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogFooter
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
-import { CalendarDays, Plus, X, Lock, ArrowRight } from "lucide-react";
+import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 // Internal Sections
@@ -17,6 +24,7 @@ import { DatesSection } from "../sections/DatesSection";
 import { PhaseIconRenderer } from "../components/PhaseIconRenderer";
 import { useParams } from "react-router";
 import { useLabels } from "~/hooks/useLabels";
+import { cn } from "~/lib/utils";
 
 interface CycleModalProps {
   open: boolean;
@@ -32,15 +40,17 @@ interface CycleModalProps {
   setFormEnd: (v: string) => void;
   formPhase: string;
   setFormPhase: (v: string) => void;
+  formStatus: string;
+  setFormStatus: (v: string) => void;
   formLabels: string[];
   setFormLabels: React.Dispatch<React.SetStateAction<string[]>>;
   phases: any[];
   setPhases: (v: any[]) => void;
   projectData?: any;
   onSave: () => void;
+  onComplete?: () => void;
   isReadOnly?: boolean;
   isSaving?: boolean;
-  hasParallelConflict?: boolean;
 }
 
 export const CycleModal = ({
@@ -57,15 +67,17 @@ export const CycleModal = ({
   setFormEnd,
   formPhase,
   setFormPhase,
+  formStatus,
+  setFormStatus,
   formLabels,
   setFormLabels,
   phases,
   setPhases,
   projectData,
   onSave,
+  onComplete,
   isReadOnly = false,
   isSaving = false,
-  hasParallelConflict = false,
 }: CycleModalProps) => {
   const { workspaceId, projectId } = useParams();
   const { workspaceLabels } = useLabels(workspaceId!, "cycle", projectId);
@@ -79,16 +91,21 @@ export const CycleModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="sm:max-w-[720px] flex flex-col p-0 overflow-hidden rounded-sm border-0 shadow-2xl bg-white max-h-[90vh]">
-        {isReadOnly && (
-          <div className="absolute top-4 left-9 flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded text-[11px] font-semibold text-zinc-500 z-50">
-            <Lock className="size-3" /> READ ONLY
-          </div>
-        )}
 
-        <div className="flex items-center justify-between pl-12 pr-5 py-4 border-b border-border">
-          <span className="text-sm font-medium text-zinc-600">
-            {mode === 'create' ? 'Create Cycle' : (isReadOnly ? 'Cycle Details' : 'Edit Cycle')}
-          </span>
+
+        <div className="flex items-center justify-between pl-5 pr-5 py-4 border-b border-border">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-zinc-600">
+                {mode === 'create' ? 'Create Cycle' : (isReadOnly ? 'Cycle Details' : 'Edit Cycle')}
+              </span>
+              {isReadOnly && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-zinc-100 rounded-sm text-[10px] font-bold text-zinc-500 border border-zinc-200 uppercase tracking-tight">
+                  <Lock className="size-2.5" /> Read Only
+                </div>
+              )}
+            </div>
+          </div>
           <Button variant="ghost" size="icon" className="size-8 text-zinc-500 hover:text-zinc-900" onClick={() => onOpenChange(false)}>
             <X className="size-5" />
           </Button>
@@ -189,11 +206,6 @@ export const CycleModal = ({
                     )}
                   </div>
                 } />
-                {hasParallelConflict && (
-                  <p className="text-[11px] font-medium text-[#c9372c] animate-in fade-in slide-in-from-top-1">
-                    Conflicts with another active cycle.
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -223,7 +235,7 @@ export const CycleModal = ({
           </Button>
           {!isReadOnly && (
             <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-black px-6 text-white hover:bg-black/90 shadow-none font-medium transition-all active:scale-95">
-              {isSaving ? (mode === 'create' ? "Creating..." : "Saving...") : (mode === 'create' ? "Create cycle" : "Save changes")}
+              {isSaving ? (mode === 'create' ? "Creating..." : "Saving...") : (mode === 'create' ? "Create" : "Save")}
             </Button>
           )}
         </DialogFooter>

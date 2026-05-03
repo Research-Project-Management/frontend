@@ -103,6 +103,9 @@ export default function GeneralSettings() {
   );
 }
 
+import { useProjectCycles } from "~/query/cycle";
+import { AlertTriangle } from "lucide-react";
+
 function GeneralForm({
   project,
   canManage,
@@ -115,26 +118,52 @@ function GeneralForm({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [avatar, setAvatar] = useState(project.avatar || "");
-  const [parallelEnabled, setParallelEnabled] = useState(project.parallel_cycles_enabled ?? false);
+  const [parallelCycles, setParallelCycles] = useState((project as any)?.settings?.parallelCycles ?? false);
 
   const updateProjectMutation = useUpdateProject();
+  const { data: cyclesData } = useProjectCycles(projectId);
+  const cycles = cyclesData?.cycles || [];
+
+  // Simple conflict check: multiple active cycles
+  const hasParallelConflict = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const activeCount = cycles.filter(c => {
+      if (c.status === "completed") return false;
+      const start = c.startDate ? new Date(c.startDate) : null;
+      const end = c.endDate ? new Date(c.endDate) : null;
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(0, 0, 0, 0);
+
+      // Derive if it's active
+      if (c.status === "active") return true;
+      if (start && now >= start && (!end || now <= end)) return true;
+      return false;
+    }).length;
+
+    return activeCount > 1;
+  }, [cycles]);
 
   // Reset form when project changes (important for fallback logic)
   useEffect(() => {
     setName(project.name);
     setDescription(project.description);
     setAvatar(project.avatar || "");
-    setParallelEnabled(project.parallel_cycles_enabled ?? false);
+    setParallelCycles((project as any)?.settings?.parallelCycles ?? false);
   }, [project]);
 
   const handleSave = () => {
     updateProjectMutation.mutate(
       { 
-        projectId: project._id, // Use actual ID
+        projectId: project._id,
         name, 
         description, 
         avatar,
-        parallel_cycles_enabled: parallelEnabled 
+        settings: {
+          ...((project as any)?.settings || {}),
+          parallelCycles
+        }
       } as any,
       {
         onSuccess: () => {
@@ -151,10 +180,10 @@ function GeneralForm({
     name !== project.name ||
     description !== project.description ||
     avatar !== (project.avatar || "") ||
-    parallelEnabled !== (project.parallel_cycles_enabled ?? false);
+    parallelCycles !== ((project as any)?.settings?.parallelCycles ?? false);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div className="space-y-1.5">
           <label
@@ -207,26 +236,57 @@ function GeneralForm({
         />
       </div>
 
-      <div className="pt-1">
-        <div className="flex items-center justify-between p-2.5 rounded-sm border border-border bg-secondary/5">
-          <div className="space-y-0.5">
-            <Label htmlFor="parallel-cycles" className="text-sm font-semibold">Parallel Cycles</Label>
-            <p className="text-xs text-muted-foreground">Allow multiple active cycles at the same time.</p>
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-foreground">
+          Cycle management
+        </label>
+        <div className="rounded-sm border border-border bg-zinc-50/20 p-4 transition-colors hover:bg-zinc-50/40">
+           <div className="flex items-center justify-between gap-6">
+              <div className="space-y-0.5">
+                 <h3 className="text-sm font-semibold text-zinc-900">
+                    Parallel cycles
+                 </h3>
+                 <p className="text-[12.5px] text-muted-foreground leading-relaxed max-w-xl">
+                    Allow multiple cycles to be active at the same time and permit date range overlaps. 
+                    When disabled, only one cycle can be active at a time.
+                 </p>
+              </div>
+            <Switch 
+               checked={parallelCycles}
+               onCheckedChange={(val) => {
+                  if (!val && hasParallelConflict) {
+                     toast.warning("Multiple active cycles detected");
+                  }
+                  setParallelCycles(val);
+                  
+                  // Auto-save the setting
+                  updateProjectMutation.mutate({
+                    projectId: project._id,
+                    settings: {
+                      ...((project as any)?.settings || {}),
+                      parallelCycles: val
+                    }
+                  } as any, {
+                    onSuccess: () => toast.success(`Parallel cycles ${val ? 'enabled' : 'disabled'}`),
+                    onError: () => {
+                      setParallelCycles(!val); // Revert on error
+                      toast.error("Failed to update setting");
+                    }
+                  });
+               }}
+               disabled={!canManage || updateProjectMutation.isPending}
+            />
           </div>
-          <Switch
-            id="parallel-cycles"
-            checked={parallelEnabled}
-            onCheckedChange={setParallelEnabled}
-            disabled={!canManage}
-          />
         </div>
+
       </div>
 
       {canManage && (
-        <div>
+        <div className="pt-2">
           <Button
             onClick={handleSave}
             disabled={!hasChanges || updateProjectMutation.isPending}
+            className="px-6"
           >
             {updateProjectMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

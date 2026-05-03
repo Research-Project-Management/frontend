@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import EmojiPicker, { EmojiStyle } from "emoji-picker-react";
+import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
@@ -250,18 +250,32 @@ export default function CreateProject({
           <div className="relative" ref={emojiRef}>
             <button
               type="button"
-              className="flex items-center justify-center w-12 h-12 text-2xl border rounded-sm cursor-pointer hover:bg-accent transition-colors shrink-0"
+              className="flex items-center justify-center w-12 h-12 text-2xl border border-border hover:border-zinc-950 rounded-sm cursor-pointer hover:bg-accent transition-colors shrink-0"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               {avatar}
             </button>
             {showEmojiPicker && (
-              <div className="absolute z-50 mt-2 left-0">
+              <div 
+                className="absolute z-50 mt-2 left-0 shadow-2xl rounded-sm border border-border overflow-hidden"
+                style={{ 
+                  "--epr-bg-color": "var(--card)",
+                  "--epr-category-navigation-button-active-color": "var(--muted-foreground)",
+                  "--epr-highlight-color": "var(--muted-foreground)",
+                  "--epr-search-input-bg-color": "var(--secondary)",
+                  "--epr-search-input-border-color": "#000",
+                  "--epr-hover-bg-color": "var(--accent)",
+                  "--epr-focus-bg-color": "var(--accent)",
+                } as React.CSSProperties}
+              >
                 <EmojiPicker
                   emojiStyle={EmojiStyle.NATIVE}
                   onEmojiClick={handleEmojiClick}
+                  theme={Theme.AUTO}
                   height={350}
                   width={300}
+                  lazyLoadEmojis={true}
+                  searchPlaceholder="Search emoji..."
                 />
               </div>
             )}
@@ -274,7 +288,7 @@ export default function CreateProject({
               onChange={(e) => setName(e.target.value)}
               placeholder="Project name"
               required
-              className="text-base h-12"
+              className="text-base h-12 border-border focus-visible:border-zinc-950 focus-visible:ring-0"
               autoFocus
             />
           </div>
@@ -283,9 +297,9 @@ export default function CreateProject({
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add a short description (optional)"
+          placeholder="Add a more detailed description..."
           rows={2}
-          className="resize-none text-sm"
+          className="resize-none text-sm border-border focus-visible:border-zinc-950 focus-visible:ring-0 min-h-[100px]"
         />
       </div>
 
@@ -304,18 +318,17 @@ export default function CreateProject({
                 key={mod.id}
                 onClick={() => handleModuleToggle(mod.id)}
                 disabled={isLocked}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all duration-150 border
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all duration-150 border
                   ${
                     isActive
                       ? "bg-primary/10 text-primary border-primary/20"
-                      : "bg-muted/30 text-muted-foreground border-transparent hover:bg-muted/50"
+                      : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
                   }
                   ${isLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
                 `}
               >
                 {isLocked && <Lock className="size-3" />}
                 {!isLocked && isActive && <Check className="size-3" />}
-                {!isLocked && !isActive && <div className="w-3 shrink-0" />}
                 {mod.label}
               </button>
             );

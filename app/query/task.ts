@@ -58,6 +58,7 @@ export const useProjectTasks = (projectId: string, cycleId?: string) => {
         return { ...old, tasks: [...old.tasks, task] };
       });
     };
+
     const onUpdated = ({ task }: { task: Task }) => {
       const hasPendingLocalUpdate = queryClient.isMutating({
         mutationKey: ["update-task"],
@@ -71,9 +72,26 @@ export const useProjectTasks = (projectId: string, cycleId?: string) => {
 
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
-        return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
+
+        const taskBelongsToThisView = !cycleId || task.cycle?._id === cycleId;
+        const taskAlreadyInList = old.tasks.some((t) => t._id === task._id);
+
+        if (taskBelongsToThisView) {
+          if (taskAlreadyInList) {
+            return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
+          } else {
+            return { ...old, tasks: [...old.tasks, task] };
+          }
+        } else {
+          if (taskAlreadyInList) {
+            return { ...old, tasks: old.tasks.filter((t) => t._id !== task._id) };
+          }
+          return old;
+        }
       });
+      queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
     };
+
     const onDeleted = ({ taskId }: { taskId: string }) => {
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
@@ -81,21 +99,25 @@ export const useProjectTasks = (projectId: string, cycleId?: string) => {
       });
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
     };
+
     const onColumnCreated = ({ columns }: { columns: Column[] }) => {
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, columns };
       });
     };
+
     const onColumnUpdated = ({ columns }: { columns: Column[] }) => {
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
         return { ...old, columns };
       });
     };
+
     const onTaskCommentCreated = ({ taskId }: { taskId: string }) => {
       updateTaskCommentCount(taskId, 1);
     };
+
     const onTaskCommentDeleted = ({ taskId }: { taskId: string }) => {
       updateTaskCommentCount(taskId, -1);
     };
@@ -187,15 +209,15 @@ export const useUpdateTask = () => {
                     ...optimisticFields,
                     dueDate:
                       optimisticFields.dueDate === null
-                        ? undefined
+                        ? null
                         : optimisticFields.dueDate,
                     startDate:
                       (optimisticFields as any).startDate === null
-                        ? undefined
+                        ? null
                         : (optimisticFields as any).startDate,
                     endDate:
                       (optimisticFields as any).endDate === null
-                        ? undefined
+                        ? null
                         : (optimisticFields as any).endDate,
                   }
                 : task,
@@ -212,13 +234,31 @@ export const useUpdateTask = () => {
           queryClient.setQueryData(queryKey, data);
         });
       }
-      toast.error(error?.message || "Failed to update task");
+      // Suppress the toast if it's the redundant "read-only" message already shown in the banner
+      if (error?.message !== "Completed cycles are read-only." && error?.response?.data?.message !== "Completed cycles are read-only.") {
+        toast.error(error?.message || error?.response?.data?.message || "Failed to update task");
+      }
     },
     onSettled: (_, _err, variables) => {
       if (queryClient.isMutating({ mutationKey: ["update-task"] }) === 1) {
         queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
       }
       queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
+    },
+  });
+};
+
+export const useBulkUpdateTasks = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, taskIds, data }: { projectId: string; taskIds: string[]; data: any }) =>
+      apiPut(`/api/projects/${projectId}/tasks/bulk`, { taskIds, data }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to update tasks");
     },
   });
 };

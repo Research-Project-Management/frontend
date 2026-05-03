@@ -132,7 +132,11 @@ export default function ManageLabelsSection({
             </Button>
             {editingLabelId && (
               <Button 
-                onClick={() => handleDelete((id) => toggleLabel(id))} 
+                onClick={() => handleDelete((id) => {
+                  if (selectedLabels.includes(id)) {
+                    toggleLabel(id);
+                  }
+                })} 
                 variant="destructive" 
                 disabled={isMutating}
                 className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"

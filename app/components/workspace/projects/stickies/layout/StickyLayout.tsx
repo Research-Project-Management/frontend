@@ -3,7 +3,9 @@ import StickyNote from "../note/StickyNote";
 import { type Note, NOTE_COLOR_CYCLE } from "~/types/sticky";
 import { useParams } from "react-router";
 import { useSticky } from "~/hooks/useSticky";
-import { Layers2, Loader2, StickyNote as StickyNoteIcon } from "lucide-react";
+import { useLabelsQuery } from "~/query/label";
+import { Badge } from "~/components/ui/badge";
+import { Layers2, Loader2, StickyNote as StickyNoteIcon, X } from "lucide-react";
 import { useProjects } from "~/hooks/useWorkspace";
 import {
   DndContext,
@@ -45,6 +47,18 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+
+  const { data: allLabels = [] } = useLabelsQuery(workspaceId || "", isProjectScope ? "task" : "sticky");
+
+  // Remove selected labels that no longer exist
+  useEffect(() => {
+    if (allLabels.length > 0 && selectedLabels.length > 0) {
+      const validLabels = selectedLabels.filter(id => allLabels.some(l => l._id === id));
+      if (validLabels.length !== selectedLabels.length) {
+        setSelectedLabels(validLabels);
+      }
+    }
+  }, [allLabels, selectedLabels]);
 
   const {
     stickies: notes,
@@ -194,6 +208,42 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
           />
         }
       />
+
+      {selectedLabels.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-5 py-2 border-b border-border/40 bg-zinc-50/30">
+          {selectedLabels.map((labelId) => {
+            const label = allLabels.find((l) => l._id === labelId);
+            if (!label) return null;
+            return (
+              <Badge
+                key={labelId}
+                variant="secondary"
+                className="h-6 gap-1.5 px-2 text-[11px] font-semibold bg-white border-zinc-200 text-zinc-700 shadow-sm hover:bg-zinc-50 transition-colors"
+              >
+                <div
+                  className="size-1.5 rounded-full"
+                  style={{ backgroundColor: label.color }}
+                />
+                {label.name}
+                <button
+                  onClick={() =>
+                    setSelectedLabels((prev) => prev.filter((id) => id !== labelId))
+                  }
+                  className="ml-0.5 hover:text-black transition-colors"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          <button
+            onClick={() => setSelectedLabels([])}
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline underline-offset-4 ml-1"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       <main className="flex-1 overflow-auto p-5">
         {filteredNotes.length === 0 ? (

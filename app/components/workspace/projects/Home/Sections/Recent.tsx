@@ -1,7 +1,7 @@
 import React from "react";
 import HomeSection from "../HomeSection";
 import { ChevronRight, Loader2 } from "lucide-react";
-import { useRecentItems } from "~/query/workspace-home";
+import { useRecentItems } from "~/query/workspace";
 import { useParams, Link } from "react-router";
 import { formatDistanceToNow } from "date-fns";
 
@@ -20,10 +20,12 @@ export default function Recent() {
           {items.map((item) => {
             const linkTo =
               item.type === "project"
-                ? `/workspace/${workspaceId}/project/${item.id}/overview`
+                ? `/${workspaceId}/projects/${item.id}/overview`
                 : item.type === "page" && item.project
-                  ? `/workspace/${workspaceId}/project/${item.project._id}/page/${item.id}`
-                  : `/workspace/${workspaceId}/storage`;
+                  ? `/${workspaceId}/projects/${item.project._id}/pages/${item.id}`
+                  : item.type === "file" && item.project
+                    ? `/${workspaceId}/projects/${item.project._id}/storage`
+                    : `/${workspaceId}/storage`;
 
             return (
               <Link

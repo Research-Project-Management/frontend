@@ -136,7 +136,12 @@ export default [
 
 
   layout("./components/workspace/$pageId/layout/PageLayout.tsx", [
-    route("/editor/:pageId", "./routes/workspace/$pageId/$pageId.tsx"),
+    route("/editor/:pageId", "./routes/workspace/$pageId/$pageId.tsx", { id: "editor-direct" }),
+    route(
+      ":workspaceId/projects/:projectId/pages/:pageId",
+      "./routes/workspace/$pageId/$pageId.tsx",
+      { id: "project-page-detail" }
+    ),
   ]),
 
 

@@ -200,7 +200,7 @@ export default function RolesPage() {
             className="h-8 gap-1.5 text-xs font-semibold"
           >
             <Plus className="size-3.5" />
-            New Role
+            Add Role
           </Button>
         }
       />
@@ -367,7 +367,7 @@ export default function RolesPage() {
         <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingRole ? `Edit "${editingRole.name}"` : "New Role"}
+              {editingRole ? `Edit "${editingRole.name}"` : "Add Role"}
             </DialogTitle>
           </DialogHeader>
 

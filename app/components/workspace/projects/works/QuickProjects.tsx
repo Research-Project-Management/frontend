@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router";
 import { useProjects } from "~/hooks/useWorkspace";
-import { ChevronRight, Folder } from "lucide-react";
+import { ChevronRight, Folder, ArrowRight } from "lucide-react";
 
 export default function QuickProjects() {
   const { workspaceId } = useParams();
@@ -12,8 +12,9 @@ export default function QuickProjects() {
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-primary/50 font-semibold uppercase text-[11px] tracking-wider">Quick Projects</h2>
-        <Link to={`/${workspaceId}`} className="text-xs font-medium text-primary hover:underline">
+        <Link to={`/${workspaceId}`} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
           View all
+          <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -25,7 +26,7 @@ export default function QuickProjects() {
             <Link
               key={project._id}
               to={projectOverviewPath}
-              className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 group flex items-center gap-3"
+              className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 group flex items-center gap-3 hover:-translate-y-1"
             >
               <div className="size-10 flex items-center justify-center rounded-lg bg-primary/5 text-primary group-hover:bg-primary/10 transition-colors">
                 <span className="text-lg">{project.avatar || <Folder className="h-5 w-5 opacity-40" />}</span>

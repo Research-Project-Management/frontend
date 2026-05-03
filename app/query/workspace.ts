@@ -12,22 +12,31 @@ import {
 } from "~/lib/api";
 import { toast } from "sonner";
 
-// ── Fetch ─────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-export const fetchAllWorkspaces = (signal?: AbortSignal) =>
-  apiGet(`/api/workspace`, { signal });
+export type RecentItem = {
+  type: "page" | "project" | "file";
+  id: string;
+  name: string;
+  icon: string;
+  project?: { _id: string; name: string; avatar?: string };
+  author: { _id: string; name: string; avatar?: string; email: string };
+  lastEdited: string;
+};
 
-// NOTE: workspaceId param có thể là workspace._id (ObjectId) HOẶC workspace.url (string)
-// FE đang dùng workspace.url trong URL routing
-export const fetchWorkspaceById = (
-  workspaceIdOrUrl: string,
-  signal?: AbortSignal,
-) => apiGet(`/api/workspace/${workspaceIdOrUrl}`, { signal });
+export type Activity = {
+  type: "page_update" | "file_upload" | "task_update";
+  user: { _id: string; name: string; avatar?: string; email: string };
+  content: string;
+  time: string;
+  itemId: string;
+  project?: { _id: string; name: string };
+};
 
-export const fetchProjectsByWorkspaceId = (
-  workspaceIdOrUrl: string,
-  signal?: AbortSignal,
-) => apiGet(`/api/workspace/${workspaceIdOrUrl}/projects`, { signal });
+export type DeleteWorkspaceResult = {
+  alreadyDeleted: boolean;
+  workspaceId: string;
+};
 
 type WorkspacesQueryData =
   | { workspaces?: Array<{ _id?: string }> }
@@ -48,10 +57,22 @@ type WorkspacePatch = Partial<{
   timezone: string;
 }>;
 
-export type DeleteWorkspaceResult = {
-  alreadyDeleted: boolean;
-  workspaceId: string;
-};
+// ── Fetch ─────────────────────────────────────────────────────────────────────
+
+export const fetchAllWorkspaces = (signal?: AbortSignal) =>
+  apiGet(`/api/workspace`, { signal });
+
+export const fetchWorkspaceById = (
+  workspaceIdOrUrl: string,
+  signal?: AbortSignal,
+) => apiGet(`/api/workspace/${workspaceIdOrUrl}`, { signal });
+
+export const fetchProjectsByWorkspaceId = (
+  workspaceIdOrUrl: string,
+  signal?: AbortSignal,
+) => apiGet(`/api/workspace/${workspaceIdOrUrl}/projects`, { signal });
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const removeWorkspaceFromWorkspacesData = (
   current: WorkspacesQueryData,
@@ -184,7 +205,6 @@ export const useWorkspaces = () => {
   return { workspaces: (data?.workspaces || []) as any[], isLoading, error };
 };
 
-// workspaceUrl: Truyền vào workspace.url (NOT _id) từ URL params
 export const useWorkspace = (workspaceUrl: string) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["workspace", workspaceUrl],
@@ -204,6 +224,27 @@ export const useWorkspaceProjects = (workspaceId: string) => {
 
   return { projects: (data?.projects || []) as any[], isLoading, error };
 };
+
+export const useRecentItems = (workspaceId: string) =>
+  useQuery({
+    queryKey: ["workspace", workspaceId, "recent"],
+    queryFn: async () => {
+      const data = await apiGet<{ items: RecentItem[] }>(`/api/workspace/${workspaceId}/recent`);
+      return data.items;
+    },
+    enabled: !!workspaceId,
+  });
+
+export const useActivityFeed = (workspaceId: string) =>
+  useQuery({
+    queryKey: ["workspace", workspaceId, "activity"],
+    queryFn: async () => {
+      const data = await apiGet<{ activities: Activity[] }>(`/api/workspace/${workspaceId}/activity`);
+      return data.activities;
+    },
+    enabled: !!workspaceId,
+    refetchInterval: 30000,
+  });
 
 // ── Workspace Member Management ───────────────────────────────────────────────
 
@@ -248,20 +289,16 @@ export const useUpdateWorkspaceMemberRole = () => {
     onMutate: async ({ workspaceId, userId, newRole }) => {
       toast.loading("Updating member role...", { id: "ws-member-action" });
 
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["workspace"] });
 
-      // Snapshot the previous value
       const previousWorkspaceQueries = queryClient.getQueriesData({
         queryKey: ["workspace"],
       });
 
-      // Try to find the full role object in the "roles" cache for better optimistic UI (colors)
       const rolesData: any = queryClient.getQueryData(["roles", workspaceId]);
       const roles = Array.isArray(rolesData) ? rolesData : rolesData?.roles || [];
       const roleObject = roles.find((r: any) => r.name.toLowerCase() === newRole.toLowerCase());
 
-      // Optimistically update to the new value
       queryClient.setQueriesData(
         { queryKey: ["workspace"] },
         (old: any) => {

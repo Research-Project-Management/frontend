@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { 
   useProjectCycles, 
   useCreateCycle, 
@@ -6,115 +6,116 @@ import {
   useDeleteCycle 
 } from "~/query/cycle";
 import { useLabelsQuery } from "~/query/label";
-import { useWorkspaceProjects } from "~/query/workspace";
+import { useProjectDetails } from "~/query/project";
 import type { Cycle } from "~/types/task";
 
-export type DerivedStatus = "active" | "upcoming" | "completed";
-
-const startOfToday = () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
-};
-
-const parseDateOnly = (value?: string) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
-const deriveStatus = (cycle: Cycle): DerivedStatus => {
-  if (cycle.status === "completed" || cycle.status === "cancelled") {
-    return "completed";
-  }
-
-  const today = startOfToday();
-  const start = parseDateOnly(cycle.startDate);
-  const end = parseDateOnly(cycle.endDate);
-
-  if (end && end < today) return "completed";
-  if (start && start > today) return "upcoming";
-
-  return "active";
-};
-
-const rangesOverlap = (
-  startA: Date,
-  endA: Date,
-  startB: Date,
-  endB: Date,
-) => startA <= endB && startB <= endA;
+export type DerivedStatus = "active" | "planned" | "completed";
 
 /**
- * Hook useCycle: Quản lý logic Cycle (Active, Upcoming, Completed)
+ * Derives the effective status of a cycle for grouping.
+ * Strictly Manual based on the 'status' field.
+ */
+export const deriveStatus = (cycle: { status?: string; startDate?: string | null; endDate?: string | null }): DerivedStatus => {
+  // 1. Priority: Explicit Manual Status
+  if (cycle.status === "completed") return "completed";
+  if (cycle.status === "active") return "active";
+
+  // 2. Fallback: Automatic Date-based Status
+  if (!cycle.startDate || !cycle.endDate) return "planned";
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const start = new Date(cycle.startDate);
+  const end = new Date(cycle.endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (now > end) return "completed";
+  if (now >= start) return "active";
+
+  return "planned";
+};
+
+/**
+ * Hook useCycle: Unified Management for Cycles.
  */
 export function useCycle(projectId: string, workspaceId?: string) {
   const { data: cyclesData, isLoading: isCyclesLoading } = useProjectCycles(projectId);
   const cycles = useMemo(() => cyclesData?.cycles || [], [cyclesData]);
 
-  const { projects } = useWorkspaceProjects(workspaceId || "");
-  const projectData = useMemo(() => projects?.find((p: any) => p._id === projectId), [projects, projectId]);
+  const { data: projectDetails } = useProjectDetails(projectId);
+  const projectData = projectDetails?.project || projectDetails;
 
   const createMutation = useCreateCycle();
   const updateMutation = useUpdateCycle();
   const deleteMutation = useDeleteCycle();
 
-  const isLoading = isCyclesLoading;
-
-  const getGroupedCycles = (searchTerm: string) => {
-    const filtered = cycles.filter((c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  /**
+   * Group cycles into Active, Upcoming, and Completed sections.
+   */
+  const getGroupedCycles = useCallback((searchTerm: string, customCycles?: Cycle[]) => {
+    const term = searchTerm.toLowerCase().trim();
+    const source = customCycles || cycles;
+    const filtered = term 
+      ? source.filter((c) => c.name.toLowerCase().includes(term))
+      : source;
 
     const grouped: Record<DerivedStatus, Cycle[]> = {
       active: [],
-      upcoming: [],
+      planned: [],
       completed: [],
     };
 
     filtered.forEach((cycle) => {
-      grouped[deriveStatus(cycle)].push(cycle);
+      const status = deriveStatus(cycle);
+      grouped[status].push(cycle);
     });
 
     return grouped;
-  };
+  }, [cycles]);
 
-  const checkParallelConflict = (start: string, end: string, excludeId?: string) => {
-    if (projectData?.parallel_cycles_enabled) return false;
+  /**
+   * Checks for overlapping date ranges.
+   * Business Logic: Overlaps are forbidden if Parallel Cycles = OFF.
+   */
+  const checkParallelConflict = useCallback((start: string, end: string, excludeId?: string) => {
     if (!start || !end) return false;
-
-    const proposedStart = parseDateOnly(start);
-    const proposedEnd = parseDateOnly(end);
-    if (!proposedStart || !proposedEnd) return false;
-
-    return cycles.some((cycle) => {
-      if (cycle._id === excludeId) return false;
-      if (cycle.status === "completed" || cycle.status === "cancelled") return false;
-
-      const cycleStart = parseDateOnly(cycle.startDate);
-      const cycleEnd = parseDateOnly(cycle.endDate);
-      if (!cycleStart || !cycleEnd) return false;
-
-      return rangesOverlap(proposedStart, proposedEnd, cycleStart, cycleEnd);
+    
+    const s = new Date(start); s.setHours(0, 0, 0, 0);
+    const e = new Date(end); e.setHours(0, 0, 0, 0);
+    
+    return cycles.some(c => {
+      if (c._id === excludeId) return false;
+      if (deriveStatus(c) === "completed") return false; // Ignore completed cycles
+      if (!c.startDate || !c.endDate) return false;
+      
+      const cs = new Date(c.startDate); cs.setHours(0, 0, 0, 0);
+      const ce = new Date(c.endDate); ce.setHours(0, 0, 0, 0);
+      
+      // Standard overlap check: (s <= ce) && (e >= cs)
+      return s <= ce && e >= cs;
     });
-  };
+  }, [cycles]);
 
-  const isCycleReadOnly = (cycle: Cycle | null) => {
+  /**
+   * Helper to check if a cycle is read-only.
+   */
+  const isCycleReadOnly = useCallback((cycle?: { status?: string; startDate?: string | null; endDate?: string | null }) => {
     if (!cycle) return false;
     return deriveStatus(cycle) === "completed";
-  };
+  }, []);
 
   return {
     cycles,
     projectData,
-    isLoading,
+    isLoading: isCyclesLoading,
     createMutation,
     updateMutation,
     deleteMutation,
     getGroupedCycles,
     checkParallelConflict,
+    deriveStatus,
     isCycleReadOnly,
   };
 }

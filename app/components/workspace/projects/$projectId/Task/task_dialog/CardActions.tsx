@@ -52,6 +52,7 @@ type TaskActionsProps = {
   members: any[];
   onAddChecklist: (title: string) => void;
   setAttachments?: Dispatch<SetStateAction<Attachment[]>>;
+  isReadOnly?: boolean;
 };
 
 export function TaskActions({
@@ -70,6 +71,7 @@ export function TaskActions({
   members,
   onAddChecklist,
   setAttachments,
+  isReadOnly = false,
 }: TaskActionsProps) {
   const { workspaceId, projectId } = useParams();
   const { user: currentUser } = useAuth();
@@ -154,7 +156,8 @@ export function TaskActions({
 
   return (
     <div className="mt-6 flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2.5">
+      {!isReadOnly && (
+        <div className="flex flex-wrap items-center gap-2.5">
         <ActionLabelsSection
           actionBtnClass={actionBtnClass}
           open={labelsPopoverOpen}
@@ -189,7 +192,8 @@ export function TaskActions({
         />
 
         <ActionAttachmentSection actionBtnClass={actionBtnClass} setAttachments={setAttachments} />
-      </div>
+        </div>
+      )}
 
       {hasMetaContent ? (
         <div className="flex flex-wrap items-start gap-4 sm:gap-5">
@@ -201,7 +205,8 @@ export function TaskActions({
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="rounded-full"
+                      disabled={isReadOnly}
+                      className={`rounded-full ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
                       aria-label={`Options for member ${assignee.user.name}`}
                     >
                       <Avatar className="size-9">
@@ -229,17 +234,19 @@ export function TaskActions({
                       Remove from card
                     </button>
                   </PopoverContent>
-                </Popover>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setMemberPopoverOpen(true)}
-                  className="size-9 rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
-                >
-                  <Plus className="size-4" />
-                </Button>
+                  </Popover>
+                  {!isReadOnly && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setMemberPopoverOpen(true)}
+                      className="size-9 rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
+                    >
+                      <Plus className="size-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
           ) : null}
 
           {sortedActiveLabels.length > 0 ? (
@@ -253,11 +260,11 @@ export function TaskActions({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setLabelsPopoverOpen(true)}
+                        onClick={() => !isReadOnly && setLabelsPopoverOpen(true)}
                         className={
                           hasTitle
-                            ? "inline-flex h-10 max-w-45 items-center rounded-sm px-4 text-[15px] leading-none font-medium text-[#14532d] transition-opacity hover:opacity-90"
-                            : "inline-flex h-10 w-11 items-center justify-center rounded-sm transition-opacity hover:opacity-90"
+                            ? `inline-flex h-10 max-w-45 items-center rounded-sm px-4 text-[15px] leading-none font-medium text-[#14532d] transition-opacity ${isReadOnly ? 'cursor-default' : 'hover:opacity-90'}`
+                            : `inline-flex h-10 w-11 items-center justify-center rounded-sm transition-opacity ${isReadOnly ? 'cursor-default' : 'hover:opacity-90'}`
                         }
                         style={{ backgroundColor: item.color }}
                       >
@@ -266,14 +273,16 @@ export function TaskActions({
                     );
                   })}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setLabelsPopoverOpen(true)}
-                  className="size-9 shrink-0 self-start rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
-                >
-                  <Plus className="size-4" />
-                </Button>
+                {!isReadOnly && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setLabelsPopoverOpen(true)}
+                    className="size-9 shrink-0 self-start rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ) : null}
@@ -285,12 +294,13 @@ export function TaskActions({
               </p>
               <button
                 type="button"
+                disabled={isReadOnly}
                 onClick={() => setDatePopoverOpen(true)}
                 className={`inline-flex h-10 max-w-full items-center gap-2 rounded-sm px-4 text-[16px] leading-none font-medium transition-colors ${
                   isDueDateOverdue
                     ? "bg-red-50 text-red-900 hover:bg-red-100"
                     : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-                }`}
+                } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
               >
                 <span className="truncate">{dateBadgeText}</span>
                 {isDueDateOverdue ? (
@@ -298,7 +308,7 @@ export function TaskActions({
                     Overdue
                   </span>
                 ) : null}
-                <ChevronDown className="size-4 shrink-0" />
+                {!isReadOnly && <ChevronDown className="size-4 shrink-0" />}
               </button>
             </div>
           ) : null}

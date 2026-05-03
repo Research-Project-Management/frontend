@@ -240,6 +240,11 @@ export const useCreatePageFile = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["page-files", variables.parentPageId] });
+      // Also refresh the storage panel (folder children) which uses project-files-editor
+      queryClient.invalidateQueries({
+        queryKey: ["project-files-editor", variables.parentPageId],
+        exact: false,
+      });
       toast.success("File created successfully");
     },
     onError: (error: any) => {

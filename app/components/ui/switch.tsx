@@ -20,7 +20,7 @@ function Switch({
         asChild
         data-slot="switch-thumb"
         className={cn(
-          "bg-background pointer-events-none block size-4 rounded-full shadow-lg ring-0"
+          "pointer-events-none block size-4 rounded-full shadow-lg ring-0"
         )}
       >
         <motion.span
@@ -31,7 +31,8 @@ function Switch({
             damping: 30
           }}
           className={cn(
-            "block size-4 rounded-full bg-background",
+            "block size-4 rounded-full",
+            "bg-white dark:bg-gray-100",
             "data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0"
           )}
         />

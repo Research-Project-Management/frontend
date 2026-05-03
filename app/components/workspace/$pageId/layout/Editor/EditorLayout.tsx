@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useRef, useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router";
-import { usePage, useSyncProjectToCompiler } from "~/query/page";
+import { usePage } from "~/query/page";
 import type { Page } from "~/types/page";
 import { Skeleton } from "~/components/ui/skeleton";
 import Editor from "./Editor";
@@ -11,6 +11,7 @@ import { useSocketRoom } from "~/hooks/useSocketRoom";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
+import AIChatPanel from "./AIChatPanel";
 
 // ── Inline image viewer rendered inside the editor column ──────────────────
 
@@ -73,6 +74,9 @@ function EmptyEditorState() {
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
+  /** Toggle the AI chat panel open/closed */
+  toggleAIPanel: () => void;
+  aiPanelOpen: boolean;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -93,6 +97,24 @@ export default function EditorLayout() {
   const [searchParams] = useSearchParams();
   const fileId = searchParams.get("file");
 
+  // AI Chat Panel state
+  const [aiPanelOpen, setAIPanelOpen] = useState(false);
+  const toggleAIPanel = () => setAIPanelOpen((v) => !v);
+
+  // Listen to the Ctrl+Alt+A shortcut dispatched by Monaco (toggle)
+  useEffect(() => {
+    const toggle = () => setAIPanelOpen((v) => !v);
+    // flux:open-ai-panel always opens (used by "Ask AI about this" selections)
+    const open = () => setAIPanelOpen(true);
+    document.addEventListener("flux:toggle-ai-panel", toggle);
+    document.addEventListener("flux:open-ai-panel", open);
+    return () => {
+      document.removeEventListener("flux:toggle-ai-panel", toggle);
+      document.removeEventListener("flux:open-ai-panel", open);
+    };
+  }, []);
+
+
   // Always fetch the root page (needed for project metadata & tab bar)
   const { data: parentPage, isLoading: parentLoading } = usePage(pageId!);
 
@@ -109,21 +131,14 @@ export default function EditorLayout() {
   // True when the current ?file= param points to an image asset (not a page).
   const isAssetTab = !!fileId && !!selectedAsset && selectedAsset._id === fileId;
 
-  // Keep the last opened child page so that when all tabs are closed the editor
-  // doesn't go blank — it continues to show the content of the last closed file.
-  const lastActivePageRef = useRef<Page | null>(null);
-  const [lastActivePage, setLastActivePage] = useState<Page | null>(null);
-
   // True when a real child file is being viewed now.
   const hasChildFile = !!activePage && activePage._id !== pageId;
 
-  // The page to actually render: current child file, or the last one seen.
-  const displayPage = hasChildFile ? activePage : lastActivePage;
+  // The page to render: only when a child file is active. When no tab is open,
+  // displayPage is null and EditorLayout shows the EmptyEditorState.
+  const displayPage = hasChildFile ? activePage : null;
 
   const { openTab, closeAllForProject } = useEditorTabsStore();
-  const syncProjectMutation = useSyncProjectToCompiler();
-  // Track whether we've already synced this session for this root page
-  const syncedPageRef = useRef<string | null>(null);
   // Track whether we've already fired the initial auto-compile for this root page
   const autoCompileFiredRef = useRef<string | null>(null);
   // Track previous pageId so we can clean up its tabs when navigating away
@@ -172,16 +187,6 @@ export default function EditorLayout() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // On first load of a root page: sync all .tex files to the compiler so that
-  // compile works even after a compiler restart (without requiring a manual save).
-  useEffect(() => {
-    if (!pageId || syncedPageRef.current === pageId) return;
-    if (!activePage || !activePage._id) return;
-    
-    console.log("[EditorLayout] Syncing project to compiler:", { pageId, activePageId: activePage._id });
-    syncedPageRef.current = pageId;
-    syncProjectMutation.mutate({ pageId });
-  }, [pageId, activePage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-compile on first open when autoCompile is enabled.
   // Fires once per root page visit, after sync completes (small delay).
@@ -215,9 +220,6 @@ export default function EditorLayout() {
     if (!activePage || !pageId) return;
     if (activePage._id === pageId) return; // root page is not a tab
     openTab(pageId, { id: activePage._id, title: activePage.title });
-    // Remember this page so we can keep showing it after the tab is closed
-    lastActivePageRef.current = activePage;
-    setLastActivePage(activePage);
   }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -269,18 +271,36 @@ export default function EditorLayout() {
   }
 
   return (
-    <EditorContext.Provider value={{ editorRef }}>
+    <EditorContext.Provider value={{ editorRef, toggleAIPanel, aiPanelOpen }}>
       <div className="h-full w-full overflow-hidden flex flex-col">
         {/* Tab bar — keyed by rootPageId so each LaTeX page-project is isolated */}
         {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage?._id ?? ""} />}
-        {isAssetTab ? (
-          <ImagePanel asset={selectedAsset!} />
-        ) : displayPage ? (
-          // Keep Monaco mounted with the last active file even after all tabs close
-          <Editor page={displayPage} />
-        ) : (
-          <EmptyEditorState />
-        )}
+        <div className="flex-1 overflow-hidden flex">
+          {/* Editor / Asset panel */}
+          <div className="flex-1 overflow-hidden">
+            {isAssetTab ? (
+              <ImagePanel asset={selectedAsset!} />
+            ) : displayPage ? (
+              <Editor page={displayPage} />
+            ) : (
+              <EmptyEditorState />
+            )}
+          </div>
+
+          {/* AI Chat Panel — collapsible right sidebar */}
+          {aiPanelOpen && (
+            <>
+              <div className="w-px bg-border shrink-0" />
+              <div className="w-[360px] shrink-0 overflow-hidden">
+                <AIChatPanel
+                  editorRef={editorRef}
+                  filename={displayPage?.title ?? "main.tex"}
+                  onClose={() => setAIPanelOpen(false)}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </EditorContext.Provider>
   );

@@ -501,11 +501,13 @@ export const useUploadFileForEditor = () => {
       });
     },
     onSuccess: (_, variables) => {
-      // Invalidate queries based on parentPageId
-      if (variables.parentPageId) {
-        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
-      } else if (variables.projectId) {
-        queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+      // Invalidate ALL project-files-editor queries for this page (root + all sub-folders)
+      const pageKey = variables.parentPageId || variables.projectId;
+      if (pageKey) {
+        queryClient.invalidateQueries({
+          queryKey: ["project-files-editor", pageKey],
+          exact: false, // ← invalidates root AND all folderId sub-queries
+        });
       }
     },
   });
@@ -531,10 +533,12 @@ export const useCreateFolderForEditor = () => {
                 parentPageId: parentPageId ?? null,
             }),
         onSuccess: (_, variables) => {
-            if (variables.parentPageId) {
-                queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.parentPageId] });
-            } else if (variables.projectId) {
-                queryClient.invalidateQueries({ queryKey: ["project-files-editor", variables.projectId] });
+            const pageKey = variables.parentPageId || variables.projectId;
+            if (pageKey) {
+                queryClient.invalidateQueries({
+                    queryKey: ["project-files-editor", pageKey],
+                    exact: false, // invalidate root + all sub-folder queries
+                });
             }
         },
     });

@@ -44,9 +44,6 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
             transition={{ delay: 0.8, duration: 0.5 }}
             className="mt-8 flex flex-col items-center gap-2"
           >
-            <h1 className="text-2xl font-bold tracking-tighter sm:text-3xl italic">
-              FLUX
-            </h1>
           </motion.div>
 
           {/* Loading bar */}

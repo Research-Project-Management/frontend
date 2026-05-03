@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   Play,
+  RefreshCw,
   Terminal,
   X,
   Zap,
@@ -34,10 +35,12 @@ import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
 import { API_URL } from "~/lib/api";
 import { usePageContext } from "../PageContext";
-import { useEditorSettingsStore, type CompileMode, type LaTeXEngine } from "~/stores/editor-settings";
+import { useEditorSettingsStore, type LaTeXEngine } from "~/stores/editor-settings";
+import { useCompileStore } from "~/stores/compile";
 
 import { toast } from "sonner";
-import { useUpdatePageThumbnail, useSyncProjectToCompiler } from "~/query/page";
+import { useUpdatePageThumbnail } from "~/query/page";
+import type { Page } from "~/types/page";
 
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -543,44 +546,49 @@ const ENGINE_SHORT: Record<LaTeXEngine, string> = {
 };
 
 const COMPILE_MODE_OPTIONS: {
-  value: CompileMode;
+  value: "full" | "draft";
   label: string;
   icon: React.ElementType;
   description: string;
 }[] = [
-  { value: "normal", label: "Normal", icon: Image, description: "Full compile" },
-  { value: "fast", label: "Fast", icon: Zap, description: "No project" },
+  { value: "full", label: "Full", icon: Image, description: "Complete compile" },
   { value: "draft", label: "Draft", icon: Zap, description: "Skip images" },
 ];
 
 function CompileButton({
-  isCompiling,
+  compileStatus,
   onCompile,
   engine,
   compileMode,
   setCompileMode,
 }: {
-  isCompiling: boolean;
+  compileStatus: import("~/stores/compile").CompileStatus;
   onCompile: () => void;
   engine: LaTeXEngine;
-  compileMode: CompileMode;
-  setCompileMode: (m: CompileMode) => void;
+  compileMode: "full" | "draft";
+  setCompileMode: (m: "full" | "draft") => void;
 }) {
+  const isRunning = compileStatus !== "idle" && compileStatus !== "done" && compileStatus !== "error";
+  const statusLabel: Record<string, string> = {
+    flushing: "Saving…",
+    syncing: "Syncing…",
+    compiling: "Compiling…",
+  };
   return (
     <div className="flex items-center">
       <button
         onClick={onCompile}
-        disabled={isCompiling}
+        disabled={isRunning}
         title={`Compile (Ctrl+Enter) — ${ENGINE_SHORT[engine]} · ${compileMode}`}
         className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
       >
-        {isCompiling ? (
+        {isRunning ? (
           <Loader2 className="size-3.5 animate-spin" />
         ) : (
           <Play className="size-3 fill-current" />
         )}
-        {isCompiling ? "Compiling…" : "Compile"}
-        {!isCompiling && (
+        {isRunning ? (statusLabel[compileStatus] ?? "Working…") : "Compile"}
+        {!isRunning && (
           <span className="opacity-60 font-normal">
             · {ENGINE_SHORT[engine]}
           </span>
@@ -589,7 +597,7 @@ function CompileButton({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            disabled={isCompiling}
+            disabled={isRunning}
             className="flex items-center justify-center h-7 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 border-l border-primary-foreground/20"
           >
             <ChevronDown className="size-3" />
@@ -622,12 +630,6 @@ function CompileButton({
 export default function Viewer() {
   const {
     getEditorContent,
-    pdfUrl,
-    setPdfUrl,
-    isCompiling,
-    setIsCompiling,
-    compileLog,
-    setCompileLog,
     compileRef,
     currentPage,
     gotoPageRef,
@@ -637,11 +639,26 @@ export default function Viewer() {
   } = usePageContext();
   const { engine, compileMode, setCompileMode, mainFile } = useEditorSettingsStore();
 
+  // All compile state now lives in useCompileStore (background, non-blocking)
+  const {
+    compileStatus,
+    setCompileStatus,
+    compileLog,
+    setCompileLog,
+    pdfUrl,
+    setPdfUrl,
+    lastCompiledAt,
+    setLastCompiledAt,
+    pendingCompile,
+    setPendingCompile,
+    getDirtyFiles,
+    clearDirty,
+    markSynced,
+  } = useCompileStore();
 
   const saveThumbnailMutation = useUpdatePageThumbnail();
-  const syncProjectMutation = useSyncProjectToCompiler();
 
-  // pageId from URL is always the project root (never changes when switching files).
+  // pageId from URL is always the project root.
   const { pageId: urlPageId } = useParams<{ pageId: string }>();
   const parentPageIdRef = useRef<string | null>(null);
   parentPageIdRef.current = urlPageId ?? null;
@@ -649,10 +666,8 @@ export default function Viewer() {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
-  const [lastCompiled, setLastCompiled] = useState<Date | null>(null);
   const [showLog, setShowLog] = useState(false);
   const [scrollMode] = useState(true);
-  const [compilerStatus, setCompilerStatus] = useState<"idle" | "syncing" | "ready" | "error">("idle");
 
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
@@ -716,61 +731,90 @@ export default function Viewer() {
     };
   }, [numPages]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Compile ──────────────────────────────────────────────────────────────
+  // ── Compile (3-phase, background non-blocking) ────────────────────────────
+  //
+  // Phase 1 — FLUSH: save all dirty tab content to DB in parallel
+  // Phase 2 — INCREMENTAL SYNC: push only changed files to compiler
+  // Phase 3 — COMPILE: trigger LaTeX compiler, receive PDF
+  //
+  // The function is non-blocking: it fires and forgets, updating compileStatus
+  // as it progresses. The editor remains fully interactive throughout.
 
   const handleCompile = async () => {
-    const isProjectMode = compileMode !== "fast";
-
-    // In fast mode: require non-empty editor content
-    if (!isProjectMode) {
-      const source = getEditorContent.current?.() ?? "";
-      if (!source.trim()) return;
+    // If already compiling, queue one more run after current finishes
+    const { compileStatus: currentStatus } = useCompileStore.getState();
+    if (currentStatus !== "idle" && currentStatus !== "done" && currentStatus !== "error") {
+      setPendingCompile(true);
+      return;
     }
 
-    setIsCompiling(true);
+    const rootPageId = parentPageIdRef.current;
+    if (!rootPageId) return;
+
     setCompileLog(null);
     setShowLog(false);
 
-    try {
-      // ── Pre-compile save: flush current editor content to backend + compiler ──
-      // The autosave is debounced (1s), so if the user edits and immediately
-      // compiles, the compiler folder still has stale content.  We do an
-      // immediate save here to guarantee the compiler always sees the latest.
-      //
-      // IMPORTANT: Only save when the editor is actually mounted (getEditorContent
-      // is non-null).  In "viewer-only" layout the Monaco editor is unmounted, so
-      // getEditorContent.current is null.  Saving in that case would write an
-      // empty string to the DB and wipe the file content.
-      if (isProjectMode && currentPage?._id && getEditorContent.current !== null) {
-        const latestContent = getEditorContent.current();
-        if (latestContent) {
-          try {
-            await fetch(`${API_URL}/api/pages/${currentPage._id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ content: latestContent }),
-            });
-          } catch (syncErr) {
-            console.warn("[compile] pre-compile save failed, compiling anyway:", syncErr);
-          }
-        }
+    // ── Phase 1: Flush all dirty tabs ────────────────────────────────────────
+    setCompileStatus("flushing");
+    const dirtyFiles = getDirtyFiles();
+    if (dirtyFiles.length > 0) {
+      const flushResults = await Promise.allSettled(
+        dirtyFiles.map(({ fileId, content }) =>
+          fetch(`${API_URL}/api/pages/${fileId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ content }),
+          }).then((r) => {
+            if (r.ok) clearDirty(fileId);
+          }),
+        ),
+      );
+      const failed = flushResults.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        console.warn(`[compile] ${failed}/${dirtyFiles.length} file flushes failed — compiling anyway`);
       }
+    }
 
-      // Build payload - omit source in project mode (compiler uses synced files)
-      const payload: Record<string, any> = {
+    // ── Phase 2: Incremental sync ─────────────────────────────────────────────
+    setCompileStatus("syncing");
+    try {
+      const dirtyFileIds = dirtyFiles.map((f) => f.fileId);
+      const syncResp = await fetch(
+        `${API_URL}/api/pages/${rootPageId}/sync-incremental`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ dirtyFileIds }),
+        },
+      );
+      if (syncResp.ok) {
+        const { synced = [] } = await syncResp.json();
+        synced.forEach((fileId: string) => markSynced(fileId));
+      } else {
+        console.warn("[compile] incremental sync failed, compiling anyway");
+      }
+    } catch (syncErr) {
+      console.warn("[compile] incremental sync error, compiling anyway:", syncErr);
+    }
+
+    // ── Phase 3: Compile ──────────────────────────────────────────────────────
+    setCompileStatus("compiling");
+    try {
+      // Resolve which file is the root LaTeX document.
+      const dbMainFile =
+        currentPage?.mainFile && typeof currentPage.mainFile === "object"
+          ? (currentPage.mainFile as Page).title
+          : null;
+      const resolvedMainFile = dbMainFile || mainFile || "main.tex";
+
+      const payload = {
+        project_id: rootPageId,
+        main_file: resolvedMainFile,
         engine,
         draft: compileMode === "draft",
       };
-      
-      if (isProjectMode) {
-        // Project mode: send parentPageId and mainFile, DON'T send source
-        payload.project_id = parentPageIdRef.current;
-        payload.main_file = mainFile || "main.tex";
-      } else {
-        // Fast mode: send source directly
-        payload.source = getEditorContent.current?.() ?? "";
-      }
 
       const response = await fetch(`${API_URL}/api/latex/compile`, {
         method: "POST",
@@ -780,65 +824,66 @@ export default function Viewer() {
       });
 
       if (response.ok) {
-        // API now returns JSON { pdf: base64, synctex: string }
         const data = await response.json();
-        const pdfBytes = Uint8Array.from(atob(data.pdf), (c) =>
-          c.charCodeAt(0),
-        );
+        const pdfBytes = Uint8Array.from(atob(data.pdf), (c) => c.charCodeAt(0));
         const blob = new Blob([pdfBytes], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
 
         // Build SyncTeX map for accurate line↔page sync
-        synctexMapRef.current = data.synctex
-          ? parseSyncTeX(data.synctex)
-          : null;
+        synctexMapRef.current = data.synctex ? parseSyncTeX(data.synctex) : null;
 
         setPdfUrl(url);
-        setLastCompiled(new Date());
+        setLastCompiledAt(new Date());
         setPageNumber(1);
+        setCompileStatus("done");
 
         // Generate first-page thumbnail asynchronously (non-blocking)
-        const pid = parentPageIdRef.current;
-        if (pid) {
-          generateThumbnail(blob).then((base64) => {
-            if (base64)
-              saveThumbnailMutation.mutate({ pageId: pid, dataUrl: base64 });
-          });
-        }
+        generateThumbnail(blob).then((base64) => {
+          if (base64) saveThumbnailMutation.mutate({ pageId: rootPageId, dataUrl: base64 });
+        });
       } else {
         let data: any = {};
-        try {
-          data = await response.json();
-        } catch {
-          data = { detail: { log: response.statusText } };
-        }
+        try { data = await response.json(); } catch { data = { detail: { log: response.statusText } }; }
         const log =
-          data?.detail?.log ??
-          data?.log ??
-          data?.message ??
-          "Compilation failed (unknown error).";
+          data?.detail?.log ?? data?.log ?? data?.message ?? "Compilation failed (unknown error).";
         setCompileLog(log);
         setShowLog(true);
-
-        // Handle specific errors with actionable steps
-        if (data?.error === "compiler_folder_missing") {
-          toast.error("Project not synced to compiler", {
-            description: "The compiler needs your project files to compile.",
-            action: {
-              label: "Sync Now",
-              onClick: () => {
-                syncProjectMutation.mutate({ pageId: parentPageIdRef.current! });
-              }
-            },
-            id: "compiler-folder-missing",
-          });
-        }
+        setCompileStatus("error");
       }
     } catch (err) {
       setCompileLog(String(err));
       setShowLog(true);
-    } finally {
-      setIsCompiling(false);
+      setCompileStatus("error");
+    }
+
+    // Run pending compile if one was queued while this was running
+    const { pendingCompile: stillPending } = useCompileStore.getState();
+    if (stillPending) {
+      setPendingCompile(false);
+      setTimeout(() => handleCompileLatestRef.current(), 200);
+    }
+  };
+
+  // ── Force re-sync (recovery from compiler corruption) ────────────────────
+  // Calls sync-incremental with forceAll=true to re-upload all files.
+  const handleForceSync = async () => {
+    if (!parentPageId) return;
+    try {
+      setCompileStatus("syncing");
+      const res = await fetch(`${API_URL}/api/pages/${parentPageId}/sync-incremental`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ forceAll: true }),
+      });
+      const data = await res.json();
+      console.log("[force-sync] completed:", data);
+      setCompileStatus("idle");
+      // Auto-compile after force sync
+      setTimeout(() => handleCompileLatestRef.current(), 300);
+    } catch (err) {
+      console.error("[force-sync] failed:", err);
+      setCompileStatus("idle");
     }
   };
 
@@ -902,11 +947,20 @@ export default function Viewer() {
         {/* Left: compile button */}
         <div className="flex items-center gap-1">
           <CompileButton
-            isCompiling={isCompiling}
+            compileStatus={compileStatus}
             onCompile={handleCompile}
             engine={engine}
-            compileMode={compileMode}
-            setCompileMode={setCompileMode}
+            compileMode={compileMode as "full" | "draft"}
+            setCompileMode={(m) => setCompileMode(m as any)}
+          />
+
+          {/* Re-sync Project button — recovers from compiler folder corruption */}
+          <ToolbarButton
+            icon={RefreshCw}
+            label="Re-sync Project (force full re-upload)"
+            onClick={handleForceSync}
+            disabled={compileStatus !== "idle"}
+            loading={compileStatus === "syncing"}
           />
 
           <Separator orientation="vertical" className="h-5 mx-0.5" />
@@ -990,15 +1044,15 @@ export default function Viewer() {
             </div>
             <button
               onClick={handleCompile}
-              disabled={isCompiling}
+              disabled={compileStatus !== "idle" && compileStatus !== "done" && compileStatus !== "error"}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              {isCompiling ? (
+              {compileStatus === "compiling" || compileStatus === "flushing" || compileStatus === "syncing" ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <Play className="size-4" />
               )}
-              {isCompiling ? "Compiling…" : "Compile"}
+              {compileStatus === "flushing" ? "Saving…" : compileStatus === "syncing" ? "Syncing…" : compileStatus === "compiling" ? "Compiling…" : "Compile"}
             </button>
           </div>
         ) : (
@@ -1080,10 +1134,23 @@ export default function Viewer() {
       {/* Status bar */}
       <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-secondary text-xs text-muted-foreground shrink-0">
         <div className="flex items-center gap-2">
-          {!isCompiling && lastCompiled && (
-            <span>Last compiled: {lastCompiled.toLocaleTimeString()}</span>
+          {/* Phase-aware compile status */}
+          {compileStatus === "flushing" && (
+            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Saving…</span>
           )}
-          {parsedLog && !isCompiling && (
+          {compileStatus === "syncing" && (
+            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Syncing…</span>
+          )}
+          {compileStatus === "compiling" && (
+            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Compiling…</span>
+          )}
+          {compileStatus === "done" && lastCompiledAt && (
+            <span className="flex items-center gap-1 text-green-600">
+              <CheckCircle2 className="size-3" />
+              {lastCompiledAt.toLocaleTimeString()}
+            </span>
+          )}
+          {parsedLog && (compileStatus === "error" || compileStatus === "done") && (
             <button
               onClick={() => setShowLog((p) => !p)}
               className="flex items-center gap-1.5 hover:opacity-75 transition-opacity"
@@ -1091,29 +1158,27 @@ export default function Viewer() {
               {parsedLog.errors.length > 0 && (
                 <span className="flex items-center gap-0.5 text-red-400">
                   <AlertCircle className="size-3" />
-                  {parsedLog.errors.length} error
-                  {parsedLog.errors.length !== 1 ? "s" : ""}
+                  {parsedLog.errors.length} error{parsedLog.errors.length !== 1 ? "s" : ""}
                 </span>
               )}
               {parsedLog.warnings.length > 0 && (
                 <span className="flex items-center gap-0.5 text-amber-400">
                   <AlertTriangle className="size-3" />
-                  {parsedLog.warnings.length} warning
-                  {parsedLog.warnings.length !== 1 ? "s" : ""}
+                  {parsedLog.warnings.length} warning{parsedLog.warnings.length !== 1 ? "s" : ""}
                 </span>
               )}
-              {parsedLog.errors.length === 0 &&
-                parsedLog.warnings.length === 0 && (
-                  <span className="flex items-center gap-0.5 text-zinc-500">
-                    <Terminal className="size-3" />
-                    Log
-                  </span>
-                )}
+              {parsedLog.errors.length === 0 && parsedLog.warnings.length === 0 && (
+                <span className="flex items-center gap-0.5 text-zinc-500">
+                  <Terminal className="size-3" />Log
+                </span>
+              )}
             </button>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {pdfUrl && <span className="text-green-600">PDF ready</span>}
+          {pdfUrl && compileStatus !== "compiling" && (
+            <span className="text-green-600">PDF ready</span>
+          )}
         </div>
       </div>
     </div>

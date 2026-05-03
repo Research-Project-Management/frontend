@@ -80,6 +80,10 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
     label: "Workspace Agent",
     color: "bg-[#3370ff]/12 text-[#3370ff]",
   },
+  latex_editor: {
+    label: "LaTeX Editor AI",
+    color: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  },
 };
 
 function AgentBadge({ agent }: { agent: string }) {
@@ -405,7 +409,7 @@ function AgentCard({
 }) {
   return (
     <div
-      className={`rounded-xl border ${agent.border} p-4 transition-all hover:border-opacity-60 hover:shadow-sm group/card cursor-default ${agent.bg.split(" ")[0]}`}
+      className={`rounded-xl p-4 transition-colors group/card cursor-default ${agent.bg}`}
     >
       <p className={`text-[11px] font-bold mb-1.5 tracking-wide uppercase ${agent.color}`}>
         {agent.label}
@@ -418,7 +422,7 @@ function AgentCard({
           <button
             key={prompt}
             onClick={() => onPromptClick(prompt)}
-            className="text-[11px] text-left px-2.5 py-1.5 rounded-lg bg-background/70 hover:bg-background border border-border/40 hover:border-border/70 text-foreground/65 hover:text-foreground transition-all truncate"
+            className="text-[11px] text-left px-2.5 py-1.5 rounded-lg bg-background/60 hover:bg-background/90 text-foreground/60 hover:text-foreground transition-all truncate"
           >
             {prompt}
           </button>

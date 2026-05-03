@@ -16,13 +16,16 @@ import {
   useEditorSettingsStore,
   type LayoutMode,
 } from "~/stores/editor-settings";
+import { useCompileStore } from "~/stores/compile";
 import { useNavigate } from "react-router";
 
 export default function Menu() {
   const navigate = useNavigate();
-  const { editorRef, getEditorContent, compileRef, isCompiling, pdfUrl } =
-    usePageContext();
+  const { editorRef, getEditorContent, compileRef } = usePageContext();
+  const { compileStatus, pdfUrl } = useCompileStore();
   const { layout, setLayout } = useEditorSettingsStore();
+
+  const isCompiling = compileStatus !== "idle" && compileStatus !== "done" && compileStatus !== "error";
 
   // ── Editor helpers ──────────────────────────────────────────────────────
 

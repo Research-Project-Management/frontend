@@ -40,7 +40,7 @@ import { useCompileStore } from "~/stores/compile";
 
 import { toast } from "sonner";
 import { useUpdatePageThumbnail } from "~/query/page";
-import type { Page } from "~/types/page";
+import type { Page as ProjectPage } from "~/types/page";
 
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -805,7 +805,7 @@ export default function Viewer() {
       // Resolve which file is the root LaTeX document.
       const dbMainFile =
         currentPage?.mainFile && typeof currentPage.mainFile === "object"
-          ? (currentPage.mainFile as Page).title
+          ? (currentPage.mainFile as ProjectPage).title
           : null;
       const resolvedMainFile = dbMainFile || mainFile || "main.tex";
 
@@ -867,10 +867,10 @@ export default function Viewer() {
   // ── Force re-sync (recovery from compiler corruption) ────────────────────
   // Calls sync-incremental with forceAll=true to re-upload all files.
   const handleForceSync = async () => {
-    if (!parentPageId) return;
+    if (!parentPageIdRef.current) return;
     try {
       setCompileStatus("syncing");
-      const res = await fetch(`${API_URL}/api/pages/${parentPageId}/sync-incremental`, {
+      const res = await fetch(`${API_URL}/api/pages/${parentPageIdRef.current}/sync-incremental`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

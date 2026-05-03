@@ -17,6 +17,6 @@ jobs:
           script: |
             cd /root/app/NCKH/Flux
             git pull origin main
-            pnpm i
-            pnpm run build
+            npm i
+            npm run build
             pm2 restart Flux

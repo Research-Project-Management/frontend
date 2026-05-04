@@ -79,9 +79,9 @@ function ToolbarButton({
           className={cn(
             "p-1.5 px-2 rounded transition-colors disabled:opacity-50 flex items-center gap-2",
             variant === "default" &&
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            "text-muted-foreground hover:text-primary hover:bg-primary/10",
             variant === "primary" &&
-              "bg-primary text-primary-foreground hover:bg-primary/90",
+            "bg-primary text-primary-foreground hover:bg-primary/90",
           )}
         >
           {loading ? (
@@ -551,9 +551,9 @@ const COMPILE_MODE_OPTIONS: {
   icon: React.ElementType;
   description: string;
 }[] = [
-  { value: "full", label: "Full", icon: Image, description: "Complete compile" },
-  { value: "draft", label: "Draft", icon: Zap, description: "Skip images" },
-];
+    { value: "full", label: "Full", icon: Image, description: "Complete compile" },
+    { value: "draft", label: "Draft", icon: Zap, description: "Skip images" },
+  ];
 
 function CompileButton({
   compileStatus,
@@ -579,7 +579,7 @@ function CompileButton({
       <button
         onClick={onCompile}
         disabled={isRunning}
-        title={`Compile (Ctrl+Enter) — ${ENGINE_SHORT[engine]} · ${compileMode}`}
+        title={`Compile (Ctrl+Enter)`}
         className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
       >
         {isRunning ? (
@@ -588,11 +588,7 @@ function CompileButton({
           <Play className="size-3 fill-current" />
         )}
         {isRunning ? (statusLabel[compileStatus] ?? "Working…") : "Compile"}
-        {!isRunning && (
-          <span className="opacity-60 font-normal">
-            · {ENGINE_SHORT[engine]}
-          </span>
-        )}
+
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -645,6 +641,7 @@ export default function Viewer() {
     setCompileStatus,
     compileLog,
     setCompileLog,
+    setCompileErrors,
     pdfUrl,
     setPdfUrl,
     lastCompiledAt,
@@ -847,11 +844,17 @@ export default function Viewer() {
         const log =
           data?.detail?.log ?? data?.log ?? data?.message ?? "Compilation failed (unknown error).";
         setCompileLog(log);
+        // Parse errors for AI /fix command
+        const { parseCompileErrors } = await import("~/lib/latex-utils");
+        setCompileErrors(parseCompileErrors(log));
         setShowLog(true);
         setCompileStatus("error");
       }
     } catch (err) {
-      setCompileLog(String(err));
+      const errStr = String(err);
+      setCompileLog(errStr);
+      const { parseCompileErrors } = await import("~/lib/latex-utils");
+      setCompileErrors(parseCompileErrors(errStr));
       setShowLog(true);
       setCompileStatus("error");
     }
@@ -867,10 +870,10 @@ export default function Viewer() {
   // ── Force re-sync (recovery from compiler corruption) ────────────────────
   // Calls sync-incremental with forceAll=true to re-upload all files.
   const handleForceSync = async () => {
-    if (!parentPageId) return;
+    if (!parentPageIdRef.current) return;
     try {
       setCompileStatus("syncing");
-      const res = await fetch(`${API_URL}/api/pages/${parentPageId}/sync-incremental`, {
+      const res = await fetch(`${API_URL}/api/pages/${parentPageIdRef.current}/sync-incremental`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -900,11 +903,12 @@ export default function Viewer() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Ctrl+Enter shortcut ──────────────────────────────────────────────────
+  // ── Ctrl+Enter / Ctrl+S shortcut (global — works regardless of focus) ─────
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "Enter" || e.key === "s" || e.key === "S") {
         e.preventDefault();
         handleCompileLatestRef.current();
       }

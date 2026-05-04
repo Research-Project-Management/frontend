@@ -20,6 +20,16 @@ interface PageContextType {
   /** The currently-open root page, synced by EditorLayout on load. */
   currentPage: Page | null;
   setCurrentPage: React.Dispatch<React.SetStateAction<Page | null>>;
+  /**
+   * The ACTIVE file currently open in the editor tab (may be a child file, not the root page).
+   * Use this for the filename sent to AI, compiler, etc.
+   * Falls back to currentPage when no child tab is active.
+   */
+  activeFilePage: Page | null;
+  setActiveFilePage: React.Dispatch<React.SetStateAction<Page | null>>;
+  /** The workspace ID derived from currentPage.project.workspace — used by sidebar AI tab. */
+  workspaceId: string | null;
+  setWorkspaceId: React.Dispatch<React.SetStateAction<string | null>>;
   /** Scroll Viewer to a given PDF page (1-based); registered by Viewer, called by OutlineTab. */
   gotoPageRef: React.MutableRefObject<((page: number) => void) | null>;
   /** Loaded PDFDocumentProxy from react-pdf; stored by Viewer on load, read by OutlineTab. */
@@ -40,6 +50,12 @@ interface PageContextType {
    */
   selectedAsset: AssetInfo | null;
   setSelectedAsset: React.Dispatch<React.SetStateAction<AssetInfo | null>>;
+  /**
+   * Set to true while the AI is applying a preview edit to Monaco.
+   * Editor.tsx reads this to skip the save/auto-compile triggered by the model change.
+   * Using a ref (not state) so changes never cause re-renders.
+   */
+  isAiPreviewingRef: React.MutableRefObject<boolean>;
 }
 
 const PageContext = createContext<PageContextType | null>(null);
@@ -61,12 +77,15 @@ export function PageContextProvider({
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
   const compileRef = useRef<(() => Promise<void>) | null>(null);
   const [currentPage, setCurrentPage] = useState<Page | null>(null);
+  const [activeFilePage, setActiveFilePage] = useState<Page | null>(null);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const gotoPageRef = useRef<((page: number) => void) | null>(null);
   const pdfDocRef = useRef<any>(null);
   const scrollToLineRef = useRef<((line: number) => void) | null>(null);
   const scrollToPdfLineRef = useRef<((line: number) => void) | null>(null);
   const [texFiles, setTexFiles] = useState<string[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<AssetInfo | null>(null);
+  const isAiPreviewingRef = useRef<boolean>(false);
 
   return (
     <PageContext.Provider
@@ -76,6 +95,10 @@ export function PageContextProvider({
         compileRef,
         currentPage,
         setCurrentPage,
+        activeFilePage,
+        setActiveFilePage,
+        workspaceId,
+        setWorkspaceId,
         gotoPageRef,
         pdfDocRef,
         scrollToLineRef,
@@ -84,6 +107,7 @@ export function PageContextProvider({
         setTexFiles,
         selectedAsset,
         setSelectedAsset,
+        isAiPreviewingRef,
       }}
     >
       {children}

@@ -369,6 +369,33 @@ export interface EditorStreamOptions {
   selection?: string;
   /** Lines surrounding the cursor position */
   cursorContext?: string;
+  /** ── Rich context (v2) ── */
+  /** 1-based start line of selection */
+  selectionStartLine?: number;
+  /** 1-based end line of selection */
+  selectionEndLine?: number;
+  /** 15 lines before the selection */
+  contextBefore?: string;
+  /** 15 lines after the selection */
+  contextAfter?: string;
+  /** Current section heading the cursor is in */
+  currentSection?: string | null;
+  /** Current LaTeX environment the cursor is in */
+  currentEnvironment?: string | null;
+  /** Packages, labels, sections summary for document awareness */
+  documentStructureSummary?: string;
+  /** Parsed compile errors — used by /fix command */
+  compileErrors?: Array<{ line: number | null; message: string; context: string }>;
+  /** Slash command hint for focused system prompt */
+  commandHint?: string;
+  /** Cursor line number (1-based) */
+  cursorLine?: number;
+  /** Cursor column number (1-based) */
+  cursorColumn?: number;
+  /** Selection start column (1-based) */
+  selectionStartColumn?: number;
+  /** Selection end column (1-based) */
+  selectionEndColumn?: number;
   onMeta?: (meta: { agent: string; intent: string; sources?: SourceItem[] }) => void;
   signal?: AbortSignal;
 }
@@ -396,6 +423,21 @@ export async function* streamEditorChat(
       filename: opts.filename ?? "main.tex",
       selection: opts.selection ?? "",
       cursor_context: opts.cursorContext ?? "",
+      // Rich context v2
+      selection_start_line: opts.selectionStartLine ?? null,
+      selection_end_line: opts.selectionEndLine ?? null,
+      selection_start_column: opts.selectionStartColumn ?? null,
+      selection_end_column: opts.selectionEndColumn ?? null,
+      context_before: opts.contextBefore ?? "",
+      context_after: opts.contextAfter ?? "",
+      current_section: opts.currentSection ?? null,
+      current_environment: opts.currentEnvironment ?? null,
+      document_structure: opts.documentStructureSummary ?? "",
+      compile_errors: opts.compileErrors ?? [],
+      command_hint: opts.commandHint ?? null,
+      // Cursor position
+      cursor_line: opts.cursorLine ?? null,
+      cursor_column: opts.cursorColumn ?? null,
     }),
     signal: opts.signal,
   });

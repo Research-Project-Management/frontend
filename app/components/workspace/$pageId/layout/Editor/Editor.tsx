@@ -141,7 +141,7 @@ interface MenuAction {
 
 export default function Editor({ page }: EditorProps) {
   const { editorRef } = useEditorContext();
-  const { compileRef, scrollToLineRef, scrollToPdfLineRef } =
+  const { compileRef, scrollToLineRef, scrollToPdfLineRef, isAiPreviewingRef } =
     usePageContext();
   const { markDirty } = useCompileStore();
   const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useEditorSettingsStore();
@@ -153,7 +153,7 @@ export default function Editor({ page }: EditorProps) {
   const pendingCompileRef = useRef(false);
   const updateMutation = useUpdatePageContent();
   const { pageId: pageIdParam } = useParams<{ pageId: string }>();
-  const { setPendingComment, setPendingAiText } = useWorkspaceActionsStore();
+  const { setPendingComment, setPendingAiText, setPendingAiContext } = useWorkspaceActionsStore();
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
   // Adjusted position after measuring the menu DOM (avoids pre-paint flash)
@@ -213,7 +213,6 @@ export default function Editor({ page }: EditorProps) {
   // Guard against stale debounce firing after a tab switch: compare the page id
   // captured when the debounce started with the currently-active page.
   useEffect(() => {
-    // If the active page changed while the debounce was pending, discard this save.
     if (activePageIdRef.current !== page._id) return;
     if (debouncedContent === lastRemoteContentRef.current) return;
     if (debouncedContent && debouncedContent !== page.content) {
@@ -243,6 +242,8 @@ export default function Editor({ page }: EditorProps) {
     if (!socket || !page._id || !debouncedContent) return;
     if (activePageIdRef.current !== page._id) return;
     if (debouncedContent === lastRemoteContentRef.current) return;
+    // Never broadcast AI preview edits to other users
+    if (isAiPreviewingRef.current) return;
     socket.emit("page:content", {
       pageId: page._id,
       content: debouncedContent,
@@ -541,8 +542,13 @@ export default function Editor({ page }: EditorProps) {
         icon: Sparkles,
         label: "Ask AI about this",
         action: () => {
-          if (ctxSelText) setPendingAiText(ctxSelText);
-          // Always open the AI panel (never close it) when asking about selection
+          if (ctxSelText) {
+            setPendingAiContext({
+              selectedText: ctxSelText,
+              startLine: ctxStartLine ?? 1,
+              endLine: ctxEndLine ?? ctxStartLine ?? 1,
+            });
+          }
           document.dispatchEvent(new CustomEvent("flux:open-ai-panel"));
           closeMenu();
         },
@@ -957,8 +963,13 @@ Your conclusions here.
             <div className="w-px h-4 bg-border mx-0.5" />
             <button
               onClick={() => {
-                if (selFloating.text) setPendingAiText(selFloating.text);
-                // Always OPEN the AI panel when asking about a selection
+                if (selFloating.text) {
+                  setPendingAiContext({
+                    selectedText: selFloating.text,
+                    startLine: selFloating.startLine,
+                    endLine: selFloating.endLine,
+                  });
+                }
                 document.dispatchEvent(new CustomEvent("flux:open-ai-panel"));
                 setSelFloating(null);
               }}

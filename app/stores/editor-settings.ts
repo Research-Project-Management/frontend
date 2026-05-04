@@ -42,7 +42,7 @@ export const useEditorSettingsStore = create<EditorSettingsState>()(
     (set) => ({
       engine: "pdflatex",
       compileMode: "full",
-      autoCompile: false,
+      autoCompile: true,
       layout: "split",
       editorTheme: "light",
       sidebarWidth: 300,
@@ -72,8 +72,8 @@ export const useEditorSettingsStore = create<EditorSettingsState>()(
     {
       name: "flux-editor-settings",
       partialize: (state) => {
-        // Don't persist the panel open state
-        const { settingsPanelOpen, ...rest } = state;
+        // Don't persist transient UI state or auto-compile (always on by default)
+        const { settingsPanelOpen, autoCompile, ...rest } = state;
         return rest;
       },
     },

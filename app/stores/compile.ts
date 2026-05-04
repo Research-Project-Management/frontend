@@ -8,6 +8,13 @@ export type CompileStatus =
   | "done"
   | "error";
 
+export interface CompileError {
+  line: number | null;
+  message: string;
+  /** Raw surrounding lines from the log for context */
+  context: string;
+}
+
 interface CompileStore {
   // ── Dirty content tracking ─────────────────────────────────────────────
   /** fileId → latest editor content (updated on every keystroke, debounced ~300ms) */
@@ -26,13 +33,15 @@ interface CompileStore {
   // ── Compile state (background, non-blocking) ───────────────────────────
   compileStatus: CompileStatus;
   compileLog: string | null;
+  /** Parsed error list from the last failed compilation */
+  compileErrors: CompileError[];
   pdfUrl: string | null;
   lastCompiledAt: Date | null;
-  /** If true, a second compile was requested while one is still running */
   pendingCompile: boolean;
 
   setCompileStatus: (status: CompileStatus) => void;
   setCompileLog: (log: string | null) => void;
+  setCompileErrors: (errors: CompileError[]) => void;
   /** Sets the PDF blob URL, revoking the previous blob URL to prevent leaks */
   setPdfUrl: (url: string | null) => void;
   setLastCompiledAt: (date: Date | null) => void;
@@ -87,6 +96,7 @@ export const useCompileStore = create<CompileStore>()((set, get) => ({
   // ── Compile state ─────────────────────────────────────────────────────
   compileStatus: "idle",
   compileLog: null,
+  compileErrors: [],
   pdfUrl: null,
   lastCompiledAt: null,
   pendingCompile: false,
@@ -97,6 +107,10 @@ export const useCompileStore = create<CompileStore>()((set, get) => ({
 
   setCompileLog(log) {
     set({ compileLog: log });
+  },
+
+  setCompileErrors(errors) {
+    set({ compileErrors: errors });
   },
 
   setPdfUrl(url) {

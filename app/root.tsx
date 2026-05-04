@@ -59,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </SocketProvider>
         </QueryProvider>
         <Toaster 
-          position="top-right" 
+          position="bottom-right" 
           richColors 
           expand={false}
           visibleToasts={3}

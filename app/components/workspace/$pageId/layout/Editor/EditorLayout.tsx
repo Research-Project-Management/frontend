@@ -11,7 +11,6 @@ import { useSocketRoom } from "~/hooks/useSocketRoom";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
-import AIChatPanel from "./AIChatPanel";
 
 // ── Inline image viewer rendered inside the editor column ──────────────────
 
@@ -74,9 +73,6 @@ function EmptyEditorState() {
 
 interface EditorContextType {
   editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
-  /** Toggle the AI chat panel open/closed */
-  toggleAIPanel: () => void;
-  aiPanelOpen: boolean;
 }
 
 const EditorContext = createContext<EditorContextType | null>(null);
@@ -97,20 +93,18 @@ export default function EditorLayout() {
   const [searchParams] = useSearchParams();
   const fileId = searchParams.get("file");
 
-  // AI Chat Panel state
-  const [aiPanelOpen, setAIPanelOpen] = useState(false);
-  const toggleAIPanel = () => setAIPanelOpen((v) => !v);
-
-  // Listen to the Ctrl+Alt+A shortcut dispatched by Monaco (toggle)
+  // Redirect AI panel events → open "Ask AI" tab in the sidebar
   useEffect(() => {
-    const toggle = () => setAIPanelOpen((v) => !v);
-    // flux:open-ai-panel always opens (used by "Ask AI about this" selections)
-    const open = () => setAIPanelOpen(true);
-    document.addEventListener("flux:toggle-ai-panel", toggle);
-    document.addEventListener("flux:open-ai-panel", open);
+    const openAiTab = () => {
+      document.dispatchEvent(
+        new CustomEvent("flux:open-panel", { detail: "Ask AI" })
+      );
+    };
+    document.addEventListener("flux:toggle-ai-panel", openAiTab);
+    document.addEventListener("flux:open-ai-panel", openAiTab);
     return () => {
-      document.removeEventListener("flux:toggle-ai-panel", toggle);
-      document.removeEventListener("flux:open-ai-panel", open);
+      document.removeEventListener("flux:toggle-ai-panel", openAiTab);
+      document.removeEventListener("flux:open-ai-panel", openAiTab);
     };
   }, []);
 
@@ -125,7 +119,7 @@ export default function EditorLayout() {
   const activePage = childPage ?? parentPage;
   const isLoading = parentLoading || (fileId ? childLoading : false);
 
-  const { getEditorContent, setCurrentPage, editorRef, selectedAsset, compileRef } = usePageContext();
+  const { getEditorContent, setCurrentPage, setWorkspaceId, editorRef, selectedAsset, compileRef, setActiveFilePage } = usePageContext();
   const { autoCompile } = useEditorSettingsStore();
 
   // True when the current ?file= param points to an image asset (not a page).
@@ -209,8 +203,17 @@ export default function EditorLayout() {
   //  • PresenceAvatars calls usePagePresence(currentPage._id) → must match the socket
   //    room joined above (useSocketRoom("page", pageId) = root page ID)
   useEffect(() => {
-    if (parentPage) setCurrentPage(parentPage);
-    return () => setCurrentPage(null);
+    if (parentPage) {
+      setCurrentPage(parentPage);
+      // Extract workspaceId from populated project.workspace for sidebar AI tab
+      const proj = parentPage.project;
+      if (typeof proj === "object") {
+        const ws = (proj as any).workspace;
+        const wid = typeof ws === "object" ? ws?._id : typeof ws === "string" ? ws : null;
+        if (wid) setWorkspaceId(wid);
+      }
+    }
+    return () => { setCurrentPage(null); setWorkspaceId(null); };
   }, [parentPage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register the active file as an open tab whenever it changes.
@@ -220,6 +223,8 @@ export default function EditorLayout() {
     if (!activePage || !pageId) return;
     if (activePage._id === pageId) return; // root page is not a tab
     openTab(pageId, { id: activePage._id, title: activePage.title });
+    // Keep activeFilePage in context in sync with the current tab
+    setActiveFilePage(activePage);
   }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -271,34 +276,18 @@ export default function EditorLayout() {
   }
 
   return (
-    <EditorContext.Provider value={{ editorRef, toggleAIPanel, aiPanelOpen }}>
+    <EditorContext.Provider value={{ editorRef }}>
       <div className="h-full w-full overflow-hidden flex flex-col">
         {/* Tab bar — keyed by rootPageId so each LaTeX page-project is isolated */}
         {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage?._id ?? ""} />}
-        <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden">
           {/* Editor / Asset panel */}
-          <div className="flex-1 overflow-hidden">
-            {isAssetTab ? (
-              <ImagePanel asset={selectedAsset!} />
-            ) : displayPage ? (
-              <Editor page={displayPage} />
-            ) : (
-              <EmptyEditorState />
-            )}
-          </div>
-
-          {/* AI Chat Panel — collapsible right sidebar */}
-          {aiPanelOpen && (
-            <>
-              <div className="w-px bg-border shrink-0" />
-              <div className="w-[360px] shrink-0 overflow-hidden">
-                <AIChatPanel
-                  editorRef={editorRef}
-                  filename={displayPage?.title ?? "main.tex"}
-                  onClose={() => setAIPanelOpen(false)}
-                />
-              </div>
-            </>
+          {isAssetTab ? (
+            <ImagePanel asset={selectedAsset!} />
+          ) : displayPage ? (
+            <Editor page={displayPage} />
+          ) : (
+            <EmptyEditorState />
           )}
         </div>
       </div>

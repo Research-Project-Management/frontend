@@ -5,7 +5,7 @@ import {
 } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Search, X, Check, ChevronRight } from "lucide-react";
-import { useProjectTasks, useUpdateTask } from "~/query/task";
+import { useProjectTasks, useBulkUpdateTasks } from "~/query/task";
 import { Checkbox } from "~/components/ui/checkbox";
 import { cn } from "~/lib/utils";
 import { toast } from "sonner";
@@ -32,20 +32,32 @@ export function AddExistingTaskModal({
   onSuccess,
 }: AddExistingTaskModalProps) {
   const { data, isLoading } = useProjectTasks(projectId);
-  const updateTaskMutation = useUpdateTask();
+  const bulkUpdateMutation = useBulkUpdateTasks();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
 
   const filteredTasks = useMemo(() => {
     if (!data?.tasks) return [];
-    return data.tasks.filter((task) => {
+    
+    // 1. Filter tasks
+    const filtered = data.tasks.filter((task) => {
       const keyword = searchTerm.trim().toLowerCase();
       const matchesSearch = task.title.toLowerCase().includes(keyword) ||
                           task.identifier?.toLowerCase().includes(keyword);
       // Filter out tasks already in the current cycle
       const notInCurrentCycle = task.cycle?._id !== currentCycleId;
       return matchesSearch && notInCurrentCycle;
+    });
+
+    // 2. Sort: Prioritize tasks without a cycle (Unassigned -> Assigned)
+    return [...filtered].sort((a, b) => {
+      const aHasCycle = !!a.cycle?._id;
+      const bHasCycle = !!b.cycle?._id;
+
+      if (!aHasCycle && bHasCycle) return -1;
+      if (aHasCycle && !bHasCycle) return 1;
+      return 0;
     });
   }, [data?.tasks, searchTerm, currentCycleId]);
 
@@ -74,21 +86,20 @@ export function AddExistingTaskModal({
     if (selectedIds.length === 0) return;
 
     try {
-      await Promise.all(
-        selectedIds.map((taskId) =>
-          updateTaskMutation.mutateAsync({
-            taskId,
-            projectId,
-            cycle: currentCycleId,
-          })
-        )
-      );
+      await bulkUpdateMutation.mutateAsync({
+        projectId,
+        taskIds: selectedIds,
+        data: {
+          cycle: currentCycleId
+        }
+      });
+      
       toast.success(`Successfully added ${selectedIds.length} tasks to cycle`);
       onOpenChange(false);
       setSelectedIds([]);
       onSuccess?.();
     } catch (error) {
-      toast.error("Failed to add some tasks");
+      // toast.error handled by mutation
     }
   };
 
@@ -181,7 +192,7 @@ export function AddExistingTaskModal({
                            </span>
                          </div>
                          {otherCycle && (
-                           <span className="text-[10px] text-zinc-400 font-medium ml-[calc(var(--col-width,0px)+8px)]">
+                           <span className="text-[10px] text-zinc-400 font-medium pl-1 opacity-80 italic">
                              Currently in: {otherCycle.name}
                            </span>
                          )}
@@ -227,10 +238,10 @@ export function AddExistingTaskModal({
             <Button
               type="button"
               onClick={handleAdd}
-              disabled={selectedIds.length === 0 || updateTaskMutation.isPending}
+              disabled={selectedIds.length === 0 || bulkUpdateMutation.isPending}
               className="h-9 min-w-17.5 bg-black px-4 text-white shadow-none hover:bg-black/90 disabled:opacity-30 text-[13px] font-medium rounded-sm"
             >
-              {updateTaskMutation.isPending ? "..." : "Add"}
+              Add
             </Button>
           </div>
         </div>

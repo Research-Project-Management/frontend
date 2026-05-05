@@ -13,6 +13,7 @@ import {
   Trash2,
   UserMinus,
   UserPlus,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -39,10 +40,12 @@ type CardProps = {
   onDelete?: (card: Task) => void;
   onJoin?: (card: Task) => void;
   onLeave?: (card: Task) => void;
+  onRemoveFromCycle?: (card: Task) => void;
   onToggleComplete?: (card: Task) => void;
+  isReadOnly?: boolean;
 };
 
-function formatDueDate(value?: string) {
+function formatDueDate(value?: string | null) {
   if (!value) return "";
 
   const date = new Date(value);
@@ -65,18 +68,18 @@ function getAssigneeInitials(name?: string) {
     .join("");
 }
 
-function isValidDate(value?: string) {
+function isValidDate(value?: string | null) {
   if (!value) return false;
 
   const date = new Date(value);
   return !Number.isNaN(date.getTime());
 }
 
-function isOverdue(value?: string) {
+function isOverdue(value?: string | null) {
   if (!isValidDate(value)) return false;
 
   const date = new Date(value!);
-  return date.getTime() < new Date().setHours(0, 0, 0, 0);
+  return date.getTime() < Date.now();
 }
 
 function CardContent({
@@ -89,7 +92,9 @@ function CardContent({
   onDelete,
   onJoin,
   onLeave,
+  onRemoveFromCycle,
   onToggleComplete,
+  isReadOnly,
 }: {
   card: Task;
   labelMap?: Map<string, TaskCardLabel>;
@@ -100,7 +105,9 @@ function CardContent({
   onDelete?: (card: Task) => void;
   onJoin?: (card: Task) => void;
   onLeave?: (card: Task) => void;
+  onRemoveFromCycle?: (card: Task) => void;
   onToggleComplete?: (card: Task) => void;
+  isReadOnly?: boolean;
 }) {
   const [showLabelDetails, setShowLabelDetails] = useState(false);
 
@@ -198,68 +205,82 @@ function CardContent({
     }`}>
 
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-900 focus-visible:opacity-100 group-hover:opacity-100"
-            aria-label="More task actions"
-            onPointerDown={(event) => event.stopPropagation()}
+      {!isReadOnly && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-900 focus-visible:opacity-100 group-hover:opacity-100"
+              aria-label="More task actions"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-40"
             onClick={(event) => event.stopPropagation()}
           >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-40"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <DropdownMenuItem
-            disabled={card.permissions?.canDuplicate === false}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDuplicate?.(card);
-            }}
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            Duplicate
-          </DropdownMenuItem>
-          {currentUserId && onJoin && onLeave ? (
             <DropdownMenuItem
-              disabled={card.permissions?.canEdit === false}
+              disabled={card.permissions?.canDuplicate === false}
               onClick={(event) => {
                 event.stopPropagation();
-                if (isCurrentUserAssignee) {
-                  onLeave(card);
-                  return;
-                }
-                onJoin(card);
+                onDuplicate?.(card);
               }}
             >
-              {isCurrentUserAssignee ? (
-                <UserMinus className="mr-2 h-4 w-4" />
-              ) : (
-                <UserPlus className="mr-2 h-4 w-4" />
-              )}
-              {isCurrentUserAssignee ? "Leave" : "Join"}
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicate
             </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem
-            disabled={card.permissions?.canDelete === false}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete?.(card);
-            }}
-            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {currentUserId && onJoin && onLeave ? (
+              <DropdownMenuItem
+                disabled={card.permissions?.canEdit === false}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isCurrentUserAssignee) {
+                    onLeave(card);
+                    return;
+                  }
+                  onJoin(card);
+                }}
+              >
+                {isCurrentUserAssignee ? (
+                  <UserMinus className="mr-2 h-4 w-4" />
+                ) : (
+                  <UserPlus className="mr-2 h-4 w-4" />
+                )}
+                {isCurrentUserAssignee ? "Leave" : "Join"}
+              </DropdownMenuItem>
+            ) : null}
+            {onRemoveFromCycle ? (
+              <DropdownMenuItem
+                disabled={card.permissions?.canEdit === false}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRemoveFromCycle(card);
+                }}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Remove from cycle
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem
+              disabled={card.permissions?.canDelete === false}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete?.(card);
+              }}
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {visibleLabels.length > 0 ? (
         <button
@@ -310,13 +331,13 @@ function CardContent({
             event.stopPropagation();
             onToggleComplete?.(card);
           }}
-          disabled={card.permissions?.canEdit === false}
+          disabled={card.permissions?.canEdit === false || isReadOnly}
           aria-label={card.completed ? "Mark as incomplete" : "Mark as complete"}
           className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border-[1.5px] transition-all ${
             card.completed
               ? "border-black bg-black text-white"
               : "border-zinc-300 bg-white text-transparent"
-          } ${card.permissions?.canEdit === false ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+          } ${(card.permissions?.canEdit === false || isReadOnly) ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
         >
           <Check
             className={`h-3 w-3 stroke-3 ${
@@ -418,7 +439,9 @@ function CardComponent({
   onDelete,
   onJoin,
   onLeave,
+  onRemoveFromCycle,
   onToggleComplete,
+  isReadOnly,
 }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
@@ -463,7 +486,9 @@ function CardComponent({
         onDelete={onDelete}
         onJoin={onJoin}
         onLeave={onLeave}
+        onRemoveFromCycle={onRemoveFromCycle}
         onToggleComplete={onToggleComplete}
+        isReadOnly={isReadOnly}
       />
     </div>
   );

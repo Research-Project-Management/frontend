@@ -3,7 +3,9 @@ import StickyNote from "../note/StickyNote";
 import { type Note, NOTE_COLOR_CYCLE } from "~/types/sticky";
 import { useParams } from "react-router";
 import { useSticky } from "~/hooks/useSticky";
-import { Layers2, Loader2, StickyNote as StickyNoteIcon } from "lucide-react";
+import { useLabelsQuery } from "~/query/label";
+import { Badge } from "~/components/ui/badge";
+import { Layers2, Loader2, StickyNote as StickyNoteIcon, X } from "lucide-react";
 import { useProjects } from "~/hooks/useWorkspace";
 import {
   DndContext,
@@ -45,6 +47,18 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+
+  const { data: allLabels = [] } = useLabelsQuery(workspaceId || "", "sticky");
+
+  // Remove selected labels that no longer exist
+  useEffect(() => {
+    if (allLabels.length > 0 && selectedLabels.length > 0) {
+      const validLabels = selectedLabels.filter(id => allLabels.some(l => l._id === id));
+      if (validLabels.length !== selectedLabels.length) {
+        setSelectedLabels(validLabels);
+      }
+    }
+  }, [allLabels, selectedLabels]);
 
   const {
     stickies: notes,
@@ -137,7 +151,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
 
         const matchesLabels =
           selectedLabels.length === 0 ||
-          selectedLabels.every((labelId) => note.labels?.some((l) => l._id === labelId));
+          selectedLabels.some((labelId) => note.labels?.some((l) => l._id === labelId));
 
         return matchesSearch && matchesLabels;
       }),
@@ -186,6 +200,8 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
             isAddingNote={createMutation.isPending}
             selectedLabels={selectedLabels}
             addLabel={copy.addLabel}
+            labelType="sticky"
+            projectId={undefined}
             onToggleLabel={(labelId) =>
               setSelectedLabels((prev) =>
                 prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
@@ -194,6 +210,8 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
           />
         }
       />
+
+
 
       <main className="flex-1 overflow-auto p-5">
         {filteredNotes.length === 0 ? (

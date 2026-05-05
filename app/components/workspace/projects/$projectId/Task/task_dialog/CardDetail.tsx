@@ -63,6 +63,8 @@ type TaskDialogProps = {
   onSave: (card: TaskMutationInput) => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
+  onRemoveFromCycle?: () => void;
+  isReadOnly?: boolean;
 };
 
 function formatActivityTime(value?: string | Date) {
@@ -187,6 +189,7 @@ type ChecklistBlockProps = {
   onDeleteItem: (itemId: string) => void;
   onUpdateItem: (itemId: string, title: string) => void;
   onAddItem: (title: string) => void;
+  isReadOnly?: boolean;
 };
 
 function ChecklistBlock({
@@ -197,6 +200,7 @@ function ChecklistBlock({
   onDeleteItem,
   onUpdateItem,
   onAddItem,
+  isReadOnly = false,
 }: ChecklistBlockProps) {
   const [newItemTitle, setNewItemTitle] = useState("");
   const [showNewItemInput, setShowNewItemInput] = useState(false);
@@ -258,13 +262,15 @@ function ChecklistBlock({
             {checklist.title}
           </h4>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowDeleteConfirm(true)}
-          className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-zinc-900 hover:bg-zinc-200"
-        >
-          Delete
-        </button>
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-zinc-900 hover:bg-zinc-200"
+          >
+            Delete
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -285,8 +291,12 @@ function ChecklistBlock({
                 <input
                   type="checkbox"
                   checked={item.completed}
-                  onChange={() => onToggleItem(item._id)}
-                  className="mt-2 size-4 rounded-sm border-zinc-300 text-black focus:ring-0"
+                  disabled={isReadOnly}
+                  onChange={() => {
+                    if (isReadOnly) return;
+                    onToggleItem(item._id);
+                  }}
+                  className={`mt-2 size-4 rounded-sm border-zinc-300 text-black focus:ring-0 ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                 />
                 <div className="flex-1 space-y-2">
                   <input
@@ -330,20 +340,25 @@ function ChecklistBlock({
                 <input
                   type="checkbox"
                   checked={item.completed}
-                  onChange={() => onToggleItem(item._id)}
-                  className="size-4 rounded-sm border-zinc-300 text-black focus:ring-0"
+                  disabled={isReadOnly}
+                  onChange={() => {
+                    if (isReadOnly) return;
+                    onToggleItem(item._id);
+                  }}
+                  className={`size-4 rounded-sm border-zinc-300 text-black focus:ring-0 ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                 />
                 <button
                   type="button"
-                  onClick={() => handleStartEditItem(item._id, item.title)}
+                  disabled={isReadOnly}
+                  onClick={() => !isReadOnly && handleStartEditItem(item._id, item.title)}
                   className={item.completed ? "line-through text-zinc-400 flex-1 text-left" : "text-zinc-900 flex-1 text-left"}
                 >
                   {item.title}
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDeleteItem(item._id)}
-                  className="inline-flex size-7 items-center justify-center rounded-sm text-zinc-500 opacity-0 transition-colors hover:bg-zinc-100 hover:text-red-600 group-hover:opacity-100"
+                  onClick={() => !isReadOnly && onDeleteItem(item._id)}
+                  className={`inline-flex size-7 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-red-600 ${isReadOnly ? 'hidden' : 'opacity-0 group-hover:opacity-100'}`}
                   aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
@@ -386,7 +401,7 @@ function ChecklistBlock({
             </Button>
           </div>
         </div>
-      ) : (
+      ) : !isReadOnly ? (
         <Button
           type="button"
           variant="secondary"
@@ -395,7 +410,7 @@ function ChecklistBlock({
         >
           Add an item
         </Button>
-      )}
+      ) : null}
 
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent
@@ -449,6 +464,8 @@ export function TaskDialog({
   onSave,
   onDelete,
   onDuplicate,
+  onRemoveFromCycle,
+  isReadOnly = false,
 }: TaskDialogProps) {
   const { user: currentUser } = useAuth();
   const firstColumnId = resolveTaskColumnId(columns[0]);
@@ -647,10 +664,10 @@ export function TaskDialog({
     content: description,
     description,
     columnId,
-    dueDate: dueDate || undefined,
+    dueDate: dueDate || null,
     startDate: startDate || null,
-    recurrence: recurrence || undefined,
-    reminder: reminder || undefined,
+    recurrence: recurrence || "none",
+    reminder: reminder || "1day",
     labels: uniqueLabels(labels),
     assignee: assigneeId,
     checklists: normalizeChecklistsForPayload(checklists),
@@ -716,19 +733,26 @@ export function TaskDialog({
     () => JSON.stringify({
       columnId,
       assignee: assigneeId,
+      startDate: startDate || "",
       dueDate: dueDate || "",
       completed,
       checklists: normalizeChecklistsForPayload(checklists),
       attachments,
+      recurrence,
+      reminder,
     }),
-    [columnId, assigneeId, dueDate, completed, checklists, attachments],
+    [columnId, assigneeId, startDate, dueDate, completed, checklists, attachments, recurrence, reminder],
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !taskId) {
+      autosaveReadyRef.current = false;
+      return;
+    }
+    // Set initial baseline
     autosaveSignatureRef.current = autosaveSignature;
     autosaveReadyRef.current = true;
-  }, [open, taskId, autosaveSignature]);
+  }, [open, taskId]);
 
   useEffect(() => {
     if (!open || !taskId || !autosaveReadyRef.current) return;
@@ -948,8 +972,10 @@ export function TaskDialog({
             onJoin={handleJoinTask}
             onLeave={handleLeaveTask}
             onDuplicate={onDuplicate}
+            onRemoveFromCycle={onRemoveFromCycle}
             onDelete={onDelete}
             onClose={handleClose}
+            isReadOnly={isReadOnly}
           />
           <div className="flex flex-1 min-h-0">
             <div className="flex min-w-0 flex-1 flex-col">
@@ -960,12 +986,16 @@ export function TaskDialog({
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          onClick={handleToggleCompleted}
+                          onClick={() => {
+                            if (isReadOnly) return;
+                            handleToggleCompleted();
+                          }}
+                          disabled={isReadOnly}
                           className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
                             completed
                               ? "border-[#6a9923] bg-[#6a9923] text-white"
                               : "border-zinc-400 bg-white text-transparent hover:border-zinc-900"
-                          }`}
+                          } ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                         >
                           <Check
                             className={`h-4 w-4 stroke-3 ${
@@ -986,13 +1016,15 @@ export function TaskDialog({
                   <textarea
                     rows={1}
                     value={title}
+                    readOnly={isReadOnly}
                     onChange={(e) => {
+                      if (isReadOnly) return;
                       setTitle(e.target.value);
                       e.currentTarget.style.height = "auto";
                       e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                     }}
                     placeholder="Enter card title..."
-                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border border-transparent bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-zinc-400 transition-all hover:bg-zinc-100 focus:bg-white focus:border-black focus:ring-0 focus-visible:ring-0 ${
+                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border border-transparent bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-zinc-400 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-100 focus:bg-white focus:border-black focus:ring-0 focus-visible:ring-0'} ${
                       completed ? "text-zinc-400" : "text-zinc-900"
                     }`}
                   />
@@ -1015,6 +1047,7 @@ export function TaskDialog({
                     members={members}
                     onAddChecklist={handleAddChecklist}
                     setAttachments={setAttachments}
+                    isReadOnly={isReadOnly}
                   />
 
                   <div className="mt-12">
@@ -1041,16 +1074,19 @@ export function TaskDialog({
 
                     <textarea
                       value={description}
+                      readOnly={isReadOnly}
                       onChange={(e) => {
+                        if (isReadOnly) return;
                         setDescription(e.target.value);
                         setShowDescriptionActions(true);
                       }}
                       onFocus={() => {
+                        if (isReadOnly) return;
                         descriptionDraftRef.current = description;
                         setShowDescriptionActions(true);
                       }}
-                      placeholder="Add a more detailed description..."
-                      className="min-h-35 w-full resize-none rounded-sm bg-transparent border border-zinc-200 px-4 py-3 text-[15px] text-zinc-900 shadow-none outline-none placeholder:text-zinc-400 transition-all duration-200 hover:bg-zinc-100 focus:bg-white focus:ring-0 focus:border-black focus-visible:ring-0"
+                      placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
+                      className={`min-h-35 w-full resize-none rounded-sm bg-transparent border border-zinc-200 px-4 py-3 text-[15px] text-zinc-900 shadow-none outline-none placeholder:text-zinc-400 transition-all duration-200 ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-50 focus:bg-white focus:ring-0 focus:border-black focus-visible:ring-0'}`}
                     />
                     {showDescriptionActions ? (
                       <div className="mt-3 flex items-center gap-2 transition-all duration-200">
@@ -1058,7 +1094,7 @@ export function TaskDialog({
                           type="button"
                           className="h-9 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
                           onClick={handleSaveDescription}
-                          disabled={!description.trim()}
+                          disabled={description === descriptionDraftRef.current}
                         >
                           Save
                         </Button>
@@ -1206,6 +1242,7 @@ export function TaskDialog({
                               handleUpdateChecklistItem(list._id, itemId, title)
                             }
                             onAddItem={(title) => handleAddChecklistItem(list._id, title)}
+                            isReadOnly={isReadOnly}
                           />
                         );
                       })}
@@ -1236,6 +1273,7 @@ export function TaskDialog({
               activityLoading={activityLoading}
               activityError={Boolean(activityError)}
               activities={visibleActivities}
+              isReadOnly={isReadOnly}
             />
           </div>
         </div>

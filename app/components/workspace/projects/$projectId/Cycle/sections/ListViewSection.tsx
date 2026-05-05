@@ -7,10 +7,12 @@ import {
   ChevronRight,
   PlayCircle,
   CircleDashed,
+  Circle,
   CheckCircle2,
   CalendarDays,
   Lock,
-  Pencil
+  Pencil,
+  AlignLeft
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -22,22 +24,10 @@ import {
 import type { Cycle } from "~/types/task";
 import { PHASE_CONFIG as STATIC_PHASE_CONFIG } from "~/types/task";
 import { PhaseIconRenderer } from "../components/PhaseIconRenderer";
+import { cn } from "~/lib/utils";
 
-export type DerivedStatus = "active" | "upcoming" | "completed";
+export type DerivedStatus = "active" | "planned" | "completed";
 
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div className="h-1.5 w-16 bg-zinc-100 rounded-full overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-500 ease-out"
-        style={{
-          width: `${value}%`,
-          backgroundColor: value === 100 ? "#22c55e" : value > 0 ? "#3b82f6" : "#e4e4e7",
-        }}
-      />
-    </div>
-  );
-}
 
 function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?: string }) {
   if (searchTerm?.trim()) {
@@ -56,7 +46,7 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
       title: "No active cycle",
       description: "An active cycle includes any period that encompasses today's date within its range. Find the progress and details of the active cycle here.",
     },
-    upcoming: {
+    planned: {
       title: "No upcoming cycles",
       description: "Cycles that are scheduled for the future will appear here. Plan your upcoming work by creating a new cycle.",
     },
@@ -97,7 +87,43 @@ interface ItemProps {
   onEdit: () => void;
   onDelete: () => void;
   onNavigate: () => void;
+  onStart?: () => void;
+  onComplete?: () => void;
   isReadOnly?: boolean;
+  status: DerivedStatus;
+  allLabels: any[];
+  showLabelDetails?: boolean;
+  onToggleLabelDetails?: (id: string) => void;
+}
+
+function CycleStatusIndicator({ status, hasDates }: { status: string; hasDates: boolean }) {
+  if (status === "active") {
+    return (
+      <div className="relative size-4.5 shrink-0">
+        <div className="absolute inset-0 rounded-full border-2 border-orange-500/20" />
+        <div className="absolute inset-0 rounded-full border-2 border-orange-500/60" style={{ clipPath: 'inset(0 0 0 50%)' }} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="size-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
+        </div>
+      </div>
+    );
+  }
+  if (status === "completed") {
+    return (
+      <div className="relative size-4.5 shrink-0">
+        <div className="absolute inset-0 rounded-full border-2 border-emerald-500/60" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="size-2.5 rounded-full bg-emerald-500" />
+        </div>
+      </div>
+    );
+  }
+  
+  if (hasDates) {
+    return <CircleDashed className="size-4.5 text-blue-500/60 shrink-0" strokeWidth={2.5} />;
+  }
+  
+  return <Circle className="size-4.5 text-zinc-300 shrink-0" strokeWidth={2} />;
 }
 
 export function Item({
@@ -108,7 +134,13 @@ export function Item({
   onEdit,
   onDelete,
   onNavigate,
+  onStart,
+  onComplete,
   isReadOnly = false,
+  status,
+  allLabels,
+  showLabelDetails,
+  onToggleLabelDetails,
 }: ItemProps) {
   const phaseConfig = useMemo(() => {
     const dynamic = phases.find(p => p.id === cycle.phase);
@@ -119,6 +151,14 @@ export function Item({
 
     return { label: "Custom", color: "#6b7280", icon: "📋" };
   }, [phases, cycle.phase]);
+
+  const cycleLabels = useMemo(() => {
+    return allLabels.filter(l => cycle.labels?.includes(l._id));
+  }, [allLabels, cycle.labels]);
+
+  const hasDescription = useMemo(() => {
+    return !!(cycle.description?.trim());
+  }, [cycle.description]);
 
   const dateText = useMemo(() => {
     if (!cycle.startDate && !cycle.endDate) return null;
@@ -132,73 +172,130 @@ export function Item({
       role="button"
       tabIndex={0}
       onClick={onNavigate}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-zinc-50/80 transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-b border-border/40 relative last:border-b-0 ${isReadOnly ? 'opacity-90' : ''}`}
+      className={`w-full flex items-center gap-4 px-4 py-3 bg-white hover:bg-zinc-50 transition-colors text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 relative ${isReadOnly ? 'opacity-90' : ''}`}
     >
-      <PhaseIconRenderer 
-        phaseId={cycle.phase}
-        icon={phaseConfig.icon}
-        color={phaseConfig.color}
-        size="sm"
-        className="!size-6.5 !bg-transparent"
+      <CycleStatusIndicator 
+        status={status} 
+        hasDates={!!(cycle.startDate || cycle.endDate)} 
       />
-      
-      <div className="flex-1 min-w-0 flex items-center gap-3">
+
+      <div className="flex-1 min-w-0">
         <span className="text-[13px] font-medium text-zinc-700 truncate group-hover:text-black">
           {cycle.name}
         </span>
-        {isReadOnly && (
-           <Lock className="size-3 text-zinc-400 shrink-0" />
+      </div>
+
+      {/* Right Side Actions & Info */}
+      <div 
+        className="flex items-center gap-3 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Labels - Task List Style */}
+        {cycleLabels.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLabelDetails?.(cycle._id);
+            }}
+            className="flex items-center gap-1.5 shrink-0"
+          >
+            {cycleLabels.slice(0, 3).map((label) => {
+              if (showLabelDetails) {
+                return (
+                  <span
+                    key={label._id}
+                    className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-zinc-900 animate-in fade-in zoom-in-95 duration-200"
+                    style={{ backgroundColor: label.color }}
+                  >
+                    <span className="max-w-[120px] truncate">{label.name}</span>
+                  </span>
+                );
+              }
+              return (
+                <span
+                  key={label._id}
+                  className="inline-flex h-2.5 w-11 rounded-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm"
+                  style={{ backgroundColor: label.color }}
+                />
+              );
+            })}
+          </button>
+        )}
+
+        {/* Phase Badge - Now at the end */}
+        <div className="flex items-center gap-1.5 h-7 px-2 bg-muted/50 border border-border/50 rounded-sm shrink-0 cursor-default">
+          <PhaseIconRenderer 
+            phaseId={cycle.phase}
+            icon={phaseConfig.icon}
+            color={phaseConfig.color}
+            size="sm"
+            className="!size-3.5 !bg-transparent"
+          />
+          <span className="text-[11px] font-medium text-zinc-700 shrink-0">
+            {phaseConfig.label}
+          </span>
+        </div>
+
+        {hasDescription && (
+          <AlignLeft className="size-3.5 text-zinc-400 shrink-0" />
+        )}
+
+        {dateText && (
+          <span className="flex items-center gap-1.5 h-7 px-2 text-[11px] text-zinc-700 font-medium shrink-0 bg-muted/50 border border-border/50 rounded-sm cursor-default">
+            <CalendarDays className="size-3" />
+            <span className="whitespace-nowrap">{dateText}</span>
+          </span>
         )}
       </div>
 
-      {dateText && (
-        <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium shrink-0 px-2 py-1 bg-zinc-50 rounded-sm border border-border/50">
-          <CalendarDays className="size-3" />
-          <span className="whitespace-nowrap">{dateText}</span>
-        </span>
-      )}
-
-      <div className="flex items-center gap-4 shrink-0 px-2">
-         <ProgressBar value={cycle.stats?.progress || 0} />
-      </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {!isReadOnly ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all"
-                onClick={(e) => e.stopPropagation()}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-40 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 rounded-sm shadow-xl p-1 border-border/50">
+            {status === "planned" && (
+              <DropdownMenuItem 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  onStart?.(); 
+                }} 
+                className="text-zinc-700 focus:text-zinc-900 focus:bg-zinc-100 font-medium py-2"
               >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 rounded-sm">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-                <Pencil className="mr-2 h-4 w-4" /> Edit
+                <PlayCircle className="mr-2 h-4 w-4 text-zinc-400" /> Start Cycle
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            )}
+            {status === "active" && (
+              <DropdownMenuItem 
+                onClick={(e) => { e.stopPropagation(); onComplete?.(); }}
+                className="text-zinc-700 focus:text-zinc-900 focus:bg-zinc-100 font-medium py-2"
               >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                <CheckCircle2 className="mr-2 h-4 w-4 text-zinc-500" /> End Cycle
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50 transition-all text-zinc-400"
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        )}
+            )}
+            {!isReadOnly && (
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }} className="py-2 text-zinc-700 focus:text-zinc-900">
+                <Pencil className="mr-2 h-4 w-4 text-zinc-400" /> Edit Details
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive py-2"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isExpanded && (
@@ -245,13 +342,20 @@ export function ListViewGroup({
         </div>
       ), 
     },
-    upcoming: { 
+    planned: { 
       label: "Upcoming cycle", 
       icon: <CircleDashed className="size-4.5 text-blue-500" />, 
     },
     completed: { 
       label: "Completed cycle", 
-      icon: <CheckCircle2 className="size-4.5 text-green-600 fill-green-600/10" />, 
+      icon: (
+        <div className="relative size-4.5">
+          <div className="absolute inset-0 rounded-full border-2 border-emerald-500/60" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="size-2.5 rounded-full bg-emerald-500" />
+          </div>
+        </div>
+      ), 
     },
   }[status];
 
@@ -274,7 +378,7 @@ export function ListViewGroup({
       </div>
 
       {isExpanded && (
-        <div className="bg-transparent border-t border-border/40 divide-y divide-border/40">
+        <div className="bg-transparent border-t border-border/40">
           {children}
         </div>
       )}

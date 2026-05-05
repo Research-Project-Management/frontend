@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, memo, useRef } from "react";
+import { useState, useMemo, useEffect, memo, useRef, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   AlignLeft,
@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Paperclip,
   Plus,
+  RotateCcw,
   Trash2,
   UserMinus,
   UserPlus,
@@ -28,23 +29,44 @@ import {
   type Task,
   type Column,
 } from "~/types/task";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  useDroppable,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useParams } from "react-router";
 import { useLabelsQuery } from "~/query/label";
+import { cn } from "~/lib/utils";
+import { createPortal } from "react-dom";
 
 /* Helper Functions */
-function isValidDate(value?: string) {
+function isValidDate(value?: string | null) {
   if (!value) return false;
   const date = new Date(value);
   return !Number.isNaN(date.getTime());
 }
 
-function isOverdue(value?: string) {
+function isOverdue(value?: string | null) {
   if (!isValidDate(value)) return false;
   const date = new Date(value!);
-  return date.getTime() < new Date().setHours(0, 0, 0, 0);
+  return date.getTime() < Date.now();
 }
 
-function formatDueDate(value?: string) {
+function formatDueDate(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -89,7 +111,7 @@ const PriorityBadge = memo(({
 
 PriorityBadge.displayName = "PriorityBadge";
 
-const TaskRow = memo(({
+const TaskRowContent = ({
   task,
   currentUserId,
   currentUserAvatar,
@@ -98,9 +120,12 @@ const TaskRow = memo(({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
+  onRemoveFromCycle,
   onDeleteCard,
   onToggleLabelDetails,
   workspaceLabels,
+  isDragging = false,
+  isReadOnly,
 }: {
   task: Task;
   currentUserId?: string | null;
@@ -110,9 +135,12 @@ const TaskRow = memo(({
   onDuplicateCard: (task: Task) => void;
   onJoinCard: (task: Task) => void;
   onLeaveCard: (task: Task) => void;
+  onRemoveFromCycle: (task: Task) => void;
   onDeleteCard: (task: Task) => void;
   onToggleLabelDetails: (taskId: string) => void;
   workspaceLabels: any[];
+  isDragging?: boolean;
+  isReadOnly?: boolean;
 }) => {
   const visibleLabels = useMemo(() => 
     (task.labels || [])
@@ -155,24 +183,18 @@ const TaskRow = memo(({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onEditCard(task)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onEditCard(task);
-        }
-      }}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 bg-white hover:bg-zinc-50/80 transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-l-2 border-l-transparent border-b border-border/40 relative ${
-        task.completed ? "hover:border-emerald-500/50" : "hover:border-zinc-900/10"
-      }`}
+      className={cn(
+        "w-full flex items-center gap-3 px-4 py-2.5 bg-white transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-l-2 border-l-transparent border-b border-border/40 relative",
+        task.completed ? "hover:border-emerald-500/50" : "hover:border-zinc-900/10",
+        isDragging && "shadow-lg z-50 !bg-zinc-50 border-l-zinc-900 opacity-50"
+      )}
     >
       <PriorityBadge priority={task.priority} />
 
-      <span className={`text-sm flex-1 truncate transition-all duration-200 ${
+      <span className={cn(
+        "text-sm flex-1 truncate transition-all duration-200",
         task.completed ? "text-zinc-400 line-through" : "text-foreground group-hover:text-black"
-      }`}>
+      )}>
         {task.title}
       </span>
 
@@ -208,11 +230,12 @@ const TaskRow = memo(({
       )}
 
       {dueDateInfo.hasAnyDate && (
-        <span className={`flex items-center gap-1 text-[11px] shrink-0 px-2 py-1 rounded-sm transition-all duration-200 ${
+        <span className={cn(
+          "flex items-center gap-1 text-[11px] shrink-0 px-2 py-1 rounded-sm transition-all duration-200",
           dueDateInfo.isOverdueAlert 
             ? "bg-[#c9372c] text-white font-semibold shadow-sm" 
             : "text-muted-foreground group-hover:text-zinc-600"
-        }`}>
+        )}>
           <Clock3 className="size-3" />
           <span className="whitespace-nowrap">{dueDateInfo.displayText}</span>
         </span>
@@ -251,48 +274,289 @@ const TaskRow = memo(({
         </Avatar>
       )}
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0 opacity-100 hover:bg-zinc-200/50 transition-opacity"
-            aria-label="More actions"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44 rounded-sm animate-in fade-in zoom-in-95 duration-200">
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicateCard(task); }}>
-            <Copy className="mr-2 h-4 w-4" /> Duplicate
-          </DropdownMenuItem>
-          {currentUserId && (
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                isCurrentUserAssignee ? onLeaveCard(task) : onJoinCard(task);
-              }}
-              disabled={task.permissions?.canEdit === false}
+      {!isReadOnly && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 opacity-100 hover:bg-zinc-200/50 transition-opacity"
+              aria-label="More actions"
+              onClick={(e) => e.stopPropagation()}
             >
-              {isCurrentUserAssignee ? <UserMinus className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
-              {isCurrentUserAssignee ? "Leave" : "Join"}
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 rounded-sm animate-in fade-in zoom-in-95 duration-200">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicateCard(task); }}>
+              <Copy className="mr-2 h-4 w-4" /> Duplicate
             </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            onClick={(e) => { e.stopPropagation(); onDeleteCard(task); }}
-            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {currentUserId && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  isCurrentUserAssignee ? onLeaveCard(task) : onJoinCard(task);
+                }}
+                disabled={task.permissions?.canEdit === false}
+              >
+                {isCurrentUserAssignee ? <UserMinus className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                {isCurrentUserAssignee ? "Leave" : "Join"}
+              </DropdownMenuItem>
+            )}
+            {onRemoveFromCycle && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveFromCycle(task);
+                }}
+                disabled={task.permissions?.canEdit === false}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" /> Remove from cycle
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onDeleteCard(task); }}
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+};
+
+const SortableTaskRow = memo(({
+  task,
+  currentUserId,
+  currentUserAvatar,
+  showLabelDetails,
+  onEditCard,
+  onDuplicateCard,
+  onJoinCard,
+  onLeaveCard,
+  onRemoveFromCycle,
+  onDeleteCard,
+  onToggleLabelDetails,
+  workspaceLabels,
+  isReadOnly,
+}: {
+  task: Task;
+  currentUserId?: string | null;
+  currentUserAvatar?: string;
+  showLabelDetails: boolean;
+  onEditCard: (task: Task) => void;
+  onDuplicateCard: (task: Task) => void;
+  onJoinCard: (task: Task) => void;
+  onLeaveCard: (task: Task) => void;
+  onRemoveFromCycle: (task: Task) => void;
+  onDeleteCard: (task: Task) => void;
+  onToggleLabelDetails: (taskId: string) => void;
+  workspaceLabels: any[];
+  isReadOnly?: boolean;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task._id,
+    data: {
+      type: "Task",
+      task,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => onEditCard(task)}
+    >
+      <TaskRowContent
+        task={task}
+        currentUserId={currentUserId}
+        currentUserAvatar={currentUserAvatar}
+        showLabelDetails={showLabelDetails}
+        onEditCard={onEditCard}
+        onDuplicateCard={onDuplicateCard}
+        onJoinCard={onJoinCard}
+        onLeaveCard={onLeaveCard}
+        onRemoveFromCycle={onRemoveFromCycle}
+        onDeleteCard={onDeleteCard}
+        onToggleLabelDetails={onToggleLabelDetails}
+        workspaceLabels={workspaceLabels}
+        isDragging={isDragging}
+        isReadOnly={isReadOnly}
+      />
     </div>
   );
 });
 
-TaskRow.displayName = "TaskRow";
+SortableTaskRow.displayName = "SortableTaskRow";
+
+const ListViewColumn = ({ 
+  group, 
+  expandedIds, 
+  toggleExpand, 
+  setQuickAddColumnId, 
+  isAddingCard, 
+  currentUserId, 
+  currentUserAvatar, 
+  labelDetailsTaskIds, 
+  onEditCard, 
+  onDuplicateCard, 
+  onJoinCard, 
+  onLeaveCard, 
+  onDeleteCard, 
+  onRemoveFromCycle,
+  toggleLabelDetails, 
+  workspaceLabels, 
+  quickAddColumnId, 
+  quickAddInputRef, 
+  quickAddTitle, 
+  setQuickAddTitle, 
+  handleQuickAddSubmit,
+  isReadOnly
+}: any) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: group.key,
+  });
+
+  const isExpanded = expandedIds.has(group.key);
+
+  // Auto-expand when dragging over a collapsed column
+  useEffect(() => {
+    if (isOver && !isExpanded) {
+      toggleExpand(group.key);
+    }
+  }, [isOver, isExpanded, group.key, toggleExpand]);
+
+  const showContent = isExpanded && (group.items.length > 0 || quickAddColumnId === group.key);
+
+  return (
+    <div ref={setNodeRef} className={cn("flex flex-col bg-[#f4f5f7] relative", isOver && "bg-zinc-200/50")}>
+      <div 
+        className="flex items-center gap-2 px-3 py-2.5 transition-colors group cursor-pointer hover:bg-zinc-200/50 z-10"
+        onClick={() => toggleExpand(group.key)}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+          <span className="text-[13.5px] font-semibold text-zinc-900">{group.label}</span>
+          <span className="text-[12px] text-zinc-400 font-normal">{group.items.length}</span>
+        </div>
+        {!isReadOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (!expandedIds.has(group.key)) {
+                toggleExpand(group.key);
+              }
+              setQuickAddColumnId(group.key);
+            }}
+            disabled={isAddingCard}
+            className="h-7 w-7 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50"
+          >
+            <Plus className="size-4" />
+          </Button>
+        )}
+      </div>
+
+      {showContent && (
+        <div className="bg-white border-t border-border/60 transition-all">
+          <SortableContext
+            items={group.items.map((t: any) => t._id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col">
+              {group.items.map((task: any) => (
+                <SortableTaskRow
+                  key={task._id}
+                  task={task}
+                  currentUserId={currentUserId}
+                  currentUserAvatar={currentUserAvatar}
+                  showLabelDetails={labelDetailsTaskIds.has(task._id)}
+                  onEditCard={onEditCard}
+                  onDuplicateCard={onDuplicateCard}
+                  onJoinCard={onJoinCard}
+                  onLeaveCard={onLeaveCard}
+                  onRemoveFromCycle={onRemoveFromCycle}
+                  onDeleteCard={onDeleteCard}
+                  onToggleLabelDetails={toggleLabelDetails}
+                  workspaceLabels={workspaceLabels}
+                  isReadOnly={isReadOnly}
+                />
+              ))}
+
+              {quickAddColumnId === group.key && (
+                <div className="bg-white border-b border-border/40 animate-in slide-in-from-top-2 duration-200">
+                  <div className="border-t border-border/40">
+                    <input
+                      ref={quickAddInputRef}
+                      type="text"
+                      value={quickAddTitle}
+                      onChange={(e) => setQuickAddTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleQuickAddSubmit(group.key);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setQuickAddColumnId(null);
+                          setQuickAddTitle("");
+                        }
+                      }}
+                      placeholder="What needs to be done?"
+                      className="h-10 w-full border-0 bg-transparent px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-500"
+                      disabled={isAddingCard}
+                    />
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-transparent">
+                      <Button
+                        size="sm"
+                        className="h-7 rounded-sm bg-black px-3 text-white hover:bg-black/90"
+                        onClick={() => handleQuickAddSubmit(group.key)}
+                        disabled={!quickAddTitle.trim() || isAddingCard}
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 rounded-sm px-2 text-zinc-600 hover:bg-zinc-100"
+                        onClick={() => {
+                          setQuickAddColumnId(null);
+                          setQuickAddTitle("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </SortableContext>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /* Main Component */
 type ListViewProps = {
@@ -306,8 +570,11 @@ type ListViewProps = {
   onDuplicateCard: (task: Task) => void;
   onJoinCard: (task: Task) => void;
   onLeaveCard: (task: Task) => void;
+  onRemoveFromCycle: (task: Task) => void;
+  onMoveCard: (taskId: string, newColumnId: string) => void;
   isAddingCard?: boolean;
   projectId: string;
+  isReadOnly?: boolean;
 };
 
 export default function ListView({
@@ -321,8 +588,11 @@ export default function ListView({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
+  onRemoveFromCycle,
+  onMoveCard,
   isAddingCard,
   projectId,
+  isReadOnly,
 }: ListViewProps) {
   const { workspaceId } = useParams();
   const { data: workspaceLabels = [] } = useLabelsQuery(workspaceId || "", "task");
@@ -342,6 +612,16 @@ export default function ListView({
   const [quickAddColumnId, setQuickAddColumnId] = useState<string | null>(null);
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const quickAddInputRef = useRef<HTMLInputElement | null>(null);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     if (!quickAddColumnId) return;
@@ -360,12 +640,14 @@ export default function ListView({
     onAddCard(columnId, trimmed);
   };
 
-  const toggleExpand = (id: string) => {
-    const next = new Set(expandedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setExpandedIds(next);
-  };
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const toggleLabelDetails = (taskId: string) => {
     setLabelDetailsTaskIds((prev) => {
@@ -374,6 +656,41 @@ export default function ListView({
       else next.add(taskId);
       return next;
     });
+  };
+
+  const getTargetColumnId = useCallback((overId: string) => {
+    // 1. Check if overId is a Column ID directly
+    if (columns.some((col) => resolveTaskColumnId(col) === overId)) {
+      return overId;
+    }
+    // 2. If over an item, find its column
+    for (const [colId, tasks] of tasksByColumnId.entries()) {
+      if (tasks.some(t => t._id === overId)) return colId;
+    }
+    return null;
+  }, [columns, tasksByColumnId]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const task = active.data.current?.task;
+    if (task) setActiveTask(task);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = String(active.id);
+    const overId = String(over.id);
+    const targetColumnId = getTargetColumnId(overId);
+
+    if (targetColumnId) {
+      const task = active.data.current?.task;
+      if (task && task.columnId !== targetColumnId) {
+        onMoveCard(taskId, targetColumnId);
+      }
+    }
   };
 
   const groups = useMemo(() =>
@@ -389,113 +706,67 @@ export default function ListView({
   [columns, tasksByColumnId]);
 
   return (
-    <div className="flex min-h-full flex-col bg-background mt-2 pb-8">
-      <div className="border border-border/80 overflow-hidden flex flex-col divide-y divide-border/80">
-        {groups.map((group) => {
-          const isExpanded = expandedIds.has(group.key);
-          return (
-            <div key={group.key} className="flex flex-col bg-[#f4f5f7]">
-              <div 
-                className="flex items-center gap-2 px-3 py-2.5 transition-colors group cursor-pointer hover:bg-zinc-200/50"
-                onClick={() => toggleExpand(group.key)}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-                  <span className="text-[13.5px] font-semibold text-zinc-900">{group.label}</span>
-                  <span className="text-[12px] text-zinc-400 font-normal">{group.items.length}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (!expandedIds.has(group.key)) {
-                      toggleExpand(group.key);
-                    }
-                    setQuickAddColumnId(group.key);
-                  }}
-                  disabled={isAddingCard}
-                  className="h-7 w-7 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50"
-                >
-                  <Plus className="size-4" />
-                </Button>
-              </div>
-
-              {isExpanded && (
-                <div className="bg-white border-t border-border/60">
-                  <div className="flex flex-col">
-                    {group.items.map((task) => (
-                      <TaskRow
-                        key={task._id}
-                        task={task}
-                        currentUserId={currentUserId}
-                        currentUserAvatar={currentUserAvatar}
-                        showLabelDetails={labelDetailsTaskIds.has(task._id)}
-                        onEditCard={onEditCard}
-                        onDuplicateCard={onDuplicateCard}
-                        onJoinCard={onJoinCard}
-                        onLeaveCard={onLeaveCard}
-                        onDeleteCard={onDeleteCard}
-                        onToggleLabelDetails={toggleLabelDetails}
-                        workspaceLabels={workspaceLabels}
-                      />
-                    ))}
-
-                    {quickAddColumnId === group.key && (
-                      <div className="bg-white border-b border-border/40">
-                        <div className="border-t border-border/40">
-                          <input
-                            ref={quickAddInputRef}
-                            type="text"
-                            value={quickAddTitle}
-                            onChange={(e) => setQuickAddTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleQuickAddSubmit(group.key);
-                              }
-                              if (e.key === "Escape") {
-                                e.preventDefault();
-                                setQuickAddColumnId(null);
-                                setQuickAddTitle("");
-                              }
-                            }}
-                            placeholder="What needs to be done?"
-                            className="h-10 w-full border-0 bg-transparent px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-500"
-                            disabled={isAddingCard}
-                          />
-                          <div className="flex items-center gap-1.5 px-4 py-2 bg-transparent">
-                            <Button
-                              size="sm"
-                              className="h-7 rounded-sm bg-black px-3 text-white hover:bg-black/90"
-                              onClick={() => handleQuickAddSubmit(group.key)}
-                              disabled={!quickAddTitle.trim() || isAddingCard}
-                            >
-                              {isAddingCard ? "Adding..." : "Add"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 rounded-sm px-2 text-zinc-600 hover:bg-zinc-100"
-                              onClick={() => {
-                                setQuickAddColumnId(null);
-                                setQuickAddTitle("");
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex min-h-full flex-col bg-background mt-2 pb-8">
+        <div className="border border-border/80 overflow-hidden flex flex-col divide-y divide-border/80">
+          {groups.map((group) => (
+            <ListViewColumn
+              key={group.key}
+              group={group}
+              expandedIds={expandedIds}
+              toggleExpand={toggleExpand}
+              setQuickAddColumnId={setQuickAddColumnId}
+              isAddingCard={isAddingCard}
+              currentUserId={currentUserId}
+              currentUserAvatar={currentUserAvatar}
+              labelDetailsTaskIds={labelDetailsTaskIds}
+              onEditCard={onEditCard}
+              onDuplicateCard={onDuplicateCard}
+              onJoinCard={onJoinCard}
+              onLeaveCard={onLeaveCard}
+              onRemoveFromCycle={onRemoveFromCycle}
+              onDeleteCard={onDeleteCard}
+              toggleLabelDetails={toggleLabelDetails}
+              workspaceLabels={workspaceLabels}
+              quickAddColumnId={quickAddColumnId}
+              quickAddInputRef={quickAddInputRef}
+              quickAddTitle={quickAddTitle}
+              setQuickAddTitle={setQuickAddTitle}
+              handleQuickAddSubmit={handleQuickAddSubmit}
+              isReadOnly={isReadOnly}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+      {createPortal(
+        <DragOverlay>
+          {activeTask ? (
+            <div className="w-[calc(100vw-400px)] max-w-full bg-white shadow-xl border border-zinc-200 rounded-sm overflow-hidden">
+              <TaskRowContent
+                task={activeTask}
+                currentUserId={currentUserId}
+                currentUserAvatar={currentUserAvatar}
+                showLabelDetails={labelDetailsTaskIds.has(activeTask._id)}
+                onEditCard={() => {}}
+                onDuplicateCard={() => {}}
+                onJoinCard={() => {}}
+                onLeaveCard={() => {}}
+                onRemoveFromCycle={() => {}}
+                onDeleteCard={() => {}}
+                onToggleLabelDetails={() => {}}
+                workspaceLabels={workspaceLabels}
+                isDragging={true}
+              />
+            </div>
+          ) : null}
+        </DragOverlay>,
+        document.body
+      )}
+    </DndContext>
   );
 }

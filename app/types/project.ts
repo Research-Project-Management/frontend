@@ -22,6 +22,10 @@ export interface Project {
   modules: string[];
   workspace: string | Workspace;
   members: ProjectMember[];
+  settings?: {
+    parallelCycles?: boolean;
+    [key: string]: any;
+  };
   createdAt: string;
   updatedAt: string;
 }

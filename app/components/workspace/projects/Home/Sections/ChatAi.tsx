@@ -58,7 +58,7 @@ export default function ChatAi() {
           >
             <SelectTrigger
               size="sm"
-              className="min-w-[100px] data-[size=sm]:h-7 px-2 text-xs focus-visible:ring-transparent hover:ring-1 ring-primary/10 focus-visible:border-transparent bg-secondary/50 rounded-lg border-none"
+              className="min-w-[100px] data-[size=sm]:h-7 px-2 text-xs focus-visible:ring-transparent hover:ring-1 ring-primary/10 focus-visible:border-transparent bg-secondary/50 rounded-sm border-none"
             >
               <SelectValue />
             </SelectTrigger>
@@ -102,7 +102,7 @@ export default function ChatAi() {
           <button
             onClick={handleSend}
             disabled={!message.trim()}
-            className="size-8 flex items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+            className="size-8 flex items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
           >
             <ArrowUp className="size-4" />
           </button>

@@ -31,10 +31,12 @@ type ColumnProps = {
   onDuplicateCard?: (card: Task) => void;
   onJoinCard?: (card: Task) => void;
   onLeaveCard?: (card: Task) => void;
+  onRemoveFromCycle?: (card: Task) => void;
   onToggleCardCompleted?: (card: Task) => void;
   onDelete?: (columnId: string) => void;
   onUpdate?: (columnId: string) => void;
   onAddDisabled?: boolean;
+  isReadOnly?: boolean;
 };
 
 function ColumnComponent({
@@ -49,10 +51,12 @@ function ColumnComponent({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
+  onRemoveFromCycle,
   onToggleCardCompleted,
   onDelete,
   onUpdate,
   onAddDisabled,
+  isReadOnly = false,
 }: ColumnProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -120,48 +124,52 @@ function ColumnComponent({
         >
           <Maximize2 className="h-3.5 w-3.5" />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d] shrink-0"
-          onClick={() => {
-            setIsCollapsed(false);
-            handleOpenQuickAdd();
-          }}
-          aria-label="Add card"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900 shrink-0"
-              aria-label="More column actions"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="bottom" className="w-48">
-            <DropdownMenuItem onClick={() => {
+        {!isReadOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d] shrink-0"
+            onClick={() => {
               setIsCollapsed(false);
-              onUpdate?.(columnId);
-            }}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onDelete?.(columnId)}
-              className="text-destructive focus:text-destructive focus:bg-destructive/10"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              handleOpenQuickAdd();
+            }}
+            aria-label="Add card"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
+        {!isReadOnly && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900 shrink-0"
+                aria-label="More column actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="bottom" className="w-48">
+              <DropdownMenuItem onClick={() => {
+                setIsCollapsed(false);
+                onUpdate?.(columnId);
+              }}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onDelete?.(columnId)}
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     );
   }
@@ -201,43 +209,47 @@ function ColumnComponent({
               <Minimize2 className="h-3.5 w-3.5" />
             </Button>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d]"
-              onClick={handleOpenQuickAdd}
-              aria-label="Add card"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            {!isReadOnly && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-[#6b778c] hover:bg-[#091e420f] hover:text-[#172b4d]"
+                onClick={handleOpenQuickAdd}
+                aria-label="Add card"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"
-                  aria-label="More column actions"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => onUpdate?.(columnId)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete?.(columnId)}
-                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {!isReadOnly && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"
+                    aria-label="More column actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => onUpdate?.(columnId)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => onDelete?.(columnId)}
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </div>
@@ -261,7 +273,9 @@ function ColumnComponent({
               onDuplicate={onDuplicateCard}
               onJoin={onJoinCard}
               onLeave={onLeaveCard}
+              onRemoveFromCycle={onRemoveFromCycle}
               onToggleComplete={onToggleCardCompleted}
+              isReadOnly={isReadOnly}
             />
           ))}
 

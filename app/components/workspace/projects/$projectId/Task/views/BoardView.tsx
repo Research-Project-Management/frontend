@@ -35,6 +35,7 @@ type BoardViewProps = {
   onDuplicateCard: (card: Task) => void;
   onJoinCard: (card: Task) => void;
   onLeaveCard: (card: Task) => void;
+  onRemoveFromCycle: (card: Task) => void;
   onToggleCardCompleted: (card: Task) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
   onDeleteColumn: (columnId: string) => void;
@@ -42,6 +43,7 @@ type BoardViewProps = {
   onCreateColumn?: () => void;
   isAddingCard?: boolean;
   cycleId?: string;
+  isReadOnly?: boolean;
 };
 
 export default function BoardView({
@@ -57,6 +59,7 @@ export default function BoardView({
   onDuplicateCard,
   onJoinCard,
   onLeaveCard,
+  onRemoveFromCycle,
   onToggleCardCompleted,
   onMoveCard,
   onDeleteColumn,
@@ -64,6 +67,7 @@ export default function BoardView({
   onCreateColumn,
   isAddingCard,
   cycleId,
+  isReadOnly,
 }: BoardViewProps) {
   const [activeCard, setActiveCard] = useState<Task | null>(null);
 
@@ -89,7 +93,7 @@ export default function BoardView({
     if (card) {
       setActiveCard(card);
     }
-  }, [tasks]);
+  }, [tasks, isReadOnly]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveCard(null);
@@ -105,14 +109,14 @@ export default function BoardView({
         onMoveCard(taskId, targetColumnId);
       }
     }
-  }, [getTargetColumnId, onMoveCard, tasks]);
+  }, [getTargetColumnId, onMoveCard, tasks, isReadOnly]);
 
   const handleDragCancel = useCallback(() => {
     setActiveCard(null);
   }, []);
 
   return (
-    <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 py-4 kanban-scrollbar">
+    <div className="flex-1 overflow-x-auto overflow-y-hidden px-4 pt-4 pb-0 kanban-scrollbar">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -120,7 +124,7 @@ export default function BoardView({
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex gap-5 h-full min-w-max pb-4">
+        <div className="flex gap-5 h-full min-w-max pb-2.5">
           {columns?.map((column) => {
             if (!column) return null;
             const columnId = resolveTaskColumnId(column);
@@ -142,15 +146,17 @@ export default function BoardView({
                 currentUserAvatar={currentUserAvatar}
                 onJoinCard={onJoinCard}
                 onLeaveCard={onLeaveCard}
+                onRemoveFromCycle={onRemoveFromCycle}
                 onToggleCardCompleted={onToggleCardCompleted}
                 onDelete={onDeleteColumn}
                 onUpdate={onUpdateColumn}
-                onAddDisabled={isAddingCard}
+                onAddDisabled={isAddingCard || isReadOnly}
+                isReadOnly={isReadOnly}
               />
             );
           })}
 
-          {onCreateColumn && (
+          {!isReadOnly && onCreateColumn && (
             <div className="w-72 shrink-0">
               <button
                 type="button"

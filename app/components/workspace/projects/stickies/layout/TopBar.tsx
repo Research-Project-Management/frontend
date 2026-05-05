@@ -20,6 +20,8 @@ interface TopBarProps {
   selectedLabels: string[];
   onToggleLabel: (labelId: string) => void;
   addLabel?: string;
+  labelType?: string;
+  projectId?: string;
 }
 
 export default function TopBar({
@@ -32,6 +34,8 @@ export default function TopBar({
   selectedLabels,
   onToggleLabel,
   addLabel = "New Sticky",
+  labelType = "sticky",
+  projectId,
 }: TopBarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isLabelsOpen, setIsLabelsOpen] = useState(false);
@@ -97,6 +101,8 @@ export default function TopBar({
             selectedLabels={selectedLabels} 
             onToggleLabel={onToggleLabel}
             onClose={() => setIsLabelsOpen(false)}
+            type={labelType}
+            projectId={projectId}
           />
         </PopoverContent>
       </Popover>

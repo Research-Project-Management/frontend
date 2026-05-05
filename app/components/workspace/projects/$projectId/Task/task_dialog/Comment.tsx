@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { SmilePlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "~/lib/utils";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
@@ -116,6 +117,7 @@ type TaskActivitiesProps = {
   activityLoading?: boolean;
   activityError?: boolean;
   activities: ActivityEntry[];
+  isReadOnly?: boolean;
 };
 
 export function TaskActivities({
@@ -138,6 +140,7 @@ export function TaskActivities({
   activityLoading = false,
   activityError = false,
   activities,
+  isReadOnly = false,
 }: TaskActivitiesProps) {
   const [showCommentActions, setShowCommentActions] = useState(false);
   const [isCommentSubmitRequested, setIsCommentSubmitRequested] = useState(false);
@@ -315,11 +318,14 @@ export function TaskActivities({
               setShowCommentActions(false);
             }}
             placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
-            disabled={!canComment}
-            className="min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-zinc-900 shadow-none transition-all duration-200 focus-visible:ring-0"
+            disabled={!canComment || isReadOnly}
+            className={cn(
+              "min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-zinc-900 shadow-none transition-all duration-200 focus-visible:ring-0",
+              (!canComment || isReadOnly) && "cursor-not-allowed bg-zinc-50/50"
+            )}
           />
 
-          {canComment && showCommentActions ? (
+          {canComment && !isReadOnly && showCommentActions ? (
             <div
               className="flex items-center gap-2 transition-all duration-200"
               data-comment-actions="true"
@@ -439,9 +445,13 @@ export function TaskActivities({
                             ) : null}
 
                             <div className="relative mt-1.5 inline-flex items-center gap-2 text-[13px] text-zinc-500">
-                              <button
-                                type="button"
-                                className="inline-flex size-6 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-200 hover:text-black focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                                <button
+                                  type="button"
+                                  disabled={isReadOnly}
+                                  className={cn(
+                                    "inline-flex size-6 items-center justify-center rounded-full text-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-400",
+                                    isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-zinc-200 hover:text-black"
+                                  )}
                                 aria-label="Open reaction picker"
                                 title="Open reaction picker"
                                 onClick={() =>
@@ -452,7 +462,7 @@ export function TaskActivities({
                               >
                                 <SmilePlus className="size-3.5" />
                               </button>
-                              {item.permissions?.canEdit ? (
+                              {item.permissions?.canEdit && !isReadOnly ? (
                                 <>
                                   <span className="text-[#b0b7c3]">•</span>
                                   <button
@@ -464,7 +474,7 @@ export function TaskActivities({
                                   </button>
                                 </>
                               ) : null}
-                              {item.permissions?.canDelete ? (
+                              {item.permissions?.canDelete && !isReadOnly ? (
                                 <>
                                   <span className="text-[#b0b7c3]">•</span>
                                   <button

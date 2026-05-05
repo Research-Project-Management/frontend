@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, X, Copy, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { MoreHorizontal, X, Copy, Trash2, UserMinus, UserPlus, RotateCcw } from "lucide-react";
 import { resolveTaskColumnId, type Column } from "~/types/task";
 
 type TaskHeaderProps = {
@@ -24,8 +24,10 @@ type TaskHeaderProps = {
   onJoin?: () => void;
   onLeave?: () => void;
   onDuplicate?: () => void;
+  onRemoveFromCycle?: () => void;
   onDelete?: () => void;
   onClose: () => void;
+  isReadOnly?: boolean;
 };
 
 export function TaskHeader({
@@ -37,12 +39,14 @@ export function TaskHeader({
   onJoin,
   onLeave,
   onDuplicate,
+  onRemoveFromCycle,
   onDelete,
   onClose,
+  isReadOnly = false,
 }: TaskHeaderProps) {
   return (
     <div className="flex items-center justify-between px-7 py-5 border-b border-border bg-white sticky top-0 z-20 shrink-0">
-      <Select value={columnId} onValueChange={setColumnId}>
+      <Select value={columnId} onValueChange={setColumnId} disabled={isReadOnly}>
         <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-zinc-100 px-3 text-[14px] font-semibold text-zinc-900 shadow-none hover:bg-zinc-200 focus:ring-0 transition-colors">
           <SelectValue placeholder="Select status" />
         </SelectTrigger>
@@ -70,13 +74,13 @@ export function TaskHeader({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-sm border-border/50 shadow-xl p-1.5">
-            {onDuplicate && (
+            {!isReadOnly && onDuplicate && (
               <DropdownMenuItem onClick={onDuplicate} className="rounded-sm py-2.5">
                 <Copy className="mr-3 h-4 w-4 opacity-70" />
                 <span>Duplicate</span>
               </DropdownMenuItem>
             )}
-            {currentUserId && onJoin && onLeave ? (
+            {currentUserId && onJoin && onLeave && (
               <DropdownMenuItem
                 onClick={isCurrentUserAssignee ? onLeave : onJoin}
                 className="rounded-sm py-2.5"
@@ -88,8 +92,17 @@ export function TaskHeader({
                 )}
                 <span>{isCurrentUserAssignee ? "Leave" : "Join"}</span>
               </DropdownMenuItem>
-            ) : null}
-            {onDelete && (
+            )}
+            {onRemoveFromCycle && (
+              <DropdownMenuItem
+                onClick={onRemoveFromCycle}
+                className="rounded-sm py-2.5"
+              >
+                <RotateCcw className="mr-3 h-4 w-4 opacity-70" />
+                <span>Remove from cycle</span>
+              </DropdownMenuItem>
+            )}
+            {!isReadOnly && onDelete && (
               <DropdownMenuItem
                 onClick={onDelete}
                 className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-sm py-2.5"

@@ -9,6 +9,7 @@ import { TaskDialog } from "./task_dialog/CardDetail";
 import CreateModal, { type SectionData } from "./modals/CreateModal";
 import DeleteModal from "./modals/DeleteModal";
 import { AddExistingTaskModal } from "./modals/AddExistingTaskModal";
+import { TransferModal } from "../Cycle/modals/TransferModal";
 import {
   useProjectTasks,
   useCreateTask,
@@ -32,7 +33,7 @@ import { resolveTaskColumnId } from "~/types/task";
 import { Skeleton } from "~/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from "~/hooks/useAuth";
-import { KanbanSquare, ChevronDown, Check, Search, ChevronRight, RotateCcw } from "lucide-react";
+import { KanbanSquare, ChevronDown, Check, Search, ChevronRight, RotateCcw, Plus, Info, ArrowRightLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,9 +73,6 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>([]);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
 
-  const { projects } = useProjects();
-  const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
-
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogCard, setDialogCard] = useState<Partial<TaskType>>({});
@@ -87,6 +85,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [cycleSearchTerm, setCycleSearchTerm] = useState("");
 
   const allTasks = data?.tasks ?? [];
@@ -136,16 +135,29 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
 
   const tasksByColumnId = useMemo(() => {
     const grouped = new Map<string, TaskType[]>();
+    const validColumnIds = new Set(columns.map(c => resolveTaskColumnId(c)));
+    const firstColumnId = validColumnIds.size > 0 ? Array.from(validColumnIds)[0] : null;
 
     for (const task of tasks) {
-      if (!grouped.has(task.columnId)) {
-        grouped.set(task.columnId, []);
+      let targetColumnId = task.columnId;
+      
+      // If task has no column or invalid column, move it to the first column for visibility
+      if (!targetColumnId || !validColumnIds.has(targetColumnId)) {
+        if (firstColumnId) {
+          targetColumnId = firstColumnId;
+        }
       }
-      grouped.get(task.columnId)!.push(task);
+
+      if (targetColumnId) {
+        if (!grouped.has(targetColumnId)) {
+          grouped.set(targetColumnId, []);
+        }
+        grouped.get(targetColumnId)!.push(task);
+      }
     }
 
     return grouped;
-  }, [tasks]);
+  }, [tasks, columns]);
 
   const taskLabelMap = useMemo(() => {
     return new Map(
@@ -410,25 +422,48 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
     });
   };
 
+  const handleRemoveFromCycle = (card: TaskType, callback?: () => void) => {
+    updateTaskMutation.mutate({
+      taskId: card._id,
+      projectId: projectId!,
+      cycle: null,
+    }, {
+      onSuccess: () => {
+        toast.success("Task removed from cycle");
+        callback?.();
+      }
+    });
+  };
+
   const handleAssignExistingTasksToDate = (
     taskIds: string[],
     dueDate: string,
+    quiet = false,
+    startDate?: string | null,
   ) => {
     if (taskIds.length === 0) return;
 
     taskIds.forEach((taskId) => {
-      updateTaskMutation.mutate({
+      const payload: any = {
         taskId,
         projectId: projectId!,
         dueDate,
-      });
+      };
+
+      if (startDate !== undefined) {
+        payload.startDate = startDate;
+      }
+
+      updateTaskMutation.mutate(payload);
     });
 
-    toast.success(
-      taskIds.length === 1
-        ? "Task added to calendar"
-        : `${taskIds.length} tasks added to calendar`,
-    );
+    if (!quiet) {
+      toast.success(
+        taskIds.length === 1
+          ? "Task added to calendar"
+          : `${taskIds.length} tasks added to calendar`,
+      );
+    }
   };
 
 
@@ -457,7 +492,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
       <Topbar
-        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
+        project={projectData?.project ? { name: projectData.project.name, avatar: projectData.project.avatar } : undefined}
         title={cycleId && currentCycle ? "Cycles" : "Tasks"}
         onTitleClick={cycleId ? () => navigate(`/${workspaceId}/projects/${projectId}/cycles`) : undefined}
         Icon={cycleId ? RotateCcw : KanbanSquare}
@@ -550,9 +585,26 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
             onAddTask={() => handleOpenAddDialog(resolveTaskColumnId(columns[0]))}
             onAddExistingTask={cycleId ? () => setIsAddExistingModalOpen(true) : undefined}
             isLoading={createTaskMutation.isPending}
+            isReadOnly={isReadOnly}
           />
         }
       />
+
+      {isReadOnly && cycleId && (
+        <div className="flex items-center justify-between px-4 pt-4 pb-1.5 bg-white animate-in fade-in slide-in-from-top-1 duration-300">
+          <div className="flex items-center gap-2">
+            <Info className="size-3.5 text-zinc-500" />
+            <span className="text-[13px] text-zinc-500 font-medium">Completed cycles are not editable.</span>
+          </div>
+          <button 
+            className="h-7 px-3 flex items-center gap-2 rounded-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-[11px] font-bold transition-colors active:scale-[0.98]"
+            onClick={() => setIsTransferModalOpen(true)}
+          >
+            <ArrowRightLeft className="size-3" />
+            Transfer Tasks
+          </button>
+        </div>
+      )}
 
       {isCycleEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center p-6 bg-white animate-in fade-in zoom-in-95 duration-500">
@@ -571,22 +623,24 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
              No tasks to show in this cycle
            </h3>
            <p className="text-[13px] text-muted-foreground max-w-[440px] text-center mb-8 leading-relaxed">
-             Create tasks to begin monitoring your team's progress this cycle and achieve your goals on time.
+             Add tasks to begin monitoring your team's progress this cycle and achieve your goals on time.
            </p>
-           <div className="flex items-center gap-3">
-             <button
-               onClick={() => handleOpenAddDialog(resolveTaskColumnId(columns[0]))}
-               className="h-9 px-4 bg-black text-white rounded-sm text-[13px] font-semibold hover:bg-zinc-800 transition-all shadow-sm active:scale-[0.98]"
-             >
-               Create task
-             </button>
-             <button
-               onClick={() => setIsAddExistingModalOpen(true)}
-               className="h-9 px-4 bg-white border border-border text-foreground rounded-sm text-[13px] font-semibold hover:bg-zinc-50 transition-all active:scale-[0.98]"
-             >
-               Add existing task
-             </button>
-           </div>
+            {!isReadOnly && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleOpenAddDialog(resolveTaskColumnId(columns[0]))}
+                  className="h-9 px-4 bg-black text-white rounded-sm text-[13px] font-semibold hover:bg-zinc-800 transition-all shadow-sm active:scale-[0.98] flex items-center gap-2"
+                >
+                  Add task
+                </button>
+                <button
+                  onClick={() => setIsAddExistingModalOpen(true)}
+                  className="h-9 px-4 bg-white border border-border text-foreground rounded-sm text-[13px] font-semibold hover:bg-zinc-50 transition-all active:scale-[0.98]"
+                >
+                  Add existing task
+                </button>
+              </div>
+            )}
         </div>
       ) : visibleColumns.length === 0 && hasActiveTaskFilters ? (
         <div className="flex flex-1 items-center justify-center px-6 py-10">
@@ -615,14 +669,16 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
           onLeaveCard={handleLeaveCard}
           onToggleCardCompleted={handleToggleCardCompleted}
           onMoveCard={handleMoveCard}
+          onCreateColumn={handleOpenAddSectionModal}
           onDeleteColumn={handleOpenDeleteModal}
           onUpdateColumn={handleOpenRenameModal}
-          onCreateColumn={handleOpenAddSectionModal}
+          onRemoveFromCycle={handleRemoveFromCycle}
           isAddingCard={createTaskMutation.isPending}
           cycleId={cycleId}
+          isReadOnly={isReadOnly}
         />
       ) : viewMode === "list" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4">
           <ListView
             projectId={projectId!}
             tasksByColumnId={tasksByColumnId}
@@ -635,11 +691,14 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
             onDuplicateCard={handleDuplicateCard}
             onJoinCard={handleJoinCard}
             onLeaveCard={handleLeaveCard}
+            onRemoveFromCycle={handleRemoveFromCycle}
+            onMoveCard={handleMoveCard}
             isAddingCard={createTaskMutation.isPending}
+            isReadOnly={isReadOnly}
           />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4">
           <CalendarView
             tasks={allTasks}
             columns={columns}
@@ -648,7 +707,9 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
             onAddCard={handleOpenAddDialog}
             onOpenCardDetail={handleOpenEditDialog}
             onAssignExistingTasks={handleAssignExistingTasksToDate}
+            onRemoveFromCycle={cycleId ? handleRemoveFromCycle : undefined}
             isAddingCard={createTaskMutation.isPending}
+            isReadOnly={isReadOnly}
           />
         </div>
       )}
@@ -662,6 +723,8 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
         onSave={handleSaveCard}
         onDelete={handleDeleteCard}
         onDuplicate={() => dialogCard._id && handleDuplicateCard(dialogCard as TaskType)}
+        onRemoveFromCycle={cycleId ? () => handleRemoveFromCycle(dialogCard as TaskType, () => setDialogOpen(false)) : undefined}
+        isReadOnly={isReadOnly}
       />
 
       {/* Column Management Modals */}
@@ -709,6 +772,20 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
           onOpenChange={setIsAddExistingModalOpen}
           projectId={projectId!}
           currentCycleId={cycleId}
+          columns={columns}
+          members={members}
+        />
+      )}
+
+      {cycleId && currentCycle && (
+        <TransferModal
+          open={isTransferModalOpen}
+          onOpenChange={setIsTransferModalOpen}
+          projectId={projectId!}
+          sourceCycleId={cycleId}
+          sourceCycleName={currentCycle.name}
+          tasks={allTasks}
+          availableCycles={cyclesData?.cycles ?? []}
           columns={columns}
           members={members}
         />

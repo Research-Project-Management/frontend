@@ -18,14 +18,19 @@ interface ManageLabelsSectionProps {
   selectedLabels?: string[];
   onToggleLabel?: (labelId: string) => void;
   onClose?: () => void;
+  type?: string;
+  projectId?: string;
 }
 
 export default function ManageLabelsSection({ 
   selectedLabels = [],
   onToggleLabel,
-  onClose
+  onClose,
+  type = "sticky",
+  projectId: propProjectId
 }: ManageLabelsSectionProps) {
-  const { workspaceId, projectId } = useParams();
+  const { workspaceId, projectId: routeProjectId } = useParams();
+  const projectId = propProjectId !== undefined ? propProjectId : routeProjectId;
 
   const {
     filteredLabels,
@@ -43,7 +48,7 @@ export default function ManageLabelsSection({
     handleSave,
     handleDelete,
     isMutating
-  } = useLabels(workspaceId!, "sticky", projectId);
+  } = useLabels(workspaceId!, type, projectId);
 
   const toggleLabel = (labelId: string) => {
     onToggleLabel?.(labelId);
@@ -132,7 +137,11 @@ export default function ManageLabelsSection({
             </Button>
             {editingLabelId && (
               <Button 
-                onClick={() => handleDelete((id) => toggleLabel(id))} 
+                onClick={() => handleDelete((id) => {
+                  if (selectedLabels.includes(id)) {
+                    toggleLabel(id);
+                  }
+                })} 
                 variant="destructive" 
                 disabled={isMutating}
                 className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"

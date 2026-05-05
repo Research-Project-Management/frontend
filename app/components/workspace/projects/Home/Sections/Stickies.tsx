@@ -60,16 +60,16 @@ function MiniCard({
         </p>
       </div>
 
-      {/* Tags */}
-      {note.tags && note.tags.length > 0 && (
+      {/* Labels */}
+      {note.labels && note.labels.length > 0 && (
         <div className="flex flex-wrap gap-1 px-3 pb-2.5 mt-auto">
-          {note.tags.slice(0, 3).map((tag) => (
+          {note.labels.slice(0, 3).map((label) => (
             <span
-              key={tag._id}
+              key={label._id}
               className="px-1.5 py-0.5 text-[9px] rounded font-semibold text-white leading-none"
-              style={{ backgroundColor: tag.color || "#aaa" }}
+              style={{ backgroundColor: label.color || "#aaa" }}
             >
-              {tag.name}
+              {label.name}
             </span>
           ))}
         </div>
@@ -101,7 +101,7 @@ function AddCard({
       ) : (
         <>
           <Plus className="h-4 w-4" />
-          <span className="text-xs font-medium">New note</span>
+          <span className="text-xs font-medium">Add note</span>
         </>
       )}
     </button>

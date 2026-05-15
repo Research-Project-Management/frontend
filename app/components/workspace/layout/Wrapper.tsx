@@ -341,7 +341,7 @@ export function SideBar() {
   const id = useId();
   return (
     <LayoutGroup id={id}>
-      <div className="order-2 flex h-14 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-sm backdrop-blur md:order-1 md:h-auto md:w-20 md:flex-col md:justify-start md:border-0 md:bg-transparent md:p-2 md:shadow-none">
+      <div className="order-2 flex h-16 gap-2 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-sm backdrop-blur md:order-1 md:h-auto md:w-20 md:flex-col md:justify-start md:border-0 md:bg-transparent md:p-2 md:shadow-none">
         {sidebarItems.map((item) => (
           <ItemSideBar
             key={item.label}

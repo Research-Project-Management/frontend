@@ -22,9 +22,9 @@ import HistoryTab from "./Tabs/HistoryTab";
 const sideBarItems = [
   { name: "Files", icon: FileText },
   { name: "Search", icon: Search },
-  { name: "Ask AI", icon: Sparkles },
   { name: "Review", icon: MessageSquareQuote },
   { name: "History", icon: History },
+  { name: "Flux AI", icon: Sparkles },
 ] as const;
 
 type Tab = (typeof sideBarItems)[number]["name"];
@@ -32,7 +32,7 @@ type Tab = (typeof sideBarItems)[number]["name"];
 function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
-  if (tab === "Ask AI") return <ChatAiTab onClose={onClose} />;
+  if (tab === "Flux AI") return <ChatAiTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
   if (tab === "History") return <HistoryTab onClose={onClose} />;
   return null;
@@ -56,7 +56,7 @@ function loadPanel(): Tab | null {
         if (first) return first;
       }
     }
-  } catch {}
+  } catch { }
   return "Files";
 }
 
@@ -100,7 +100,7 @@ export default function SideBar() {
                         : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
                     )}
                   >
-                  <item.icon className="size-4" strokeWidth={1.8} />
+                    <item.icon className="size-4" strokeWidth={1.8} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{item.name}</TooltipContent>

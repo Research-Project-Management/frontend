@@ -7,16 +7,16 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
   X, ArrowUp, Square, Copy, Check, FileCode2, Eye, Download,
-  Trash2, Loader2, AlertTriangle, Pin, Zap,
+  Trash2, Loader2, AlertTriangle, Pin, Zap, History,
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useParams } from "react-router";
 import {
   getPageChat, streamEditorChat, appendChatMessages,
-  clearPageChat, compilePreview, type PreviewCompileResult,
+  clearPageChat, compilePreview, getChatSession, type PreviewCompileResult,
 } from "~/query/chat-ai";
-import type { ChatMessage } from "~/types/chat";
+import type { ChatMessage, ChatSession } from "~/types/chat";
 import { useWorkspaceActionsStore } from "~/stores/workspace-actions";
 import { usePageContext } from "../../PageContext";
 import type { PendingAiContext } from "~/stores/workspace-actions";
@@ -45,6 +45,7 @@ import {
   tryLocalCommandEdit,
 } from "~/lib/ai-edit-helpers";
 import AiEditSuggestionCard from "./AiEditSuggestionCard";
+import ChatHistoryModal from "~/components/workspace/ai/layout/ChatHistoryModal";
 
 // ── Slash Commands ────────────────────────────────────────────────────────────
 
@@ -445,6 +446,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const [streamContent, setStreamContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Slash commands
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -1216,6 +1218,33 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     catch (err) { console.error("[ChatAiTab] Clear error:", err); }
   }, [pageId]);
 
+  const handleSelectHistoryChat = useCallback(async (chat: ChatSession) => {
+    setIsLoading(true);
+    setPendingEditResponse(null);
+    setEditSafetyWarning(null);
+    setResolvedMsgIdxes(new Set());
+    abortRef.current?.abort();
+
+    try {
+      const session = await getChatSession(chat._id);
+      setChatId(session._id);
+      setMessages(
+        (session.messages ?? []).map(({ role, content, sources }) => ({
+          role,
+          content,
+          sources,
+        })),
+      );
+      setStreamContent("");
+      streamRef.current = "";
+    } catch (err) {
+      console.error("[ChatAiTab] Load history chat error:", err);
+      toast.error("Could not open that chat history");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const quickPrompts = [
     "Improve this paragraph's academic writing style",
     "Fix any LaTeX syntax errors in my selection",
@@ -1264,6 +1293,15 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             >
               <Wand2 className="size-3" />
               <span className="hidden sm:inline">Auto</span>
+            </button>
+
+            <button
+              onClick={() => setHistoryOpen(true)}
+              disabled={!workspaceId}
+              title="Show chat history"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-20"
+            >
+              <History className="size-3.5" />
             </button>
 
             {showClearConfirm ? (
@@ -1660,6 +1698,16 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           onInsert={() => { handleInsert(previewSuggestion); setPreviewResult(null); setPreviewSuggestion(""); }}
         />
       )}
+
+      <ChatHistoryModal
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        workspaceId={workspaceId}
+        activeChatId={chatId}
+        onSelectChat={handleSelectHistoryChat}
+        title="Editor Chat History"
+        description="Open previous Flux AI conversations without keeping a second history panel in the editor."
+      />
     </>
   );
 }

@@ -80,14 +80,29 @@ export interface ChatTraceResponse {
 
 // ── Action Agent Types ──────────────────────────────────────────────────────────
 
-/** A single tool execution event from the action agent */
+/** A single event from the action agent pipeline.
+ *
+ * Event types:
+ * - `tool_start` / `tool_end` — legacy events from direct action agent (kept for compat)
+ * - `tool_call` — real-time sub-agent tool progress (status: "calling" | "done" | "error")
+ * - `agent_handoff` — orchestrator delegating to a sub-agent
+ * - `thinking` — orchestrator is reasoning (early feedback before first handoff)
+ */
 export interface AgentAction {
-  type: "tool_start" | "tool_end";
-  tool: string;
+  type: "tool_start" | "tool_end" | "tool_call" | "agent_handoff" | "thinking";
+  // tool_start / tool_end / tool_call
+  tool?: string;
+  agent?: string;
+  status?: "calling" | "done" | "error";
   input?: Record<string, unknown>;
   output?: Record<string, unknown>;
   needs_confirm?: boolean;
   error?: string;
+  // agent_handoff
+  from?: string;
+  to?: string;
+  parallel?: boolean;
+  request?: string;
 }
 
 /** Tool category for color coding */

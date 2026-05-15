@@ -257,9 +257,8 @@ const MessageBubble = memo(function MessageBubble({
 
   return (
     <div
-      className={`flex gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${
-        isUser ? "justify-end" : "justify-start"
-      }`}
+      className={`flex gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${isUser ? "justify-end" : "justify-start"
+        }`}
     >
       {!isUser && (
         <div className="shrink-0 size-7 rounded-lg flex items-center justify-center mt-0.5">
@@ -268,11 +267,10 @@ const MessageBubble = memo(function MessageBubble({
       )}
 
       <div
-        className={`group relative ${
-          isUser
+        className={`group relative ${isUser
             ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-4 py-2.5 border border-zinc-200 dark:border-zinc-600"
             : "max-w-[90%]"
-        }`}
+          }`}
       >
         {isUser ? (
           <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -813,7 +811,7 @@ export default function ChatView() {
       )}
 
       {/* Input */}
-      <div className="shrink-0 border-t bg-background/80 backdrop-blur-sm p-4">
+      <div className="shrink-0  bg-background/80 backdrop-blur-sm p-4">
         <ChatAi onSend={handleSend} disabled={isStreaming} initialProject={sessionProjectId} />
       </div>
     </div>

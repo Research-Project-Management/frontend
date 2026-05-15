@@ -164,46 +164,46 @@ export default function WikiChatFeatures() {
 
   return (
     <>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
 
         {/* ── Section: RAG toggle ── */}
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 px-0.5">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
             Context
           </p>
 
           <button
             type="button"
             onClick={() => setFluxDataEnabled((v) => !v)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
               fluxDataEnabled
-                ? "bg-[#3370ff]/10 hover:bg-[#3370ff]/15"
-                : "bg-secondary/40 hover:bg-secondary/70"
+                ? "border-primary/25 bg-accent hover:bg-primary/10"
+                : "border-border bg-background hover:bg-muted/60"
             }`}
           >
             <div className={`size-7 rounded-md flex items-center justify-center shrink-0 ${
-              fluxDataEnabled ? "bg-[#3370ff]/15" : "bg-secondary"
+              fluxDataEnabled ? "bg-primary/10" : "bg-muted"
             }`}>
-              <Database className={`size-3.5 ${fluxDataEnabled ? "text-[#3370ff]" : "text-muted-foreground/50"}`} />
+              <Database className={`size-3.5 ${fluxDataEnabled ? "text-primary" : "text-muted-foreground"}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-xs font-medium ${fluxDataEnabled ? "text-[#3370ff]" : "text-foreground/70"}`}>
+              <p className={`text-xs font-medium ${fluxDataEnabled ? "text-primary" : "text-foreground"}`}>
                 Flux Data
               </p>
-              <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 {fluxDataEnabled ? "AI reads your files" : "File context off"}
               </p>
             </div>
             {/* Toggle indicator */}
             <div className={`size-4 rounded-full shrink-0 border-2 transition-colors ${
-              fluxDataEnabled ? "bg-[#3370ff] border-[#3370ff]" : "bg-transparent border-border/50"
+              fluxDataEnabled ? "bg-primary border-primary" : "bg-transparent border-border"
             }`} />
           </button>
         </div>
 
         {/* ── Section: Upload ── */}
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 px-0.5">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
             Files
           </p>
 
@@ -215,23 +215,23 @@ export default function WikiChatFeatures() {
             onClick={() => inputRef.current?.click()}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed cursor-pointer transition-all select-none ${
               isDragging
-                ? "border-[#3370ff]/50 bg-[#3370ff]/5"
-                : "border-border/40 hover:border-border/70 hover:bg-secondary/20"
+                ? "border-primary/50 bg-accent"
+                : "border-border bg-background hover:border-primary/30 hover:bg-muted/60"
             }`}
           >
             <input ref={inputRef} type="file" multiple accept={ACCEPTED_TYPES} className="hidden"
               onChange={(e) => addFiles(e.target.files)} />
-            <div className="size-7 rounded-md bg-secondary/60 flex items-center justify-center shrink-0">
+            <div className="size-7 rounded-md bg-muted flex items-center justify-center shrink-0">
               {isDragging
-                ? <CloudUpload className="size-3.5 text-[#3370ff]" />
-                : <FileUp className="size-3.5 text-muted-foreground/50" />
+                ? <CloudUpload className="size-3.5 text-primary" />
+                : <FileUp className="size-3.5 text-muted-foreground" />
               }
             </div>
             <div>
-              <p className="text-xs font-medium text-foreground/60">
+              <p className="text-xs font-medium text-foreground">
                 {isDragging ? "Drop to upload" : "Upload files"}
               </p>
-              <p className="text-[10px] text-muted-foreground/40 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 PDF · DOCX · MD · CSV · code
               </p>
             </div>
@@ -239,26 +239,38 @@ export default function WikiChatFeatures() {
 
           {/* File list */}
           {totalCount > 0 && (
-            <div className="flex flex-col gap-0.5 mt-1">
+            <div className="flex flex-col gap-1 mt-1">
               {/* Uploading */}
               {uploading.map((u) => (
-                <div key={u.tempId}
-                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-secondary/30"
+                <div
+                  key={u.tempId}
+                  className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors ${
+                    u.error
+                      ? "border-destructive/20 bg-destructive/5"
+                      : "border-border/70 bg-background"
+                  }`}
                 >
-                  {getFileIcon(u.name)}
-                  <p className="flex-1 text-[11px] text-foreground/50 truncate">{u.name}</p>
-                  <span className="text-[10px] text-muted-foreground/40 shrink-0">
-                    {formatFileSize(u.size)}
-                  </span>
-                  {u.error
-                    ? <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertCircle className="size-3.5 text-destructive/60 shrink-0" />
-                        </TooltipTrigger>
-                        <TooltipContent side="left">Upload failed</TooltipContent>
-                      </Tooltip>
-                    : <Loader2 className="size-3.5 text-muted-foreground/40 animate-spin shrink-0" />
-                  }
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
+                    {getFileIcon(u.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-foreground/80">
+                      {u.name}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {u.error ? "Upload failed" : `${formatFileSize(u.size)} · Uploading`}
+                    </p>
+                  </div>
+                  {u.error ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertCircle className="size-3.5 shrink-0 text-destructive/70" />
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Upload failed</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Loader2 className="size-3.5 shrink-0 animate-spin text-primary/60" />
+                  )}
                 </div>
               ))}
 
@@ -267,32 +279,40 @@ export default function WikiChatFeatures() {
                 <div
                   key={s.id}
                   onClick={() => toggleSource(s.id)}
-                  className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-colors ${
+                  className={`group flex items-center gap-2.5 rounded-lg border px-2.5 py-2 cursor-pointer transition-colors ${
                     s.enabled
-                      ? "bg-[#3370ff]/8 hover:bg-[#3370ff]/12"
-                      : "hover:bg-secondary/40"
+                      ? "border-primary/20 bg-accent hover:bg-primary/10"
+                      : "border-transparent hover:border-border hover:bg-muted/60"
                   }`}
                 >
-                  {/* Active dot */}
-                  <div className={`size-1.5 rounded-full shrink-0 transition-colors ${
-                    s.enabled ? "bg-[#3370ff]" : "bg-border"
-                  }`} />
+                  <div className="relative flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
+                    {getFileIcon(s.name)}
+                    <span
+                      className={`absolute -right-0.5 -top-0.5 size-2 rounded-full border border-background ${
+                        s.enabled ? "bg-primary" : "bg-border"
+                      }`}
+                    />
+                  </div>
 
-                  {getFileIcon(s.name)}
-
-                  <p className={`flex-1 text-[11px] font-medium truncate transition-colors ${
-                    s.enabled ? "text-foreground/80" : "text-foreground/45"
-                  }`}>
-                    {s.name || "Indexed document"}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`truncate text-xs font-medium transition-colors ${
+                        s.enabled ? "text-foreground" : "text-foreground/60"
+                      }`}
+                    >
+                      {s.name || "Indexed document"}
+                    </p>
+                  </div>
 
                   {/* Hover actions */}
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          className="size-6 flex items-center justify-center rounded hover:bg-secondary/80 text-muted-foreground/50 hover:text-foreground/70 transition-colors"
+                          className="size-6 flex items-center justify-center rounded-md hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
                           onClick={() => handleView(s.id, s.name)}
                         >
                           {loadingDocId === s.id
@@ -306,7 +326,7 @@ export default function WikiChatFeatures() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          className="size-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground/50 hover:text-destructive transition-colors"
+                          className="size-6 flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground/50 hover:text-destructive transition-colors"
                           onClick={() => removeSource(s.id)}
                         >
                           <Trash2 className="size-3" />
@@ -322,9 +342,9 @@ export default function WikiChatFeatures() {
 
           {/* Empty state */}
           {totalCount === 0 && (
-            <div className="flex flex-col items-center gap-1.5 py-6 text-center">
-              <FileText className="size-6 text-muted-foreground/15" />
-              <p className="text-[10px] text-muted-foreground/35 leading-relaxed">
+            <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border py-6 text-center">
+              <FileText className="size-6 text-muted-foreground/25" />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 No files yet.<br />Upload to enhance AI answers.
               </p>
             </div>

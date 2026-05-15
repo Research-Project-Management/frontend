@@ -14,7 +14,7 @@ export default function ProjectSettingSidebar() {
   ];
 
   return (
-    <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
+    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-card p-2 py-4">
       {/* Header */}
       <div className="mb-4 px-2 flex items-center font-semibold text-lg text-foreground">
         <span>Settings</span>
@@ -31,18 +31,18 @@ export default function ProjectSettingSidebar() {
             <Link
               to={item.to}
               key={item.label}
-              className={`flex items-center gap-2 p-2 rounded-sm text-sm ${
+              className={`flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors ${
                 isActive
-                  ? "bg-secondary text-primary font-medium"
-                  : "text-primary/90 font-medium hover:bg-secondary/60"
+                  ? "bg-accent text-foreground font-semibold"
+                  : "text-muted-foreground font-medium hover:bg-accent/70 hover:text-foreground"
               }`}
             >
               <item.icon
-                className={`size-4 ${
-                  isActive ? "text-primary" : "text-primary/80"
+                className={`size-4 shrink-0 ${
+                  isActive ? "text-primary" : "text-muted-foreground"
                 }`}
               />
-              <span>{item.label}</span>
+              <span className="min-w-0 truncate">{item.label}</span>
             </Link>
           );
         })}

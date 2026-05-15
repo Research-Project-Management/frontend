@@ -24,7 +24,7 @@ export default function Navbar() {
           : "bg-transparent"
       }`}
     >
-      <div className="container mx-auto px-6">
+      <div className="flux-container">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link
@@ -33,7 +33,7 @@ export default function Navbar() {
             onClick={() => setIsMenuOpen(false)}
           >
             <Flux className="w-6 h-6 text-foreground" />
-            <div className="font-semibold text-lg tracking-tight">Flux</div>
+            <div className="font-semibold text-lg">Flux</div>
           </Link>
 
           {/* Action Buttons */}
@@ -52,7 +52,7 @@ export default function Navbar() {
             </Link>
             <Link
               to="/ws"
-              className="group px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1.5"
+              className="group flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Get started
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -61,7 +61,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 hover:bg-secondary rounded-lg transition-colors"
+            className="rounded-md p-2 transition-colors hover:bg-secondary md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -79,21 +79,21 @@ export default function Navbar() {
             <div className="flex flex-col gap-2">
               <Link
                 to="/contact-sales"
-                className="px-4 py-2.5 text-sm font-medium text-center border border-border rounded-lg hover:bg-secondary transition-colors"
+                className="rounded-md border border-border px-4 py-2.5 text-center text-sm font-medium transition-colors hover:bg-secondary"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact Sales
               </Link>
               <Link
                 to="/login"
-                className="px-4 py-2.5 text-sm font-medium text-center border border-border rounded-lg hover:bg-secondary transition-colors"
+                className="rounded-md border border-border px-4 py-2.5 text-center text-sm font-medium transition-colors hover:bg-secondary"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Sign in
               </Link>
               <Link
                 to="/ws"
-                className="px-4 py-2.5 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-80 transition-opacity text-center flex items-center justify-center gap-1.5"
+                className="flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2.5 text-center text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Get started

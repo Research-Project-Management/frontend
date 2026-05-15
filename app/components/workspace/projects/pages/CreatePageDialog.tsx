@@ -251,7 +251,7 @@ export default function CreatePageDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white shrink-0">
+        <Button size="sm" className="h-8 gap-1.5 rounded-md bg-primary px-3 text-xs text-primary-foreground shadow-none transition-all hover:bg-primary/90 shrink-0">
           <Plus className="size-3.5" />
           Add Document
         </Button>

@@ -7,7 +7,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-border">
-      <div className="container mx-auto px-6 py-12">
+      <div className="flux-container py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1 space-y-4">
@@ -31,7 +31,7 @@ export default function Footer() {
 
           {/* Product */}
           <div className="space-y-3">
-            <h3 className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase">
               Product
             </h3>
             <ul className="space-y-2.5">
@@ -43,7 +43,7 @@ export default function Footer() {
 
           {/* Company */}
           <div className="space-y-3">
-            <h3 className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase">
               Company
             </h3>
             <ul className="space-y-2.5">
@@ -55,7 +55,7 @@ export default function Footer() {
 
           {/* Legal */}
           <div className="space-y-3">
-            <h3 className="text-xs font-medium text-muted-foreground tracking-widest uppercase">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase">
               Legal
             </h3>
             <ul className="space-y-2.5">

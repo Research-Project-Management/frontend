@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import SideBar from "./SideBar";
 import { PanelLeftOpen } from "lucide-react";
@@ -9,13 +9,23 @@ export default function ProjectsLayout() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const location = useLocation();
 
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const syncSidebar = () => setIsSidebarVisible(!media.matches);
+
+    syncSidebar();
+    media.addEventListener("change", syncSidebar);
+    return () => media.removeEventListener("change", syncSidebar);
+  }, []);
+
   return (
-    <div className="h-full flex overflow-hidden relative">
+    <div className="relative flex h-full overflow-hidden bg-background">
       <div
-        className={`h-full transition-all duration-300 ease-in-out ${isSidebarVisible ? "w-60" : "w-0"
-          } border-r border-secondary bg-background overflow-hidden`}
+        className={`absolute inset-y-0 left-0 z-40 h-full transition-all duration-300 ease-in-out lg:relative ${
+          isSidebarVisible ? "w-60" : "w-0"
+        } overflow-hidden bg-card shadow-lg lg:shadow-none`}
       >
-        <div className="w-60 h-full">
+        <div className="h-full w-60">
           <SideBar onToggle={() => setIsSidebarVisible(false)} />
         </div>
       </div>
@@ -29,12 +39,20 @@ export default function ProjectsLayout() {
             variant="ghost"
             size="icon"
             onClick={() => setIsSidebarVisible(true)}
-            className="absolute left-4 top-4 z-50 h-8 w-8 bg-white border border-border shadow-sm hover:bg-secondary rounded-md animate-in fade-in slide-in-from-left-2"
+            className="absolute left-4 top-4 z-50 h-9 w-9 rounded-md border border-border bg-card shadow-sm animate-in fade-in slide-in-from-left-2 hover:bg-secondary"
           >
             <PanelLeftOpen className="size-4 text-primary" />
           </Button>
         )}
-        <div className="flex-1 overflow-y-auto relative">
+        {isSidebarVisible && (
+          <button
+            type="button"
+            aria-label="Close project sidebar"
+            className="absolute inset-0 z-30 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
+            onClick={() => setIsSidebarVisible(false)}
+          />
+        )}
+        <div className="relative flex-1 overflow-y-auto">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               // Only trigger animation when the base section changes (overview, tasks, settings, etc.)
@@ -47,7 +65,7 @@ export default function ProjectsLayout() {
                 duration: 0.25,
                 ease: [0.22, 1, 0.36, 1]
               }}
-              className="h-full w-full"
+              className="h-full w-full min-w-0"
             >
               <Outlet />
             </motion.div>

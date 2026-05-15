@@ -12,7 +12,7 @@ export default function StorageLayout() {
 
     return (
         <div className="h-full flex overflow-hidden">
-            <aside className="border-r">
+            <aside className="shrink-0">
                 <SideBar />
             </aside>
 

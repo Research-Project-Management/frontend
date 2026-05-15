@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ChevronRight, Hash, X } from "lucide-react";
+import { ChevronRight, Hash } from "lucide-react";
 import { pdfjs } from "react-pdf";
 import { cn } from "~/lib/utils";
 import { usePageContext } from "../../PageContext";
+import { SidebarEmptyState, SidebarHeader, SidebarPanel } from "../SidebarChrome";
 
 interface OutlineEntry {
   level: number; // 0=section,1=subsection,2=subsubsection,3=paragraph
@@ -131,28 +132,14 @@ export default function OutlineTab({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden select-none">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 h-8 shrink-0">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Outline
-        </span>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+    <SidebarPanel>
+      <SidebarHeader title="Outline" icon={Hash} onClose={onClose} />
 
       {/* Entries */}
       <div className="flex-1 overflow-y-auto py-1">
         {outline.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-            <Hash className="size-7 opacity-25" />
-            <p className="text-xs text-center leading-relaxed">
+          <SidebarEmptyState icon={Hash} title="No sections found">
+            <p>
               No sections found.
               <br />
               Use{" "}
@@ -161,7 +148,7 @@ export default function OutlineTab({ onClose }: { onClose?: () => void }) {
               </code>{" "}
               to add structure.
             </p>
-          </div>
+          </SidebarEmptyState>
         ) : (
           outline.map((entry, i) => (
             <button
@@ -187,6 +174,6 @@ export default function OutlineTab({ onClose }: { onClose?: () => void }) {
           ))
         )}
       </div>
-    </div>
+    </SidebarPanel>
   );
 }

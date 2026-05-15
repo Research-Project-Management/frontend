@@ -45,7 +45,7 @@ export default function UpcomingSection({
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-primary/50 font-semibold uppercase text-[11px] tracking-wider">Upcoming Tasks</h2>
+        <h2 className="text-muted-foreground font-semibold uppercase text-[11px] tracking-wider">Upcoming Tasks</h2>
       </div>
       <div className="grid gap-2">
         {isLoading ? (

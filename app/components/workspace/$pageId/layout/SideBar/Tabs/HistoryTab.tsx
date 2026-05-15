@@ -12,7 +12,6 @@ import {
   Save,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import {
   usePageVersions,
@@ -26,6 +25,13 @@ import type { PageEvent } from "~/types/page";
 import { usePageContext } from "../../PageContext";
 import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
+import {
+  SidebarEmptyState,
+  SidebarHeader,
+  SidebarPanel,
+  SidebarSegmented,
+  SidebarSection,
+} from "../SidebarChrome";
 
 type View = "file" | "project";
 
@@ -177,67 +183,36 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
   }, [events]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden select-none">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 h-8 shrink-0">
-        <span className="font-semibold text-lg text-muted-foreground uppercase tracking-wide">
-          History
-        </span>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+    <SidebarPanel>
+      <SidebarHeader title="History" icon={History} onClose={onClose} />
 
       {/* View toggle */}
-      <div className="flex px-2 py-1.5 gap-1 border-b border-border shrink-0">
-        <button
-          onClick={() => setView("file")}
-          className={cn(
-            "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
-            view === "file"
-              ? "bg-primary/10 text-primary font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted",
-          )}
-        >
-          <FileText className="size-3" />
-          This File
-        </button>
-        <button
-          onClick={() => setView("project")}
-          className={cn(
-            "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
-            view === "project"
-              ? "bg-primary/10 text-primary font-medium"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted",
-          )}
-        >
-          <FolderClock className="size-3" />
-          Project
-        </button>
-      </div>
+      <SidebarSegmented
+        value={view}
+        onChange={setView}
+        items={[
+          { key: "file", label: "This File", icon: FileText },
+          { key: "project", label: "Project", icon: FolderClock },
+        ]}
+      />
 
       {/* ── "This File" view ─────────────────────────────────────────────────── */}
       {view === "file" && (
         <>
           {/* Save snapshot */}
-          <div className="px-2 py-2 border-b border-border shrink-0 flex gap-1.5">
+          <SidebarSection className="flex gap-1.5">
             <Input
               value={labelInput}
               onChange={(e) => setLabelInput(e.target.value)}
               placeholder="Label (optional)"
-              className="h-7 text-xs flex-1"
+              className="h-8 flex-1 rounded-md text-xs"
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
             <button
               onClick={handleSave}
               disabled={saveMutation.isPending}
               title="Save current file as a snapshot"
-              className="flex items-center gap-1 h-7 px-2 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 shrink-0"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
             >
               {saveMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -246,7 +221,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
               )}
               Save
             </button>
-          </div>
+          </SidebarSection>
 
           {/* File version list */}
           <div className="flex-1 overflow-y-auto py-1">
@@ -256,19 +231,18 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                 <span className="text-xs">Loading…</span>
               </div>
             ) : !versions?.length ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-                <History className="size-7 opacity-25" />
-                <p className="text-xs text-center leading-relaxed">
+              <SidebarEmptyState icon={History} title="No snapshots yet">
+                <p>
                   No snapshots yet.
                   <br />
                   Click <strong>Save</strong> to create one.
                 </p>
-              </div>
+              </SidebarEmptyState>
             ) : (
               versions.map((v) => (
                 <div
                   key={v._id}
-                  className="group flex items-start gap-2 px-3 py-2 hover:bg-primary/5 transition-colors"
+                  className="group flex items-start gap-2 border-b border-border px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/70"
                 >
                   <Clock className="size-3.5 shrink-0 mt-0.5 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
@@ -341,19 +315,18 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
               <span className="text-xs">Loading…</span>
             </div>
           ) : !groupedEvents.length ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-              <History className="size-7 opacity-25" />
-              <p className="text-xs text-center leading-relaxed px-4">
+            <SidebarEmptyState icon={History} title="No activity yet">
+              <p>
                 No activity yet.
                 <br />
                 Changes are tracked automatically.
               </p>
-            </div>
+            </SidebarEmptyState>
           ) : (
             groupedEvents.map(({ label: dayLabel, items }) => (
               <div key={dayLabel}>
                 {/* Day separator */}
-                <div className="sticky top-0 z-10 px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide bg-background border-b border-border/50">
+                <div className="sticky top-0 z-10 border-b border-border/50 bg-card px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {dayLabel}
                 </div>
 
@@ -367,7 +340,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                   return (
                     <div
                       key={evt._id}
-                      className="group flex items-start gap-2 px-3 py-2 hover:bg-primary/5 transition-colors"
+                      className="group flex items-start gap-2 border-b border-border px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/70"
                     >
                       <Icon
                         className={cn("size-3.5 shrink-0 mt-0.5", meta.color)}
@@ -424,6 +397,6 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
           )}
         </div>
       )}
-    </div>
+    </SidebarPanel>
   );
 }

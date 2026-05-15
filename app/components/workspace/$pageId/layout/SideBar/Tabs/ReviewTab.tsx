@@ -27,6 +27,14 @@ import { usePageContext } from "../../PageContext";
 import { useUserStore } from "~/stores/user";
 import { useWorkspaceActionsStore } from "~/stores/workspace-actions";
 import { cn } from "~/lib/utils";
+import {
+  SidebarEmptyState,
+  SidebarHeader,
+  SidebarIconButton,
+  SidebarPanel,
+  SidebarSegmented,
+  SidebarSection,
+} from "../SidebarChrome";
 
 type Filter = "all" | "open" | "resolved";
 
@@ -371,10 +379,10 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
+    <SidebarPanel>
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-3 h-10 border-b border-border shrink-0">
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <MessageSquare className="size-3.5" />
           Review
           {openCount > 0 && (
@@ -387,14 +395,14 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
           <button
             onClick={handleOpenAddForm}
             title="Add comment"
-            className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
           >
             <MessageSquarePlus className="size-4" />
           </button>
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <X className="size-3.5" />
             </button>
@@ -404,7 +412,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
 
       {/* ── Add comment form ── */}
       {showAddForm && (
-        <div className="px-3 py-2.5 border-b border-border bg-muted/20 shrink-0">
+        <SidebarSection className="bg-muted/20">
           {/* Form header */}
           <div className="flex items-center gap-1.5 mb-2">
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
@@ -477,42 +485,19 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
               </button>
             </div>
           </div>
-        </div>
+        </SidebarSection>
       )}
 
       {/* ── Filter bar ── */}
-      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border shrink-0">
-        {(
-          [
-            { key: "all", label: "All", count: comments.length },
-            { key: "open", label: "Open", count: openCount },
-            { key: "resolved", label: "Resolved", count: resolvedCount },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={cn(
-              "flex items-center gap-1 px-2 py-0.5 text-[11px] rounded transition-colors",
-              filter === tab.key
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-            )}
-          >
-            {tab.label}
-            <span
-              className={cn(
-                "text-[9px] font-medium rounded-full px-1",
-                filter === tab.key
-                  ? "bg-primary/20 text-primary"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {tab.count}
-            </span>
-          </button>
-        ))}
-      </div>
+      <SidebarSegmented
+        value={filter}
+        onChange={setFilter}
+        items={[
+          { key: "all", label: "All", count: comments.length },
+          { key: "open", label: "Open", count: openCount },
+          { key: "resolved", label: "Resolved", count: resolvedCount },
+        ]}
+      />
 
       {/* ── Comment list ── */}
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -522,14 +507,16 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
             <span className="text-xs">Loading…</span>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full py-10 text-muted-foreground gap-2 px-4">
-            <MessageSquare className="size-8 opacity-25" />
-            <p className="text-xs text-center leading-relaxed">
+          <SidebarEmptyState
+            icon={MessageSquare}
+            title={filter === "all" ? "No comments yet" : `No ${filter} comments`}
+          >
+            <p>
               {filter === "all"
                 ? "No comments yet. Click + to add one."
                 : `No ${filter} comments.`}
             </p>
-          </div>
+          </SidebarEmptyState>
         ) : (
           <ul className="flex flex-col">
             {filtered.map((comment) => (
@@ -546,6 +533,6 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
           </ul>
         )}
       </div>
-    </div>
+    </SidebarPanel>
   );
 }

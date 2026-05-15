@@ -16,7 +16,7 @@ export default function RecentActivity({
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-primary/50 font-semibold uppercase text-[11px] tracking-wider">Recent Activity</h2>
+        <h2 className="text-muted-foreground font-semibold uppercase text-[11px] tracking-wider">Recent Activity</h2>
       </div>
       <div className="grid gap-2">
         {isLoading ? (

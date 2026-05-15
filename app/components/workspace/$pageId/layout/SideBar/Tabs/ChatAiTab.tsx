@@ -1241,13 +1241,13 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         }
       `}</style>
 
-      <div className="relative flex flex-col h-full bg-background">
+      <div className="relative flex h-full flex-col bg-background">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-3 h-10 shrink-0 border-b border-border/40">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
           <div className="flex items-center gap-2">
             <img src="/Chat.svg" alt="Flux AI" className="size-4" />
-            <span className="text-xs font-semibold">Flux AI</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Flux AI</span>
             <span className="text-[9px] font-semibold px-1.5 py-px rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">LaTeX</span>
           </div>
           <div className="flex items-center gap-0.5">
@@ -1256,7 +1256,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
               onClick={() => setAutoApply((v) => !v)}
               title={autoApply ? "Auto Apply ON — click to disable" : "Auto Apply OFF — click to enable"}
               className={[
-                "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all",
+                "flex h-8 items-center gap-1 rounded-md px-2 text-[10px] font-semibold transition-all",
                 autoApply
                   ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/25"
                   : "text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60",
@@ -1277,13 +1277,13 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                 onClick={() => messages.length > 0 && setShowClearConfirm(true)}
                 disabled={messages.length === 0}
                 title="Clear chat"
-                className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-20"
               >
                 <Trash2 className="size-3.5" />
               </button>
             )}
             {onClose && (
-              <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-colors">
+              <button onClick={onClose} className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                 <X className="size-3.5" />
               </button>
             )}
@@ -1663,4 +1663,3 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     </>
   );
 }
-

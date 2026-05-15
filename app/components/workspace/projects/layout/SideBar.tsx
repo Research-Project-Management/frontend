@@ -144,13 +144,13 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   };
 
   return (
-    <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
+    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-card p-2 py-4">
       {/* Header */}
       <div className="mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
         <span>Projects</span>
         <button
           onClick={onToggle}
-          className="p-1 hidden rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
         >
           <PanelLeftClose className="size-5" />
         </button>
@@ -175,26 +175,26 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
               <Link
                 to={item.to}
                 key={item.label}
-                className="relative flex items-center gap-2 p-2 rounded-sm group/item hover:bg-secondary/60 transition-colors"
+                className="group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70"
               >
                 {isActive && (
                   <motion.div
                     layoutId={`sb-nav-active-${id}`}
-                    className="absolute inset-0 bg-secondary rounded-sm"
+                    className="absolute inset-0 rounded-md bg-accent"
                     initial={false}
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
                 <item.icon
-                  className={`size-4 relative z-10 ${
-                    isActive ? "text-primary" : "text-primary/80"
+                  className={`relative z-10 size-4 shrink-0 ${
+                    isActive ? "text-primary" : "text-muted-foreground"
                   }`}
                 />
                 <span
-                  className={`text-sm relative z-10 ${
+                className={`relative z-10 min-w-0 truncate text-sm ${
                     isActive
-                      ? "font-medium text-primary"
-                      : "font-medium text-primary/90"
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground group-hover/item:text-foreground"
                   }`}
                 >
                   {item.label}
@@ -207,7 +207,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
 
       {/* Projects Section */}
       <nav className="mt-4 select-none">
-        <span className="flex gap-1 justify-between text-muted-foreground font-semibold items-center ml-2 text-sm">
+        <span className="ml-2 flex items-center justify-between gap-1 text-sm font-semibold text-muted-foreground">
           Projects
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -227,7 +227,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
         </span>
         <div className="flex flex-col mt-2 gap-1">
           {projects && projects.length === 0 && (
-            <p className="text-xs ml-2 font-medium text-muted-foreground/50">
+            <p className="ml-2 text-xs font-medium text-muted-foreground/50">
               No projects found
             </p>
           )}
@@ -242,20 +242,20 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                 open={isOpen}
                 onOpenChange={() => toggleProject(project._id)}
               >
-                <div className="flex w-full justify-between items-center gap-2 p-2 rounded-sm hover:bg-accent transition-colors">
+                <div className="flex h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 transition-colors hover:bg-accent/70">
                   <CollapsibleTrigger asChild>
                     <Link 
                       to={`/${workspaceId}/projects/${project._id}/overview`}
-                      className="flex-1 text-sm font-medium text-foreground flex gap-1 items-center text-left cursor-pointer hover:text-primary transition-colors"
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm font-medium text-foreground transition-colors hover:text-primary"
                     >
-                      <span className="text-base">{project.avatar}</span>
-                      <span>{project.name}</span>
+                      <span className="shrink-0 text-base leading-none">{project.avatar}</span>
+                      <span className="min-w-0 truncate">{project.name}</span>
                     </Link>
                   </CollapsibleTrigger>
 
                   <div className="flex gap-1 items-center">
                     <CollapsibleTrigger asChild>
-                      <button className="p-0.5 rounded-sm hover:bg-accent cursor-pointer">
+                      <button className="rounded-md p-1 hover:bg-accent">
                         <ChevronRight className="size-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
                       </button>
                     </CollapsibleTrigger>
@@ -273,20 +273,20 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                       <Link
                         to={moduleLink}
                         key={moduleKey}
-                        className={`flex items-center gap-2 pl-8 pr-2 py-1.5 rounded-sm text-sm ${
+                        className={`flex h-9 items-center gap-2 rounded-md pl-8 pr-2.5 text-sm transition-colors ${
                           isModuleActive
-                            ? "bg-secondary text-primary font-medium"
-                            : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                            ? "bg-accent text-foreground font-semibold"
+                            : "text-muted-foreground hover:bg-accent/70 hover:text-foreground"
                         }`}
                       >
                         <module.icon
-                          className={`size-4 ${
+                          className={`size-4 shrink-0 ${
                             isModuleActive
                               ? "text-primary"
                               : "text-muted-foreground"
                           }`}
                         />
-                        <span>{module.label}</span>
+                        <span className="min-w-0 truncate">{module.label}</span>
                       </Link>
                     );
                   })}

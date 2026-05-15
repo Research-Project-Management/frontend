@@ -19,7 +19,7 @@ export default function SideBar() {
   ];
 
   return (
-    <aside className="w-60 border-r border-secondary h-full bg-background p-2 py-4 overflow-x-hidden">
+    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-card p-2 py-4">
       {/* Header */}
       <div className="mb-4 px-2 flex items-center font-semibold text-lg text-foreground">
         <span>Settings</span>
@@ -37,23 +37,32 @@ export default function SideBar() {
               <Link
                 to={item.to}
                 key={item.label}
-                className="flex items-center gap-2 p-2 rounded-sm text-sm relative group/item hover:bg-muted/30 transition-colors"
+                className="group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70"
               >
                 {isActive && (
                   <motion.div
                     layoutId={`settings-nav-active-${id}`}
-                    className="absolute inset-0 bg-secondary rounded-sm"
+                    className="absolute inset-0 rounded-md bg-accent"
                     initial={false}
                     transition={{ type: "spring", stiffness: 500, damping: 35 }}
                   />
                 )}
                 <item.icon
                   className={cn(
-                    "size-4 relative z-10",
-                    isActive ? "text-primary" : "text-primary/80",
+                    "relative z-10 size-4 shrink-0",
+                    isActive ? "text-primary" : "text-muted-foreground",
                   )}
                 />
-                <span className="relative z-10">{item.label}</span>
+                <span
+                  className={cn(
+                    "relative z-10 min-w-0 truncate",
+                    isActive
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground group-hover/item:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </span>
               </Link>
             );
           })}

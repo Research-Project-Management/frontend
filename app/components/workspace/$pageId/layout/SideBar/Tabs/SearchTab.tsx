@@ -11,6 +11,13 @@ import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 import { usePageContext } from "../../PageContext";
 import { useDebounce } from "~/hooks/useDebounce";
+import {
+  SidebarEmptyState,
+  SidebarHeader,
+  SidebarIconButton,
+  SidebarPanel,
+  SidebarSection,
+} from "../SidebarChrome";
 
 interface MatchEntry {
   line: number;
@@ -99,37 +106,24 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 h-8 shrink-0">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Search
-        </span>
-        <div className="flex items-center gap-0.5">
-          <button
+    <SidebarPanel>
+      <SidebarHeader
+        title="Search"
+        icon={null}
+        actions={
+          <SidebarIconButton
+            label="Toggle replace"
             onClick={() => setShowReplace(!showReplace)}
-            className={cn(
-              "p-1 rounded cursor-pointer transition-colors",
-              showReplace
-                ? "bg-primary/10 text-primary"
-                : "hover:bg-primary/10",
-            )}
+            active={showReplace}
           >
             <Replace className="size-4" />
-          </button>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+          </SidebarIconButton>
+        }
+        onClose={onClose}
+      />
 
       {/* Search Input */}
-      <div className="px-3 pb-2 space-y-2">
+      <SidebarSection className="space-y-2">
         <div className="relative">
           <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
@@ -163,7 +157,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             <button
               onClick={handleReplaceAll}
               disabled={!debouncedQuery}
-              className="px-2 h-8 text-xs rounded bg-primary text-primary-foreground disabled:opacity-50"
+              className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               All
             </button>
@@ -200,23 +194,23 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               onClick={() => opt.setState(!opt.state)}
               title={opt.title}
               className={cn(
-                "px-2 py-1 text-xs font-mono rounded transition-colors",
+                "h-7 rounded-md px-2 text-xs font-mono transition-colors",
                 opt.state
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted",
+                  ? "bg-accent text-primary"
+                  : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
               )}
             >
               {opt.label}
             </button>
           ))}
         </div>
-      </div>
+      </SidebarSection>
 
       {/* Results */}
       <div className="flex-1 overflow-y-auto border-t border-border">
         {debouncedQuery ? (
           <>
-            <div className="px-3 py-2 text-xs text-muted-foreground">
+            <div className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">
               {matches.length} result{matches.length !== 1 ? "s" : ""} in{" "}
               {fileName}
             </div>
@@ -225,7 +219,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                 <li>
                   <button
                     onClick={() => setIsExpanded((v) => !v)}
-                    className="w-full flex items-center gap-1 px-3 py-1.5 hover:bg-muted/50 text-left"
+                    className="flex h-9 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-accent/70"
                   >
                     {isExpanded ? (
                       <ChevronDown className="size-4 text-muted-foreground" />
@@ -243,10 +237,10 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                   {isExpanded && (
                     <ul className="bg-muted/30">
                       {matches.map((match, idx) => (
-                        <li
+                        <button
                           key={idx}
                           onClick={() => handleNavigate(match.line)}
-                          className="flex items-start gap-2 px-3 py-1.5 pl-10 hover:bg-muted/50 cursor-pointer text-xs"
+                          className="flex w-full cursor-pointer items-start gap-2 px-3 py-1.5 pl-10 text-left text-xs transition-colors hover:bg-accent/70"
                         >
                           <span className="text-muted-foreground w-8 text-right shrink-0">
                             {match.line}
@@ -261,7 +255,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                             </span>
                             {match.text.slice(match.matchEnd)}
                           </span>
-                        </li>
+                        </button>
                       ))}
                     </ul>
                   )}
@@ -270,12 +264,9 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
             )}
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4">
-            <SearchIcon className="size-8 mb-2 opacity-50" />
-            <p className="text-sm">Type to search</p>
-          </div>
+          <SidebarEmptyState icon={SearchIcon} title="Type to search" />
         )}
       </div>
-    </div>
+    </SidebarPanel>
   );
 }

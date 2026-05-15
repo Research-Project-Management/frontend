@@ -110,7 +110,7 @@ export default function TopBar({
       <Button
         onClick={onAddNote}
         size="sm"
-        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-black/90"
+        className="h-8 gap-1.5 rounded-md bg-primary px-3 text-xs text-primary-foreground shadow-none transition-all hover:bg-primary/90"
         disabled={isAddingNote}
       >
         {isAddingNote ? (

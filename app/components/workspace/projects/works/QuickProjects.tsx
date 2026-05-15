@@ -11,7 +11,7 @@ export default function QuickProjects() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-primary/50 font-semibold uppercase text-[11px] tracking-wider">Quick Projects</h2>
+        <h2 className="text-muted-foreground font-semibold uppercase text-[11px] tracking-wider">Quick Projects</h2>
         <Link to={`/${workspaceId}`} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
           View all
           <ArrowRight className="h-3 w-3" />

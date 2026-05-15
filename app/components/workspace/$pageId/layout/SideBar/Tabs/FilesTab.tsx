@@ -30,6 +30,7 @@ import {
   FileType,
   BookText,
   Braces,
+  ListTree,
 } from "lucide-react";
 import {
   Tooltip,
@@ -147,7 +148,7 @@ function InlineInput({
   isPending?: boolean;
 }) {
   return (
-    <div className="flex items-center h-[22px] pl-5 pr-2 bg-primary/5 border border-primary/30 mx-0.5 rounded-sm">
+    <div className="mx-2 flex h-8 items-center rounded-md border border-primary/30 bg-primary/5 pl-3 pr-2">
       <Icon
         className={cn(
           "size-3.5 shrink-0 mr-1.5",
@@ -215,7 +216,7 @@ function RenameInput({
           if (e.key === "Enter") onCommit();
           if (e.key === "Escape") onCancel();
         }}
-        className="flex-1 min-w-0 text-[12px] bg-primary/5 border border-primary/40 rounded-sm px-1 outline-none text-foreground"
+        className="min-w-0 flex-1 rounded-md border border-primary/40 bg-primary/5 px-1 text-[12px] text-foreground outline-none"
       />
       <button
         onClick={(e) => {
@@ -252,7 +253,7 @@ function RowActions({ children }: { children: React.ReactNode }) {
       <DropdownMenuTrigger asChild>
         <button
           onClick={(e) => e.stopPropagation()}
-          className="p-0.5 rounded-sm opacity-0 group-hover/row:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus:opacity-100 group-hover/row:opacity-100"
         >
           <Ellipsis className="size-3.5" />
         </button>
@@ -338,10 +339,10 @@ function StorageFolderNode({
             onUploadToFolder(dropped, folder._id);
         }}
         className={cn(
-          "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors border-l-2 border-l-transparent",
+          "group/row flex h-8 cursor-pointer items-center border-l-2 border-l-transparent pr-2 transition-colors",
           dragOver
             ? "bg-primary/10 outline outline-1 outline-primary/30"
-            : "hover:bg-muted/50",
+            : "hover:bg-accent/70",
         )}
       >
         <IndentGuides depth={depth} />
@@ -413,7 +414,7 @@ function StorageFolderNode({
         <>
           {isLoading && (
             <div
-              className="flex items-center h-[22px]"
+              className="flex h-8 items-center"
               style={{ paddingLeft: `${(depth + 1) * 16 + 20}px` }}
             >
               <Loader2 className="size-3 animate-spin text-muted-foreground" />
@@ -442,7 +443,7 @@ function StorageFolderNode({
           )}
           {!isLoading && !children?.length && (
             <div
-              className="flex items-center h-[22px] text-[11px] text-muted-foreground/50 italic"
+              className="flex h-8 items-center text-[11px] italic text-muted-foreground/50"
               style={{ paddingLeft: `${(depth + 1) * 16 + 20}px` }}
             >
               Empty folder
@@ -487,7 +488,7 @@ function StorageFileRow({
           ? `Click to preview ${item.filename}`
           : `Click to insert \\includegraphics{${item.filename}}`
       }
-      className="group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors border-l-2 border-l-transparent hover:bg-muted/50"
+      className="group/row flex h-8 cursor-pointer items-center border-l-2 border-l-transparent pr-2 transition-colors hover:bg-accent/70"
     >
       <IndentGuides depth={depth} />
       <span className="w-4 shrink-0" />
@@ -571,13 +572,102 @@ const TEX_EXTS = new Set([
   ".ins",
 ]);
 
+type OutlineEntry = {
+  level: number;
+  title: string;
+  line: number;
+};
+
+const SECTION_PATTERNS: { regex: RegExp; level: number }[] = [
+  { regex: /^\\chapter\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 0 },
+  { regex: /^\\section\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 0 },
+  { regex: /^\\subsection\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 1 },
+  { regex: /^\\subsubsection\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 2 },
+  { regex: /^\\paragraph\*?(?:\[[^\]]*\])?\{(.+?)\}/, level: 3 },
+];
+
+const OUTLINE_INDENT = [0, 12, 24, 32];
+const OUTLINE_COLORS = [
+  "text-foreground font-medium",
+  "text-foreground/80",
+  "text-muted-foreground",
+  "text-muted-foreground/70 italic",
+];
+
+function parseOutline(content: string): OutlineEntry[] {
+  const entries: OutlineEntry[] = [];
+  content.split("\n").forEach((rawLine, idx) => {
+    const line = rawLine.trimStart();
+    for (const { regex, level } of SECTION_PATTERNS) {
+      const match = line.match(regex);
+      if (match) {
+        entries.push({ level, title: match[1].trim(), line: idx + 1 });
+        break;
+      }
+    }
+  });
+  return entries;
+}
+
+function flattenPdfOutline(items: any[]): any[] {
+  const result: any[] = [];
+  for (const item of items) {
+    result.push(item);
+    if (item.items?.length) result.push(...flattenPdfOutline(item.items));
+  }
+  return result;
+}
+
+async function findPdfPageForTitle(
+  doc: any,
+  title: string,
+): Promise<number | null> {
+  const needle = title.toLowerCase().trim();
+
+  try {
+    const outline = await doc.getOutline();
+    if (outline?.length) {
+      for (const item of flattenPdfOutline(outline)) {
+        if (item.title && item.title.toLowerCase().includes(needle)) {
+          const dest = Array.isArray(item.dest)
+            ? item.dest
+            : await doc.getDestination(item.dest);
+          if (dest) {
+            const pageIndex = await doc.getPageIndex(dest[0]);
+            return pageIndex + 1;
+          }
+        }
+      }
+    }
+  } catch {}
+
+  for (let i = 1; i <= doc.numPages; i++) {
+    try {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      const text = (content.items as any[]).map((it) => it.str).join(" ");
+      if (text.toLowerCase().includes(needle)) return i;
+    } catch {}
+  }
+
+  return null;
+}
+
 // ── Main FilesTab ───────────────────────────────────────────────────────────
 
 export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { currentPage, editorRef, setTexFiles, setSelectedAsset } =
-    usePageContext();
+  const {
+    currentPage,
+    activeFilePage,
+    editorRef,
+    getEditorContent,
+    pdfDocRef,
+    gotoPageRef,
+    setTexFiles,
+    setSelectedAsset,
+  } = usePageContext();
   const { openTab } = useEditorTabsStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -603,6 +693,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   };
   const [pendingUploads, setPendingUploads] = useState<PendingItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isOutlineOpen, setIsOutlineOpen] = useState(true);
+  const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const dragCounterRef = useRef(0);
 
   // pageId from URL is always the project root page after the routing refactor.
@@ -641,6 +733,56 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     setTexFiles(names);
     console.log("[FilesTab] Page files updated:", names);
   }, [files, setTexFiles]);
+
+  useEffect(() => {
+    let disposed = false;
+    let subscription: { dispose: () => void } | null = null;
+    let retryTimer: ReturnType<typeof setInterval> | null = null;
+
+    const readInitialContent = () =>
+      getEditorContent.current?.() ||
+      editorRef.current?.getValue() ||
+      activeFilePage?.content ||
+      currentPage?.content ||
+      "";
+
+    const refreshOutline = () => {
+      if (!disposed) setOutline(parseOutline(readInitialContent()));
+    };
+
+    const attachEditorListener = () => {
+      refreshOutline();
+      const editor = editorRef.current;
+      if (!editor) return false;
+
+      subscription?.dispose();
+      subscription = editor.onDidChangeModelContent(() => {
+        if (!disposed) setOutline(parseOutline(editor.getValue()));
+      });
+      return true;
+    };
+
+    if (!attachEditorListener()) {
+      retryTimer = setInterval(() => {
+        if (attachEditorListener() && retryTimer) {
+          clearInterval(retryTimer);
+          retryTimer = null;
+        }
+      }, 250);
+    }
+
+    return () => {
+      disposed = true;
+      subscription?.dispose();
+      if (retryTimer) clearInterval(retryTimer);
+    };
+  }, [
+    activeFilePage?._id,
+    activeFilePage?.content,
+    currentPage?.content,
+    editorRef,
+    getEditorContent,
+  ]);
 
   const createFileMutation = useCreatePageFile();
   const setMainFileMutation = useSetPageMainFile();
@@ -693,6 +835,25 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setSearchParams({ file: item._id });
     },
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
+  );
+
+  const handleOutlineClick = useCallback(
+    async (line: number, title: string) => {
+      const editor = editorRef.current;
+      if (editor) {
+        editor.revealLineInCenter(line);
+        editor.setPosition({ lineNumber: line, column: 1 });
+        editor.focus();
+      }
+
+      const doc = pdfDocRef.current;
+      const scrollToPage = gotoPageRef.current;
+      if (!doc || !scrollToPage) return;
+
+      const page = await findPdfPageForTitle(doc, title);
+      if (page !== null) scrollToPage(page);
+    },
+    [editorRef, gotoPageRef, pdfDocRef],
   );
 
   const handleFileClick = (fileId: string, title: string) => {
@@ -1301,11 +1462,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         />
 
         {/* ── Header toolbar ─────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border/60 mb-1">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Explorer
           </span>
-          <div className="flex gap-0.5">
+          <div className="flex items-center gap-0.5">
             {[
               { icon: FilePlus, label: "New File", action: handleStartCreate },
               {
@@ -1319,7 +1480,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={action}
-                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <Icon className="size-3.5" />
                   </button>
@@ -1332,7 +1493,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={onClose}
-                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -1345,7 +1506,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
         {/* ── File tree ──────────────────────────────────────────────── */}
         <div
-          className="relative flex-1 overflow-y-auto"
+          className="relative min-h-0 flex-1 overflow-y-auto"
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -1393,7 +1554,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           {(isLoading || projectFilesLoading) && (
             <div className="flex flex-col">
               {[60, 75, 45, 82, 55].map((w, i) => (
-                <div key={i} className="flex items-center h-[22px] gap-2 px-5">
+                <div key={i} className="flex h-8 items-center gap-2 px-5">
                   <div className="size-3 rounded-sm bg-muted animate-pulse shrink-0" />
                   <div
                     className="h-2.5 rounded bg-muted animate-pulse"
@@ -1406,7 +1567,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
           {/* Uploading indicator */}
           {uploadingCount > 0 && (
-            <div className="flex items-center gap-2 px-5 h-[22px]">
+            <div className="flex h-8 items-center gap-2 px-5">
               <Loader2 className="size-3 animate-spin text-muted-foreground" />
               <span className="text-[11px] text-muted-foreground">
                 Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}…
@@ -1510,10 +1671,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     key={file._id}
                     onClick={() => handleFileClick(file._id, file.title)}
                     className={cn(
-                      "group/row flex items-center h-[22px] pr-2 cursor-pointer transition-colors border-l-2",
+                      "group/row flex h-8 cursor-pointer items-center border-l-2 pr-2 transition-colors",
                       isActive
-                        ? "bg-primary/8 border-l-primary"
-                        : "border-l-transparent hover:bg-muted/50",
+                        ? "border-l-primary bg-accent text-primary"
+                        : "border-l-transparent hover:bg-accent/70",
                     )}
                   >
                     <span className="w-4 shrink-0" />
@@ -1592,6 +1753,63 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 );
               });
             })()}
+        </div>
+
+        <div className="shrink-0 border-t border-border/70 bg-card">
+          <button
+            type="button"
+            onClick={() => setIsOutlineOpen((value) => !value)}
+            className="flex h-8 w-full items-center gap-2 px-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-accent/70 hover:text-foreground"
+          >
+            <ChevronRight
+              className={cn(
+                "size-3.5 shrink-0 transition-transform",
+                isOutlineOpen && "rotate-90",
+              )}
+            />
+            <ListTree className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">Outline</span>
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {outline.length}
+            </span>
+          </button>
+          {isOutlineOpen && (
+            <div className="max-h-[42vh] overflow-y-auto pb-1">
+              {outline.length === 0 ? (
+                <div className="px-9 py-2 text-[11px] text-muted-foreground">
+                  No sections found.
+                </div>
+              ) : (
+                outline.map((entry, index) => (
+                  <button
+                    key={`${entry.line}-${index}`}
+                    type="button"
+                    onClick={() => handleOutlineClick(entry.line, entry.title)}
+                    style={{
+                      paddingLeft: `${28 + OUTLINE_INDENT[entry.level]}px`,
+                    }}
+                    className={cn(
+                      "flex h-7 w-full items-center gap-1.5 pr-2 text-left text-xs transition-colors hover:bg-accent/70",
+                      OUTLINE_COLORS[entry.level],
+                    )}
+                  >
+                    <ChevronRight
+                      className={cn(
+                        "shrink-0 text-muted-foreground/60",
+                        entry.level === 0 ? "size-3.5" : "size-3",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {entry.title}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground/60">
+                      :{entry.line}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1699,7 +1917,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 setUploadDialogOpen(false);
                 setPendingUploads([]);
               }}
-              className="h-7 px-3 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="h-8 rounded-md px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Cancel
             </button>
@@ -1709,7 +1927,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 pendingUploads.length === 0 ||
                 pendingUploads.some((p) => p.conflict === "duplicate" && !p.resolution)
               }
-              className="h-7 px-3 rounded text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {pendingUploads.some((p) => p.conflict === "duplicate" && !p.resolution)
                 ? "Resolve conflicts first"

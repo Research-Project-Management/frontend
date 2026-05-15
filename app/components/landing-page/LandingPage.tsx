@@ -20,15 +20,15 @@ export default function LandingPage() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 lg:pt-40 lg:pb-28">
-        <div className="container mx-auto px-6">
+      <section className="pt-28 pb-16 sm:pt-32 lg:pt-36 lg:pb-24">
+        <div className="flux-container">
           <div className="max-w-3xl mx-auto text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 border border-border rounded-full text-xs font-medium text-muted-foreground tracking-wide uppercase">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold uppercase text-muted-foreground">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
               Beta
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
+            <h1 className="text-4xl font-bold leading-[1.12] sm:text-5xl lg:text-6xl">
               The workspace for
               <br />
               research teams
@@ -42,14 +42,14 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <Link
                 to="/ws"
-                className="group px-6 py-3 bg-foreground text-background rounded-lg font-medium text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2"
+                className="group flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Start for free
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
                 to="/login"
-                className="px-6 py-3 border border-border text-foreground rounded-lg font-medium text-sm hover:bg-secondary transition-colors"
+                className="flex h-11 items-center justify-center rounded-md border border-border bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
               >
                 Sign in
               </Link>
@@ -57,8 +57,8 @@ export default function LandingPage() {
           </div>
 
           {/* Screenshot */}
-          <div className="mt-16 lg:mt-20 max-w-5xl mx-auto">
-            <div className="rounded-xl overflow-hidden border border-border bg-secondary/30">
+          <div className="mt-14 lg:mt-18 mx-auto max-w-6xl">
+            <div className="overflow-hidden rounded-lg border border-border bg-card shadow-lg">
               <img
                 src="/screenshot.png"
                 alt="Flux workspace"
@@ -70,13 +70,13 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 lg:py-28 border-t border-border">
-        <div className="container mx-auto px-6">
+      <section className="flux-section border-t border-border">
+        <div className="flux-container">
           <div className="max-w-2xl mb-14">
-            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-3">
+            <p className="mb-3 text-xs font-semibold uppercase text-muted-foreground">
               Features
             </p>
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight">
+            <h2 className="text-3xl font-bold lg:text-4xl">
               Everything your team needs
             </h2>
             <p className="text-muted-foreground mt-3 text-lg">
@@ -85,7 +85,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-xl overflow-hidden border border-border">
+          <div className="grid overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2 lg:grid-cols-3">
             <FeatureCard
               icon={<FileText className="w-5 h-5" />}
               title="Rich editor"
@@ -121,13 +121,13 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 lg:py-28 border-t border-border">
-        <div className="container mx-auto px-6">
+      <section className="flux-section border-t border-border bg-card/50">
+        <div className="flux-container">
           <div className="max-w-2xl mb-14">
-            <p className="text-xs font-medium text-muted-foreground tracking-widest uppercase mb-3">
+            <p className="mb-3 text-xs font-semibold uppercase text-muted-foreground">
               How it works
             </p>
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight">
+            <h2 className="text-3xl font-bold lg:text-4xl">
               From idea to publication
             </h2>
           </div>
@@ -153,17 +153,17 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 border-t border-border">
-        <div className="container mx-auto px-6">
+      <section className="border-t border-border py-14 sm:py-16">
+        <div className="flux-container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
-              <div className="text-3xl lg:text-4xl font-bold tracking-tight">
+              <div className="text-3xl font-bold lg:text-4xl">
                 99.9%
               </div>
               <div className="text-sm text-muted-foreground mt-1">Uptime</div>
             </div>
             <div>
-              <div className="text-3xl lg:text-4xl font-bold tracking-tight">
+              <div className="text-3xl font-bold lg:text-4xl">
                 &lt;1s
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -171,7 +171,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
-              <div className="text-3xl lg:text-4xl font-bold tracking-tight">
+              <div className="text-3xl font-bold lg:text-4xl">
                 E2E
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -179,7 +179,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
-              <div className="text-3xl lg:text-4xl font-bold tracking-tight">
+              <div className="text-3xl font-bold lg:text-4xl">
                 Free
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -191,10 +191,10 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 lg:py-28 border-t border-border">
-        <div className="container mx-auto px-6">
+      <section className="flux-section border-t border-border bg-card/50">
+        <div className="flux-container">
           <div className="max-w-2xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight">
+            <h2 className="text-3xl font-bold lg:text-4xl">
               Ready to start?
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -204,7 +204,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <Link
                 to="/ws"
-                className="group px-6 py-3 bg-foreground text-background rounded-lg font-medium text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2"
+                className="group flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 Create workspace
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -213,7 +213,7 @@ export default function LandingPage() {
                 href="https://github.com/Research-Project-TDTU"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 border border-border text-foreground rounded-lg font-medium text-sm hover:bg-secondary transition-colors flex items-center justify-center gap-2"
+                className="flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
               >
                 View on GitHub
                 <ArrowUpRight className="w-4 h-4" />
@@ -238,7 +238,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="bg-background p-6 lg:p-8 space-y-3 group hover:bg-secondary/40 transition-colors">
+    <div className="group space-y-3 bg-card p-6 transition-colors hover:bg-accent/60 lg:p-8">
       <div className="text-foreground">{icon}</div>
       <h3 className="text-base font-semibold">{title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">

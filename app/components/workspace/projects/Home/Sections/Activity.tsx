@@ -36,14 +36,14 @@ export default function Activity() {
                   <User className="size-4" />
                 </AvatarFallback>
               </Avatar>
-              <p className="text-primary/60 flex-1">
-                <span className="font-semibold text-primary group-hover:text-primary/80">
+              <p className="text-muted-foreground flex-1">
+                <span className="font-semibold text-foreground group-hover:text-primary">
                   {activity.user?.name || "Someone"}
                 </span>{" "}
                 {activity.content}
               </p>
               {activity.project && (
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-tighter shrink-0 group-hover:text-primary/40">
+                <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-tighter shrink-0 group-hover:text-muted-foreground">
                   {activity.project.name}
                 </span>
               )}

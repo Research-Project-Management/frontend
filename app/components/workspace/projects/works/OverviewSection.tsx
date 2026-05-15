@@ -46,7 +46,7 @@ export default function OverviewSection({
 }) {
   return (
     <div className="w-full">
-      <h2 className="text-primary/50 font-semibold mb-4 uppercase text-[11px] tracking-wider">Overview</h2>
+      <h2 className="text-muted-foreground font-semibold mb-4 uppercase text-[11px] tracking-wider">Overview</h2>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <OverviewCard 
           title="Task assigned" 

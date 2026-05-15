@@ -1,14 +1,13 @@
 import React from "react";
 import { Outlet, useLocation } from "react-router";
 import SideBar from "./SideBar";
-import TopBar from "./TopBar";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function SettingLayout() {
   const location = useLocation();
   return (
     <div className="h-full flex overflow-hidden">
-      <aside className="border-r">
+      <aside className="shrink-0">
         <SideBar />
       </aside>
 

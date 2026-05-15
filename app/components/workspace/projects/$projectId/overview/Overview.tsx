@@ -64,7 +64,7 @@ function UserAvatar({
 const Section = memo(
   ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="w-full">
-      <h2 className="text-primary/50 font-semibold mb-4">{title}</h2>
+      <h2 className="text-muted-foreground font-semibold mb-4">{title}</h2>
       <div className="relative">{children}</div>
     </div>
   ),

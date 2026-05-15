@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Outlet } from "react-router";
 import SideBar from "./SideBar/SideBar";
 import Viewer from "./Viewer/Viewer";
@@ -35,10 +35,22 @@ function PageInner() {
   const [localSidebarWidth, setLocalSidebarWidth] = useState(sidebarWidth);
   const [localEditorFlex, setLocalEditorFlex] = useState(editorFlex);
 
-  const MIN_SIDEBAR = 180;
-  const MAX_SIDEBAR = 500;
+  const MIN_SIDEBAR = 300;
+  const MAX_SIDEBAR = 420;
   const MIN_EDITOR_FLEX = 0.2;
   const MAX_EDITOR_FLEX = 0.8;
+
+  const clampSidebarWidth = useCallback(
+    (width: number) => Math.min(Math.max(width, MIN_SIDEBAR), MAX_SIDEBAR),
+    [],
+  );
+
+  useEffect(() => {
+    const clamped = clampSidebarWidth(sidebarWidth);
+    sidebarWidthRef.current = clamped;
+    setLocalSidebarWidth(clamped);
+    if (clamped !== sidebarWidth) setSidebarWidth(clamped);
+  }, [clampSidebarWidth, setSidebarWidth, sidebarWidth]);
 
   const handleSidebarResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,10 +58,7 @@ function PageInner() {
     const startWidth = sidebarWidthRef.current;
 
     const onMove = (ev: MouseEvent) => {
-      const newW = Math.min(
-        Math.max(startWidth + (ev.clientX - startX), MIN_SIDEBAR),
-        MAX_SIDEBAR,
-      );
+      const newW = clampSidebarWidth(startWidth + (ev.clientX - startX));
       sidebarWidthRef.current = newW;
       setLocalSidebarWidth(newW);
     };
@@ -64,7 +73,7 @@ function PageInner() {
     document.addEventListener("mouseup", onUp);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
-  }, []);
+  }, [clampSidebarWidth, setSidebarWidth]);
 
   const handleEditorViewerResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

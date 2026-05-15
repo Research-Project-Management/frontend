@@ -228,7 +228,7 @@ export default function HomeDashboard() {
       <header className="flex items-center justify-between px-4 h-13 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-2.5">
           <Home className="size-4.5 text-primary" />
-          <h1 className="text-sm font-semibold text-primary transition-all duration-200">
+          <h1 className="text-sm font-semibold text-foreground transition-all duration-200">
             Home
           </h1>
         </div>
@@ -247,7 +247,7 @@ export default function HomeDashboard() {
 
           <DialogContent className="sm:max-w-[400px] border-none p-7" showCloseButton={false}>
             <DialogHeader className="mb-4">
-              <DialogTitle className="text-xl font-bold text-primary/80">
+              <DialogTitle className="text-xl font-bold text-foreground">
                 Manage widgets
               </DialogTitle>
             </DialogHeader>

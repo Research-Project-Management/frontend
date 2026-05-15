@@ -1,7 +1,6 @@
 import {
   FileText,
   History,
-  ListTree,
   MessageSquareQuote,
   Search,
   Sparkles,
@@ -18,12 +17,10 @@ import SearchTab from "./Tabs/SearchTab";
 import FilesTab from "./Tabs/FilesTab";
 import ChatAiTab from "./Tabs/ChatAiTab";
 import ReviewTab from "./Tabs/ReviewTab";
-import OutlineTab from "./Tabs/OutlineTab";
 import HistoryTab from "./Tabs/HistoryTab";
 
 const sideBarItems = [
   { name: "Files", icon: FileText },
-  { name: "Outline", icon: ListTree },
   { name: "Search", icon: Search },
   { name: "Ask AI", icon: Sparkles },
   { name: "Review", icon: MessageSquareQuote },
@@ -34,7 +31,6 @@ type Tab = (typeof sideBarItems)[number]["name"];
 
 function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
-  if (tab === "Outline") return <OutlineTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
   if (tab === "Ask AI") return <ChatAiTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
@@ -42,99 +38,91 @@ function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   return null;
 }
 
-const STORAGE_KEY = "flux:sidebar:open-panels";
+const STORAGE_KEY = "flux:sidebar:active-panel";
 const validTabs = new Set(sideBarItems.map((i) => i.name));
 
-function loadPanels(): Tab[] {
+function loadPanel(): Tab | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as unknown[];
-      const tabs = parsed.filter(
-        (t): t is Tab => typeof t === "string" && validTabs.has(t as Tab),
-      );
-      if (tabs.length > 0) return tabs;
+      const parsed = JSON.parse(raw) as unknown;
+      if (typeof parsed === "string" && validTabs.has(parsed as Tab)) {
+        return parsed as Tab;
+      }
+      if (Array.isArray(parsed)) {
+        const first = parsed.find(
+          (t): t is Tab => typeof t === "string" && validTabs.has(t as Tab),
+        );
+        if (first) return first;
+      }
     }
   } catch {}
-  return ["Files"];
+  return "Files";
 }
 
 export default function SideBar() {
-  const [openPanels, setOpenPanels] = useState<Tab[]>(loadPanels);
-
-  const MAX_PANELS = 2;
+  const [activePanel, setActivePanel] = useState<Tab | null>(loadPanel);
 
   const togglePanel = (name: Tab) => {
-    setOpenPanels((prev) => {
-      if (prev.includes(name)) return prev.filter((t) => t !== name);
-      const next = [...prev, name];
-      return next.length > MAX_PANELS
-        ? next.slice(next.length - MAX_PANELS)
-        : next;
-    });
+    setActivePanel(name);
   };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(openPanels));
-  }, [openPanels]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(activePanel));
+  }, [activePanel]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const tab = (e as CustomEvent<Tab>).detail;
-      setOpenPanels((prev) => {
-        if (prev.includes(tab)) return prev;
-        const next = [...prev, tab];
-        return next.length > MAX_PANELS
-          ? next.slice(next.length - MAX_PANELS)
-          : next;
-      });
+      if (validTabs.has(tab)) setActivePanel(tab);
     };
     document.addEventListener("flux:open-panel", handler);
     return () => document.removeEventListener("flux:open-panel", handler);
   }, []);
 
   return (
-    <div className="h-full flex w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden border-r border-border bg-card">
       {/* Icon strip */}
-      <ul className="h-full flex flex-col pt-2 pb-2 px-1.5 gap-1 border-r border-border shrink-0">
+      <ul className="flex h-full w-13 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1.5 py-2">
         {sideBarItems.map((item) => {
-          const isOpen = openPanels.includes(item.name);
+          const isOpen = activePanel === item.name;
           return (
-            <Tooltip key={item.name}>
-              <TooltipTrigger asChild>
-                <li
-                  onClick={() => togglePanel(item.name)}
-                  className={cn(
-                    "p-2 rounded cursor-pointer transition-colors",
-                    isOpen
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:bg-primary/10 hover:text-primary",
-                  )}
-                >
-                  <item.icon className="size-4" />
-                </li>
-              </TooltipTrigger>
-              <TooltipContent side="right">{item.name}</TooltipContent>
-            </Tooltip>
+            <li key={item.name}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => togglePanel(item.name)}
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-md transition-colors",
+                      isOpen
+                        ? "bg-accent text-primary"
+                        : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
+                    )}
+                  >
+                  <item.icon className="size-4" strokeWidth={1.8} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{item.name}</TooltipContent>
+              </Tooltip>
+            </li>
           );
         })}
       </ul>
 
       {/* Stacked panels */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        {openPanels.length === 0 ? (
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {activePanel === null ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs px-3 text-center leading-relaxed">
             Click an icon to open a panel
           </div>
         ) : (
-          openPanels.map((tab) => (
-            <div
-              key={tab}
-              className="flex flex-col min-h-0 flex-1 border-b border-border last:border-0 overflow-hidden"
-            >
-              <PanelContent tab={tab} onClose={() => togglePanel(tab)} />
-            </div>
-          ))
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <PanelContent
+              tab={activePanel}
+              onClose={() => setActivePanel(null)}
+            />
+          </div>
         )}
       </div>
     </div>

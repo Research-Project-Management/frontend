@@ -59,11 +59,11 @@ const sidebarItems = [
 export default function Wrapper({ children }: { children: React.ReactNode }) {
   const { isLoading: isUserLoading } = useAuth();
   return (
-    <div className="h-screen bg-secondary flex flex-col overflow-hidden">
+    <div className="h-dvh bg-secondary flex flex-col overflow-hidden">
       <TopBar />
-      <div className="flex w-full flex-1 min-h-0 pb-2 pr-2">
+      <div className="flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row md:pl-0">
         <SideBar />
-        <div className="flex-1 min-w-0 border rounded-md overflow-hidden bg-background">
+        <div className="order-1 flex-1 min-w-0 overflow-hidden rounded-lg border border-border bg-background shadow-sm md:order-2">
           {isUserLoading ? <Loading /> : children}
         </div>
       </div>
@@ -108,12 +108,12 @@ export function TopBar() {
   const projectName = project?.project?.name || project?.name;
 
   return (
-    <nav className="px-4 py-2 flex w-full items-center">
+    <nav className="grid w-full grid-cols-[1fr_auto] items-center gap-2 px-3 py-2 sm:grid-cols-[1fr_auto_1fr] sm:px-4">
       {/* Left: Search button */}
-      <div className="flex-1 flex items-center">
+      <div className="flex min-w-0 items-center">
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-primary hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+          className="flex min-w-0 items-center gap-2 rounded-md px-2.5 py-2 text-foreground transition-colors hover:bg-accent hover:text-primary sm:px-3 sm:py-1.5"
         >
           <MagnifyingGlassIcon className="size-5" />
           <span className="text-xs font-medium hidden sm:inline">Search</span>
@@ -124,7 +124,7 @@ export function TopBar() {
       </div>
 
       {/* Center: Breadcrumb in white rounded container */}
-      <div className="flex items-center gap-1.5 bg-background rounded-lg px-3 py-1.5 border border-border/50">
+      <div className="order-3 col-span-2 flex min-w-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 py-1.5 shadow-sm sm:order-none sm:col-span-1 sm:px-3">
         {/* Flux Logo */}
         <Link
           to={`/${workspaceId}`}
@@ -146,7 +146,7 @@ export function TopBar() {
                     className="size-5 rounded"
                     fallbackType="workspace"
                   />
-                  <span className="text-sm font-semibold text-primary/80 truncate max-w-[140px]">
+                  <span className="max-w-[44vw] truncate text-sm font-semibold text-foreground sm:max-w-[140px]">
                     {currentWorkspace.name}
                   </span>
                   <ChevronDown className="size-3 text-primary/40" />
@@ -195,7 +195,7 @@ export function TopBar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1.5 hover:bg-muted rounded-md px-2 py-1 transition-colors cursor-pointer outline-none">
-                  <span className="text-sm font-medium text-primary/60 truncate max-w-[140px]">
+                  <span className="max-w-[34vw] truncate text-sm font-medium text-muted-foreground sm:max-w-[140px]">
                     {projectName}
                   </span>
                   <ChevronDown className="size-3 text-primary/40" />
@@ -231,7 +231,7 @@ export function TopBar() {
       </div>
 
       {/* Right: Inbox + User */}
-      <div className="flex-1 flex items-center justify-end gap-3">
+      <div className="flex min-w-0 items-center justify-end gap-3">
         <InboxIcon className="size-10 p-2 hover:bg-primary/10 rounded-sm text-primary/60 cursor-pointer hidden" />
         {!isLoading && user && (
           <DropdownMenu>
@@ -301,7 +301,7 @@ export function SelectWorkspaces() {
         <Link to="/create">
           <Button
             variant="ghost"
-            className="w-full justify-start text-xs text-primary/80 font-semibold"
+            className="w-full justify-start text-xs text-foreground font-semibold"
             size="sm"
           >
             <PlusCircle className="mr-2 size-5" />
@@ -311,7 +311,7 @@ export function SelectWorkspaces() {
         <Link to="/manage">
           <Button
             variant="ghost"
-            className="w-full justify-start text-xs text-primary/80 font-semibold"
+            className="w-full justify-start text-xs text-foreground font-semibold"
             size="sm"
           >
             <LayoutGrid className="mr-2 size-5" />
@@ -341,7 +341,7 @@ export function SideBar() {
   const id = useId();
   return (
     <LayoutGroup id={id}>
-      <div className="flex flex-col p-2 gap-4">
+      <div className="order-2 flex h-14 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-sm backdrop-blur md:order-1 md:h-auto md:w-20 md:flex-col md:justify-start md:border-0 md:bg-transparent md:p-2 md:shadow-none">
         {sidebarItems.map((item) => (
           <ItemSideBar
             key={item.label}
@@ -399,29 +399,32 @@ export function ItemSideBar({
     <Link
       to={fullPath}
       className={cn(
-        "flex flex-col items-center space-y-2 p-1 rounded-sm cursor-pointer relative group",
-        isActive ? "text-primary" : "text-primary/60 hover:text-primary/80",
+        "group relative flex h-12 min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-md px-1.5 md:h-14 md:w-full md:flex-none",
+        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <div className="relative size-9 flex items-center justify-center">
+      <div className="relative flex size-9 items-center justify-center">
         {isActive && (
           <motion.div
             layoutId={`sidebar-active-${instanceId}`}
-            className="absolute inset-0 bg-primary/10 rounded-md"
+            className="absolute inset-0 rounded-md bg-accent"
             initial={false}
             transition={{ type: "spring", stiffness: 450, damping: 35 }}
           />
         )}
         {!isActive && (
-          <div className="absolute inset-0 bg-primary/5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 rounded-md bg-primary/5 opacity-0 transition-opacity group-hover:opacity-100" />
         )}
         <Icon
           className={cn(
             "size-full p-2 relative z-10 transition-transform group-hover:scale-110",
+            isActive ? "text-primary" : "text-muted-foreground",
           )}
         />
       </div>
-      <span className="text-xs font-medium z-10">{label}</span>
+      <span className="z-10 max-w-full whitespace-nowrap text-[11px] font-medium leading-tight">
+        {label}
+      </span>
     </Link>
   );
 }

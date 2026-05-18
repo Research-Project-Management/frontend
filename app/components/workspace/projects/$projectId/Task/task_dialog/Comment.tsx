@@ -50,7 +50,7 @@ function renderCommentContent(
                 href={matchedAttachmentUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-zinc-900 underline decoration-zinc-900 decoration-1 underline-offset-2 hover:text-black"
+                className="text-foreground underline decoration-foreground decoration-1 underline-offset-2 hover:text-foreground"
               >
                 {segment}
               </a>
@@ -65,7 +65,7 @@ function renderCommentContent(
                   href={part}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-zinc-900 underline decoration-zinc-900 decoration-1 underline-offset-2 hover:text-black"
+                  className="text-foreground underline decoration-foreground decoration-1 underline-offset-2 hover:text-foreground"
                 >
                   {part}
                 </a>
@@ -274,14 +274,14 @@ export function TaskActivities({
           <div className="size-5 flex items-center justify-center">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           </div>
-          <h3 className="text-[16px] font-bold text-zinc-900">
+          <h3 className="text-[16px] font-bold text-foreground">
             Comments & Activity
           </h3>
         </div>
 
         <Button
           variant="secondary"
-          className="h-8 rounded-sm bg-zinc-100 px-3 text-[13px] font-bold text-zinc-900 shadow-none hover:bg-zinc-200 transition-colors border-none"
+          className="h-8 rounded-sm bg-zinc-100 px-3 text-[13px] font-bold text-foreground shadow-none hover:bg-zinc-200 transition-colors border-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -320,7 +320,7 @@ export function TaskActivities({
             placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
             disabled={!canComment || isReadOnly}
             className={cn(
-              "min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-zinc-900 shadow-none transition-all duration-200 focus-visible:ring-0",
+              "min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-0",
               (!canComment || isReadOnly) && "cursor-not-allowed bg-zinc-50/50"
             )}
           />
@@ -332,7 +332,7 @@ export function TaskActivities({
             >
               <Button
                 type="button"
-                className="h-9 min-w-16 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
+                className="h-9 min-w-16 bg-primary px-4 text-white shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
                 onClick={handleSaveComment}
                 disabled={!commentText.trim() || isSavingComment}
               >
@@ -385,7 +385,7 @@ export function TaskActivities({
                 <div key={item.id} className="flex items-start gap-2.5">
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-zinc-200 text-[14px] font-bold text-zinc-800">
+                    <AvatarFallback className="bg-zinc-200 text-[14px] font-bold text-foreground">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -394,7 +394,7 @@ export function TaskActivities({
                     {isComment ? (
                       <>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-zinc-900">{item.author}</span>
+                          <span className="font-semibold text-foreground">{item.author}</span>
                           <span className="ml-0.5 text-[14px] text-zinc-500">{item.timestamp}</span>
                         </div>
 
@@ -403,14 +403,14 @@ export function TaskActivities({
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-zinc-900 shadow-none transition-all duration-200 focus-visible:ring-0"
+                              className="min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-0"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
                             <div className="flex items-center gap-2">
                               <Button
                                 type="button"
-                                className="h-9 min-w-16 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
+                                className="h-9 min-w-16 bg-primary px-4 text-white shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
@@ -435,7 +435,7 @@ export function TaskActivities({
                           </div>
                         ) : (
                           <>
-                            <div className="mt-1.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] leading-6 text-zinc-900 shadow-none whitespace-pre-wrap break-words">
+                            <div className="mt-1.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] leading-6 text-foreground shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
@@ -450,7 +450,7 @@ export function TaskActivities({
                                   disabled={isReadOnly}
                                   className={cn(
                                     "inline-flex size-6 items-center justify-center rounded-full text-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-400",
-                                    isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-zinc-200 hover:text-black"
+                                    isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-zinc-200 hover:text-foreground"
                                   )}
                                 aria-label="Open reaction picker"
                                 title="Open reaction picker"
@@ -510,7 +510,7 @@ export function TaskActivities({
                       </>
                     ) : (
                       <>
-                        <p className="text-[16px] leading-6 text-zinc-900">
+                        <p className="text-[16px] leading-6 text-foreground">
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
                         <p className="mt-1.5 text-[14px]">
@@ -549,7 +549,7 @@ export function TaskActivities({
         <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-[18px] font-bold text-zinc-900">
+              <DialogTitle className="text-[18px] font-bold text-foreground">
                 Delete comment?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-zinc-500">

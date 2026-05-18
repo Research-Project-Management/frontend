@@ -93,11 +93,11 @@ export default function EditorLayout() {
   const [searchParams] = useSearchParams();
   const fileId = searchParams.get("file");
 
-  // Redirect AI panel events → open "Ask AI" tab in the sidebar
+  // Redirect AI panel events to the Flux AI tab in the sidebar.
   useEffect(() => {
     const openAiTab = () => {
       document.dispatchEvent(
-        new CustomEvent("flux:open-panel", { detail: "Ask AI" })
+        new CustomEvent("flux:open-panel", { detail: "Flux AI" })
       );
     };
     document.addEventListener("flux:toggle-ai-panel", openAiTab);
@@ -232,7 +232,7 @@ export default function EditorLayout() {
     return (
       <div className="h-full w-full flex flex-col animate-in fade-in duration-300">
         {/* Toolbar skeleton */}
-        <div className="h-10 border-b border-border flex items-center gap-2 px-3">
+        <div className="h-11 border-b border-border flex items-center gap-2 px-3">
           <Skeleton className="h-5 w-5 rounded" />
           <Skeleton className="h-5 w-20" />
           <Skeleton className="h-5 w-16" />
@@ -241,7 +241,7 @@ export default function EditorLayout() {
           <Skeleton className="h-6 w-6 rounded" />
         </div>
         {/* TabBar skeleton */}
-        <div className="h-8 border-b border-border bg-muted/20 flex items-center gap-px px-1">
+        <div className="h-11 border-b border-border bg-muted/20 flex items-center gap-px px-1">
           {[90, 110, 75].map((w, i) => (
             <Skeleton key={i} className="h-5 rounded" style={{ width: w }} />
           ))}

@@ -114,7 +114,7 @@ const LabelSelect = ({
             <Button 
               onClick={() => handleSave()} 
               disabled={isMutating || !editingName.trim()}
-              className="bg-black hover:bg-black/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-20"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 px-6 rounded-md shadow-sm min-w-20"
             >
               {isMutating ? "Save" : "Save"}
             </Button>
@@ -123,7 +123,7 @@ const LabelSelect = ({
                 onClick={() => handleDelete((id) => onChange(prev => prev.filter(p => p !== id)))} 
                 variant="destructive" 
                 disabled={isMutating}
-                className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-20"
+                className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-primary-foreground font-semibold h-9 px-6 rounded-md shadow-sm min-w-20"
               >
                 {isMutating ? "Delete" : "Delete"}
               </Button>

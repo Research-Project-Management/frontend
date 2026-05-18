@@ -81,7 +81,7 @@ export function TaskActions({
   const [memberPopoverOpen, setMemberPopoverOpen] = useState(false);
   const [memberActionPopoverOpen, setMemberActionPopoverOpen] = useState(false);
   const actionBtnClass =
-    "h-10 rounded-sm border border-border bg-white px-4 text-[15px] font-medium text-zinc-900 shadow-none transition-colors hover:bg-zinc-100";
+    "h-10 rounded-sm border border-border bg-white px-4 text-[15px] font-medium text-foreground shadow-none transition-colors hover:bg-zinc-100";
 
   const normalizedMembers = useMemo(() => {
     const list = members.map((m: any) => {
@@ -211,7 +211,7 @@ export function TaskActions({
                     >
                       <Avatar className="size-9">
                         <AvatarImage src={assignee.user.avatar} />
-                        <AvatarFallback className="bg-zinc-100 text-[13px] font-bold text-zinc-900">
+                        <AvatarFallback className="bg-zinc-100 text-[13px] font-bold text-foreground">
                           {assignee.user.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -240,7 +240,7 @@ export function TaskActions({
                       variant="ghost"
                       size="icon"
                       onClick={() => setMemberPopoverOpen(true)}
-                      className="size-9 rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
+                      className="size-9 rounded-full border-0 bg-zinc-100 text-foreground shadow-none hover:bg-zinc-200"
                     >
                       <Plus className="size-4" />
                     </Button>
@@ -278,7 +278,7 @@ export function TaskActions({
                     variant="ghost"
                     size="icon"
                     onClick={() => setLabelsPopoverOpen(true)}
-                    className="size-9 shrink-0 self-start rounded-full border-0 bg-zinc-100 text-zinc-900 shadow-none hover:bg-zinc-200"
+                    className="size-9 shrink-0 self-start rounded-full border-0 bg-zinc-100 text-foreground shadow-none hover:bg-zinc-200"
                   >
                     <Plus className="size-4" />
                   </Button>
@@ -299,7 +299,7 @@ export function TaskActions({
                 className={`inline-flex h-10 max-w-full items-center gap-2 rounded-sm px-4 text-[16px] leading-none font-medium transition-colors ${
                   isDueDateOverdue
                     ? "bg-red-50 text-red-900 hover:bg-red-100"
-                    : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+                    : "bg-zinc-100 text-foreground hover:bg-zinc-200"
                 } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
               >
                 <span className="truncate">{dateBadgeText}</span>

@@ -228,11 +228,11 @@ export const renameFile = (fileId: string, name: string) =>
 
 // ── React Query Hooks ─────────────────────────────────────────────────────────
 
-export const useFiles = (workspaceId: string, parentId?: string | null) =>
+export const useFiles = (projectId: string, parentId?: string | null) =>
     useQuery({
-        queryKey: ["files", workspaceId, parentId],
-        queryFn: () => fetchFiles(workspaceId, parentId),
-        enabled: !!workspaceId,
+        queryKey: ["files", projectId, parentId],
+        queryFn: () => fetchFiles(projectId, parentId),
+        enabled: !!projectId,
     });
 
 export const useUploadFile = () => {
@@ -458,7 +458,7 @@ export const useUploadFileForEditor = () => {
       parentId?: string | null;
     }) => {
       const timestamp = Date.now();
-      const fileName = `${workspaceId}/${timestamp}-${file.name}`;
+      const fileName = `workspace/${workspaceId}/${timestamp}-${file.name}`;
 
       // 1. Read file as base64 on the client (used for compiler sync — avoids
       //    the backend having to re-download from R2)

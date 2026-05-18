@@ -81,7 +81,7 @@ export default function SideBar() {
   }, []);
 
   return (
-    <div className="flex h-full w-full overflow-hidden border-r border-border bg-card">
+    <div className="flex h-full w-full overflow-hidden bg-card">
       {/* Icon strip */}
       <ul className="flex h-full w-13 shrink-0 flex-col items-center gap-1 border-r border-border bg-card px-1.5 py-2">
         {sideBarItems.map((item) => {

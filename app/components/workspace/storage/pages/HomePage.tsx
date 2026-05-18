@@ -58,9 +58,9 @@ export default function StoragePage() {
     }
   };
 
-  const handleRenameTrigger = (item: StorageItem) => {
-    // Trigger for rename option
-  };
+  // W4: non-empty stub — FileExplorer uses its own internal RenameDialog
+  // but only activates it when onRename prop is truthy.
+  const handleRenameTrigger = (_item: StorageItem) => {};
 
   if (isFilesLoading || isProjectLoading) {
     return <Loading />;

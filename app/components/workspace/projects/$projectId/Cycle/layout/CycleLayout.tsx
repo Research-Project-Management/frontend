@@ -316,11 +316,11 @@ export function CycleLayout() {
               {cycles.length === 0 && !searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
                   <RotateCcw className="size-10 text-zinc-200 mb-4" strokeWidth={1.5} />
-                  <h3 className="text-[16px] font-semibold text-zinc-900 mb-1.5">No cycles found</h3>
+                  <h3 className="text-[16px] font-semibold text-foreground mb-1.5">No cycles found</h3>
                   <p className="text-[13px] text-zinc-500 max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
-                  <Button onClick={openCreate} className="h-9 px-4 bg-black text-white hover:bg-black/90 rounded-sm shadow-none gap-2">
+                  <Button onClick={openCreate} className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm shadow-none gap-2">
                     <Plus className="size-4" />
                     <span>Create your first cycle</span>
                   </Button>

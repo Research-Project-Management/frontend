@@ -135,7 +135,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
                   h-9 w-full flex items-center justify-center text-[13px] transition-all relative z-10
                   text-[#172b4d] font-medium
                   ${isStart || isEnd 
-                    ? "bg-[#0c66e4] text-white font-bold shadow-md rounded-md cursor-pointer" 
+                    ? "bg-[#0c66e4] text-primary-foreground font-bold shadow-md rounded-md cursor-pointer" 
                     : (!isPast ? "cursor-pointer hover:bg-[#091e420f] rounded-md" : "!cursor-default")
                   }
                   ${inRange ? "!rounded-none !bg-[#e9f2ff] !text-[#0c66e4]" : ""}

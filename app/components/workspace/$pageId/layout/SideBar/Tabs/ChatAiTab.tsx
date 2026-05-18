@@ -8,25 +8,22 @@ import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
   X, ArrowUp, Square, Copy, Check, FileCode2, Eye, Download,
   Trash2, Loader2, AlertTriangle, Pin, Zap, History,
-  Wand2,
+  Wand2, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useParams } from "react-router";
 import {
-  getPageChat, streamEditorChat, appendChatMessages,
+  getPageChat, streamEditorChat, appendChatMessages, createChatSession,
   clearPageChat, compilePreview, getChatSession, type PreviewCompileResult,
 } from "~/query/chat-ai";
 import type { ChatMessage, ChatSession } from "~/types/chat";
 import { useWorkspaceActionsStore } from "~/stores/workspace-actions";
 import { usePageContext } from "../../PageContext";
-import type { PendingAiContext } from "~/stores/workspace-actions";
 import { useCompileStore } from "~/stores/compile";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import {
   buildRichContext,
-  formatContextForPrompt,
   parseLatexStructure,
-  type RichEditorContext,
 } from "~/lib/latex-utils";
 import {
   parseAiEditResponse,
@@ -46,6 +43,12 @@ import {
 } from "~/lib/ai-edit-helpers";
 import AiEditSuggestionCard from "./AiEditSuggestionCard";
 import ChatHistoryModal from "~/components/workspace/ai/layout/ChatHistoryModal";
+import { renderMarkdown } from "~/components/workspace/ai/layout/renderMarkdown";
+
+function normalizeSelectionContext(ctx?: ChatMessage["selectionContext"] | null): ChatMessage["selectionContext"] | undefined {
+  if (!ctx?.filename || !ctx.startLine || !ctx.endLine || !ctx.text?.trim()) return undefined;
+  return ctx;
+}
 
 // ── Slash Commands ────────────────────────────────────────────────────────────
 
@@ -58,16 +61,16 @@ interface SlashCommand {
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
-  { cmd: "/fix",      label: "Fix errors",      description: "Fix LaTeX compile errors",        hint: "fix",      needsSelection: false },
-  { cmd: "/explain",  label: "Explain",         description: "Explain selected code",            hint: "explain",  needsSelection: true },
-  { cmd: "/refactor", label: "Refactor",        description: "Rewrite selection for clarity",    hint: "refactor", needsSelection: true },
-  { cmd: "/complete", label: "Complete here",   description: "Continue writing at cursor",        hint: "complete", needsSelection: false },
-  { cmd: "/table",    label: "Generate table",  description: "Create a LaTeX table",             hint: "table",    needsSelection: false },
-  { cmd: "/equation", label: "Equation",        description: "Generate a LaTeX equation",        hint: "equation", needsSelection: false },
-  { cmd: "/cite",     label: "Citation",        description: "Suggest citation format",          hint: "cite",     needsSelection: true },
-  { cmd: "/section",  label: "New section",     description: "Generate section structure",       hint: "section",  needsSelection: false },
-  { cmd: "/abstract", label: "Improve abstract","description": "Rewrite abstract academically", hint: "abstract", needsSelection: true },
-  { cmd: "/translate",label: "Translate",       description: "Translate selection to English",   hint: "translate",needsSelection: true },
+  { cmd: "/fix", label: "Fix errors", description: "Fix LaTeX compile errors", hint: "fix", needsSelection: false },
+  { cmd: "/explain", label: "Explain", description: "Explain selected code", hint: "explain", needsSelection: true },
+  { cmd: "/refactor", label: "Refactor", description: "Rewrite selection for clarity", hint: "refactor", needsSelection: true },
+  { cmd: "/complete", label: "Complete here", description: "Continue writing at cursor", hint: "complete", needsSelection: false },
+  { cmd: "/table", label: "Generate table", description: "Create a LaTeX table", hint: "table", needsSelection: false },
+  { cmd: "/equation", label: "Equation", description: "Generate a LaTeX equation", hint: "equation", needsSelection: false },
+  { cmd: "/cite", label: "Citation", description: "Suggest citation format", hint: "cite", needsSelection: true },
+  { cmd: "/section", label: "New section", description: "Generate section structure", hint: "section", needsSelection: false },
+  { cmd: "/abstract", label: "Improve abstract", "description": "Rewrite abstract academically", hint: "abstract", needsSelection: true },
+  { cmd: "/translate", label: "Translate", description: "Translate selection to English", hint: "translate", needsSelection: true },
 ];
 
 // ── DiffApplyBlock ─────────────────────────────────────────────────────────────
@@ -178,17 +181,57 @@ const AssistantMessage = memo(function AssistantMessage({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const hasEditorActionBlock = /```(?:\s*(?:apply|diff|latex|tex)\b|\s*$)/i.test(content);
+  if (!hasEditorActionBlock) {
+    return (
+      <div className="group relative">
+        <div className="text-[13px] leading-relaxed space-y-0.5">
+          {renderMarkdown(content)}
+          {isStreaming && (
+            <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
+          )}
+        </div>
+        {!isStreaming && content && (
+          <button
+            onClick={handleCopy}
+            className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
+          >
+            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
   let inCode = false;
   let codeLines: string[] = [];
   let codeLang = "";
   let blockKey = 0;
+  let textLines: string[] = [];
+
+  const flushMarkdown = () => {
+    if (textLines.length === 0) return;
+
+    const markdown = textLines.join("\n").trim();
+    if (markdown) {
+      elements.push(
+        <React.Fragment key={`md-${blockKey++}`}>
+          {renderMarkdown(markdown)}
+        </React.Fragment>,
+      );
+    }
+
+    textLines = [];
+  };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.trim().startsWith("```")) {
       if (!inCode) {
+        flushMarkdown();
         inCode = true;
         codeLang = line.trim().slice(3).trim();
         codeLines = [];
@@ -321,21 +364,13 @@ const AssistantMessage = memo(function AssistantMessage({
       continue;
     }
     if (inCode) { codeLines.push(line); continue; }
-    if (line.startsWith("# "))
-      elements.push(<h2 key={i} className="text-sm font-bold mt-3 mb-1">{line.slice(2)}</h2>);
-    else if (line.startsWith("## "))
-      elements.push(<h3 key={i} className="text-sm font-semibold mt-2 mb-1">{line.slice(3)}</h3>);
-    else if (line.match(/^[-*]\s/))
-      elements.push(<div key={i} className="flex gap-2 ml-1 my-0.5"><span className="text-primary/60 shrink-0">•</span><span className="text-xs leading-relaxed">{line.slice(2)}</span></div>);
-    else if (line.trim() === "")
-      elements.push(<div key={i} className="h-1.5" />);
-    else
-      elements.push(<p key={i} className="text-xs leading-relaxed">{line}</p>);
+    textLines.push(line);
   }
+  flushMarkdown();
 
   return (
     <div className="group relative">
-      <div className="text-sm leading-relaxed space-y-0.5">
+      <div className="text-[13px] leading-relaxed space-y-0.5">
         {elements}
         {isStreaming && (
           <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
@@ -355,6 +390,71 @@ const AssistantMessage = memo(function AssistantMessage({
 });
 
 // ── PDF Preview modal ─────────────────────────────────────────────────────────
+
+function isEditorActionMessage(content: string): boolean {
+  return /```(?:\s*(?:apply|diff|latex|tex)\b|\s*$)/i.test(content);
+}
+
+type AiEditStatus = "applied" | "dismissed";
+
+const AI_EDIT_STATUS_RE = /^<!-- flux-ai-edit-status:([a-z0-9]+):(applied|dismissed) -->$/;
+
+function hashAiEditContent(content: string): string {
+  let hash = 5381;
+  for (let i = 0; i < content.length; i++) {
+    hash = ((hash << 5) + hash) ^ content.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function makeAiEditStatusMessage(hash: string, status: AiEditStatus): ChatMessage {
+  return {
+    role: "assistant",
+    content: `<!-- flux-ai-edit-status:${hash}:${status} -->`,
+  };
+}
+
+function parseAiEditStatus(content: string): { hash: string; status: AiEditStatus } | null {
+  const match = content.trim().match(AI_EDIT_STATUS_RE);
+  if (!match) return null;
+  return { hash: match[1], status: match[2] as AiEditStatus };
+}
+
+function MarkdownAssistantMessage({
+  content,
+  isStreaming = false,
+}: {
+  content: string;
+  isStreaming?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="group relative" data-ai-response-renderer="react-markdown">
+      <div className="text-[13px] leading-relaxed space-y-0.5">
+        {renderMarkdown(content)}
+        {isStreaming && (
+          <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
+        )}
+      </div>
+      {!isStreaming && content && (
+        <button
+          onClick={handleCopy}
+          className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
+        >
+          {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function PDFPreviewModal({
   result,
@@ -491,6 +591,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const previewCursorRef = useRef<{ lineNumber: number; column: number } | null>(null);
   // Track resolved historical cards (Keep/Dismiss on reload messages) so they show done state
   const [resolvedMsgIdxes, setResolvedMsgIdxes] = useState<Set<number>>(new Set());
+  const [editStatusByHash, setEditStatusByHash] = useState<Record<string, AiEditStatus>>({});
+  const pendingEditHashRef = useRef<string | null>(null);
 
   const lastUserPromptRef = useRef<string>("");
   const lastUserCmdRef = useRef<SlashCommand | null>(null);
@@ -514,7 +616,13 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     getPageChat(pageId, workspaceId)
       .then((session) => {
         setChatId(session._id);
-        setMessages((session.messages ?? []).map(({ role, content }) => ({ role, content })));
+        setMessages(
+          (session.messages ?? []).map(({ role, content, selectionContext }) => ({
+            role,
+            content,
+            selectionContext: normalizeSelectionContext(selectionContext),
+          })),
+        );
       })
       .catch((err) => console.error("[ChatAiTab] Failed to load chat:", err))
       .finally(() => setIsLoading(false));
@@ -525,6 +633,18 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamContent]);
+
+  useEffect(() => {
+    const next: Record<string, AiEditStatus> = {};
+    for (const message of messages) {
+      if (message.role !== "assistant") continue;
+      const parsed = parseAiEditStatus(message.content);
+      if (parsed) next[parsed.hash] = parsed.status;
+    }
+    if (Object.keys(next).length > 0) {
+      setEditStatusByHash((prev) => ({ ...prev, ...next }));
+    }
+  }, [messages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -616,7 +736,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         if (!activeCommand || activeCommand.cmd !== "/complete") return { items: [] };
         return { items: [] }; // Ghost text filled by AI response applied via handleInsert
       },
-      freeInlineCompletions: () => {},
+      freeInlineCompletions: () => { },
     });
     return () => provider.dispose();
   }, [editorRef, activeCommand]);
@@ -691,12 +811,97 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   // Slash commands that are explanation-only (no JSON edit response expected)
   const EXPLANATION_ONLY_COMMANDS = ["/explain", "/cite", "/translate"];
 
+  const recordEditStatus = useCallback((status: AiEditStatus) => {
+    const lastAssistant = [...messagesRef.current]
+      .reverse()
+      .find((m) => m.role === "assistant" && !parseAiEditStatus(m.content));
+    const hash = pendingEditHashRef.current ?? (lastAssistant ? hashAiEditContent(lastAssistant.content) : null);
+    if (!hash) return;
+
+    pendingEditHashRef.current = null;
+    setEditStatusByHash((prev) => ({ ...prev, [hash]: status }));
+
+    if (chatId) {
+      appendChatMessages(chatId, [makeAiEditStatusMessage(hash, status)]).catch(() => { });
+    }
+  }, [chatId]);
+
+  const restorePendingPreview = useCallback(() => {
+    const editor = editorRef.current;
+    const handle = previewHandleRef.current;
+    if (handle && editor) {
+      handle.clearDecorations();
+      const model = editor.getModel();
+      const snapshot = previewSnapshotRef.current;
+      if (model && snapshot !== null) {
+        isAiPreviewingRef.current = true;
+        const totalLines = model.getLineCount();
+        const lastCol = model.getLineMaxColumn(totalLines);
+        editor.executeEdits("ai-preview-revert", [{
+          range: { startLineNumber: 1, startColumn: 1, endLineNumber: totalLines, endColumn: lastCol },
+          text: snapshot,
+          forceMoveMarkers: true,
+        }]);
+        if (previewCursorRef.current) editor.setPosition(previewCursorRef.current);
+        setTimeout(() => { isAiPreviewingRef.current = false; }, 0);
+      }
+    }
+
+    previewHandleRef.current = null;
+    previewSnapshotRef.current = null;
+    previewCursorRef.current = null;
+  }, [editorRef, isAiPreviewingRef]);
+
+  const replaceLastAssistantSummary = useCallback((content: string) => {
+    setMessages(prev => {
+      const idx = prev.findLastIndex(m => m.role === "assistant" && !parseAiEditStatus(m.content));
+      if (idx < 0) return prev;
+      const updated = [...prev];
+      updated[idx] = { ...prev[idx], content };
+      return updated;
+    });
+  }, []);
+
+  const clearPendingEdit = useCallback((status: AiEditStatus) => {
+    restorePendingPreview();
+    setPendingEditResponse(null);
+    setEditSafetyWarning(null);
+    recordEditStatus(status);
+  }, [recordEditStatus, restorePendingPreview]);
+
+  const jumpToSelectionContext = useCallback((ctx: NonNullable<ChatMessage["selectionContext"]>) => {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+
+    const startLine = Math.min(Math.max(ctx.startLine, 1), model.getLineCount());
+    const endLine = Math.min(Math.max(ctx.endLine, startLine), model.getLineCount());
+    const endColumn = model.getLineMaxColumn(endLine);
+
+    editor.focus();
+    if (typeof editor.revealLinesInCenter === "function") {
+      editor.revealLinesInCenter(startLine, endLine);
+    } else {
+      editor.revealLineInCenter(startLine);
+    }
+    editor.setSelection({
+      startLineNumber: startLine,
+      startColumn: 1,
+      endLineNumber: endLine,
+      endColumn,
+    });
+  }, [editorRef]);
+
   // Send message — passes full rich context to AI
   const handleSend = useCallback(async (overrideText?: string, overrideCommand?: SlashCommand) => {
     const cmd = overrideCommand ?? activeCommand;
     const defaultText = cmd ? cmd.label : "";
     const text = (overrideText ?? input).trim() || defaultText;
     if (!text || isStreaming || !chatId || !workspaceId) return;
+
+    if (pendingEditResponse) {
+      clearPendingEdit("dismissed");
+    }
 
     // Track for Regenerate
     lastUserPromptRef.current = overrideText ?? input;
@@ -713,6 +918,15 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     const effectiveEndLine = selSrc?.endLine;
     const effectiveSection = liveSelection?.section ?? richCtx?.currentSection;
     const effectiveEnv = liveSelection?.environment ?? richCtx?.currentEnvironment;
+    const effectiveSelectionContext =
+      effectiveSelection && effectiveStartLine && effectiveEndLine
+        ? {
+          filename: (activeFilePage ?? currentPage)?.title ?? "main.tex",
+          startLine: effectiveStartLine,
+          endLine: effectiveEndLine,
+          text: effectiveSelection,
+        }
+        : undefined;
 
     // Cursor & selection column info for the JSON edit system
     const editor = editorRef.current;
@@ -732,11 +946,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       ? `Sections: ${structure.sections.map(s => s.title).join(", ") || "none"} | Packages: ${structure.packages.slice(0, 8).join(", ")} | Labels: ${structure.labels.slice(0, 10).join(", ")}`
       : "";
 
-    // For /explain: inject selected code directly into message so AI always sees it
-    let finalText = text;
-    if (cmd?.cmd === "/explain" && effectiveSelection) {
-      finalText = `${text}\n\nSelected code (L${effectiveStartLine}–${effectiveEndLine}):\n\`\`\`latex\n${effectiveSelection}\n\`\`\``;
-    }
+    const finalText = text;
 
     // Is this command edit-only or explanation-only?
     const isExplanationCmd = cmd && EXPLANATION_ONLY_COMMANDS.includes(cmd.cmd);
@@ -751,24 +961,42 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           explanation: localEdit.explanation,
           edits: [localEdit.op],
         };
-        const userMsg2: ChatMessage = { role: "user", content: finalText };
-        setMessages(prev => [...prev, userMsg2]);
+        const userMsg2: ChatMessage = {
+          role: "user",
+          content: finalText,
+          selectionContext: effectiveSelectionContext,
+        };
+        const assistantMsg2: ChatMessage = { role: "assistant", content: JSON.stringify(editResponse, null, 2) };
+        pendingEditHashRef.current = hashAiEditContent(assistantMsg2.content);
+        setMessages(prev => [...prev, userMsg2, assistantMsg2]);
         setInput("");
         setActiveCommand(null);
         setSlashMenuOpen(false);
+        if (effectiveSelectionContext) {
+          setPinnedContext(null);
+          setLiveSelection(null);
+        }
         setPendingEditResponse(editResponse);
         setEditSafetyWarning(null);
-        appendChatMessages(chatId!, [userMsg2]).catch(() => {});
+        appendChatMessages(chatId!, [userMsg2, assistantMsg2]).catch(() => { });
         return;
       }
     }
 
-    const userMsg: ChatMessage = { role: "user", content: finalText };
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: finalText,
+      selectionContext: effectiveSelectionContext,
+    };
     const newMessages = [...messagesRef.current, userMsg];
     setMessages(newMessages);
     setInput("");
     setActiveCommand(null);
     setSlashMenuOpen(false);
+    if (effectiveSelectionContext) {
+      setPinnedContext(null);
+      setLiveSelection(null);
+    }
     streamRef.current = "";
     setStreamContent("");
     setIsStreaming(true);
@@ -828,7 +1056,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             const errMsg = `AI edit could not be located in file:\n${validation.errors.join("\n")}`;
             const assistantMsg: ChatMessage = { role: "assistant", content: errMsg };
             setMessages((prev) => [...prev, assistantMsg]);
-            appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => {});
+            appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => { });
             return;
           }
 
@@ -842,16 +1070,17 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             toast.success(`⚡ Auto-applied ${editResponse.edits.length} edit${editResponse.edits.length > 1 ? "s" : ""} to editor`, { duration: 3500 });
             const assistantMsg: ChatMessage = { role: "assistant", content: finalContent };
             setMessages((prev) => [...prev, assistantMsg]);
-            appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => {});
+            appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => { });
             return;
           }
 
           // Show inline preview (ghost blue) + suggestion card
+          pendingEditHashRef.current = hashAiEditContent(finalContent);
           setEditSafetyWarning(safetyWarning);
           setPendingEditResponse(editResponse);
           const assistantMsg: ChatMessage = { role: "assistant", content: finalContent };
           setMessages((prev) => [...prev, assistantMsg]);
-          appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => {});
+          appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => { });
           return;
         }
       }
@@ -867,7 +1096,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
       const assistantMsg: ChatMessage = { role: "assistant", content: finalContent };
       setMessages((prev) => [...prev, assistantMsg]);
-      appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => {});
+      appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => { });
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
         setMessages((prev) => [...prev, { role: "assistant", content: "An error occurred. Please try again." }]);
@@ -878,7 +1107,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       streamRef.current = "";
       abortRef.current = null;
     }
-  }, [input, isStreaming, chatId, workspaceId, getRichContext, currentPage?.title, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent]);
+  }, [input, isStreaming, chatId, workspaceId, pendingEditResponse, getRichContext, activeFilePage, currentPage, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent, clearPendingEdit]);
 
   // ── Auto-preview: whenever a pending edit is set, show it in the editor immediately ──
   useEffect(() => {
@@ -895,10 +1124,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       return;
     }
 
-    if (previewHandleRef.current) {
-      previewHandleRef.current.clearDecorations();
-      previewHandleRef.current = null;
-    }
+    restorePendingPreview();
 
     // Save snapshot BEFORE applying preview so dismiss can restore atomically
     const model = editor.getModel();
@@ -908,7 +1134,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     isAiPreviewingRef.current = true;
     previewHandleRef.current = previewAiEdits(editor, pendingEditResponse.edits);
     setTimeout(() => { isAiPreviewingRef.current = false; }, 0);
-  }, [pendingEditResponse, editorRef]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingEditResponse, editorRef, restorePendingPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Apply: edits are already in the editor (from preview) — just confirm them
   const handleApplyStructuredEdits = useCallback((_edits: AiEditOperation[]) => {
@@ -932,71 +1158,55 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
     setPendingEditResponse(null);
     setEditSafetyWarning(null);
+    recordEditStatus("applied");
     // Replace last assistant message JSON content with clean summary so card disappears
     const explanation = pendingEditResponse?.explanation ?? "Edit applied to document";
-    setMessages(prev => {
-      const idx = prev.findLastIndex(m => m.role === "assistant");
-      if (idx < 0) return prev;
-      const updated = [...prev];
-      updated[idx] = { ...prev[idx], content: `✓ ${explanation}` };
-      return updated;
-    });
+    replaceLastAssistantSummary(`✓ ${explanation}`);
     toast.success(`✓ Edit applied`, { duration: 2000 });
     // Auto-compile after AI edit if enabled — delay to allow save to flush
     if (autoCompile) {
       setTimeout(() => compileRef.current?.(), 1800);
     }
-  }, [editorRef, pendingEditResponse, autoCompile, compileRef]);
+  }, [editorRef, pendingEditResponse, autoCompile, compileRef, recordEditStatus, replaceLastAssistantSummary]);
 
   // Dismiss: atomically restore content snapshot (no fragile undo-loop)
   const handleDismissEdits = useCallback(() => {
-    const editor = editorRef.current;
-    const handle = previewHandleRef.current;
-    if (handle && editor) {
-      handle.clearDecorations();
-      const model = editor.getModel();
-      const snapshot = previewSnapshotRef.current;
-      if (model && snapshot !== null) {
-        isAiPreviewingRef.current = true;
-        // Replace entire content atomically — this IS undoable (one Ctrl+Z)
-        const totalLines = model.getLineCount();
-        const lastCol = model.getLineMaxColumn(totalLines);
-        editor.executeEdits("ai-preview-revert", [{
-          range: { startLineNumber: 1, startColumn: 1, endLineNumber: totalLines, endColumn: lastCol },
-          text: snapshot,
-          forceMoveMarkers: true,
-        }]);
-        if (previewCursorRef.current) editor.setPosition(previewCursorRef.current);
-        setTimeout(() => { isAiPreviewingRef.current = false; }, 0);
-      }
-      previewHandleRef.current = null;
-      previewSnapshotRef.current = null;
-      previewCursorRef.current = null;
-    }
-    setPendingEditResponse(null);
-    setEditSafetyWarning(null);
+    clearPendingEdit("dismissed");
     // Replace last assistant message JSON with "dismissed" marker so card disappears
-    setMessages(prev => {
-      const idx = prev.findLastIndex(m => m.role === "assistant");
-      if (idx < 0) return prev;
-      const updated = [...prev];
-      updated[idx] = { ...prev[idx], content: "↩ Edit dismissed" };
-      return updated;
-    });
-  }, [editorRef, isAiPreviewingRef]);
+    replaceLastAssistantSummary("Edit dismissed");
+  }, [clearPendingEdit, replaceLastAssistantSummary]);
 
   // Regenerate — dismiss current edit response and re-send last prompt
   const handleRegenerate = useCallback(() => {
-    setPendingEditResponse(null);
-    setEditSafetyWarning(null);
+    if (pendingEditResponse) {
+      clearPendingEdit("dismissed");
+      replaceLastAssistantSummary("Edit dismissed");
+    }
     const prompt = lastUserPromptRef.current;
     const cmd = lastUserCmdRef.current;
     if (prompt) {
       handleSend(prompt, cmd ?? undefined);
     }
-  }, [handleSend]);
+  }, [clearPendingEdit, handleSend, pendingEditResponse, replaceLastAssistantSummary]);
 
   // Insert LaTeX into editor — converts to a preview-based edit so user sees Accept/Dismiss
+  const queueEditorEdit = useCallback((editResponse: AiEditResponse) => {
+    const editor = editorRef.current;
+    if (autoApply && editor) {
+      const affected = applyAiEdits(editor, editResponse.edits);
+      if (affected) highlightEditedLines(editor, affected.startLine, affected.endLine);
+      toast.success(`Auto-inserted ${editResponse.edits.length} change${editResponse.edits.length > 1 ? "s" : ""}`, { duration: 2500 });
+      if (autoCompile) {
+        setTimeout(() => compileRef.current?.(), 1800);
+      }
+      return;
+    }
+
+    pendingEditHashRef.current = hashAiEditContent(JSON.stringify(editResponse));
+    setPendingEditResponse(editResponse);
+    setEditSafetyWarning(null);
+  }, [autoApply, autoCompile, compileRef, editorRef]);
+
   const handleInsert = useCallback((latex: string) => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -1025,8 +1235,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             text: trimmed,
           }],
         };
-        setPendingEditResponse(editResponse);
-        setEditSafetyWarning(null);
+        queueEditorEdit(editResponse);
         return;
       }
     }
@@ -1048,8 +1257,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           text: trimmed,
         }],
       };
-      setPendingEditResponse(editResponse);
-      setEditSafetyWarning(null);
+      queueEditorEdit(editResponse);
       return;
     }
 
@@ -1067,9 +1275,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         text: trimmed,
       }],
     };
-    setPendingEditResponse(editResponse);
-    setEditSafetyWarning(null);
-  }, [editorRef]);
+    queueEditorEdit(editResponse);
+  }, [editorRef, queueEditorEdit]);
 
   // Apply diff block — uses parseDiffToEdits to locate changes in the file
   const handleApplyDiff = useCallback((diffText: string) => {
@@ -1083,13 +1290,13 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       if (added) handleInsert(added);
       return;
     }
-    setPendingEditResponse({
+    const editResponse: AiEditResponse = {
       intent: "replace_range",
       explanation: `Apply diff (${ops.length} hunk${ops.length !== 1 ? "s" : ""})`,
       edits: ops,
-    });
-    setEditSafetyWarning(null);
-  }, [editorRef, currentFileContent, handleInsert]);
+    };
+    queueEditorEdit(editResponse);
+  }, [editorRef, currentFileContent, handleInsert, queueEditorEdit]);
 
   // Pin current selection as context
   const handlePinContext = useCallback(() => {
@@ -1147,76 +1354,60 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     }
   }, [pendingAiText, setPendingAiText]);
 
-  // Auto-send from pendingAiContext (rich selection → auto-submit as context)
+  // Bind selection from the editor into the AI toolbar. The user sends their own prompt.
   useEffect(() => {
-    if (!pendingAiContext || !chatId || !workspaceId || isStreaming) return;
+    if (!pendingAiContext) return;
     clearPendingAiContext();
-    const { selectedText, startLine, endLine } = pendingAiContext;
-    const lineRange = startLine === endLine ? `line ${startLine}` : `lines ${startLine}–${endLine}`;
-    const autoPrompt = `Help me with this selection (${lineRange}):\n\`\`\`latex\n${selectedText}\n\`\`\``;
-    // Pre-fill and auto-send
-    setInput(autoPrompt);
-    // Use a microtask to let state settle before sending
-    setTimeout(() => {
-      const text = autoPrompt.trim();
-      if (!text) return;
-      const richCtx = getRichContext();
-      const userMsg: ChatMessage = { role: "user", content: text };
-      const newMessages = [...messagesRef.current, userMsg];
-      setMessages(newMessages);
-      setInput("");
-      streamRef.current = "";
-      setStreamContent("");
-      setIsStreaming(true);
-      const controller = new AbortController();
-      abortRef.current = controller;
-      (async () => {
-        try {
-          for await (const chunk of streamEditorChat(newMessages, {
-            chatId: chatId!,
-            workspaceId: workspaceId!,
-            fileContent: richCtx?.fileContent ?? "",
-            filename: (activeFilePage ?? currentPage)?.title ?? "main.tex",
-            selection: richCtx?.selectedText ?? "",
-            cursorContext: richCtx?.cursorContext ?? "",
-            selectionStartLine: richCtx?.startLine,
-            selectionEndLine: richCtx?.endLine,
-            contextBefore: richCtx?.contextBefore ?? "",
-            contextAfter: richCtx?.contextAfter ?? "",
-            currentSection: richCtx?.currentSection,
-            currentEnvironment: richCtx?.currentEnvironment,
-            signal: controller.signal,
-          })) {
-            streamRef.current += chunk;
-            setStreamContent(streamRef.current);
-          }
-          const finalContent = streamRef.current;
-          if (!finalContent) return;
-          const assistantMsg: ChatMessage = { role: "assistant", content: finalContent };
-          setMessages((prev) => [...prev, assistantMsg]);
-          appendChatMessages(chatId!, [userMsg, assistantMsg]).catch(() => {});
-        } catch (err) {
-          if (err instanceof Error && err.name !== "AbortError") {
-            setMessages((prev) => [...prev, { role: "assistant", content: "An error occurred. Please try again." }]);
-          }
-        } finally {
-          setIsStreaming(false);
-          setStreamContent("");
-          streamRef.current = "";
-          abortRef.current = null;
-        }
-      })();
-    }, 80);
-  }, [pendingAiContext, chatId, workspaceId, isStreaming]); // eslint-disable-line react-hooks/exhaustive-deps
+    const { selectedText, startLine, endLine, question } = pendingAiContext;
+    setPinnedContext({
+      label: `${(activeFilePage ?? currentPage)?.title ?? "main.tex"} ${startLine === endLine ? `L${startLine}` : `L${startLine}-${endLine}`}`,
+      text: selectedText,
+      startLine,
+      endLine,
+    });
+    if (question?.trim()) setInput(question.trim());
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  }, [pendingAiContext, clearPendingAiContext, activeFilePage, currentPage]);
 
   // Clear history
   const handleClear = useCallback(async () => {
     if (!pageId) return;
     setShowClearConfirm(false);
+    if (pendingEditResponse) {
+      clearPendingEdit("dismissed");
+    }
     setMessages([]);
     try { await clearPageChat(pageId); }
     catch (err) { console.error("[ChatAiTab] Clear error:", err); }
-  }, [pageId]);
+  }, [pageId, pendingEditResponse, clearPendingEdit]);
+
+  const handleNewConversation = useCallback(async () => {
+    if (!workspaceId) return;
+    setShowClearConfirm(false);
+    if (pendingEditResponse) {
+      clearPendingEdit("dismissed");
+    }
+    setMessages([]);
+    setInput("");
+    setActiveCommand(null);
+    setEditSafetyWarning(null);
+    setStreamContent("");
+    setIsStreaming(false);
+    streamRef.current = "";
+    abortRef.current?.abort();
+
+    try {
+      const filename = (activeFilePage ?? currentPage)?.title ?? "main.tex";
+      const session = await createChatSession({
+        workspaceId,
+        title: `Editor chat - ${filename}`,
+      });
+      setChatId(session._id);
+    } catch (err) {
+      console.error("[ChatAiTab] New conversation error:", err);
+      toast.error("Could not create a new conversation");
+    }
+  }, [workspaceId, activeFilePage, currentPage, pendingEditResponse, clearPendingEdit]);
 
   const handleSelectHistoryChat = useCallback(async (chat: ChatSession) => {
     setIsLoading(true);
@@ -1229,10 +1420,11 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       const session = await getChatSession(chat._id);
       setChatId(session._id);
       setMessages(
-        (session.messages ?? []).map(({ role, content, sources }) => ({
+        (session.messages ?? []).map(({ role, content, sources, selectionContext }) => ({
           role,
           content,
           sources,
+          selectionContext: normalizeSelectionContext(selectionContext),
         })),
       );
       setStreamContent("");
@@ -1251,6 +1443,22 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     "Generate a professional table from my data",
     "Add a citation for this claim",
   ];
+
+  const selectionToolbarContext = pinnedContext ?? liveSelection;
+  const selectionToolbarRange = selectionToolbarContext
+    ? selectionToolbarContext.startLine === selectionToolbarContext.endLine
+      ? `L${selectionToolbarContext.startLine}`
+      : `L${selectionToolbarContext.startLine}-${selectionToolbarContext.endLine}`
+    : "";
+  const selectionToolbarText = selectionToolbarContext?.text ?? "";
+  const selectionToolbarCharCount =
+    selectionToolbarContext && "charCount" in selectionToolbarContext
+      ? selectionToolbarContext.charCount
+      : selectionToolbarText.length;
+  const selectionToolbarWordCount =
+    selectionToolbarContext && "wordCount" in selectionToolbarContext
+      ? selectionToolbarContext.wordCount
+      : selectionToolbarText.split(/\s+/).filter(Boolean).length;
 
   return (
     <>
@@ -1277,9 +1485,16 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           <div className="flex items-center gap-2">
             <img src="/Chat.svg" alt="Flux AI" className="size-4" />
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Flux AI</span>
-            <span className="text-[9px] font-semibold px-1.5 py-px rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">LaTeX</span>
           </div>
           <div className="flex items-center gap-0.5">
+            <button
+              onClick={handleNewConversation}
+              disabled={!workspaceId || isStreaming}
+              title="New conversation"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-20"
+            >
+              <Plus className="size-3.5" />
+            </button>
             {/* Auto Apply toggle */}
             <button
               onClick={() => setAutoApply((v) => !v)}
@@ -1305,10 +1520,21 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             </button>
 
             {showClearConfirm ? (
-              <div className="flex items-center gap-1 bg-destructive/10 border border-destructive/20 rounded-lg px-2 py-1">
-                <span className="text-[10px] text-destructive">clear history?</span>
-                <button onClick={handleClear} className="text-[10px] px-1.5 py-px rounded bg-destructive text-white hover:bg-destructive/90 transition-colors">yes</button>
-                <button onClick={() => setShowClearConfirm(false)} className="text-[10px] px-1.5 py-px rounded text-muted-foreground hover:bg-secondary transition-colors">no</button>
+              <div className="flex h-8 items-center gap-0.5 rounded-md border border-destructive/20 bg-destructive/10 px-1">
+                <button
+                  onClick={handleClear}
+                  title="Confirm clear chat"
+                  className="flex size-6 items-center justify-center rounded text-destructive hover:bg-destructive/15 transition-colors"
+                >
+                  <Check className="size-3.5" />
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  title="Cancel"
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors"
+                >
+                  <X className="size-3.5" />
+                </button>
               </div>
             ) : (
               <button
@@ -1331,16 +1557,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         {/* Toast notifications now via sonner — see toast() calls above */}
 
         {/* ── File context bar ──────────────────────────────────────────── */}
-        {(activeFilePage ?? currentPage) && (
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-secondary/20 border-b border-border/30 shrink-0">
-            <FileCode2 className="size-3 text-muted-foreground/40 shrink-0" />
-            <span className="text-[10px] font-mono text-muted-foreground/50 truncate flex-1">
-              {(activeFilePage ?? currentPage)?.title || "main.tex"}
-            </span>
-            <span className="text-[9px] text-muted-foreground/30">full context</span>
-          </div>
-        )}
-
         {/* ── Compile error banner ──────────────────────────────────────── */}
         {compileStatus === "error" && compileErrors.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/8 border-b border-destructive/15 shrink-0">
@@ -1396,6 +1612,9 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             /* ── Chat messages ── */
             <div className="px-3 py-4 space-y-4">
               {messages.map((msg, i) => {
+                if (msg.role === "assistant" && parseAiEditStatus(msg.content)) {
+                  return null;
+                }
                 // If this is the last assistant msg with a pending edit → render it as the suggestion card (IS the message bubble)
                 const isLastAssistantMsg =
                   msg.role === "assistant" && i === messages.length - 1;
@@ -1456,6 +1675,26 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                     }
                     if (parsed && typeof parsed.intent === "string" && typeof parsed.explanation === "string") {
                       const historicalEdit = parsed as AiEditResponse;
+                      const editHash = hashAiEditContent(msg.content);
+                      const editStatus = editStatusByHash[editHash];
+
+                      if (editStatus) {
+                        const isApplied = editStatus === "applied";
+                        return (
+                          <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
+                            <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
+                              <img src="/Chat.svg" alt="Flux AI" className="size-5" />
+                            </div>
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm border text-[13px] ${isApplied
+                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                              : "bg-muted/50 border-border/50 text-muted-foreground"
+                              }`}>
+                              {isApplied ? <Check className="size-3.5 shrink-0" /> : <X className="size-3.5 shrink-0" />}
+                              <span>{isApplied ? historicalEdit.explanation : "Edit dismissed"}</span>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       // If already resolved (Keep/Dismiss pressed) → show done bubble
                       if (resolvedMsgIdxes.has(i)) {
@@ -1464,7 +1703,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                             <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
                               <img src="/Chat.svg" alt="Flux AI" className="size-5" />
                             </div>
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px]">
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[13px]">
                               <Check className="size-3.5 shrink-0" />
                               <span>{historicalEdit.explanation}</span>
                             </div>
@@ -1491,9 +1730,19 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                                   if (affected) highlightEditedLines(editor, affected.startLine, affected.endLine);
                                   toast.success("✓ Re-applied edit", { duration: 2000 });
                                 }
+                                setEditStatusByHash((prev) => ({ ...prev, [editHash]: "applied" }));
+                                if (chatId) {
+                                  appendChatMessages(chatId, [makeAiEditStatusMessage(editHash, "applied")]).catch(() => { });
+                                }
                                 markResolved();
                               }}
-                              onDismiss={markResolved}
+                              onDismiss={() => {
+                                setEditStatusByHash((prev) => ({ ...prev, [editHash]: "dismissed" }));
+                                if (chatId) {
+                                  appendChatMessages(chatId, [makeAiEditStatusMessage(editHash, "dismissed")]).catch(() => { });
+                                }
+                                markResolved();
+                              }}
                             />
                           </div>
                         </div>
@@ -1502,32 +1751,76 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                   }
                 }
 
-                return (
-                <div key={i} className={`flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "assistant" && (
-                    <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                      <img src="/Chat.svg" alt="Flux AI" className="size-5" />
+                if (msg.role === "user") {
+                  const ctx = normalizeSelectionContext(msg.selectionContext);
+                  const rangeLabel = ctx
+                    ? ctx.startLine === ctx.endLine
+                      ? `L${ctx.startLine}`
+                      : `L${ctx.startLine}-${ctx.endLine}`
+                    : "";
+
+                  return (
+                    <div key={i} className="flex justify-end animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                      <div className="flex max-w-[85%] flex-col items-end gap-2">
+                        <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-3 py-2 border border-zinc-200 dark:border-zinc-700">
+                          <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                        {ctx && (
+                          <div className="group relative">
+                            <button
+                              type="button"
+                              onClick={() => jumpToSelectionContext(ctx)}
+                              className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-mono text-muted-foreground shadow-sm hover:border-primary/40 hover:text-foreground transition-colors"
+                              title="Jump to selection"
+                            >
+                              <FileCode2 className="size-3 shrink-0 text-primary/70" />
+                              <span className="truncate">{ctx.filename}</span>
+                              <span className="shrink-0 text-primary/80">{rangeLabel}</span>
+                            </button>
+                            {ctx.text && (
+                              <div className="absolute bottom-full right-0 mb-2 hidden w-80 max-w-[75vw] group-hover:block z-50">
+                                <div className="rounded-xl border border-border bg-popover p-2.5 text-[10px] font-mono text-muted-foreground shadow-xl">
+                                  <div className="mb-1.5 flex items-center gap-1.5">
+                                    <FileCode2 className="size-3 text-primary/70" />
+                                    <span className="truncate">{ctx.filename}</span>
+                                    <span className="ml-auto text-primary/70">{rangeLabel}</span>
+                                  </div>
+                                  <pre className="max-h-36 overflow-auto whitespace-pre-wrap leading-relaxed">{ctx.text}</pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  <div className={`group relative ${
-                    msg.role === "user"
+                  );
+                }
+
+                return (
+                  <div key={i} className={`flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {msg.role === "assistant" && (
+                      <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
+                        <img src="/Chat.svg" alt="Flux AI" className="size-5" />
+                      </div>
+                    )}
+                    <div className={`group relative ${msg.role === "user"
                       ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-3 py-2 border border-zinc-200 dark:border-zinc-700"
                       : "max-w-[92%]"
-                  }`}>
-                    {msg.role === "user" ? (
-                      <p className="text-[12px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                    ) : (
-                      <AssistantMessage
-                        content={msg.content}
-                        onInsert={handleInsert}
-                        onPreview={handlePreview}
-                        onApply={handleApplyOp}
-                        onApplyDiff={handleApplyDiff}
-                        fileContent={currentFileContent}
-                      />
-                    )}
+                      }`}>
+                      {isEditorActionMessage(msg.content) ? (
+                        <AssistantMessage
+                          content={msg.content}
+                          onInsert={handleInsert}
+                          onPreview={handlePreview}
+                          onApply={handleApplyOp}
+                          onApplyDiff={handleApplyDiff}
+                          fileContent={currentFileContent}
+                        />
+                      ) : (
+                        <MarkdownAssistantMessage content={msg.content} />
+                      )}
+                    </div>
                   </div>
-                </div>
                 );
               })}
 
@@ -1539,15 +1832,19 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                   </div>
                   <div className="max-w-[92%]">
                     {streamContent ? (
-                      <AssistantMessage
-                        content={streamContent}
-                        isStreaming
-                        onInsert={handleInsert}
-                        onPreview={handlePreview}
-                        onApply={handleApplyOp}
-                        onApplyDiff={handleApplyDiff}
-                        fileContent={currentFileContent}
-                      />
+                      isEditorActionMessage(streamContent) ? (
+                        <AssistantMessage
+                          content={streamContent}
+                          isStreaming
+                          onInsert={handleInsert}
+                          onPreview={handlePreview}
+                          onApply={handleApplyOp}
+                          onApplyDiff={handleApplyDiff}
+                          fileContent={currentFileContent}
+                        />
+                      ) : (
+                        <MarkdownAssistantMessage content={streamContent} isStreaming />
+                      )
                     ) : (
                       /* Typing indicator — bouncing dots */
                       <div className="flex items-center gap-1 px-1 py-1.5">
@@ -1577,44 +1874,48 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         {/* ── Input area ───────────────────────────────────────────────── */}
         <div className="px-3 pb-3 pt-2 border-t border-border/40 shrink-0 relative">
 
-          {/* Context chip — live selection or pinned */}
-          {(liveSelection || pinnedContext) && (
-            <div className="flex items-center gap-1 mb-2 group relative">
-              {pinnedContext ? (
-                <div className="flex items-center gap-1 flex-1 min-w-0 px-2 py-1 rounded-lg border border-amber-500/25 bg-amber-500/5">
-                  <Pin className="size-2.5 text-amber-400/60 shrink-0" />
-                  <span className="text-[10px] font-mono text-amber-400/70 truncate">{(activeFilePage ?? currentPage)?.title ?? "main.tex"}</span>
-                  <span className="text-[10px] font-mono text-amber-300/60 shrink-0">L{pinnedContext.startLine}–{pinnedContext.endLine}</span>
-                  <button onClick={() => setPinnedContext(null)} className="ml-auto p-px rounded text-muted-foreground/30 hover:text-foreground">
-                    <X className="size-2.5" />
-                  </button>
-                </div>
-              ) : liveSelection ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded-lg border border-blue-500/20 bg-blue-500/5">
-                  <span className="size-1.5 rounded-full bg-blue-400/60 shrink-0" />
-                  <span className="text-[10px] font-mono text-blue-400/60 truncate">{(activeFilePage ?? currentPage)?.title ?? "main.tex"}</span>
-                  <span className="text-[10px] font-mono text-blue-300/70 shrink-0">
-                    {liveSelection.startLine === liveSelection.endLine ? `L${liveSelection.startLine}` : `L${liveSelection.startLine}–${liveSelection.endLine}`}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground/30">{liveSelection.wordCount}w</span>
-                  <button onClick={handlePinContext} title="Pin selection" className="ml-auto p-px rounded text-blue-400/30 hover:text-blue-300 transition-colors">
-                    <Pin className="size-2.5" />
-                  </button>
-                </div>
-              ) : null}
-              {/* Hover tooltip */}
-              {liveSelection && !pinnedContext && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 hidden group-hover:block z-50 pointer-events-none">
-                  <div className="bg-popover border border-border rounded-xl shadow-xl p-2.5 text-[10px] font-mono">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      {liveSelection.section && <span className="px-1.5 py-px rounded-full bg-violet-500/10 text-violet-400/80 border border-violet-500/20">§ {liveSelection.section}</span>}
-                      {liveSelection.environment && <span className="px-1.5 py-px rounded-full bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">\{liveSelection.environment}</span>}
-                      <span className="ml-auto text-muted-foreground/40">{liveSelection.charCount}ch</span>
-                    </div>
-                    <pre className="text-muted-foreground/60 max-h-20 overflow-hidden whitespace-pre-wrap leading-relaxed">{liveSelection.text.slice(0, 180)}{liveSelection.text.length > 180 ? "…" : ""}</pre>
+          {/* Selection toolbar */}
+          {selectionToolbarContext && (
+            <div className="mb-2 group relative">
+              <div className="flex items-center gap-1.5 min-w-0 px-2.5 py-1.5 rounded-lg border border-border/50 bg-muted/35">
+                <FileCode2 className="size-3 text-primary/60 shrink-0" />
+                <span className="text-[10px] font-mono text-muted-foreground truncate">
+                  {(activeFilePage ?? currentPage)?.title ?? "main.tex"}
+                </span>
+                <span className="text-[10px] font-mono text-primary/80 shrink-0">
+                  {selectionToolbarRange}
+                </span>
+                <span className="text-[9px] text-muted-foreground/45 shrink-0">
+                  {selectionToolbarWordCount}w
+                </span>
+                <button
+                  onClick={pinnedContext ? () => setPinnedContext(null) : handlePinContext}
+                  title={pinnedContext ? "Clear selection context" : "Pin selection context"}
+                  className="ml-auto p-px rounded text-muted-foreground/40 hover:text-foreground transition-colors"
+                >
+                  {pinnedContext ? <X className="size-2.5" /> : <Pin className="size-2.5" />}
+                </button>
+              </div>
+              <div className="absolute bottom-full left-0 right-0 mb-1 hidden group-hover:block z-50 pointer-events-none">
+                <div className="bg-popover border border-border rounded-xl shadow-xl p-2.5 text-[10px] font-mono">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    {"section" in selectionToolbarContext && selectionToolbarContext.section && (
+                      <span className="px-1.5 py-px rounded-full bg-violet-500/10 text-violet-400/80 border border-violet-500/20">
+                        {selectionToolbarContext.section}
+                      </span>
+                    )}
+                    {"environment" in selectionToolbarContext && selectionToolbarContext.environment && (
+                      <span className="px-1.5 py-px rounded-full bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">
+                        \{selectionToolbarContext.environment}
+                      </span>
+                    )}
+                    <span className="ml-auto text-muted-foreground/40">{selectionToolbarCharCount}ch</span>
                   </div>
+                  <pre className="text-muted-foreground/70 max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed">
+                    {selectionToolbarText}
+                  </pre>
                 </div>
-              )}
+              </div>
             </div>
           )}
 

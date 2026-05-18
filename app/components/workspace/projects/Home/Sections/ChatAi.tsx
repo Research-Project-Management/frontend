@@ -48,7 +48,7 @@ export default function ChatAi() {
   if (isLoading || !projects || projects.length === 0) return null;
 
   return (
-    <HomeSection title="Ask AI">
+    <HomeSection title="Ask Flux AI">
       <div className="relative rounded-2xl border border-border bg-background transition-shadow duration-300 focus-within:border-primary/30">
         {/* Top: project selector */}
         <div className="flex items-center gap-2 px-3 pt-3">

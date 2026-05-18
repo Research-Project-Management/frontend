@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { History, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
+import { History, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
 import { useState } from "react";
 import { ChatModeProvider, useChatMode } from "~/contexts/ChatModeContext";
 import WikiChatFeatures from "../WikiChatFeatures";
@@ -30,8 +30,22 @@ function ChatAiContent() {
   return (
     <div className="flex-1 bg-background h-full flex overflow-hidden">
       <div className="flex-1 flex min-w-0 overflow-hidden">
+        {mode === "wiki" && sourcesOpen && (
+          <aside className="shrink-0 h-full w-60 border-r border-border bg-card flex flex-col overflow-hidden">
+            <div className="mb-1 flex items-center gap-2 px-4 py-4">
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">
+                Sources
+              </h2>
+            </div>
+
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4">
+              <WikiChatFeatures />
+            </div>
+          </aside>
+        )}
+
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 bg-background/90 px-4 backdrop-blur">
+          <div className="flex h-12 shrink-0 items-center justify-end border-b border-border/60 bg-background/90 px-4 backdrop-blur">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleNewChat}
@@ -48,38 +62,10 @@ function ChatAiContent() {
                 History
               </button>
             </div>
-
-            {mode === "wiki" && (
-              <button
-                onClick={() => setSourcesOpen((open) => !open)}
-                className="inline-flex h-8 items-center gap-2 rounded-md border border-border/60 bg-secondary/30 px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                {sourcesOpen ? (
-                  <PanelRightClose className="size-4" />
-                ) : (
-                  <PanelRightOpen className="size-4" />
-                )}
-                Sources
-              </button>
-            )}
           </div>
 
           <Outlet />
         </div>
-
-        {mode === "wiki" && sourcesOpen && (
-          <aside className="shrink-0 w-72 border-l border-border bg-sidebar flex flex-col overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3">
-              <h2 className="text-lg font-semibold text-foreground/80 tracking-tight">
-                Sources
-              </h2>
-            </div>
-
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
-              <WikiChatFeatures />
-            </div>
-          </aside>
-        )}
       </div>
 
       <ChatHistoryModal

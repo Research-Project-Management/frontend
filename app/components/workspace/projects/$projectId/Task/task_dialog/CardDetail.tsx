@@ -257,8 +257,8 @@ function ChecklistBlock({
     <div className="bg-white space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <CheckSquare className="size-5 text-zinc-900" />
-          <h4 className="text-[15px] font-bold leading-tight text-zinc-900">
+          <CheckSquare className="size-5 text-foreground" />
+          <h4 className="text-[15px] font-bold leading-tight text-foreground">
             {checklist.title}
           </h4>
         </div>
@@ -266,7 +266,7 @@ function ChecklistBlock({
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-zinc-900 hover:bg-zinc-200"
+            className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-zinc-200"
           >
             Delete
           </button>
@@ -277,7 +277,7 @@ function ChecklistBlock({
         <span className="text-[12px] font-semibold text-zinc-500 min-w-8">{progress}%</span>
         <div className="flex-1 h-1.5 rounded-full bg-[#e9edf3] overflow-hidden">
           <div
-            className="h-full bg-black transition-all"
+            className="h-full bg-primary transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -287,7 +287,7 @@ function ChecklistBlock({
         {checklist.items.length > 0 ? (
           checklist.items.map((item) => (
             editingItemId === item._id ? (
-              <div key={item._id} className="flex items-start gap-3 text-[14px] text-zinc-900">
+              <div key={item._id} className="flex items-start gap-3 text-[14px] text-foreground">
                 <input
                   type="checkbox"
                   checked={item.completed}
@@ -296,19 +296,19 @@ function ChecklistBlock({
                     if (isReadOnly) return;
                     onToggleItem(item._id);
                   }}
-                  className={`mt-2 size-4 rounded-sm border-zinc-300 text-black focus:ring-0 ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  className={`mt-2 size-4 rounded-sm border-zinc-300 text-foreground focus:ring-0 ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                 />
                 <div className="flex-1 space-y-2">
                   <input
                     value={editingItemTitle}
                     onChange={(e) => setEditingItemTitle(e.target.value)}
-                    className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none outline-none focus:border-black"
+                    className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none outline-none focus:border-primary"
                     autoFocus
                   />
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
-                      className="h-9 bg-black px-4 text-white hover:bg-black/90 shadow-none"
+                      className="h-9 bg-primary px-4 text-primary-foreground hover:bg-primary/90 shadow-none"
                       onClick={handleSaveEditItem}
                     >
                       Save
@@ -336,7 +336,7 @@ function ChecklistBlock({
                 </button>
               </div>
             ) : (
-              <div key={item._id} className="group flex items-center gap-3 text-[14px] text-zinc-900">
+              <div key={item._id} className="group flex items-center gap-3 text-[14px] text-foreground">
                 <input
                   type="checkbox"
                   checked={item.completed}
@@ -345,13 +345,13 @@ function ChecklistBlock({
                     if (isReadOnly) return;
                     onToggleItem(item._id);
                   }}
-                  className={`size-4 rounded-sm border-zinc-300 text-black focus:ring-0 ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  className={`size-4 rounded-sm border-zinc-300 text-foreground focus:ring-0 ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                 />
                 <button
                   type="button"
                   disabled={isReadOnly}
                   onClick={() => !isReadOnly && handleStartEditItem(item._id, item.title)}
-                  className={item.completed ? "line-through text-zinc-400 flex-1 text-left" : "text-zinc-900 flex-1 text-left"}
+                  className={item.completed ? "line-through text-zinc-400 flex-1 text-left" : "text-foreground flex-1 text-left"}
                 >
                   {item.title}
                 </button>
@@ -383,7 +383,7 @@ function ChecklistBlock({
           <div className="flex items-center gap-2">
             <Button
               type="button"
-              className="h-9 bg-black text-white hover:bg-black/90 shadow-none"
+              className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 shadow-none"
               onClick={handleAddItem}
             >
               Add
@@ -405,7 +405,7 @@ function ChecklistBlock({
         <Button
           type="button"
           variant="secondary"
-          className="h-9 w-fit bg-zinc-100 px-4 text-[14px] font-medium text-zinc-900 shadow-none hover:bg-zinc-200"
+          className="h-9 w-fit bg-zinc-100 px-4 text-[14px] font-medium text-foreground shadow-none hover:bg-zinc-200"
           onClick={() => setShowNewItemInput(true)}
         >
           Add an item
@@ -419,7 +419,7 @@ function ChecklistBlock({
         >
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-[18px] font-bold text-zinc-900">
+              <DialogTitle className="text-[18px] font-bold text-foreground">
                 Delete checklist?
               </DialogTitle>
               <DialogDescription className="text-[14px] leading-6 text-zinc-500">
@@ -994,7 +994,7 @@ export function TaskDialog({
                           className={`flex size-7 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all ${
                             completed
                               ? "border-[#6a9923] bg-[#6a9923] text-white"
-                              : "border-zinc-400 bg-white text-transparent hover:border-zinc-900"
+                              : "border-zinc-400 bg-white text-transparent hover:border-primary"
                           } ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                         >
                           <Check
@@ -1006,7 +1006,7 @@ export function TaskDialog({
                       </TooltipTrigger>
                       <TooltipContent
                         side="top"
-                        className="bg-zinc-900 text-white border-none rounded-sm text-[12px] font-medium py-1.5 px-3"
+                        className="bg-primary text-primary-foreground border-none rounded-sm text-[12px] font-medium py-1.5 px-3"
                       >
                         {completed ? "Mark as incomplete" : "Mark as complete"}
                       </TooltipContent>
@@ -1024,8 +1024,8 @@ export function TaskDialog({
                       e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                     }}
                     placeholder="Enter card title..."
-                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border border-transparent bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-zinc-400 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-100 focus:bg-white focus:border-black focus:ring-0 focus-visible:ring-0'} ${
-                      completed ? "text-zinc-400" : "text-zinc-900"
+                    className={`min-h-9 flex-1 resize-none overflow-hidden rounded-sm border border-transparent bg-transparent px-2 py-1 text-[24px] font-bold leading-tight outline-none placeholder:text-zinc-400 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-100 focus:bg-white focus:border-primary focus:ring-0 focus-visible:ring-0'} ${
+                      completed ? "text-zinc-400" : "text-foreground"
                     }`}
                   />
                 </div>
@@ -1069,7 +1069,7 @@ export function TaskDialog({
                           <line x1="17" y1="18" x2="3" y2="18"></line>
                         </svg>
                       </div>
-                      <h3 className="text-[17px] font-bold text-zinc-900">Description</h3>
+                      <h3 className="text-[17px] font-bold text-foreground">Description</h3>
                     </div>
 
                     <textarea
@@ -1086,13 +1086,13 @@ export function TaskDialog({
                         setShowDescriptionActions(true);
                       }}
                       placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
-                      className={`min-h-35 w-full resize-none rounded-sm bg-transparent border border-zinc-200 px-4 py-3 text-[15px] text-zinc-900 shadow-none outline-none placeholder:text-zinc-400 transition-all duration-200 ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-50 focus:bg-white focus:ring-0 focus:border-black focus-visible:ring-0'}`}
+                      className={`min-h-35 w-full resize-none rounded-sm bg-transparent border border-zinc-200 px-4 py-3 text-[15px] text-foreground shadow-none outline-none placeholder:text-zinc-400 transition-all duration-200 ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-50 focus:bg-white focus:ring-0 focus:border-primary focus-visible:ring-0'}`}
                     />
                     {showDescriptionActions ? (
                       <div className="mt-3 flex items-center gap-2 transition-all duration-200">
                         <Button
                           type="button"
-                          className="h-9 bg-black px-4 text-white shadow-none transition-all duration-200 hover:bg-black/90 active:scale-[0.98] disabled:opacity-60"
+                          className="h-9 bg-primary px-4 text-white shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
                           onClick={handleSaveDescription}
                           disabled={description === descriptionDraftRef.current}
                         >
@@ -1114,7 +1114,7 @@ export function TaskDialog({
                     <div className="mt-10">
                     <div className="mb-4 flex items-center gap-2">
                       <Paperclip className="size-4 text-zinc-500" />
-                      <h3 className="text-[16px] font-bold text-zinc-900">
+                      <h3 className="text-[16px] font-bold text-foreground">
                         Attachments
                       </h3>
                     </div>
@@ -1134,7 +1134,7 @@ export function TaskDialog({
                                 href={item.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-zinc-900 hover:underline"
+                                className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-foreground hover:underline"
                                 title={item.name}
                               >
                                 {item.name}
@@ -1150,7 +1150,7 @@ export function TaskDialog({
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex size-8 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                              className="inline-flex size-8 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-foreground"
                               aria-label={`Open ${item.name}`}
                             >
                               <ExternalLink className="size-4" />
@@ -1159,7 +1159,7 @@ export function TaskDialog({
                               <button
                                 type="button"
                                 onClick={(event) => handleToggleAttachmentMenu(item.id, event)}
-                                className="inline-flex size-8 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                                className="inline-flex size-8 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-foreground"
                                 aria-label={`Options for ${item.name}`}
                               >
                                 <MoreHorizontal className="size-4" />
@@ -1204,7 +1204,7 @@ export function TaskDialog({
                                       className={`flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] transition-colors ${
                                         menuItem.tone === "danger"
                                           ? "text-red-600 hover:bg-red-50"
-                                          : "text-zinc-900 hover:bg-zinc-100"
+                                          : "text-foreground hover:bg-zinc-100"
                                       }`}
                                     >
                                       {menuItem.label}
@@ -1287,7 +1287,7 @@ export function TaskDialog({
           <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
             <div className="p-6">
               <DialogHeader className="space-y-2 text-left">
-                <DialogTitle className="text-[18px] font-bold text-zinc-900">
+                <DialogTitle className="text-[18px] font-bold text-foreground">
                   Rename attachment
                 </DialogTitle>
                 <DialogDescription className="text-[14px] leading-6 text-zinc-500">
@@ -1299,7 +1299,7 @@ export function TaskDialog({
                 <input
                   value={renameAttachmentName}
                   onChange={(e) => setRenameAttachmentName(e.target.value)}
-                  className="h-10 w-full rounded-sm border border-transparent px-4 text-[14px] text-zinc-900 outline-none focus:border-black"
+                  className="h-10 w-full rounded-sm border border-transparent px-4 text-[14px] text-foreground outline-none focus:border-primary"
                   placeholder="Enter new file name"
                   autoFocus
                 />
@@ -1321,7 +1321,7 @@ export function TaskDialog({
                 </Button>
                 <Button
                   type="button"
-                  className="h-9 bg-black px-4 text-white shadow-none hover:bg-black/90"
+                  className="h-9 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary/90"
                   onClick={handleConfirmRenameAttachment}
                   disabled={!renameAttachmentName.trim()}
                 >

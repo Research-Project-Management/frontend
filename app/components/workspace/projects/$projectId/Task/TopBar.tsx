@@ -95,7 +95,7 @@ export default function TopBar({
               onClick={() => onViewChange("board")}
               className={`p-2 transition-colors ${
                 viewMode === "board"
-                  ? "bg-black text-white shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
               }`}
               title="Board view"
@@ -106,7 +106,7 @@ export default function TopBar({
               onClick={() => onViewChange("list")}
               className={`p-2 transition-colors ${
                 viewMode === "list"
-                  ? "bg-black text-white shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
               }`}
               title="List view"
@@ -117,7 +117,7 @@ export default function TopBar({
               onClick={() => onViewChange("calendar")}
               className={`p-2 transition-colors ${
                 viewMode === "calendar"
-                  ? "bg-black text-white shadow-sm"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
               }`}
               title="Calendar view"
@@ -307,7 +307,7 @@ export default function TopBar({
                   variant="default"
                   size="sm"
                   disabled={isLoading || isReadOnly}
-                  className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-zinc-800 disabled:opacity-100"
+                  className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-100"
                 >
                   <Plus className="size-3.5" />
                   Add task
@@ -338,7 +338,7 @@ export default function TopBar({
               size="sm"
               onClick={onAddTask}
               disabled={isLoading || isReadOnly}
-              className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-zinc-800 disabled:opacity-100"
+              className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-100"
             >
               <Plus className="size-3.5" />
               Add task

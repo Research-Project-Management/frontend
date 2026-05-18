@@ -6,7 +6,7 @@ export interface PendingComment {
   selectedText: string;
 }
 
-/** Selection context passed from editor "Ask AI" action */
+/** Selection context passed from editor "Ask Flux AI" action */
 export interface PendingAiContext {
   /** The selected LaTeX text */
   selectedText: string;
@@ -14,7 +14,7 @@ export interface PendingAiContext {
   startLine: number;
   /** 1-based end line of the selection */
   endLine: number;
-  /** Optional user question to pre-fill (from context menu "Ask AI about this") */
+  /** Optional user question to pre-fill (from context menu "Ask Flux AI about this") */
   question?: string;
 }
 
@@ -22,7 +22,7 @@ interface WorkspaceActionsState {
   pendingComment: PendingComment | null;
   /** Legacy: plain text to pre-fill in AI input */
   pendingAiText: string;
-  /** Rich context: selected code + line info → triggers auto-send in ChatAiTab */
+  /** Rich context: selected code + line info → binds to ChatAiTab toolbar */
   pendingAiContext: PendingAiContext | null;
   setPendingComment: (data: PendingComment) => void;
   clearPendingComment: () => void;

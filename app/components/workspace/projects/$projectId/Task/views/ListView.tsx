@@ -185,15 +185,15 @@ const TaskRowContent = ({
     <div
       className={cn(
         "w-full flex items-center gap-3 px-4 py-2.5 bg-white transition-all text-left group cursor-pointer focus:outline-none focus-visible:bg-zinc-50 border-l-2 border-l-transparent border-b border-border/40 relative",
-        task.completed ? "hover:border-emerald-500/50" : "hover:border-zinc-900/10",
-        isDragging && "shadow-lg z-50 !bg-zinc-50 border-l-zinc-900 opacity-50"
+        task.completed ? "hover:border-emerald-500/50" : "hover:border-primary/20",
+        isDragging && "shadow-lg z-50 !bg-zinc-50 border-l-primary opacity-50"
       )}
     >
       <PriorityBadge priority={task.priority} />
 
       <span className={cn(
         "text-sm flex-1 truncate transition-all duration-200",
-        task.completed ? "text-zinc-400 line-through" : "text-foreground group-hover:text-black"
+        task.completed ? "text-zinc-400 line-through" : "text-foreground group-hover:text-foreground"
       )}>
         {task.title}
       </span>
@@ -213,7 +213,7 @@ const TaskRowContent = ({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-zinc-900 animate-in fade-in zoom-in-95 duration-200"
+                className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-foreground animate-in fade-in zoom-in-95 duration-200"
                 style={{ backgroundColor: label.color, minWidth: hasTitle ? "auto" : "3rem", maxWidth: "30rem" }}
               >
                 {hasTitle && <span className="max-w-30 truncate">{label.title}</span>}
@@ -233,7 +233,7 @@ const TaskRowContent = ({
         <span className={cn(
           "flex items-center gap-1 text-[11px] shrink-0 px-2 py-1 rounded-sm transition-all duration-200",
           dueDateInfo.isOverdueAlert 
-            ? "bg-[#c9372c] text-white font-semibold shadow-sm" 
+            ? "bg-[#c9372c] text-primary-foreground font-semibold shadow-sm" 
             : "text-muted-foreground group-hover:text-zinc-600"
         )}>
           <Clock3 className="size-3" />
@@ -454,7 +454,7 @@ const ListViewColumn = ({
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-          <span className="text-[13.5px] font-semibold text-zinc-900">{group.label}</span>
+          <span className="text-[13.5px] font-semibold text-foreground">{group.label}</span>
           <span className="text-[12px] text-zinc-400 font-normal">{group.items.length}</span>
         </div>
         {!isReadOnly && (
@@ -523,13 +523,13 @@ const ListViewColumn = ({
                         }
                       }}
                       placeholder="What needs to be done?"
-                      className="h-10 w-full border-0 bg-transparent px-4 text-sm text-zinc-900 outline-none placeholder:text-zinc-500"
+                      className="h-10 w-full border-0 bg-transparent px-4 text-sm text-foreground outline-none placeholder:text-zinc-500"
                       disabled={isAddingCard}
                     />
                     <div className="flex items-center gap-1.5 px-4 py-2 bg-transparent">
                       <Button
                         size="sm"
-                        className="h-7 rounded-sm bg-black px-3 text-white hover:bg-black/90"
+                        className="h-7 rounded-sm bg-primary px-3 text-primary-foreground hover:bg-primary/90"
                         onClick={() => handleQuickAddSubmit(group.key)}
                         disabled={!quickAddTitle.trim() || isAddingCard}
                       >

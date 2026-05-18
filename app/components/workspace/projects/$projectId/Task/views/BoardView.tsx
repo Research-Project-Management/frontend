@@ -161,7 +161,7 @@ export default function BoardView({
               <button
                 type="button"
                 onClick={onCreateColumn}
-                className="flex w-full items-center gap-2 rounded-sm bg-[#f4f5f7] px-4 py-2.5 text-[14px] font-semibold text-zinc-600 transition-all hover:bg-zinc-200/50 hover:text-zinc-900"
+                className="flex w-full items-center gap-2 rounded-sm bg-[#f4f5f7] px-4 py-2.5 text-[14px] font-semibold text-zinc-600 transition-all hover:bg-zinc-200/50 hover:text-foreground"
               >
                 <Plus className="size-4" />
                 <span>Add column</span>

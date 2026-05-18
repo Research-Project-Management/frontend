@@ -53,7 +53,7 @@ export default function WorkspaceStarredPage() {
     }
   };
 
-  const handleRenameTrigger = () => {};
+  const handleRenameTrigger = (_item: StorageItem) => {};
 
   if (isWorkspaceLoading || isFilesLoading) {
     return <Loading />;

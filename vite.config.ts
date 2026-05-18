@@ -13,7 +13,7 @@ export default defineConfig({
     allowedHosts: ["flux.aisq.dev"]
   },
   build: {
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -30,10 +30,12 @@ export default defineConfig({
             id.includes("node_modules/@hocuspocus/")) {
             return "vendor-tiptap";
           }
-          // PDF viewer
-          if (id.includes("node_modules/react-pdf/") ||
-            id.includes("node_modules/pdfjs-dist/")) {
-            return "vendor-pdf";
+          // PDF viewer. PDF.js is large even after minification, so keep it isolated.
+          if (id.includes("node_modules/react-pdf/")) {
+            return "vendor-react-pdf";
+          }
+          if (id.includes("node_modules/pdfjs-dist/")) {
+            return "vendor-pdfjs";
           }
           // Monaco editor
           if (id.includes("node_modules/monaco-editor/") ||

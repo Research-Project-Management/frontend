@@ -510,8 +510,8 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
               >
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2.5 px-2 py-1 rounded-sm hover:bg-zinc-100/80 data-[state=open]:bg-zinc-100 cursor-pointer transition-all group ml-1">
-                    <RotateCcw className="size-3.5 text-foreground/80 group-hover:text-black group-data-[state=open]:text-black transition-colors" />
-                    <span className="text-[13px] font-semibold text-foreground group-hover:text-black group-data-[state=open]:text-black tracking-tight whitespace-nowrap">
+                    <RotateCcw className="size-3.5 text-foreground/80 group-hover:text-foreground group-data-[state=open]:text-foreground transition-colors" />
+                    <span className="text-[13px] font-semibold text-foreground group-hover:text-foreground group-data-[state=open]:text-foreground tracking-tight whitespace-nowrap">
                       {currentCycle.name}
                     </span>
                     {allTasks.length > 0 && (
@@ -619,7 +619,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
                 <rect x="150" y="30" width="30" height="15" rx="4" fill="#F4F5F7" />
               </svg>
            </div>
-           <h3 className="text-[15px] font-bold text-zinc-900 mb-2 tracking-tight">
+           <h3 className="text-[15px] font-bold text-foreground mb-2 tracking-tight">
              No tasks to show in this cycle
            </h3>
            <p className="text-[13px] text-muted-foreground max-w-[440px] text-center mb-8 leading-relaxed">
@@ -629,7 +629,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handleOpenAddDialog(resolveTaskColumnId(columns[0]))}
-                  className="h-9 px-4 bg-black text-white rounded-sm text-[13px] font-semibold hover:bg-zinc-800 transition-all shadow-sm active:scale-[0.98] flex items-center gap-2"
+                  className="h-9 px-4 bg-primary text-primary-foreground rounded-sm text-[13px] font-semibold hover:bg-primary/90 transition-all shadow-sm active:scale-[0.98] flex items-center gap-2"
                 >
                   Add task
                 </button>

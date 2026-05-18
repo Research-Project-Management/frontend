@@ -174,7 +174,7 @@ export default function TopBar({
                         >
                           <div className={cn(
                             "size-4 rounded-sm border border-zinc-300 flex items-center justify-center transition-all",
-                            isActive ? "bg-black border-black text-white" : "bg-white"
+                            isActive ? "bg-primary border-primary text-white" : "bg-white"
                           )}>
                             {isActive && <Check className="size-3 text-white" strokeWidth={3} />}
                           </div>
@@ -192,7 +192,7 @@ export default function TopBar({
                       >
                          <div className={cn(
                             "size-4 rounded-sm border border-zinc-300 flex items-center justify-center transition-all",
-                            dateFilters.startDate?.label === "Custom" ? "bg-black border-black text-white" : "bg-white"
+                            dateFilters.startDate?.label === "Custom" ? "bg-primary border-primary text-white" : "bg-white"
                           )}>
                             {dateFilters.startDate?.label === "Custom" && <Check className="size-3 text-white" strokeWidth={3} />}
                           </div>
@@ -243,7 +243,7 @@ export default function TopBar({
                         >
                           <div className={cn(
                             "size-4 rounded-sm border border-zinc-300 flex items-center justify-center transition-all",
-                            isActive ? "bg-black border-black text-white" : "bg-white"
+                            isActive ? "bg-primary border-primary text-white" : "bg-white"
                           )}>
                             {isActive && <Check className="size-3 text-white" strokeWidth={3} />}
                           </div>
@@ -261,7 +261,7 @@ export default function TopBar({
                       >
                          <div className={cn(
                             "size-4 rounded-sm border border-zinc-300 flex items-center justify-center transition-all",
-                            dateFilters.dueDate?.label === "Custom" ? "bg-black border-black text-white" : "bg-white"
+                            dateFilters.dueDate?.label === "Custom" ? "bg-primary border-primary text-white" : "bg-white"
                           )}>
                             {dateFilters.dueDate?.label === "Custom" && <Check className="size-3 text-white" strokeWidth={3} />}
                           </div>
@@ -297,7 +297,7 @@ export default function TopBar({
       <Button
         onClick={onAddCycle}
         size="sm"
-        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-black text-white hover:bg-black/90"
+        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-primary text-primary-foreground hover:bg-primary/90"
       >
         <Plus className="size-3.5" />
         Add Cycle

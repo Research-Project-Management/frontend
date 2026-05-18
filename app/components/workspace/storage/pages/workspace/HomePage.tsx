@@ -5,6 +5,7 @@ import {
   fetchWorkspaceFiles,
   useToggleStar,
   useDeleteFile,
+  useRenameFile,
 } from "~/query/storage";
 import { useWorkspace } from "~/query/workspace";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -22,6 +23,8 @@ export default function WorkspaceHomePage() {
     workspaceUrl!,
   );
   const workspaceId = workspace?._id;
+  // Allow all non-viewer members to upload at workspace level
+  const canUpload = !!workspace && workspace.yourRole !== "viewer";
 
   const { data, isLoading: isHomeLoading } = useQuery({
     queryKey: ["workspace-home-files", workspaceId, currentFolder],
@@ -31,6 +34,7 @@ export default function WorkspaceHomePage() {
 
   const toggleStarMutation = useToggleStar();
   const deleteFileMutation = useDeleteFile();
+  const renameMutation = useRenameFile();
 
   const handleToggleStar = async (fileId: string) => {
     try {
@@ -57,7 +61,7 @@ export default function WorkspaceHomePage() {
     }
   };
 
-  const handleRenameTrigger = () => {};
+  const handleRenameTrigger = (_item: StorageItem) => {};
 
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);
@@ -77,13 +81,10 @@ export default function WorkspaceHomePage() {
     });
   };
 
-  // Home only shows project-scoped storage items.
-  // Workspace-only items are handled in My Drive.
+  // Home shows ALL workspace-level items (folders + files without a project).
+  // Project-scoped files are visible inside each project's Storage section.
   const files = useMemo(
-    () =>
-      ((data?.files || []) as StorageItem[]).filter(
-        (item) => !!item.project?._id && !item.isFolder,
-      ),
+    () => (data?.files || []) as StorageItem[],
     [data?.files],
   );
 
@@ -111,13 +112,14 @@ export default function WorkspaceHomePage() {
       currentFolder={currentFolder}
       breadcrumbs={breadcrumbs}
       workspaceId={workspaceId}
+      wsId={workspaceId}
       onNavigate={handleBreadcrumbNavigate}
       onFolderClick={handleFolderClick}
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}
       onRename={handleRenameTrigger}
-      enableUpload={false}
+      enableUpload={canUpload}
       enableBreadcrumbs={true}
       defaultView="list"
       header={

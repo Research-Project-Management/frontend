@@ -573,7 +573,7 @@ export default function Editor({ page }: EditorProps) {
       },
       {
         icon: Sparkles,
-        label: "Ask AI about this",
+        label: "Ask Flux AI about this",
         action: () => {
           if (ctxSelText) {
             setPendingAiContext({
@@ -1037,7 +1037,7 @@ Your conclusions here.
               title="Ask Flux AI"
             >
               <Sparkles className="size-3.5" />
-              <span>Ask AI</span>
+              <span>Ask Flux AI</span>
             </button>
           </div>,
           document.body,

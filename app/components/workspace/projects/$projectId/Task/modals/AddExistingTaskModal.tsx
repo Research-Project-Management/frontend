@@ -122,7 +122,7 @@ export function AddExistingTaskModal({
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Type to search"
               autoFocus
-              className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-zinc-900 outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-zinc-300"
+              className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-zinc-300"
             />
           </div>
         </div>
@@ -173,7 +173,7 @@ export function AddExistingTaskModal({
                   >
                     <Checkbox
                       checked={checked}
-                      className="size-4 shrink-0 rounded-[2px] border-zinc-300 bg-white data-[state=checked]:border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
+                      className="size-4 shrink-0 rounded-[2px] border-zinc-300 bg-white data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-white"
                     />
                     <div className="flex flex-1 items-center gap-2.5 min-w-0">
                       <div className="flex flex-col min-w-0">
@@ -187,7 +187,7 @@ export function AddExistingTaskModal({
                                </span>
                              );
                            })()}
-                           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-zinc-900 transition-colors">
+                           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-foreground transition-colors">
                              {task.title}
                            </span>
                          </div>
@@ -239,7 +239,7 @@ export function AddExistingTaskModal({
               type="button"
               onClick={handleAdd}
               disabled={selectedIds.length === 0 || bulkUpdateMutation.isPending}
-              className="h-9 min-w-17.5 bg-black px-4 text-white shadow-none hover:bg-black/90 disabled:opacity-30 text-[13px] font-medium rounded-sm"
+              className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-30 text-[13px] font-medium rounded-sm"
             >
               Add
             </Button>

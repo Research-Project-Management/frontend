@@ -472,7 +472,7 @@ export default function CalendarView({
                   onChange={(event) => setExistingSearch(event.target.value)}
                   placeholder="Type to search"
                   autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-zinc-900 outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-zinc-300"
+                  className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-zinc-300"
                 />
               </div>
             </div>
@@ -523,7 +523,7 @@ export default function CalendarView({
                       >
                         <Checkbox
                           checked={checked}
-                          className="size-4 shrink-0 rounded-[2px] border-zinc-300 bg-white data-[state=checked]:border-black data-[state=checked]:bg-black data-[state=checked]:text-white"
+                          className="size-4 shrink-0 rounded-[2px] border-zinc-300 bg-white data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-white"
                         />
                         <div className="flex flex-1 items-center gap-2.5 min-w-0">
                           {(() => {
@@ -535,7 +535,7 @@ export default function CalendarView({
                               </span>
                             );
                           })()}
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-zinc-900 transition-colors">
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-foreground transition-colors">
                             {task.title}
                           </span>
                         </div>
@@ -597,7 +597,7 @@ export default function CalendarView({
                   type="button"
                   onClick={handleSubmitExistingTasks}
                   disabled={selectedExistingTaskIds.length === 0}
-                  className="h-9 min-w-17.5 bg-black px-4 text-white shadow-none hover:bg-black/90 disabled:opacity-30"
+                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-30"
                 >
                   Add
                 </Button>
@@ -613,7 +613,7 @@ export default function CalendarView({
               style={{ width: draggedWidth ?? 'auto' }} 
               className="bg-white shadow-lg border border-zinc-200 rounded-sm overflow-hidden opacity-90"
             >
-              <div className="relative flex items-center gap-2 px-3 py-1.5 text-[12px] font-semibold leading-tight text-zinc-900">
+              <div className="relative flex items-center gap-2 px-3 py-1.5 text-[12px] font-semibold leading-tight text-foreground">
                 <span
                   className="absolute left-0 top-1/2 h-5.5 w-0.5 -translate-y-1/2 rounded-r-full"
                   style={{ backgroundColor: resolveTaskColumnColor(activeTask.columnId) }}
@@ -675,7 +675,7 @@ const CalendarDayCell = memo(({
         <span
           className={
             isThisToday
-              ? "inline-flex size-6 items-center justify-center rounded-full bg-black text-[11px] font-semibold text-white pt-[1px]"
+              ? "inline-flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-white pt-[1px]"
               : `text-[11px] font-medium leading-none tracking-tight ${dayTextClass}`
           }
         >
@@ -715,7 +715,7 @@ const CalendarDayCell = memo(({
               onClick={() => handleOpenAddTaskMenu(dateKey)}
               className={cn(
                 dayTasks.length > 0 ? "mt-1.5" : "mt-0",
-                "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-[11.5px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-200/60 hover:text-zinc-900 active:bg-zinc-200/80",
+                "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-[11.5px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-200/60 hover:text-foreground active:bg-zinc-200/80",
                 "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
               )}
             >
@@ -766,7 +766,7 @@ const CalendarDayCell = memo(({
                 }
               }}
               placeholder="Task title..."
-              className="h-6.5 min-w-0 flex-1 bg-transparent px-2 text-[13px] text-zinc-900 outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed"
+              className="h-6.5 min-w-0 flex-1 bg-transparent px-2 text-[13px] text-foreground outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed"
               disabled={isAddingCard}
             />
           </div>
@@ -774,7 +774,7 @@ const CalendarDayCell = memo(({
             <Button
               type="button"
               size="sm"
-              className="h-6.5 bg-black px-2 text-white hover:bg-black/90 shadow-none"
+              className="h-6.5 bg-primary px-2 text-primary-foreground hover:bg-primary/90 shadow-none"
               onClick={onQuickAddSubmit}
               disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
             >
@@ -854,7 +854,7 @@ const CalendarTaskItem = memo(({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-              "group relative flex w-full items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-1.5 text-left text-[12px] font-semibold leading-tight text-zinc-900 transition-colors hover:bg-zinc-50",
+              "group relative flex w-full items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-1.5 text-left text-[12px] font-semibold leading-tight text-foreground transition-colors hover:bg-zinc-50",
               isDragging && "shadow-xl z-50"
             )}
           >

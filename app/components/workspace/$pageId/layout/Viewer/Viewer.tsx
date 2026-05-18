@@ -34,6 +34,7 @@ import {
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
 import { API_URL } from "~/lib/api";
+import { parseCompileErrors } from "~/lib/latex-utils";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore, type LaTeXEngine } from "~/stores/editor-settings";
 import { useCompileStore } from "~/stores/compile";
@@ -845,7 +846,6 @@ export default function Viewer() {
           data?.detail?.log ?? data?.log ?? data?.message ?? "Compilation failed (unknown error).";
         setCompileLog(log);
         // Parse errors for AI /fix command
-        const { parseCompileErrors } = await import("~/lib/latex-utils");
         setCompileErrors(parseCompileErrors(log));
         setShowLog(true);
         setCompileStatus("error");
@@ -853,7 +853,6 @@ export default function Viewer() {
     } catch (err) {
       const errStr = String(err);
       setCompileLog(errStr);
-      const { parseCompileErrors } = await import("~/lib/latex-utils");
       setCompileErrors(parseCompileErrors(errStr));
       setShowLog(true);
       setCompileStatus("error");
@@ -947,7 +946,7 @@ export default function Viewer() {
   return (
     <div className="h-full w-full flex flex-col bg-background relative">
       {/* Viewer Toolbar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border px-2 h-9 bg-secondary shrink-0">
+      <div className="flex h-11 items-center justify-between gap-2 border-b border-border bg-secondary px-2 shrink-0">
         {/* Left: compile button */}
         <div className="flex items-center gap-1">
           <CompileButton

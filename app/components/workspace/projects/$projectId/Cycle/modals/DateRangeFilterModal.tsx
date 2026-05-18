@@ -132,16 +132,16 @@ export const DoubleCalendarModal = ({
                       h-9 w-full flex items-center justify-center text-[13px] transition-all relative z-10
                       ${isCurrentMonth ? "text-[#172b4d]" : "text-zinc-300 pointer-events-none"} font-medium
                       ${isStart || isEnd 
-                        ? "bg-black text-white font-bold shadow-md rounded-md cursor-pointer" 
+                        ? "bg-primary text-primary-foreground font-bold shadow-md rounded-md cursor-pointer" 
                         : "cursor-pointer hover:bg-zinc-100 rounded-md"
                       }
-                      ${inRange ? "!rounded-none !bg-zinc-100 !text-black" : ""}
+                      ${inRange ? "!rounded-none !bg-zinc-100 !text-foreground" : ""}
                       ${isStart && selectedEnd && selectedStart !== selectedEnd ? "!rounded-r-none" : ""}
                       ${isEnd && selectedStart && selectedStart !== selectedEnd ? "!rounded-l-none" : ""}
                     `}
                   >
                     {isToday(day) && !isStart && !isEnd && (
-                      <div className="absolute bottom-1 size-1 bg-black rounded-full" />
+                      <div className="absolute bottom-1 size-1 bg-primary rounded-full" />
                     )}
                     {format(day, "d")}
                   </button>
@@ -157,7 +157,7 @@ export const DoubleCalendarModal = ({
             <Button variant="ghost" size="sm" onClick={onCancel} className="h-8 text-[#44546f] hover:bg-gray-100 font-medium px-4">
               Cancel
             </Button>
-            <Button size="sm" onClick={handleApply} className="h-8 bg-black hover:bg-black/90 text-white font-bold px-6 shadow-sm transition-all active:scale-95">
+            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6 shadow-sm transition-all active:scale-95">
               Apply
             </Button>
           </div>

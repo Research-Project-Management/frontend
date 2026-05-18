@@ -389,7 +389,7 @@ export function StorageListView({
                   }
                 }}
               >
-                <div className="col-span-4 flex items-center gap-3 min-w-0">
+                <div className="col-span-4 flex items-center gap-3 min-w-0 overflow-hidden">
                   <div
                     className={`flex items-center justify-center shrink-0 ${!(item.thumbnail || (fileType === "image" && item.url)) ? getFileColor(fileType) : ""}`}
                   >
@@ -403,13 +403,13 @@ export function StorageListView({
                       getFileIcon(fileType, 5)
                     )}
                   </div>
-                  <span className="text-sm truncate">{item.filename}</span>
+                  <span className="text-sm truncate" title={item.filename}>{item.filename}</span>
                   {item.starred && (
                     <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
                   )}
                 </div>
 
-                <div className="col-span-2 flex items-center gap-2 min-w-0">
+                <div className="col-span-2 flex items-center gap-2 min-w-0 overflow-hidden">
                   {item.isFolder ? (
                     <span className="text-xs text-muted-foreground">—</span>
                   ) : (

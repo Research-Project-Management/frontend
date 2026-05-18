@@ -33,7 +33,7 @@ export default function DeleteModal({
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogOverlay
         className="absolute inset-0 z-50
-          bg-black/15 backdrop-blur-[0.5px]
+          bg-foreground/15 backdrop-blur-[0.5px]
           data-[state=open]:animate-in data-[state=open]:fade-in-0
           data-[state=closed]:animate-out data-[state=closed]:fade-out-0
           data-[state=open]:duration-200 data-[state=closed]:duration-150

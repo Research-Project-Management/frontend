@@ -5,7 +5,7 @@
  *
  * Single sendMessage() entry point — used by both:
  *   - Manual textarea sends
- *   - Auto-sends from pendingAiContext (right-click "Ask AI about this")
+ *   - Sends with selectionOverride from a toolbar-bound editor selection
  *
  * Returns everything the UI needs: messages, streaming state, send/abort/clear.
  */
@@ -246,11 +246,7 @@ export function useAiChat({
       const structure = parseLatexStructure(fileContent);
       const structureSummary = `Sections: ${structure.sections.map((s) => s.title).join(", ") || "none"} | Packages: ${structure.packages.slice(0, 8).join(", ")} | Labels: ${structure.labels.slice(0, 10).join(", ")}`;
 
-      // For /explain: embed selected code in the user message
-      let finalText = text;
-      if (command?.cmd === "/explain" && sel?.text) {
-        finalText = `${text}\n\nSelected code (L${sel.startLine}–${sel.endLine}):\n\`\`\`latex\n${sel.text}\n\`\`\``;
-      }
+      const finalText = text;
 
       // ── Try local command resolution (no AI call) ──────────────────────────
       if (!isExplanationOnly) {

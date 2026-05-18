@@ -233,9 +233,9 @@ export function parseDiffToEdits(
               ops.push({
                 type: "insert",
                 startLineNumber: insertLine,
-                startColumn: fileLines[insertAt]?.length + 1 ?? 1,
+                startColumn: (fileLines[insertAt]?.length ?? 0) + 1,
                 endLineNumber: insertLine,
-                endColumn: fileLines[insertAt]?.length + 1 ?? 1,
+                endColumn: (fileLines[insertAt]?.length ?? 0) + 1,
                 text: "\n" + addedLine,
               });
             }
@@ -602,6 +602,101 @@ export function isEditSafe(result: AiEditValidationResult, intent: AiEditIntent)
   return result.valid;
 }
 
+function normalizeInsertionText(text: string, lineText: string, column: number): string {
+  if (!text) return text;
+  const atLineStart = column <= 1;
+  const atLineEnd = column >= lineText.length + 1;
+  if (atLineStart && lineText.trim() && !text.endsWith("\n")) return `${text}\n`;
+  if (atLineEnd && lineText.trim() && !text.startsWith("\n")) return `\n${text}`;
+  return text;
+}
+
+function joinInsertTexts(current: string, next: string): string {
+  if (!current) return next;
+  if (!next) return current;
+  if (current.endsWith("\n") || next.startsWith("\n")) return current + next;
+  return `${current}\n${next}`;
+}
+
+function coalesceSamePointInserts(edits: AiEditOperation[]): AiEditOperation[] {
+  const result: AiEditOperation[] = [];
+  const insertIndexes = new Map<string, number>();
+
+  for (const edit of edits) {
+    if (edit.type !== "insert") {
+      result.push(edit);
+      continue;
+    }
+
+    const key = [
+      edit.startLineNumber,
+      edit.startColumn,
+      edit.endLineNumber,
+      edit.endColumn,
+    ].join(":");
+    const existingIndex = insertIndexes.get(key);
+
+    if (existingIndex === undefined) {
+      insertIndexes.set(key, result.length);
+      result.push({ ...edit });
+      continue;
+    }
+
+    result[existingIndex] = {
+      ...result[existingIndex],
+      text: joinInsertTexts(result[existingIndex].text ?? "", edit.text ?? ""),
+    };
+  }
+
+  return result;
+}
+
+function buildMonacoEdits(editor: any, edits: AiEditOperation[]) {
+  const model = editor.getModel();
+  if (!model) return [];
+  const totalLines = model.getLineCount();
+
+  return coalesceSamePointInserts(edits)
+    .map((edit, index) => {
+      const isAppend = edit.type === "insert" && edit.startLineNumber > totalLines;
+      const sl = isAppend ? totalLines : Math.max(1, Math.min(edit.startLineNumber, totalLines));
+      const el = isAppend ? totalLines : Math.max(1, Math.min(edit.endLineNumber, totalLines));
+      const sc = isAppend ? model.getLineMaxColumn(sl) : Math.max(1, Math.min(edit.startColumn, model.getLineMaxColumn(sl)));
+      const ec = edit.type === "insert"
+        ? sc
+        : Math.min(Math.max(1, edit.endColumn), model.getLineMaxColumn(el) + 1);
+      const rawText = edit.type === "delete" ? "" : (edit.text ?? "");
+
+      return {
+        index,
+        range: { startLineNumber: sl, startColumn: sc, endLineNumber: el, endColumn: ec },
+        text: edit.type === "insert"
+          ? normalizeInsertionText(rawText, model.getLineContent(sl) ?? "", sc)
+          : rawText,
+        forceMoveMarkers: true,
+      };
+    })
+    .sort((a, b) => {
+      if (a.range.startLineNumber !== b.range.startLineNumber) return b.range.startLineNumber - a.range.startLineNumber;
+      if (a.range.startColumn !== b.range.startColumn) return b.range.startColumn - a.range.startColumn;
+      return a.index - b.index;
+    })
+    .map(({ index: _index, ...edit }) => edit);
+}
+
+function calcAffectedRange(edits: AiEditOperation[]): { startLine: number; endLine: number } | null {
+  const normalizedEdits = coalesceSamePointInserts(edits);
+  if (normalizedEdits.length === 0) return null;
+  const starts = normalizedEdits.map((e) => e.startLineNumber);
+  const ends = normalizedEdits.map((e) => {
+    const insertedLineCount = (e.text || "").split("\n").length - 1;
+    return e.type === "insert"
+      ? e.startLineNumber + insertedLineCount
+      : Math.max(e.endLineNumber, e.startLineNumber + insertedLineCount);
+  });
+  return { startLine: Math.min(...starts), endLine: Math.max(...ends) };
+}
+
 // ── Monaco Edit Applier ───────────────────────────────────────────────────────
 
 /**
@@ -619,29 +714,8 @@ export function applyAiEdits(
   const model = editor.getModel();
   if (!model) return null;
 
-  const totalLines = model.getLineCount();
-
-  const monacoEdits = edits.map((edit) => {
-    // Clamp to valid range
-    const sl = Math.max(1, Math.min(edit.startLineNumber, totalLines));
-    const el = Math.max(1, Math.min(edit.endLineNumber, totalLines));
-    const sc = Math.max(1, edit.startColumn);
-    // For end column: clamp to line length if possible
-    const lineMaxCol = model.getLineMaxColumn(el);
-    const ec = edit.type === "insert" ? sc : Math.min(Math.max(1, edit.endColumn), lineMaxCol + 1);
-
-    return {
-      // Plain IRange — Monaco accepts this without needing new monaco.Range()
-      range: {
-        startLineNumber: sl,
-        startColumn: sc,
-        endLineNumber: el,
-        endColumn: ec,
-      },
-      text: edit.type === "delete" ? "" : (edit.text ?? ""),
-      forceMoveMarkers: true,
-    };
-  });
+  const monacoEdits = buildMonacoEdits(editor, edits);
+  if (monacoEdits.length === 0) return null;
 
   // Create undo checkpoint BEFORE edit so Ctrl+Z reverts cleanly
   editor.pushUndoStop();
@@ -649,7 +723,9 @@ export function applyAiEdits(
   editor.pushUndoStop();
 
   // Reveal and move cursor to the first edit location
-  const first = monacoEdits[0];
+  const first = monacoEdits.reduce((top, edit) => (
+    edit.range.startLineNumber < top.range.startLineNumber ? edit : top
+  ), monacoEdits[0]);
   if (first) {
     editor.revealLineInCenter(first.range.startLineNumber);
 
@@ -666,17 +742,7 @@ export function applyAiEdits(
 
   editor.focus();
 
-  // Return affected range for caller to highlight
-  const allStartLines = edits.map(e => e.startLineNumber);
-  const allEndLines = edits.map(e => {
-    const text = e.text || "";
-    const insertedLineCount = text.split("\n").length - 1;
-    return e.startLineNumber + insertedLineCount;
-  });
-  return {
-    startLine: Math.min(...allStartLines),
-    endLine: Math.max(...allEndLines),
-  };
+  return calcAffectedRange(edits);
 }
 
 // ── Editor Highlight (post-apply green flash) ─────────────────────────────────
@@ -746,34 +812,18 @@ export function previewAiEdits(
   }
 
   const preVersionId = model.getAlternativeVersionId();
-  const totalLines = model.getLineCount();
-
-  const monacoEdits = edits.map((edit) => {
-    const sl = Math.max(1, Math.min(edit.startLineNumber, totalLines));
-    const el = Math.max(1, Math.min(edit.endLineNumber, totalLines));
-    const sc = Math.max(1, edit.startColumn);
-    const lineMaxCol = model.getLineMaxColumn(el);
-    const ec = edit.type === "insert"
-      ? sc
-      : Math.min(Math.max(1, edit.endColumn), lineMaxCol + 1);
-    return {
-      range: { startLineNumber: sl, startColumn: sc, endLineNumber: el, endColumn: ec },
-      text: edit.type === "delete" ? "" : (edit.text ?? ""),
-      forceMoveMarkers: true,
-    };
-  });
+  const monacoEdits = buildMonacoEdits(editor, edits);
+  if (monacoEdits.length === 0) {
+    return { preVersionId, clearDecorations: () => {}, affected: null };
+  }
 
   // Apply WITHOUT pushUndoStop so one Ctrl+Z (or model.undo) reverts cleanly
   editor.executeEdits("ai-preview", monacoEdits);
 
-  const allStartLines = edits.map(e => e.startLineNumber);
-  const allEndLines = edits.map(e =>
-    e.startLineNumber + Math.max(0, (e.text || "").split("\n").length - 1)
-  );
-  const affected = {
-    startLine: Math.min(...allStartLines),
-    endLine: Math.max(...allEndLines),
-  };
+  const affected = calcAffectedRange(edits);
+  if (!affected) {
+    return { preVersionId, clearDecorations: () => {}, affected: null };
+  }
 
   // Blue ghost decorations
   const decorationRanges = [];
@@ -792,4 +842,3 @@ export function previewAiEdits(
     affected,
   };
 }
-

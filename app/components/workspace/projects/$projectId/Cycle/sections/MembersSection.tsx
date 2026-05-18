@@ -70,7 +70,7 @@ export const MembersSection = ({ projectData, formMembers, setFormMembers, trigg
               placeholder="Search members" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 pl-9 pr-4 text-[14px] border-zinc-200 focus-visible:ring-0 focus-visible:border-black rounded-sm shadow-none"
+              className="h-9 pl-9 pr-4 text-[14px] border-zinc-200 focus-visible:ring-0 focus-visible:border-primary rounded-sm shadow-none"
             />
           </div>
 

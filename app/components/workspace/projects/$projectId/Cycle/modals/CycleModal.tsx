@@ -106,13 +106,13 @@ export const CycleModal = ({
               )}
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="size-8 text-zinc-500 hover:text-zinc-900" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" size="icon" className="size-8 text-zinc-500 hover:text-foreground" onClick={() => onOpenChange(false)}>
             <X className="size-5" />
           </Button>
         </div>
 
         <div className={`px-9 pt-3 pb-1 ${isReadOnly ? 'opacity-90' : ''}`}>
-          <div className={`w-full rounded-sm border border-transparent px-3 py-1.5 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-100 focus-within:bg-white focus-within:border-black'}`}>
+          <div className={`w-full rounded-sm border border-transparent px-3 py-1.5 transition-all ${isReadOnly ? 'cursor-default' : 'hover:bg-zinc-100 focus-within:bg-white focus-within:border-primary'}`}>
             <textarea
               rows={1}
               value={formName}
@@ -125,7 +125,7 @@ export const CycleModal = ({
                 target.style.height = `${target.scrollHeight}px`;
               }}
               placeholder="Enter cycle title..."
-              className="w-full resize-none bg-transparent p-0 text-[24px] font-semibold leading-tight text-zinc-800 outline-none placeholder:text-zinc-400 block"
+              className="w-full resize-none bg-transparent p-0 text-[24px] font-semibold leading-tight text-foreground outline-none placeholder:text-zinc-400 block"
               autoFocus={mode === 'create' && !isReadOnly}
               style={{ height: 'auto' }}
             />
@@ -151,7 +151,7 @@ export const CycleModal = ({
                 type="button"
                 disabled={isReadOnly}
                 onClick={() => phaseTriggerRef.current?.click()}
-                className={`h-9 px-3 bg-zinc-100 border border-border rounded-sm flex items-center gap-2 text-zinc-900 font-medium text-[14px] ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-200'} transition-colors`}
+                className={`h-9 px-3 bg-zinc-100 border border-border rounded-sm flex items-center gap-2 text-foreground font-medium text-[14px] ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-200'} transition-colors`}
               >
                 <PhaseIconRenderer
                   phaseId={formPhase}
@@ -182,7 +182,7 @@ export const CycleModal = ({
               <div className="flex shrink-0 flex-col gap-1.5">
                 <span className="text-[12px] font-bold text-zinc-400 uppercase tracking-wider">Dates</span>
                 <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} trigger={
-                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-zinc-100 px-3 text-[13px] font-medium text-zinc-900 ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-200'} transition-colors whitespace-nowrap`}>
+                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-zinc-100 px-3 text-[13px] font-medium text-foreground ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-200'} transition-colors whitespace-nowrap`}>
                     <CalendarDays className="size-3.5 shrink-0 text-zinc-500" />
                     <div className="flex items-center gap-2">
                       {formStart && formEnd ? (
@@ -200,7 +200,7 @@ export const CycleModal = ({
                       )}
                     </div>
                     {!isReadOnly && (
-                      <button onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-black/10 flex items-center justify-center transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors">
                         <X className="size-2.5 text-zinc-500" />
                       </button>
                     )}
@@ -214,7 +214,7 @@ export const CycleModal = ({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
-              <h3 className="text-[16px] font-bold text-zinc-900">Description</h3>
+              <h3 className="text-[16px] font-bold text-foreground">Description</h3>
             </div>
             <textarea
               value={formDescription}
@@ -224,7 +224,7 @@ export const CycleModal = ({
                 setFormDescription(e.target.value);
               }}
               placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
-              className={`min-h-[120px] w-full resize-none rounded-sm border border-zinc-200 px-4 py-3 text-[15px] text-zinc-900 outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-zinc-50 focus:bg-white focus:border-black'} transition-all`}
+              className={`min-h-[120px] w-full resize-none rounded-sm border border-zinc-200 px-4 py-3 text-[15px] text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-zinc-50 focus:bg-white focus:border-primary'} transition-all`}
             />
           </div>
         </div>
@@ -234,7 +234,7 @@ export const CycleModal = ({
             {isReadOnly ? 'Close' : 'Cancel'}
           </Button>
           {!isReadOnly && (
-            <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-black px-6 text-white hover:bg-black/90 shadow-none font-medium transition-all active:scale-95">
+            <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-primary px-6 text-primary-foreground hover:bg-primary/90 shadow-none font-medium transition-all active:scale-95">
               {isSaving ? (mode === 'create' ? "Creating..." : "Saving...") : (mode === 'create' ? "Create" : "Save")}
             </Button>
           )}

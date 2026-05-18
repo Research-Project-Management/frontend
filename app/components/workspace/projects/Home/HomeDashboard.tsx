@@ -40,7 +40,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 const SECTION_REGISTRY = [
   {
     id: "chat-ai" as const,
-    label: "Ask AI",
+    label: "Ask Flux AI",
     description: "AI assistant prompt",
     component: ChatAi,
   },

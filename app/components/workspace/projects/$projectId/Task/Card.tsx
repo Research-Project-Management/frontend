@@ -212,7 +212,7 @@ function CardContent({
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-900 focus-visible:opacity-100 group-hover:opacity-100"
+              className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
               aria-label="More task actions"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
@@ -301,7 +301,7 @@ function CardContent({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className={`inline-flex h-4 items-center rounded-sm px-2 text-[11px] font-semibold leading-none text-zinc-900 ${
+                className={`inline-flex h-4 items-center rounded-sm px-2 text-[11px] font-semibold leading-none text-foreground ${
                   hasTitle ? "w-fit max-w-full" : "min-w-12"
                 }`}
                 style={{ backgroundColor: label.color }}
@@ -335,7 +335,7 @@ function CardContent({
           aria-label={card.completed ? "Mark as incomplete" : "Mark as complete"}
           className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border-[1.5px] transition-all ${
             card.completed
-              ? "border-black bg-black text-white"
+              ? "border-primary bg-primary text-primary-foreground"
               : "border-zinc-300 bg-white text-transparent"
           } ${(card.permissions?.canEdit === false || isReadOnly) ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
         >
@@ -350,7 +350,7 @@ function CardContent({
           <div className="flex items-center gap-2 pr-8">
             <h4
               className={`min-w-0 flex-1 wrap-break-word text-[14px] font-medium leading-5 tracking-tight ${
-                card.completed ? "text-zinc-400 line-through" : "text-zinc-900"
+                card.completed ? "text-zinc-400 line-through" : "text-foreground"
               }`}
             >
               {card.title}

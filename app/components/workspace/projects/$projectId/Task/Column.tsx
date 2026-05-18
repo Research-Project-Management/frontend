@@ -103,7 +103,7 @@ function ColumnComponent({
           style={{ backgroundColor: columnColor }}
         />
         <span
-          className="text-[13px] font-semibold text-zinc-800 max-h-36 overflow-hidden"
+          className="text-[13px] font-semibold text-foreground max-h-36 overflow-hidden"
           style={{ writingMode: "vertical-lr" }}
         >
           {column.title}
@@ -146,7 +146,7 @@ function ColumnComponent({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900 shrink-0"
+                className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-foreground shrink-0"
                 aria-label="More column actions"
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -185,7 +185,7 @@ function ColumnComponent({
               style={{ backgroundColor: columnColor }}
             />
             <h3 
-              className="text-[14px] font-semibold text-zinc-900 truncate cursor-pointer hover:text-black transition-colors"
+              className="text-[14px] font-semibold text-foreground truncate cursor-pointer hover:text-foreground transition-colors"
               onClick={() => onUpdate?.(columnId)}
             >
               {column.title}
@@ -229,7 +229,7 @@ function ColumnComponent({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-zinc-900"
+                    className="h-7 w-7 text-zinc-500 hover:bg-zinc-200/50 hover:text-foreground"
                     aria-label="More column actions"
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -298,14 +298,14 @@ function ColumnComponent({
                   }
                 }}
                 placeholder="What needs to be done?"
-                className="h-10 w-full rounded-sm border border-zinc-200 px-3 text-[14px] text-zinc-900 font-medium outline-none transition-colors placeholder:font-normal placeholder:text-zinc-400 focus:border-zinc-400 shadow-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="h-10 w-full rounded-sm border border-zinc-200 px-3 text-[14px] text-foreground font-medium outline-none transition-colors placeholder:font-normal placeholder:text-zinc-400 focus:border-zinc-400 shadow-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={onAddDisabled}
               />
 
               <div className="mt-2 text-[12px] flex items-center justify-start gap-1.5">
                 <Button
                   type="button"
-                  className="h-7 rounded-sm bg-black px-3 text-white hover:bg-black/90"
+                  className="h-7 rounded-sm bg-primary px-3 text-primary-foreground hover:bg-primary/90"
                   onClick={handleQuickAddSubmit}
                   disabled={!quickAddTitle.trim() || onAddDisabled}
                 >

@@ -40,9 +40,9 @@ export const StatusModal = ({
       ),
       confirmText: "Confirm",
       confirmIcon: PlayCircle,
-      confirmClass: "bg-black hover:bg-black/90 text-white",
+      confirmClass: "bg-primary hover:bg-primary/90 text-primary-foreground",
       icon: PlayCircle,
-      iconClass: "bg-zinc-100 text-zinc-900",
+      iconClass: "bg-zinc-100 text-foreground",
     },
     complete: {
       dialogTitle: "End Cycle?",
@@ -53,9 +53,9 @@ export const StatusModal = ({
       ),
       confirmText: "Confirm",
       confirmIcon: CheckCircle2,
-      confirmClass: "bg-black hover:bg-black/90 text-white",
+      confirmClass: "bg-primary hover:bg-primary/90 text-primary-foreground",
       icon: CheckCircle2,
-      iconClass: "bg-zinc-100 text-zinc-900",
+      iconClass: "bg-zinc-100 text-foreground",
     },
   }[type];
 

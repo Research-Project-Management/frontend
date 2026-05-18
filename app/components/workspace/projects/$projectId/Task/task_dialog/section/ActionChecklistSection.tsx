@@ -20,7 +20,7 @@ export function ActionChecklistSection({
   const [checklistTitle, setChecklistTitle] = useState("Checklist");
 
   const actionBtnClass =
-    "h-10 rounded-sm border border-border bg-white px-4 text-[15px] font-medium text-zinc-900 shadow-none hover:bg-zinc-100";
+    "h-10 rounded-sm border border-border bg-white px-4 text-[15px] font-medium text-foreground shadow-none hover:bg-zinc-100";
 
   const handleAddChecklist = () => {
     if (!checklistTitle.trim()) return;
@@ -71,11 +71,11 @@ export function ActionChecklistSection({
               value={checklistTitle}
               onChange={(e) => setChecklistTitle(e.target.value)}
               autoFocus
-              className="h-10 focus-visible:ring-1 focus-visible:ring-black"
+              className="h-10 focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
           <Button
-            className="w-fit px-6 bg-black text-white hover:bg-black/90"
+            className="w-fit px-6 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={handleAddChecklist}
           >
             Add

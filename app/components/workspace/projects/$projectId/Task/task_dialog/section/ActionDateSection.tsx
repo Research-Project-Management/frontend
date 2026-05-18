@@ -354,7 +354,7 @@ export function ActionDateSection({
                     <button
                       key={i}
                       onClick={() => handleDateClick(day)}
-                      className={`h-9 text-sm flex items-center justify-center rounded-sm transition-all relative ${!isSameMonth(day, currentMonth) ? "text-muted-foreground/30" : "text-foreground hover:bg-zinc-100 cursor-pointer"} ${isInRange ? "bg-zinc-100 text-zinc-900" : ""} ${isSelectedStart || isSelectedEnd ? "bg-zinc-200 text-black font-bold" : ""} ${isActive ? "ring-2 ring-inset ring-black shadow-sm" : ""} ${isToday(day) && !isSelectedStart && !isSelectedEnd ? "text-black border-b-2 border-black rounded-none font-bold" : ""}`}
+                      className={`h-9 text-sm flex items-center justify-center rounded-sm transition-all relative ${!isSameMonth(day, currentMonth) ? "text-muted-foreground/30" : "text-foreground hover:bg-zinc-100 cursor-pointer"} ${isInRange ? "bg-zinc-100 text-foreground" : ""} ${isSelectedStart || isSelectedEnd ? "bg-zinc-200 text-foreground font-bold" : ""} ${isActive ? "ring-2 ring-inset ring-primary shadow-sm" : ""} ${isToday(day) && !isSelectedStart && !isSelectedEnd ? "text-foreground border-b-2 border-primary rounded-none font-bold" : ""}`}
                     >
                       {format(day, "d")}
                     </button>
@@ -376,7 +376,7 @@ export function ActionDateSection({
                       }
                       disableStartDate();
                     }}
-                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-black data-[state=checked]:border-black"
+                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
                   <div className="flex items-center gap-2 grow">
                     <Input
@@ -384,7 +384,7 @@ export function ActionDateSection({
                       value={tempStartDate && hasStartDate ? format(tempStartDate, "d/M/yyyy") : ""}
                       onClick={ensureStartDateEnabled}
                       readOnly
-                      className={`h-11 text-[15px] transition-all shadow-none cursor-pointer rounded-sm flex-1 ${activeInput === "start" ? "ring-2 ring-black/20 border-black bg-white" : "bg-zinc-50 border-none"}`}
+                      className={`h-11 text-[15px] transition-all shadow-none cursor-pointer rounded-sm flex-1 ${activeInput === "start" ? "ring-2 ring-primary/20 border-primary bg-white" : "bg-zinc-50 border-none"}`}
                     />
                     <div className="w-20 shrink-0" />
                   </div>
@@ -403,7 +403,7 @@ export function ActionDateSection({
                       }
                       disableDueDate();
                     }}
-                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-black data-[state=checked]:border-black"
+                    className="size-5 rounded-sm border-zinc-200 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                   />
 
                   <div className="flex items-center gap-2 grow">
@@ -411,7 +411,7 @@ export function ActionDateSection({
                       value={tempEndDate && hasDueDate ? format(tempEndDate, "d/M/yyyy") : ""}
                       onClick={ensureDueDateEnabled}
                       readOnly
-                      className={`h-11 text-[15px] transition-all shadow-none flex-1 cursor-pointer rounded-sm ${activeInput === "end" ? "ring-2 ring-black/20 border-black bg-white" : "bg-zinc-50 border-none"}`}
+                      className={`h-11 text-[15px] transition-all shadow-none flex-1 cursor-pointer rounded-sm ${activeInput === "end" ? "ring-2 ring-primary/20 border-primary bg-white" : "bg-zinc-50 border-none"}`}
                     />
 
                     <Input
@@ -483,7 +483,7 @@ export function ActionDateSection({
 
               <div className="space-y-3 pt-3 pb-1">
                 <Button
-                  className="w-full bg-black hover:bg-black/90 text-white font-semibold h-11 rounded-sm shadow-sm transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 rounded-sm shadow-sm transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
                   onClick={handleSaveDate}
                   disabled={!canSaveDate}
                 >
@@ -491,7 +491,7 @@ export function ActionDateSection({
                 </Button>
                 <Button
                   variant="secondary"
-                  className="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-semibold h-11 rounded-sm border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
+                  className="w-full bg-zinc-100 hover:bg-zinc-200 text-foreground font-semibold h-11 rounded-sm border-none shadow-none transition-all duration-200 text-[15px] active:scale-[0.98] disabled:opacity-60"
                   onClick={handleClearDate}
                 >
                   Remove

@@ -31,6 +31,7 @@ export async function* streamChatResponse(
     signal?: AbortSignal;
   },
 ): AsyncGenerator<string, void, unknown> {
+  const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await fetch(`${API_URL}/api/ai/chat`, {
     method: "POST",
     headers: {
@@ -39,7 +40,7 @@ export async function* streamChatResponse(
     },
     credentials: "include",
     body: JSON.stringify({
-      messages,
+      messages: aiMessages,
       project_id: options?.projectId,
       document_ids: options?.documentIds,
       intent_hint: options?.intentHint,
@@ -111,12 +112,13 @@ export async function chatSync(
     intentHint?: string;
   },
 ): Promise<ChatSyncResponse> {
+  const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await fetch(`${API_URL}/api/ai/chat/sync`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({
-      messages,
+      messages: aiMessages,
       project_id: options?.projectId,
       document_ids: options?.documentIds,
       intent_hint: options?.intentHint,
@@ -405,6 +407,7 @@ export async function* streamEditorChat(
   messages: ChatMessage[],
   opts: EditorStreamOptions,
 ): AsyncGenerator<string, void, unknown> {
+  const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await fetch(`${API_URL}/api/ai/chat`, {
     method: "POST",
     headers: {
@@ -413,7 +416,7 @@ export async function* streamEditorChat(
     },
     credentials: "include",
     body: JSON.stringify({
-      messages,
+      messages: aiMessages,
       intent_hint: "latex_editor",
       chat_id: opts.chatId,
       workspace_id: opts.workspaceId,

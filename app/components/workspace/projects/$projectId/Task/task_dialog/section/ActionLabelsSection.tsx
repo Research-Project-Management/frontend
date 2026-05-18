@@ -97,7 +97,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
               <Input
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
-                className="h-9 border-transparent bg-white shadow-none transition-all focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black/20"
+                className="h-9 border-transparent bg-white shadow-none transition-all focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20"
                 autoFocus
                 disabled={isMutating}
               />
@@ -124,7 +124,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
             <Button 
               onClick={() => handleSave()} 
               disabled={isMutating || !editingName.trim()}
-              className="bg-black hover:bg-black/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"
             >
               {isMutating ? "Save" : "Save"}
             </Button>
@@ -133,7 +133,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
                 onClick={() => handleDelete((id) => setLabels(prev => prev.filter(p => p !== id)))} 
                 variant="destructive" 
                 disabled={isMutating}
-                className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-white font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"
+                className="bg-[#c9372c] hover:bg-[#c9372c]/90 text-primary-foreground font-semibold h-9 px-6 rounded-md shadow-sm min-w-[80px]"
               >
                 {isMutating ? "Delete" : "Delete"}
               </Button>
@@ -156,7 +156,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
               placeholder="Search labels..." 
               value={labelSearch} 
               onChange={(e) => setLabelSearch(e.target.value)} 
-              className="h-9 border-transparent bg-white pl-9 text-[15px] shadow-none transition-all focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black/20" 
+              className="h-9 border-transparent bg-white pl-9 text-[15px] shadow-none transition-all focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20" 
             />
           </div>
         </div>
@@ -176,7 +176,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
                   <Checkbox 
                     checked={labels.includes(label._id)} 
                     onCheckedChange={() => toggleTag(label._id)} 
-                    className="size-5 rounded-lg border-border data-[state=checked]:bg-black data-[state=checked]:border-black" 
+                    className="size-5 rounded-lg border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
                   />
                   <button 
                     type="button" 
@@ -201,7 +201,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
                 <div className="size-12 rounded-full bg-zinc-100 flex items-center justify-center mb-3">
                   <Tag className="size-6 text-zinc-400 opacity-50" />
                 </div>
-                <p className="text-[14px] font-medium text-zinc-900">
+                <p className="text-[14px] font-medium text-foreground">
                   {labelSearch ? "No labels found" : "No labels yet"}
                 </p>
                 <p className="text-[12px] text-zinc-500 mt-1">
@@ -218,7 +218,7 @@ export const ActionLabelsSection: React.FC<ActionLabelsSectionProps> = ({
           <Button 
             variant="secondary" 
             onClick={handleCreateNew} 
-            className="h-10 w-full rounded-md border-none bg-zinc-100 font-semibold text-zinc-900 shadow-none transition-all hover:bg-zinc-200"
+            className="h-10 w-full rounded-md border-none bg-zinc-100 font-semibold text-foreground shadow-none transition-all hover:bg-zinc-200"
           >
             Create a new label
           </Button>

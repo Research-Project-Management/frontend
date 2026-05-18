@@ -58,7 +58,7 @@ export default function WorkspaceMyFilesPage() {
     }
   };
 
-  const handleRenameTrigger = () => {};
+  const handleRenameTrigger = (_item: StorageItem) => {};
 
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);
@@ -102,6 +102,7 @@ export default function WorkspaceMyFilesPage() {
       currentFolder={currentFolder}
       breadcrumbs={breadcrumbs}
       workspaceId={workspaceId}
+      wsId={workspaceId}
       onNavigate={handleBreadcrumbNavigate}
       onFolderClick={handleFolderClick}
       onToggleStar={handleToggleStar}

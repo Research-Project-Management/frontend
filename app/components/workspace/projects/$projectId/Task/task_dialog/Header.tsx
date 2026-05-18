@@ -47,7 +47,7 @@ export function TaskHeader({
   return (
     <div className="flex items-center justify-between px-7 py-5 border-b border-border bg-white sticky top-0 z-20 shrink-0">
       <Select value={columnId} onValueChange={setColumnId} disabled={isReadOnly}>
-        <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-zinc-100 px-3 text-[14px] font-semibold text-zinc-900 shadow-none hover:bg-zinc-200 focus:ring-0 transition-colors">
+        <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-zinc-100 px-3 text-[14px] font-semibold text-foreground shadow-none hover:bg-zinc-200 focus:ring-0 transition-colors">
           <SelectValue placeholder="Select status" />
         </SelectTrigger>
         <SelectContent className="rounded-sm border-border/50 shadow-xl">

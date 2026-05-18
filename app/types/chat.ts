@@ -24,6 +24,12 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources?: SourceItem[];
+  selectionContext?: {
+    filename: string;
+    startLine: number;
+    endLine: number;
+    text?: string;
+  };
 }
 
 /** A persisted chat session (from RPM-BE ChatHistory) */

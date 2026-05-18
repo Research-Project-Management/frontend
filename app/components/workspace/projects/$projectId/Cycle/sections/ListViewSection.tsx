@@ -33,7 +33,7 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
   if (searchTerm?.trim()) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-        <h3 className="text-[14px] font-semibold text-zinc-900 mb-1">No cycles found</h3>
+        <h3 className="text-[14px] font-semibold text-foreground mb-1">No cycles found</h3>
         <p className="text-[12px] text-muted-foreground">
           No cycles in <span className="font-medium text-zinc-600">{status}</span> section match "{searchTerm}"
         </p>
@@ -71,7 +71,7 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
             </svg>
          </div>
       )}
-      <h3 className="text-[15px] font-semibold text-zinc-900 mb-2">{configs.title}</h3>
+      <h3 className="text-[15px] font-semibold text-foreground mb-2">{configs.title}</h3>
       <p className="text-[13px] text-muted-foreground max-w-[440px] leading-relaxed">
         {configs.description}
       </p>
@@ -180,7 +180,7 @@ export function Item({
       />
 
       <div className="flex-1 min-w-0">
-        <span className="text-[13px] font-medium text-zinc-700 truncate group-hover:text-black">
+        <span className="text-[13px] font-medium text-zinc-700 truncate group-hover:text-foreground">
           {cycle.name}
         </span>
       </div>
@@ -205,7 +205,7 @@ export function Item({
                 return (
                   <span
                     key={label._id}
-                    className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-zinc-900 animate-in fade-in zoom-in-95 duration-200"
+                    className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-foreground animate-in fade-in zoom-in-95 duration-200"
                     style={{ backgroundColor: label.color }}
                   >
                     <span className="max-w-[120px] truncate">{label.name}</span>
@@ -270,7 +270,7 @@ export function Item({
                   e.stopPropagation(); 
                   onStart?.(); 
                 }} 
-                className="text-zinc-700 focus:text-zinc-900 focus:bg-zinc-100 font-medium py-2"
+                className="text-zinc-700 focus:text-foreground focus:bg-zinc-100 font-medium py-2"
               >
                 <PlayCircle className="mr-2 h-4 w-4 text-zinc-400" /> Start Cycle
               </DropdownMenuItem>
@@ -278,13 +278,13 @@ export function Item({
             {status === "active" && (
               <DropdownMenuItem 
                 onClick={(e) => { e.stopPropagation(); onComplete?.(); }}
-                className="text-zinc-700 focus:text-zinc-900 focus:bg-zinc-100 font-medium py-2"
+                className="text-zinc-700 focus:text-foreground focus:bg-zinc-100 font-medium py-2"
               >
                 <CheckCircle2 className="mr-2 h-4 w-4 text-zinc-500" /> End Cycle
               </DropdownMenuItem>
             )}
             {!isReadOnly && (
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }} className="py-2 text-zinc-700 focus:text-zinc-900">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }} className="py-2 text-zinc-700 focus:text-foreground">
                 <Pencil className="mr-2 h-4 w-4 text-zinc-400" /> Edit Details
               </DropdownMenuItem>
             )}

@@ -243,7 +243,7 @@ function GeneralForm({
         <div className="rounded-sm border border-border bg-zinc-50/20 p-4 transition-colors hover:bg-zinc-50/40">
            <div className="flex items-center justify-between gap-6">
               <div className="space-y-0.5">
-                 <h3 className="text-sm font-semibold text-zinc-900">
+                 <h3 className="text-sm font-semibold text-foreground">
                     Parallel cycles
                  </h3>
                  <p className="text-[12.5px] text-muted-foreground leading-relaxed max-w-xl">

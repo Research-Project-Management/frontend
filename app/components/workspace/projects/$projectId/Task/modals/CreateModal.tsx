@@ -87,7 +87,7 @@ export default function CreateModal({
                 value={sectionName}
                 onChange={(e) => setSectionName(e.target.value)}
                 autoFocus
-                className="h-10 text-[14px] font-medium text-zinc-900 rounded-sm border-zinc-200 bg-zinc-50/50 shadow-none focus-visible:ring-0 focus-visible:border-black focus-visible:bg-white transition-all"
+                className="h-10 text-[14px] font-medium text-foreground rounded-sm border-zinc-200 bg-zinc-50/50 shadow-none focus-visible:ring-0 focus-visible:border-primary focus-visible:bg-white transition-all"
               />
             </div>
 
@@ -106,13 +106,13 @@ export default function CreateModal({
                       className={`
                         relative w-7 h-7 rounded-full transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center
                         ${color.border ? "border border-zinc-200" : "border border-transparent"}
-                        ${isSelected ? "ring-2 ring-offset-2 ring-black scale-100" : "hover:scale-110 opacity-80 hover:opacity-100"}
+                        ${isSelected ? "ring-2 ring-offset-2 ring-primary scale-100" : "hover:scale-110 opacity-80 hover:opacity-100"}
                       `}
                       style={{ backgroundColor: color.value }}
                       aria-label={`Select ${color.id} color`}
                     >
                       {isSelected && (
-                        <Check className={`size-3.5 ${color.id === 'white' ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                        <Check className={`size-3.5 ${color.id === 'white' ? 'text-foreground' : 'text-white'}`} strokeWidth={3} />
                       )}
                     </button>
                   );
@@ -133,7 +133,7 @@ export default function CreateModal({
             </Button>
             <Button
               type="submit"
-              className="h-9 px-6 text-[13px] font-bold bg-black text-white hover:bg-black/90 shadow-none rounded-sm transition-all duration-200 active:scale-[0.98]"
+              className="h-9 px-6 text-[13px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-sm transition-all duration-200 active:scale-[0.98]"
               disabled={!sectionName.trim() || isLoading}
             >
               {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create Column" : "Save Changes")}

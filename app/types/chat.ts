@@ -19,11 +19,40 @@ export interface SourceItem {
   year?: number;     // OpenAlex: publication year
 }
 
+export type ResponseWidget =
+  | {
+      type: "task_overview";
+      title: string;
+      subtitle?: string;
+      total: number;
+      done: number;
+      inProgress: number;
+      overdue: number;
+      groups: Array<{
+        label: string;
+        tasks: Array<{
+          id?: string;
+          title: string;
+          priority?: string;
+          assignee?: string;
+          dueDate?: string | null;
+          isOverdue?: boolean;
+          completed?: boolean;
+        }>;
+      }>;
+    }
+  | {
+      type: "metric_summary";
+      title: string;
+      metrics: Array<{ label: string; value: string | number; tone?: "default" | "good" | "warn" | "bad" }>;
+    };
+
 /** Single message in a conversation */
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources?: SourceItem[];
+  widgets?: ResponseWidget[];
   selectionContext?: {
     filename: string;
     startLine: number;
@@ -95,7 +124,7 @@ export interface ChatTraceResponse {
  * - `thinking` — orchestrator is reasoning (early feedback before first handoff)
  */
 export interface AgentAction {
-  type: "tool_start" | "tool_end" | "tool_call" | "agent_handoff" | "thinking";
+  type: "tool_start" | "tool_end" | "tool_call" | "agent_handoff" | "agent_done" | "thinking";
   // tool_start / tool_end / tool_call
   tool?: string;
   agent?: string;
@@ -109,6 +138,7 @@ export interface AgentAction {
   to?: string;
   parallel?: boolean;
   request?: string;
+  success?: boolean;
 }
 
 /** Tool category for color coding */

@@ -1,135 +1,166 @@
 import { useState } from "react";
-import { Plus, Library, Search } from "lucide-react";
+import {
+  Search,
+  FolderOpen,
+  FileText,
+  ExternalLink,
+  Trash2,
+  User,
+  CalendarDays,
+  Tag,
+  BookOpen,
+} from "lucide-react";
 import { useParams } from "react-router";
 import { useWorkspace } from "~/query/workspace";
 import {
+  useAllPapers,
   useCollections,
-  useCreateCollection,
-  useUpdateCollection,
-  useDeleteCollection,
+  useDeletePaper,
 } from "~/query/library";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Skeleton } from "~/components/ui/skeleton";
-import CollectionCard from "../components/CollectionCard";
-import CollectionCreateDialog from "../components/CollectionCreateDialog";
+import { cn } from "~/lib/utils";
+import { API_URL } from "~/lib/api";
+import type { Paper, Collection } from "~/types/library";
+import { PaperTableRow } from "../components/PaperTableRow";
+import { PaperDetailPanel } from "../components/PaperDetailPanel";
+
+// ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function LibraryHomePage() {
   const { workspaceId: workspaceUrl } = useParams();
   const { workspace } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?._id ?? "";
 
-  const { data: collections, isLoading } = useCollections(workspaceId);
-  const createMutation = useCreateCollection(workspaceId);
-  const updateMutation = useUpdateCollection(workspaceId);
-  const deleteMutation = useDeleteCollection(workspaceId);
+  const { data: papers, isLoading } = useAllPapers(workspaceId);
+  const { data: collections } = useCollections(workspaceId);
+  const deletePaperMutation = useDeletePaper(workspaceId, "");
 
-  const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
 
-  const filtered = (collections ?? []).filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
+  const collectionMap = Object.fromEntries(
+    (collections ?? []).map((c) => [c._id, c]),
   );
 
-  const handleCreate = (data: {
-    name: string;
-    description: string;
-    color: string;
-  }) => {
-    createMutation.mutate(data, {
-      onSuccess: () => setCreateOpen(false),
-    });
+  const filtered = (papers ?? []).filter(
+    (p) =>
+      p.title.toLowerCase().includes(search.toLowerCase()) ||
+      p.authors.some((a) => a.toLowerCase().includes(search.toLowerCase())) ||
+      (p.journal || "").toLowerCase().includes(search.toLowerCase()) ||
+      (p.abstract || "").toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const handleDeletePaper = (paperId: string) => {
+    if (!confirm("Remove this paper?")) return;
+    deletePaperMutation.mutate(paperId);
+    if (selectedPaper?._id === paperId) setSelectedPaper(null);
   };
 
-  const handleRename = (id: string, name: string) => {
-    updateMutation.mutate({ collectionId: id, name });
-  };
-
-  const handleDelete = (id: string) => {
-    if (!confirm("Delete this collection and all its papers?")) return;
-    deleteMutation.mutate(id);
-  };
+  const selectedCollection = selectedPaper?.collection
+    ? collectionMap[selectedPaper.collection] ?? null
+    : null;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <div className="flex items-center gap-2.5">
-          <Library className="size-5 text-primary" />
-          <h1 className="text-lg font-semibold">Library</h1>
-          {collections && (
-            <span className="text-xs text-muted-foreground bg-accent px-1.5 py-0.5 rounded-full">
-              {collections.length}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative hidden sm:block">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search collections…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 w-52 text-sm"
-            />
-          </div>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4 mr-1.5" />
-            New Collection
-          </Button>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-36 rounded-xl" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Library className="size-8 text-primary" />
+    <div className="flex h-full overflow-hidden">
+      {/* Main area */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              <BookOpen className="size-4 text-primary shrink-0" />
+              <h1 className="text-sm font-semibold text-primary">
+                All Papers
+              </h1>
             </div>
-            <div>
-              <p className="text-base font-semibold text-foreground">
-                {search ? "No collections found" : "No collections yet"}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {search
-                  ? "Try a different keyword"
-                  : "Create a collection to organize your research papers"}
-              </p>
-            </div>
-            {!search && (
-              <Button onClick={() => setCreateOpen(true)}>
-                <Plus className="size-4 mr-1.5" />
-                Create first collection
-              </Button>
+            {papers && (
+              <span className="ml-1 text-xs text-muted-foreground tabular-nums bg-muted/50 px-1.5 py-0.5 rounded">
+                {papers.length} papers
+              </span>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map((collection) => (
-              <CollectionCard
-                key={collection._id}
-                collection={collection}
-                onDelete={handleDelete}
-                onRename={handleRename}
-              />
-            ))}
+          <div className="flex items-center gap-3">
+            <Input
+              placeholder="Search title, author, journal, abstract…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 w-80 text-sm"
+            />
           </div>
-        )}
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-4 space-y-1.5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 rounded" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-24 text-center px-6">
+              <p className="text-sm font-semibold text-foreground">
+                {search ? "No papers match" : "No papers yet"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {search ? "Try a different keyword" : "Select a collection from the sidebar to add papers"}
+              </p>
+            </div>
+          ) : (
+            /* table-fixed + w-full forces columns to their set widths and clips overflow */
+            <table className="w-full text-sm border-collapse table-fixed">
+              <colgroup>
+                <col className="w-8" />
+                <col />
+                <col className="w-[200px]" />
+                <col className="w-[60px]" />
+                <col className="w-[150px]" />
+                <col className="w-[120px]" />
+                <col className="w-[60px]" />
+              </colgroup>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-card border-b border-border">
+                  <th />
+                  <th className="text-left py-1 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Title
+                  </th>
+                  <th className="text-left py-1 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Authors
+                  </th>
+                  <th className="text-left py-1 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Year
+                  </th>
+                  <th className="text-left py-1 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Journal
+                  </th>
+                  <th className="text-left py-1 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Collection
+                  </th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((paper) => (
+                  <PaperTableRow
+                    key={paper._id}
+                    paper={paper}
+                    collection={paper.collection ? collectionMap[paper.collection] ?? null : null}
+                    onDelete={handleDeletePaper}
+                    isSelected={selectedPaper?._id === paper._id}
+                    onSelect={setSelectedPaper}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      <CollectionCreateDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSubmit={handleCreate}
-        isPending={createMutation.isPending}
-      />
+      {/* Detail panel */}
+      {selectedPaper && (
+        <PaperDetailPanel paper={selectedPaper} collection={selectedCollection} workspaceId={workspaceId} />
+      )}
     </div>
   );
 }

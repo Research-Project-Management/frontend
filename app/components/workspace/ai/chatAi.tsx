@@ -1,25 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Textarea } from "~/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { ArrowUp, Square, Globe, X, Plus, ChevronDown, BookOpen } from "lucide-react";
+import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
 import { useParams } from "react-router";
 import { useWorkspace } from "~/query/workspace";
 import { AGENT_CONFIGS } from "~/types/chat";
 import type { AgentId } from "~/types/chat";
-import SourcePickerModal from "./SourcePickerModal";
+
+// Stable color cycle for projects — dot only, no new icons
+const PROJ_DOTS = ["#3370ff", "#f97316", "#22c55e", "#a855f7", "#ef4444", "#06b6d4"];
+function projDot(i: number) { return PROJ_DOTS[i % PROJ_DOTS.length]; }
 
 const DEFAULT_ACADEMIC_SITES = [
   // Primary academic sources
@@ -70,7 +66,6 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionStart, setMentionStart] = useState(-1);
   const [highlightIdx, setHighlightIdx] = useState(0);
-  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -83,8 +78,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
     }
   }, [message]);
 
-  // Sync selectedProject:
-  //  - khi initialProject được truyền xuống (ví dụ sau khi load session history)
+  // Sync selectedProject when initialProject changes
   useEffect(() => {
     if (initialProject) {
       setSelectedProject(initialProject);
@@ -94,7 +88,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProject]);
 
-  // Close dropdown on outside click
+  // Close @mention dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -116,7 +110,6 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
     if (lastAt >= 0) {
       const textAfterAt = textBeforeCursor.slice(lastAt + 1);
-      // Only trigger if no spaces after @
       if (!textAfterAt.includes(" ") && !textAfterAt.includes("\n")) {
         setMentionStart(lastAt);
         setMentionQuery(textAfterAt.toLowerCase());
@@ -136,7 +129,6 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   );
 
   const selectAgent = (agent: (typeof AGENT_CONFIGS)[number]) => {
-    // Replace the @query in message with empty string (tag handles the display)
     if (mentionStart >= 0) {
       const before = message.slice(0, mentionStart);
       const after = message.slice(mentionStart + 1 + mentionQuery.length);
@@ -164,41 +156,14 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   }, [message, disabled, selectedProject, onSend, webSearch, sites, mentionedAgent]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Navigate dropdown with arrows
     if (showMentionDropdown && filteredAgents.length > 0) {
-      if (e.key === "Escape") {
-        setShowMentionDropdown(false);
-        e.preventDefault();
-        return;
-      }
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setHighlightIdx((prev) => (prev + 1) % filteredAgents.length);
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setHighlightIdx((prev) =>
-          prev <= 0 ? filteredAgents.length - 1 : prev - 1,
-        );
-        return;
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]);
-        return;
-      }
-      if (e.key === "Tab") {
-        e.preventDefault();
-        selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]);
-        return;
-      }
+      if (e.key === "Escape") { setShowMentionDropdown(false); e.preventDefault(); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setHighlightIdx((p) => (p + 1) % filteredAgents.length); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setHighlightIdx((p) => p <= 0 ? filteredAgents.length - 1 : p - 1); return; }
+      if (e.key === "Enter") { e.preventDefault(); selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]); return; }
+      if (e.key === "Tab") { e.preventDefault(); selectAgent(filteredAgents[highlightIdx] ?? filteredAgents[0]); return; }
     }
-
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const handleQuickPrompt = (prompt: string) => {
@@ -207,23 +172,22 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   };
 
   const addSite = () => {
-    const s = newSite
-      .trim()
-      .replace(/^https?:\/\//, "")
-      .replace(/\/$/, "");
-    if (s && !sites.includes(s)) {
-      setSites((prev) => [...prev, s]);
-    }
+    const s = newSite.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (s && !sites.includes(s)) setSites((prev) => [...prev, s]);
     setNewSite("");
   };
 
-  const removeSite = (site: string) => {
-    setSites((prev) => prev.filter((s) => s !== site));
-  };
+  const removeSite = (site: string) => setSites((prev) => prev.filter((s) => s !== site));
 
   if (isLoading || !projects) return null;
 
   const activeAgent = mentionedAgent ? AGENT_CONFIGS.find((a) => a.id === mentionedAgent) : null;
+
+  // Scope picker derived state
+  const isWorkspace = selectedProject === "workspace" || !selectedProject;
+  const activeProject = isWorkspace ? null : projects.find((p: any) => p._id === selectedProject);
+  const projectIndex = activeProject ? projects.findIndex((p: any) => p._id === selectedProject) : -1;
+  const scopeDot = activeProject ? projDot(projectIndex) : "#9aa0a6";
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4">
@@ -234,7 +198,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
             ref={dropdownRef}
             className="absolute bottom-full mb-2 left-4 z-50 w-72 rounded-md border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
           >
-            <div className="px-3 py-2 ">
+            <div className="px-3 py-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Mention Agent
               </p>
@@ -245,18 +209,12 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 onClick={() => selectAgent(agent)}
                 onMouseEnter={() => setHighlightIdx(i)}
                 className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${
-                  i === highlightIdx
-                    ? "bg-accent/80"
-                    : "hover:bg-accent/60"
+                  i === highlightIdx ? "bg-accent/80" : "hover:bg-accent/60"
                 }`}
               >
-                  <div className="flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-foreground/80">
-                    @{agent.label}
-                  </span>
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    {agent.description}
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-semibold text-foreground/80">@{agent.label}</span>
+                  <p className="text-[10px] text-muted-foreground truncate">{agent.description}</p>
                 </div>
               </button>
             ))}
@@ -265,43 +223,76 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
         <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
           <div className="flex items-center gap-2 px-3 pt-3">
-            <Select
-              value={selectedProject || "workspace"}
-              onValueChange={setSelectedProject}
-            >
-              <SelectTrigger
-                size="sm"
-                className="min-w-[100px] data-[size=sm]:h-7 px-2 text-xs focus-visible:ring-transparent hover:ring-1 ring-primary/10 focus-visible:border-transparent bg-secondary/50 rounded-lg border-none"
-              >
-                <SelectValue placeholder="Workspace" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="workspace">
-                  <div className="flex items-center gap-2">
-                    {workspace?.avatar ? (
-                      <img src={workspace.avatar} alt="ws" className="size-3.5 rounded-sm object-cover" />
-                    ) : (
-                      <Globe className="size-3 text-muted-foreground" />
-                    )}
-                    <span className="font-medium">{workspace?.name || "Workspace (General)"}</span>
-                  </div>
-                </SelectItem>
-                {projects.map((project: { _id: string; name: string; avatar?: string }) => (
-                  <SelectItem key={project._id} value={project._id}>
-                    <div className="flex items-center gap-2">
-                      {project.avatar}
-                      <span className="font-medium">{project.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* ── Scope picker ── */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-secondary/50 hover:bg-secondary/80 transition-colors text-xs font-medium text-foreground/80 min-w-0 max-w-[160px]"
+                >
+                  {activeProject?.avatar ? (
+                    <span className="text-[11px] leading-none shrink-0">{activeProject.avatar}</span>
+                  ) : (
+                    <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: scopeDot }} />
+                  )}
+                  <span className="truncate">
+                    {activeProject ? activeProject.name : (workspace?.name || "Workspace")}
+                  </span>
+                  <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+
+              <PopoverContent side="top" align="start" className="w-44 p-1">
+                {/* Workspace option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedProject("workspace")}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-xs transition-colors ${
+                    isWorkspace
+                      ? "bg-accent font-semibold text-foreground"
+                      : "text-foreground/70 hover:bg-accent/60"
+                  }`}
+                >
+                  <span className="size-1.5 rounded-full bg-[#9aa0a6] shrink-0" />
+                  <span className="truncate">{workspace?.name || "Workspace"}</span>
+                </button>
+
+                {/* Separator */}
+                {projects.length > 0 && (
+                  <div className="my-1 mx-2 border-t border-border/60" />
+                )}
+
+                {/* Project options */}
+                {projects.map((project: any, i: number) => {
+                  const isActive = selectedProject === project._id;
+                  const color = projDot(i);
+                  return (
+                    <button
+                      key={project._id}
+                      type="button"
+                      onClick={() => setSelectedProject(project._id)}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-xs transition-colors ${
+                        isActive
+                          ? "bg-accent font-semibold text-foreground"
+                          : "text-foreground/70 hover:bg-accent/60"
+                      }`}
+                    >
+                      {project.avatar ? (
+                        <span className="text-[11px] leading-none shrink-0">{project.avatar}</span>
+                      ) : (
+                        <span className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                      )}
+                      <span className="truncate">{project.name}</span>
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
 
             {/* Active agent badge */}
             {activeAgent && (
-              <div
-                className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-foreground/80 transition-all animate-in fade-in-0 zoom-in-95 duration-200"
-              >
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border/60 bg-secondary/50 text-xs font-medium text-foreground/80 transition-all animate-in fade-in-0 zoom-in-95 duration-200">
                 <span>@{activeAgent.label}</span>
                 <button
                   onClick={clearAgent}
@@ -312,7 +303,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
               </div>
             )}
 
-            {/* Hint text when no agent selected */}
+            {/* Hint text */}
             {!activeAgent && (
               <span className="text-[10px] text-muted-foreground/40 ml-auto mr-1 hidden sm:block">
                 Type @ to mention an agent
@@ -335,7 +326,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
             }
           />
 
-          {/* Quick-action chips — show when agent is selected and input is empty */}
+          {/* Quick-action chips — when agent selected and input is empty */}
           {activeAgent && !message.trim() && (
             <div className="flex flex-wrap gap-1.5 px-4 pb-2 animate-in fade-in-0 duration-200">
               {activeAgent.quickPrompts.slice(0, 4).map((prompt) => (
@@ -359,19 +350,9 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                 onCheckedChange={setWebSearch}
                 className="data-[state=checked]:bg-primary scale-[0.7]"
               />
-              <span className="text-[11px] font-medium text-muted-foreground">
-                Web
-              </span>
+              <span className="text-[11px] font-medium text-muted-foreground">Web</span>
 
-              <button
-                onClick={() => setSourcePickerOpen(true)}
-                className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary px-2 py-1 rounded-lg hover:bg-primary/8 transition-colors border border-border/40 hover:border-primary/30"
-              >
-                <BookOpen className="size-3.5" />
-                From Library
-              </button>
-
-              {/* Site filter popover — only visible when web search is on */}
+              {/* Site filter popover */}
               {webSearch && (
                 <Popover>
                   <PopoverTrigger asChild>
@@ -381,25 +362,17 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                       <ChevronDown className="size-3" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent
-                    side="top"
-                    align="start"
-                    className="w-72 p-3 space-y-2"
-                  >
+                  <PopoverContent side="top" align="start" className="w-72 p-3 space-y-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                       Search filter sites
                     </p>
-
-                    {/* Site list */}
                     <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                       {sites.map((site) => (
                         <div
                           key={site}
                           className="flex items-center justify-between gap-2 px-2 py-1 rounded-lg bg-secondary/50 group/item"
                         >
-                          <span className="text-xs font-mono truncate">
-                            {site}
-                          </span>
+                          <span className="text-xs font-mono truncate">{site}</span>
                           <button
                             onClick={() => removeSite(site)}
                             className="shrink-0 opacity-0 group-hover/item:opacity-100 text-muted-foreground hover:text-destructive transition-all"
@@ -409,8 +382,6 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                         </div>
                       ))}
                     </div>
-
-                    {/* Add new site */}
                     <div className="flex items-center gap-1 pt-1 border-t border-border/60">
                       <input
                         value={newSite}
@@ -427,8 +398,6 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
                         <Plus className="size-3.5" />
                       </button>
                     </div>
-
-                    {/* Reset to default */}
                     <button
                       onClick={() => setSites(DEFAULT_ACADEMIC_SITES)}
                       className="w-full text-[10px] text-muted-foreground hover:text-foreground transition-colors text-center py-0.5"
@@ -454,13 +423,6 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
           </div>
         </div>
       </div>
-      {workspaceId && (
-        <SourcePickerModal
-          open={sourcePickerOpen}
-          onOpenChange={setSourcePickerOpen}
-          workspaceId={workspaceId}
-        />
-      )}
     </div>
   );
 }

@@ -50,6 +50,7 @@ import { toast } from "sonner";
 import { renderMarkdown } from "./renderMarkdown";
 import ChatAi from "../chatAi";
 import { ActionCardsGroup } from "../ActionCard";
+import { ResponseWidgets, buildResponseWidgetsFromActions } from "../ResponseWidgets";
 import { useChatMode } from "~/contexts/ChatModeContext";
 
 // ── Agent metadata ──────────────────────────────────────────────────────────────
@@ -243,11 +244,13 @@ const MessageBubble = memo(function MessageBubble({
   role,
   isStreaming = false,
   sources,
+  widgets,
 }: {
   content: string;
   role: "user" | "assistant";
   isStreaming?: boolean;
   sources?: SourceItem[];
+  widgets?: ChatMessage["widgets"];
 }) {
   const [copied, setCopied] = useState(false);
   const isUser = role === "user";
@@ -284,12 +287,14 @@ const MessageBubble = memo(function MessageBubble({
             {(() => {
               const { thinking, answer, isThinkingOpen } =
                 parseThinkingContent(content);
+              const hasWidgets = Boolean(widgets?.length);
               return (
                 <>
                   {thinking !== null && (
                     <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />
                   )}
-                  {answer && renderMarkdown(answer)}
+                  <ResponseWidgets widgets={widgets} />
+                  {answer && !hasWidgets && renderMarkdown(answer)}
                   {isStreaming && !isThinkingOpen && (
                     <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
                   )}
@@ -485,6 +490,7 @@ export default function ChatView() {
   const streamRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
   const activeSourcesRef = useRef<SourceItem[]>([]);
+  const activeActionsRef = useRef<AgentAction[]>([]);
   // Mirror of `messages` kept in sync during render so handleSend can always
   // read the latest list without needing it in its own dependency array.
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -520,6 +526,7 @@ export default function ChatView() {
       abortRef.current = null;
       streamRef.current = "";
       activeSourcesRef.current = [];
+      activeActionsRef.current = [];
       return;
     }
 
@@ -536,10 +543,11 @@ export default function ChatView() {
     getChatSession(chatId)
       .then((session) => {
         setMessages(
-          session.messages.map(({ role, content, sources }) => ({
+          session.messages.map(({ role, content, sources, widgets }) => ({
             role,
             content,
             sources,
+            widgets,
           })),
         );
         // Lưu projectId của session để truyền cho dropdown trong ChatAi
@@ -618,6 +626,7 @@ export default function ChatView() {
       setChatStarted(true);
       setSaveError(false);
       activeSourcesRef.current = [];
+      activeActionsRef.current = [];
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -642,7 +651,8 @@ export default function ChatView() {
             }
           },
           onAction: (action) => {
-            setActiveActions((prev) => [...prev, action]);
+            activeActionsRef.current = [...activeActionsRef.current, action];
+            setActiveActions(activeActionsRef.current);
           },
         })) {
           streamRef.current += chunk;
@@ -659,6 +669,7 @@ export default function ChatView() {
             activeSourcesRef.current.length > 0
               ? [...activeSourcesRef.current]
               : undefined,
+          widgets: buildResponseWidgetsFromActions(activeActionsRef.current),
         };
         setMessages((prev) => [...prev, assistantMsg]);
 
@@ -713,6 +724,7 @@ export default function ChatView() {
         abortRef.current = null;
         setActiveAgent(null);
         setActiveActions([]);
+        activeActionsRef.current = [];
         activeSourcesRef.current = [];
       }
     },
@@ -785,6 +797,7 @@ export default function ChatView() {
                 content={msg.content}
                 role={msg.role}
                 sources={msg.sources}
+                widgets={msg.widgets}
               />
             ))}
 
@@ -812,6 +825,7 @@ export default function ChatView() {
                     content={streamContent}
                     role="assistant"
                     isStreaming
+                    widgets={buildResponseWidgetsFromActions(activeActions)}
                   />
                 )}
               </div>

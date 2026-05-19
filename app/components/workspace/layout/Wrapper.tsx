@@ -53,8 +53,8 @@ import { Avatar } from "./Avatar";
 const sidebarItems = [
   { label: "Projects", icon: Square3Stack3DIcon, to: "" },
   { label: "Flux AI", icon: SparklesIcon, to: "/ai" },
-  { label: "Storage", icon: CloudIcon, to: "/storage" },
   { label: "Library", icon: BookOpenIcon, to: "/library" },
+  { label: "Storage", icon: CloudIcon, to: "/storage" },
   { label: "Settings", icon: Cog6ToothIcon, to: "/settings" },
 ];
 

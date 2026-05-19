@@ -26,6 +26,8 @@ interface Props {
     color: string;
   }) => void;
   isPending?: boolean;
+  /** When set, the dialog shows it is creating a subcollection of this collection */
+  parentName?: string;
 }
 
 export default function CollectionCreateDialog({
@@ -33,6 +35,7 @@ export default function CollectionCreateDialog({
   onOpenChange,
   onSubmit,
   isPending,
+  parentName,
 }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -60,9 +63,17 @@ export default function CollectionCreateDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="size-4" />
-            New Collection
+          <DialogTitle>
+            {parentName ? (
+              <span>
+                New Subcollection
+                <span className="text-muted-foreground font-normal text-sm ml-1.5">
+                  in {parentName}
+                </span>
+              </span>
+            ) : (
+              "New Collection"
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -127,7 +138,7 @@ export default function CollectionCreateDialog({
             onClick={handleSubmit}
             disabled={!name.trim() || isPending}
           >
-            {isPending ? "Creating…" : "Create Collection"}
+            {isPending ? "Creating…" : parentName ? "Create Subcollection" : "Create Collection"}
           </Button>
         </DialogFooter>
       </DialogContent>

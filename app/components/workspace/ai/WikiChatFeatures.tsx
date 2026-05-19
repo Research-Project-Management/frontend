@@ -10,6 +10,7 @@ import {
   Loader2,
   AlertCircle,
   Eye,
+  BookOpen,
 } from "lucide-react";
 import {
   useState,
@@ -36,6 +37,7 @@ import {
   fetchDocumentsBulk,
   fetchDocumentContent,
 } from "~/query/chat-ai";
+import SourcePickerModal from "./SourcePickerModal";
 
 type UploadingEntry = {
   tempId: string;
@@ -69,7 +71,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function WikiChatFeatures() {
-  const { chatId } = useParams<{ chatId?: string }>();
+  const { workspaceId, chatId } = useParams<{ workspaceId?: string; chatId?: string }>();
   const {
     sources,
     addSource,
@@ -90,6 +92,7 @@ export default function WikiChatFeatures() {
     content: string;
   } | null>(null);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
 
   // Auto-resolve names for history-restored sources
   useEffect(() => {
@@ -206,6 +209,24 @@ export default function WikiChatFeatures() {
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-0.5">
             Files
           </p>
+
+          {workspaceId && (
+            <button
+              type="button"
+              onClick={() => setSourcePickerOpen(true)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-background text-left transition-colors hover:border-primary/30 hover:bg-muted/60"
+            >
+              <div className="size-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                <BookOpen className="size-3.5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-foreground">From Library</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Add indexed papers as sources
+                </p>
+              </div>
+            </button>
+          )}
 
           {/* Upload button */}
           <div
@@ -371,6 +392,14 @@ export default function WikiChatFeatures() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {workspaceId && (
+        <SourcePickerModal
+          open={sourcePickerOpen}
+          onOpenChange={setSourcePickerOpen}
+          workspaceId={workspaceId}
+        />
+      )}
     </>
   );
 }

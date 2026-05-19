@@ -7,6 +7,7 @@ export type Collection = {
   color: string;
   icon: string;
   workspace: string;
+  parent: string | null;
   createdBy: {
     _id: string;
     name: string;

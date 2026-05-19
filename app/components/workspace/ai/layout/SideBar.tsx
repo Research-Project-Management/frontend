@@ -8,7 +8,6 @@ import {
   X,
   FolderOpen,
   ChevronDown,
-  Globe,
 } from "lucide-react";
 import React, {
   useState,
@@ -190,9 +189,9 @@ export default function SideBar() {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: 256 }}
+      animate={{ width: 280 }}
       transition={{ type: "spring", stiffness: 400, damping: 35 }}
-      className="relative h-full flex flex-col bg-white border-r border-[#dadce0] overflow-hidden shrink-0"
+      className="relative h-full flex flex-col bg-white border-r border-[#dadce0]/50 overflow-hidden shrink-0"
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-[#dadce0]/60">
@@ -276,18 +275,12 @@ export default function SideBar() {
                       "w-full flex items-center gap-2 px-3 pt-4 pb-1 mx-0 text-left transition-colors group",
                     )}
                   >
-                    {!isProject ? (
-                      workspace?.avatar ? (
-                        <img src={workspace.avatar} alt="ws" className="size-4 shrink-0 rounded-sm object-cover transition-transform group-hover:scale-105" />
-                      ) : (
-                        <Globe className="size-4 shrink-0 text-[#9aa0a6] transition-transform group-hover:scale-105" />
-                      )
-                    ) : (
+                    {isProject && (
                       <FolderOpen className="size-4 shrink-0 transition-transform group-hover:scale-105" style={{ color: color?.dot }} />
                     )}
 
                     <span
-                      className="text-[11px] font-bold uppercase tracking-widest flex-1 truncate transition-colors"
+                      className="text-[12px] font-bold uppercase tracking-wide flex-1 truncate transition-colors"
                       style={isProject && color ? { color: color.text } : { color: "#9aa0a6" }}
                     >
                       {!isProject
@@ -306,6 +299,7 @@ export default function SideBar() {
                       <ChevronDown className="size-3.5 text-[#9aa0a6] group-hover:text-[#5f6368]" />
                     </motion.div>
                   </button>
+
 
                   {/* ── Chat items ───────────────────────────────────── */}
                   <AnimatePresence initial={false}>
@@ -335,7 +329,6 @@ export default function SideBar() {
                               onStartRename={e => startRename(e, chat)}
                               onCommitRename={() => commitRename(chat._id)}
                               onCancelRename={() => setRenamingId(null)}
-                              layoutId={`ai-active-${uid}`}
                               accentColor={color?.dot}
                               accentBg={color?.bg}
                             />
@@ -377,7 +370,6 @@ function ChatItem({
   onStartRename,
   onCommitRename,
   onCancelRename,
-  layoutId,
   accentColor,
   accentBg,
 }: {
@@ -391,7 +383,6 @@ function ChatItem({
   onStartRename: (e: React.MouseEvent) => void;
   onCommitRename: () => void;
   onCancelRename: () => void;
-  layoutId: string;
   accentColor?: string;
   accentBg?: string;
 }) {
@@ -404,25 +395,15 @@ function ChatItem({
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-2 pl-6 pr-2 py-1.5 mx-2 rounded-md cursor-pointer transition-colors duration-150 mb-0.5",
+        "group relative flex items-center gap-2 pl-3 pr-16 py-1.5 mx-2 rounded-md cursor-pointer transition-colors duration-150 mb-0.5",
         isActive ? "text-[#202222]" : "text-[#5f6368] hover:bg-[#eeeeee]/80 hover:text-[#202222]",
       )}
       style={isActive ? { backgroundColor: activeBg } : {}}
       onClick={!isRenaming ? onSelect : undefined}
     >
       {/* Active indicator — left bar */}
-      {isActive && (
-        <motion.div
-          layoutId={layoutId}
-          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full shadow-sm"
-          style={{ backgroundColor: activeColor }}
-          initial={false}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        />
-      )}
-
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         {isRenaming ? (
           <input
             ref={inputRef}
@@ -436,7 +417,7 @@ function ChatItem({
             className="w-full text-[13px] bg-transparent border-0 border-b-2 border-[#3370ff] focus:outline-none text-[#202222]"
           />
         ) : (
-          <div className="flex items-baseline justify-between gap-2">
+          <div className="min-w-0">
             <p
               className={cn(
                 "text-[13px] truncate leading-snug",
@@ -446,12 +427,15 @@ function ChatItem({
             >
               {chat.title}
             </p>
-            <span className="text-[10px] text-[#9aa0a6] shrink-0 group-hover:opacity-0 transition-opacity tabular-nums">
-              {relativeTime(chat.updatedAt)}
-            </span>
           </div>
         )}
       </div>
+
+      {!isRenaming && (
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#9aa0a6] group-hover:opacity-0 transition-opacity tabular-nums">
+          {relativeTime(chat.updatedAt)}
+        </span>
+      )}
 
       {/* Actions — appear on hover */}
       {isRenaming ? (
@@ -470,7 +454,7 @@ function ChatItem({
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button
             onClick={onStartRename}
             className="p-1 rounded-md text-[#9aa0a6] hover:text-[#3370ff] hover:bg-[#e6eeff] transition-colors"

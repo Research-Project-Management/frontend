@@ -61,6 +61,14 @@ export const useCollections = (workspaceId: string) =>
     select: (d) => d.collections,
   });
 
+export const useAllPapers = (workspaceId: string) =>
+  useQuery({
+    queryKey: ["library-all-papers", workspaceId],
+    queryFn: () => apiGet<{ papers: Paper[] }>(`/api/library/${workspaceId}/papers`),
+    enabled: !!workspaceId,
+    select: (d) => d.papers,
+  });
+
 export const useCollectionPapers = (
   workspaceId: string,
   collectionId: string,
@@ -81,6 +89,7 @@ export const useCreateCollection = (workspaceId: string) => {
       description?: string;
       color?: string;
       icon?: string;
+      parent?: string | null;
     }) =>
       apiPost<{ collection: Collection }>(
         `/api/library/${workspaceId}/collections`,
@@ -150,6 +159,7 @@ export const useAddPaper = (workspaceId: string, collectionId: string) => {
       qc.invalidateQueries({
         queryKey: QK.papers(workspaceId, collectionId),
       });
+      qc.invalidateQueries({ queryKey: ["library-all-papers", workspaceId] });
       invalidateLibrary(qc, workspaceId); // refresh paper counts
     },
   });
@@ -194,6 +204,7 @@ export const useDeletePaper = (workspaceId: string, collectionId: string) => {
       qc.invalidateQueries({
         queryKey: QK.papers(workspaceId, collectionId),
       });
+      qc.invalidateQueries({ queryKey: ["library-all-papers", workspaceId] });
       invalidateLibrary(qc, workspaceId);
     },
   });

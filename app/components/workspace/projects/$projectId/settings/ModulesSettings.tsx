@@ -18,6 +18,7 @@ type ProjectModuleKey =
   | "pages"
   | "storage"
   | "stickies"
+  | "collection"
   | "settings";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
@@ -26,6 +27,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "tasks",
   "cycles",
   "storage",
+  "collection",
   "stickies",
   "settings",
 ];
@@ -111,6 +113,11 @@ function ModulesList({
       id: "storage",
       name: "Storage",
       description: "File storage and management",
+    },
+    {
+      id: "collection",
+      name: "Collection",
+      description: "Import and organize research papers from the Library",
     },
     {
       id: "stickies",

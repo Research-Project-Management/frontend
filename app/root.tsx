@@ -35,8 +35,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
-    // Initial splash delay for premium feel
-    const timer = setTimeout(() => setIsInitialLoading(false), 2000);
+    const timer = setTimeout(() => setIsInitialLoading(false), 450);
     return () => clearTimeout(timer);
   }, []);
 

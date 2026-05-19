@@ -18,23 +18,23 @@
   background-color: transparent;
   box-sizing: border-box;
   border-radius: 4px;
-  animation: 1.5s ripple ease infinite;
+  animation: 0.8s ripple ease infinite;
 }
 
 .cell.d-1 {
-  animation-delay: 100ms;
+  animation-delay: 60ms;
 }
 
 .cell.d-2 {
-  animation-delay: 200ms;
+  animation-delay: 120ms;
 }
 
 .cell.d-3 {
-  animation-delay: 300ms;
+  animation-delay: 180ms;
 }
 
 .cell.d-4 {
-  animation-delay: 400ms;
+  animation-delay: 240ms;
 }
 
 .cell:nth-child(1) {

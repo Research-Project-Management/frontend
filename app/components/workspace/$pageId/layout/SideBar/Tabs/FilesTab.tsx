@@ -1034,16 +1034,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   const handleConfirmUpload = async () => {
     if (!parentPageId || !pendingUploads.length) return;
-    // Block if any conflict still unresolved
     if (pendingUploads.some((p) => p.conflict === "duplicate" && !p.resolution)) return;
     setUploadDialogOpen(false);
 
-    // Resolve effective names: suffix → renamed, overwrite → original name
     const resolved = pendingUploads.map((p) => {
       if (p.conflict === "duplicate" && p.resolution === "suffix") {
         return { ...p, name: autoSuffix(p.name) };
       }
-      return p; // "overwrite" or "none" keep original name
+      return p;
     });
 
     const uploads = resolved;
@@ -1070,7 +1068,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setUploadingCount(remaining);
       if (remaining === 0) {
         refetchProjectFiles();
-        // Invalidate ALL sub-folder queries so expanded folder nodes refresh
         if (parentPageId) {
           queryClient.invalidateQueries({
             queryKey: ["project-files-editor", parentPageId],
@@ -1080,88 +1077,86 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       }
     };
 
-    // ── Tex files ────────────────────────────────────────────────────────────
     let lastTexId: string | null = null;
-    let texDone = 0;
     if (texFlat.length) {
-      texFlat.forEach(({ file, name, conflict, resolution }) => {
-        const reader = new FileReader();
-        reader.onload = () => {
+      for (const { file, name, conflict, resolution } of texFlat) {
+        try {
+          const content = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+
           if (conflict === "duplicate" && resolution === "overwrite") {
-            // Find the existing page and overwrite its content via PUT
             const existingPage = files?.find(
               (f) => f.title.toLowerCase() === file.name.toLowerCase(),
             );
             if (existingPage) {
-              updateContentMutation.mutate(
-                { pageId: existingPage._id, content: reader.result as string },
-                {
-                  onSuccess: () => { lastTexId = existingPage._id; },
-                  onSettled: () => {
-                    texDone++;
-                    if (texDone === texFlat.length && lastTexId) setSearchParams({ file: lastTexId });
-                    onFileSettled();
-                  },
-                },
-              );
-              return;
+              await updateContentMutation.mutateAsync({
+                pageId: existingPage._id,
+                content,
+              });
+              lastTexId = existingPage._id;
+              continue;
             }
           }
-          // Default: create new (suffix or no-conflict)
-          createFileMutation.mutate(
-            { parentPageId, title: name.trim() || file.name, content: reader.result as string },
-            {
-              onSuccess: (f) => { lastTexId = f._id; },
-              onSettled: () => {
-                texDone++;
-                if (texDone === texFlat.length && lastTexId) setSearchParams({ file: lastTexId });
-                onFileSettled();
-              },
-            },
-          );
-        };
-        reader.readAsText(file);
-      });
+
+          const created = await createFileMutation.mutateAsync({
+            parentPageId,
+            title: name.trim() || file.name,
+            content,
+          });
+          lastTexId = created._id;
+        } catch (err) {
+          console.error("Failed to upload tex:", err);
+        } finally {
+          onFileSettled();
+        }
+      }
+      if (lastTexId) setSearchParams({ file: lastTexId });
     }
 
-    // ── Flat non-tex assets ──────────────────────────────────────────────────
-    // Overwrite is handled transparently by the backend upsert.
     if (assetFlat.length && projectId) {
-      assetFlat.forEach(({ file, name }) => {
-        const renamedFile =
-          name !== file.name
-            ? new File([file], name, { type: file.type })
-            : file;
-        uploadFileMutation.mutate(
-          { file: renamedFile, projectId, workspaceId, parentPageId },
-          { onSettled: onFileSettled },
-        );
-      });
+      for (const { file, name } of assetFlat) {
+        try {
+          const renamedFile =
+            name !== file.name
+              ? new File([file], name, { type: file.type })
+              : file;
+          await uploadFileMutation.mutateAsync({
+            file: renamedFile,
+            projectId,
+            workspaceId,
+            parentPageId,
+          });
+        } catch (err) {
+          console.error("Failed to upload asset:", err);
+        } finally {
+          onFileSettled();
+        }
+      }
     }
 
-    // ── Folder items (path like "folder/sub/file.png" or "folder/main.tex") ──
-    // Must run AFTER flat uploads since they share the same onFileSettled counter.
     if (folderItems.length && projectId) {
       void (async () => {
         try {
-          // 1. Collect all unique folder paths we need to pre-create
+          const assetFolderItems = folderItems.filter(p => !TEX_EXTS.has("." + (p.name.split(".").pop() ?? "").toLowerCase()));
           const folderPaths = new Set<string>();
-          for (const { name } of folderItems) {
+          for (const { name } of assetFolderItems) {
             const parts = name.split("/");
-            // parts[0..n-2] are folder segments; the last part is the filename
             for (let i = 1; i < parts.length; i++) {
               folderPaths.add(parts.slice(0, i).join("/"));
             }
           }
 
-          // 2. Create folders serially (parent before child, ensured by sort)
           const sortedPaths = Array.from(folderPaths).sort();
           const folderIdMap: Record<string, string> = {};
 
           for (const folderPath of sortedPaths) {
             const parts = folderPath.split("/");
             const folderName = parts[parts.length - 1];
-            const parentPath = parts.slice(0, -1).join("/"); // "" for root folders
+            const parentPath = parts.slice(0, -1).join("/");
             const parentId = parentPath ? folderIdMap[parentPath] : null;
 
             const created = await createFolderMutation.mutateAsync({
@@ -1171,22 +1166,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               parentId: parentId ?? undefined,
               parentPageId,
             });
-            // Backend returns { folder: { _id, ... } }
             const folderId = (created as any).folder?._id ?? (created as any)._id;
             folderIdMap[folderPath] = folderId;
-            console.log(`[folder-upload] created folder "${folderPath}" → id=${folderId}`);
           }
-          console.log("[folder-upload] folderIdMap:", folderIdMap);
 
-          // 3. Upload each file under its correct folder
           for (const { file, name, conflict, resolution } of folderItems) {
             const parts = name.split("/");
             const rawFileName = parts[parts.length - 1];
             const folderPath = parts.slice(0, -1).join("/");
-            const parentId = folderPath ? folderIdMap[folderPath] : null;
-            console.log(`[folder-upload] file "${rawFileName}" → folderPath="${folderPath}" parentId=${parentId}`);
-
-            // Effective filename after suffix resolution
+            
             const effectiveFileName =
               conflict === "duplicate" && resolution === "suffix"
                 ? autoSuffix(rawFileName)
@@ -1196,31 +1184,40 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             const isTex = TEX_EXTS.has(ext);
 
             if (isTex) {
-              // Read as text and create a PageModel child file
-              await new Promise<void>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                  if (conflict === "duplicate" && resolution === "overwrite") {
-                    const existingPage = files?.find(
-                      (f) => f.title.toLowerCase() === rawFileName.toLowerCase(),
-                    );
-                    if (existingPage) {
-                      updateContentMutation.mutate(
-                        { pageId: existingPage._id, content: reader.result as string },
-                        { onSettled: () => { onFileSettled(); resolve(); } },
-                      );
-                      return;
-                    }
-                  }
-                  createFileMutation.mutate(
-                    { parentPageId, title: effectiveFileName, content: reader.result as string },
-                    { onSettled: () => { onFileSettled(); resolve(); } },
+              try {
+                const content = await new Promise<string>((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => resolve(reader.result as string);
+                  reader.onerror = reject;
+                  reader.readAsText(file);
+                });
+                
+                const fullTitle = folderPath ? `${folderPath}/${effectiveFileName}` : effectiveFileName;
+
+                if (conflict === "duplicate" && resolution === "overwrite") {
+                  const existingPage = files?.find(
+                    (f) => f.title.toLowerCase() === fullTitle.toLowerCase(),
                   );
-                };
-                reader.readAsText(file);
-              });
+                  if (existingPage) {
+                    await updateContentMutation.mutateAsync({
+                      pageId: existingPage._id,
+                      content,
+                    });
+                    continue;
+                  }
+                }
+                await createFileMutation.mutateAsync({
+                  parentPageId,
+                  title: fullTitle,
+                  content,
+                });
+              } catch (err) {
+                console.error("Failed to upload folder tex:", err);
+              } finally {
+                onFileSettled();
+              }
             } else {
-              // Binary asset — upload to R2 + save FileModel
+              const parentId = folderPath ? folderIdMap[folderPath] : null;
               const uploadFile =
                 effectiveFileName !== file.name
                   ? new File([file], effectiveFileName, { type: file.type })
@@ -1233,21 +1230,19 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   parentPageId,
                   parentId: parentId ?? undefined,
                 });
-                console.log(`[folder-upload] ✓ uploaded "${effectiveFileName}" → parentId=${parentId}`);
-              } catch (uploadErr: any) {
-                console.error(`[folder-upload] ✗ failed "${effectiveFileName}":`, uploadErr?.message ?? uploadErr);
+              } catch (uploadErr) {
+                console.error("Failed:", uploadErr);
               } finally {
                 onFileSettled();
               }
             }
           }
         } catch (err) {
-          console.error("[folder-upload] fatal:", err);
+          console.error("Fatal error:", err);
           for (let i = 0; i < folderItems.length; i++) onFileSettled();
         }
       })();
     }
-
   };
 
   const handleInsertAsset = (name: string) => {

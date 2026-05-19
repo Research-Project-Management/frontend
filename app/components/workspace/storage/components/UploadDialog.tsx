@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Upload, X, FileIcon, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -23,6 +23,7 @@ type UploadDialogProps = {
   projectId?: string | null;
   parentId?: string | null;
   workspaceId?: string;
+  initialFiles?: File[];
 };
 
 type FileStatus = "pending" | "uploading" | "success" | "error" | "skipped";
@@ -41,6 +42,7 @@ export default function UploadDialog({
   projectId,
   parentId,
   workspaceId,
+  initialFiles,
 }: UploadDialogProps) {
   const [files, setFiles] = useState<FileWithProgress[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -51,6 +53,19 @@ export default function UploadDialog({
   const duplicateResolveRef = useRef<
     ((action: DuplicateAction) => void) | null
   >(null);
+
+  // Pre-populate with files dropped onto the explorer area
+  useEffect(() => {
+    if (open && initialFiles && initialFiles.length > 0) {
+      setFiles(
+        initialFiles.map((file) => ({
+          file,
+          progress: 0,
+          status: "pending" as const,
+        })),
+      );
+    }
+  }, [open, initialFiles]);
 
 
 
@@ -341,7 +356,7 @@ export default function UploadDialog({
                 {files.map((fileItem, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-3 p-3 border rounded-lg"
+                    className="flex items-center gap-3 p-3 border rounded-lg overflow-hidden"
                   >
                     <FileIcon className="h-8 w-8 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">

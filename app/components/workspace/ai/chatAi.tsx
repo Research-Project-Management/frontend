@@ -12,11 +12,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
-import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
+import { ArrowUp, Square, Globe, X, Plus, ChevronDown, BookOpen } from "lucide-react";
 import { Switch } from "~/components/ui/switch";
 import { useProjects } from "~/hooks/useWorkspace";
+import { useParams } from "react-router";
+import { useWorkspace } from "~/query/workspace";
 import { AGENT_CONFIGS } from "~/types/chat";
 import type { AgentId } from "~/types/chat";
+import SourcePickerModal from "./SourcePickerModal";
 
 const DEFAULT_ACADEMIC_SITES = [
   // Primary academic sources
@@ -54,11 +57,12 @@ interface ChatAiProps {
 }
 
 export default function ChatAi({ onSend, disabled, initialProject, initialMessage }: ChatAiProps) {
+  const { workspaceId } = useParams();
+  const { workspace } = useWorkspace(workspaceId!);
   const { projects, isLoading } = useProjects();
   const [message, setMessage] = useState(initialMessage || "");
   const [webSearch, setWebSearch] = useState(false);
-  // Nếu chưa có initialProject, để trống — sẽ được set khi projects load xong (effect bên dưới)
-  const [selectedProject, setSelectedProject] = useState<string>(initialProject || "");
+  const [selectedProject, setSelectedProject] = useState<string>(initialProject || "workspace");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
   const [mentionedAgent, setMentionedAgent] = useState<AgentId | null>(null);
@@ -66,6 +70,7 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionStart, setMentionStart] = useState(-1);
   const [highlightIdx, setHighlightIdx] = useState(0);
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -79,17 +84,15 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
   }, [message]);
 
   // Sync selectedProject:
-  //  - khi initialProject được truyền xuống (ví dụ sau khi load session hắtờ)
-  //  - hoặc khi projects lần đầu được fetch và selectedProject chưa được chọn
-  //    (đảm bảo state khớp với việc hiển thị của Select)
+  //  - khi initialProject được truyền xuống (ví dụ sau khi load session history)
   useEffect(() => {
     if (initialProject) {
       setSelectedProject(initialProject);
-    } else if (!selectedProject && projects && projects.length > 0) {
-      setSelectedProject(projects[0]._id);
+    } else {
+      setSelectedProject("workspace");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialProject, projects]);
+  }, [initialProject]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -149,9 +152,10 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
 
   const handleSend = useCallback(() => {
     if (!message.trim() || disabled) return;
+    const finalProjectId = selectedProject === "workspace" || !selectedProject ? undefined : selectedProject;
     onSend?.(
       message.trim(),
-      selectedProject || undefined,
+      finalProjectId,
       webSearch ? sites : undefined,
       mentionedAgent ?? undefined,
     );
@@ -260,19 +264,28 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
         )}
 
         <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
-          {/* Top row: project selector + active agent badge */}
           <div className="flex items-center gap-2 px-3 pt-3">
             <Select
-              value={selectedProject || projects[0]?._id}
+              value={selectedProject || "workspace"}
               onValueChange={setSelectedProject}
             >
               <SelectTrigger
                 size="sm"
                 className="min-w-[100px] data-[size=sm]:h-7 px-2 text-xs focus-visible:ring-transparent hover:ring-1 ring-primary/10 focus-visible:border-transparent bg-secondary/50 rounded-lg border-none"
               >
-                <SelectValue />
+                <SelectValue placeholder="Workspace" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="workspace">
+                  <div className="flex items-center gap-2">
+                    {workspace?.avatar ? (
+                      <img src={workspace.avatar} alt="ws" className="size-3.5 rounded-sm object-cover" />
+                    ) : (
+                      <Globe className="size-3 text-muted-foreground" />
+                    )}
+                    <span className="font-medium">{workspace?.name || "Workspace (General)"}</span>
+                  </div>
+                </SelectItem>
                 {projects.map((project: { _id: string; name: string; avatar?: string }) => (
                   <SelectItem key={project._id} value={project._id}>
                     <div className="flex items-center gap-2">
@@ -349,6 +362,14 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
               <span className="text-[11px] font-medium text-muted-foreground">
                 Web
               </span>
+
+              <button
+                onClick={() => setSourcePickerOpen(true)}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary px-2 py-1 rounded-lg hover:bg-primary/8 transition-colors border border-border/40 hover:border-primary/30"
+              >
+                <BookOpen className="size-3.5" />
+                From Library
+              </button>
 
               {/* Site filter popover — only visible when web search is on */}
               {webSearch && (
@@ -433,6 +454,13 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
           </div>
         </div>
       </div>
+      {workspaceId && (
+        <SourcePickerModal
+          open={sourcePickerOpen}
+          onOpenChange={setSourcePickerOpen}
+          workspaceId={workspaceId}
+        />
+      )}
     </div>
   );
 }

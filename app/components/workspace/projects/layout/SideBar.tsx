@@ -13,6 +13,7 @@ import {
   RotateCcw,
   ChartBarBig,
   UserStar,
+  BookMarked,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ type ProjectModuleKey =
   | "pages"
   | "storage"
   | "stickies"
+  | "collection"
   | "settings";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
@@ -51,6 +53,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "tasks",
   "cycles",
   "storage",
+  "collection",
   "stickies",
   "settings",
 ];
@@ -64,6 +67,7 @@ const modulesConfig: Record<
   tasks: { label: "Tasks", icon: KanbanSquare },
   cycles: { label: "Cycles", icon: RotateCcw },
   storage: { label: "Storage", icon: Cloud },
+  collection: { label: "Collection", icon: BookMarked },
   settings: { label: "Settings", icon: Settings },
   "stickies": { label: "Notes", icon: StickyNote },
 };

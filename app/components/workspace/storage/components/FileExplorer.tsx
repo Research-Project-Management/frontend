@@ -83,6 +83,7 @@ export default function FileExplorer({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [dropFiles, setDropFiles] = useState<File[]>([]);
   const [fileToRename, setFileToRename] = useState<{
     id: string;
     name: string;
@@ -296,7 +297,7 @@ export default function FileExplorer({
   }, []);
 
   const handleAreaDrop = useCallback(
-    async (e: React.DragEvent) => {
+    (e: React.DragEvent) => {
       if (!enableUpload) return;
       e.preventDefault();
       e.stopPropagation();
@@ -306,11 +307,11 @@ export default function FileExplorer({
       const droppedFiles = Array.from(e.dataTransfer.files);
       if (droppedFiles.length === 0) return;
 
-      for (const file of droppedFiles) {
-        await uploadWithDuplicateCheck(file, currentFolder || null);
-      }
+      // Open dialog with dropped files instead of uploading immediately
+      setDropFiles(droppedFiles);
+      setUploadDialogOpen(true);
     },
-    [enableUpload, currentFolder, uploadWithDuplicateCheck],
+    [enableUpload],
   );
 
   // ── Drop file onto a folder ───────────────────────────────────────────────
@@ -412,11 +413,15 @@ export default function FileExplorer({
           <>
             <UploadDialog
               open={uploadDialogOpen}
-              onOpenChange={setUploadDialogOpen}
+              onOpenChange={(open) => {
+                setUploadDialogOpen(open);
+                if (!open) setDropFiles([]);
+              }}
               scope={storageScope}
               projectId={projectId}
               parentId={currentFolder}
               workspaceId={effectiveWorkspaceId}
+              initialFiles={dropFiles.length > 0 ? dropFiles : undefined}
             />
 
             <CreateFolderDialog
@@ -449,6 +454,7 @@ export default function FileExplorer({
       {previewItem && (
         <FilePreviewSidebar
           item={previewItem}
+          workspaceId={effectiveWorkspaceId}
           onClose={() => setPreviewItem(null)}
           onDownload={handleBlobDownload}
           onPreview={handleFilePreview}

@@ -16,15 +16,17 @@ import {
   searchCrossref, lookupDoi, useUpdateFileMetadata,
   type CrossrefWork,
 } from "~/query/storage";
+import AddToLibraryPopover from "./AddToLibraryPopover";
 
 interface FilePreviewSidebarProps {
   item: StorageItem | null;
+  workspaceId?: string;
   onClose: () => void;
   onDownload: (item: StorageItem) => void;
   onPreview?: (item: StorageItem) => void;
 }
 
-type PdfMetadata = {
+export type PdfMetadata = {
   // Standard PDF Info
   title?: string;
   author?: string;
@@ -380,7 +382,7 @@ function parsePdfDate(raw?: string): string | null {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function FilePreviewSidebar({ item, onClose, onDownload, onPreview }: FilePreviewSidebarProps) {
+export default function FilePreviewSidebar({ item, workspaceId, onClose, onDownload, onPreview }: FilePreviewSidebarProps) {
   const {
     metadata, setMetadata, previewDataUrl, loading: pdfLoading,
     crossrefLoading, crossrefStatus, setCrossrefStatus, setCrossrefLoading,
@@ -577,6 +579,19 @@ export default function FilePreviewSidebar({ item, onClose, onDownload, onPrevie
             <Download className="size-3 mr-1.5" />
             Download
           </Button>
+          {isPdf && workspaceId && (
+            <AddToLibraryPopover
+              item={item}
+              workspaceId={workspaceId}
+              metadata={metadata}
+              trigger={
+                <Button size="sm" variant="outline" className="text-xs">
+                  <BookOpen className="size-3 mr-1.5" />
+                  Library
+                </Button>
+              }
+            />
+          )}
           {onPreview && (
             <Button size="sm" variant="outline" className="text-xs" onClick={() => onPreview(item)}>
               <Maximize2 className="size-3 mr-1.5" />

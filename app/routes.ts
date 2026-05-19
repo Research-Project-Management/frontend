@@ -94,6 +94,10 @@ export default [
         ":workspaceId/projects/:projectId/storage/trash",
         "./routes/workspace/$workspaceId/project/$projectId/storage/trash.tsx",
       ),
+      route(
+        ":workspaceId/projects/:projectId/collection",
+        "./routes/workspace/$workspaceId/project/$projectId/collection.tsx",
+      ),
 
       layout("./components/workspace/projects/$projectId/settings/layout/ProjectSettingLayout.tsx", [
         route(
@@ -131,6 +135,11 @@ export default [
       route(":workspaceId/storage/shared", "./routes/workspace/$workspaceId/storage/shared.tsx"),
       route(":workspaceId/storage/starred", "./routes/workspace/$workspaceId/storage/starred.tsx"),
       route(":workspaceId/storage/trash", "./routes/workspace/$workspaceId/storage/trash.tsx"),
+    ]),
+
+    layout("./components/workspace/library/layout/LibraryLayout.tsx", [
+      route(":workspaceId/library", "./routes/workspace/$workspaceId/library/index.tsx"),
+      route(":workspaceId/library/:collectionId", "./routes/workspace/$workspaceId/library/$collectionId.tsx"),
     ]),
   ]),
 

@@ -11,6 +11,7 @@ import {
 import { useRoles } from "~/query/role";
 import { useSocket } from "~/contexts/SocketProvider";
 import { useSocketRoom } from "~/hooks/useSocketRoom";
+import { apiGet } from "~/lib/api";
 import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { getRoleName, getRoleColor, cn } from "~/lib/utils";
@@ -422,13 +423,8 @@ function AddWorkspaceMemberDialog({
     // Debounce the API call
     const timeoutId = setTimeout(async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/auth/search?query=${search}`,
-          {
-            credentials: "include",
-          },
-        );
-        const data = await response.json();
+        const params = new URLSearchParams({ query: search.trim() });
+        const data = await apiGet<{ users?: any[] }>(`/auth/search?${params}`);
         const users = data.users || [];
         // Filter out users already in the workspace
         const filtered = users.filter((u: any) => !existingMemberIds.has(u._id));

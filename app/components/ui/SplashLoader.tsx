@@ -13,7 +13,7 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
           initial={{ opacity: 1 }}
           exit={{
             opacity: 0,
-            transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
+            transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] }
           }}
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background"
         >
@@ -29,7 +29,7 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
                 scale: [1, 1.2, 1],
               }}
               transition={{
-                duration: 2,
+                duration: 0.9,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
@@ -41,7 +41,7 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
+            transition={{ delay: 0.12, duration: 0.2 }}
             className="mt-8 flex flex-col items-center gap-2"
           >
           </motion.div>
@@ -53,8 +53,8 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
               animate={{ x: "100%" }}
               transition={{
                 repeat: Infinity,
-                duration: 1.5,
-                ease: "easeInOut"
+                duration: 0.65,
+                ease: "linear"
               }}
               className="h-full w-full bg-primary"
             />

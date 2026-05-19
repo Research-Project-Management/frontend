@@ -151,6 +151,9 @@ export const useDeletePage = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pages", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["page-files", variables.projectId] });
+      }
       toast.success("Page removed", { id: "page-action" });
     },
     onError: (error: any) => {
@@ -186,6 +189,7 @@ export const useUpdatePageTitle = () => {
       queryClient.setQueryData(["page", variables.pageId], data);
       queryClient.invalidateQueries({ queryKey: ["pages"] });
       queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
+      queryClient.invalidateQueries({ queryKey: ["page-files"] });
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update title", { id: "page-error" });

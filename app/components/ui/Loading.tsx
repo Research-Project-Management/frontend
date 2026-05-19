@@ -20,7 +20,7 @@ export default function Loading({
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.12, duration: 0.15 }}
             className="text-xs text-muted-foreground font-medium uppercase tracking-wider"
           >
             Loading
@@ -31,7 +31,7 @@ export default function Loading({
   }
 
   return (
-    <div className="w-full h-full flex flex-col p-6 gap-8 animate-in fade-in zoom-in-95 duration-500 ease-out-expo">
+    <div className="w-full h-full flex flex-col p-6 gap-8 animate-in fade-in zoom-in-95 duration-200 ease-out-expo">
       {/* Header skeleton with logo */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

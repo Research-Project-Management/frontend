@@ -9,6 +9,7 @@ import {
   SparklesIcon,
   MagnifyingGlassIcon,
   Cog6ToothIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/solid";
 import { Link, useParams, useLocation, useNavigate } from "react-router";
 import { cn } from "~/lib/utils";
@@ -51,8 +52,9 @@ import { Avatar } from "./Avatar";
 
 const sidebarItems = [
   { label: "Projects", icon: Square3Stack3DIcon, to: "" },
-  { label: "Chat AI", icon: SparklesIcon, to: "/ai" },
+  { label: "Flux AI", icon: SparklesIcon, to: "/ai" },
   { label: "Storage", icon: CloudIcon, to: "/storage" },
+  { label: "Library", icon: BookOpenIcon, to: "/library" },
   { label: "Settings", icon: Cog6ToothIcon, to: "/settings" },
 ];
 
@@ -385,7 +387,8 @@ export function ItemSideBar({
         (!pathAfterWorkspace.startsWith("/ai") &&
           !pathAfterWorkspace.startsWith("/team") &&
           !pathAfterWorkspace.startsWith("/storage") &&
-          !pathAfterWorkspace.startsWith("/settings"))
+          !pathAfterWorkspace.startsWith("/settings") &&
+          !pathAfterWorkspace.startsWith("/library"))
       );
     }
     // Các route khác: kiểm tra exact hoặc startsWith

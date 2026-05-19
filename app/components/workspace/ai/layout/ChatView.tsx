@@ -44,6 +44,9 @@ import {
   appendChatMessages,
   createChatSession,
 } from "~/query/chat-ai";
+import { fetchCollectionPapers } from "~/query/library";
+import { useWorkspace } from "~/query/workspace";
+import { toast } from "sonner";
 import { renderMarkdown } from "./renderMarkdown";
 import ChatAi from "../chatAi";
 import { ActionCardsGroup } from "../ActionCard";
@@ -455,10 +458,12 @@ export default function ChatView() {
   const initialProject = searchParams.get("project") || undefined;
   const location = useLocation();
   const navigate = useNavigate();
+  const { workspace } = useWorkspace(workspaceId!);
   const {
     enabledDocumentIds,
     fluxDataEnabled,
     setFluxDataEnabled,
+    addSource,
     restoreSourceIds,
     clearSources,
   } = useChatMode();
@@ -486,6 +491,7 @@ export default function ChatView() {
   messagesRef.current = messages;
   const scrollRafRef = useRef<number | null>(null);
   const autoSentRef = useRef(false);
+  const preloadedCollectionRef = useRef<string | null>(null);
 
   // Abort any in-progress stream when the component unmounts (e.g. navigating away)
   useEffect(() => {
@@ -562,6 +568,39 @@ export default function ChatView() {
       scrollRafRef.current = null;
     });
   }, [messages, streamContent]);
+
+  useEffect(() => {
+    const preloadCollection = location.state?.preloadCollection as
+      | { id?: string; name?: string }
+      | undefined;
+    const resolvedWorkspaceId = workspace?._id;
+
+    if (
+      !preloadCollection?.id ||
+      !resolvedWorkspaceId ||
+      preloadedCollectionRef.current === preloadCollection.id
+    ) {
+      return;
+    }
+
+    preloadedCollectionRef.current = preloadCollection.id;
+    fetchCollectionPapers(resolvedWorkspaceId, preloadCollection.id)
+      .then(({ papers }) => {
+        const indexedPapers = papers.filter(
+          (paper) => paper.ragStatus === "indexed" && paper.ragDocId,
+        );
+        indexedPapers.forEach((paper) => addSource(paper.ragDocId!, paper.title));
+        if (indexedPapers.length > 0) {
+          setFluxDataEnabled(true);
+          toast.success(
+            `Added ${indexedPapers.length} paper${indexedPapers.length > 1 ? "s" : ""} from ${preloadCollection.name || "Library"}`,
+          );
+        } else {
+          toast.warning("No indexed papers found in this collection yet.");
+        }
+      })
+      .catch(() => toast.error("Failed to load Library collection for AI chat"));
+  }, [addSource, location.state, setFluxDataEnabled, workspace?._id]);
 
 
   const handleSend = useCallback(

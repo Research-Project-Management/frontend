@@ -1,16 +1,14 @@
 import {
   Search,
-  Plus,
+  SquarePen,
   Trash2,
   MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
   Pencil,
   Check,
   X,
-  Pin,
-  PinOff,
-  Sparkles,
+  FolderOpen,
+  ChevronDown,
+  Globe,
 } from "lucide-react";
 import React, {
   useState,
@@ -20,7 +18,7 @@ import React, {
   useMemo,
   useId,
 } from "react";
-import { motion, LayoutGroup } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useParams, useNavigate, useLocation } from "react-router";
 import { cn } from "~/lib/utils";
 import {
@@ -34,92 +32,117 @@ import {
   deleteChatSession,
   renameChatSession,
 } from "~/query/chat-ai";
+import { useWorkspaceProjects, useWorkspace } from "~/query/workspace";
 
-// ── Time grouping ───────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-function timeGroup(updatedAt: string): "today" | "week" | "month" | "older" {
+function relativeTime(updatedAt: string): string {
   const diff = Date.now() - new Date(updatedAt).getTime();
   const h = diff / 3_600_000;
-  if (h < 24) return "today";
-  if (h < 24 * 7) return "week";
-  if (h < 24 * 30) return "month";
-  return "older";
+  if (h < 1) return "now";
+  if (h < 24) return `${Math.floor(h)}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  const w = Math.floor(d / 7);
+  if (w < 5) return `${w}w`;
+  return `${Math.floor(d / 30)}mo`;
 }
 
-const GROUP_LABELS = {
-  today: "Today",
-  week: "This Week",
-  month: "This Month",
-  older: "Older",
-} as const;
+type ProjectGroup = { projectId: string | null; chats: ChatSession[] };
 
-function groupChats(chats: ChatSession[]) {
-  const groups: Record<string, ChatSession[]> = {
-    today: [],
-    week: [],
-    month: [],
-    older: [],
-  };
-  for (const c of chats) groups[timeGroup(c.updatedAt)].push(c);
-  return groups;
-}
-
-// ── Pinned chats storage ────────────────────────────────────────────────────────
-
-function getPinnedIds(): Set<string> {
-  try {
-    const stored = localStorage.getItem("flux-ai-pinned-chats");
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  } catch {
-    return new Set();
+function groupByProject(chats: ChatSession[]): ProjectGroup[] {
+  const map = new Map<string | null, ChatSession[]>();
+  for (const c of chats) {
+    const k = c.projectId ?? null;
+    if (!map.has(k)) map.set(k, []);
+    map.get(k)!.push(c);
   }
+  const result: ProjectGroup[] = [];
+  for (const [pid, cs] of map)
+    if (pid !== null) result.push({ projectId: pid, chats: cs });
+  result.sort(
+    (a, b) =>
+      new Date(b.chats[0].updatedAt).getTime() -
+      new Date(a.chats[0].updatedAt).getTime(),
+  );
+  const noproj = map.get(null);
+  if (noproj?.length) result.push({ projectId: null, chats: noproj });
+  return result;
 }
 
-function savePinnedIds(ids: Set<string>) {
-  localStorage.setItem("flux-ai-pinned-chats", JSON.stringify([...ids]));
+function loadSet(k: string): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(k) ?? "[]")); }
+  catch { return new Set(); }
+}
+function saveSet(k: string, s: Set<string>) {
+  localStorage.setItem(k, JSON.stringify([...s]));
 }
 
-// ── Main SideBar ────────────────────────────────────────────────────────────────
+// ── Color palette for projects ────────────────────────────────────────────────
+// Cycles through distinct hues for visual separation
+const PROJECT_COLORS = [
+  { dot: "#3370ff", bg: "#eef2ff", text: "#3370ff", border: "#c7d7fd" },
+  { dot: "#f97802", bg: "#fff4eb", text: "#c45e00", border: "#fdd5a8" },
+  { dot: "#1e8e3e", bg: "#e8f5ec", text: "#1e8e3e", border: "#a8d5b5" },
+  { dot: "#9333ea", bg: "#f5f0ff", text: "#7e22ce", border: "#d8b4fe" },
+  { dot: "#d93025", bg: "#fef2f2", text: "#b91c1c", border: "#fca5a5" },
+  { dot: "#0097a7", bg: "#e0f7fa", text: "#00838f", border: "#80deea" },
+];
+
+function projectColor(idx: number) {
+  return PROJECT_COLORS[idx % PROJECT_COLORS.length];
+}
+
+const SHOW_MORE = 5;
+
+// ── Main SideBar ──────────────────────────────────────────────────────────────
 
 export default function SideBar() {
   const navigate = useNavigate();
   const { workspaceId, chatId } = useParams();
   const location = useLocation();
-  const id = useId();
+  const uid = useId();
+
   const [search, setSearch] = useState("");
-  const [collapsed, setCollapsed] = useState(false);
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [pinnedIds, setPinnedIds] = useState<Set<string>>(getPinnedIds);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => loadSet("flux-ai-collapsed-projects"),
+  );
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const { workspace } = useWorkspace(workspaceId ?? "");
+  const { projects } = useWorkspaceProjects(workspaceId ?? "");
+  const projectNameMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projects) m.set(p._id, p.name);
+    return m;
+  }, [projects]);
+
+  // Build stable project→colorIndex map
+  const projectColorMap = useMemo(() => {
+    const m = new Map<string, number>();
+    projects.forEach((p: any, i: number) => m.set(p._id, i));
+    return m;
+  }, [projects]);
 
   const fetchChats = useCallback(() => {
     if (!workspaceId) return;
     listChatSessions(workspaceId).then(setChats).catch(console.error);
   }, [workspaceId]);
 
-  useEffect(() => {
-    fetchChats();
-  }, [fetchChats, chatId]);
+  useEffect(() => { fetchChats(); }, [fetchChats, chatId]);
 
-  // Pass a unique newChatKey so ChatView resets its state even if
-  // the URL doesn't change (user is already at /ai with stale messages)
-  const handleNewChat = () =>
+  const newChat = () =>
     navigate(`/${workspaceId}/ai`, {
       state: { newChatKey: Date.now(), prevPath: location.pathname },
     });
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const deleteChat = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await deleteChatSession(id).catch(console.error);
-    setChats((p) => p.filter((c) => c._id !== id));
-    // Clean from pinned
-    setPinnedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      savePinnedIds(next);
-      return next;
-    });
+    setChats(p => p.filter(c => c._id !== id));
     if (chatId === id) navigate(`/${workspaceId}/ai`);
   };
 
@@ -130,233 +153,222 @@ export default function SideBar() {
   };
 
   const commitRename = async (id: string) => {
-    const trimmed = renameValue.trim();
-    if (trimmed) {
-      await renameChatSession(id, trimmed).catch(console.error);
-      setChats((p) =>
-        p.map((c) => (c._id === id ? { ...c, title: trimmed } : c)),
-      );
+    const t = renameValue.trim();
+    if (t) {
+      await renameChatSession(id, t).catch(console.error);
+      setChats(p => p.map(c => c._id === id ? { ...c, title: t } : c));
     }
     setRenamingId(null);
   };
 
-  const togglePin = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setPinnedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      savePinnedIds(next);
-      return next;
+  const toggleGroup = (k: string) =>
+    setCollapsedGroups(prev => {
+      const n = new Set(prev);
+      n.has(k) ? n.delete(k) : n.add(k);
+      saveSet("flux-ai-collapsed-projects", n);
+      return n;
     });
-  };
 
-  // Filter + group
+  const toggleMore = (k: string) =>
+    setExpandedGroups(prev => {
+      const n = new Set(prev);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return chats.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
+      c => c.title.toLowerCase().includes(q) ||
         (c.lastMessage && c.lastMessage.toLowerCase().includes(q)),
     );
   }, [chats, search]);
 
-  const pinned = useMemo(
-    () => filtered.filter((c) => pinnedIds.has(c._id)),
-    [filtered, pinnedIds],
-  );
-  const unpinned = useMemo(
-    () => filtered.filter((c) => !pinnedIds.has(c._id)),
-    [filtered, pinnedIds],
-  );
-  const groups = useMemo(() => groupChats(unpinned), [unpinned]);
+  const groups = useMemo(() => groupByProject(filtered), [filtered]);
 
+  // ── Expanded sidebar ─────────────────────────────────────────────────────
   return (
-    <aside
-      className={`relative h-full flex flex-col bg-sidebar border-r border-sidebar-border overflow-hidden transition-[width] duration-300 ease-in-out ${
-        collapsed ? "w-12" : "w-64"
-      }`}
+    <motion.aside
+      initial={false}
+      animate={{ width: 256 }}
+      transition={{ type: "spring", stiffness: 400, damping: 35 }}
+      className="relative h-full flex flex-col bg-white border-r border-[#dadce0] overflow-hidden shrink-0"
     >
-      {/* Header */}
-      <div
-        className={`flex items-center gap-2 px-3 py-3 ${collapsed ? "justify-center" : "justify-between"}`}
-      >
-        {!collapsed && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-semibold text-foreground/80 tracking-tight">
-              History
-            </span>
-          </div>
-        )}
-        <div
-          className={`flex items-center gap-0.5 ${collapsed ? "flex-col" : ""}`}
-        >
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-4 border-b border-[#dadce0]/60">
+        <span className="text-lg font-semibold text-[#202222] select-none">
+          Flux AI
+        </span>
+        <div className="flex items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={handleNewChat}
-                className={`flex items-center justify-center rounded-lg text-primary-foreground transition-all ${
-                  collapsed
-                    ? "size-8 bg-primary hover:bg-primary/90"
-                    : "size-7 bg-primary hover:bg-primary/90"
-                }`}
+                onClick={newChat}
+                className="flex items-center justify-center size-8 rounded-lg bg-[#3370ff] text-white hover:bg-[#2b5ee0] transition-colors shadow-sm"
+                aria-label="New chat"
               >
-                <Plus className="size-4" />
+                <SquarePen className="size-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "bottom"}>
-              New chat
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setCollapsed((v) => !v)}
-                className="flex items-center justify-center size-7 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-              >
-                {collapsed ? (
-                  <PanelLeftOpen className="size-4" />
-                ) : (
-                  <PanelLeftClose className="size-4" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side={collapsed ? "right" : "bottom"}>
-              {collapsed ? "Expand" : "Collapse"}
-            </TooltipContent>
+            <TooltipContent side="bottom">New chat</TooltipContent>
           </Tooltip>
         </div>
       </div>
 
-      {/* Search */}
-      {!collapsed && (
-        <div className="px-3 pb-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
-            <input
-              type="text"
-              placeholder="Search chats…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-secondary/50 border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-muted-foreground/40 transition-colors"
-            />
-          </div>
+      {/* ── Search ─────────────────────────────────────────────────────── */}
+      <div className="px-3 py-2.5 border-b border-[#dadce0]/60">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-[#9aa0a6]" />
+          <input
+            type="text"
+            placeholder="Search chats…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full h-8 pl-8 pr-3 text-[13px] rounded-md bg-[#eeeeee]/60 border border-transparent focus:border-[#3370ff]/40 focus:bg-white focus:outline-none transition-all placeholder:text-[#9aa0a6]"
+          />
         </div>
-      )}
+      </div>
 
-      {/* Chat list */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 no-scrollbar">
-        {collapsed ? (
-          <div className="flex flex-col gap-0.5 px-1.5 pt-1">
-            {chats.map((chat) => (
-              <Tooltip key={chat._id}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => navigate(`/${workspaceId}/ai/${chat._id}`)}
-                    className={`w-full h-9 flex items-center justify-center rounded-lg transition-colors ${
-                      chatId === chat._id
-                        ? "bg-primary/15 text-primary"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    }`}
-                  >
-                    <MessageSquare className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-52">
-                  <p className="font-medium text-xs">{chat.title}</p>
-                  {chat.lastMessage && (
-                    <p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">
-                      {chat.lastMessage}
-                    </p>
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <MessageSquare className="size-8 text-muted-foreground/20 mb-3" />
-            <p className="text-xs text-muted-foreground/60">
-              {search ? "No chats match your search" : "No conversations yet"}
+      {/* ── Chat list ──────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-2">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
+            <div className="size-10 rounded-xl bg-[#e6eeff] flex items-center justify-center mb-3">
+              <MessageSquare className="size-5 text-[#3370ff]" />
+            </div>
+            <p className="text-[12px] font-medium text-[#202222] mb-1">
+              {search ? "No results" : "No chats yet"}
             </p>
+            <p className="text-[11px] text-[#5f6368]">
+              {search ? "Try a different keyword" : "Start a conversation"}
+            </p>
+            {!search && (
+              <button
+                onClick={newChat}
+                className="mt-3 text-[12px] font-semibold text-[#3370ff] hover:text-[#2b5ee0] transition-colors"
+              >
+                + New chat
+              </button>
+            )}
           </div>
         ) : (
-          <LayoutGroup id={`ai-chats-${id}`}>
-            <div className="flex flex-col">
-              {/* Pinned section */}
-              {pinned.length > 0 && (
-                <div className="mb-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5 flex items-center gap-1">
-                    <Pin className="size-2.5" />
-                    Pinned
-                  </p>
-                  {pinned.map((chat) => (
-                    <ChatItem
-                      key={chat._id}
-                      chat={chat}
-                      isActive={chatId === chat._id}
-                      isPinned
-                      isRenaming={renamingId === chat._id}
-                      renameValue={renameValue}
-                      onRenameChange={setRenameValue}
-                      onSelect={() => navigate(`/${workspaceId}/ai/${chat._id}`)}
-                      onDelete={(e) => handleDelete(e, chat._id)}
-                      onStartRename={(e) => startRename(e, chat)}
-                      onCommitRename={() => commitRename(chat._id)}
-                      onCancelRename={() => setRenamingId(null)}
-                      onTogglePin={(e) => togglePin(e, chat._id)}
-                      layoutId={`ai-chat-active-${id}`}
-                    />
-                  ))}
-                </div>
-              )}
+          <LayoutGroup id={`ai-${uid}`}>
+            {groups.map((group, gIdx) => {
+              const gKey = group.projectId ?? "__no_project__";
+              const isGroupCollapsed = collapsedGroups.has(gKey);
+              const isExpanded = expandedGroups.has(gKey);
+              const visible = !isExpanded && group.chats.length > SHOW_MORE
+                ? group.chats.slice(0, SHOW_MORE)
+                : group.chats;
+              const hasMore = group.chats.length > SHOW_MORE;
+              const isProject = group.projectId !== null;
+              const colorIdx = isProject
+                ? (projectColorMap.get(group.projectId!) ?? gIdx)
+                : -1;
+              const color = isProject ? projectColor(colorIdx) : null;
 
-              {/* Time-grouped sections */}
-              {(["today", "week", "month", "older"] as const).map((key) => {
-                const group = groups[key];
-                if (!group.length) return null;
-                return (
-                  <div key={key} className="mb-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider px-4 py-1.5">
-                      {GROUP_LABELS[key]}
-                    </p>
-                    {group.map((chat) => (
-                      <ChatItem
-                        key={chat._id}
-                        chat={chat}
-                        isActive={chatId === chat._id}
-                        isPinned={false}
-                        isRenaming={renamingId === chat._id}
-                        renameValue={renameValue}
-                        onRenameChange={setRenameValue}
-                        onSelect={() =>
-                          navigate(`/${workspaceId}/ai/${chat._id}`)
-                        }
-                        onDelete={(e) => handleDelete(e, chat._id)}
-                        onStartRename={(e) => startRename(e, chat)}
-                        onCommitRename={() => commitRename(chat._id)}
-                        onCancelRename={() => setRenamingId(null)}
-                        onTogglePin={(e) => togglePin(e, chat._id)}
-                        layoutId={`ai-chat-active-${id}`}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+              return (
+                <div key={gKey} className="mb-1">
+                  {/* ── Section header ───────────────────────────────── */}
+                  <button
+                    onClick={() => toggleGroup(gKey)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 pt-4 pb-1 mx-0 text-left transition-colors group",
+                    )}
+                  >
+                    {!isProject ? (
+                      workspace?.avatar ? (
+                        <img src={workspace.avatar} alt="ws" className="size-4 shrink-0 rounded-sm object-cover transition-transform group-hover:scale-105" />
+                      ) : (
+                        <Globe className="size-4 shrink-0 text-[#9aa0a6] transition-transform group-hover:scale-105" />
+                      )
+                    ) : (
+                      <FolderOpen className="size-4 shrink-0 transition-transform group-hover:scale-105" style={{ color: color?.dot }} />
+                    )}
+
+                    <span
+                      className="text-[11px] font-bold uppercase tracking-widest flex-1 truncate transition-colors"
+                      style={isProject && color ? { color: color.text } : { color: "#9aa0a6" }}
+                    >
+                      {!isProject
+                        ? (workspace?.name || "Workspace")
+                        : (projectNameMap.get(group.projectId!) ?? group.projectId)}
+                    </span>
+
+                    <span className="text-[10px] text-[#9aa0a6] shrink-0 mr-1 tabular-nums">
+                      {group.chats.length}
+                    </span>
+
+                    <motion.div
+                      animate={{ rotate: isGroupCollapsed ? -90 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronDown className="size-3.5 text-[#9aa0a6] group-hover:text-[#5f6368]" />
+                    </motion.div>
+                  </button>
+
+                  {/* ── Chat items ───────────────────────────────────── */}
+                  <AnimatePresence initial={false}>
+                    {!isGroupCollapsed && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                        className="overflow-hidden"
+                      >
+                        {visible.map((chat, i) => (
+                          <motion.div
+                            key={chat._id}
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03, duration: 0.18 }}
+                          >
+                            <ChatItem
+                              chat={chat}
+                              isActive={chatId === chat._id}
+                              isRenaming={renamingId === chat._id}
+                              renameValue={renameValue}
+                              onRenameChange={setRenameValue}
+                              onSelect={() => navigate(`/${workspaceId}/ai/${chat._id}`)}
+                              onDelete={e => deleteChat(e, chat._id)}
+                              onStartRename={e => startRename(e, chat)}
+                              onCommitRename={() => commitRename(chat._id)}
+                              onCancelRename={() => setRenamingId(null)}
+                              layoutId={`ai-active-${uid}`}
+                              accentColor={color?.dot}
+                              accentBg={color?.bg}
+                            />
+                          </motion.div>
+                        ))}
+
+                        {hasMore && (
+                          <button
+                            onClick={() => toggleMore(gKey)}
+                            className="w-full text-left text-[11px] font-medium px-5 py-1.5 transition-colors"
+                            style={{ color: color?.text ?? "#3370ff" }}
+                          >
+                            {isExpanded ? "Show less" : `+${group.chats.length - SHOW_MORE} more`}
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </LayoutGroup>
         )}
       </div>
-    </aside>
+    </motion.aside>
   );
 }
 
-// ── Chat Item ───────────────────────────────────────────────────────────────────
+// ── Chat Item ─────────────────────────────────────────────────────────────────
 
 function ChatItem({
   chat,
   isActive,
-  isPinned,
   isRenaming,
   renameValue,
   onRenameChange,
@@ -365,12 +377,12 @@ function ChatItem({
   onStartRename,
   onCommitRename,
   onCancelRename,
-  onTogglePin,
   layoutId,
+  accentColor,
+  accentBg,
 }: {
   chat: ChatSession;
   isActive: boolean;
-  isPinned: boolean;
   isRenaming: boolean;
   renameValue: string;
   onRenameChange: (v: string) => void;
@@ -379,104 +391,97 @@ function ChatItem({
   onStartRename: (e: React.MouseEvent) => void;
   onCommitRename: () => void;
   onCancelRename: () => void;
-  onTogglePin: (e: React.MouseEvent) => void;
   layoutId: string;
+  accentColor?: string;
+  accentBg?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (isRenaming) inputRef.current?.focus(); }, [isRenaming]);
 
-  useEffect(() => {
-    if (isRenaming) inputRef.current?.focus();
-  }, [isRenaming]);
+  const activeColor = accentColor ?? "#3370ff";
+  const activeBg = accentBg ?? "#e6eeff";
 
   return (
     <div
       className={cn(
-        "group relative mt-1 flex items-center gap-1 px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-200",
-        isActive
-          ? "text-primary"
-          : "text-foreground/70 hover:bg-muted/40 hover:text-foreground",
+        "group relative flex items-center gap-2 pl-6 pr-2 py-1.5 mx-2 rounded-md cursor-pointer transition-colors duration-150 mb-0.5",
+        isActive ? "text-[#202222]" : "text-[#5f6368] hover:bg-[#eeeeee]/80 hover:text-[#202222]",
       )}
+      style={isActive ? { backgroundColor: activeBg } : {}}
       onClick={!isRenaming ? onSelect : undefined}
     >
+      {/* Active indicator — left bar */}
       {isActive && (
         <motion.div
           layoutId={layoutId}
-          className="absolute inset-0 bg-primary/10 rounded-lg"
+          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full shadow-sm"
+          style={{ backgroundColor: activeColor }}
           initial={false}
-          transition={{ type: "spring", stiffness: 500, damping: 35 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
       )}
+
+      {/* Content */}
       <div className="flex-1 min-w-0">
         {isRenaming ? (
           <input
             ref={inputRef}
             value={renameValue}
-            onChange={(e) => onRenameChange(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={e => onRenameChange(e.target.value)}
+            onKeyDown={e => {
               if (e.key === "Enter") onCommitRename();
               if (e.key === "Escape") onCancelRename();
             }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full text-xs bg-transparent border-0 border-b border-primary/50 focus:outline-none py-0 text-foreground"
+            onClick={e => e.stopPropagation()}
+            className="w-full text-[13px] bg-transparent border-0 border-b-2 border-[#3370ff] focus:outline-none text-[#202222]"
           />
         ) : (
-          <>
-            <p className="text-xs font-medium truncate leading-snug">
+          <div className="flex items-baseline justify-between gap-2">
+            <p
+              className={cn(
+                "text-[13px] truncate leading-snug",
+                isActive ? "font-semibold" : "font-normal",
+              )}
+              style={isActive ? { color: activeColor } : {}}
+            >
               {chat.title}
             </p>
-            {chat.lastMessage && (
-              <p className="text-[10px] text-muted-foreground/50 truncate leading-snug mt-0.5">
-                {chat.lastMessage}
-              </p>
-            )}
-          </>
+            <span className="text-[10px] text-[#9aa0a6] shrink-0 group-hover:opacity-0 transition-opacity tabular-nums">
+              {relativeTime(chat.updatedAt)}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Action buttons */}
+      {/* Actions — appear on hover */}
       {isRenaming ? (
         <div className="flex items-center gap-0.5 shrink-0">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCommitRename();
-            }}
-            className="p-1 rounded hover:bg-emerald-500/10 text-emerald-500"
+            onClick={e => { e.stopPropagation(); onCommitRename(); }}
+            className="p-1 rounded-md hover:bg-emerald-100 text-emerald-600 transition-colors"
           >
-            <Check className="size-3" />
+            <Check className="size-3.5" />
           </button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCancelRename();
-            }}
-            className="p-1 rounded hover:bg-secondary"
+            onClick={e => { e.stopPropagation(); onCancelRename(); }}
+            className="p-1 rounded-md hover:bg-[#f1f3f4] text-[#5f6368] transition-colors"
           >
-            <X className="size-3 text-muted-foreground" />
+            <X className="size-3.5" />
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={onTogglePin}
-            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
-            title={isPinned ? "Unpin" : "Pin"}
-          >
-            {isPinned ? (
-              <PinOff className="size-3" />
-            ) : (
-              <Pin className="size-3" />
-            )}
-          </button>
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button
             onClick={onStartRename}
-            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+            className="p-1 rounded-md text-[#9aa0a6] hover:text-[#3370ff] hover:bg-[#e6eeff] transition-colors"
+            title="Rename"
           >
             <Pencil className="size-3" />
           </button>
           <button
             onClick={onDelete}
-            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+            className="p-1 rounded-md text-[#9aa0a6] hover:text-[#d93025] hover:bg-[#fef2f2] transition-colors"
+            title="Delete"
           >
             <Trash2 className="size-3" />
           </button>

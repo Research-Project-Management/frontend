@@ -399,6 +399,10 @@ export type CrossrefWork = {
     abstract: string;
     url: string;
     score: number;
+    language?: string;
+    journalAbbr?: string;
+    shortTitle?: string;
+    rights?: string;
 };
 
 export const searchCrossref = (query: string, rows = 5) =>

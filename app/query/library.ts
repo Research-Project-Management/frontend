@@ -150,6 +150,21 @@ export const useAddPaper = (workspaceId: string, collectionId: string) => {
       mimeType?: string;
       size?: number;
       tags?: string[];
+      volume?: string;
+      issue?: string;
+      pages?: string;
+      issn?: string;
+      isbn?: string;
+      url?: string;
+      type?: string;
+      language?: string;
+      journalAbbr?: string;
+      shortTitle?: string;
+      rights?: string;
+      extra?: string;
+      notes?: Array<{
+        content: string;
+      }>;
     }) =>
       apiPost<{ paper: Paper }>(
         `/api/library/${workspaceId}/collections/${collectionId}/papers`,
@@ -182,6 +197,24 @@ export const useUpdatePaper = (workspaceId: string, collectionId: string) => {
       journal?: string;
       publisher?: string;
       tags?: string[];
+      volume?: string;
+      issue?: string;
+      pages?: string;
+      issn?: string;
+      isbn?: string;
+      url?: string;
+      type?: string;
+      language?: string;
+      journalAbbr?: string;
+      shortTitle?: string;
+      rights?: string;
+      extra?: string;
+      notes?: Array<{
+        _id?: string;
+        content: string;
+        createdAt?: string;
+        updatedAt?: string;
+      }>;
     }) =>
       apiPut<{ paper: Paper }>(
         `/api/library/${workspaceId}/papers/${paperId}`,

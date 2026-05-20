@@ -1,4 +1,15 @@
-import { lookupDoi, searchCrossref, type CrossrefWork } from "~/query/storage";
+import { apiGet } from "~/lib/api";
+import type { CrossrefWork } from "~/query/storage";
+
+async function fetchLookupDoi(doi: string) {
+  return apiGet<{ work: CrossrefWork }>(`/api/files/crossref/doi/${encodeURIComponent(doi)}`);
+}
+
+async function fetchSearchCrossref(query: string, rows = 1) {
+  return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
+    `/api/files/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
+  );
+}
 
 export type PdfMetadata = {
   title?: string;
@@ -28,13 +39,49 @@ export type PdfMetadata = {
   url?: string;
   crossrefEnriched?: boolean;
   extraFields?: Record<string, string>;
+  journalAbbr?: string;
+  shortTitle?: string;
+  rights?: string;
 };
 
 const DOI_REGEX = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s<>"{}|\\^`[\]]+)/g;
 
 export function extractDoiFromText(text: string): string | null {
   const matches = text.match(DOI_REGEX);
-  return matches?.[0] || null;
+  if (!matches || !matches[0]) return null;
+  let doi = matches[0].trim();
+  
+  // Strip standard trailing punctuation EXCEPT parentheses/brackets first
+  doi = doi.replace(/[.,;:!?\s]+$/, "");
+
+  // Balance parentheses (strip trailing ')' only if unmatched)
+  if (doi.endsWith(")")) {
+    const openCount = (doi.match(/\(/g) || []).length;
+    const closeCount = (doi.match(/\)/g) || []).length;
+    if (closeCount > openCount) {
+      doi = doi.slice(0, -1).trim();
+    }
+  }
+
+  // Balance square brackets
+  if (doi.endsWith("]")) {
+    const openCount = (doi.match(/\[/g) || []).length;
+    const closeCount = (doi.match(/\]/g) || []).length;
+    if (closeCount > openCount) {
+      doi = doi.slice(0, -1).trim();
+    }
+  }
+
+  // Strip surrounding matching wrapper symbols
+  if (doi.startsWith("(") && doi.endsWith(")")) {
+    doi = doi.slice(1, -1).trim();
+  }
+  if (doi.startsWith("[") && doi.endsWith("]")) {
+    doi = doi.slice(1, -1).trim();
+  }
+  doi = doi.replace(/[.,;:!?\s]+$/, "");
+
+  return doi || null;
 }
 
 export function parseXmpMetadata(xml: string): Record<string, string> {
@@ -107,6 +154,10 @@ export function mergeCrossrefMetadata(base: PdfMetadata, work: CrossrefWork): Pd
     abstract: base.abstract || work.abstract || base.abstract,
     type: base.type || work.type || base.type,
     url: base.url || work.url || base.url,
+    language: base.language || work.language || base.language,
+    journalAbbr: base.journalAbbr || work.journalAbbr || base.journalAbbr,
+    shortTitle: base.shortTitle || work.shortTitle || base.shortTitle,
+    rights: base.copyright || work.rights || base.copyright,
     crossrefEnriched: true,
   };
 }
@@ -188,17 +239,21 @@ export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadat
     let crossrefWork: CrossrefWork | null = null;
     if (doi) {
       try {
-        const result = await lookupDoi(doi);
+        const result = await fetchLookupDoi(doi);
         crossrefWork = result.work;
-      } catch { /* DOI not found */ }
+      } catch (err) {
+        console.warn("[PDF Metadata] Local DOI lookup failed:", err);
+      }
     }
     if (!crossrefWork && baseMeta.title) {
       try {
-        const result = await searchCrossref(baseMeta.title, 1);
+        const result = await fetchSearchCrossref(baseMeta.title, 1);
         if (result.works.length > 0 && result.works[0].score > 10) {
           crossrefWork = result.works[0];
         }
-      } catch { /* search failed */ }
+      } catch (err) {
+        console.warn("[PDF Metadata] Local Crossref title search failed:", err);
+      }
     }
 
     if (crossrefWork) {

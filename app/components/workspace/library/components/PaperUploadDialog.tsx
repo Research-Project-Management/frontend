@@ -28,6 +28,18 @@ interface PaperUploadData {
   journal?: string;
   publisher?: string;
   keywords?: string[];
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  issn?: string;
+  isbn?: string;
+  url?: string;
+  type?: string;
+  language?: string;
+  journalAbbr?: string;
+  shortTitle?: string;
+  rights?: string;
+  extra?: string;
 }
 
 interface Props {
@@ -65,6 +77,18 @@ export default function PaperUploadDialog({
   const [journal, setJournal] = useState("");
   const [publisher, setPublisher] = useState("");
   const [keywords, setKeywords] = useState("");
+  const [volume, setVolume] = useState("");
+  const [issue, setIssue] = useState("");
+  const [pages, setPages] = useState("");
+  const [issn, setIssn] = useState("");
+  const [isbn, setIsbn] = useState("");
+  const [url, setUrl] = useState("");
+  const [type, setType] = useState("");
+  const [language, setLanguage] = useState("");
+  const [journalAbbr, setJournalAbbr] = useState("");
+  const [shortTitle, setShortTitle] = useState("");
+  const [rights, setRights] = useState("");
+  const [extra, setExtra] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [extractStatus, setExtractStatus] = useState<ExtractStatus>("idle");
 
@@ -80,6 +104,18 @@ export default function PaperUploadDialog({
     setJournal("");
     setPublisher("");
     setKeywords("");
+    setVolume("");
+    setIssue("");
+    setPages("");
+    setIssn("");
+    setIsbn("");
+    setUrl("");
+    setType("");
+    setLanguage("");
+    setJournalAbbr("");
+    setShortTitle("");
+    setRights("");
+    setExtra("");
     setDragOver(false);
     setExtractStatus("idle");
   };
@@ -162,6 +198,17 @@ export default function PaperUploadDialog({
           if (meta.abstract) setAbstract(meta.abstract);
           if (meta.journal) setJournal(meta.journal);
           if (meta.publisher) setPublisher(meta.publisher);
+          if (meta.volume) setVolume(meta.volume);
+          if (meta.issue) setIssue(meta.issue);
+          if (meta.pages) setPages(meta.pages);
+          if (meta.issn) setIssn(meta.issn);
+          if (meta.isbn) setIsbn(meta.isbn);
+          if (meta.url) setUrl(meta.url);
+          if (meta.type) setType(meta.type);
+          if (meta.language) setLanguage(meta.language);
+          if (meta.journalAbbr) setJournalAbbr(meta.journalAbbr);
+          if (meta.shortTitle) setShortTitle(meta.shortTitle);
+          if (meta.rights) setRights(meta.rights);
           if (meta.keywords) {
             setKeywords(
               Array.isArray(meta.keywords)
@@ -210,6 +257,18 @@ export default function PaperUploadDialog({
         .split(",")
         .map((k) => k.trim())
         .filter(Boolean),
+      volume: volume.trim() || undefined,
+      issue: issue.trim() || undefined,
+      pages: pages.trim() || undefined,
+      issn: issn.trim() || undefined,
+      isbn: isbn.trim() || undefined,
+      url: url.trim() || undefined,
+      type: type.trim() || undefined,
+      language: language.trim() || undefined,
+      journalAbbr: journalAbbr.trim() || undefined,
+      shortTitle: shortTitle.trim() || undefined,
+      rights: rights.trim() || undefined,
+      extra: extra.trim() || undefined,
     });
     reset();
   };
@@ -403,6 +462,136 @@ export default function PaperUploadDialog({
                 onChange={(e) => setPublisher(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Volume + Issue + Pages */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-volume">Volume</Label>
+              <Input
+                id="paper-volume"
+                placeholder="e.g. 15"
+                value={volume}
+                onChange={(e) => setVolume(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-issue">Issue</Label>
+              <Input
+                id="paper-issue"
+                placeholder="e.g. 3"
+                value={issue}
+                onChange={(e) => setIssue(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-pages">Pages</Label>
+              <Input
+                id="paper-pages"
+                placeholder="e.g. 101-115"
+                value={pages}
+                onChange={(e) => setPages(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* ISSN + ISBN */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-issn">ISSN</Label>
+              <Input
+                id="paper-issn"
+                placeholder="e.g. 2041-1723"
+                value={issn}
+                onChange={(e) => setIssn(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-isbn">ISBN</Label>
+              <Input
+                id="paper-isbn"
+                placeholder="e.g. 978-3-16..."
+                value={isbn}
+                onChange={(e) => setIsbn(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* URL + Type */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-url">URL</Label>
+              <Input
+                id="paper-url"
+                placeholder="e.g. https://..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-type">Document Type</Label>
+              <Input
+                id="paper-type"
+                placeholder="e.g. journal-article"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Language + Journal Abbr */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-language">Language</Label>
+              <Input
+                id="paper-language"
+                placeholder="e.g. en"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-journalAbbr">Journal Abbreviation</Label>
+              <Input
+                id="paper-journalAbbr"
+                placeholder="e.g. Nat. Commun."
+                value={journalAbbr}
+                onChange={(e) => setJournalAbbr(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Short Title + Rights */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-shortTitle">Short Title</Label>
+              <Input
+                id="paper-shortTitle"
+                placeholder="e.g. Zotero Integration"
+                value={shortTitle}
+                onChange={(e) => setShortTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-rights">Rights / License</Label>
+              <Input
+                id="paper-rights"
+                placeholder="e.g. CC BY 4.0"
+                value={rights}
+                onChange={(e) => setRights(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Extra */}
+          <div className="space-y-1.5">
+            <Label htmlFor="paper-extra">Extra</Label>
+            <Input
+              id="paper-extra"
+              placeholder="e.g. Citation Key: doe2024"
+              value={extra}
+              onChange={(e) => setExtra(e.target.value)}
+            />
           </div>
 
           {/* Keywords */}

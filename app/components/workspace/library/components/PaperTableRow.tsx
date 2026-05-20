@@ -1,4 +1,5 @@
-import { ExternalLink, FileText, Trash2 } from "lucide-react";
+import { BookOpen, ExternalLink, FileText, Trash2 } from "lucide-react";
+import { Link, useParams } from "react-router";
 import { cn } from "~/lib/utils";
 import { API_URL } from "~/lib/api";
 import type { Paper, Collection } from "~/types/library";
@@ -16,6 +17,7 @@ export function PaperTableRow({
   isSelected: boolean;
   onSelect: (p: Paper) => void;
 }) {
+  const { workspaceId: workspaceUrl } = useParams();
   const resolvedUrl = paper.fileUrl?.startsWith("/api/files/")
     ? `${API_URL}${paper.fileUrl}`
     : paper.fileUrl;
@@ -90,16 +92,14 @@ export function PaperTableRow({
       <td className="py-2 pr-2 align-middle w-[60px]">
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {resolvedUrl && (
-            <a
-              href={resolvedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to={`/${workspaceUrl}/library/papers/${paper._id}/reader`}
               onClick={(e) => e.stopPropagation()}
               className="flex size-6 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-              title="Open PDF"
+              title="Open Reader"
             >
-              <ExternalLink className="size-3" />
-            </a>
+              <BookOpen className="size-3" />
+            </Link>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(paper._id); }}

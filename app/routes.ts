@@ -140,6 +140,10 @@ export default [
     layout("./components/workspace/library/layout/LibraryLayout.tsx", [
       route(":workspaceId/library", "./routes/workspace/$workspaceId/library/index.tsx"),
       route(":workspaceId/library/:collectionId", "./routes/workspace/$workspaceId/library/$collectionId.tsx"),
+      route(
+        ":workspaceId/library/papers/:paperId/reader",
+        "./routes/workspace/$workspaceId/library/reader.$paperId.tsx"
+      ),
     ]),
   ]),
 

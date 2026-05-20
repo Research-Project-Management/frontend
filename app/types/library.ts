@@ -29,6 +29,24 @@ export type Paper = {
   keywords: string[];
   journal: string;
   publisher: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  issn?: string;
+  isbn?: string;
+  url?: string;
+  type?: string;
+  language?: string;
+  journalAbbr?: string;
+  shortTitle?: string;
+  rights?: string;
+  extra?: string;
+  notes?: Array<{
+    _id: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   fileUrl: string;
   filename: string;
   mimeType: string;

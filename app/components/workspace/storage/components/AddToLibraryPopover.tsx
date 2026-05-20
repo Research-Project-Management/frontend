@@ -10,7 +10,7 @@ import {
 } from "~/components/ui/popover";
 import { useAddPaper, useCollections } from "~/query/library";
 import type { StorageItem } from "../types";
-import type { PdfMetadata } from "./FilePreviewSidebar";
+import type { PdfMetadata } from "~/lib/pdf";
 
 interface AddToLibraryPopoverProps {
   item: StorageItem;
@@ -24,7 +24,7 @@ const toAuthors = (metadata?: PdfMetadata | null) => {
   if (metadata?.author) {
     return metadata.author
       .split(/,|;|\band\b/i)
-      .map((author) => author.trim())
+      .map((author: string) => author.trim())
       .filter(Boolean);
   }
   return [];

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, X, FileText, Loader2 } from "lucide-react";
+import { Upload, X, FileText, Loader2, Sparkles, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { apiPost } from "~/lib/api";
+import { uploadFile, fetchWorkspaceFiles, createFolder } from "~/query/storage";
+import { extractPdfMetadataFromFile } from "~/lib/pdf";
 
 interface PaperUploadData {
   title: string;
@@ -24,6 +25,9 @@ interface PaperUploadData {
   filename: string;
   mimeType: string;
   size: number;
+  journal?: string;
+  publisher?: string;
+  keywords?: string[];
 }
 
 interface Props {
@@ -39,6 +43,8 @@ function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+
+type ExtractStatus = "idle" | "extracting" | "done" | "failed";
 
 export default function PaperUploadDialog({
   open,
@@ -56,7 +62,11 @@ export default function PaperUploadDialog({
   const [year, setYear] = useState("");
   const [doi, setDoi] = useState("");
   const [abstract, setAbstract] = useState("");
+  const [journal, setJournal] = useState("");
+  const [publisher, setPublisher] = useState("");
+  const [keywords, setKeywords] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [extractStatus, setExtractStatus] = useState<ExtractStatus>("idle");
 
   const reset = () => {
     setFile(null);
@@ -67,7 +77,11 @@ export default function PaperUploadDialog({
     setYear("");
     setDoi("");
     setAbstract("");
+    setJournal("");
+    setPublisher("");
+    setKeywords("");
     setDragOver(false);
+    setExtractStatus("idle");
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -75,39 +89,97 @@ export default function PaperUploadDialog({
     onOpenChange(v);
   };
 
-  // Upload the file to R2 via presign then return the URL
-  const uploadToR2 = async (f: File): Promise<string> => {
-    const timestamp = Date.now();
-    const fileName = `workspace/${workspaceId}/library/${timestamp}-${f.name}`;
-    const { url: presignedUrl, path } = await apiPost<{
-      url: string;
-      path: string;
-    }>("/api/files/presign", { fileName });
-    const res = await fetch(presignedUrl, {
-      method: "PUT",
-      headers: { "Content-Type": f.type || "application/pdf" },
-      body: f,
-    });
-    if (!res.ok) throw new Error("Upload failed");
-    return `/api/files/${path}`;
+  // Upload the file to workspace storage inside a "Paper Upload" folder
+  const uploadToStorage = async (f: File): Promise<string> => {
+    let folderId = null;
+    try {
+      const data = (await fetchWorkspaceFiles(workspaceId, null)) as any;
+      const files = data?.files || [];
+      const existingFolder = files.find(
+        (item: any) => item.isFolder && item.filename === "Paper Upload",
+      );
+      if (existingFolder) {
+        folderId = existingFolder._id;
+      } else {
+        const newFolder = (await createFolder("Paper Upload", {
+          scope: "workspace",
+          workspaceId,
+        })) as any;
+        folderId = newFolder?.folder?._id || newFolder?._id;
+      }
+    } catch (e) {
+      console.error("Failed to setup library upload folder:", e);
+    }
+
+    const res = (await uploadFile(f, {
+      scope: "workspace",
+      workspaceId,
+      parentId: folderId,
+    })) as any;
+
+    const fileUrl = res?.file?.url || res?.url;
+    if (!fileUrl) throw new Error("Upload failed: missing url");
+    return fileUrl;
   };
 
   const handleFileSelected = async (f: File) => {
     setFile(f);
-    // Use filename as default title (strip extension)
-    if (!title) {
-      setTitle(f.name.replace(/\.[^/.]+$/, ""));
-    }
-    try {
-      setUploading(true);
-      const url = await uploadToR2(f);
-      setUploadedUrl(url);
-    } catch (e) {
-      console.error("Upload error", e);
-      setFile(null);
-    } finally {
-      setUploading(false);
-    }
+    // Set filename as fallback title immediately
+    setTitle(f.name.replace(/\.[^/.]+$/, ""));
+
+    // Run upload & metadata extraction in parallel
+    const uploadPromise = (async () => {
+      try {
+        setUploading(true);
+        const url = await uploadToStorage(f);
+        setUploadedUrl(url);
+      } catch (e) {
+        console.error("Upload error", e);
+        setFile(null);
+      } finally {
+        setUploading(false);
+      }
+    })();
+
+    const extractPromise = (async () => {
+      const isPdf =
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) return;
+
+      try {
+        setExtractStatus("extracting");
+        const meta = await extractPdfMetadataFromFile(f);
+        if (meta) {
+          // Auto-fill form fields from extracted metadata
+          if (meta.title) setTitle(meta.title);
+          if (meta.authors?.length) {
+            setAuthors(meta.authors.join(", "));
+          } else if (meta.author) {
+            setAuthors(meta.author);
+          }
+          if (meta.year) setYear(String(meta.year));
+          if (meta.doi) setDoi(meta.doi);
+          if (meta.abstract) setAbstract(meta.abstract);
+          if (meta.journal) setJournal(meta.journal);
+          if (meta.publisher) setPublisher(meta.publisher);
+          if (meta.keywords) {
+            setKeywords(
+              Array.isArray(meta.keywords)
+                ? meta.keywords.join(", ")
+                : String(meta.keywords)
+            );
+          }
+          setExtractStatus("done");
+        } else {
+          setExtractStatus("failed");
+        }
+      } catch (e) {
+        console.error("Metadata extraction error:", e);
+        setExtractStatus("failed");
+      }
+    })();
+
+    await Promise.allSettled([uploadPromise, extractPromise]);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -132,11 +204,27 @@ export default function PaperUploadDialog({
       filename: file.name,
       mimeType: file.type || "application/pdf",
       size: file.size,
+      journal: journal.trim() || undefined,
+      publisher: publisher.trim() || undefined,
+      keywords: keywords
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
     });
     reset();
   };
 
-  const canSubmit = !!uploadedUrl && !!title.trim() && !uploading && !isPending;
+  const canSubmit =
+    !!uploadedUrl && !!title.trim() && !uploading && !isPending;
+
+  const extractLabel =
+    extractStatus === "extracting"
+      ? "Extracting metadata…"
+      : extractStatus === "done"
+        ? "Metadata extracted"
+        : extractStatus === "failed"
+          ? "Could not extract metadata"
+          : null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -190,27 +278,56 @@ export default function PaperUploadDialog({
               />
             </div>
           ) : (
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-accent/30 px-3 py-2.5">
-              {uploading ? (
-                <Loader2 className="size-5 text-primary animate-spin shrink-0" />
-              ) : (
-                <FileText className="size-5 text-primary shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {uploading ? "Uploading…" : `${formatBytes(file.size)} · Uploaded`}
-                </p>
+            <div className="space-y-2">
+              {/* File info */}
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-accent/30 px-3 py-2.5">
+                {uploading ? (
+                  <Loader2 className="size-5 text-primary animate-spin shrink-0" />
+                ) : (
+                  <FileText className="size-5 text-primary shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {uploading
+                      ? "Uploading…"
+                      : `${formatBytes(file.size)} · Uploaded`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setFile(null);
+                    setUploadedUrl(null);
+                    setExtractStatus("idle");
+                  }}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <X className="size-4" />
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setFile(null);
-                  setUploadedUrl(null);
-                }}
-                className="shrink-0 rounded-md p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <X className="size-4" />
-              </button>
+
+              {/* Metadata extraction status */}
+              {extractLabel && (
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-1.5 text-xs",
+                    extractStatus === "extracting" &&
+                      "bg-primary/5 text-primary",
+                    extractStatus === "done" &&
+                      "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                    extractStatus === "failed" &&
+                      "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                  )}
+                >
+                  {extractStatus === "extracting" && (
+                    <Sparkles className="size-3.5 animate-pulse" />
+                  )}
+                  {extractStatus === "done" && (
+                    <Check className="size-3.5" />
+                  )}
+                  {extractLabel}
+                </div>
+              )}
             </div>
           )}
 
@@ -264,6 +381,44 @@ export default function PaperUploadDialog({
                 onChange={(e) => setDoi(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Journal + Publisher */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-journal">Journal</Label>
+              <Input
+                id="paper-journal"
+                placeholder="e.g. Nature"
+                value={journal}
+                onChange={(e) => setJournal(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="paper-publisher">Publisher</Label>
+              <Input
+                id="paper-publisher"
+                placeholder="e.g. Springer"
+                value={publisher}
+                onChange={(e) => setPublisher(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Keywords */}
+          <div className="space-y-1.5">
+            <Label htmlFor="paper-keywords">
+              Keywords{" "}
+              <span className="text-muted-foreground font-normal">
+                (comma separated)
+              </span>
+            </Label>
+            <Input
+              id="paper-keywords"
+              placeholder="e.g. deep learning, neural networks"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+            />
           </div>
 
           {/* Abstract */}

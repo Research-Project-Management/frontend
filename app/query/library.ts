@@ -191,6 +191,9 @@ export const useUpdatePaper = (workspaceId: string, collectionId: string) => {
       qc.invalidateQueries({
         queryKey: QK.papers(workspaceId, collectionId),
       });
+      qc.invalidateQueries({
+        queryKey: ["library-all-papers", workspaceId],
+      });
     },
   });
 };

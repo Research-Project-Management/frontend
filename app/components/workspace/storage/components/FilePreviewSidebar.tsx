@@ -6,6 +6,7 @@ import {
   Loader2, RefreshCw, CheckCircle2, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { StorageItem } from "../types";
@@ -16,6 +17,13 @@ import {
   searchCrossref, lookupDoi, useUpdateFileMetadata,
   type CrossrefWork,
 } from "~/query/storage";
+import {
+  type PdfMetadata,
+  extractDoiFromText,
+  parseXmpMetadata,
+  mergeCrossrefMetadata,
+  parsePdfDate,
+} from "~/lib/pdf";
 import AddToLibraryPopover from "./AddToLibraryPopover";
 
 interface FilePreviewSidebarProps {
@@ -24,49 +32,6 @@ interface FilePreviewSidebarProps {
   onClose: () => void;
   onDownload: (item: StorageItem) => void;
   onPreview?: (item: StorageItem) => void;
-}
-
-export type PdfMetadata = {
-  // Standard PDF Info
-  title?: string;
-  author?: string;
-  subject?: string;
-  creator?: string;
-  producer?: string;
-  creationDate?: string;
-  modDate?: string;
-  pageCount?: number;
-  keywords?: string;
-  // XMP / Extended metadata
-  doi?: string;
-  journal?: string;
-  publisher?: string;
-  issn?: string;
-  isbn?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  publicationDate?: string;
-  abstract?: string;
-  language?: string;
-  copyright?: string;
-  year?: number | string;
-  authors?: string[];
-  type?: string;
-  url?: string;
-  // Crossref enrichment source
-  crossrefEnriched?: boolean;
-  // Raw extra fields
-  extraFields?: Record<string, string>;
-};
-
-// ── DOI regex (matches 10.xxxx/... patterns) ─────────────────────────────────
-
-const DOI_REGEX = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s<>"{}|\\^`[\]]+)/g;
-
-function extractDoiFromText(text: string): string | null {
-  const matches = text.match(DOI_REGEX);
-  return matches?.[0] || null;
 }
 
 // ── PDF data hook with Crossref auto-enrichment ──────────────────────────────
@@ -287,97 +252,6 @@ function usePdfData(item: StorageItem | null) {
   }, []);
 
   return { metadata, setMetadata, previewDataUrl, loading, crossrefLoading, crossrefStatus, setCrossrefStatus, setCrossrefLoading };
-}
-
-/** Merge Crossref data into existing metadata (fill gaps, don't overwrite) */
-function mergeCrossrefMetadata(base: PdfMetadata, work: CrossrefWork): PdfMetadata {
-  return {
-    ...base,
-    title: base.title || work.title || base.title,
-    author: base.author || work.authors?.join(", ") || base.author,
-    authors: work.authors?.length ? work.authors : base.authors,
-    doi: base.doi || work.doi || base.doi,
-    journal: base.journal || work.journal || base.journal,
-    publisher: base.publisher || work.publisher || base.publisher,
-    issn: base.issn || work.issn || base.issn,
-    isbn: base.isbn || work.isbn || base.isbn,
-    volume: base.volume || work.volume || base.volume,
-    issue: base.issue || work.issue || base.issue,
-    pages: base.pages || work.pages || base.pages,
-    year: base.year || work.year || base.year,
-    publicationDate: base.publicationDate || (work.year ? String(work.year) : undefined) || base.publicationDate,
-    abstract: base.abstract || work.abstract || base.abstract,
-    type: base.type || work.type || base.type,
-    url: base.url || work.url || base.url,
-    crossrefEnriched: true,
-  };
-}
-
-/** Parse XMP metadata XML for scholarly fields */
-function parseXmpMetadata(xml: string): Record<string, string> {
-  if (!xml) return {};
-  const fields: Record<string, string> = {};
-  const get = (tag: string): string | undefined => {
-    const patterns = [
-      new RegExp(`<${tag}[^>]*>([^<]+)</${tag}>`, "i"),
-      new RegExp(`<${tag}[^>]*>\\s*<rdf:(?:Alt|Seq|Bag)>\\s*<rdf:li[^>]*>([^<]+)</rdf:li>`, "i"),
-    ];
-    for (const p of patterns) {
-      const m = xml.match(p);
-      if (m?.[1]?.trim()) return m[1].trim();
-    }
-    return undefined;
-  };
-
-  fields.title = get("dc:title") || "";
-  fields.creator = get("dc:creator") || "";
-  fields.description = get("dc:description") || "";
-  fields.date = get("dc:date") || "";
-  fields.rights = get("dc:rights") || "";
-  fields.language = get("dc:language") || "";
-  fields.publisher = get("dc:publisher") || "";
-
-  fields.doi = get("prism:doi") || get("pdfx:doi") || get("crossmark:DOI") || "";
-  fields.journal = get("prism:publicationName") || get("prism:aggregationType") || "";
-  fields.publicationName = get("prism:publicationName") || "";
-  fields.volume = get("prism:volume") || "";
-  fields.number = get("prism:number") || "";
-  fields.issue = get("prism:issueIdentifier") || "";
-  fields.issn = get("prism:issn") || get("prism:eIssn") || "";
-  fields.isbn = get("prism:isbn") || "";
-  fields.startPage = get("prism:startingPage") || "";
-  fields.endPage = get("prism:endingPage") || "";
-  fields.pages = get("prism:pageRange") || "";
-  fields.publicationDate = get("prism:coverDate") || get("prism:coverDisplayDate") || "";
-  fields.keywords = get("pdf:Keywords") || get("prism:keyword") || "";
-
-  if (!fields.doi) {
-    const doiMatch = xml.match(/doi[>"'\s:]+([^<"'\s]+10\.\d{4,}\/[^\s<"']+)/i);
-    if (doiMatch) fields.doi = doiMatch[1];
-  }
-
-  fields.abstract = get("dc:description") || get("pdfx:Abstract") || "";
-
-  for (const k of Object.keys(fields)) {
-    if (!fields[k]) delete fields[k];
-  }
-
-  return fields;
-}
-
-function parsePdfDate(raw?: string): string | null {
-  if (!raw) return null;
-  const m = raw.match(/D:(\d{4})(\d{2})(\d{2})(\d{2})?(\d{2})?(\d{2})?/);
-  if (!m) return null;
-  const date = new Date(
-    parseInt(m[1]),
-    parseInt(m[2]) - 1,
-    parseInt(m[3]),
-    parseInt(m[4] || "0"),
-    parseInt(m[5] || "0"),
-    parseInt(m[6] || "0"),
-  );
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 // ── Main component ───────────────────────────────────────────────────────────

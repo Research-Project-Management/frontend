@@ -37,7 +37,7 @@ export default function LibraryHomePage() {
   const deletePaperMutation = useDeletePaper(workspaceId, "");
 
   const [search, setSearch] = useState("");
-  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
 
   const collectionMap = Object.fromEntries(
     (collections ?? []).map((c) => [c._id, c]),
@@ -51,10 +51,12 @@ export default function LibraryHomePage() {
       (p.abstract || "").toLowerCase().includes(search.toLowerCase()),
   );
 
+  const selectedPaper = (papers ?? []).find((p) => p._id === selectedPaperId) || null;
+
   const handleDeletePaper = (paperId: string) => {
     if (!confirm("Remove this paper?")) return;
     deletePaperMutation.mutate(paperId);
-    if (selectedPaper?._id === paperId) setSelectedPaper(null);
+    if (selectedPaperId === paperId) setSelectedPaperId(null);
   };
 
   const selectedCollection = selectedPaper?.collection
@@ -147,8 +149,8 @@ export default function LibraryHomePage() {
                     paper={paper}
                     collection={paper.collection ? collectionMap[paper.collection] ?? null : null}
                     onDelete={handleDeletePaper}
-                    isSelected={selectedPaper?._id === paper._id}
-                    onSelect={setSelectedPaper}
+                    isSelected={selectedPaperId === paper._id}
+                    onSelect={(p) => setSelectedPaperId(p._id)}
                   />
                 ))}
               </tbody>

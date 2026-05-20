@@ -50,10 +50,12 @@ export default function CollectionDetailPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [subCreateOpen, setSubCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedPaper, setSelectedPaper] = useState<Paper | null>(null);
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
 
   const collection = data?.collection;
   const papers = data?.papers ?? [];
+  const selectedPaper = papers.find((p) => p._id === selectedPaperId) || null;
+  
   const filtered = papers.filter(
     (p) =>
       p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -69,7 +71,7 @@ export default function CollectionDetailPage() {
   const handleDeletePaper = (paperId: string) => {
     if (!confirm("Remove this paper from the collection?")) return;
     deletePaperMutation.mutate(paperId);
-    if (selectedPaper?._id === paperId) setSelectedPaper(null);
+    if (selectedPaperId === paperId) setSelectedPaperId(null);
   };
 
   const { data: collections } = useCollections(workspaceId);
@@ -239,8 +241,8 @@ export default function CollectionDetailPage() {
                     key={paper._id}
                     paper={paper}
                     collection={null} // Omit collection column in collection view
-                    isSelected={selectedPaper?._id === paper._id}
-                    onSelect={setSelectedPaper}
+                    isSelected={selectedPaperId === paper._id}
+                    onSelect={(p) => setSelectedPaperId(p._id)}
                     onDelete={handleDeletePaper}
                   />
                 ))}

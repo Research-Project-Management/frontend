@@ -51,12 +51,33 @@ export default function PaperRow({ paper, onDelete }: Props) {
           {paper.journal && (
             <span className="italic truncate max-w-[180px]">{paper.journal}</span>
           )}
+          {paper.publisher && (
+            <span className="truncate max-w-[180px]">Pub: {paper.publisher}</span>
+          )}
         </div>
 
         {paper.abstract && (
           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {paper.abstract}
           </p>
+        )}
+
+        {paper.keywords && paper.keywords.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {paper.keywords.slice(0, 5).map((kw) => (
+              <span
+                key={kw}
+                className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded"
+              >
+                {kw}
+              </span>
+            ))}
+            {paper.keywords.length > 5 && (
+              <span className="text-[10px] text-muted-foreground/60 px-1 py-0.5">
+                +{paper.keywords.length - 5} more
+              </span>
+            )}
+          </div>
         )}
       </div>
 

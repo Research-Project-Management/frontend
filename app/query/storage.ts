@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { API_URL, apiFetch, apiGet, apiPost, apiPut, apiDelete } from "~/lib/api";
 import type { StorageItem } from "~/components/workspace/storage/types";
+import { extractPdfMetadataFromFile } from "~/lib/pdf";
 
 type StorageScope = "project" | "workspace";
 
@@ -187,6 +188,18 @@ export const uploadFile = async (
     }
 
     // Save metadata
+    let extractedMetadata = undefined;
+    try {
+        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+            const pdfMeta = await extractPdfMetadataFromFile(file);
+            if (pdfMeta) {
+                extractedMetadata = pdfMeta;
+            }
+        }
+    } catch (err) {
+        console.error("Failed to extract PDF metadata during upload:", err);
+    }
+
     return apiPost("/api/files/upload", {
         ...scopeBody,
         filename: file.name,
@@ -195,6 +208,7 @@ export const uploadFile = async (
         url: `/api/files/${path}`,
         thumbnail: thumbnailUrl,
         parentId: params.parentId || null,
+        metaData: extractedMetadata,
     });
 };
 

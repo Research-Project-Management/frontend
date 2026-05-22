@@ -484,42 +484,50 @@ html {
   transition: all 0.2s;
 }
 
-.kanban-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: #d4d4d8;
-  /* zinc-300 */
-}
 
-/* react-pdf custom styles to prevent layout breaks */
+
+
+/* react-pdf custom styles to prevent layout breaks and double-text rendering */
 .react-pdf__Page {
   position: relative !important;
   margin: 0 auto;
 }
-.react-pdf__Page__textLayer {
+.react-pdf__Page__textLayer,
+.textLayer {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  opacity: 0.15 !important; /* Keep a tiny bit of opacity or color: transparent for selections */
-  mix-blend-mode: multiply;
-  pointer-events: auto;
-  transform-origin: 0 0;
-  overflow: hidden;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  pointer-events: auto !important;
+  transform-origin: 0 0 !important;
+  overflow: hidden !important;
+  z-index: 2 !important;
 }
-.react-pdf__Page__textLayer span {
+.react-pdf__Page__textLayer span,
+.textLayer span {
   color: transparent !important;
-  position: absolute;
-  white-space: pre;
-  cursor: text;
-  transform-origin: 0 0;
+  -webkit-text-fill-color: transparent !important;
+  position: absolute !important;
+  white-space: pre !important;
+  cursor: text !important;
+  transform-origin: 0 0 !important;
+  background: transparent !important;
 }
-.react-pdf__Page__annotationLayer {
+.react-pdf__Page__annotationLayer,
+.annotationLayer {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
+  z-index: 3 !important;
 }
-.react-pdf__Page__textLayer ::selection {
+.react-pdf__Page__textLayer ::selection,
+.textLayer ::selection {
   background: rgba(37, 95, 220, 0.25) !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
 }

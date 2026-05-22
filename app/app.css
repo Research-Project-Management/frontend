@@ -488,3 +488,38 @@ html {
   background-color: #d4d4d8;
   /* zinc-300 */
 }
+
+/* react-pdf custom styles to prevent layout breaks */
+.react-pdf__Page {
+  position: relative !important;
+  margin: 0 auto;
+}
+.react-pdf__Page__textLayer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  opacity: 0.15 !important; /* Keep a tiny bit of opacity or color: transparent for selections */
+  mix-blend-mode: multiply;
+  pointer-events: auto;
+  transform-origin: 0 0;
+  overflow: hidden;
+}
+.react-pdf__Page__textLayer span {
+  color: transparent !important;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+}
+.react-pdf__Page__annotationLayer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+.react-pdf__Page__textLayer ::selection {
+  background: rgba(37, 95, 220, 0.25) !important;
+}

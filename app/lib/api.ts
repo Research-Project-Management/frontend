@@ -12,9 +12,14 @@ export const API_URL = import.meta.env.VITE_API_URL;
 export function resolveFileUrl(url: string | null | undefined): string | null {
   if (!url) return null;
 
-  // Already a relative path
+  // Already a relative path starting with /api/files/
   if (url.startsWith("/api/files/")) {
     return `${API_URL}${url}`;
+  }
+
+  // If it's a relative storage key starting with workspace/ or project/
+  if (url.startsWith("workspace/") || url.startsWith("project/")) {
+    return `${API_URL}/api/files/${url}`;
   }
 
   // Absolute URL — extract the /api/files/... path and reattach to current API_URL
@@ -22,6 +27,11 @@ export function resolveFileUrl(url: string | null | undefined): string | null {
   const match = url.match(/\/api\/files\/(.+)/);
   if (match) {
     return `${API_URL}/api/files/${match[1]}`;
+  }
+
+  // If it does not start with http:// or https:// or /, treat it as a relative storage key
+  if (!/^https?:\/\//i.test(url) && !url.startsWith("/")) {
+    return `${API_URL}/api/files/${url}`;
   }
 
   // External URL (e.g. ui-avatars, gravatar) — return as-is

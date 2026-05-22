@@ -1,7 +1,10 @@
 import React from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { ExternalLink } from "lucide-react";
+import "katex/dist/katex.min.css";
 
 function normalizeMarkdown(text: string): string {
   let result = text
@@ -243,7 +246,8 @@ export function renderMarkdown(text: string): React.ReactNode[] {
   return [
     <ReactMarkdown
       key="markdown"
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
       components={markdownComponents}
     >
       {normalizeMarkdown(text)}

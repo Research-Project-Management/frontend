@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { Sparkles, X, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
+import { Sparkles, X, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "~/lib/utils";
 import PdfViewerToolbar from "./PdfViewerToolbar";
 
-// Import react-pdf styles for text layer and annotation layer
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Use exact versioned unpkg CDN for the worker to guarantee absolute cross-environment reliability
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PdfViewerProps {
   url: string;
@@ -18,15 +17,24 @@ interface PdfViewerProps {
 }
 
 export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [numPages, setNumPages] = useState<number>(0);
+  const [visiblePage, setVisiblePage] = useState<number>(1);
   const [zoom, setZoom] = useState<number>(1.0);
   const [fitWidth, setFitWidth] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  // Fetch PDF file as Blob using authenticated request to bypass session credentials issues
+  // Text selection floating menu
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [showFloatingMenu, setShowFloatingMenu] = useState<boolean>(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(600);
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // ── Authenticated blob fetch ──────────────────────────────────────────────
   useEffect(() => {
     let active = true;
     let currentBlobUrl: string | null = null;
@@ -35,232 +43,261 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
       try {
         setLoading(true);
         setError(null);
+        setBlobUrl(null);
 
-        const response = await fetch(url, {
-          credentials: "include",
-        });
-
+        const response = await fetch(url, { credentials: "include" });
         if (!response.ok) {
-          throw new Error(`Failed to fetch PDF (${response.status})`);
+          throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
+        }
+
+        // Validate content type - if it's JSON, the server returned an error payload instead of a PDF binary
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const text = await response.text();
+          try {
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || "Server returned an authorization/access error");
+          } catch {
+            throw new Error("Server returned an invalid JSON response instead of a PDF");
+          }
         }
 
         const blob = await response.blob();
+        if (blob.type.includes("application/json") || blob.size < 100) {
+          // Extra guard for small blobs or text/json files masquerading as PDF responses
+          const text = await blob.text();
+          if (text.trim().startsWith("{")) {
+            try {
+              const parsed = JSON.parse(text);
+              throw new Error(parsed.message || parsed.error || "Invalid response payload");
+            } catch {}
+          }
+        }
+
         if (active) {
           currentBlobUrl = URL.createObjectURL(blob);
           setBlobUrl(currentBlobUrl);
-          setLoading(false);
         }
       } catch (err: any) {
         if (active) {
-          console.error("Error loading PDF blob:", err);
+          console.error("PDF load error:", err);
           setError(err.message || "Failed to load PDF file.");
           setLoading(false);
         }
       }
     }
 
-    if (url) {
-      loadPdf();
-    }
+    if (url) loadPdf();
 
     return () => {
       active = false;
-      if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
-      }
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
     };
   }, [url]);
 
-  // Text selection floating menu state
-  const [selectedText, setSelectedText] = useState<string>("");
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const [showFloatingMenu, setShowFloatingMenu] = useState<boolean>(false);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const pdfWrapperRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(600);
-
-  // Dynamically calculate container width for "Fit Width" zoom setting
+  // ── Track container width for fit-to-width ────────────────────────────────
   useEffect(() => {
-    if (!containerRef.current) return;
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.getBoundingClientRect().width);
-      }
-    };
-
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(containerRef.current);
-    
-    return () => {
-      observer.disconnect();
-    };
+    if (!scrollContainerRef.current) return;
+    const el = scrollContainerRef.current;
+    const update = () => setContainerWidth(el.getBoundingClientRect().width);
+    update();
+    const obs = new ResizeObserver(update);
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setPageNumber(1);
+  // ── Intersection Observer: track which page is most visible ───────────────
+  useEffect(() => {
+    if (numPages === 0) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        let best: { page: number; ratio: number } | null = null;
+        for (const entry of entries) {
+          const page = Number((entry.target as HTMLElement).dataset.pageNum);
+          if (isNaN(page)) continue;
+          if (!best || entry.intersectionRatio > best.ratio) {
+            best = { page, ratio: entry.intersectionRatio };
+          }
+        }
+        if (best && best.ratio > 0) setVisiblePage(best.page);
+      },
+      { root: container, threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+
+    pageRefs.current.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [numPages]);
+
+  // ── Document load handlers ────────────────────────────────────────────────
+  const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
+    setNumPages(n);
     setLoading(false);
     setError(null);
   };
 
   const onDocumentLoadError = (err: Error) => {
-    console.error("PDF loading error:", err);
-    setError("Failed to render PDF. Please verify the file is not corrupted or try downloading it.");
+    console.error("PDF render error:", err);
+    setError("Failed to render PDF. The file may be corrupted.");
     setLoading(false);
   };
 
-  // Monitor text selection to show/hide "Ask AI" floating action menu
+  // ── Navigate to page (scroll into view) ───────────────────────────────────
+  const scrollToPage = useCallback((page: number) => {
+    const el = pageRefs.current.get(page);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  // ── Text selection → floating menu ────────────────────────────────────────
   const handleMouseUp = useCallback(() => {
     const selection = window.getSelection();
-    if (!selection) return;
+    if (!selection || selection.isCollapsed) return;
 
     const text = selection.toString().trim();
-    if (text && pdfWrapperRef.current?.contains(selection.anchorNode)) {
+    const container = scrollContainerRef.current;
+    if (!text || !container) return;
+
+    // Make sure selection is inside our scroll container
+    if (!container.contains(selection.anchorNode)) return;
+
+    try {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      // Position relative to the scroll container's viewport + scroll offset
+      setMenuPosition({
+        top: rect.top - containerRect.top + container.scrollTop - 44,
+        left: rect.left - containerRect.left + rect.width / 2,
+      });
       setSelectedText(text);
-
-      try {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        const containerRect = containerRef.current?.getBoundingClientRect();
-
-        if (containerRect) {
-          // Position menu above selection center
-          setMenuPosition({
-            top: rect.top - containerRect.top - 46 + (containerRef.current.scrollTop || 0),
-            left: rect.left - containerRect.left + rect.width / 2,
-          });
-          setShowFloatingMenu(true);
-        }
-      } catch (e) {
-        // Fallback for range extraction errors
-        setShowFloatingMenu(false);
-      }
+      setShowFloatingMenu(true);
+    } catch {
+      setShowFloatingMenu(false);
     }
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    // Hide menu if user clicks elsewhere (excluding floating menu click itself)
     const target = e.target as HTMLElement;
     if (!target.closest(".pdf-floating-ask-ai")) {
       setShowFloatingMenu(false);
     }
   }, []);
 
-  // Keyboard navigation for PDF pages
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return; // Ignore inside input fields
-      }
-      if (e.key === "ArrowLeft") {
-        setPageNumber((prev) => Math.max(1, prev - 1));
-      } else if (e.key === "ArrowRight") {
-        setPageNumber((prev) => (numPages ? Math.min(numPages, prev + 1) : prev));
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [numPages]);
+  // ── Computed page width ───────────────────────────────────────────────────
+  const pageWidth = fitWidth ? Math.max(320, containerWidth - 56) : undefined;
+  const pageScale = fitWidth ? undefined : zoom;
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 flex flex-col min-w-0 h-full bg-zinc-100 dark:bg-zinc-900 overflow-hidden relative"
-      onMouseDown={handleMouseDown}
-    >
+    <div className="flex-1 flex flex-col min-w-0 h-full bg-[#f1f3f4] dark:bg-zinc-900 overflow-hidden">
       <PdfViewerToolbar
-        pageNumber={pageNumber}
-        numPages={numPages}
+        pageNumber={visiblePage}
+        numPages={numPages || null}
         zoom={zoom}
-        onPageChange={setPageNumber}
-        onZoomChange={(z) => {
-          setZoom(z);
-          setFitWidth(false);
-        }}
+        onPageChange={scrollToPage}
+        onZoomChange={(z) => { setZoom(z); setFitWidth(false); }}
         onFitWidth={() => setFitWidth(true)}
         downloadUrl={blobUrl || url}
         filename={filename}
         loading={loading}
       />
 
-      {/* PDF Pages View Area */}
-      <div 
-        ref={pdfWrapperRef}
+      {/* Scrollable PDF area */}
+      <div
+        ref={scrollContainerRef}
         onMouseUp={handleMouseUp}
-        className="flex-1 overflow-auto p-6 flex flex-col items-center relative select-text"
+        onMouseDown={handleMouseDown}
+        className="flex-1 overflow-auto relative select-text"
       >
         {error ? (
-          <div className="flex flex-col items-center justify-center text-center p-8 max-w-md my-auto gap-3">
-            <AlertTriangle className="size-10 text-destructive animate-bounce" />
-            <p className="text-sm font-semibold text-foreground">{error}</p>
-            <p className="text-xs text-muted-foreground">
-              You can download the paper directly using the toolbar to view it in an external PDF reader.
+          <div className="flex flex-col items-center justify-center text-center p-10 max-w-md mx-auto mt-20 gap-3">
+            <AlertTriangle className="size-9 text-[#d93025]" />
+            <p className="text-sm font-semibold text-[#202222] dark:text-zinc-100">{error}</p>
+            <p className="text-xs text-[#5f6368] dark:text-zinc-400">
+              Download the paper using the toolbar to view in an external reader.
             </p>
           </div>
-        ) : loading || !blobUrl ? (
-          <div className="flex flex-col items-center justify-center p-20 gap-3 my-auto">
-            <Loader2 className="size-8 animate-spin text-primary" />
-            <p className="text-xs text-muted-foreground animate-pulse">Loading paper pages...</p>
+        ) : !blobUrl ? (
+          <div className="flex flex-col items-center justify-center h-full gap-3">
+            <Loader2 className="size-7 animate-spin text-[#3370ff]" />
+            <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">
+              Loading document…
+            </p>
           </div>
         ) : (
-          <div className="shadow-lg border border-border bg-white dark:bg-zinc-950 rounded-sm relative">
-            <Document
-              file={blobUrl}
-              onLoadSuccess={onDocumentLoadSuccess}
-              onLoadError={onDocumentLoadError}
-              loading={
-                <div className="flex flex-col items-center justify-center p-20 gap-3">
-                  <Loader2 className="size-8 animate-spin text-primary" />
-                  <p className="text-xs text-muted-foreground animate-pulse">Loading paper pages...</p>
+          <Document
+            file={blobUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="size-7 animate-spin text-[#3370ff]" />
+                <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">
+                  Rendering pages…
+                </p>
+              </div>
+            }
+          >
+            <div className="flex flex-col items-center gap-2 py-4 px-4">
+              {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
+                <div
+                  key={pageNum}
+                  data-page-num={pageNum}
+                  ref={(el) => {
+                    if (el) pageRefs.current.set(pageNum, el);
+                    else pageRefs.current.delete(pageNum);
+                  }}
+                  className="bg-white dark:bg-zinc-950 shadow-[0_1px_4px_rgba(0,0,0,0.08)] border border-[#dadce0] dark:border-zinc-700/50"
+                >
+                  <Page
+                    pageNumber={pageNum}
+                    scale={pageScale}
+                    width={pageWidth}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                    loading={
+                      <div
+                        className="flex items-center justify-center"
+                        style={{ width: pageWidth || 600, height: (pageWidth || 600) * 1.414 }}
+                      >
+                        <Loader2 className="size-5 animate-spin text-[#3370ff]/40" />
+                      </div>
+                    }
+                  />
                 </div>
-              }
-            >
-              <Page
-                pageNumber={pageNumber}
-                scale={fitWidth ? undefined : zoom}
-                width={fitWidth ? Math.max(320, containerWidth - 48) : undefined}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-                loading={
-                  <div className="flex items-center justify-center p-16">
-                    <Loader2 className="size-6 animate-spin text-primary/45" />
-                  </div>
-                }
-              />
-            </Document>
-          </div>
+              ))}
+            </div>
+          </Document>
         )}
 
-        {/* Floating Menu for "Ask Flux AI" about selected text */}
+        {/* Floating "Ask AI" menu */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-ask-ai absolute z-50 flex items-center gap-1 bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-950 px-2.5 py-1.5 rounded-lg shadow-xl animate-in scale-in duration-100 ease-out border border-zinc-700/30"
+            className="pdf-floating-ask-ai absolute z-50 flex items-center gap-1 bg-[#202222] text-white dark:bg-white dark:text-[#202222] px-2.5 py-1.5 rounded-lg shadow-[0_6px_16px_rgba(32,34,34,0.16)] border border-white/10 dark:border-[#dadce0]"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
               transform: "translateX(-50%)",
             }}
-            onMouseUp={(e) => e.stopPropagation()} // Prevent resetting selection on click
+            onMouseUp={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => {
                 onAskAi(selectedText);
                 setShowFloatingMenu(false);
-                // Clear selection
                 window.getSelection()?.removeAllRanges();
               }}
-              className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-85 transition-opacity"
+              className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition-opacity"
             >
-              <Sparkles className="size-3.5 text-blue-400" />
-              Ask AI about selection
+              <Sparkles className="size-3.5 text-[#3370ff]" />
+              Ask AI
             </button>
-            <div className="w-px h-3.5 bg-zinc-700 dark:bg-zinc-300 mx-1" />
+            <div className="w-px h-3.5 bg-white/20 dark:bg-[#dadce0] mx-1" />
             <button
               onClick={() => setShowFloatingMenu(false)}
-              className="hover:opacity-75"
+              className="hover:opacity-70 transition-opacity"
             >
               <X className="size-3.5" />
             </button>
@@ -268,11 +305,13 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
         )}
       </div>
 
-      {/* Status Bar */}
-      {numPages && (
-        <div className="h-6 shrink-0 border-t border-border bg-card flex items-center justify-between px-4 text-[10px] text-muted-foreground select-none">
-          <span className="font-medium truncate pr-4">Document: {filename}</span>
-          <span className="font-mono">Page {pageNumber} of {numPages}</span>
+      {/* Status bar */}
+      {numPages > 0 && (
+        <div className="h-6 shrink-0 border-t border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900 flex items-center justify-between px-4 text-[10px] text-[#5f6368] dark:text-zinc-400 select-none">
+          <span className="font-medium truncate pr-4">{filename}</span>
+          <span className="font-mono tabular-nums">
+            {visiblePage} / {numPages}
+          </span>
         </div>
       )}
     </div>

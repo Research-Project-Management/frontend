@@ -112,10 +112,12 @@ export function PaperDetailPanel({
   paper,
   collection,
   workspaceId,
+  className,
 }: {
   paper: Paper;
   collection: Collection | null;
   workspaceId: string;
+  className?: string;
 }) {
   const { workspaceId: workspaceUrl } = useParams();
   const resolvedUrl = paper.fileUrl?.startsWith("/api/files/")
@@ -329,7 +331,7 @@ export function PaperDetailPanel({
   };
 
   return (
-    <div className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full">
+    <div className={cn("w-80 shrink-0 border-l border-border bg-card flex flex-col h-full", className)}>
       {/* Header Title Section */}
       <div className="px-4 pt-4 pb-3 border-b border-border bg-background/20">
         <p className="text-sm font-semibold text-foreground leading-snug">

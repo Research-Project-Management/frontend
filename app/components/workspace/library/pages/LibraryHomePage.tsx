@@ -123,23 +123,23 @@ export default function LibraryHomePage() {
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-card border-b border-border">
-                  <th />
-                  <th className="text-left py-1 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="w-8 py-3 pl-3 pr-2" />
+                  <th className="text-left py-3 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Title
                   </th>
-                  <th className="text-left py-1 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Authors
                   </th>
-                  <th className="text-left py-1 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Year
                   </th>
-                  <th className="text-left py-1 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Journal
                   </th>
-                  <th className="text-left py-1 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Collection
                   </th>
-                  <th />
+                  <th className="py-3 pr-3" />
                 </tr>
               </thead>
               <tbody>

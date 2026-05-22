@@ -46,7 +46,7 @@ export default function PdfViewerToolbar({
   };
 
   return (
-    <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2 shrink-0 select-none">
+    <div className="flex items-center justify-between border-b border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900 h-[53px] px-4 shrink-0 select-none">
       {/* Left: Page navigation */}
       <div className="flex items-center gap-1.5">
         <Button

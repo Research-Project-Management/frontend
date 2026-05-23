@@ -1671,9 +1671,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                 if (isPendingEdit) {
                   return (
                     <div key={i} className="flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 justify-start">
-                      <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                        <img src="/Chat.svg" alt="Flux AI" className="size-5" />
-                      </div>
                       <div className="flex-1 min-w-0">
                         <AiEditSuggestionCard
                           editResponse={pendingEditResponse!}
@@ -1727,9 +1724,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                         const isApplied = editStatus === "applied";
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
-                            <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                              <img src="/Chat.svg" alt="Flux AI" className="size-5" />
-                            </div>
                             <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm border text-[13px] ${isApplied
                               ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                               : "bg-muted/50 border-border/50 text-muted-foreground"
@@ -1745,9 +1739,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                       if (resolvedMsgIdxes.has(i)) {
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
-                            <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                              <img src="/Chat.svg" alt="Flux AI" className="size-5" />
-                            </div>
                             <div className="flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[13px]">
                               <Check className="size-3.5 shrink-0" />
                               <span>{historicalEdit.explanation}</span>
@@ -1761,9 +1752,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
                       return (
                         <div key={i} className="flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 justify-start">
-                          <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                            <img src="/Chat.svg" alt="Flux AI" className="size-5" />
-                          </div>
                           <div className="flex-1 min-w-0">
                             <AiEditSuggestionCard
                               editResponse={historicalEdit}
@@ -1843,11 +1831,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
                 return (
                   <div key={i} className={`flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {msg.role === "assistant" && (
-                      <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                        <img src="/Chat.svg" alt="Flux AI" className="size-5" />
-                      </div>
-                    )}
                     <div className={`group relative ${msg.role === "user"
                       ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-3 py-2 border border-zinc-200 dark:border-zinc-700"
                       : "max-w-[92%]"
@@ -1872,9 +1855,6 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
               {/* Streaming response */}
               {isStreaming && (
                 <div className="flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                  <div className="shrink-0 size-6 rounded-lg flex items-center justify-center mt-0.5">
-                    <img src="/Chat.svg" alt="Flux AI" className="size-5" />
-                  </div>
                   <div className="max-w-[92%]">
                     {streamContent ? (
                       isEditorActionMessage(streamContent) ? (

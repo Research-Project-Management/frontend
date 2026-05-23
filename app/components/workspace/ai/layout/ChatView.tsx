@@ -21,6 +21,7 @@
 
 import { useParams, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useState, useRef, useEffect, useCallback, memo } from "react";
+import type { ComponentType, SVGProps } from "react";
 import {
   Copy,
   Check,
@@ -29,6 +30,11 @@ import {
   ExternalLink,
   FileText,
   Quote,
+  Search,
+  BookOpen,
+  BarChart3,
+  WandSparkles,
+  ArrowRight,
 } from "lucide-react";
 import {
   Popover,
@@ -36,7 +42,6 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import type { ChatMessage, SourceItem, AgentAction } from "~/types/chat";
-import { AGENT_CONFIGS } from "~/types/chat";
 import type { AgentId } from "~/types/chat";
 import {
   streamChatResponse,
@@ -52,6 +57,7 @@ import ChatAi from "../chatAi";
 import { ActionCardsGroup } from "../ActionCard";
 import { ResponseWidgets, buildResponseWidgetsFromActions } from "../ResponseWidgets";
 import { useChatMode } from "~/contexts/ChatModeContext";
+import { cn } from "~/lib/utils";
 
 // ── Agent metadata ──────────────────────────────────────────────────────────────
 
@@ -266,11 +272,6 @@ const MessageBubble = memo(function MessageBubble({
       className={`flex gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${isUser ? "justify-end" : "justify-start"
         }`}
     >
-      {!isUser && (
-        <div className="shrink-0 size-7 rounded-lg flex items-center justify-center mt-0.5">
-          <img src="/Chat.svg" alt="flux-ai" />
-        </div>
-      )}
 
       <div
         className={`group relative ${isUser
@@ -361,80 +362,148 @@ function WelcomeScreen({
   initialMessage?: string;
   initialProject?: string;
 }) {
-  const handleAgentPrompt = (agentId: AgentId, prompt: string) => {
-    onSend(prompt, undefined, undefined, agentId);
-  };
-
-  // Pick the 4 most useful agents for the welcome screen
-  const featuredAgents = AGENT_CONFIGS.filter((a) =>
-    ["action", "rag", "analyze", "web_search"].includes(a.id)
-  );
+  const [starter, setStarter] = useState<WelcomeStarter | null>(null);
+  const composerMessage = starter?.draft ?? initialMessage;
 
   return (
-    <div className="h-full flex flex-col items-center justify-center overflow-y-auto">
+    <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 py-8">
       {/* Hero */}
-      <div className="flex group flex-col items-center mb-10">
+      <div className="flex group flex-col items-center mb-8">
         <img
           src="/Chat.svg"
           alt="Flux AI"
-          className="size-16 mb-4 group-hover:rotate-180 transition-transform duration-1000"
+          className="size-14 mb-4 group-hover:rotate-180 transition-transform duration-1000"
         />
         <h3 className="font-semibold text-xl mb-1.5">Ask Flux AI</h3>
         <p className="text-xs text-muted-foreground text-center max-w-xs leading-relaxed">
-          Chat with your docs, manage your workspace, or search the web.
+          Pick a workflow, refine the draft, then send when it feels right.
         </p>
       </div>
 
       {/* Agent capability cards — 2×2 grid */}
-      <div className="w-full max-w-xl px-6 mb-10">
-        <div className="grid grid-cols-2 gap-3">
-          {featuredAgents.map((agent) => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              onPromptClick={(prompt) => handleAgentPrompt(agent.id, prompt)}
+      <div className="w-full max-w-2xl mb-8">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {WELCOME_STARTERS.map((item) => (
+            <StarterCard
+              key={item.id}
+              item={item}
+              active={starter?.id === item.id}
+              onSelect={() => setStarter(item)}
             />
           ))}
         </div>
       </div>
 
       <div className="w-full">
-        <ChatAi onSend={onSend} disabled={disabled} initialProject={initialProject} initialMessage={initialMessage} />
+        <ChatAi
+          onSend={onSend}
+          disabled={disabled}
+          initialProject={initialProject}
+          initialMessage={composerMessage}
+          initialAgent={starter?.agent}
+          initialWebSearch={starter?.webSearch}
+        />
       </div>
     </div>
   );
 }
 
-/** A single agent capability card on the welcome page */
-function AgentCard({
-  agent,
-  onPromptClick,
+type WelcomeStarter = {
+  id: string;
+  title: string;
+  description: string;
+  draft: string;
+  agent: AgentId;
+  webSearch?: boolean;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
+
+const WELCOME_STARTERS: WelcomeStarter[] = [
+  {
+    id: "paper-scout",
+    title: "Find papers",
+    description: "Prepare an academic web search with source filters enabled.",
+    draft: "Find recent papers about [topic], compare the strongest methods, and return links with short notes.",
+    agent: "web_search",
+    webSearch: true,
+    icon: Search,
+  },
+  {
+    id: "library-qa",
+    title: "Ask my library",
+    description: "Use indexed Library sources already attached to this chat.",
+    draft: "Using my selected Library sources, explain the key findings and cite the relevant papers.",
+    agent: "rag",
+    icon: BookOpen,
+  },
+  {
+    id: "compare",
+    title: "Analyze evidence",
+    description: "Structure tradeoffs, gaps, metrics, and next experiments.",
+    draft: "Analyze these papers as evidence: what agrees, what conflicts, and what should I test next?",
+    agent: "analyze",
+    icon: BarChart3,
+  },
+  {
+    id: "workspace",
+    title: "Plan work",
+    description: "Turn research intent into concrete workspace actions.",
+    draft: "Help me turn this research goal into project tasks, milestones, and a first-week plan.",
+    agent: "action",
+    icon: WandSparkles,
+  },
+];
+
+function StarterCard({
+  item,
+  active,
+  onSelect,
 }: {
-  agent: (typeof AGENT_CONFIGS)[number];
-  onPromptClick: (prompt: string) => void;
+  item: WelcomeStarter;
+  active: boolean;
+  onSelect: () => void;
 }) {
+  const Icon = item.icon;
+
   return (
-    <div
-      className={`rounded-xl p-4 transition-colors group/card cursor-default ${agent.bg}`}
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "group flex min-h-28 items-start gap-3 rounded-lg border bg-background p-3.5 text-left transition-all",
+        active
+          ? "border-primary/40 bg-primary/5"
+          : "border-border hover:border-primary/30 hover:bg-muted/50",
+      )}
     >
-      <p className={`text-[11px] font-bold mb-1.5 tracking-wide uppercase ${agent.color}`}>
-        {agent.label}
-      </p>
-      <p className="text-[11px] text-muted-foreground mb-4 leading-relaxed">
-        {agent.description}
-      </p>
-      <div className="flex flex-col gap-1.5">
-        {agent.quickPrompts.slice(0, 2).map((prompt) => (
-          <button
-            key={prompt}
-            onClick={() => onPromptClick(prompt)}
-            className="text-[11px] text-left px-2.5 py-1.5 rounded-lg bg-background/60 hover:bg-background/90 text-foreground/60 hover:text-foreground transition-all truncate"
-          >
-            {prompt}
-          </button>
-        ))}
+      <span
+        className={cn(
+          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border transition-colors",
+          active
+            ? "border-primary/25 bg-primary/10 text-primary"
+            : "border-border bg-card text-muted-foreground group-hover:text-primary",
+        )}
+      >
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
+          <ArrowRight
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5",
+              active && "text-primary",
+            )}
+          />
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {item.description}
+        </p>
+        <p className="mt-2 line-clamp-1 text-[11px] text-foreground/55">
+          {item.draft}
+        </p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -828,28 +897,6 @@ export default function ChatView() {
                     widgets={buildResponseWidgetsFromActions(activeActions)}
                   />
                 )}
-              </div>
-            )}
-
-            {/* Typing indicator — shown before first token arrives */}
-            {isStreaming && !streamContent && activeActions.length === 0 && (
-              <div className="flex flex-col gap-1.5 animate-in fade-in-0 duration-300">
-                {activeAgent && (
-                  <div className="pl-10">
-                    <AgentBadge agent={activeAgent} />
-                  </div>
-                )}
-                <div className="flex gap-3">
-                  <div className="shrink-0 size-7 rounded-lg flex items-center justify-center">
-                    <img src="/Chat.svg" alt="flux-ai" />
-                  </div>
-                  <TypingIndicator />
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
         )}
       </div>
 

@@ -147,11 +147,6 @@ const MessageBubble = React.memo(function MessageBubble({
 
   return (
     <div className={cn("flex gap-2.5", isUser ? "justify-end" : "justify-start")}>
-      {!isUser && (
-        <div className="shrink-0 size-6 rounded-md flex items-center justify-center mt-0.5 bg-white dark:bg-zinc-800 border border-[#dadce0] dark:border-zinc-700">
-          <img src="/Chat.svg" alt="AI" className="size-4" />
-        </div>
-      )}
       <div
         className={cn(
           "group relative max-w-[88%] rounded-xl px-3 py-2.5 text-sm leading-relaxed select-text",

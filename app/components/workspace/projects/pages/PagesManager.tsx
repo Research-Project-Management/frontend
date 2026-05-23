@@ -194,14 +194,14 @@ export default function PagesManager({ projectId }: { projectId?: string }) {
           </div>
         ) : (
           /* List view with column header */
-          <div className="rounded-lg border border-border overflow-hidden">
-            <div className="grid grid-cols-[1fr_180px_140px_40px] gap-2 px-4 py-2 bg-muted/40 text-xs font-medium text-muted-foreground border-b border-border select-none">
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_200px_160px_60px] gap-4 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 select-none">
               <span>Title</span>
               <span>Project</span>
               <span>Last modified</span>
               <span />
             </div>
-            <div className="divide-y divide-border">
+            <div className="flex flex-col gap-2.5">
               {pages.map((page) => (
                 <PageItem key={page._id} page={page} viewMode="list" />
               ))}

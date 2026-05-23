@@ -297,32 +297,38 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
   return (
     <>
       <div
-        className="relative grid grid-cols-[1fr_180px_140px_40px] gap-2 px-4 py-2.5 items-center hover:bg-muted/30 transition-colors cursor-pointer group"
+        className="relative grid grid-cols-[1fr_200px_160px_60px] gap-4 px-5 py-3 items-center bg-card hover:bg-muted/40 border border-border/50 hover:border-primary/20 rounded-xl transition-all duration-200 cursor-pointer group hover:shadow-sm"
         onClick={openEditor}
       >
         {/* Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="size-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-            <FileText className="size-4 text-primary/60" />
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200">
+            <FileText className="size-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+            <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
               {page.title}
             </p>
-            <p className="text-[11px] text-muted-foreground/60 truncate">
-              {page.author?.name ?? ""}
+            <p className="text-xs text-muted-foreground/60 truncate mt-0.5">
+              By {page.author?.name || "Author"}
             </p>
           </div>
         </div>
 
         {/* Project */}
-        <span className="text-sm text-muted-foreground truncate">
-          {projectName}
-        </span>
+        <div className="truncate">
+          {projectName !== "—" ? (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/5 text-primary border border-primary/10 truncate max-w-full">
+              {projectName}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground/40 font-mono">—</span>
+          )}
+        </div>
 
         {/* Date */}
-        <span className="text-xs text-muted-foreground flex items-center gap-1">
-          <Clock className="size-3 shrink-0" />
+        <span className="text-xs text-muted-foreground/80 flex items-center gap-1.5 font-medium">
+          <Clock className="size-3.5 text-muted-foreground/40 shrink-0" />
           {relativeTime(page.updatedAt)}
         </span>
 

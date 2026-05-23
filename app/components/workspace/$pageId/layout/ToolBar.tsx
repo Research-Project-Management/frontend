@@ -217,12 +217,6 @@ export default function ToolBar() {
     <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
       {/* ── Left ── */}
       <div className="flex gap-1 items-center min-w-0">
-        <Link
-          to="/ws"
-          className="text-sm px-2 py-1 h-7 flex items-center justify-center font-medium rounded hover:bg-accent hover:text-accent-foreground select-none transition-colors text-muted-foreground hover:text-foreground shrink-0"
-        >
-          Home
-        </Link>
         <Menu />
       </div>
       {/* Center breadcrumb: Logo / Project / Page */}

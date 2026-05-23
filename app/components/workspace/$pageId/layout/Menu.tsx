@@ -17,7 +17,8 @@ import {
   type LayoutMode,
 } from "~/stores/editor-settings";
 import { useCompileStore } from "~/stores/compile";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { ArrowUpLeft } from "lucide-react";
 
 export default function Menu() {
   const navigate = useNavigate();
@@ -119,6 +120,16 @@ export default function Menu() {
 
   return (
     <Menubar className="border-0 shadow-none h-7 p-0">
+      <Link
+        to="/ws"
+        className="relative text-sm font-medium select-none transition-colors text-muted-foreground hover:text-foreground h-7 px-2 flex items-center justify-center group shrink-0"
+      >
+        <span className="group-hover:opacity-0 transition-opacity duration-200">
+          Home
+        </span>
+        <ArrowUpLeft className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 size-4 text-primary" />
+      </Link>
+
       {/* ── File ── */}
       <MenubarMenu>
         <MenubarTrigger className="text-sm px-2 py-1 h-7">File</MenubarTrigger>

@@ -45,6 +45,17 @@ import AiEditSuggestionCard from "./AiEditSuggestionCard";
 import ChatHistoryModal from "~/components/workspace/ai/layout/ChatHistoryModal";
 import { renderMarkdown } from "~/components/workspace/ai/layout/renderMarkdown";
 
+function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
+  if (!value || typeof value !== "object") return false;
+  const response = value as Partial<AiEditResponse>;
+  return (
+    typeof response.intent === "string" &&
+    typeof response.explanation === "string" &&
+    Array.isArray(response.edits) &&
+    response.edits.length > 0
+  );
+}
+
 function normalizeSelectionContext(ctx?: ChatMessage["selectionContext"] | null): ChatMessage["selectionContext"] | undefined {
   if (!ctx?.filename || !ctx.startLine || !ctx.endLine || !ctx.text?.trim()) return undefined;
   return ctx;
@@ -181,7 +192,7 @@ const AssistantMessage = memo(function AssistantMessage({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const hasEditorActionBlock = /```(?:\s*(?:apply|diff|latex|tex)\b|\s*$)/i.test(content);
+  const hasEditorActionBlock = /```\s*(?:apply|diff|latex|tex\b|\n)/i.test(content);
   if (!hasEditorActionBlock) {
     return (
       <div className="group relative">
@@ -392,7 +403,7 @@ const AssistantMessage = memo(function AssistantMessage({
 // ── PDF Preview modal ─────────────────────────────────────────────────────────
 
 function isEditorActionMessage(content: string): boolean {
-  return /```(?:\s*(?:apply|diff|latex|tex)\b|\s*$)/i.test(content);
+  return /```\s*(?:apply|diff|latex|tex\b|\n)/i.test(content);
 }
 
 type AiEditStatus = "applied" | "dismissed";
@@ -1048,7 +1059,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           richCtx?.fileContent ??
           currentFileContent;
         const editResponse = parseAiEditResponse(finalContent, fileContent);
-        if (editResponse && editResponse.intent !== "no_change" && editResponse.edits.length > 0) {
+        if (isActionableAiEditResponse(editResponse) && editResponse.intent !== "no_change") {
           const totalLines = editor?.getModel()?.getLineCount() ?? 1;
           const validation = validateAiEdits(editResponse.edits, totalLines, fileContent);
 
@@ -1114,7 +1125,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     const editor = editorRef.current;
     if (!editor) return;
 
-    if (!pendingEditResponse || pendingEditResponse.edits.length === 0) {
+    if (!isActionableAiEditResponse(pendingEditResponse)) {
       if (previewHandleRef.current) {
         previewHandleRef.current.clearDecorations();
         previewHandleRef.current = null;
@@ -1665,7 +1676,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                   msg.role === "assistant" && i === messages.length - 1;
                 const isPendingEdit =
                   isLastAssistantMsg &&
-                  pendingEditResponse !== null &&
+                  isActionableAiEditResponse(pendingEditResponse) &&
                   !isStreaming;
 
                 if (isPendingEdit) {
@@ -1715,7 +1726,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                         parsed = JSON.parse(s);
                       } catch { /* not parseable */ }
                     }
-                    if (parsed && typeof parsed.intent === "string" && typeof parsed.explanation === "string") {
+                    if (isActionableAiEditResponse(parsed)) {
                       const historicalEdit = parsed as AiEditResponse;
                       const editHash = hashAiEditContent(msg.content);
                       const editStatus = editStatusByHash[editHash];

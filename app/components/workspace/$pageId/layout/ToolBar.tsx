@@ -217,44 +217,50 @@ export default function ToolBar() {
     <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
       {/* ── Left ── */}
       <div className="flex gap-1 items-center min-w-0">
+        <Link
+          to="/ws"
+          className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/80 active:bg-accent transition-all duration-200 group font-medium text-sm mr-1 shrink-0"
+          title="Back to Home"
+        >
+          <Flux className="size-5 text-primary group-hover:scale-105 transition-all duration-200 fill-current" />
+          <span className="select-none font-semibold text-foreground/80 group-hover:text-foreground transition-colors duration-200">
+            Home
+          </span>
+        </Link>
+        <span className="h-4 w-px bg-border/60 mx-1 shrink-0" />
         <Menu />
       </div>
-      {/* Center breadcrumb: Logo / Project / Page */}
-      <div className="flex items-center">
-        <button onClick={() => navigate("/ws")}>
-          <Flux className="size-5 mr-2" />
-        </button>
-
+      {/* Center breadcrumb: Project / Page */}
+      <div className="flex items-center text-sm font-medium">
         {/* Project name → back to project pages */}
         {projectName && (
-          <>
-            <span className="text-muted-foreground/40 mx-1 text-sm select-none">/</span>
-            <button
-              onClick={() => {
-                const proj = currentPage?.project;
-                if (proj && typeof proj === "object") {
-                  const ws = proj.workspace;
-                  const wsUrl = ws && typeof ws === "object" ? ws.url : null;
-                  if (wsUrl) {
-                    navigate(`/${wsUrl}/projects/${proj._id}/pages`);
-                    return;
-                  }
+          <button
+            onClick={() => {
+              const proj = currentPage?.project;
+              if (proj && typeof proj === "object") {
+                const ws = proj.workspace;
+                const wsUrl = ws && typeof ws === "object" ? ws.url : null;
+                if (wsUrl) {
+                  navigate(`/${wsUrl}/projects/${proj._id}/pages`);
+                  return;
                 }
-                navigate(-1);
-              }}
-              title="Back to project"
-              className="mx-1 p-1 text-sm rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0 max-w-44 truncate"
-            >
-              {projectName}
-            </button>
-          </>
+              }
+              navigate(-1);
+            }}
+            title="Back to project"
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0 max-w-[150px] truncate"
+          >
+            {projectName}
+          </button>
         )}
 
-        {/* Page title (current document) */}
+        {/* Separator / Page title */}
         {currentPage?.title && (
           <>
-            <span className="text-muted-foreground/40 mx-1 text-sm select-none">/</span>
-            <span className="text-sm mx-1 font-medium text-foreground truncate max-w-44">
+            {projectName && (
+              <span className="text-muted-foreground/40 mx-1.5 select-none">/</span>
+            )}
+            <span className="px-1 py-0.5 text-foreground font-semibold truncate max-w-[200px]">
               {currentPage.title}
             </span>
           </>

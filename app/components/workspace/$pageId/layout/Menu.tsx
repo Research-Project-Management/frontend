@@ -122,7 +122,7 @@ export default function Menu() {
     <Menubar className="border-0 shadow-none h-7 p-0">
       <Link
         to="/ws"
-        className="relative text-sm font-medium select-none transition-colors text-muted-foreground hover:text-foreground h-7 px-2 flex items-center justify-center group shrink-0"
+        className="relative text-sm font-medium select-none transition-all duration-200 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-sm h-7 px-2 flex items-center justify-center group shrink-0"
       >
         <span className="group-hover:opacity-0 transition-opacity duration-200">
           Home

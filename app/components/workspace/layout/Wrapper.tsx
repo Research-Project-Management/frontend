@@ -425,8 +425,8 @@ export function ItemSideBar({
             src={imageSrc}
             alt={label}
             className={cn(
-              "relative z-10 size-full p-2 transition-all group-hover:scale-110 group-hover:grayscale-0",
-              isActive ? "grayscale-0" : "grayscale",
+              "relative z-10 size-full p-2 transition-all group-hover:scale-110 group-hover:grayscale-0 group-hover:opacity-100",
+              isActive ? "grayscale-0 opacity-100" : "grayscale opacity-90",
             )}
           />
         ) : Icon ? (

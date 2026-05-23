@@ -49,22 +49,33 @@ export const fetchStickyChildren = async (stickyId: string) => {
 
 // ── Query Hooks ───────────────────────────────────────────────────────────────
 
-export const useStickies = (workspaceId: string, labels?: string[], projectId?: string, category?: string) => {
+export const useStickies = (
+  workspaceId: string,
+  labels?: string[],
+  projectId?: string,
+  category?: string,
+  options?: { enabled?: boolean }
+) => {
   const queryKey = stickiesKey(workspaceId, labels, projectId, category);
 
   return useQuery({
     queryKey,
     queryFn: () => fetchStickies(workspaceId, labels, projectId, category),
-    enabled: !!workspaceId,
+    enabled: (options?.enabled ?? true) && !!workspaceId,
     staleTime: 30_000,
   });
 };
 
-export const useProjectStickies = (projectId: string, workspaceId: string, labels?: string[]) => {
+export const useProjectStickies = (
+  projectId: string,
+  workspaceId: string,
+  labels?: string[],
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: projectStickiesKey(projectId, labels),
     queryFn: () => fetchProjectStickies(projectId, labels),
-    enabled: !!projectId && !!workspaceId && /^[0-9a-fA-F]{24}$/.test(projectId),
+    enabled: (options?.enabled ?? true) && !!projectId && !!workspaceId && /^[0-9a-fA-F]{24}$/.test(projectId),
     staleTime: 60_000,
   });
 };

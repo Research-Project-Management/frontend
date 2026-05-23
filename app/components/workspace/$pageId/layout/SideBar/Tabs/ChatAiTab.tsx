@@ -1369,6 +1369,51 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     setTimeout(() => textareaRef.current?.focus(), 50);
   }, [pendingAiContext, clearPendingAiContext, activeFilePage, currentPage]);
 
+  // Auto-focus on mount or chatId change
+  useEffect(() => {
+    const t = setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, [chatId]);
+
+  // Re-focus after AI streaming concludes
+  useEffect(() => {
+    if (!isStreaming) {
+      textareaRef.current?.focus();
+    }
+  }, [isStreaming]);
+
+  // Focus-on-type: Automatically focus the chat input when the user starts typing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isLoading || isStreaming) return;
+
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      if (e.key.length === 1 && e.key !== " ") {
+        textareaRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isLoading, isStreaming]);
+
   // Clear history
   const handleClear = useCallback(async () => {
     if (!pageId) return;

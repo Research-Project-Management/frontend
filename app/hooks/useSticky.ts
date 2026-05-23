@@ -16,8 +16,8 @@ export const useSticky = (options?: { projectId?: string; labels?: string[] }) =
   const labels = options?.labels;
 
   // 1. Fetching logic
-  const { data: workspaceStickies = [], isLoading: isLoadingWorkspace } = useStickies(workspaceId!, labels);
-  const { data: projectStickies = [], isLoading: isLoadingProject } = useProjectStickies(projectId!, workspaceId!, labels);
+  const { data: workspaceStickies = [], isLoading: isLoadingWorkspace } = useStickies(workspaceId!, labels, undefined, undefined, { enabled: !projectId });
+  const { data: projectStickies = [], isLoading: isLoadingProject } = useProjectStickies(projectId!, workspaceId!, labels, { enabled: !!projectId });
 
   // Determine which stickies to use
   const stickies = projectId ? projectStickies : workspaceStickies;

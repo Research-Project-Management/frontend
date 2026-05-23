@@ -111,9 +111,9 @@ export default function LibraryHomePage() {
             </div>
           ) : (
             /* table-fixed + w-full forces columns to their set widths and clips overflow */
-            <table className="w-full text-sm border-collapse table-fixed">
+            <table className="w-full text-sm border-collapse table-fixed select-none">
               <colgroup>
-                <col className="w-8" />
+                <col className="w-9" />
                 <col />
                 <col className="w-[200px]" />
                 <col className="w-[60px]" />
@@ -121,25 +121,25 @@ export default function LibraryHomePage() {
                 <col className="w-[120px]" />
                 <col className="w-[60px]" />
               </colgroup>
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-card border-b border-border">
-                  <th className="w-8 py-3 pl-3 pr-2" />
-                  <th className="text-left py-3 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <thead className="sticky top-0 z-10 select-none">
+                <tr className="bg-zinc-50 border-b border-border/60">
+                  <th className="w-9 py-3 pl-4 pr-1" />
+                  <th className="text-left py-3 pr-4 text-[10px] font-bold uppercase tracking-wider text-[#5f6368]/90">
                     Title
                   </th>
-                  <th className="text-left py-3 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-4 text-[10px] font-bold uppercase tracking-wider text-[#5f6368]/90">
                     Authors
                   </th>
-                  <th className="text-left py-3 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-3 text-[10px] font-bold uppercase tracking-wider text-[#5f6368]/90">
                     Year
                   </th>
-                  <th className="text-left py-3 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-3 text-[10px] font-bold uppercase tracking-wider text-[#5f6368]/90">
                     Journal
                   </th>
-                  <th className="text-left py-3 pr-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left py-3 pr-3 text-[10px] font-bold uppercase tracking-wider text-[#5f6368]/90">
                     Collection
                   </th>
-                  <th className="py-3 pr-3" />
+                  <th className="py-3 pr-4" />
                 </tr>
               </thead>
               <tbody>

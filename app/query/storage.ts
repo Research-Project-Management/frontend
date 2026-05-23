@@ -85,18 +85,56 @@ export const fetchSharedFiles = (projectId: string) =>
 export const fetchTrashedFiles = (projectId: string) =>
     apiGet(`/api/files/trash/${projectId}`);
 
-const invalidateStorageQueries = (queryClient: QueryClient) => {
-    queryClient.invalidateQueries({ queryKey: ["files"] });
-    queryClient.invalidateQueries({ queryKey: ["my-files"] });
-    queryClient.invalidateQueries({ queryKey: ["starred-files"] });
-    queryClient.invalidateQueries({ queryKey: ["shared-files"] });
-    queryClient.invalidateQueries({ queryKey: ["trashed-files"] });
-    queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
-    queryClient.invalidateQueries({ queryKey: ["workspace-home-files"] });
-    queryClient.invalidateQueries({ queryKey: ["workspace-my-files"] });
-    queryClient.invalidateQueries({ queryKey: ["workspace-starred-files"] });
-    queryClient.invalidateQueries({ queryKey: ["workspace-shared-files"] });
-    queryClient.invalidateQueries({ queryKey: ["workspace-trashed-files"] });
+const invalidateStorageQueries = (
+    queryClient: QueryClient,
+    params?: { scope?: StorageScope; projectId?: string; workspaceId?: string }
+) => {
+    if (!params) {
+        queryClient.invalidateQueries({ queryKey: ["files"] });
+        queryClient.invalidateQueries({ queryKey: ["my-files"] });
+        queryClient.invalidateQueries({ queryKey: ["starred-files"] });
+        queryClient.invalidateQueries({ queryKey: ["shared-files"] });
+        queryClient.invalidateQueries({ queryKey: ["trashed-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-home-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-my-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-starred-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-shared-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-trashed-files"] });
+        return;
+    }
+
+    if (params.scope === "project" && params.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["files", params.projectId] });
+        queryClient.invalidateQueries({ queryKey: ["my-files", params.projectId] });
+        queryClient.invalidateQueries({ queryKey: ["starred-files", params.projectId] });
+        queryClient.invalidateQueries({ queryKey: ["shared-files", params.projectId] });
+        queryClient.invalidateQueries({ queryKey: ["trashed-files", params.projectId] });
+        if (params.workspaceId) {
+            queryClient.invalidateQueries({ queryKey: ["workspace-home", params.workspaceId] });
+        } else {
+            queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+        }
+    } else if (params.scope === "workspace" && params.workspaceId) {
+        queryClient.invalidateQueries({ queryKey: ["workspace-home", params.workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-home-files", params.workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-my-files", params.workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-starred-files", params.workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-shared-files", params.workspaceId] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-trashed-files", params.workspaceId] });
+    } else {
+        queryClient.invalidateQueries({ queryKey: ["files"] });
+        queryClient.invalidateQueries({ queryKey: ["my-files"] });
+        queryClient.invalidateQueries({ queryKey: ["starred-files"] });
+        queryClient.invalidateQueries({ queryKey: ["shared-files"] });
+        queryClient.invalidateQueries({ queryKey: ["trashed-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-home"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-home-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-my-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-starred-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-shared-files"] });
+        queryClient.invalidateQueries({ queryKey: ["workspace-trashed-files"] });
+    }
 };
 
 // ── Thumbnail helper ──────────────────────────────────────────────────────────
@@ -260,8 +298,12 @@ export const useUploadFile = () => {
             parentId?: string | null;
         }) =>
             uploadFile(file, { scope, projectId, workspaceId, parentId }),
-        onSuccess: () => {
-            invalidateStorageQueries(queryClient);
+        onSuccess: (_, variables) => {
+            invalidateStorageQueries(queryClient, {
+                scope: variables.scope,
+                projectId: variables.projectId,
+                workspaceId: variables.workspaceId,
+            });
         },
     });
 };
@@ -277,8 +319,12 @@ export const useCreateFolder = () => {
             parentId?: string | null;
         }) =>
             createFolder(name, { scope, projectId, workspaceId, parentId }),
-        onSuccess: () => {
-            invalidateStorageQueries(queryClient);
+        onSuccess: (_, variables) => {
+            invalidateStorageQueries(queryClient, {
+                scope: variables.scope,
+                projectId: variables.projectId,
+                workspaceId: variables.workspaceId,
+            });
         },
     });
 };
@@ -286,40 +332,63 @@ export const useCreateFolder = () => {
 export const useToggleStar = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (fileId: string) => toggleStar(fileId),
-        onSuccess: () => { invalidateStorageQueries(queryClient); },
+        mutationFn: (args: string | { fileId: string; scope?: StorageScope; projectId?: string; workspaceId?: string }) => {
+            const fileId = typeof args === "string" ? args : args.fileId;
+            return toggleStar(fileId);
+        },
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, typeof args === "string" ? undefined : args);
+        },
     });
 };
 
 export const useDeleteFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (fileId: string) => deleteFile(fileId),
-        onSuccess: () => { invalidateStorageQueries(queryClient); },
+        mutationFn: (args: string | { fileId: string; scope?: StorageScope; projectId?: string; workspaceId?: string }) => {
+            const fileId = typeof args === "string" ? args : args.fileId;
+            return deleteFile(fileId);
+        },
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, typeof args === "string" ? undefined : args);
+        },
     });
 };
 
 export const useRestoreFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (fileId: string) => restoreFile(fileId),
-        onSuccess: () => { invalidateStorageQueries(queryClient); },
+        mutationFn: (args: string | { fileId: string; scope?: StorageScope; projectId?: string; workspaceId?: string }) => {
+            const fileId = typeof args === "string" ? args : args.fileId;
+            return restoreFile(fileId);
+        },
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, typeof args === "string" ? undefined : args);
+        },
     });
 };
 
 export const usePermanentlyDeleteFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
-        onSuccess: () => { invalidateStorageQueries(queryClient); },
+        mutationFn: (args: string | { fileId: string; scope?: StorageScope; projectId?: string; workspaceId?: string }) => {
+            const fileId = typeof args === "string" ? args : args.fileId;
+            return permanentlyDeleteFile(fileId);
+        },
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, typeof args === "string" ? undefined : args);
+        },
     });
 };
 
 export const useRenameFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
-        onSuccess: () => { invalidateStorageQueries(queryClient); },
+        mutationFn: (args: { fileId: string; name: string; scope?: StorageScope; projectId?: string; workspaceId?: string }) =>
+            renameFile(args.fileId, args.name),
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, args);
+        },
     });
 };
 
@@ -373,10 +442,10 @@ export const checkDuplicate = (
 export const useMoveFile = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) =>
-            moveFile(fileId, parentId),
-        onSuccess: () => {
-            invalidateStorageQueries(queryClient);
+        mutationFn: (args: { fileId: string; parentId: string | null; scope?: StorageScope; projectId?: string; workspaceId?: string }) =>
+            moveFile(args.fileId, args.parentId),
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, args);
         },
     });
 };
@@ -419,10 +488,10 @@ export const updateFileMetadata = (fileId: string, metaData: Record<string, any>
 export const useUpdateFileMetadata = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ fileId, metaData }: { fileId: string; metaData: Record<string, any> }) =>
-            updateFileMetadata(fileId, metaData),
-        onSuccess: () => {
-            invalidateStorageQueries(queryClient);
+        mutationFn: (args: { fileId: string; metaData: Record<string, any>; scope?: StorageScope; projectId?: string; workspaceId?: string }) =>
+            updateFileMetadata(args.fileId, args.metaData),
+        onSuccess: (_, args) => {
+            invalidateStorageQueries(queryClient, args);
         },
     });
 };

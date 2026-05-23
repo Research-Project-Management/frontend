@@ -30,6 +30,42 @@ export default function ChatAi() {
     }
   }, [message]);
 
+  // Auto-focus on mount
+  useEffect(() => {
+    const t = setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Focus-on-type: Automatically focus the chat input when the user starts typing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      if (e.key.length === 1 && e.key !== " ") {
+        textareaRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const handleSend = () => {
     if (!message.trim()) return;
     const pid = selectedProject || projects?.[0]?._id;

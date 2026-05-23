@@ -41,11 +41,11 @@ export const fetchProjectOverview = (projectId: string) =>
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
-export const useProject = (projectId: string) =>
+export const useProject = (projectId: string, options?: { enabled?: boolean }) =>
   useQuery({
     queryKey: ["project", projectId],
     queryFn: () => fetchProject(projectId),
-    enabled: !!projectId,
+    enabled: (options?.enabled ?? true) && !!projectId,
   });
 
 export const useProjectOverview = (projectId: string) =>

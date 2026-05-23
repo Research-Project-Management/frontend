@@ -420,7 +420,6 @@ export const useTaskComments = (taskId: string | null) => {
     const refetchTaskComments = ({ taskId: emittedTaskId }: { taskId: string }) => {
       if (emittedTaskId !== taskId) return;
       queryClient.invalidateQueries({ queryKey: ["task-comments", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["task-comment-count", taskId] });
     };
 
     socket.on("task-comment:created", refetchTaskComments);
@@ -467,7 +466,6 @@ export const useCreateTaskComment = () => {
       apiPost<{ comment: TaskComment }>(`/api/tasks/${taskId}/comments`, { content }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", variables.taskId] });
-      queryClient.invalidateQueries({ queryKey: ["task-comment-count", variables.taskId] });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to create comment");
@@ -498,7 +496,6 @@ export const useDeleteTaskComment = () => {
       apiDelete(`/api/tasks/${taskId}/comments/${commentId}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", variables.taskId] });
-      queryClient.invalidateQueries({ queryKey: ["task-comment-count", variables.taskId] });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Failed to delete comment");

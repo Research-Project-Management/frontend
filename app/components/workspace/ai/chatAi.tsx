@@ -78,6 +78,51 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
     }
   }, [message]);
 
+  // Auto-focus on mount and active workspace / message change
+  useEffect(() => {
+    const t = setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, [initialProject, initialMessage]);
+
+  // Re-focus after streaming finishes
+  useEffect(() => {
+    if (!disabled) {
+      textareaRef.current?.focus();
+    }
+  }, [disabled]);
+
+  // Focus-on-type: Automatically focus the chat input when the user starts typing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (disabled) return;
+
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      if (e.key.length === 1 && e.key !== " ") {
+        textareaRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [disabled]);
+
   // Sync selectedProject when initialProject changes
   useEffect(() => {
     if (initialProject) {

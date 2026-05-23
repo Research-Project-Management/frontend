@@ -6,7 +6,6 @@ import {
   CloudIcon,
   Square3Stack3DIcon,
   InboxIcon,
-  SparklesIcon,
   MagnifyingGlassIcon,
   Cog6ToothIcon,
   BookOpenIcon,
@@ -52,7 +51,7 @@ import { Avatar } from "./Avatar";
 
 const sidebarItems = [
   { label: "Projects", icon: Square3Stack3DIcon, to: "" },
-  { label: "Flux AI", icon: SparklesIcon, to: "/ai" },
+  { label: "Flux AI", imageSrc: "/Chat.svg", to: "/ai" },
   { label: "Library", icon: BookOpenIcon, to: "/library" },
   { label: "Storage", icon: CloudIcon, to: "/storage" },
   { label: "Settings", icon: Cog6ToothIcon, to: "/settings" },
@@ -348,6 +347,7 @@ export function SideBar() {
           <ItemSideBar
             key={item.label}
             icon={item.icon}
+            imageSrc={item.imageSrc}
             label={item.label}
             to={item.to}
             instanceId={id}
@@ -360,11 +360,13 @@ export function SideBar() {
 
 export function ItemSideBar({
   icon: Icon,
+  imageSrc,
   label,
   to = "#",
   instanceId,
 }: {
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  imageSrc?: string;
   label: string;
   to?: string;
   instanceId: string;
@@ -418,12 +420,23 @@ export function ItemSideBar({
         {!isActive && (
           <div className="absolute inset-0 rounded-md bg-primary/5 opacity-0 transition-opacity group-hover:opacity-100" />
         )}
-        <Icon
-          className={cn(
-            "size-full p-2 relative z-10 transition-transform group-hover:scale-110",
-            isActive ? "text-primary" : "text-muted-foreground",
-          )}
-        />
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={label}
+            className={cn(
+              "relative z-10 size-full p-2 transition-all group-hover:scale-110 group-hover:grayscale-0",
+              isActive ? "grayscale-0" : "grayscale",
+            )}
+          />
+        ) : Icon ? (
+          <Icon
+            className={cn(
+              "size-full p-2 relative z-10 transition-transform group-hover:scale-110",
+              isActive ? "text-primary" : "text-muted-foreground",
+            )}
+          />
+        ) : null}
       </div>
       <span className="z-10 max-w-full whitespace-nowrap text-[11px] font-medium leading-tight">
         {label}

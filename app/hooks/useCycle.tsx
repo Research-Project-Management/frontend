@@ -40,11 +40,11 @@ export const deriveStatus = (cycle: { status?: string; startDate?: string | null
 /**
  * Hook useCycle: Unified Management for Cycles.
  */
-export function useCycle(projectId: string, workspaceId?: string) {
+export function useCycle(projectId: string, workspaceId?: string, options?: { skipProjectDetails?: boolean }) {
   const { data: cyclesData, isLoading: isCyclesLoading } = useProjectCycles(projectId);
   const cycles = useMemo(() => cyclesData?.cycles || [], [cyclesData]);
 
-  const { data: projectDetails } = useProjectDetails(projectId);
+  const { data: projectDetails } = useProjectDetails(projectId, { enabled: !options?.skipProjectDetails });
   const projectData = projectDetails?.project || projectDetails;
 
   const createMutation = useCreateCycle();

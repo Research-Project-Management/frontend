@@ -59,6 +59,13 @@ function buildTree(collections: Collection[]): TreeNode[] {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function branchNameMatches(node: TreeNode, query: string): boolean {
+  return (
+    node.name.toLowerCase().includes(query) ||
+    node.children.some((child) => branchNameMatches(child, query))
+  );
+}
+
 const isIndexedPaper = (paper: Paper) =>
   paper.ragStatus === "indexed" && Boolean(paper.ragDocId);
 
@@ -126,25 +133,39 @@ function CollectionTreeNode({
   const someSelected = selectedCount > 0 && !allSelected;
 
   const hasChildren = node.children.length > 0;
+  const childNameMatches = hasChildren && node.children.some((child) => branchNameMatches(child, query));
 
   // Filter: show if name matches, or has visible papers, or children may match
   const shouldShow =
     !query ||
     node.name.toLowerCase().includes(query) ||
     visiblePapers.length > 0 ||
+    childNameMatches ||
     hasChildren;
 
   if (!shouldShow) return null;
 
   const indent = depth * 16;
+  const forcedOpen = Boolean(query && hasChildren);
+  const showChildren = hasChildren && (expanded || forcedOpen);
+  const showContent = expanded || forcedOpen;
 
   return (
     <div>
       {/* Collection header row */}
       <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onToggleExpanded(node._id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleExpanded(node._id);
+          }
+        }}
         className={cn(
           "group flex h-9 items-center gap-2 rounded-md px-2 text-sm transition-colors cursor-pointer",
-          expanded ? "bg-muted/60" : "hover:bg-muted/50",
+          showContent ? "bg-muted/60" : "hover:bg-muted/50",
         )}
         style={{ paddingLeft: `${8 + indent}px` }}
       >
@@ -158,19 +179,22 @@ function CollectionTreeNode({
 
         <button
           type="button"
-          onClick={() => onToggleExpanded(node._id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpanded(node._id);
+          }}
           className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
         >
           {/* Caret */}
           <ChevronRight
             className={cn(
               "size-3.5 shrink-0 text-muted-foreground transition-transform",
-              expanded && "rotate-90",
+              showContent && "rotate-90",
             )}
           />
 
           {/* Folder icon */}
-          {expanded ? (
+          {showContent ? (
             <FolderOpen className="size-3.5 shrink-0" style={{ color: node.color || "#3370ff" }} />
           ) : (
             <Folder className="size-3.5 shrink-0" style={{ color: node.color || "#3370ff" }} />
@@ -185,7 +209,7 @@ function CollectionTreeNode({
       </div>
 
       {/* Expanded content */}
-      {expanded && (
+      {showContent && (
         <div>
           {/* Papers */}
           <div style={{ paddingLeft: `${indent + 32}px` }} className="border-l border-border/50 ml-4 pl-2 py-0.5">
@@ -237,7 +261,7 @@ function CollectionTreeNode({
           </div>
 
           {/* Subcollections (recursive) */}
-          {hasChildren && (
+          {showChildren && (
             <div>
               {node.children.map((child) => (
                 <CollectionTreeNode

@@ -22,7 +22,7 @@ import { ArrowUpLeft } from "lucide-react";
 
 export default function Menu() {
   const navigate = useNavigate();
-  const { editorRef, getEditorContent, compileRef } = usePageContext();
+  const { editorRef, getEditorContent, compileRef, currentPage } = usePageContext();
   const { compileStatus, pdfUrl } = useCompileStore();
   const { layout, setLayout } = useEditorSettingsStore();
 
@@ -64,7 +64,8 @@ export default function Menu() {
     if (!pdfUrl) return;
     const a = document.createElement("a");
     a.href = pdfUrl;
-    a.download = "output.pdf";
+    const title = currentPage?.title ? currentPage.title.replace(/\.tex$/, "") : "output";
+    a.download = `${title}.pdf`;
     a.click();
   };
 

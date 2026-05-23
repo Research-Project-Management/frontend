@@ -3,7 +3,6 @@ import {
   History,
   MessageSquareQuote,
   Search,
-  Sparkles,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import {
@@ -24,7 +23,7 @@ const sideBarItems = [
   { name: "Search", icon: Search },
   { name: "Review", icon: MessageSquareQuote },
   { name: "History", icon: History },
-  { name: "Flux AI", icon: Sparkles },
+  { name: "Flux AI", imageSrc: "/Chat.svg" },
 ] as const;
 
 type Tab = (typeof sideBarItems)[number]["name"];
@@ -100,7 +99,18 @@ export default function SideBar() {
                         : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
                     )}
                   >
-                    <item.icon className="size-4" strokeWidth={1.8} />
+                    {"imageSrc" in item ? (
+                      <img
+                        src={item.imageSrc}
+                        alt={item.name}
+                        className={cn(
+                          "size-4 transition-all hover:grayscale-0 hover:opacity-100",
+                          isOpen ? "grayscale-0 opacity-100" : "grayscale opacity-60",
+                        )}
+                      />
+                    ) : (
+                      <item.icon className="size-4" strokeWidth={1.8} />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{item.name}</TooltipContent>

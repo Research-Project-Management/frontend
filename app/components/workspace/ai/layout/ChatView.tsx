@@ -897,6 +897,9 @@ export default function ChatView() {
                     widgets={buildResponseWidgetsFromActions(activeActions)}
                   />
                 )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

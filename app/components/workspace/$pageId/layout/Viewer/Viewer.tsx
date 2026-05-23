@@ -940,7 +940,8 @@ export default function Viewer() {
   const handleDownload = () => {
     if (!pdfUrl || !downloadRef.current) return;
     downloadRef.current.href = pdfUrl;
-    downloadRef.current.download = "output.pdf";
+    const title = currentPage?.title ? currentPage.title.replace(/\.tex$/, "") : "output";
+    downloadRef.current.download = `${title}.pdf`;
     downloadRef.current.click();
   };
 

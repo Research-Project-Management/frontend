@@ -92,7 +92,11 @@ export default function AiEditSuggestionCard({
   onRegenerate,
 }: AiEditSuggestionCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const { edits, explanation, intent } = editResponse;
+  const {
+    explanation = "Flux AI did not return any editable changes.",
+    intent,
+  } = editResponse ?? {};
+  const edits = Array.isArray(editResponse?.edits) ? editResponse.edits : [];
 
   const isNoChange = intent === "no_change" || edits.length === 0;
   const editCount = edits.length;

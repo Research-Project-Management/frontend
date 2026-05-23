@@ -50,9 +50,18 @@ interface ChatAiProps {
   disabled?: boolean;
   initialProject?: string;
   initialMessage?: string;
+  initialAgent?: AgentId | null;
+  initialWebSearch?: boolean;
 }
 
-export default function ChatAi({ onSend, disabled, initialProject, initialMessage }: ChatAiProps) {
+export default function ChatAi({
+  onSend,
+  disabled,
+  initialProject,
+  initialMessage,
+  initialAgent,
+  initialWebSearch,
+}: ChatAiProps) {
   const { workspaceId } = useParams();
   const { workspace } = useWorkspace(workspaceId!);
   const { projects, isLoading } = useProjects();
@@ -85,6 +94,18 @@ export default function ChatAi({ onSend, disabled, initialProject, initialMessag
     }, 100);
     return () => clearTimeout(t);
   }, [initialProject, initialMessage]);
+
+  useEffect(() => {
+    setMessage(initialMessage || "");
+  }, [initialMessage]);
+
+  useEffect(() => {
+    setMentionedAgent(initialAgent ?? null);
+  }, [initialAgent]);
+
+  useEffect(() => {
+    setWebSearch(Boolean(initialWebSearch));
+  }, [initialWebSearch]);
 
   // Re-focus after streaming finishes
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { useCreatePage } from "~/query/page";
 import { useProjects } from "~/hooks/useWorkspace";
+import { useAuth } from "~/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -41,9 +42,15 @@ const TEMPLATES = [
     content: `\\documentclass{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
+\\usepackage{hyperref}
+\\hypersetup{
+  pdftitle={Untitled},
+  pdfauthor={Author Name},
+  pdfcreator={Flux LaTeX Editor}
+}
 
 \\title{Untitled}
-\\author{}
+\\author{Author Name}
 \\date{\\today}
 
 \\begin{document}
@@ -65,9 +72,14 @@ const TEMPLATES = [
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amsfonts,amssymb}
 \\usepackage{graphicx}
-\\usepackage{hyperref}
 \\usepackage{geometry}
 \\geometry{margin=2.5cm}
+\\usepackage{hyperref}
+\\hypersetup{
+  pdftitle={Article Title},
+  pdfauthor={Author Name},
+  pdfcreator={Flux LaTeX Editor}
+}
 
 \\title{Article Title}
 \\author{Author Name}
@@ -107,9 +119,14 @@ const TEMPLATES = [
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amsfonts,amssymb}
 \\usepackage{graphicx}
-\\usepackage{hyperref}
 \\usepackage{geometry}
 \\geometry{margin=2.5cm}
+\\usepackage{hyperref}
+\\hypersetup{
+  pdftitle={Report Title},
+  pdfauthor={Author Name},
+  pdfcreator={Flux LaTeX Editor}
+}
 
 \\title{Report Title}
 \\author{Author Name}
@@ -144,6 +161,11 @@ const TEMPLATES = [
 \\usepackage[utf8]{inputenc}
 \\usepackage{amsmath,amsfonts}
 \\usepackage{graphicx}
+\\hypersetup{
+  pdftitle={Presentation Title},
+  pdfauthor={Author Name},
+  pdfcreator={Flux LaTeX Editor}
+}
 
 \\usetheme{Madrid}
 \\usecolortheme{default}
@@ -204,16 +226,39 @@ export default function CreatePageDialog({
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>("blank");
 
   const { projects, isLoading: isLoadingProjects } = useProjects();
+  const { user } = useAuth();
   const createPageMutation = useCreatePage();
   const navigate = useNavigate();
 
   const handleCreate = () => {
     if (!title.trim() || !selectedProjectId) return;
     const template = TEMPLATES.find((t) => t.id === selectedTemplate);
-    const content =
-      template?.content
-        .replace("Untitled", title.trim())
-        .replace(/(\\title\{)([^}]*)/, `$1${title.trim()}`) ?? "";
+    const authorName = user?.name || "Author Name";
+    const finalTitle = title.trim();
+
+    let content = template?.content ?? "";
+
+    // Replace PDF title in hypersetup and document title
+    if (selectedTemplate === "blank") {
+      content = content
+        .replace(/pdftitle=\{Untitled\}/g, `pdftitle={${finalTitle}}`)
+        .replace(/\\title\{Untitled\}/g, `\\title{${finalTitle}}`);
+    } else if (selectedTemplate === "article") {
+      content = content
+        .replace(/pdftitle=\{Article Title\}/g, `pdftitle={${finalTitle}}`)
+        .replace(/\\title\{Article Title\}/g, `\\title{${finalTitle}}`);
+    } else if (selectedTemplate === "report") {
+      content = content
+        .replace(/pdftitle=\{Report Title\}/g, `pdftitle={${finalTitle}}`)
+        .replace(/\\title\{Report Title\}/g, `\\title{${finalTitle}}`);
+    } else if (selectedTemplate === "beamer") {
+      content = content
+        .replace(/pdftitle=\{Presentation Title\}/g, `pdftitle={${finalTitle}}`)
+        .replace(/\\title\{Presentation Title\}/g, `\\title{${finalTitle}}`);
+    }
+
+    // Replace author name globally (in both \hypersetup and \author{})
+    content = content.replace(/Author Name/g, authorName);
 
     createPageMutation.mutate(
       {

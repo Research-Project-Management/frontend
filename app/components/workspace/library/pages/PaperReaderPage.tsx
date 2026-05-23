@@ -240,10 +240,10 @@ export default function PaperReaderPage() {
         </div>
       </header>
 
-      {/* 3-Column Layout Workspace */}
-      <div className="flex-1 flex min-h-0 overflow-hidden p-3 gap-3 bg-[#f8f9fa] dark:bg-zinc-950">
+      {/* Seamless 3-Column Layout Workspace */}
+      <div className="flex-1 flex min-h-0 overflow-hidden bg-white dark:bg-zinc-950 border-t border-[#dadce0] dark:border-zinc-800">
         {/* Column 1: PDF Viewer (Flexible width) */}
-        <div className="flex-1 min-w-0 h-full flex flex-col bg-white dark:bg-zinc-900 border border-[#dadce0] dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+        <div className="flex-1 min-w-0 h-full flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
           {isLoadingPapers ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#f1f3f4] dark:bg-zinc-900">
               <Loader2 className="size-6 animate-spin text-[#3370ff]/60" />
@@ -279,22 +279,22 @@ export default function PaperReaderPage() {
             {/* Drag Handle */}
             <div
               className={cn(
-                "absolute top-0 left-[-8px] w-4 h-full cursor-col-resize z-50 group flex items-center justify-center select-none touch-none",
+                "absolute top-0 left-[-4px] w-2 h-full cursor-col-resize z-50 group flex items-center justify-center select-none touch-none",
                 activeResize === "chat" && "active-drag"
               )}
               onMouseDown={handleChatMouseDown}
             >
               <div
                 className={cn(
-                  "w-[2px] rounded-full transition-all duration-200 ease-out",
+                  "w-[2px] h-full transition-all duration-200 ease-out",
                   activeResize === "chat"
-                    ? "h-full bg-[#3370ff]"
-                    : "h-6 bg-[#dadce0] dark:bg-zinc-800 group-hover:h-full group-hover:bg-[#3370ff]"
+                    ? "bg-[#3370ff]"
+                    : "bg-transparent group-hover:bg-[#3370ff]/30"
                 )}
               />
             </div>
             {/* Real Panel */}
-            <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900 border border-[#dadce0] dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+            <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900 border-l border-[#dadce0] dark:border-zinc-800 overflow-hidden">
               {isLoadingPapers ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#f8f9fa] dark:bg-zinc-950">
                   <Loader2 className="size-6 animate-spin text-[#3370ff]/60" />
@@ -336,27 +336,29 @@ export default function PaperReaderPage() {
             {/* Drag Handle */}
             <div
               className={cn(
-                "absolute top-0 left-[-8px] w-4 h-full cursor-col-resize z-50 group flex items-center justify-center select-none touch-none",
+                "absolute top-0 left-[-4px] w-2 h-full cursor-col-resize z-50 group flex items-center justify-center select-none touch-none",
                 activeResize === "metadata" && "active-drag"
               )}
               onMouseDown={handleMetadataMouseDown}
             >
               <div
                 className={cn(
-                  "w-[2px] rounded-full transition-all duration-200 ease-out",
+                  "w-[2px] h-full transition-all duration-200 ease-out",
                   activeResize === "metadata"
-                    ? "h-full bg-[#3370ff]"
-                    : "h-6 bg-[#dadce0] dark:bg-zinc-800 group-hover:h-full group-hover:bg-[#3370ff]"
+                    ? "bg-[#3370ff]"
+                    : "bg-transparent group-hover:bg-[#3370ff]/30"
                 )}
               />
             </div>
             {/* Real Panel */}
-            <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900 border border-[#dadce0] dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+            <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900 border-l border-[#dadce0] dark:border-zinc-800 overflow-hidden">
               <PaperDetailPanel
                 paper={paper}
                 collection={paperCollection}
                 workspaceId={workspaceId}
                 className="w-full border-l-0 bg-transparent"
+                showOpenReader={false}
+                showTitle={false}
               />
             </div>
           </div>

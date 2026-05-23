@@ -305,15 +305,6 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
         )}
       </div>
 
-      {/* Status bar */}
-      {numPages > 0 && (
-        <div className="h-6 shrink-0 border-t border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900 flex items-center justify-between px-4 text-[10px] text-[#5f6368] dark:text-zinc-400 select-none">
-          <span className="font-medium truncate pr-4">{filename}</span>
-          <span className="font-mono tabular-nums">
-            {visiblePage} / {numPages}
-          </span>
-        </div>
-      )}
     </div>
   );
 }

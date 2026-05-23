@@ -10,12 +10,14 @@ export function PaperTableRow({
   onDelete,
   isSelected,
   onSelect,
+  showCollection = true,
 }: {
   paper: Paper;
   collection: Collection | null;
   onDelete: (id: string) => void;
   isSelected: boolean;
   onSelect: (p: Paper) => void;
+  showCollection?: boolean;
 }) {
   const { workspaceId: workspaceUrl } = useParams();
   const navigate = useNavigate();
@@ -40,7 +42,7 @@ export function PaperTableRow({
           : "hover:bg-slate-50/80 border-l-[3px] border-l-transparent",
       )}
     >
-      <td className="w-9 pl-4 pr-1 py-3.5 align-middle text-center select-none">
+      <td className="w-14 pl-4 pr-1 py-3.5 align-middle text-center select-none">
         <div className={cn(
           "flex size-7 items-center justify-center rounded-md transition-all duration-200",
           isSelected ? "bg-primary/10" : "bg-zinc-100 group-hover:bg-primary/10"
@@ -88,22 +90,24 @@ export function PaperTableRow({
         </span>
       </td>
 
-      <td className="py-3.5 pr-2 align-middle w-[120px] overflow-hidden select-none">
-        {collection ? (
-          <span
-            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md font-semibold max-w-full overflow-hidden border transition-all duration-200"
-            style={{
-              backgroundColor: `${collection.color || "#3370ff"}0a`,
-              color: collection.color || "#3370ff",
-              borderColor: `${collection.color || "#3370ff"}1e`,
-            }}
-          >
-            <span className="truncate">{collection.name}</span>
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground/30 select-none">—</span>
-        )}
-      </td>
+      {showCollection && (
+        <td className="py-3.5 pr-2 align-middle w-[120px] overflow-hidden select-none">
+          {collection ? (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md font-semibold max-w-full overflow-hidden border transition-all duration-200"
+              style={{
+                backgroundColor: `${collection.color || "#3370ff"}0a`,
+                color: collection.color || "#3370ff",
+                borderColor: `${collection.color || "#3370ff"}1e`,
+              }}
+            >
+              <span className="truncate">{collection.name}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground/30 select-none">—</span>
+          )}
+        </td>
+      )}
 
       <td className="py-3.5 pr-4 align-middle w-[60px] select-none">
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">

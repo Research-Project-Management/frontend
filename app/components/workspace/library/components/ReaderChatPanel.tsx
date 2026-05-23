@@ -449,7 +449,7 @@ export default function ReaderChatPanel({
               Flux AI
             </span>
             <span className="text-[10px] text-[#5f6368] dark:text-zinc-400 truncate max-w-48 mt-0.5">
-              {paperTitle}
+              Document Assistant
             </span>
           </div>
         </div>

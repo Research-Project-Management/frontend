@@ -113,11 +113,15 @@ export function PaperDetailPanel({
   collection,
   workspaceId,
   className,
+  showOpenReader = true,
+  showTitle = true,
 }: {
   paper: Paper;
   collection: Collection | null;
   workspaceId: string;
   className?: string;
+  showOpenReader?: boolean;
+  showTitle?: boolean;
 }) {
   const { workspaceId: workspaceUrl } = useParams();
   const resolvedUrl = paper.fileUrl?.startsWith("/api/files/")
@@ -335,7 +339,7 @@ export function PaperDetailPanel({
       {/* Header Title Section */}
       <div className="px-4 pt-4 pb-3 border-b border-border bg-background/20">
         <p className="text-sm font-semibold text-foreground leading-snug">
-          {paper.title}
+          {showTitle ? paper.title : "Document Details"}
         </p>
         <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-1.5">
@@ -878,7 +882,7 @@ export function PaperDetailPanel({
       )}
 
       {/* Open PDF Footer Button */}
-      {resolvedUrl && (
+      {showOpenReader && resolvedUrl && (
         <div className="px-4 pb-4 pt-2 border-t border-border shrink-0 bg-background/20 flex gap-2">
           <Link
             to={`/${workspaceUrl}/library/papers/${paper._id}/reader`}

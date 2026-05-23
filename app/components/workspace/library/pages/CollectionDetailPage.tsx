@@ -210,16 +210,16 @@ export default function CollectionDetailPage() {
           ) : (
             <table className="w-full text-sm border-collapse table-fixed select-none">
               <colgroup>
-                <col className="w-9" />
+                <col style={{ width: "56px" }} />
                 <col />
-                <col className="w-[200px]" />
-                <col className="w-[60px]" />
-                <col className="w-[150px]" />
-                <col className="w-[60px]" />
+                <col style={{ width: "200px" }} />
+                <col style={{ width: "60px" }} />
+                <col style={{ width: "150px" }} />
+                <col style={{ width: "60px" }} />
               </colgroup>
               <thead className="sticky top-0 z-10 select-none">
                 <tr className="bg-zinc-50 border-b border-border/60">
-                  <th className="w-9 py-3 pl-4 pr-1" />
+                  <th style={{ width: "56px" }} className="py-3 pl-4 pr-1" />
                   <th className="text-left py-3 pr-4 text-[10px] font-bold uppercase tracking-wider text-[#5f6368]/90">
                     Title
                   </th>
@@ -244,6 +244,7 @@ export default function CollectionDetailPage() {
                     isSelected={selectedPaperId === paper._id}
                     onSelect={(p) => setSelectedPaperId(p._id)}
                     onDelete={handleDeletePaper}
+                    showCollection={false}
                   />
                 ))}
               </tbody>

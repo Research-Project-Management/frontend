@@ -210,19 +210,7 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
   const pageScale = fitWidth ? undefined : zoom;
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full bg-muted/45 overflow-hidden">
-      <PdfViewerToolbar
-        pageNumber={visiblePage}
-        numPages={numPages || null}
-        zoom={zoom}
-        onPageChange={scrollToPage}
-        onZoomChange={(z) => { setZoom(z); setFitWidth(false); }}
-        onFitWidth={() => setFitWidth(true)}
-        downloadUrl={blobUrl || url}
-        filename={filename}
-        loading={loading}
-      />
-
+    <div className="relative flex-1 flex flex-col min-w-0 h-full bg-muted/45 overflow-hidden">
       {/* Scrollable PDF area */}
       <div
         ref={scrollContainerRef}
@@ -235,7 +223,7 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
             <AlertTriangle className="size-9 text-destructive" />
             <p className="text-sm font-semibold text-foreground">{error}</p>
             <p className="text-xs text-muted-foreground">
-              Download the paper using the toolbar to view in an external reader.
+              Download the paper from the reader header to view it in an external reader.
             </p>
           </div>
         ) : !blobUrl ? (
@@ -324,6 +312,17 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
         )}
       </div>
 
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-40 flex justify-center px-4">
+        <PdfViewerToolbar
+          pageNumber={visiblePage}
+          numPages={numPages || null}
+          zoom={zoom}
+          onPageChange={scrollToPage}
+          onZoomChange={(z) => { setZoom(z); setFitWidth(false); }}
+          onFitWidth={() => setFitWidth(true)}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 }

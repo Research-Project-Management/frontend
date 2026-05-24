@@ -11,6 +11,7 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useDocumentTitle } from "~/hooks";
 
 export default function WorkspaceSharedPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -18,6 +19,8 @@ export default function WorkspaceSharedPage() {
     workspaceUrl!,
   );
   const workspaceId = workspace?._id;
+
+  useDocumentTitle(workspace?.name ? `Shared - ${workspace.name}` : "Shared");
 
   const { data, isLoading: isFilesLoading } = useQuery({
     queryKey: ["workspace-shared-files", workspaceId],

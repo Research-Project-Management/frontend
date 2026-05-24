@@ -33,7 +33,9 @@ import Stickies from "./Sections/Stickies";
 import { useUserStore } from "~/stores/user";
 import { format } from "date-fns";
 import useAuth from "~/hooks/useAuth";
+import { useWorkspace, useDocumentTitle } from "~/hooks";
 import { Skeleton } from "~/components/ui/skeleton";
+
 
 // ─── Section registry ───────────────────────────────────────────────────────
 
@@ -156,6 +158,9 @@ function SortableItem({
 // ─── Main dashboard ──────────────────────────────────────────────────────────
 
 export default function HomeDashboard() {
+  const { workspace } = useWorkspace();
+  useDocumentTitle(workspace?.name ? `${workspace.name} - Home` : "Home");
+
   const user = useUserStore((s) => s.user);
   const [config, setConfig] = useState<SectionConfig[]>(loadConfig);
   const [settingsOpen, setSettingsOpen] = useState(false);

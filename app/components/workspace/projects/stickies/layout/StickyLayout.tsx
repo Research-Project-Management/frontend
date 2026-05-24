@@ -6,7 +6,7 @@ import { useSticky } from "~/hooks/useSticky";
 import { useLabelsQuery } from "~/query/label";
 import { Badge } from "~/components/ui/badge";
 import { Layers2, Loader2, StickyNote as StickyNoteIcon, X } from "lucide-react";
-import { useProjects } from "~/hooks/useWorkspace";
+import { useProjects, useWorkspace, useDocumentTitle } from "~/hooks";
 import {
   DndContext,
   DragOverlay,
@@ -37,10 +37,17 @@ interface StickyLayoutProps {
 export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps) {
   const { workspaceId, projectId: routeProjectId } = useParams();
   const { projects } = useProjects();
+  const { workspace } = useWorkspace();
   const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === routeProjectId);
   const resolvedProjectId = currentProject?._id || routeProjectId || "";
   const isProjectScope = scope === "project";
   const [searchQuery, setSearchQuery] = useState("");
+
+  const tabTitle = isProjectScope
+    ? `Notes${currentProject?.name ? ` - ${currentProject.name}` : ""}`
+    : `Stickies${workspace?.name ? ` - ${workspace.name}` : ""}`;
+
+  useDocumentTitle(tabTitle);
   const [savingStatus, setSavingStatus] = useState<
     "saved" | "saving" | "error"
   >("saved");

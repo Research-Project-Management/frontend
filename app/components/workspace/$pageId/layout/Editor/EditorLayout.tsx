@@ -8,6 +8,7 @@ import TabBar from "./TabBar";
 import type { editor } from "monaco-editor";
 import { usePageContext, type AssetInfo } from "../PageContext";
 import { useSocketRoom } from "~/hooks/useSocketRoom";
+import { useDocumentTitle } from "~/hooks";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
@@ -131,6 +132,14 @@ export default function EditorLayout() {
   // The page to render: only when a child file is active. When no tab is open,
   // displayPage is null and EditorLayout shows the EmptyEditorState.
   const displayPage = hasChildFile ? activePage : null;
+
+  const editorTitle = parentPage
+    ? displayPage
+      ? `${displayPage.title} - ${parentPage.title}`
+      : parentPage.title
+    : "";
+
+  useDocumentTitle(editorTitle);
 
   const { openTab, closeAllForProject } = useEditorTabsStore();
   // Track whether we've already fired the initial auto-compile for this root page

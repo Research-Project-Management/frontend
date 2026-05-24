@@ -5,9 +5,17 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useProject } from "~/query/project";
+import { useDocumentTitle } from "~/hooks";
 
 export default function MyFilesPage() {
   const { projectId } = useParams();
+  const { data: projectData } = useProject(projectId!, { enabled: !!projectId });
+  useDocumentTitle(
+    projectData?.project?.name
+      ? `My Files - ${projectData.project.name}`
+      : "My Files"
+  );
 
   const { data, isLoading: isFilesLoading } = useQuery({
     queryKey: ["my-files", projectId],

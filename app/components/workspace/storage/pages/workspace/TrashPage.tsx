@@ -11,6 +11,7 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useDocumentTitle } from "~/hooks";
 
 export default function WorkspaceTrashPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -18,6 +19,8 @@ export default function WorkspaceTrashPage() {
     workspaceUrl!,
   );
   const workspaceId = workspace?._id;
+
+  useDocumentTitle(workspace?.name ? `Trash - ${workspace.name}` : "Trash");
 
   const { data, isLoading: isFilesLoading } = useQuery({
     queryKey: ["workspace-trashed-files", workspaceId],

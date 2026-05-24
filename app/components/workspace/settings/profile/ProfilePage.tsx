@@ -12,10 +12,13 @@ import { useUpload } from "~/hooks/useUpload";
 import { Avatar } from "../../layout/Avatar";
 import { apiPut } from "~/lib/api";
 import { changePassword } from "~/query/user";
+import { useDocumentTitle } from "~/hooks";
 
 export default function ProfilePage() {
   const { user, isLoading: isLoadingUser } = useAuth();
   const queryClient = useQueryClient();
+
+  useDocumentTitle("Profile - Settings · Flux");
 
   const [name, setName] = useState(user?.name || "");
   const [avatar, setAvatar] = useState(user?.avatar || "");

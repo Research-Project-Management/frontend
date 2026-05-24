@@ -35,13 +35,20 @@ export type PdfMetadata = {
   copyright?: string;
   year?: number | string;
   authors?: string[];
+  editors?: string[];
   type?: string;
+  itemType?: string;
   url?: string;
   crossrefEnriched?: boolean;
   extraFields?: Record<string, string>;
   journalAbbr?: string;
   shortTitle?: string;
   rights?: string;
+  license?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
+  place?: string;
+  keywordsList?: string[];
 };
 
 const DOI_REGEX = /\b(10\.\d{4,}(?:\.\d+)*\/[^\s<>"{}|\\^`[\]]+)/g;
@@ -141,23 +148,29 @@ export function mergeCrossrefMetadata(base: PdfMetadata, work: CrossrefWork): Pd
     title: base.title || work.title || base.title,
     author: base.author || work.authors?.join(", ") || base.author,
     authors: work.authors?.length ? work.authors : base.authors,
+    editors: work.editors?.length ? work.editors : base.editors,
     doi: base.doi || work.doi || base.doi,
     journal: base.journal || work.journal || base.journal,
+    publicationTitle: base.publicationTitle || work.publicationTitle || work.journal || base.publicationTitle,
+    publicationDate: base.publicationDate || work.publicationDate || (work.year ? String(work.year) : undefined) || base.publicationDate,
     publisher: base.publisher || work.publisher || base.publisher,
+    place: base.place || work.place || base.place,
     issn: base.issn || work.issn || base.issn,
     isbn: base.isbn || work.isbn || base.isbn,
     volume: base.volume || work.volume || base.volume,
     issue: base.issue || work.issue || base.issue,
     pages: base.pages || work.pages || base.pages,
     year: base.year || work.year || base.year,
-    publicationDate: base.publicationDate || (work.year ? String(work.year) : undefined) || base.publicationDate,
     abstract: base.abstract || work.abstract || base.abstract,
     type: base.type || work.type || base.type,
+    itemType: base.itemType || work.itemType || work.type || base.itemType,
     url: base.url || work.url || base.url,
     language: base.language || work.language || base.language,
     journalAbbr: base.journalAbbr || work.journalAbbr || base.journalAbbr,
     shortTitle: base.shortTitle || work.shortTitle || base.shortTitle,
     rights: base.copyright || work.rights || base.copyright,
+    license: base.license || work.license || work.rights || base.license,
+    keywordsList: work.keywords?.length ? work.keywords : base.keywordsList,
     crossrefEnriched: true,
   };
 }
@@ -304,4 +317,3 @@ export function parsePdfDate(dateStr: string): string {
   
   return `${year}-${month}-${day}`;
 }
-

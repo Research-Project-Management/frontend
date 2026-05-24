@@ -38,6 +38,7 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import { Separator } from "~/components/ui/separator";
+import { useDocumentTitle } from "~/hooks";
 
 type Permission = {
   resource: string;
@@ -70,6 +71,7 @@ const ACTIONS = ["create", "read", "update", "delete", "manage", "invite"];
 export default function RolesPage() {
   const { workspaceId } = useParams();
   const { workspace } = useWorkspace(workspaceId!);
+  useDocumentTitle(workspace?.name ? `Roles - ${workspace.name} · Flux` : "Roles · Flux");
   const { data, isLoading } = useRoles(workspace?._id || "");
   const queryClient = useQueryClient();
 

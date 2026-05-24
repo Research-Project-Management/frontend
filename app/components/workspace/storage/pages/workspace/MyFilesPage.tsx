@@ -11,6 +11,7 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useDocumentTitle } from "~/hooks";
 
 export default function WorkspaceMyFilesPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -23,6 +24,8 @@ export default function WorkspaceMyFilesPage() {
   );
   const workspaceId = workspace?._id;
   const canUpload = !workspace?.yourRole || workspace.yourRole !== "viewer";
+
+  useDocumentTitle(workspace?.name ? `My Files - ${workspace.name}` : "My Files");
 
   const { data, isLoading: isFilesLoading } = useQuery({
     queryKey: ["workspace-my-files", workspaceId, currentFolder],

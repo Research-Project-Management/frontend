@@ -12,6 +12,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useDocumentTitle } from "~/hooks";
 
 export default function WorkspaceHomePage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -25,6 +26,8 @@ export default function WorkspaceHomePage() {
   const workspaceId = workspace?._id;
   // Allow all non-viewer members to upload at workspace level
   const canUpload = !!workspace && workspace.yourRole !== "viewer";
+
+  useDocumentTitle(workspace?.name ? `Storage - ${workspace.name}` : "Storage");
 
   const { data, isLoading: isHomeLoading } = useQuery({
     queryKey: ["workspace-home-files", workspaceId, currentFolder],

@@ -9,7 +9,7 @@ import GeneralForm from "./sections/GeneralForm";
 import DangerZone from "./sections/DangerZone";
 import DeleteModal from "./components/deleteModal";
 
-import { useWorkspace } from "~/hooks";
+import { useWorkspace, useDocumentTitle } from "~/hooks";
 import {
   useUpdateWorkspace,
   useDeleteWorkspace,
@@ -30,6 +30,9 @@ export default function GeneralPage() {
 
   const updateMutation = useUpdateWorkspace();
   const deleteMutation = useDeleteWorkspace();
+
+  const wsName = workspace?.workspace?.name;
+  useDocumentTitle(wsName ? `Settings - ${wsName} · Flux` : "Settings · Flux");
 
   useEffect(() => {
     if (workspace?.workspace?.avatar) {

@@ -24,6 +24,7 @@ import { useLabelsQuery } from "~/query/label";
 import { useProjectDetails } from "~/query/project";
 import { useProjectCycles } from "~/query/cycle";
 import { useProjects } from "~/hooks/useWorkspace";
+import { useDocumentTitle } from "~/hooks";
 import type {
   Task as TaskType,
   Column,
@@ -59,6 +60,12 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   const { data: cyclesData } = useProjectCycles(projectId!);
   const { data: taskLabels = [] } = useLabelsQuery(workspaceId || "", "task", projectId);
   const currentCycle = cyclesData?.cycles.find(c => c._id === cycleId);
+
+  const pageTitle = cycleId && currentCycle
+    ? `${currentCycle.name} - ${projectData?.project?.name || "Project"}`
+    : `Tasks${projectData?.project?.name ? ` - ${projectData.project.name}` : ""}`;
+
+  useDocumentTitle(pageTitle);
 
   const createTaskMutation = useCreateTask();
   const updateTaskMutation = useUpdateTask();

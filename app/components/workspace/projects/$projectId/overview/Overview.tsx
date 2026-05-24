@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router";
 import { useMemo, useState } from "react";
 import { useProjectOverview } from "~/query/project";
+import { useDocumentTitle } from "~/hooks";
 import {
   HardDrive,
   CalendarDays,
@@ -77,6 +78,10 @@ export default function ProjectOverview() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useProjectOverview(projectId!);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useDocumentTitle(
+    data?.project?.name ? `Overview - ${data.project.name}` : "Overview"
+  );
 
   const formatSize = useMemo(
     () => (bytes: number) => {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
 import { useProjects } from "~/hooks/useWorkspace";
+import { useDocumentTitle } from "~/hooks";
 import { useCycle, type DerivedStatus } from "~/hooks/useCycle";
 import { useLabels } from "~/hooks/useLabels";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -44,6 +45,10 @@ export function CycleLayout() {
     deriveStatus,
     checkParallelConflict,
   } = useCycle(projectId!, workspaceId);
+
+  useDocumentTitle(
+    projectData?.name ? `Cycles - ${projectData.name}` : "Cycles"
+  );
 
   const { workspaceLabels: allLabels } = useLabels(workspaceId!, "cycle", projectId);
 

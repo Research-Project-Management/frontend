@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useParams } from "react-router";
 import { useWorkspace } from "~/query/workspace";
+import { useDocumentTitle } from "~/hooks";
 import {
   useAllPapers,
   useCollections,
@@ -31,6 +32,8 @@ export default function LibraryHomePage() {
   const { workspaceId: workspaceUrl } = useParams();
   const { workspace } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?._id ?? "";
+
+  useDocumentTitle(workspace?.name ? `Library - ${workspace.name}` : "Library");
 
   const { data: papers, isLoading } = useAllPapers(workspaceId);
   const { data: collections } = useCollections(workspaceId);

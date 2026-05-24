@@ -11,6 +11,7 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useDocumentTitle } from "~/hooks";
 
 export default function WorkspaceStarredPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -18,6 +19,8 @@ export default function WorkspaceStarredPage() {
     workspaceUrl!,
   );
   const workspaceId = workspace?._id;
+
+  useDocumentTitle(workspace?.name ? `Starred - ${workspace.name}` : "Starred");
 
   const { data, isLoading: isFilesLoading } = useQuery({
     queryKey: ["workspace-starred-files", workspaceId],

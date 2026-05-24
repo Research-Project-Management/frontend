@@ -6,6 +6,7 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useDocumentTitle } from "~/hooks";
 
 export default function StoragePage() {
   const { projectId } = useParams();
@@ -14,6 +15,12 @@ export default function StoragePage() {
   const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
 
   const { data, isLoading: isFilesLoading } = useFiles(projectId!, currentFolder);
+
+  useDocumentTitle(
+    projectData?.project?.name
+      ? `Storage - ${projectData.project.name}`
+      : "Storage"
+  );
   const toggleStarMutation = useToggleStar();
   const deleteFileMutation = useDeleteFile();
   const canUpload = projectData?.yourRole !== "viewer";

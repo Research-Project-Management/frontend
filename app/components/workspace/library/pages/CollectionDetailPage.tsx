@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { useWorkspace } from "~/query/workspace";
+import { useDocumentTitle } from "~/hooks";
 import {
   useCollectionPapers,
   useAddPaper,
@@ -55,6 +56,10 @@ export default function CollectionDetailPage() {
   const collection = data?.collection;
   const papers = data?.papers ?? [];
   const selectedPaper = papers.find((p) => p._id === selectedPaperId) || null;
+
+  useDocumentTitle(
+    collection?.name ? `${collection.name} - Library` : "Library"
+  );
   
   const filtered = papers.filter(
     (p) =>

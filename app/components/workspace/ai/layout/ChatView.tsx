@@ -52,6 +52,7 @@ import {
 import { fetchCollectionPapers } from "~/query/library";
 import { useWorkspace } from "~/query/workspace";
 import { toast } from "sonner";
+import { useDocumentTitle } from "~/hooks";
 import { renderMarkdown } from "./renderMarkdown";
 import ChatAi from "../chatAi";
 import { ActionCardsGroup } from "../ActionCard";
@@ -554,6 +555,17 @@ export default function ChatView() {
   const [saveError, setSaveError] = useState(false);
   // projectId của session hiện tại — được đọc khi load history
   const [sessionProjectId, setSessionProjectId] = useState<string | undefined>(undefined);
+  const [sessionTitle, setSessionTitle] = useState("");
+
+  const chatTabTitle = chatId
+    ? sessionTitle
+      ? `${sessionTitle} - Flux AI`
+      : "Flux AI Chat"
+    : workspace?.name
+      ? `Flux AI Chat - ${workspace.name}`
+      : "Flux AI Chat";
+
+  useDocumentTitle(chatTabTitle);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef("");
@@ -590,6 +602,7 @@ export default function ChatView() {
       setSaveError(false);
       setFluxDataEnabled(false);
       setSessionProjectId(undefined);
+      setSessionTitle("");
       clearSources();
       abortRef.current?.abort();
       abortRef.current = null;
@@ -605,12 +618,15 @@ export default function ChatView() {
       location.state?.preloadedMessages;
     if (preloaded && preloaded.length > 0) {
       setMessages(preloaded);
+      const firstUserMsg = preloaded.find((m) => m.role === "user");
+      setSessionTitle(firstUserMsg?.content?.trim().slice(0, 60) || "New Chat");
       return;
     }
 
     setIsLoadingHistory(true);
     getChatSession(chatId)
       .then((session) => {
+        setSessionTitle(session.title || "Chat");
         setMessages(
           session.messages.map(({ role, content, sources, widgets }) => ({
             role,
@@ -765,6 +781,7 @@ export default function ChatView() {
                   ? enabledDocumentIds
                   : undefined,
             });
+            setSessionTitle(title);
             // replace: true so Back doesn't loop to the welcome screen
             navigate(`/${workspaceId}/ai/${session._id}`, {
               replace: true,

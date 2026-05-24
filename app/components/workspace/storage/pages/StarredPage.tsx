@@ -10,9 +10,17 @@ import Loading from "~/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
 import { downloadFileAsBlob } from "~/hooks/useBlobUrl";
+import { useProject } from "~/query/project";
+import { useDocumentTitle } from "~/hooks";
 
 export default function StarredPage() {
   const { projectId } = useParams();
+  const { data: projectData } = useProject(projectId!, { enabled: !!projectId });
+  useDocumentTitle(
+    projectData?.project?.name
+      ? `Starred - ${projectData.project.name}`
+      : "Starred"
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ["starred-files", projectId],

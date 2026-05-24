@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { useWorkspace } from "~/query/workspace";
+import { useDocumentTitle } from "~/hooks";
 import {
   reindexPaper,
   useAllPapers,
@@ -649,6 +650,10 @@ export default function PaperReaderPage() {
 
   const paper = papers?.find((p) => p._id === paperId) ?? null;
   const updatePaperTitle = useUpdatePaper(workspaceId, paper?.collection || "");
+
+  useDocumentTitle(
+    paper?.title ? `${paper.title} - Reader` : "Reader"
+  );
   const collectionMap = useMemo(
     () => Object.fromEntries((collections ?? []).map((collection) => [collection._id, collection])),
     [collections],

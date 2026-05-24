@@ -39,6 +39,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import TopBar from "../layout/TopBar";
 import DeleteModal from "../general/components/deleteModal";
+import { useDocumentTitle } from "~/hooks";
 
 export default function MemberPage() {
   const { workspaceId: workspaceUrl } = useParams();
@@ -52,6 +53,7 @@ export default function MemberPage() {
 
   // Fetch Workspace Data
   const { workspace, isLoading, yourRole } = useWorkspace(workspaceUrl!);
+  useDocumentTitle(workspace?.name ? `Members - ${workspace.name} · Flux` : "Members · Flux");
   const { data: rolesData } = useRoles(workspace?._id ?? "");
   const roles = Array.isArray(rolesData) ? rolesData : [];
   useSocketRoom("workspace", workspace?._id);

@@ -46,40 +46,22 @@ export default function PdfViewerToolbar({
   };
 
   return (
-    <div className="flex items-center justify-between border-b border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900 h-[53px] px-4 shrink-0 select-none">
-      {/* Left: Page navigation */}
-      <div className="flex items-center gap-1.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          disabled={pageNumber <= 1 || loading}
-          onClick={() => onPageChange(pageNumber - 1)}
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-
-        <div className="flex items-center gap-1">
-          <Input
-            key={pageNumber}
-            defaultValue={pageNumber}
-            onKeyDown={handlePageInput}
-            disabled={loading || !numPages}
-            className="h-8 w-11 text-center text-xs px-1 font-mono focus-visible:ring-1"
-          />
-          <span className="text-xs text-muted-foreground font-medium pr-1">
-            / {numPages ?? "—"}
-          </span>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          disabled={numPages ? pageNumber >= numPages : true || loading}
-          onClick={() => onPageChange(pageNumber + 1)}
-        >
-          <ChevronRight className="size-4" />
+    <div className="flex h-[53px] shrink-0 select-none items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur">
+      {/* Left: Download */}
+      <div className="flex min-w-[8rem] items-center gap-2">
+        {loading && (
+          <Loader2 className="mr-1 size-3.5 animate-spin text-muted-foreground" />
+        )}
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" asChild>
+          <a
+            href={downloadUrl}
+            download={filename}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Download className="size-3.5" />
+            <span className="hidden sm:inline">Download</span>
+          </a>
         </Button>
       </div>
 
@@ -96,7 +78,7 @@ export default function PdfViewerToolbar({
           <ZoomOut className="size-4" />
         </Button>
 
-        <span className="text-xs font-mono font-medium min-w-[3.5rem] text-center">
+        <span className="min-w-[3.5rem] text-center font-mono text-xs font-medium text-muted-foreground">
           {Math.round(zoom * 100)}%
         </span>
 
@@ -111,7 +93,7 @@ export default function PdfViewerToolbar({
           <ZoomIn className="size-4" />
         </Button>
 
-        <div className="h-4 w-px bg-border mx-1" />
+        <div className="mx-1 h-4 w-px bg-border" />
 
         <Button
           variant="ghost"
@@ -125,28 +107,42 @@ export default function PdfViewerToolbar({
         </Button>
       </div>
 
-      {/* Right: Info / Download */}
-      <div className="flex items-center gap-2">
-        {loading && (
-          <Loader2 className="size-3.5 animate-spin text-muted-foreground mr-1" />
-        )}
+      {/* Right: Page navigation */}
+      <div className="flex min-w-[8rem] items-center justify-end gap-1.5">
         <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs font-medium gap-1.5"
-          asChild
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          disabled={pageNumber <= 1 || loading}
+          onClick={() => onPageChange(pageNumber - 1)}
         >
-          <a
-            href={downloadUrl}
-            download={filename}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Download className="size-3.5" />
-            <span className="hidden sm:inline">Download</span>
-          </a>
+          <ChevronLeft className="size-4" />
+        </Button>
+
+        <div className="flex items-center gap-1">
+          <Input
+            key={pageNumber}
+            defaultValue={pageNumber}
+            onKeyDown={handlePageInput}
+            disabled={loading || !numPages}
+            className="h-8 w-11 px-1 text-center font-mono text-xs focus-visible:ring-1"
+          />
+          <span className="pr-1 text-xs font-medium text-muted-foreground">
+            / {numPages ?? "-"}
+          </span>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          disabled={numPages ? pageNumber >= numPages : true || loading}
+          onClick={() => onPageChange(pageNumber + 1)}
+        >
+          <ChevronRight className="size-4" />
         </Button>
       </div>
+
     </div>
   );
 }

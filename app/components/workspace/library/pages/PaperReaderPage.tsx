@@ -1,21 +1,500 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ChevronLeft, AlertTriangle, Loader2, MessageSquare, Info } from "lucide-react";
-import { useWorkspace } from "~/query/workspace";
-import { useAllPapers, reindexPaper, useCollections } from "~/query/library";
+import {
+  AlertTriangle,
+  BookOpen,
+  ChevronLeft,
+  Download,
+  ExternalLink,
+  FileText,
+  Info,
+  Loader2,
+  MessageSquare,
+  PanelRightClose,
+  PanelRightOpen,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  StickyNote,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import { API_URL, resolveFileUrl } from "~/lib/api";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
+import { useWorkspace } from "~/query/workspace";
+import {
+  reindexPaper,
+  useAllPapers,
+  useCollections,
+  useUpdatePaper,
+} from "~/query/library";
+import { resolveFileUrl } from "~/lib/api";
 import { cn } from "~/lib/utils";
+import type { Collection, Paper } from "~/types/library";
 import PdfViewer from "../components/PdfViewer";
 import ReaderChatPanel from "../components/ReaderChatPanel";
-import { PaperDetailPanel } from "../components/PaperDetailPanel";
 
-const MIN_CHAT_WIDTH = 280;
-const MAX_CHAT_WIDTH = 550;
-const MIN_METADATA_WIDTH = 260;
-const MAX_METADATA_WIDTH = 500;
+type ReaderPanel = "ai" | "details" | "notes";
+
+const MIN_PANEL_WIDTH = 320;
+const MAX_PANEL_WIDTH = 560;
+const DEFAULT_PANEL_WIDTH = 400;
+
+function formatSize(bytes: number): string {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  try {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function RagBadge({
+  status,
+  compact = false,
+}: {
+  status: Paper["ragStatus"];
+  compact?: boolean;
+}) {
+  const styles = {
+    indexed: "border-border bg-muted text-muted-foreground",
+    pending: "border-[#f9ab00]/25 bg-[#f9ab00]/10 text-[#9a6700]",
+    failed: "border-destructive/20 bg-destructive/10 text-destructive",
+    idle: "border-border bg-muted text-muted-foreground",
+  };
+
+  const label =
+    status === "indexed"
+      ? "Indexed"
+      : status === "pending"
+        ? "Indexing"
+        : status === "failed"
+          ? "Index failed"
+          : "Not indexed";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs font-semibold",
+        status === "pending" && "animate-pulse",
+        styles[status ?? "idle"],
+        compact && "h-5 px-1.5 text-[10px]",
+      )}
+    >
+      {status === "pending" ? <Loader2 className="size-3 animate-spin" /> : null}
+      {label}
+    </span>
+  );
+}
+
+function IconTooltip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function MetadataField({
+  label,
+  children,
+}: {
+  label: string;
+  children?: React.ReactNode;
+}) {
+  if (!children) return null;
+  return (
+    <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 border-b border-border/50 py-2.5 last:border-0">
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="min-w-0 text-xs leading-relaxed text-foreground/85">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+function ReaderDetails({
+  paper,
+  collection,
+}: {
+  paper: Paper;
+  collection: Collection | null;
+}) {
+  const fileType = paper.mimeType?.split("/")[1] ?? paper.mimeType;
+  const identifiers = [paper.doi, paper.issn, paper.isbn].filter(Boolean);
+
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4">
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold leading-snug text-foreground">
+            {paper.title}
+          </h2>
+          {paper.authors.length > 0 ? (
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {paper.authors.join(", ")}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <RagBadge status={paper.ragStatus} compact />
+          {paper.year ? (
+            <span className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {paper.year}
+            </span>
+          ) : null}
+          {fileType ? (
+            <span className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-mono uppercase text-muted-foreground">
+              {fileType}
+            </span>
+          ) : null}
+          {paper.size > 0 ? (
+            <span className="text-[10px] text-muted-foreground">
+              {formatSize(paper.size)}
+            </span>
+          ) : null}
+        </div>
+      </section>
+
+      <dl className="mt-5 border-y border-border">
+        <MetadataField label="Abstract">
+          {paper.abstract ? (
+            <p className="max-h-48 overflow-y-auto pr-1 text-xs leading-relaxed">
+              {paper.abstract}
+            </p>
+          ) : null}
+        </MetadataField>
+        <MetadataField label="Journal">
+          {paper.journal ? <span className="font-medium">{paper.journal}</span> : null}
+        </MetadataField>
+        <MetadataField label="Publisher">{paper.publisher}</MetadataField>
+        <MetadataField label="Volume">
+          {[paper.volume && `Vol. ${paper.volume}`, paper.issue && `No. ${paper.issue}`, paper.pages && `pp. ${paper.pages}`]
+            .filter(Boolean)
+            .join(", ")}
+        </MetadataField>
+        <MetadataField label="Collection">
+          {collection ? (
+            <span
+              className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-current/15 px-2 py-1 text-xs font-medium"
+              style={{
+                backgroundColor: `${collection.color || "#255fdc"}12`,
+                color: collection.color || "#255fdc",
+              }}
+            >
+              <BookOpen className="size-3 shrink-0" />
+              <span className="truncate">{collection.name}</span>
+            </span>
+          ) : null}
+        </MetadataField>
+        <MetadataField label="Identifiers">
+          {identifiers.length > 0 ? (
+            <div className="space-y-1 font-mono text-[11px] text-muted-foreground">
+              {paper.doi ? <div className="break-all">DOI {paper.doi}</div> : null}
+              {paper.issn ? <div>ISSN {paper.issn}</div> : null}
+              {paper.isbn ? <div>ISBN {paper.isbn}</div> : null}
+            </div>
+          ) : null}
+        </MetadataField>
+        <MetadataField label="Keywords">
+          {paper.keywords?.length ? (
+            <div className="flex flex-wrap gap-1">
+              {paper.keywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </MetadataField>
+        <MetadataField label="File">
+          {paper.filename ? (
+            <span className="block truncate font-mono text-[11px] text-muted-foreground" title={paper.filename}>
+              {paper.filename}
+            </span>
+          ) : null}
+        </MetadataField>
+        <MetadataField label="URL">
+          {paper.url ? (
+            <a
+              href={paper.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex max-w-full items-center gap-1 text-primary hover:underline"
+            >
+              <span className="truncate">{paper.url}</span>
+              <ExternalLink className="size-3 shrink-0" />
+            </a>
+          ) : null}
+        </MetadataField>
+      </dl>
+    </div>
+  );
+}
+
+function ReaderNotes({
+  paper,
+  workspaceId,
+}: {
+  paper: Paper;
+  workspaceId: string;
+}) {
+  const updatePaper = useUpdatePaper(workspaceId, paper.collection || "");
+  const [newNote, setNewNote] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+
+  useEffect(() => {
+    setNewNote("");
+    setEditingId(null);
+    setEditingText("");
+  }, [paper._id]);
+
+  const notes = paper.notes ?? [];
+
+  const saveNotes = useCallback(
+    (
+      nextNotes: Array<{
+        _id?: string;
+        content: string;
+        createdAt?: string;
+        updatedAt?: string;
+      }>,
+      successMessage: string,
+    ) => {
+      updatePaper.mutate(
+        { paperId: paper._id, notes: nextNotes },
+        { onSuccess: () => toast.success(successMessage) },
+      );
+    },
+    [paper._id, updatePaper],
+  );
+
+  const handleAddNote = () => {
+    const content = newNote.trim();
+    if (!content) return;
+    saveNotes(
+      [...notes.map(({ _id, content }) => ({ _id, content })), { content }],
+      "Note added",
+    );
+    setNewNote("");
+  };
+
+  const handleSaveEdit = () => {
+    const content = editingText.trim();
+    if (!editingId || !content) return;
+    saveNotes(
+      notes.map((note) =>
+        note._id === editingId
+          ? { _id: note._id, content }
+          : { _id: note._id, content: note.content },
+      ),
+      "Note updated",
+    );
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const handleDelete = (noteId: string) => {
+    if (!window.confirm("Delete this note?")) return;
+    saveNotes(
+      notes
+        .filter((note) => note._id !== noteId)
+        .map(({ _id, content }) => ({ _id, content })),
+      "Note deleted",
+    );
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border bg-background/80 p-4">
+        <div className="rounded-lg border border-border bg-card p-3">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            New note
+          </label>
+          <textarea
+            value={newNote}
+            onChange={(event) => setNewNote(event.target.value)}
+            placeholder="Capture a thought while reading..."
+            rows={3}
+            className="mt-2 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary"
+          />
+          <div className="mt-2 flex justify-end">
+            <Button
+              size="sm"
+              onClick={handleAddNote}
+              disabled={!newNote.trim() || updatePaper.isPending}
+            >
+              {updatePaper.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Add note
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {notes.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <div className="flex size-10 items-center justify-center rounded-lg border border-border bg-muted/50">
+              <StickyNote className="size-5 text-muted-foreground" />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-foreground">
+              No notes yet
+            </p>
+            <p className="mt-1 max-w-56 text-xs leading-relaxed text-muted-foreground">
+              Notes stay attached to this paper so you can return to the trail of thought.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notes.map((note) => (
+              <article
+                key={note._id}
+                className="group rounded-lg border border-border bg-card p-3"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {formatDate(note.updatedAt || note.createdAt)}
+                  </span>
+                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(note._id);
+                        setEditingText(note.content);
+                      }}
+                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                      title="Edit note"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(note._id)}
+                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      title="Delete note"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {editingId === note._id ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editingText}
+                      onChange={(event) => setEditingText(event.target.value)}
+                      rows={4}
+                      className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors focus:border-primary"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingText("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSaveEdit}
+                        disabled={!editingText.trim() || updatePaper.isPending}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/85">
+                    {note.content}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ReaderPanelButton({
+  panel,
+  activePanel,
+  onClick,
+  icon: Icon,
+  label,
+  count,
+}: {
+  panel: ReaderPanel;
+  activePanel: ReaderPanel | null;
+  onClick: (panel: ReaderPanel) => void;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  count?: number;
+}) {
+  const active = activePanel === panel;
+  return (
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        onClick={() => onClick(panel)}
+        className={cn(
+          "relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+          active && "bg-accent text-primary",
+        )}
+        aria-pressed={active}
+      >
+        <Icon className="size-4" />
+        {count ? (
+          <span className="absolute -right-1 -top-1 min-w-4 rounded-full border border-background bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
+            {count}
+          </span>
+        ) : null}
+      </button>
+    </IconTooltip>
+  );
+}
 
 export default function PaperReaderPage() {
   const { workspaceId: workspaceUrl, paperId } = useParams();
@@ -25,95 +504,73 @@ export default function PaperReaderPage() {
   const workspaceId = workspace?._id ?? "";
 
   const { data: papers, isLoading: isLoadingPapers } = useAllPapers(workspaceId);
-  const paper = papers?.find((p) => p._id === paperId) || null;
-
   const { data: collections } = useCollections(workspaceId);
-  const collectionMap = React.useMemo(() => {
-    return Object.fromEntries((collections ?? []).map((c) => [c._id, c]));
-  }, [collections]);
-  const paperCollection = paper?.collection ? collectionMap[paper.collection] ?? null : null;
 
-  const [showChat, setShowChat] = useState(true);
-  const [showMetadata, setShowMetadata] = useState(true);
+  const paper = papers?.find((p) => p._id === paperId) ?? null;
+  const updatePaperTitle = useUpdatePaper(workspaceId, paper?.collection || "");
+  const collectionMap = useMemo(
+    () => Object.fromEntries((collections ?? []).map((collection) => [collection._id, collection])),
+    [collections],
+  );
+  const paperCollection = paper?.collection ? collectionMap[paper.collection] ?? null : null;
+  const paperUrl = resolveFileUrl(paper?.fileUrl) || "";
+
+  const [activePanel, setActivePanel] = useState<ReaderPanel | null>(() => {
+    const saved = localStorage.getItem("flux_reader_active_panel");
+    return saved === "ai" || saved === "details" || saved === "notes" ? saved : null;
+  });
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const saved = localStorage.getItem("flux_reader_panel_width");
+    return saved ? Number(saved) || DEFAULT_PANEL_WIDTH : DEFAULT_PANEL_WIDTH;
+  });
+  const [isResizingPanel, setIsResizingPanel] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const [selectionContext, setSelectionContext] = useState("");
-
-  const [chatWidth, setChatWidth] = useState(360);
-  const [metadataWidth, setMetadataWidth] = useState(320);
-  const [activeResize, setActiveResize] = useState<"chat" | "metadata" | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [draftTitle, setDraftTitle] = useState("");
 
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Poll indexing status
   useEffect(() => {
     if (!paper || paper.ragStatus !== "pending") return;
     const interval = setInterval(() => {
       qc.invalidateQueries({ queryKey: ["library-all-papers", workspaceId] });
     }, 5000);
     return () => clearInterval(interval);
-  }, [paper?.ragStatus, workspaceId, qc]);
-
-  const handleReindex = async () => {
-    if (!workspaceId || !paperId) return;
-    setIsReindexing(true);
-    try {
-      await reindexPaper(workspaceId, paperId);
-      toast.success("AI Indexing started. This may take a minute.");
-      qc.invalidateQueries({ queryKey: ["library-all-papers", workspaceId] });
-    } catch (err) {
-      console.error("Reindex failed:", err);
-      toast.error("Could not trigger AI indexing.");
-    } finally {
-      setIsReindexing(false);
-    }
-  };
-
-  const handleAskAi = (text: string) => setSelectionContext(text);
-  const clearSelectionContext = () => setSelectionContext("");
-
-  const handleChatMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setActiveResize("chat");
-    startXRef.current = e.clientX;
-    startWidthRef.current = chatWidth;
-  };
-
-  const handleMetadataMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setActiveResize("metadata");
-    startXRef.current = e.clientX;
-    startWidthRef.current = metadataWidth;
-  };
+  }, [paper, workspaceId, qc]);
 
   useEffect(() => {
-    if (!activeResize) return;
+    setDraftTitle(paper?.title || "");
+    setIsEditingTitle(false);
+  }, [paper?._id, paper?.title]);
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - startXRef.current;
-      const startWidth = startWidthRef.current;
+  useEffect(() => {
+    if (activePanel) localStorage.setItem("flux_reader_active_panel", activePanel);
+  }, [activePanel]);
 
-      if (activeResize === "chat") {
-        const newWidth = Math.max(MIN_CHAT_WIDTH, Math.min(MAX_CHAT_WIDTH, startWidth - deltaX));
-        setChatWidth(newWidth);
-      } else if (activeResize === "metadata") {
-        const newWidth = Math.max(MIN_METADATA_WIDTH, Math.min(MAX_METADATA_WIDTH, startWidth - deltaX));
-        setMetadataWidth(newWidth);
-      }
+  useEffect(() => {
+    localStorage.setItem("flux_reader_panel_width", String(panelWidth));
+  }, [panelWidth]);
+
+  useEffect(() => {
+    if (!isResizingPanel) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const deltaX = event.clientX - startXRef.current;
+      const width = Math.max(
+        MIN_PANEL_WIDTH,
+        Math.min(MAX_PANEL_WIDTH, startWidthRef.current - deltaX),
+      );
+      setPanelWidth(width);
     };
 
-    const handleMouseUp = () => {
-      setActiveResize(null);
-    };
+    const handleMouseUp = () => setIsResizingPanel(false);
+    const originalUserSelect = document.body.style.userSelect;
+    const originalCursor = document.body.style.cursor;
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-
-    // Prevent text selection & override cursor during active drag
-    const originalUserSelect = document.body.style.userSelect;
-    const originalCursor = document.body.style.cursor;
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
 
@@ -123,133 +580,215 @@ export default function PaperReaderPage() {
       document.body.style.userSelect = originalUserSelect;
       document.body.style.cursor = originalCursor;
     };
-  }, [activeResize]);
+  }, [isResizingPanel]);
 
-  // ── Resolve paper URL ─────────────────────────────────────────────────────
-  const paperUrl = resolveFileUrl(paper?.fileUrl) || "";
+  const handlePanelToggle = (panel: ReaderPanel) => {
+    setActivePanel((current) => (current === panel ? null : panel));
+  };
 
-  // ── RAG status badge ──────────────────────────────────────────────────────
-  const ragBadge = paper && (
-    <div className="flex items-center gap-2 shrink-0">
-      {paper.ragStatus === "indexed" ? (
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#1e8e3e]/10 text-[#1e8e3e] border border-[#1e8e3e]/20">
-          AI Indexed
-        </span>
-      ) : paper.ragStatus === "pending" ? (
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#f9ab00]/10 text-[#f9ab00] border border-[#f9ab00]/20 animate-pulse">
-          Indexing…
-        </span>
-      ) : paper.ragStatus === "failed" ? (
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#d93025]/10 text-[#d93025] border border-[#d93025]/20">
-            Index Failed
-          </span>
-          <Button
-            size="xs"
-            variant="outline"
-            className="h-6 text-[10px] py-0 px-2"
-            onClick={handleReindex}
-            disabled={isReindexing}
-          >
-            {isReindexing && <Loader2 className="size-3 animate-spin mr-1" />}
-            Retry
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#5f6368]/10 text-[#5f6368] border border-[#5f6368]/15">
-            Not Indexed
-          </span>
-          <Button
-            size="xs"
-            variant="outline"
-            className="h-6 text-[10px] py-0 px-2"
-            onClick={handleReindex}
-            disabled={isReindexing}
-          >
-            {isReindexing && <Loader2 className="size-3 animate-spin mr-1" />}
-            Index Paper
-          </Button>
-        </div>
-      )}
-    </div>
-  );
+  const handleAskAi = (text: string) => {
+    setSelectionContext(text);
+    setActivePanel("ai");
+  };
+
+  const clearSelectionContext = () => setSelectionContext("");
+
+  const handleReindex = async () => {
+    if (!workspaceId || !paperId) return;
+    setIsReindexing(true);
+    try {
+      await reindexPaper(workspaceId, paperId);
+      toast.success("AI indexing started");
+      qc.invalidateQueries({ queryKey: ["library-all-papers", workspaceId] });
+      setActivePanel("ai");
+    } catch (err) {
+      console.error("Reindex failed:", err);
+      toast.error("Could not start AI indexing");
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
+  const handleTitleSave = () => {
+    if (!paper) return;
+    const nextTitle = draftTitle.trim();
+    if (!nextTitle || nextTitle === paper.title) {
+      setDraftTitle(paper.title);
+      setIsEditingTitle(false);
+      return;
+    }
+
+    updatePaperTitle.mutate(
+      { paperId: paper._id, title: nextTitle },
+      {
+        onSuccess: () => {
+          setIsEditingTitle(false);
+          toast.success("Paper title updated");
+        },
+        onError: () => {
+          setDraftTitle(paper.title);
+          toast.error("Could not update paper title");
+        },
+      },
+    );
+  };
+
+  const handleResizeMouseDown = (event: React.MouseEvent) => {
+    event.preventDefault();
+    startXRef.current = event.clientX;
+    startWidthRef.current = panelWidth;
+    setIsResizingPanel(true);
+  };
+
+  const panelTitle =
+    activePanel === "ai"
+      ? "Flux AI"
+      : activePanel === "details"
+        ? "Details"
+        : activePanel === "notes"
+          ? "Notes"
+          : "";
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 flex flex-col min-h-0 h-full overflow-hidden bg-[#f8f9fa] dark:bg-zinc-900"
-    >
-      {/* Header */}
-      <header className="h-[53px] shrink-0 border-b border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900 flex items-center justify-between px-4 select-none">
-        <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 hover:bg-[#f1f3f4] dark:hover:bg-zinc-800 shrink-0"
-            onClick={() => navigate(-1)}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <div className="flex flex-col min-w-0">
-            <h1
-              className="text-[13px] font-semibold text-[#202222] dark:text-zinc-100 truncate max-w-md lg:max-w-lg"
-              title={paper?.title}
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <header className="flex h-[53px] shrink-0 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur">
+        <div className="flex min-w-0 flex-1 items-center gap-3 pr-3">
+          <IconTooltip label="Back to library">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => navigate(-1)}
+              aria-label="Back to library"
             >
-              {paper?.title || "Loading…"}
-            </h1>
-            {paper?.authors && paper.authors.length > 0 && (
-              <span className="text-[10px] text-[#5f6368] dark:text-zinc-400 truncate max-w-sm">
-                {paper.authors.join(", ")}
-              </span>
-            )}
+              <ChevronLeft className="size-4" />
+            </Button>
+          </IconTooltip>
+
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="hidden size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card text-primary sm:flex">
+              <FileText className="size-4" />
+            </div>
+            <div className="min-w-0 max-w-[34vw] sm:max-w-[42vw] lg:max-w-[520px] xl:max-w-[640px]">
+              {isEditingTitle && paper ? (
+                <input
+                  value={draftTitle}
+                  onChange={(event) => setDraftTitle(event.target.value)}
+                  onBlur={handleTitleSave}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") handleTitleSave();
+                    if (event.key === "Escape") {
+                      setDraftTitle(paper.title);
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  disabled={updatePaperTitle.isPending}
+                  className="h-7 w-full rounded-md border border-primary/40 bg-background px-2 text-sm font-semibold leading-tight text-foreground outline-none focus:ring-2 focus:ring-primary/10"
+                  autoFocus
+                />
+              ) : (
+                <h1
+                  className="truncate text-sm font-semibold leading-tight text-foreground"
+                  title={paper?.title ? `${paper.title} - double click to rename` : undefined}
+                  onDoubleClick={() => {
+                    if (!paper) return;
+                    setDraftTitle(paper.title);
+                    setIsEditingTitle(true);
+                  }}
+                >
+                  {paper?.title || "Loading paper..."}
+                </h1>
+              )}
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {paper?.authors?.length
+                  ? paper.authors.join(", ")
+                  : paper?.year
+                    ? String(paper.year)
+                    : "Reader"}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Dynamic Controls & Badges */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1 border border-[#dadce0] dark:border-zinc-700 rounded-lg p-0.5 bg-[#f8f9fa] dark:bg-zinc-900/50">
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className={cn(
-                "h-7 px-2.5 text-[11px] font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer",
-                showChat
-                  ? "bg-white dark:bg-zinc-800 text-primary shadow-sm border border-[#dadce0] dark:border-zinc-700/50 font-bold"
-                  : "text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-zinc-800/40"
-              )}
-              title="Toggle AI Chat"
+        <div className="flex shrink-0 items-center gap-2">
+          {paper ? <RagBadge status={paper.ragStatus} /> : null}
+
+          {paper && paper.ragStatus !== "pending" && paper.ragStatus !== "indexed" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReindex}
+              disabled={isReindexing}
+              className="hidden sm:inline-flex"
             >
-              <MessageSquare className="size-3.5" />
-              Chat
-            </button>
-            <button
-              onClick={() => setShowMetadata(!showMetadata)}
-              className={cn(
-                "h-7 px-2.5 text-[11px] font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer",
-                showMetadata
-                  ? "bg-white dark:bg-zinc-800 text-primary shadow-sm border border-[#dadce0] dark:border-zinc-700/50 font-bold"
-                  : "text-muted-foreground hover:bg-[#f1f3f4] dark:hover:bg-zinc-800/40"
+              {isReindexing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCcw className="size-3.5" />
               )}
-              title="Toggle Metadata"
-            >
-              <Info className="size-3.5" />
-              Metadata
-            </button>
+              {paper.ragStatus === "failed" ? "Retry index" : "Index"}
+            </Button>
+          ) : null}
+
+          {paperUrl ? (
+            <IconTooltip label="Download PDF">
+              <Button variant="ghost" size="icon-sm" asChild>
+                <a href={paperUrl} download={paper?.filename || "paper.pdf"}>
+                  <Download className="size-4" />
+                </a>
+              </Button>
+            </IconTooltip>
+          ) : null}
+
+          <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
+
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
+            <ReaderPanelButton
+              panel="ai"
+              activePanel={activePanel}
+              onClick={handlePanelToggle}
+              icon={MessageSquare}
+              label="Flux AI"
+            />
+            <ReaderPanelButton
+              panel="details"
+              activePanel={activePanel}
+              onClick={handlePanelToggle}
+              icon={Info}
+              label="Details"
+            />
+            <ReaderPanelButton
+              panel="notes"
+              activePanel={activePanel}
+              onClick={handlePanelToggle}
+              icon={StickyNote}
+              label="Notes"
+              count={paper?.notes?.length}
+            />
           </div>
-          {ragBadge}
+
+          <IconTooltip label={activePanel ? "Close panel" : "Open details"}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setActivePanel((current) => (current ? null : "details"))}
+              aria-label={activePanel ? "Close panel" : "Open details"}
+            >
+              {activePanel ? (
+                <PanelRightClose className="size-4" />
+              ) : (
+                <PanelRightOpen className="size-4" />
+              )}
+            </Button>
+          </IconTooltip>
         </div>
       </header>
 
-      {/* Seamless 3-Column Layout Workspace */}
-      <div className="flex-1 flex min-h-0 overflow-hidden bg-white dark:bg-zinc-950 border-t border-[#dadce0] dark:border-zinc-800">
-        {/* Column 1: PDF Viewer (Flexible width) */}
-        <div className="flex-1 min-w-0 h-full flex flex-col bg-white dark:bg-zinc-900 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden bg-muted/45">
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {isLoadingPapers ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#f1f3f4] dark:bg-zinc-900">
-              <Loader2 className="size-6 animate-spin text-[#3370ff]/60" />
-              <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">
-                Loading paper…
-              </p>
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
+              <Loader2 className="size-7 animate-spin text-primary/60" />
+              <p className="text-xs text-muted-foreground">Loading paper...</p>
             </div>
           ) : paperUrl ? (
             <PdfViewer
@@ -258,111 +797,134 @@ export default function PaperReaderPage() {
               onAskAi={handleAskAi}
             />
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center p-6 bg-[#f1f3f4] dark:bg-zinc-900">
-              <AlertTriangle className="size-8 text-[#d93025]" />
-              <p className="text-sm font-semibold text-[#202222] dark:text-zinc-100">
-                File Not Found
-              </p>
-              <p className="text-xs text-[#5f6368] dark:text-zinc-400 max-w-xs">
-                The PDF file could not be located. Ensure the paper was uploaded successfully.
-              </p>
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+              <AlertTriangle className="size-8 text-destructive" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  File not found
+                </p>
+                <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+                  The PDF file could not be located. Check that the paper upload finished successfully.
+                </p>
+              </div>
             </div>
           )}
-        </div>
+        </main>
 
-        {/* Column 2: AI Chat Panel */}
-        {showChat && (
-          <div
-            className="relative shrink-0 h-full"
-            style={{ width: `${chatWidth}px` }}
+        {activePanel ? (
+          <aside
+            className="absolute inset-y-0 right-0 z-30 flex w-[min(100%,420px)] flex-col border-l border-border bg-background shadow-lg lg:relative lg:w-auto lg:shadow-none"
+            style={{ width: `min(100%, ${panelWidth}px)` }}
           >
-            {/* Drag Handle */}
             <div
               className={cn(
-                "absolute top-0 left-[-4px] w-2 h-full cursor-col-resize z-50 group flex items-center justify-center select-none touch-none",
-                activeResize === "chat" && "active-drag"
+                "absolute left-[-4px] top-0 z-20 hidden h-full w-2 cursor-col-resize items-center justify-center lg:flex",
+                isResizingPanel && "bg-primary/5",
               )}
-              onMouseDown={handleChatMouseDown}
+              onMouseDown={handleResizeMouseDown}
             >
               <div
                 className={cn(
-                  "w-[2px] h-full transition-all duration-200 ease-out",
-                  activeResize === "chat"
-                    ? "bg-[#3370ff]"
-                    : "bg-transparent group-hover:bg-[#3370ff]/30"
+                  "h-full w-px transition-colors",
+                  isResizingPanel ? "bg-primary" : "bg-transparent hover:bg-primary/40",
                 )}
               />
             </div>
-            {/* Real Panel */}
-            <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900 border-l border-[#dadce0] dark:border-zinc-800 overflow-hidden">
-              {isLoadingPapers ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#f8f9fa] dark:bg-zinc-950">
-                  <Loader2 className="size-6 animate-spin text-[#3370ff]/60" />
-                  <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">
-                    Initializing…
-                  </p>
-                </div>
-              ) : paper && paper.ragDocId ? (
-                <ReaderChatPanel
-                  ragDocId={paper.ragDocId}
-                  paperTitle={paper.title}
-                  selectionContext={selectionContext}
-                  onClearSelectionContext={clearSelectionContext}
-                />
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center bg-[#f8f9fa] dark:bg-zinc-950 select-none">
-                  <div className="size-10 bg-[#f9ab00]/10 rounded-xl flex items-center justify-center">
-                    <AlertTriangle className="size-5 text-[#f9ab00]" />
+
+            <div className="flex h-[53px] shrink-0 items-center justify-between border-b border-border px-4">
+              <div className="flex min-w-0 items-center gap-2">
+                {activePanel === "ai" ? (
+                  <img src="/Chat.svg" alt="Flux AI" className="size-4" />
+                ) : activePanel === "details" ? (
+                  <Info className="size-4 text-primary" />
+                ) : (
+                  <StickyNote className="size-4 text-primary" />
+                )}
+                <h2 className="truncate text-sm font-semibold text-foreground">
+                  {panelTitle}
+                </h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setActivePanel(null)}
+                aria-label="Close panel"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {activePanel === "ai" ? (
+                isLoadingPapers ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="size-6 animate-spin text-primary/60" />
                   </div>
-                  <h4 className="text-[13px] font-semibold text-[#202222] dark:text-zinc-100">
-                    AI Indexing Required
-                  </h4>
-                  <p className="text-[11px] leading-relaxed text-[#5f6368] dark:text-zinc-400 max-w-xs">
-                    To chat with Flux AI about this paper, it must first be indexed.
-                    Click "Index Paper" in the header to start processing.
-                  </p>
-                </div>
-              )}
+                ) : paper && paper.ragDocId ? (
+                  <ReaderChatPanel
+                    ragDocId={paper.ragDocId}
+                    paperTitle={paper.title}
+                    selectionContext={selectionContext}
+                    onClearSelectionContext={clearSelectionContext}
+                    showHeader={false}
+                  />
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                    <div className="flex size-12 items-center justify-center rounded-xl border border-border bg-card">
+                      {paper?.ragStatus === "pending" ? (
+                        <Loader2 className="size-6 animate-spin text-primary" />
+                      ) : paper?.ragStatus === "failed" ? (
+                        <AlertTriangle className="size-6 text-destructive" />
+                      ) : (
+                        <img src="/Chat.svg" alt="Flux AI" className="size-7" />
+                      )}
+                    </div>
+                    <h3 className="mt-4 text-sm font-semibold text-foreground">
+                      {paper?.ragStatus === "pending"
+                        ? "Indexing this paper"
+                        : paper?.ragStatus === "failed"
+                          ? "Indexing failed"
+                          : "Index to chat with Flux AI"}
+                    </h3>
+                    <p className="mt-2 max-w-64 text-xs leading-relaxed text-muted-foreground">
+                      {paper?.ragStatus === "pending"
+                        ? "Flux AI is preparing the document. This panel will unlock when indexing finishes."
+                        : "AI needs an indexed copy of the PDF before it can answer with paper context."}
+                    </p>
+                    {paper?.ragStatus !== "pending" ? (
+                      <Button
+                        className="mt-4"
+                        size="sm"
+                        onClick={handleReindex}
+                        disabled={isReindexing}
+                      >
+                        {isReindexing ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCcw className="size-3.5" />
+                        )}
+                        {paper?.ragStatus === "failed" ? "Retry index" : "Index paper"}
+                      </Button>
+                    ) : null}
+                  </div>
+                )
+              ) : activePanel === "details" && paper ? (
+                <ReaderDetails paper={paper} collection={paperCollection} />
+              ) : activePanel === "notes" && paper ? (
+                <ReaderNotes paper={paper} workspaceId={workspaceId} />
+              ) : null}
             </div>
-          </div>
-        )}
+          </aside>
+        ) : null}
 
-        {/* Column 3: Metadata Details Panel */}
-        {showMetadata && paper && (
-          <div
-            className="relative shrink-0 h-full"
-            style={{ width: `${metadataWidth}px` }}
-          >
-            {/* Drag Handle */}
-            <div
-              className={cn(
-                "absolute top-0 left-[-4px] w-2 h-full cursor-col-resize z-50 group flex items-center justify-center select-none touch-none",
-                activeResize === "metadata" && "active-drag"
-              )}
-              onMouseDown={handleMetadataMouseDown}
-            >
-              <div
-                className={cn(
-                  "w-[2px] h-full transition-all duration-200 ease-out",
-                  activeResize === "metadata"
-                    ? "bg-[#3370ff]"
-                    : "bg-transparent group-hover:bg-[#3370ff]/30"
-                )}
-              />
-            </div>
-            {/* Real Panel */}
-            <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-900 border-l border-[#dadce0] dark:border-zinc-800 overflow-hidden">
-              <PaperDetailPanel
-                paper={paper}
-                collection={paperCollection}
-                workspaceId={workspaceId}
-                className="w-full border-l-0 bg-transparent"
-                showOpenReader={false}
-                showTitle={false}
-              />
-            </div>
-          </div>
-        )}
+        {activePanel ? (
+          <button
+            type="button"
+            className="absolute inset-0 z-20 bg-background/60 backdrop-blur-sm lg:hidden"
+            onClick={() => setActivePanel(null)}
+            aria-label="Close reader panel overlay"
+          />
+        ) : null}
       </div>
     </div>
   );

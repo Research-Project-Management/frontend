@@ -20,6 +20,8 @@ export async function* streamChatResponse(
     intentHint?: string;
     webSearchSites?: string[];
     workspaceId?: string;
+    selection?: string;
+    cursorContext?: string;
     /** Chat session ID — scopes RAG retrieval to this session only */
     chatId?: string;
     onMeta?: (meta: {
@@ -46,6 +48,8 @@ export async function* streamChatResponse(
       intent_hint: options?.intentHint,
       web_search_sites: options?.webSearchSites ?? null,
       workspace_id: options?.workspaceId ?? null,
+      selection: options?.selection ?? null,
+      cursor_context: options?.cursorContext ?? null,
       // RAG isolation — scopes retrieval to this chat session only
       chat_id: options?.chatId ?? null,
     }),

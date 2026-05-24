@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { Sparkles, X, Loader2, AlertTriangle } from "lucide-react";
+import { X, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "~/lib/utils";
 import PdfViewerToolbar from "./PdfViewerToolbar";
 
@@ -166,11 +166,30 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
+      const menuHeight = 36;
+      const menuGap = 8;
+      const menuHalfWidth = 72;
+      const selectionTop = rect.top - containerRect.top + container.scrollTop;
+      const selectionBottom = rect.bottom - containerRect.top + container.scrollTop;
+      const visibleTop = container.scrollTop + menuGap;
+      const visibleBottom = container.scrollTop + container.clientHeight - menuHeight - menuGap;
+      const preferredTop = selectionTop - menuHeight - menuGap;
+      const fallbackTop = selectionBottom + menuGap;
+      const top = Math.max(
+        visibleTop,
+        Math.min(preferredTop >= visibleTop ? preferredTop : fallbackTop, visibleBottom),
+      );
+      const left = Math.max(
+        menuHalfWidth + menuGap,
+        Math.min(
+          rect.left - containerRect.left + rect.width / 2,
+          container.clientWidth - menuHalfWidth - menuGap,
+        ),
+      );
 
-      // Position relative to the scroll container's viewport + scroll offset
       setMenuPosition({
-        top: rect.top - containerRect.top + container.scrollTop - 44,
-        left: rect.left - containerRect.left + rect.width / 2,
+        top,
+        left,
       });
       setSelectedText(text);
       setShowFloatingMenu(true);
@@ -191,7 +210,7 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
   const pageScale = fitWidth ? undefined : zoom;
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full bg-[#f1f3f4] dark:bg-zinc-900 overflow-hidden">
+    <div className="flex-1 flex flex-col min-w-0 h-full bg-muted/45 overflow-hidden">
       <PdfViewerToolbar
         pageNumber={visiblePage}
         numPages={numPages || null}
@@ -213,16 +232,16 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
       >
         {error ? (
           <div className="flex flex-col items-center justify-center text-center p-10 max-w-md mx-auto mt-20 gap-3">
-            <AlertTriangle className="size-9 text-[#d93025]" />
-            <p className="text-sm font-semibold text-[#202222] dark:text-zinc-100">{error}</p>
-            <p className="text-xs text-[#5f6368] dark:text-zinc-400">
+            <AlertTriangle className="size-9 text-destructive" />
+            <p className="text-sm font-semibold text-foreground">{error}</p>
+            <p className="text-xs text-muted-foreground">
               Download the paper using the toolbar to view in an external reader.
             </p>
           </div>
         ) : !blobUrl ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
-            <Loader2 className="size-7 animate-spin text-[#3370ff]" />
-            <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">
+            <Loader2 className="size-7 animate-spin text-primary" />
+            <p className="text-xs text-muted-foreground animate-pulse">
               Loading document…
             </p>
           </div>
@@ -233,14 +252,14 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
             onLoadError={onDocumentLoadError}
             loading={
               <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="size-7 animate-spin text-[#3370ff]" />
-                <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">
+                <Loader2 className="size-7 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground animate-pulse">
                   Rendering pages…
                 </p>
               </div>
             }
           >
-            <div className="flex flex-col items-center gap-2 py-4 px-4">
+            <div className="flex flex-col items-center gap-3 py-5 px-4">
               {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
                 <div
                   key={pageNum}
@@ -249,7 +268,7 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
                     if (el) pageRefs.current.set(pageNum, el);
                     else pageRefs.current.delete(pageNum);
                   }}
-                  className="bg-white dark:bg-zinc-950 shadow-[0_1px_4px_rgba(0,0,0,0.08)] border border-[#dadce0] dark:border-zinc-700/50"
+                  className="bg-card border border-border"
                 >
                   <Page
                     pageNumber={pageNum}
@@ -262,7 +281,7 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
                         className="flex items-center justify-center"
                         style={{ width: pageWidth || 600, height: (pageWidth || 600) * 1.414 }}
                       >
-                        <Loader2 className="size-5 animate-spin text-[#3370ff]/40" />
+                        <Loader2 className="size-5 animate-spin text-primary/40" />
                       </div>
                     }
                   />
@@ -272,10 +291,10 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
           </Document>
         )}
 
-        {/* Floating "Ask AI" menu */}
+        {/* Floating Flux AI menu */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-ask-ai absolute z-50 flex items-center gap-1 bg-[#202222] text-white dark:bg-white dark:text-[#202222] px-2.5 py-1.5 rounded-lg shadow-[0_6px_16px_rgba(32,34,34,0.16)] border border-white/10 dark:border-[#dadce0]"
+            className="pdf-floating-ask-ai absolute z-50 flex items-center gap-1 bg-foreground text-background px-2.5 py-1.5 rounded-lg shadow-md border border-border/30"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -291,10 +310,10 @@ export default function PdfViewer({ url, filename, onAskAi }: PdfViewerProps) {
               }}
               className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition-opacity"
             >
-              <Sparkles className="size-3.5 text-[#3370ff]" />
-              Ask AI
+              <img src="/Chat.svg" alt="Flux AI" className="size-3.5" />
+              Flux AI
             </button>
-            <div className="w-px h-3.5 bg-white/20 dark:bg-[#dadce0] mx-1" />
+            <div className="w-px h-3.5 bg-background/20 mx-1" />
             <button
               onClick={() => setShowFloatingMenu(false)}
               className="hover:opacity-70 transition-opacity"

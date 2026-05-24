@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Brain,
-  ChevronDown,
   Copy,
   Check,
   FileText,
-  Loader2,
   Quote,
-  Sparkles,
   X,
   ArrowUp,
+  Square,
   RotateCcw,
 } from "lucide-react";
 import { useParams } from "react-router";
@@ -27,50 +24,10 @@ import { cn } from "~/lib/utils";
 
 // ── Think-block parser ────────────────────────────────────────────────────────
 
-function parseThinkingContent(raw: string) {
-  const openIdx = raw.indexOf("<think>");
-  if (openIdx === -1) return { thinking: null, answer: raw, isThinkingOpen: false };
-  const closeIdx = raw.indexOf("</think>", openIdx);
-  if (closeIdx === -1) {
-    return { thinking: raw.slice(openIdx + 7), answer: "", isThinkingOpen: true };
-  }
-  return {
-    thinking: raw.slice(openIdx + 7, closeIdx).trim(),
-    answer: raw.slice(closeIdx + 8).trimStart(),
-    isThinkingOpen: false,
-  };
-}
-
-function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }) {
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <div className="mb-2.5 rounded-lg border border-[#dadce0] dark:border-zinc-700/50 bg-[#f8f9fa] dark:bg-zinc-800/50 overflow-hidden">
-      <button
-        onClick={() => setCollapsed((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-[#f1f3f4] dark:hover:bg-zinc-700/30 transition-colors"
-      >
-        <Brain className={cn("size-3.5 shrink-0 text-violet-500", isOpen && "animate-pulse")} />
-        <span className="text-[11px] font-medium text-[#5f6368] dark:text-zinc-400 flex-1">
-          {isOpen ? "Thinking…" : "Thought process"}
-        </span>
-        {!isOpen && (
-          <ChevronDown
-            className={cn(
-              "size-3 text-[#5f6368]/60 dark:text-zinc-500 transition-transform",
-              collapsed && "-rotate-90"
-            )}
-          />
-        )}
-      </button>
-      {!collapsed && (
-        <div className="px-3 pb-2 pt-0.5 border-t border-[#eeeeee] dark:border-zinc-700/30">
-          <p className="text-[10px] leading-relaxed text-[#5f6368]/80 dark:text-zinc-400/70 whitespace-pre-wrap font-mono select-text">
-            {content}
-          </p>
-        </div>
-      )}
-    </div>
-  );
+function getVisibleAssistantContent(raw: string) {
+  const closeIdx = raw.indexOf("</think>");
+  if (closeIdx !== -1) return raw.slice(closeIdx + 8).trimStart();
+  return raw.replace(/<think>[\s\S]*$/, "").trimStart();
 }
 
 // ── Sources ──────────────────────────────────────────────────────────────────
@@ -80,8 +37,8 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
   if (!ragSources.length) return null;
 
   return (
-    <div className="mt-2 pt-2 border-t border-[#eeeeee] dark:border-zinc-700/30 space-y-1.5">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-[#5f6368]/50 dark:text-zinc-500">
+    <div className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
+      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
         Sources
       </p>
       <div className="flex flex-wrap gap-1">
@@ -89,20 +46,20 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           s.snippet ? (
             <Popover key={i}>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-48 truncate hover:bg-violet-500/15 transition-colors">
+                <button className="inline-flex max-w-48 items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary transition-colors hover:bg-primary/15">
                   <FileText className="size-2.5 shrink-0" />
                   <span className="truncate">{s.source}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-72 p-0 overflow-hidden">
-                <div className="px-2.5 py-1.5 border-b border-[#dadce0] dark:border-zinc-700 bg-[#f8f9fa] dark:bg-zinc-800 flex items-center gap-1.5">
-                  <Quote className="size-3 text-violet-500 shrink-0" />
-                  <span className="text-[10px] font-semibold text-[#202222]/80 dark:text-zinc-200 truncate">
+                <div className="flex items-center gap-1.5 border-b border-border bg-muted/45 px-2.5 py-1.5">
+                  <Quote className="size-3 shrink-0 text-primary" />
+                  <span className="truncate text-[10px] font-semibold text-foreground/80">
                     {s.source}
                   </span>
                 </div>
                 <div className="px-2.5 py-2 max-h-40 overflow-y-auto">
-                  <p className="text-[10px] leading-relaxed text-[#202222]/70 dark:text-zinc-300 whitespace-pre-wrap select-text">
+                  <p className="select-text whitespace-pre-wrap text-[10px] leading-relaxed text-foreground/70">
                     {s.snippet}
                   </p>
                 </div>
@@ -111,7 +68,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           ) : (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-48 truncate"
+              className="inline-flex max-w-48 items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
             >
               <FileText className="size-2.5 shrink-0" />
               <span className="truncate">{s.source}</span>
@@ -146,27 +103,31 @@ const MessageBubble = React.memo(function MessageBubble({
   };
 
   return (
-    <div className={cn("flex gap-2.5", isUser ? "justify-end" : "justify-start")}>
+    <div
+      className={cn(
+        "flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300",
+        isUser ? "justify-end" : "justify-start"
+      )}
+    >
       <div
         className={cn(
-          "group relative max-w-[88%] rounded-xl px-3 py-2.5 text-sm leading-relaxed select-text",
+          "group relative select-text",
           isUser
-            ? "bg-[#3370ff] text-white rounded-br-sm"
-            : "bg-white dark:bg-zinc-800/80 text-[#202222] dark:text-zinc-100 border border-[#dadce0] dark:border-zinc-700/50 rounded-bl-sm"
+            ? "max-w-[85%] rounded-2xl rounded-br-md border border-zinc-200 bg-zinc-100 px-3 py-2 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            : "max-w-[92%]"
         )}
       >
         {isUser ? (
           <p className="whitespace-pre-wrap text-[13px]">{content}</p>
         ) : (
-          <div className="space-y-1 text-[13px]">
+          <div className="space-y-1 text-[13px] leading-relaxed">
             {(() => {
-              const { thinking, answer, isThinkingOpen } = parseThinkingContent(content);
+              const answer = getVisibleAssistantContent(content);
               return (
                 <>
-                  {thinking !== null && <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />}
                   {answer && renderMarkdown(answer)}
-                  {isStreaming && !isThinkingOpen && (
-                    <span className="inline-block w-1.5 h-3.5 bg-[#3370ff] animate-pulse ml-0.5 align-middle rounded-sm" />
+                  {isStreaming && (
+                    <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary align-text-bottom" />
                   )}
                   {!isStreaming && sources && sources.length > 0 && (
                     <SourcesList sources={sources} />
@@ -178,27 +139,32 @@ const MessageBubble = React.memo(function MessageBubble({
         )}
 
         {!isUser && !isStreaming && content && (
-          <div className="absolute right-2 -bottom-5 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 text-[9px] text-[#5f6368] hover:text-[#202222] dark:text-zinc-400 dark:hover:text-zinc-100 px-1.5 py-0.5 rounded bg-white dark:bg-zinc-800 border border-[#dadce0] dark:border-zinc-700 shadow-sm transition-all"
-            >
-              {copied ? (
-                <>
-                  <Check className="size-2.5 text-[#1e8e3e]" /> Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="size-2.5" /> Copy
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            onClick={handleCopy}
+            className="mt-1 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 transition-colors hover:bg-secondary/80 hover:text-foreground group-hover:opacity-100"
+          >
+            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
         )}
       </div>
     </div>
   );
 });
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 px-1 py-1.5">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="size-1.5 rounded-full bg-primary/50"
+          style={{ animation: "typing-dot 1.4s infinite ease-in-out", animationDelay: `${i * 0.2}s` }}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -207,6 +173,7 @@ interface ReaderChatPanelProps {
   paperTitle: string;
   selectionContext: string;
   onClearSelectionContext: () => void;
+  showHeader?: boolean;
 }
 
 export default function ReaderChatPanel({
@@ -214,6 +181,7 @@ export default function ReaderChatPanel({
   paperTitle,
   selectionContext,
   onClearSelectionContext,
+  showHeader = true,
 }: ReaderChatPanelProps) {
   const { workspaceId } = useParams();
   const [chatId, setChatId] = useState<string | null>(null);
@@ -335,11 +303,9 @@ export default function ReaderChatPanel({
   const handleSend = async (text: string) => {
     if (isStreaming || !workspaceId || !ragDocId) return;
 
-    let finalPrompt = text.trim();
-    if (selectionContext) {
-      finalPrompt = `Regarding this excerpt from the paper:\n"${selectionContext}"\n\n${finalPrompt || "Explain or summarize this passage."}`;
-      onClearSelectionContext();
-    }
+    const selectedText = selectionContext.trim();
+    const hasSelectedText = selectedText.length > 0;
+    const finalPrompt = text.trim() || (hasSelectedText ? "Explain the selected passage." : "");
     if (!finalPrompt) return;
 
     const userMsg: ChatMessage = { role: "user", content: finalPrompt };
@@ -360,6 +326,11 @@ export default function ReaderChatPanel({
         workspaceId,
         chatId: chatId ?? undefined,
         documentIds: [ragDocId],
+        intentHint: "rag",
+        selection: hasSelectedText ? selectedText : undefined,
+        cursorContext: hasSelectedText
+          ? `The user selected this passage in the reader. Use it as the focus, but answer from the indexed paper context.`
+          : undefined,
         onMeta: (meta) => {
           if (meta.sources?.length) {
             activeSourcesRef.current = meta.sources;
@@ -368,6 +339,10 @@ export default function ReaderChatPanel({
       })) {
         streamRef.current += chunk;
         setStreamContent(streamRef.current);
+      }
+
+      if (hasSelectedText) {
+        onClearSelectionContext();
       }
 
       const finalContent = streamRef.current;
@@ -437,69 +412,81 @@ export default function ReaderChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8f9fa] dark:bg-zinc-950">
+    <div className="relative flex h-full flex-col bg-background">
+      <style>{`
+        @keyframes typing-dot {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1.1); }
+        }
+      `}</style>
+
       {/* Header */}
-      <div className="h-[53px] shrink-0 border-b border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900 flex items-center px-4 justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="size-7 rounded-lg bg-white dark:bg-zinc-800 border border-[#dadce0] dark:border-zinc-700 flex items-center justify-center shrink-0 shadow-sm">
-            <img src="/Chat.svg" alt="Flux AI" className="size-4.5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-[12px] font-semibold text-[#202222] dark:text-zinc-100 leading-none">
+      {showHeader && (
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <img src="/Chat.svg" alt="Flux AI" className="size-4" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Flux AI
             </span>
-            <span className="text-[10px] text-[#5f6368] dark:text-zinc-400 truncate max-w-48 mt-0.5">
-              Document Assistant
-            </span>
           </div>
+          {messages.length > 0 && (
+            <button
+              onClick={handleClearChat}
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              title="Clear conversation"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
+          )}
         </div>
-        {messages.length > 0 && (
-          <button
-            onClick={handleClearChat}
-            className="p-1.5 rounded-md hover:bg-[#f1f3f4] dark:hover:bg-zinc-800 text-[#5f6368] dark:text-zinc-400 transition-colors"
-            title="Clear conversation"
-          >
-            <RotateCcw className="size-3.5" />
-          </button>
-        )}
-      </div>
+      )}
+
+      {isLoadingHistory && (
+        <div className="absolute left-0 right-0 top-0 z-10 h-0.5 overflow-hidden">
+          <div className="mx-auto h-full w-3/5 animate-pulse bg-primary/50" />
+        </div>
+      )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
-        {isLoadingHistory ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2">
-            <Loader2 className="size-6 animate-spin text-[#3370ff]/50" />
-            <p className="text-xs text-[#5f6368] dark:text-zinc-400 animate-pulse">Loading history…</p>
-          </div>
-        ) : messages.length === 0 && !isStreaming ? (
-          <div className="flex flex-col items-center justify-center text-center p-6 h-full gap-4">
-            <div className="size-12 bg-[#3370ff]/8 rounded-2xl flex items-center justify-center">
-              <Sparkles className="size-6 text-[#3370ff]" />
+      <div className="flex-1 overflow-y-auto">
+        {messages.length === 0 && !isStreaming && !isLoadingHistory ? (
+          <div className="flex h-full flex-col items-center justify-center gap-6 px-4">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="group flex flex-col items-center">
+                <img
+                  src="/Chat.svg"
+                  alt="Flux AI"
+                  className="mb-2 size-10 transition-transform duration-1000 group-hover:rotate-180"
+                />
+                <p className="text-sm font-semibold">Flux AI Reader</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                  Ask about this indexed paper.
+                </p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <h4 className="text-[13px] font-semibold text-[#202222] dark:text-zinc-100">
-                Ask about this paper
-              </h4>
-              <p className="text-[11px] leading-relaxed text-[#5f6368] dark:text-zinc-400 max-w-52">
-                Type a question below or select text in the PDF and click "Ask AI".
-              </p>
-            </div>
-            <div className="flex flex-col gap-1.5 w-full max-w-56">
+            <div className="w-full space-y-1.5">
               {["Summarize the key findings", "Explain the methodology", "What are the limitations?"].map(
                 (prompt) => (
                   <button
                     key={prompt}
-                    onClick={() => handleSend(prompt)}
-                    className="text-left text-[11px] px-3 py-2 rounded-lg border border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-800/80 text-[#202222] dark:text-zinc-200 hover:bg-[#f1f3f4] dark:hover:bg-zinc-700/50 hover:border-[#3370ff]/30 transition-all"
+                    onClick={() => {
+                      setInputMessage(prompt);
+                      textareaRef.current?.focus();
+                    }}
+                    className="group flex w-full items-center gap-2 rounded-xl border border-border/40 bg-secondary/20 px-3 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                   >
-                    {prompt}
+                    <span className="shrink-0 text-primary/40 transition-colors group-hover:text-primary">›</span>
+                    <span className="truncate">{prompt}</span>
                   </button>
                 )
               )}
             </div>
+            <p className="text-center text-[10px] text-muted-foreground/30">
+              Select text in the PDF to focus the next answer.
+            </p>
           </div>
         ) : (
-          <>
+          <div className="space-y-4 px-3 py-4">
             {messages.map((msg, i) => (
               <MessageBubble
                 key={i}
@@ -508,70 +495,86 @@ export default function ReaderChatPanel({
                 sources={msg.sources}
               />
             ))}
-            {isStreaming && streamContent && (
-              <MessageBubble content={streamContent} role="assistant" isStreaming={true} />
+            {isStreaming && (
+              <div className="flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                <div className="max-w-[92%]">
+                  {streamContent ? (
+                    <MessageBubble content={streamContent} role="assistant" isStreaming={true} />
+                  ) : (
+                    <TypingIndicator />
+                  )}
+                </div>
+              </div>
             )}
-          </>
+            <div ref={messagesEndRef} />
+          </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input area */}
-      <div className="shrink-0 p-3 border-t border-[#dadce0] dark:border-zinc-700 bg-white dark:bg-zinc-900">
+      <div className="relative shrink-0 border-t border-border/40 px-3 pb-3 pt-2">
         {/* Selection context chip */}
         {selectionContext && (
-          <div className="mb-2 p-2.5 rounded-lg bg-[#3370ff]/5 border border-[#3370ff]/15 text-xs flex gap-2 items-start justify-between">
-            <div className="flex gap-1.5 items-start text-[#3370ff] min-w-0">
-              <Quote className="size-3.5 shrink-0 mt-0.5 opacity-70" />
-              <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-[10px] leading-none mb-1">Selected text</span>
-                <p className="text-[10px] leading-snug line-clamp-2 italic text-[#202222]/70 dark:text-zinc-300 select-text">
-                  "{selectionContext}"
-                </p>
+          <div className="group relative mb-2">
+            <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-border/50 bg-muted/35 px-2.5 py-1.5">
+              <FileText className="size-3 shrink-0 text-primary/60" />
+              <span className="truncate text-[10px] font-mono text-muted-foreground">
+                selected passage
+              </span>
+              <span className="shrink-0 text-[9px] text-muted-foreground/45">
+                {selectionContext.split(/\s+/).filter(Boolean).length}w
+              </span>
+              <button
+                onClick={onClearSelectionContext}
+                className="ml-auto rounded p-px text-muted-foreground/40 transition-colors hover:text-foreground"
+                title="Clear selected context"
+              >
+                <X className="size-2.5" />
+              </button>
+            </div>
+            <div className="pointer-events-none absolute bottom-full left-0 right-0 z-50 mb-1 hidden group-hover:block">
+              <div className="rounded-xl border border-border bg-popover p-2.5 text-[10px] font-mono shadow-xl">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <FileText className="size-3 text-primary/70" />
+                  <span className="text-muted-foreground">Reader selection</span>
+                  <span className="ml-auto text-muted-foreground/40">{selectionContext.length}ch</span>
+                </div>
+                <pre className="max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed text-muted-foreground/70">
+                  {selectionContext}
+                </pre>
               </div>
             </div>
-            <button
-              onClick={onClearSelectionContext}
-              className="shrink-0 hover:bg-[#3370ff]/10 p-0.5 rounded text-[#3370ff] transition-colors"
-            >
-              <X className="size-3" />
-            </button>
           </div>
         )}
 
-        <div className="relative flex items-end gap-2 bg-[#f8f9fa] dark:bg-zinc-800 border border-[#dadce0] dark:border-zinc-700 rounded-xl px-3 py-2 transition-all focus-within:border-[#3370ff]/50 focus-within:shadow-[0_0_0_2px_rgba(51,112,255,0.08)]">
+        <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:border-primary/30 focus-within:shadow-md">
           <textarea
             ref={textareaRef}
             rows={1}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming}
+            disabled={isLoadingHistory}
             placeholder={
               selectionContext
-                ? "Ask about the selected text…"
-                : "Ask about this paper…"
+                ? "Ask about the selected text..."
+                : "Ask Flux AI about this paper..."
             }
-            className="flex-1 bg-transparent border-none outline-none resize-none min-h-[24px] max-h-[120px] text-[13px] text-[#202222] dark:text-zinc-100 placeholder:text-[#5f6368]/50 dark:placeholder:text-zinc-500 leading-relaxed select-text"
+            className="max-h-[140px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground/50"
           />
 
-          {isStreaming ? (
+          <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+            <span className="font-mono text-[10px] text-muted-foreground/30">
+              {messages.length > 0 ? `${messages.length} msg` : "paper chat"}
+            </span>
             <button
-              onClick={handleStop}
-              className="size-7 shrink-0 flex items-center justify-center rounded-lg bg-[#d93025] text-white transition-colors hover:bg-[#d93025]/90"
-              title="Stop generating"
+              onClick={isStreaming ? handleStop : () => handleSend(inputMessage)}
+              disabled={(!inputMessage.trim() && !selectionContext && !isStreaming) || isLoadingHistory}
+              className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-20"
             >
-              <div className="size-2.5 rounded-sm bg-white" />
+              {isStreaming ? <Square className="size-3.5" /> : <ArrowUp className="size-4" />}
             </button>
-          ) : (
-            <button
-              onClick={() => handleSend(inputMessage)}
-              disabled={!inputMessage.trim() && !selectionContext}
-              className="size-7 shrink-0 flex items-center justify-center rounded-lg bg-[#3370ff] text-white transition-colors hover:bg-[#3370ff]/90 disabled:opacity-25 disabled:cursor-not-allowed"
-            >
-              <ArrowUp className="size-3.5" />
-            </button>
-          )}
+          </div>
         </div>
       </div>
     </div>

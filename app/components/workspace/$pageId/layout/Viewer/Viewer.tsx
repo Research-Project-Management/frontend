@@ -622,6 +622,111 @@ function CompileButton({
   );
 }
 
+// ── Optimized PDF Page (IntersectionObserver based Lazy Loading) ────────────
+
+interface OptimizedPDFPageProps {
+  pageIndex: number; // 0-based
+  scale: number;
+  pageElemRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
+  approxHeightRef: React.MutableRefObject<number>;
+  numPages: number;
+  synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
+  getEditorContent: React.MutableRefObject<(() => string) | null>;
+  scrollToLineRef: React.MutableRefObject<((line: number) => void) | null>;
+}
+
+function OptimizedPDFPage({
+  pageIndex,
+  scale,
+  pageElemRefs,
+  approxHeightRef,
+  numPages,
+  synctexMapRef,
+  getEditorContent,
+  scrollToLineRef,
+}: OptimizedPDFPageProps) {
+  const [isVisible, setIsVisible] = React.useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsVisible(entry.isIntersecting);
+          if (entry.isIntersecting && entry.boundingClientRect.height > 0) {
+            approxHeightRef.current = entry.boundingClientRect.height;
+          }
+        });
+      },
+      {
+        root: null, // viewport
+        rootMargin: "450px 0px 450px 0px", // pre-render adjacent pages for seamless scroll experience
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(el);
+    return () => {
+      observer.unobserve(el);
+    };
+  }, [approxHeightRef]);
+
+  const pageNum = pageIndex + 1;
+  const estimatedHeight = approxHeightRef.current > 0 ? approxHeightRef.current : 840 * scale;
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const pageHeight = (e.currentTarget as HTMLDivElement).offsetHeight;
+    const clickFraction = pageHeight > 0 ? e.nativeEvent.offsetY / pageHeight : 0;
+    const smap = synctexMapRef.current;
+    let approxLine: number;
+    if (smap && smap.sortedLines.length > 0) {
+      approxLine = syncTeXPageFractionToLine(pageNum, clickFraction, smap);
+    } else {
+      const content = getEditorContent.current?.() ?? "";
+      approxLine = pdfPositionToLine(pageIndex, clickFraction, numPages, content);
+    }
+    scrollToLineRef.current?.(approxLine);
+  };
+
+  return (
+    <div
+      ref={(el) => {
+        containerRef.current = el;
+        pageElemRefs.current[pageNum] = el;
+      }}
+      onDoubleClickCapture={handleDoubleClick}
+      className="shadow-lg bg-background rounded-sm transition-shadow relative overflow-hidden flex items-center justify-center border border-border/10"
+      style={{
+        width: `${595 * scale}px`,
+        height: isVisible ? "auto" : `${estimatedHeight}px`,
+        minHeight: `${estimatedHeight}px`,
+      }}
+    >
+      {isVisible ? (
+        <Page
+          pageNumber={pageNum}
+          scale={scale}
+          renderTextLayer
+          renderAnnotationLayer
+          devicePixelRatio={Math.min(2, window.devicePixelRatio || 1)}
+          loading={
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/10">
+              <Loader2 className="size-5 animate-spin text-muted-foreground/30" />
+            </div>
+          }
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/10 text-muted-foreground/30 select-none animate-pulse">
+          <span className="text-xs font-mono font-medium">Page {pageNum}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Viewer ────────────────────────────────────────────────────────────
 
 export default function Viewer() {
@@ -676,6 +781,7 @@ export default function Viewer() {
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const pdfScrollContainerRef = useRef<HTMLDivElement>(null);
   const synctexMapRef = useRef<SyncTeXMap | null>(null);
+  const approxHeightRef = useRef<number>(0);
 
   // Register scroll-to-page function so OutlineTab can call it.
   useEffect(() => {
@@ -1073,48 +1179,17 @@ export default function Viewer() {
             {scrollMode ? (
               <div className="flex flex-col gap-1">
                 {Array.from({ length: numPages }, (_, i) => (
-                  <div
+                  <OptimizedPDFPage
                     key={`page_${i + 1}`}
-                    ref={(el) => {
-                      pageElemRefs.current[i + 1] = el;
-                    }}
-                    onDoubleClickCapture={(e) => {
-                      // Use capture phase so this fires even when the PDF text layer
-                      // calls stopPropagation on the bubble phase.
-                      const pageHeight = (e.currentTarget as HTMLDivElement)
-                        .offsetHeight;
-                      const clickFraction =
-                        pageHeight > 0 ? e.nativeEvent.offsetY / pageHeight : 0;
-                      const smap = synctexMapRef.current;
-                      let approxLine: number;
-                      if (smap && smap.sortedLines.length > 0) {
-                        // SyncTeX path — knows exactly which lines are on this page
-                        approxLine = syncTeXPageFractionToLine(
-                          i + 1,
-                          clickFraction,
-                          smap,
-                        );
-                      } else {
-                        // Fallback heuristic
-                        const content = getEditorContent.current?.() ?? "";
-                        approxLine = pdfPositionToLine(
-                          i,
-                          clickFraction,
-                          numPages,
-                          content,
-                        );
-                      }
-                      scrollToLineRef.current?.(approxLine);
-                    }}
-                  >
-                    <Page
-                      pageNumber={i + 1}
-                      scale={scale}
-                      className="shadow-lg"
-                      renderTextLayer
-                      renderAnnotationLayer
-                    />
-                  </div>
+                    pageIndex={i}
+                    scale={scale}
+                    pageElemRefs={pageElemRefs}
+                    approxHeightRef={approxHeightRef}
+                    numPages={numPages}
+                    synctexMapRef={synctexMapRef}
+                    getEditorContent={getEditorContent}
+                    scrollToLineRef={scrollToLineRef}
+                  />
                 ))}
               </div>
             ) : (
@@ -1124,6 +1199,7 @@ export default function Viewer() {
                 className="shadow-lg"
                 renderTextLayer
                 renderAnnotationLayer
+                devicePixelRatio={Math.min(2, window.devicePixelRatio || 1)}
               />
             )}
           </Document>

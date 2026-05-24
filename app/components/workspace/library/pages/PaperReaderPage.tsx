@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   Download,
   ExternalLink,
-  FileText,
   Info,
   Loader2,
   MessageSquare,
@@ -34,6 +33,7 @@ import {
   useCollections,
   useUpdatePaper,
 } from "~/query/library";
+import { lookupDoi, searchCrossref, type CrossrefWork } from "~/query/storage";
 import { resolveFileUrl } from "~/lib/api";
 import { cn } from "~/lib/utils";
 import type { Collection, Paper } from "~/types/library";
@@ -139,15 +139,119 @@ function MetadataField({
   );
 }
 
+function cleanMetadataPayload(work: CrossrefWork) {
+  const payload = {
+    title: work.title || undefined,
+    authors: work.authors?.length ? work.authors : undefined,
+    editors: work.editors?.length ? work.editors : undefined,
+    year: work.year && !Number.isNaN(Number(work.year)) ? Number(work.year) : undefined,
+    doi: work.doi || undefined,
+    abstract: work.abstract || undefined,
+    keywords: work.keywords?.length ? work.keywords : undefined,
+    itemType: work.itemType || work.type || undefined,
+    journal: work.journal || work.publicationTitle || undefined,
+    publicationTitle: work.publicationTitle || work.journal || undefined,
+    publicationDate: work.publicationDate || (work.year ? String(work.year) : undefined),
+    publisher: work.publisher || undefined,
+    place: work.place || undefined,
+    volume: work.volume || undefined,
+    issue: work.issue || undefined,
+    section: work.section || undefined,
+    partNumber: work.partNumber || undefined,
+    partTitle: work.partTitle || undefined,
+    pages: work.pages || undefined,
+    series: work.series || undefined,
+    seriesTitle: work.seriesTitle || undefined,
+    seriesText: work.seriesText || undefined,
+    issn: work.issn || undefined,
+    isbn: work.isbn || undefined,
+    pmid: work.pmid || undefined,
+    pmcid: work.pmcid || undefined,
+    url: work.url || undefined,
+    type: work.type || undefined,
+    language: work.language || undefined,
+    journalAbbr: work.journalAbbr || undefined,
+    shortTitle: work.shortTitle || undefined,
+    rights: work.rights || undefined,
+    license: work.license || work.rights || undefined,
+    libraryCatalog: work.libraryCatalog || "DOI.org",
+    extra: work.extra || undefined,
+    accessedAt: new Date().toISOString(),
+  };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) =>
+      Array.isArray(value) ? value.length > 0 : value !== undefined && value !== "",
+    ),
+  );
+}
+
 function ReaderDetails({
   paper,
   collection,
+  workspaceId,
 }: {
   paper: Paper;
   collection: Collection | null;
+  workspaceId: string;
 }) {
+  const updatePaper = useUpdatePaper(workspaceId, paper.collection || "");
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const autoFetchedRef = useRef<string | null>(null);
   const fileType = paper.mimeType?.split("/")[1] ?? paper.mimeType;
   const identifiers = [paper.doi, paper.issn, paper.isbn].filter(Boolean);
+  const needsMetadataRefresh = Boolean(
+    paper.doi &&
+      !paper.accessedAt &&
+      (!paper.publicationTitle || !paper.abstract || (!paper.issn && !paper.isbn)),
+  );
+
+  const fetchAndSaveMetadata = useCallback(
+    async (silent = false) => {
+      if (!paper.doi && !paper.title) return;
+      setIsFetchingMetadata(true);
+      try {
+        let work: CrossrefWork | null = null;
+        if (paper.doi) {
+          const result = await lookupDoi(paper.doi);
+          work = result.work;
+        }
+        if (!work && paper.title) {
+          const result = await searchCrossref(paper.title, 1);
+          work = result.works?.[0] ?? null;
+        }
+        if (!work) throw new Error("No metadata returned");
+
+        updatePaper.mutate(
+          {
+            paperId: paper._id,
+            ...cleanMetadataPayload(work),
+          },
+          {
+            onSuccess: () => {
+              if (!silent) toast.success("Metadata saved");
+            },
+            onError: () => {
+              if (!silent) toast.error("Failed to save metadata");
+            },
+          },
+        );
+      } catch (error) {
+        console.error("Reader metadata lookup failed:", error);
+        if (!silent) toast.error("Could not fetch metadata for this paper");
+      } finally {
+        setIsFetchingMetadata(false);
+      }
+    },
+    [paper._id, paper.doi, paper.title, updatePaper],
+  );
+
+  useEffect(() => {
+    const key = paper.doi || paper._id;
+    if (!needsMetadataRefresh || autoFetchedRef.current === key) return;
+    autoFetchedRef.current = key;
+    fetchAndSaveMetadata(true);
+  }, [fetchAndSaveMetadata, needsMetadataRefresh, paper._id, paper.doi]);
 
   return (
     <div className="h-full overflow-y-auto px-4 py-4">
@@ -165,6 +269,20 @@ function ReaderDetails({
 
         <div className="flex flex-wrap items-center gap-1.5">
           <RagBadge status={paper.ragStatus} compact />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 gap-1.5 px-2 text-[10px]"
+            onClick={() => fetchAndSaveMetadata(false)}
+            disabled={isFetchingMetadata || updatePaper.isPending || (!paper.doi && !paper.title)}
+          >
+            {isFetchingMetadata || updatePaper.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <RefreshCcw className="size-3" />
+            )}
+            Fetch metadata
+          </Button>
           {paper.year ? (
             <span className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               {paper.year}
@@ -184,6 +302,7 @@ function ReaderDetails({
       </section>
 
       <dl className="mt-5 border-y border-border">
+        <MetadataField label="Item Type">{paper.itemType || paper.type}</MetadataField>
         <MetadataField label="Abstract">
           {paper.abstract ? (
             <p className="max-h-48 overflow-y-auto pr-1 text-xs leading-relaxed">
@@ -192,14 +311,23 @@ function ReaderDetails({
           ) : null}
         </MetadataField>
         <MetadataField label="Journal">
-          {paper.journal ? <span className="font-medium">{paper.journal}</span> : null}
+          {paper.publicationTitle || paper.journal ? (
+            <span className="font-medium">{paper.publicationTitle || paper.journal}</span>
+          ) : null}
         </MetadataField>
+        <MetadataField label="Authors">{paper.authors?.join("; ")}</MetadataField>
+        <MetadataField label="Editors">{paper.editors?.join("; ")}</MetadataField>
         <MetadataField label="Publisher">{paper.publisher}</MetadataField>
+        <MetadataField label="Place">{paper.place}</MetadataField>
+        <MetadataField label="Date">{paper.publicationDate || paper.year}</MetadataField>
         <MetadataField label="Volume">
           {[paper.volume && `Vol. ${paper.volume}`, paper.issue && `No. ${paper.issue}`, paper.pages && `pp. ${paper.pages}`]
             .filter(Boolean)
             .join(", ")}
         </MetadataField>
+        <MetadataField label="Section">{paper.section}</MetadataField>
+        <MetadataField label="Part">{[paper.partNumber, paper.partTitle].filter(Boolean).join(" · ")}</MetadataField>
+        <MetadataField label="Series">{[paper.series, paper.seriesTitle, paper.seriesText].filter(Boolean).join(" · ")}</MetadataField>
         <MetadataField label="Collection">
           {collection ? (
             <span
@@ -220,8 +348,18 @@ function ReaderDetails({
               {paper.doi ? <div className="break-all">DOI {paper.doi}</div> : null}
               {paper.issn ? <div>ISSN {paper.issn}</div> : null}
               {paper.isbn ? <div>ISBN {paper.isbn}</div> : null}
+              {paper.pmid ? <div>PMID {paper.pmid}</div> : null}
+              {paper.pmcid ? <div>PMCID {paper.pmcid}</div> : null}
             </div>
           ) : null}
+        </MetadataField>
+        <MetadataField label="Catalog">{paper.libraryCatalog}</MetadataField>
+        <MetadataField label="License">{paper.license || paper.rights}</MetadataField>
+        <MetadataField label="Citation Key">{paper.citationKey}</MetadataField>
+        <MetadataField label="Archive">{[paper.archive, paper.archiveLocation].filter(Boolean).join(" · ")}</MetadataField>
+        <MetadataField label="Call No.">{paper.callNumber}</MetadataField>
+        <MetadataField label="Accessed">
+          {paper.accessedAt ? formatDate(paper.accessedAt) : null}
         </MetadataField>
         <MetadataField label="Keywords">
           {paper.keywords?.length ? (
@@ -256,6 +394,9 @@ function ReaderDetails({
               <ExternalLink className="size-3 shrink-0" />
             </a>
           ) : null}
+        </MetadataField>
+        <MetadataField label="Extra">
+          {paper.extra ? <pre className="whitespace-pre-wrap font-sans text-xs">{paper.extra}</pre> : null}
         </MetadataField>
       </dl>
     </div>
@@ -665,9 +806,6 @@ export default function PaperReaderPage() {
           </IconTooltip>
 
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="hidden size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card text-primary sm:flex">
-              <FileText className="size-4" />
-            </div>
             <div className="min-w-0 max-w-[34vw] sm:max-w-[42vw] lg:max-w-[520px] xl:max-w-[640px]">
               {isEditingTitle && paper ? (
                 <input
@@ -844,19 +982,38 @@ export default function PaperReaderPage() {
                   {panelTitle}
                 </h2>
               </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setActivePanel(null)}
-                aria-label="Close panel"
-              >
-                <X className="size-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {activePanel === "ai" && paper && paper.ragDocId && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      const confirmClear = window.confirm("Are you sure you want to clear this conversation?");
+                      if (confirmClear) {
+                        window.dispatchEvent(new CustomEvent("clear-reader-chat"));
+                      }
+                    }}
+                    title="Clear conversation"
+                    aria-label="Clear conversation"
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setActivePanel(null)}
+                  aria-label="Close panel"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
-              {activePanel === "ai" ? (
-                isLoadingPapers ? (
+              <div className={cn("h-full", activePanel !== "ai" && "hidden")}>
+                {isLoadingPapers ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="size-6 animate-spin text-primary/60" />
                   </div>
@@ -867,6 +1024,7 @@ export default function PaperReaderPage() {
                     selectionContext={selectionContext}
                     onClearSelectionContext={clearSelectionContext}
                     showHeader={false}
+                    autoFocus={activePanel === "ai"}
                   />
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center px-6 text-center">
@@ -907,12 +1065,20 @@ export default function PaperReaderPage() {
                       </Button>
                     ) : null}
                   </div>
-                )
-              ) : activePanel === "details" && paper ? (
-                <ReaderDetails paper={paper} collection={paperCollection} />
-              ) : activePanel === "notes" && paper ? (
-                <ReaderNotes paper={paper} workspaceId={workspaceId} />
-              ) : null}
+                )}
+              </div>
+              <div className={cn("h-full", activePanel !== "details" && "hidden")}>
+                {paper ? (
+                  <ReaderDetails
+                    paper={paper}
+                    collection={paperCollection}
+                    workspaceId={workspaceId}
+                  />
+                ) : null}
+              </div>
+              <div className={cn("h-full", activePanel !== "notes" && "hidden")}>
+                {paper ? <ReaderNotes paper={paper} workspaceId={workspaceId} /> : null}
+              </div>
             </div>
           </aside>
         ) : null}

@@ -283,17 +283,6 @@ export default function ReaderChatPanel({
     }
   }, [autoFocus, isStreaming]);
 
-  // Listen to parent clear event
-  useEffect(() => {
-    const handleClearEvent = () => {
-      handleClearChat();
-    };
-    window.addEventListener("clear-reader-chat", handleClearEvent);
-    return () => {
-      window.removeEventListener("clear-reader-chat", handleClearEvent);
-    };
-  }, [handleClearChat]);
-
   // Focus-on-type: Automatically focus the chat input when the user starts typing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -446,6 +435,17 @@ export default function ReaderChatPanel({
       }
     }
   }, [chatId]);
+
+  // Listen to parent clear event
+  useEffect(() => {
+    const handleClearEvent = () => {
+      handleClearChat();
+    };
+    window.addEventListener("clear-reader-chat", handleClearEvent);
+    return () => {
+      window.removeEventListener("clear-reader-chat", handleClearEvent);
+    };
+  }, [handleClearChat]);
 
   return (
     <div className="relative flex h-full flex-col bg-background">

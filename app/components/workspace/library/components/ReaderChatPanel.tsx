@@ -8,7 +8,9 @@ import {
   ArrowUp,
   Square,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useParams } from "react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
 import type { ChatMessage, SourceItem } from "~/types/chat";
@@ -18,6 +20,7 @@ import {
   appendChatMessages,
   createChatSession,
   listChatSessions,
+  deleteChatSession,
 } from "~/query/chat-ai";
 import { renderMarkdown } from "../../ai/layout/renderMarkdown";
 import { cn } from "~/lib/utils";
@@ -105,7 +108,7 @@ const MessageBubble = React.memo(function MessageBubble({
   return (
     <div
       className={cn(
-        "flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300",
+        "flex gap-2.5",
         isUser ? "justify-end" : "justify-start"
       )}
     >
@@ -174,6 +177,7 @@ interface ReaderChatPanelProps {
   selectionContext: string;
   onClearSelectionContext: () => void;
   showHeader?: boolean;
+  autoFocus?: boolean;
 }
 
 export default function ReaderChatPanel({
@@ -182,6 +186,7 @@ export default function ReaderChatPanel({
   selectionContext,
   onClearSelectionContext,
   showHeader = true,
+  autoFocus = true,
 }: ReaderChatPanelProps) {
   const { workspaceId } = useParams();
   const [chatId, setChatId] = useState<string | null>(null);
@@ -190,6 +195,7 @@ export default function ReaderChatPanel({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState("");
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -250,30 +256,37 @@ export default function ReaderChatPanel({
 
   // Focus textarea when selection context arrives
   useEffect(() => {
-    if (selectionContext && textareaRef.current) {
+    if (autoFocus && selectionContext && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [selectionContext]);
+  }, [autoFocus, selectionContext]);
 
   // Auto-focus on mount or document changes
   useEffect(() => {
+    if (!autoFocus) return;
     const t = setTimeout(() => {
       textareaRef.current?.focus();
     }, 100);
     return () => clearTimeout(t);
-  }, [ragDocId]);
+  }, [autoFocus, ragDocId]);
+
+  useEffect(() => {
+    if (autoFocus) {
+      textareaRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   // Re-focus after AI finishes streaming
   useEffect(() => {
-    if (!isStreaming) {
+    if (autoFocus && !isStreaming) {
       textareaRef.current?.focus();
     }
-  }, [isStreaming]);
+  }, [autoFocus, isStreaming]);
 
   // Focus-on-type: Automatically focus the chat input when the user starts typing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isStreaming) return;
+      if (!autoFocus || isStreaming) return;
 
       const activeEl = document.activeElement;
       if (
@@ -298,7 +311,7 @@ export default function ReaderChatPanel({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isStreaming]);
+  }, [autoFocus, isStreaming]);
 
   const handleSend = async (text: string) => {
     if (isStreaming || !workspaceId || !ragDocId) return;
@@ -404,12 +417,24 @@ export default function ReaderChatPanel({
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = useCallback(async () => {
+    setShowClearConfirm(false);
+    const activeChatId = chatId;
     setMessages([]);
     setChatId(null);
     setStreamContent("");
     streamRef.current = "";
-  };
+
+    if (activeChatId) {
+      try {
+        await deleteChatSession(activeChatId);
+        toast.success("Conversation cleared");
+      } catch (err) {
+        console.error("Failed to delete chat session:", err);
+        toast.error("Could not clear conversation from server");
+      }
+    }
+  }, [chatId]);
 
   return (
     <div className="relative flex h-full flex-col bg-background">
@@ -429,13 +454,36 @@ export default function ReaderChatPanel({
               Flux AI
             </span>
           </div>
-          {messages.length > 0 && (
+          {showClearConfirm ? (
+            <div className="flex h-8 items-center gap-0.5 rounded-md border border-destructive/20 bg-destructive/10 px-1">
+              <button
+                onClick={handleClearChat}
+                title="Confirm clear conversation"
+                className="flex size-6 items-center justify-center rounded text-destructive hover:bg-destructive/15 transition-colors"
+              >
+                <Check className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                title="Cancel"
+                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : (
             <button
-              onClick={handleClearChat}
-              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              onClick={() => {
+                if (messages.length > 0) {
+                  setShowClearConfirm(true);
+                } else {
+                  handleClearChat();
+                }
+              }}
               title="Clear conversation"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
-              <RotateCcw className="size-3.5" />
+              <Trash2 className="size-3.5" />
             </button>
           )}
         </div>
@@ -496,7 +544,7 @@ export default function ReaderChatPanel({
               />
             ))}
             {isStreaming && (
-              <div className="flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+              <div className="flex gap-2.5">
                 <div className="max-w-[92%]">
                   {streamContent ? (
                     <MessageBubble content={streamContent} role="assistant" isStreaming={true} />

@@ -26,6 +26,7 @@ import {
 } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 import { usePageContext } from "./PageContext";
+import { useUpdatePageTitle } from "~/query/page";
 import {
   useEditorSettingsStore,
   type LayoutMode,
@@ -205,6 +206,30 @@ export default function ToolBar() {
     toggleSettingsPanel,
   } = useEditorSettingsStore();
 
+  const updateTitleMutation = useUpdatePageTitle();
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editTitle, setEditTitle] = React.useState("");
+
+  const handleCommit = () => {
+    const trimmed = editTitle.trim();
+    if (!trimmed || trimmed === currentPage?.title) {
+      setIsEditing(false);
+      return;
+    }
+    updateTitleMutation.mutate(
+      { pageId: currentPage!._id, title: trimmed },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+          toast.success("Page renamed successfully");
+        },
+        onError: () => {
+          setIsEditing(false);
+        },
+      }
+    );
+  };
+
   const projectName =
     currentPage && typeof currentPage.project === "object"
       ? currentPage.project.name
@@ -254,9 +279,32 @@ export default function ToolBar() {
         {currentPage?.title && (
           <>
             <span className="text-muted-foreground/40 mx-1 text-sm select-none">/</span>
-            <span className="text-sm mx-1 font-medium text-foreground truncate max-w-44">
-              {currentPage.title}
-            </span>
+            {isEditing ? (
+              <input
+                autoFocus
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={handleCommit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCommit();
+                  if (e.key === "Escape") setIsEditing(false);
+                }}
+                className="h-7 px-2 py-0.5 text-sm bg-muted focus:bg-background border border-primary/30 focus:border-primary rounded-md outline-none text-foreground font-medium transition-all"
+                style={{ width: `${Math.max(80, editTitle.length * 8 + 16)}px`, maxWidth: "200px" }}
+              />
+            ) : (
+              <span
+                onClick={() => {
+                  setIsEditing(true);
+                  setEditTitle(currentPage.title);
+                }}
+                title="Click to rename page"
+                className="text-sm mx-1 font-medium text-foreground cursor-pointer hover:bg-primary/10 hover:text-primary rounded px-1.5 py-0.5 -mx-1.5 transition-colors select-none truncate max-w-44"
+              >
+                {currentPage.title}
+              </span>
+            )}
           </>
         )}
       </div>

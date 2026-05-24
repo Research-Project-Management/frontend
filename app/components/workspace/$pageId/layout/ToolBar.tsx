@@ -239,13 +239,13 @@ export default function ToolBar() {
     LAYOUT_OPTIONS.find((o) => o.value === layout)?.icon ?? Columns2;
 
   return (
-    <nav className="flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
+    <nav className="relative flex h-12 justify-between items-center px-2 py-1 border-b border-border bg-background shrink-0 z-10">
       {/* ── Left ── */}
       <div className="flex gap-1 items-center min-w-0">
         <Menu />
       </div>
       {/* Center breadcrumb: Logo / Project / Page */}
-      <div className="flex items-center">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
         <button onClick={() => navigate("/ws")}>
           <Flux className="size-5 mr-2" />
         </button>

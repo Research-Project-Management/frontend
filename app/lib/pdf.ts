@@ -170,8 +170,7 @@ export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadat
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdfjsLib = await import("pdfjs-dist");
-    const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const meta = await pdf.getMetadata();

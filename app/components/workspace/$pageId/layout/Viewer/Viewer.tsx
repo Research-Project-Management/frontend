@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useParams } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { Document, Page, pdfjs } from "react-pdf";
 import {
   AlertCircle,
@@ -40,7 +40,7 @@ import { useEditorSettingsStore, type LaTeXEngine } from "~/stores/editor-settin
 import { useCompileStore } from "~/stores/compile";
 
 import { toast } from "sonner";
-import { useUpdatePageThumbnail } from "~/query/page";
+import { useUpdatePageThumbnail, useProjectPages } from "~/query/page";
 import type { Page as ProjectPage } from "~/types/page";
 
 
@@ -385,27 +385,64 @@ async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
 // parse it once into a bidirectional map so both scroll-sync directions have
 // O(log n) lookups instead of linear scans.
 
+interface SyncTeXNode {
+  line: number;
+  tag: number;
+  x: number;
+  y: number;
+}
+
 interface SyncTeXMap {
-  /** source line (1-based) → first PDF page (1-based) it appears on */
+  /** source line (1-based) → first PDF page (1-based) it appears on (for tag 1) */
   lineToPage: Map<number, number>;
+  /** `${tag}:${line}` → page (1-based) */
+  tagLineToPage: Map<string, number>;
   /** PDF page (1-based) → sorted list of source lines rendered on it */
   pageToLines: Map<number, number[]>;
   /** all mapped source lines, sorted ascending — used for binary search */
   sortedLines: number[];
+  /** PDF page (1-based) → list of all SyncTeX nodes on that page */
+  pageToNodes: Map<number, SyncTeXNode[]>;
+  /** `${tag}:${line}` → node on that page */
+  tagLineToNode: Map<string, SyncTeXNode & { page: number }>;
+  /** tag → filepath */
+  tagToPath: Map<number, string>;
+  /** basename to tag mapping */
+  pathToTag: Map<string, number>;
 }
 
 /**
- * Parse a decompressed SyncTeX text into a bidirectional line↔page map.
- * Only considers records referencing Input tag 1 (main.tex).
+ * Parse a decompressed SyncTeX text into a detailed coordinate-aware map.
+ * Supports multi-file mappings via Tag tracking.
  */
 function parseSyncTeX(text: string): SyncTeXMap {
   const lineToPage = new Map<number, number>();
+  const tagLineToPage = new Map<string, number>();
   const pageToLines = new Map<number, number[]>();
+  const pageToNodes = new Map<number, SyncTeXNode[]>();
+  const tagLineToNode = new Map<string, SyncTeXNode & { page: number }>();
+  const tagToPath = new Map<number, string>();
+  const pathToTag = new Map<string, number>();
   let currentPage = 0;
 
   for (const raw of text.split("\n")) {
     const s = raw.trimEnd();
     if (!s) continue;
+
+    // Parse Input lines: Input:1:main.tex
+    if (s.startsWith("Input:")) {
+      const parts = s.split(":");
+      if (parts.length >= 3) {
+        const tag = parseInt(parts[1], 10);
+        const filepath = parts.slice(2).join(":").trim();
+        tagToPath.set(tag, filepath);
+
+        const basename = filepath.split("/").pop() || filepath;
+        pathToTag.set(basename.toLowerCase(), tag);
+      }
+      continue;
+    }
+
     const first = s.charCodeAt(0);
 
     // Page start marker: {N
@@ -414,42 +451,55 @@ function parseSyncTeX(text: string): SyncTeXMap {
       if (m) {
         currentPage = parseInt(m[1], 10);
         if (!pageToLines.has(currentPage)) pageToLines.set(currentPage, []);
+        if (!pageToNodes.has(currentPage)) pageToNodes.set(currentPage, []);
       }
       continue;
     }
     // Page end marker or header lines — skip
     if (first === 125 /* } */ || currentPage === 0) continue;
 
-    let srcLine: number | null = null;
+    // Unified regex for any box/node representation:
+    // Matches start of box/node like `[1:10,20:100,200`
+    const m = s.match(/^([\[\(\)hvgxk$])(\d+):(\d+),(\d+):(-?\d+),(-?\d+)/);
+    if (m) {
+      const tag = parseInt(m[2], 10);
+      const line = parseInt(m[3], 10);
+      const x = parseInt(m[5], 10);
+      const y = parseInt(m[6], 10);
+      const key = `${tag}:${line}`;
 
-    // Box open: (1,LINE:...
-    if (first === 40 /* ( */) {
-      const m = s.match(/^\(1,(\d+):/);
-      if (m) srcLine = parseInt(m[1], 10);
-    }
-    // Node types h/v/g/x/k/$: e.g. "h1:LINE,col:x,y:w"
-    else if (
-      first === 104 /* h */ ||
-      first === 118 /* v */ ||
-      first === 103 /* g */ ||
-      first === 120 /* x */ ||
-      first === 107 /* k */ ||
-      first === 36 /* $ */
-    ) {
-      const m = s.match(/^[hvgxk$]1:(\d+),/);
-      if (m) srcLine = parseInt(m[1], 10);
-    }
+      if (!tagLineToPage.has(key)) {
+        tagLineToPage.set(key, currentPage);
+      }
 
-    if (srcLine !== null) {
-      if (!lineToPage.has(srcLine)) lineToPage.set(srcLine, currentPage);
-      const arr = pageToLines.get(currentPage)!;
-      if (!arr.includes(srcLine)) arr.push(srcLine);
+      const node: SyncTeXNode = { line, tag, x, y };
+      pageToNodes.get(currentPage)!.push(node);
+
+      if (!tagLineToNode.has(key)) {
+        tagLineToNode.set(key, { ...node, page: currentPage });
+      }
+
+      if (tag === 1) {
+        if (!lineToPage.has(line)) lineToPage.set(line, currentPage);
+        const arr = pageToLines.get(currentPage)!;
+        if (!arr.includes(line)) arr.push(line);
+      }
     }
   }
 
   for (const arr of pageToLines.values()) arr.sort((a, b) => a - b);
   const sortedLines = [...lineToPage.keys()].sort((a, b) => a - b);
-  return { lineToPage, pageToLines, sortedLines };
+
+  return {
+    lineToPage,
+    tagLineToPage,
+    pageToLines,
+    sortedLines,
+    pageToNodes,
+    tagLineToNode,
+    tagToPath,
+    pathToTag,
+  };
 }
 
 /** Binary-search: index of first element ≥ target in a sorted array. */
@@ -466,6 +516,8 @@ function lowerBound(sorted: number[], target: number): number {
 
 /** Monaco line → PDF page (1-based), with nearest-line fallback. */
 function syncTeXLineToPage(line: number, map: SyncTeXMap): number {
+  const key = `1:${line}`;
+  if (map.tagLineToPage.has(key)) return map.tagLineToPage.get(key)!;
   if (map.lineToPage.has(line)) return map.lineToPage.get(line)!;
   if (map.sortedLines.length === 0) return 1;
   const idx = lowerBound(map.sortedLines, line);
@@ -479,19 +531,48 @@ function syncTeXLineToPage(line: number, map: SyncTeXMap): number {
 
 /**
  * PDF page + Y-fraction (0..1) → Monaco line.
- * Uses the list of source lines known to render on that page and distributes
- * them proportionally by fraction — much better than a document-wide ratio.
+ * Uses exact coordinate matching based on the closest visual Y-coordinate.
  */
 function syncTeXPageFractionToLine(
   page: number,
   fraction: number,
   map: SyncTeXMap,
 ): number {
+  const nodes = map.pageToNodes.get(page) || [];
+  if (nodes.length > 0) {
+    let minY = Infinity;
+    let maxY = -Infinity;
+    nodes.forEach((n) => {
+      if (n.y < minY) minY = n.y;
+      if (n.y > maxY) maxY = n.y;
+    });
+
+    if (maxY > minY) {
+      const normalizedY = Math.max(0, Math.min(1, (fraction - 0.1) / 0.8));
+      const targetY = minY + normalizedY * (maxY - minY);
+
+      let closestNode = null;
+      let minDiff = Infinity;
+      nodes.forEach((node) => {
+        const diff = Math.abs(node.y - targetY);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestNode = node;
+        }
+      });
+      if (closestNode) return (closestNode as any).line;
+    } else {
+      return nodes[0].line;
+    }
+  }
+
+  // Legacy fallback
   const lines = map.pageToLines.get(page);
   if (lines && lines.length > 0) {
     const idx = Math.round(fraction * (lines.length - 1));
     return lines[Math.max(0, Math.min(lines.length - 1, idx))];
   }
+
   // Nearest page fallback
   for (let d = 1; d <= map.pageToLines.size; d++) {
     for (const p of [page - d, page + d]) {
@@ -629,10 +710,7 @@ interface OptimizedPDFPageProps {
   scale: number;
   pageElemRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
   approxHeightRef: React.MutableRefObject<number>;
-  numPages: number;
-  synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
-  getEditorContent: React.MutableRefObject<(() => string) | null>;
-  scrollToLineRef: React.MutableRefObject<((line: number) => void) | null>;
+  onDoubleClickPage: (pageNum: number, clickFraction: number) => void;
 }
 
 function OptimizedPDFPage({
@@ -640,10 +718,7 @@ function OptimizedPDFPage({
   scale,
   pageElemRefs,
   approxHeightRef,
-  numPages,
-  synctexMapRef,
-  getEditorContent,
-  scrollToLineRef,
+  onDoubleClickPage,
 }: OptimizedPDFPageProps) {
   const [isVisible, setIsVisible] = React.useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -680,15 +755,7 @@ function OptimizedPDFPage({
   const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const pageHeight = (e.currentTarget as HTMLDivElement).offsetHeight;
     const clickFraction = pageHeight > 0 ? e.nativeEvent.offsetY / pageHeight : 0;
-    const smap = synctexMapRef.current;
-    let approxLine: number;
-    if (smap && smap.sortedLines.length > 0) {
-      approxLine = syncTeXPageFractionToLine(pageNum, clickFraction, smap);
-    } else {
-      const content = getEditorContent.current?.() ?? "";
-      approxLine = pdfPositionToLine(pageIndex, clickFraction, numPages, content);
-    }
-    scrollToLineRef.current?.(approxLine);
+    onDoubleClickPage(pageNum, clickFraction);
   };
 
   return (
@@ -738,6 +805,8 @@ export default function Viewer() {
     pdfDocRef,
     scrollToPdfLineRef,
     scrollToLineRef,
+    activeFilePage,
+    setActiveFilePage,
   } = usePageContext();
   const { engine, compileMode, setCompileMode, mainFile } = useEditorSettingsStore();
 
@@ -783,6 +852,78 @@ export default function Viewer() {
   const synctexMapRef = useRef<SyncTeXMap | null>(null);
   const approxHeightRef = useRef<number>(0);
 
+  const navigate = useNavigate();
+  const rootPageId = parentPageIdRef.current;
+  const { data: projectPages = [] } = useProjectPages(rootPageId || "");
+
+  const findPageByBasename = (basename: string) => {
+    const base = basename.replace(/\.tex$/, "").toLowerCase();
+    return projectPages.find((p) => p.title.replace(/\.tex$/, "").toLowerCase() === base);
+  };
+
+  // Double-click on PDF page -> scroll/jump Monaco editor to matching line
+  const handleDoubleClickPage = (pageNum: number, clickFraction: number) => {
+    const smap = synctexMapRef.current;
+    let approxLine = 1;
+    let approxTag = 1;
+
+    if (smap && smap.pageToNodes.has(pageNum)) {
+      const nodesOnPage = smap.pageToNodes.get(pageNum) || [];
+      if (nodesOnPage.length > 0) {
+        let minY = Infinity;
+        let maxY = -Infinity;
+        nodesOnPage.forEach((n) => {
+          if (n.y < minY) minY = n.y;
+          if (n.y > maxY) maxY = n.y;
+        });
+
+        if (maxY > minY) {
+          const normalizedY = Math.max(0, Math.min(1, (clickFraction - 0.1) / 0.8));
+          const targetY = minY + normalizedY * (maxY - minY);
+
+          let closestNode = null;
+          let minDiff = Infinity;
+          nodesOnPage.forEach((node) => {
+            const diff = Math.abs(node.y - targetY);
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestNode = node;
+            }
+          });
+          if (closestNode) {
+            approxLine = (closestNode as any).line;
+            approxTag = (closestNode as any).tag || 1;
+          }
+        } else {
+          approxLine = nodesOnPage[0].line;
+          approxTag = (nodesOnPage[0] as any).tag || 1;
+        }
+      }
+    } else {
+      const content = getEditorContent.current?.() ?? "";
+      approxLine = pdfPositionToLine(pageNum - 1, clickFraction, numPages, content);
+    }
+
+    if (smap && approxTag > 1) {
+      const filepath = smap.tagToPath.get(approxTag);
+      if (filepath) {
+        const basename = filepath.split("/").pop() || filepath;
+        const matchingPage = findPageByBasename(basename);
+        if (matchingPage && matchingPage._id !== activeFilePage?._id) {
+          setActiveFilePage(matchingPage);
+          navigate(`/editor/${rootPageId}?file=${matchingPage._id}`);
+          // Wait briefly for editor component to switch active content before scrolling
+          setTimeout(() => {
+            scrollToLineRef.current?.(approxLine);
+          }, 150);
+          return;
+        }
+      }
+    }
+
+    scrollToLineRef.current?.(approxLine);
+  };
+
   // Register scroll-to-page function so OutlineTab can call it.
   useEffect(() => {
     gotoPageRef.current = (n: number) => {
@@ -801,11 +942,35 @@ export default function Viewer() {
       const container = pdfScrollContainerRef.current;
       if (!container) return;
 
-      let pageNum: number;
+      let pageNum: number = 1;
+      let fraction = 0.5; // default to center
       const smap = synctexMapRef.current;
-      if (smap && smap.sortedLines.length > 0) {
+
+      const activeFilename = activeFilePage?.title || activeFilePage?.filename || "main.tex";
+      const activeBasename = activeFilename.split("/").pop()?.toLowerCase() || activeFilename.toLowerCase();
+      const activeTag = smap?.pathToTag.get(activeBasename) || 1;
+      const key = `${activeTag}:${line}`;
+
+      if (smap && smap.tagLineToPage.has(key)) {
         // SyncTeX path — accurate, compiler-derived mapping
-        pageNum = syncTeXLineToPage(line, smap);
+        pageNum = smap.tagLineToPage.get(key)!;
+        const node = smap.tagLineToNode.get(key);
+        if (node) {
+          const nodesOnPage = smap.pageToNodes.get(pageNum) || [];
+          if (nodesOnPage.length > 0) {
+            let minY = Infinity;
+            let maxY = -Infinity;
+            nodesOnPage.forEach((n) => {
+              if (n.y < minY) minY = n.y;
+              if (n.y > maxY) maxY = n.y;
+            });
+            if (maxY > minY) {
+              const textHeight = maxY - minY;
+              const normalizedY = (node.y - minY) / textHeight;
+              fraction = 0.1 + normalizedY * 0.8;
+            }
+          }
+        }
       } else {
         // Fallback: linear heuristic (skips preamble before \begin{document})
         const content = getEditorContent.current?.() ?? "";
@@ -818,6 +983,7 @@ export default function Viewer() {
           numPages,
           Math.max(1, Math.floor(continuousPage) + 1),
         );
+        fraction = continuousPage - Math.floor(continuousPage);
       }
 
       const pageEl = pageElemRefs.current[pageNum];
@@ -826,14 +992,20 @@ export default function Viewer() {
       // Use live pixel positions — accounts for padding/gaps between PDF pages.
       const containerRect = container.getBoundingClientRect();
       const pageRect = pageEl.getBoundingClientRect();
+      
+      // Scroll to place the target coordinate in the center of the viewport
       const targetScrollTop =
-        container.scrollTop + (pageRect.top - containerRect.top);
-      container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+        container.scrollTop +
+        (pageRect.top - containerRect.top) +
+        (fraction * pageRect.height) -
+        (containerRect.height / 2);
+        
+      container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: "smooth" });
     };
     return () => {
       scrollToPdfLineRef.current = null;
     };
-  }, [numPages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [numPages, activeFilePage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Compile (3-phase, background non-blocking) ────────────────────────────
   //
@@ -1185,10 +1357,7 @@ export default function Viewer() {
                     scale={scale}
                     pageElemRefs={pageElemRefs}
                     approxHeightRef={approxHeightRef}
-                    numPages={numPages}
-                    synctexMapRef={synctexMapRef}
-                    getEditorContent={getEditorContent}
-                    scrollToLineRef={scrollToLineRef}
+                    onDoubleClickPage={handleDoubleClickPage}
                   />
                 ))}
               </div>

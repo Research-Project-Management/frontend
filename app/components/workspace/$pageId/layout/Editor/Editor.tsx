@@ -849,11 +849,32 @@ export default function Editor({ page }: EditorProps) {
     // Decoration collection for inline comment glyph indicators
     decorationCollRef.current = editor.createDecorationsCollection([]);
 
+    const highlightDecorations = editor.createDecorationsCollection([]);
+    let highlightTimeout: any = null;
+
     // Register line-scroll ref so ReviewTab/others can jump to a specific line
     scrollToLineRef.current = (line: number) => {
       editor.revealLineInCenter(line, 0 /* Immediate */);
       editor.setPosition({ lineNumber: line, column: 1 });
       editor.focus();
+
+      if (highlightTimeout) {
+        clearTimeout(highlightTimeout);
+      }
+
+      highlightDecorations.set([
+        {
+          range: new monaco.Range(line, 1, line, 1),
+          options: {
+            isWholeLine: true,
+            className: "flux-active-line-flash",
+          },
+        },
+      ]);
+
+      highlightTimeout = setTimeout(() => {
+        highlightDecorations.clear();
+      }, 2000);
     };
 
     // Single click on glyph margin → open Review panel.

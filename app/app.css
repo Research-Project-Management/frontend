@@ -520,3 +520,19 @@ html {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
 }
+
+/* Monaco active line flash highlight */
+@keyframes flux-flash-active-line {
+  0% {
+    background-color: rgba(37, 95, 220, 0.35); /* semi-transparent primary blue */
+  }
+  100% {
+    background-color: rgba(37, 95, 220, 0); /* fade out to transparent */
+  }
+}
+
+.flux-active-line-flash {
+  animation: flux-flash-active-line 2.0s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: inset 4px 0 0 0 var(--primary);
+}
+

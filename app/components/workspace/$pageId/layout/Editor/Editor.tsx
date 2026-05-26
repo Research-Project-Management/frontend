@@ -787,18 +787,13 @@ export default function Editor({ page }: EditorProps) {
     editor.onKeyDown((e) => {
       const isCtrl = e.ctrlKey || e.metaKey;
       if (isCtrl) {
-        const key = e.browserEvent.key.toLowerCase();
-        if (key === "s") {
+        if (e.keyCode === monaco.KeyCode.KeyS) {
           e.preventDefault();
           e.stopPropagation();
-          e.browserEvent.preventDefault();
-          e.browserEvent.stopPropagation();
           compileRef.current?.();
-        } else if (key === "a") {
+        } else if (e.keyCode === monaco.KeyCode.KeyA) {
           e.preventDefault();
           e.stopPropagation();
-          e.browserEvent.preventDefault();
-          e.browserEvent.stopPropagation();
           const model = editor.getModel();
           if (model) {
             const lineCount = model.getLineCount();

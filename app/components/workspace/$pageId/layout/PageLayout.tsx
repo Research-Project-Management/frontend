@@ -4,7 +4,7 @@ import SideBar from "./SideBar/SideBar";
 import Viewer from "./Viewer/Viewer";
 import ToolBar from "./ToolBar";
 import SettingsPanel from "./SettingsPanel";
-import { PageContextProvider, usePageContext } from "./PageContext";
+import { PageContextProvider } from "./PageContext";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 
 function ResizeHandle({
@@ -135,15 +135,18 @@ function PageInner() {
         {/* Editor ↔ Viewer splitter — only in split mode */}
         {showDivider && <ResizeHandle onMouseDown={handleEditorViewerResize} />}
 
-        {/* Viewer panel */}
-        {showViewer && (
-          <div
-            style={{ flex: showDivider ? 1 - localEditorFlex : 1 }}
-            className="min-w-0 overflow-hidden"
-          >
-            <Viewer />
-          </div>
-        )}
+        {/* Viewer panel — always mounted so compileRef stays registered.
+            Hidden via CSS in editor-only mode so Ctrl+S / Ctrl+Enter
+            still trigger compile regardless of layout. */}
+        <div
+          style={{
+            flex: showDivider ? 1 - localEditorFlex : 1,
+            display: showViewer ? undefined : "none",
+          }}
+          className="min-w-0 overflow-hidden"
+        >
+          <Viewer />
+        </div>
 
         {/* Settings panel — right edge */}
         {settingsPanelOpen && <SettingsPanel />}

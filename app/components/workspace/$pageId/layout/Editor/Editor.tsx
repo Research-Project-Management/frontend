@@ -47,6 +47,8 @@ import { cn } from "~/lib/utils";
 import { useSocket } from "~/contexts/SocketProvider";
 import { usePagePresence } from "~/hooks/usePagePresence";
 import { useRemoteCursors } from "~/hooks/useRemoteCursors";
+import EditorToolbar from "./EditorToolbar";
+
 
 // Register LaTeX language and custom theme before Monaco loads
 loader.init().then((monaco) => {
@@ -966,17 +968,20 @@ Your conclusions here.
 `;
 
   return (
-    <div className="h-full w-full">
-      <MonacoEditor
-        height="100%"
-        defaultLanguage="latex"
-        value={content}
-        onChange={(value) => setContent(value || "")}
-        theme={editorTheme === "dark" ? "latex-dark" : "latex-light"}
-        className=""
-        onMount={handleEditorMount}
-        options={{ automaticLayout: true }}
-      />
+    <div className="h-full w-full flex flex-col">
+      <EditorToolbar />
+      <div className="flex-1 w-full relative min-h-0">
+        <MonacoEditor
+          height="100%"
+          defaultLanguage="latex"
+          value={content}
+          onChange={(value) => setContent(value || "")}
+          theme={editorTheme === "dark" ? "latex-dark" : "latex-light"}
+          className=""
+          onMount={handleEditorMount}
+          options={{ automaticLayout: true }}
+        />
+      </div>
 
       {/* Glyph comment tooltip — appears ABOVE the hovered line, never covers it */}
       {glyphTooltip &&

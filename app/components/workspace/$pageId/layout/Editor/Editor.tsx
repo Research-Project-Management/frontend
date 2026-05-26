@@ -789,6 +789,15 @@ export default function Editor({ page }: EditorProps) {
       compileRef.current?.(),
     );
 
+    // Ctrl+A → select all.
+    // Monaco's built-in binding requires the EditorTextFocus context key to be
+    // active. That key can go stale after transient focus shifts (floating bar,
+    // context menu, toolbar clicks). Overriding with addCommand bypasses the
+    // context check and guarantees Ctrl+A always works while the editor is focused.
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyA, () => {
+      editor.trigger("keyboard", "editor.action.selectAll", null);
+    });
+
     // Ctrl+Alt+A → open/focus AI chat panel
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyA,

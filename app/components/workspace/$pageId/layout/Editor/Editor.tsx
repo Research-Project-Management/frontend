@@ -692,34 +692,10 @@ export default function Editor({ page }: EditorProps) {
         if (pos) scrollToPdfLineRef.current?.(pos.lineNumber);
       };
       domNode.addEventListener("dblclick", dblClickHandler);
-
-      const keydownHandler = (e: KeyboardEvent) => {
-        const isCtrl = e.ctrlKey || e.metaKey;
-        if (isCtrl) {
-          const key = e.key.toLowerCase();
-          if (key === "s") {
-            e.preventDefault();
-            e.stopPropagation();
-            compileRef.current?.();
-          } else if (key === "a") {
-            e.preventDefault();
-            e.stopPropagation();
-            const model = editor.getModel();
-            if (model) {
-              const lineCount = model.getLineCount();
-              const lastLineLength = model.getLineMaxColumn(lineCount);
-              editor.setSelection(new monaco.Selection(1, 1, lineCount, lastLineLength));
-            }
-          }
-        }
-      };
-      domNode.addEventListener("keydown", keydownHandler, true);
-
       // Clean up when the editor is disposed
-      editor.onDidDispose(() => {
-        domNode.removeEventListener("dblclick", dblClickHandler);
-        domNode.removeEventListener("keydown", keydownHandler, true);
-      });
+      editor.onDidDispose(() =>
+        domNode.removeEventListener("dblclick", dblClickHandler),
+      );
 
       domNode.addEventListener("contextmenu", (e: MouseEvent) => {
         e.preventDefault();
@@ -807,27 +783,41 @@ export default function Editor({ page }: EditorProps) {
       });
     });
 
-    // Ctrl+Enter and Ctrl+S → compile
+    // Monaco Keyboard shortcuts override
+    editor.onKeyDown((e) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      if (isCtrl) {
+        const key = e.browserEvent.key.toLowerCase();
+        if (key === "s") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.browserEvent.preventDefault();
+          e.browserEvent.stopPropagation();
+          compileRef.current?.();
+        } else if (key === "a") {
+          e.preventDefault();
+          e.stopPropagation();
+          e.browserEvent.preventDefault();
+          e.browserEvent.stopPropagation();
+          const model = editor.getModel();
+          if (model) {
+            const lineCount = model.getLineCount();
+            const lastLineLength = model.getLineMaxColumn(lineCount);
+            editor.setSelection({
+              selectionStartLineNumber: 1,
+              selectionStartColumn: 1,
+              positionLineNumber: lineCount,
+              positionColumn: lastLineLength
+            });
+          }
+        }
+      }
+    });
+
+    // Ctrl+Enter → compile
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
       compileRef.current?.(),
     );
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
-      compileRef.current?.(),
-    );
-
-    // Ctrl+A → select all.
-    // Monaco's built-in binding requires the EditorTextFocus context key to be
-    // active. That key can go stale after transient focus shifts (floating bar,
-    // context menu, toolbar clicks). Overriding with addCommand bypasses the
-    // context check and guarantees Ctrl+A always works while the editor is focused.
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyA, () => {
-      const model = editor.getModel();
-      if (model) {
-        const lineCount = model.getLineCount();
-        const lastLineLength = model.getLineMaxColumn(lineCount);
-        editor.setSelection(new monaco.Selection(1, 1, lineCount, lastLineLength));
-      }
-    });
 
     // Ctrl+Alt+A → open/focus AI chat panel
     editor.addCommand(

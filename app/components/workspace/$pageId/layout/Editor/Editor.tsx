@@ -797,7 +797,12 @@ export default function Editor({ page }: EditorProps) {
     // context menu, toolbar clicks). Overriding with addCommand bypasses the
     // context check and guarantees Ctrl+A always works while the editor is focused.
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyA, () => {
-      editor.trigger("keyboard", "editor.action.selectAll", null);
+      const model = editor.getModel();
+      if (model) {
+        const lineCount = model.getLineCount();
+        const lastLineLength = model.getLineMaxColumn(lineCount);
+        editor.setSelection(new monaco.Selection(1, 1, lineCount, lastLineLength));
+      }
     });
 
     // Ctrl+Alt+A → open/focus AI chat panel

@@ -692,10 +692,34 @@ export default function Editor({ page }: EditorProps) {
         if (pos) scrollToPdfLineRef.current?.(pos.lineNumber);
       };
       domNode.addEventListener("dblclick", dblClickHandler);
+
+      const keydownHandler = (e: KeyboardEvent) => {
+        const isCtrl = e.ctrlKey || e.metaKey;
+        if (isCtrl) {
+          const key = e.key.toLowerCase();
+          if (key === "s") {
+            e.preventDefault();
+            e.stopPropagation();
+            compileRef.current?.();
+          } else if (key === "a") {
+            e.preventDefault();
+            e.stopPropagation();
+            const model = editor.getModel();
+            if (model) {
+              const lineCount = model.getLineCount();
+              const lastLineLength = model.getLineMaxColumn(lineCount);
+              editor.setSelection(new monaco.Selection(1, 1, lineCount, lastLineLength));
+            }
+          }
+        }
+      };
+      domNode.addEventListener("keydown", keydownHandler, true);
+
       // Clean up when the editor is disposed
-      editor.onDidDispose(() =>
-        domNode.removeEventListener("dblclick", dblClickHandler),
-      );
+      editor.onDidDispose(() => {
+        domNode.removeEventListener("dblclick", dblClickHandler);
+        domNode.removeEventListener("keydown", keydownHandler, true);
+      });
 
       domNode.addEventListener("contextmenu", (e: MouseEvent) => {
         e.preventDefault();

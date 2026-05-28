@@ -620,6 +620,11 @@ export default function ChatView() {
       setMessages(preloaded);
       const firstUserMsg = preloaded.find((m) => m.role === "user");
       setSessionTitle(firstUserMsg?.content?.trim().slice(0, 60) || "New Chat");
+      // Restore the project the user had selected when they sent the first message
+      const preloadedProjectId = location.state?.preloadedProjectId as string | undefined;
+      if (preloadedProjectId) {
+        setSessionProjectId(preloadedProjectId);
+      }
       return;
     }
 
@@ -785,7 +790,10 @@ export default function ChatView() {
             // replace: true so Back doesn't loop to the welcome screen
             navigate(`/${workspaceId}/ai/${session._id}`, {
               replace: true,
-              state: { preloadedMessages: [userMsg, assistantMsg] },
+              state: {
+                preloadedMessages: [userMsg, assistantMsg],
+                preloadedProjectId: projectId,
+              },
             });
           } catch (err) {
             console.error("Failed to create session:", err);

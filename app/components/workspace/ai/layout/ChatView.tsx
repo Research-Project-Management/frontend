@@ -888,7 +888,7 @@ export default function ChatView() {
             ))}
 
             {/* Streaming response — shown while tokens arrive */}
-            {isStreaming && (streamContent || activeActions.length > 0) && (
+            {isStreaming && (
               <div className="space-y-1">
                 {activeAgent && (
                   <div className="pl-10">
@@ -906,13 +906,21 @@ export default function ChatView() {
                   </div>
                 )}
 
-                {streamContent && (
+                {streamContent ? (
                   <MessageBubble
                     content={streamContent}
                     role="assistant"
                     isStreaming
                     widgets={buildResponseWidgetsFromActions(activeActions)}
                   />
+                ) : activeActions.length === 0 && (
+                  /* Thinking indicator — shown before first token arrives */
+                  <div className="flex items-start gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-secondary/30 border border-border/30">
+                      <div className="size-4 rounded-full border-2 border-primary/40 border-t-primary animate-spin" />
+                      <span className="text-xs text-muted-foreground">Thinking…</span>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

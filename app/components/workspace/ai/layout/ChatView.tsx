@@ -915,9 +915,9 @@ export default function ChatView() {
                   />
                 ) : activeActions.length === 0 && (
                   /* Thinking indicator — shown before first token arrives */
-                  <div className="flex items-start gap-3 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-secondary/30 border border-border/30">
-                      <div className="size-4 rounded-full border-2 border-primary/40 border-t-primary animate-spin" />
+                  <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/30 border border-border/30">
+                      <div className="size-3.5 rounded-full border-2 border-primary/40 border-t-primary animate-spin" />
                       <span className="text-xs text-muted-foreground">Thinking…</span>
                     </div>
                   </div>

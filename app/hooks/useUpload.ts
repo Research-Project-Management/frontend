@@ -30,7 +30,7 @@ export function useUpload() {
   };
 
   // Backward-compatible alias used by workspace avatar flows.
-  const uploadAvatar = (file: File): Promise<string> => uploadFile(file, "avatars");
+  const uploadAvatar = (file: File): Promise<string> => uploadFile(file, "workspace/avatars");
 
   return { uploadFile, uploadAvatar, isUploading };
 }

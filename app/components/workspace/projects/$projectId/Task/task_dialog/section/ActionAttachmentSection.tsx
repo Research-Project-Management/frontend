@@ -27,7 +27,7 @@ export function ActionAttachmentSection({
     setUploadError(null);
 
     try {
-      const url = await uploadFile(file, "tasks");
+      const url = await uploadFile(file, "project/tasks");
       const newAttachment = createTaskAttachmentFromUpload(file, url);
       setAttachments((prev) => [...prev, newAttachment]);
     } catch (error) {

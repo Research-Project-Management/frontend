@@ -19,6 +19,8 @@ import {
   Zap,
   ZoomIn,
   ZoomOut,
+  Check,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   Tooltip,
@@ -30,6 +32,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "~/components/ui/dropdown-menu";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
@@ -778,7 +781,7 @@ function OptimizedPDFPage({
           scale={scale}
           renderTextLayer
           renderAnnotationLayer
-          devicePixelRatio={Math.min(2, window.devicePixelRatio || 1)}
+          devicePixelRatio={Math.max(2, window.devicePixelRatio || 2)}
           loading={
             <div className="absolute inset-0 flex items-center justify-center bg-muted/10">
               <Loader2 className="size-5 animate-spin text-muted-foreground/30" />
@@ -808,7 +811,7 @@ export default function Viewer() {
     activeFilePage,
     setActiveFilePage,
   } = usePageContext();
-  const { engine, compileMode, setCompileMode, mainFile } = useEditorSettingsStore();
+  const { engine, compileMode, setCompileMode, mainFile, useCache } = useEditorSettingsStore();
 
   // All compile state now lives in useCompileStore (background, non-blocking)
   const {
@@ -840,6 +843,51 @@ export default function Viewer() {
   const [scale, setScale] = useState(1.0);
   const [showLog, setShowLog] = useState(false);
   const [scrollMode] = useState(true);
+
+  const [autoFit, setAutoFit] = useState(true);
+  const [containerWidth, setContainerWidth] = useState(600);
+
+  // ResizeObserver to track container width updates in real-time
+  useEffect(() => {
+    const el = pdfScrollContainerRef.current;
+    if (!el) return;
+
+    let isInitial = true;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) {
+          setContainerWidth((prevWidth) => {
+            // Automatically switch back to FIT mode when a real user resize is detected
+            if (!isInitial && prevWidth > 0 && Math.abs(prevWidth - w) > 2) {
+              setAutoFit(true);
+            }
+            return w;
+          });
+          isInitial = false;
+        }
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.unobserve(el);
+    };
+  }, [pdfUrl]);
+
+  // Fitted scale calculated dynamically based on container width (A4 is 595px)
+  const fittedScale = useMemo(() => {
+    const available = containerWidth - 48; // subtract margin and scrollbar buffer
+    const s = available / 595;
+    return Math.max(0.5, Math.min(s, 2.5));
+  }, [containerWidth]);
+
+  // Sync fitted scale to active page rendering scale
+  useEffect(() => {
+    if (autoFit) {
+      setScale(fittedScale);
+    }
+  }, [fittedScale, autoFit]);
 
   const parsedLog = useMemo(
     () => (compileLog ? parseLatexLog(compileLog) : null),
@@ -1090,6 +1138,7 @@ export default function Viewer() {
         main_file: resolvedMainFile,
         engine,
         draft: compileMode === "draft",
+        use_cache: useCache,
       };
 
       const response = await fetch(`${API_URL}/api/latex/compile`, {
@@ -1196,9 +1245,21 @@ export default function Viewer() {
 
   // ── Zoom ─────────────────────────────────────────────────────────────────
 
-  const handleZoomIn = () => setScale((p) => Math.min(p + 0.25, 3));
-  const handleZoomOut = () => setScale((p) => Math.max(p - 0.25, 0.5));
-  const handleResetZoom = () => setScale(1.0);
+  const handleZoomIn = () => {
+    setAutoFit(false);
+    setScale((p) => Math.min(p + 0.25, 3));
+  };
+  const handleZoomOut = () => {
+    setAutoFit(false);
+    setScale((p) => Math.max(p - 0.25, 0.5));
+  };
+  const handleResetZoom = () => {
+    setAutoFit(false);
+    setScale(1.0);
+  };
+  const handleToggleAutoFit = () => {
+    setAutoFit((prev) => !prev);
+  };
 
   // ── Pages ─────────────────────────────────────────────────────────────────
 
@@ -1222,12 +1283,15 @@ export default function Viewer() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const showZoomGroup = containerWidth >= 650;
+  const showUtilityGroup = containerWidth >= 500;
+
   return (
     <div className="h-full w-full flex flex-col bg-background relative">
       {/* Viewer Toolbar */}
       <div className="flex h-11 items-center justify-between gap-2 border-b border-border bg-secondary px-2 shrink-0">
-        {/* Left: compile button */}
-        <div className="flex items-center gap-1">
+        {/* Left: compile button & Zoom controls */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <CompileButton
             compileStatus={compileStatus}
             onCompile={handleCompile}
@@ -1236,37 +1300,72 @@ export default function Viewer() {
             setCompileMode={(m) => setCompileMode(m as any)}
           />
 
-          {/* Re-sync Project button — recovers from compiler folder corruption */}
-          <ToolbarButton
-            icon={RefreshCw}
-            label="Re-sync Project (force full re-upload)"
-            onClick={handleForceSync}
-            disabled={compileStatus !== "idle"}
-            loading={compileStatus === "syncing"}
-          />
+          {showZoomGroup ? (
+            <>
+              {/* Re-sync Project button — recovers from compiler folder corruption */}
+              <ToolbarButton
+                icon={RefreshCw}
+                label="Re-sync Project (force full re-upload)"
+                onClick={handleForceSync}
+                disabled={compileStatus !== "idle"}
+                loading={compileStatus === "syncing"}
+              />
 
-          <Separator orientation="vertical" className="h-5 mx-0.5" />
+              <Separator orientation="vertical" className="h-5 mx-0.5" />
 
-          {/* Zoom */}
-          <ToolbarButton
-            icon={ZoomOut}
-            label="Zoom Out (-)"
-            onClick={handleZoomOut}
-          />
-          <button
-            onClick={handleResetZoom}
-            className="px-2 py-1 text-xs text-muted-foreground hover:text-primary min-w-12 text-center"
-          >
-            {Math.round(scale * 100)}%
-          </button>
-          <ToolbarButton
-            icon={ZoomIn}
-            label="Zoom In (+)"
-            onClick={handleZoomIn}
-          />
+              {/* Zoom controls */}
+              <ToolbarButton
+                icon={ZoomOut}
+                label="Zoom Out (-)"
+                onClick={handleZoomOut}
+              />
+              <button
+                onClick={handleToggleAutoFit}
+                className="h-7 px-3 flex items-center justify-center rounded text-xs font-semibold tracking-wide transition-colors active:scale-95 outline-none font-mono min-w-14 text-center border border-border/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                title={autoFit ? "Lock at current scale" : "Fit to width"}
+              >
+                {autoFit ? "Fit" : `${Math.round(scale * 100)}%`}
+              </button>
+              <ToolbarButton
+                icon={ZoomIn}
+                label="Zoom In (+)"
+                onClick={handleZoomIn}
+              />
+            </>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="h-7 px-2 flex items-center justify-center gap-1 rounded text-xs font-semibold tracking-wide transition-colors active:scale-95 outline-none border border-border/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                >
+                  <span className="font-mono">{autoFit ? "Fit" : `${Math.round(scale * 100)}%`}</span>
+                  <ChevronDown className="size-3 opacity-60" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40 z-[9999]">
+                <DropdownMenuItem onClick={handleToggleAutoFit} className="text-xs">
+                  <Check className={cn("size-3.5 mr-2 text-primary", !autoFit && "opacity-0")} />
+                  <span className={cn("font-medium", autoFit && "text-primary font-semibold")}>Auto Fit (Fit)</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleZoomIn} className="text-xs">
+                  <ZoomIn className="size-3.5 mr-2 text-muted-foreground" />
+                  <span>Zoom In (+)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleResetZoom} className="text-xs">
+                  <span className="w-3.5 text-[9px] mr-2 font-mono text-center text-muted-foreground">100</span>
+                  <span className={cn("font-medium", !autoFit && scale === 1 && "text-primary font-semibold")}>Actual Size (100%)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleZoomOut} className="text-xs">
+                  <ZoomOut className="size-3.5 mr-2 text-muted-foreground" />
+                  <span>Zoom Out (-)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
-        {/* Right */}
+        {/* Right: Page navigation & Utility Actions */}
         <div className="flex items-center gap-1">
           {/* Page navigation */}
           <ToolbarButton
@@ -1275,7 +1374,7 @@ export default function Viewer() {
             onClick={handlePrevPage}
             disabled={pageNumber <= 1}
           />
-          <span className="text-xs text-muted-foreground px-1 min-w-16 text-center">
+          <span className="text-xs text-muted-foreground px-1 min-w-16 text-center font-mono select-none">
             {numPages > 0 ? `${pageNumber} / ${numPages}` : "- / -"}
           </span>
           <ToolbarButton
@@ -1287,20 +1386,60 @@ export default function Viewer() {
 
           <Separator orientation="vertical" className="h-5 mx-0.5" />
 
-          {compileLog && (
-            <ToolbarButton
-              icon={Terminal}
-              label={showLog ? "Hide log" : "Show log"}
-              onClick={() => setShowLog((p) => !p)}
-              variant={showLog ? "primary" : "default"}
-            />
+          {showUtilityGroup ? (
+            <>
+              {compileLog && (
+                <ToolbarButton
+                  icon={Terminal}
+                  label={showLog ? "Hide log" : "Show log"}
+                  onClick={() => setShowLog((p) => !p)}
+                  variant={showLog ? "primary" : "default"}
+                />
+              )}
+              <ToolbarButton
+                icon={Download}
+                label="Download PDF"
+                onClick={handleDownload}
+                disabled={!pdfUrl}
+              />
+            </>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label="More Actions"
+                  className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-95 outline-none border border-border/40"
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 z-[9999]">
+                {!showZoomGroup && (
+                  <>
+                    <DropdownMenuItem 
+                      onClick={handleForceSync} 
+                      disabled={compileStatus !== "idle"}
+                      className="text-xs"
+                    >
+                      <RefreshCw className="size-3.5 mr-2 text-muted-foreground" />
+                      <span>Re-sync Project</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {compileLog && (
+                  <DropdownMenuItem onClick={() => setShowLog((p) => !p)} className="text-xs">
+                    <Terminal className="size-3.5 mr-2 text-muted-foreground" />
+                    <span>{showLog ? "Hide Compile Log" : "Show Compile Log"}</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleDownload} disabled={!pdfUrl} className="text-xs">
+                  <Download className="size-3.5 mr-2 text-muted-foreground" />
+                  <span>Download PDF</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-          <ToolbarButton
-            icon={Download}
-            label="Download PDF"
-            onClick={handleDownload}
-            disabled={!pdfUrl}
-          />
           {/* Hidden anchor for programmatic download */}
           <a ref={downloadRef} className="hidden" aria-hidden="true" />
         </div>
@@ -1368,7 +1507,7 @@ export default function Viewer() {
                 className="shadow-lg"
                 renderTextLayer
                 renderAnnotationLayer
-                devicePixelRatio={Math.min(2, window.devicePixelRatio || 1)}
+                devicePixelRatio={Math.max(2, window.devicePixelRatio || 2)}
               />
             )}
           </Document>

@@ -13,6 +13,21 @@
  *   3. After stream completes → createChatSession with both messages atomically.
  *   4. navigate(/:workspaceId/ai/:id, { replace: true, state: { preloadedMessages } })
  *      so the new instance skips a redundant fetch and the Back button doesn't loop.
+/**
+ * ChatView — unified chat UI for both new chats and existing sessions.
+ *
+ * Replaces the old separate EmptyState / ChatAiDetail components.
+ *
+ * Route wiring:
+ *   /:workspaceId/ai          → index.tsx  → re-exports this component (chatId = undefined)
+ *   /:workspaceId/ai/:chatId  → $chatId.tsx → re-exports this component (chatId = string)
+ *
+ * New-chat flow:
+ *   1. Welcome screen shown while no messages exist.
+ *   2. User sends first message → stream immediately (component transitions to chat view).
+ *   3. After stream completes → createChatSession with both messages atomically.
+ *   4. navigate(/:workspaceId/ai/:id, { replace: true, state: { preloadedMessages } })
+ *      so the new instance skips a redundant fetch and the Back button doesn't loop.
  *
  * Existing-session flow:
  *   1. chatId present → load history via getChatSession (or preloadedMessages from state).
@@ -35,6 +50,7 @@ import {
   BarChart3,
   WandSparkles,
   ArrowRight,
+  ArrowDown,
 } from "lucide-react";
 import {
   Popover,
@@ -549,6 +565,24 @@ export default function ChatView() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [activeActions, setActiveActions] = useState<AgentAction[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const showScrollButtonRef = useRef(false);
+  showScrollButtonRef.current = showScrollButton;
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const isScrolledUp =
+      container.scrollHeight - container.scrollTop - container.clientHeight > 200;
+    if (isScrolledUp !== showScrollButtonRef.current) {
+      setShowScrollButton(isScrolledUp);
+    }
+  }, []);
+
+  const handleScrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   // chatStarted: true once the user sends the first message in a new session
   // prevents WelcomeScreen from re-appearing when session creation fails
   const [chatStarted, setChatStarted] = useState(false);
@@ -568,6 +602,7 @@ export default function ChatView() {
   useDocumentTitle(chatTabTitle);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
   const activeSourcesRef = useRef<SourceItem[]>([]);
@@ -579,6 +614,14 @@ export default function ChatView() {
   const scrollRafRef = useRef<number | null>(null);
   const autoSentRef = useRef(false);
   const preloadedCollectionRef = useRef<string | null>(null);
+
+  const prevChatIdRef = useRef<string | undefined>(undefined);
+  const initialScrollDoneRef = useRef<boolean>(false);
+
+  if (prevChatIdRef.current !== chatId) {
+    prevChatIdRef.current = chatId;
+    initialScrollDoneRef.current = false;
+  }
 
   // Abort any in-progress stream when the component unmounts (e.g. navigating away)
   useEffect(() => {
@@ -625,6 +668,16 @@ export default function ChatView() {
       if (preloadedProjectId) {
         setSessionProjectId(preloadedProjectId);
       }
+      
+      // Clear preloaded messages from state so they don't override database state on F5 reload
+      navigate(location.pathname, {
+        replace: true,
+        state: {
+          ...location.state,
+          preloadedMessages: undefined,
+          preloadedProjectId: undefined,
+        },
+      });
       return;
     }
 
@@ -658,14 +711,52 @@ export default function ChatView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, newChatKey]);
 
+  // Handle auto-scroll on messages and streamContent updates
   useEffect(() => {
-    if (scrollRafRef.current !== null)
-      cancelAnimationFrame(scrollRafRef.current);
-    scrollRafRef.current = requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-      scrollRafRef.current = null;
-    });
-  }, [messages, streamContent]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // 1. If messages have loaded and we haven't done the initial scroll for the current chatId, scroll instantly
+    if (messages.length > 0 && !initialScrollDoneRef.current) {
+      if (messagesEndRef.current) {
+        initialScrollDoneRef.current = true;
+        if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+          scrollRafRef.current = null;
+        });
+        return;
+      }
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    const justSent = lastMessage?.role === "user";
+
+    // 2. If the user just sent a message, force scroll to bottom instantly
+    if (justSent) {
+      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+      scrollRafRef.current = requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+        scrollRafRef.current = null;
+      });
+      return;
+    }
+
+    // 3. Otherwise, if we are streaming and the user is close to the bottom, keep scrolling down
+    if (isStreaming) {
+      const threshold = 150;
+      const isNearBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+
+      if (isNearBottom) {
+        if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+          scrollRafRef.current = null;
+        });
+      }
+    }
+  }, [messages, streamContent, isStreaming, chatId, isLoadingHistory]);
 
   useEffect(() => {
     const preloadCollection = location.state?.preloadCollection as
@@ -750,11 +841,12 @@ export default function ChatView() {
         }
 
         const finalContent = streamRef.current;
-        if (!finalContent) return;
+        const hasActions = activeActionsRef.current.length > 0;
+        if (!finalContent && !hasActions) return;
 
         const assistantMsg: ChatMessage = {
           role: "assistant",
-          content: finalContent,
+          content: finalContent || "",
           sources:
             activeSourcesRef.current.length > 0
               ? [...activeSourcesRef.current]
@@ -765,13 +857,18 @@ export default function ChatView() {
 
         if (chatId) {
           // Existing session — persist the new exchange
-          appendChatMessages(
-            chatId,
-            [userMsg, assistantMsg],
-            fluxDataEnabled && enabledDocumentIds.length > 0
-              ? enabledDocumentIds
-              : undefined,
-          ).catch((err) => console.error("Failed to save messages:", err));
+          try {
+            await appendChatMessages(
+              chatId,
+              [userMsg, assistantMsg],
+              fluxDataEnabled && enabledDocumentIds.length > 0
+                ? enabledDocumentIds
+                : undefined,
+            );
+          } catch (err) {
+            console.error("Failed to save messages:", err);
+            setSaveError(true);
+          }
         } else if (workspaceId) {
           // New chat — create session atomically with the first exchange already inside
           const title = text.trim().slice(0, 60) || "New Chat";
@@ -855,7 +952,7 @@ export default function ChatView() {
 
   // ── Chat view ───────────────────────────────────────────────────────────────
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       {/* Keyframe definition (needs to be in the DOM whenever dots are visible) */}
       <style>{`
         @keyframes typing-dot {
@@ -865,7 +962,7 @@ export default function ChatView() {
       `}</style>
 
       {/* Message list */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
         {isLoadingHistory ? (
           <div className="flex items-center justify-center h-full">
             <div className="flex gap-1">
@@ -899,14 +996,14 @@ export default function ChatView() {
             {isStreaming && (
               <div className="space-y-1">
                 {activeAgent && (
-                  <div className="pl-10">
+                  <div className="pl-0">
                     <AgentBadge agent={activeAgent} />
                   </div>
                 )}
 
                 {/* Action cards from agent tool calls */}
                 {activeActions.length > 0 && (
-                  <div className="pl-10">
+                  <div className="pl-0">
                     <ActionCardsGroup
                       actions={activeActions}
                       isStreaming={isStreaming}
@@ -932,6 +1029,7 @@ export default function ChatView() {
                 )}
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -947,7 +1045,17 @@ export default function ChatView() {
       )}
 
       {/* Input */}
-      <div className="shrink-0  bg-background/80 backdrop-blur-sm p-4">
+      <div className="shrink-0 bg-background/80 backdrop-blur-sm p-4 relative">
+        {showScrollButton && (
+          <button
+            type="button"
+            onClick={handleScrollToBottom}
+            className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex size-9 items-center justify-center rounded-full border border-border bg-white dark:bg-zinc-900 text-muted-foreground shadow-sm hover:shadow hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95 transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+            title="Scroll to bottom"
+          >
+            <ArrowDown className="size-4" />
+          </button>
+        )}
         <ChatAi onSend={handleSend} disabled={isStreaming} initialProject={sessionProjectId} />
       </div>
     </div>

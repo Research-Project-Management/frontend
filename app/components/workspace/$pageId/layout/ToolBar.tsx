@@ -139,7 +139,7 @@ function PresenceAvatars() {
           <Tooltip key={u.socketId}>
             <TooltipTrigger asChild>
               {isSelf ? (
-                <div className="size-8 rounded-full overflow-hidden shrink-0 cursor-default">
+                <div className="size-7 rounded-full overflow-hidden shrink-0 cursor-default">
                   <UserAvatar name={u.name} avatar={u.avatar} />
                 </div>
               ) : (

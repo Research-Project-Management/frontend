@@ -831,7 +831,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setSelectedAsset(asset);
       // Register the image as a tab and navigate to it via ?file=
       if (parentPageId)
-        openTab(parentPageId, { id: item._id, title: item.filename });
+        openTab(parentPageId, { id: item._id, title: item.filename, fileUrl: item.url });
       setSearchParams({ file: item._id });
     },
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
@@ -1826,7 +1826,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             {pendingUploads.map((item, i) => {
               const ext = "." + (item.file.name.split(".").pop() ?? "").toLowerCase();
               const isTex = TEX_EXTS.has(ext);
-              const isImg = item.file.type.startsWith("image/");
+              const isImg = item.file.type?.startsWith("image/") ?? false;
               const hasPath = item.name.includes("/");
               const folderPath = hasPath
                 ? item.name.substring(0, item.name.lastIndexOf("/"))

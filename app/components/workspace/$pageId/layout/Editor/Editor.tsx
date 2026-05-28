@@ -47,6 +47,7 @@ import { cn } from "~/lib/utils";
 import { useSocket } from "~/contexts/SocketProvider";
 import { usePagePresence } from "~/hooks/usePagePresence";
 import { useRemoteCursors } from "~/hooks/useRemoteCursors";
+import { FluxIcon } from "~/components/shared";
 import EditorToolbar from "./EditorToolbar";
 
 
@@ -574,7 +575,7 @@ export default function Editor({ page }: EditorProps) {
         },
       },
       {
-        icon: Sparkles,
+        icon: FluxIcon,
         label: "Ask Flux AI about this",
         action: () => {
           if (ctxSelText) {
@@ -1085,7 +1086,7 @@ Your conclusions here.
               className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
               title="Ask Flux AI"
             >
-              <Sparkles className="size-3.5" />
+              <FluxIcon className="size-3.5" />
               <span>Ask Flux AI</span>
             </button>
           </div>,

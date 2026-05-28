@@ -3,6 +3,7 @@ import { create } from "zustand";
 export interface EditorTab {
   id: string;    // pageId
   title: string; // filename
+  fileUrl?: string; // Back-end URL path
 }
 
 interface EditorTabsState {

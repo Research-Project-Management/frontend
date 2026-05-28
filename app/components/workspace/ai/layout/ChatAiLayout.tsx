@@ -16,7 +16,7 @@ export default function ChatAiLayout() {
 function ChatAiContent() {
   const { mode } = useChatMode();
   const { workspaceId, chatId } = useParams();
-  const [sourcesOpen, setSourcesOpen] = useState(true);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const showSources = mode === "wiki";
 

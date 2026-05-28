@@ -1,5 +1,5 @@
 import { Camera, Loader2 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Avatar } from "../../../layout/Avatar";
 
 type ProfileSectionProps = {
@@ -18,7 +18,15 @@ export default function ProfileSection({
   isUploadingAvatar = false,
 }: ProfileSectionProps) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const slug = `app.flux/${url}`;
+
+  const [host, setHost] = useState("flux.aisq.dev");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setHost(window.location.host);
+    }
+  }, []);
+
+  const slug = `${host}/${url}`;
   const initial = (name || "X").charAt(0).toUpperCase();
 
   return (

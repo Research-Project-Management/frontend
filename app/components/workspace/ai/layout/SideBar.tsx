@@ -8,6 +8,7 @@ import {
   X,
   FolderOpen,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import React, {
   useState,
@@ -30,8 +31,10 @@ import {
   listChatSessions,
   deleteChatSession,
   renameChatSession,
+  clearAiMemory,
 } from "~/query/chat-ai";
 import { useWorkspaceProjects, useWorkspace } from "~/query/workspace";
+import { toast } from "sonner";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +141,27 @@ export default function SideBar() {
       state: { newChatKey: Date.now(), prevPath: location.pathname },
     });
 
+  const handleClearMemory = async () => {
+    if (!workspaceId) return;
+    const confirm = window.confirm(
+      "Are you sure you want to clear the AI's long-term memory for this workspace? This will clear all learned facts, project summaries, and preferences."
+    );
+    if (!confirm) return;
+
+    try {
+      await clearAiMemory(workspaceId);
+      toast.success("AI memory cleared successfully! Starting fresh.");
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    } catch (err: any) {
+      console.error("Failed to clear memory:", err);
+      toast.error(err.message || "Failed to clear AI memory");
+    }
+  };
+
   const deleteChat = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await deleteChatSession(id).catch(console.error);
@@ -198,7 +222,20 @@ export default function SideBar() {
         <span className="text-lg font-semibold text-[#202222] select-none">
           Flux AI
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleClearMemory}
+                className="flex items-center justify-center size-8 rounded-lg bg-transparent text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202222] transition-colors"
+                aria-label="Clear memory"
+              >
+                <RotateCcw className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Clear AI memory</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button

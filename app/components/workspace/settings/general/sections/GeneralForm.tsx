@@ -59,7 +59,14 @@ export default function GeneralForm({
     });
   }, [url, name, avatar, teamSize]);
 
-  const workspaceUrl = `app.flux/${url || "untitled"}`;
+  const [host, setHost] = useState("flux.aisq.dev");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setHost(window.location.host);
+    }
+  }, []);
+
+  const workspaceUrl = `${host}/${url || "untitled"}`;
 
   const hasChanges =
     formValues.name !== (name || "") ||

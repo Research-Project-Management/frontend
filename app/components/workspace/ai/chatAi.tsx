@@ -12,6 +12,7 @@ import { useParams } from "react-router";
 import { useWorkspace } from "~/query/workspace";
 import { AGENT_CONFIGS } from "~/types/chat";
 import type { AgentId } from "~/types/chat";
+import { toast } from "sonner";
 
 // Stable color cycle for projects — dot only, no new icons
 const PROJ_DOTS = ["#3370ff", "#f97316", "#22c55e", "#a855f7", "#ef4444", "#06b6d4"];
@@ -220,6 +221,9 @@ export default function ChatAi({
     setMessage("");
     setMentionedAgent(null);
   }, [message, disabled, selectedProject, onSend, webSearch, sites, mentionedAgent]);
+
+
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (showMentionDropdown && filteredAgents.length > 0) {
@@ -473,6 +477,7 @@ export default function ChatAi({
                   </PopoverContent>
                 </Popover>
               )}
+
             </div>
 
             <button

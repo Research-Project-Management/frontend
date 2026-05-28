@@ -25,7 +25,7 @@ function ResizeHandle({
 
 /** Inner component so it can consume PageContext (layout state) */
 function PageInner() {
-  const { layout, sidebarWidth, editorFlex, setSidebarWidth, setEditorFlex, settingsPanelOpen } =
+  const { layout, sidebarWidth, editorFlex, setSidebarWidth, setEditorFlex, settingsPanelOpen, editorTheme } =
     useEditorSettingsStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebarWidthRef = useRef(sidebarWidth);
@@ -34,6 +34,15 @@ function PageInner() {
   // Keep state as local for smooth dragging, initialised from store
   const [localSidebarWidth, setLocalSidebarWidth] = useState(sidebarWidth);
   const [localEditorFlex, setLocalEditorFlex] = useState(editorFlex);
+
+  // Sync global HTML dark class with editor settings theme
+  useEffect(() => {
+    if (editorTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [editorTheme]);
 
   const MIN_SIDEBAR = 300;
   const MAX_SIDEBAR = 420;

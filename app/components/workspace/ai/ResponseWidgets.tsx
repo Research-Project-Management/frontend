@@ -10,6 +10,7 @@ type TaskLike = {
   isOverdue?: boolean;
   completed?: boolean;
   columnName?: string;
+  project?: { name?: string; avatar?: string } | null;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -46,6 +47,7 @@ function normalizeTask(task: TaskLike) {
     dueDate: task.dueDate || null,
     isOverdue: Boolean(task.isOverdue),
     completed: Boolean(task.completed),
+    project: task.project || null,
   };
 }
 
@@ -126,20 +128,20 @@ function MetricPill({
   tone?: "default" | "good" | "warn" | "bad";
 }) {
   const toneClass = {
-    default: "bg-[#3370ff]/10 text-[#3370ff]",
-    good: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    warn: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    bad: "bg-red-500/10 text-red-600",
+    default: "bg-[#3370ff]/10 text-[#3370ff] border-[#3370ff]/20",
+    good: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+    warn: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+    bad: "bg-red-500/10 text-red-600 border-red-500/20",
   }[tone];
 
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-      <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${toneClass}`}>
+    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2 shadow-xs transition-all duration-150 hover:shadow-xs hover:border-border/80">
+      <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg border ${toneClass}`}>
         <Icon className="size-3.5" />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-semibold text-foreground">{value}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">{label}</span>
+        <span className="block text-sm font-bold text-foreground leading-tight">{value}</span>
+        <span className="block truncate text-[10px] font-semibold text-muted-foreground/80 mt-0.5 leading-none">{label}</span>
       </span>
     </div>
   );
@@ -147,14 +149,14 @@ function MetricPill({
 
 function TaskOverviewWidget({ widget }: { widget: Extract<ResponseWidget, { type: "task_overview" }> }) {
   return (
-    <div className="my-3 overflow-hidden rounded-lg border border-border bg-sidebar shadow-sm">
-      <div className="flex items-start gap-3 border-b border-border bg-background px-4 py-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#3370ff]/10 text-[#3370ff]">
+    <div className="my-3 overflow-hidden rounded-xl border border-border/80 bg-sidebar/30 backdrop-blur-xs shadow-xs select-none">
+      <div className="flex items-center gap-3 border-b border-border/70 bg-background px-4 py-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#3370ff]/10 text-[#3370ff]">
           <ListTodo className="size-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-foreground">{widget.title}</h3>
-          {widget.subtitle && <p className="text-xs text-muted-foreground">{widget.subtitle}</p>}
+          <h3 className="truncate text-sm font-semibold text-foreground leading-tight">{widget.title}</h3>
+          {widget.subtitle && <p className="text-[11px] text-muted-foreground leading-normal mt-0.5">{widget.subtitle}</p>}
         </div>
       </div>
 
@@ -165,44 +167,62 @@ function TaskOverviewWidget({ widget }: { widget: Extract<ResponseWidget, { type
         <MetricPill icon={AlertTriangle} label="Overdue" value={widget.overdue} tone={widget.overdue ? "bad" : "default"} />
       </div>
 
-      <div className="space-y-2 px-3 pb-3">
-        {widget.groups.slice(0, 4).map((group) => (
-          <div key={group.label} className="rounded-lg border border-border bg-background">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className="text-xs font-semibold text-foreground">{group.label}</span>
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {group.tasks.length}
-              </span>
-            </div>
-            <div className="divide-y divide-border">
-              {group.tasks.slice(0, 5).map((task) => {
-                const priority = normalizePriority(task.priority);
-                return (
-                  <div key={task.id || task.title} className="flex items-center gap-2 px-3 py-2">
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                      {task.title}
-                    </span>
-                    {task.assignee && (
-                      <span className="hidden max-w-24 items-center gap-1 truncate text-[11px] text-muted-foreground sm:inline-flex">
-                        <UserRound className="size-3" />
-                        {task.assignee}
+      <div className="space-y-3 px-3 pb-3">
+        {widget.groups.slice(0, 5).map((group) => {
+          const displayLabel = group.label.charAt(0).toUpperCase() + group.label.slice(1);
+          
+          return (
+            <div key={group.label} className="rounded-xl border border-border/70 bg-background/50 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-3 py-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{displayLabel}</span>
+                <span className="rounded-full bg-[#e6eeff] dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-bold text-[#3370ff]">
+                  {group.tasks.length}
+                </span>
+              </div>
+              <div className="divide-y divide-border/50">
+                {group.tasks.slice(0, 6).map((task) => {
+                  const priority = normalizePriority(task.priority);
+                  return (
+                    <div key={task.id || task.title} className="flex items-center gap-2 px-3 py-2.5 hover:bg-secondary/10 transition-colors">
+                      <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground/90">
+                        {task.title}
                       </span>
-                    )}
-                    {task.dueDate && (
-                      <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:inline-flex">
-                        <Clock3 className="size-3" />
-                        {new Date(task.dueDate).toLocaleDateString()}
-                      </span>
-                    )}
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${priority.className}`}>
-                      {priority.label}
-                    </span>
-                  </div>
-                );
-              })}
+                      
+                      {task.project && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#3370ff]/8 border border-[#3370ff]/15 text-[#3370ff] max-w-[120px] select-none shrink-0 font-medium">
+                          {task.project.avatar ? (
+                            <span className="text-[10px] leading-none shrink-0">{task.project.avatar}</span>
+                          ) : (
+                            <span className="size-1 rounded-full bg-[#3370ff] shrink-0" />
+                          )}
+                          <span className="truncate">{task.project.name}</span>
+                        </span>
+                      )}
+
+                      {task.assignee && (
+                        <span className="hidden max-w-24 items-center gap-1 truncate text-[10px] font-medium text-muted-foreground/85 sm:inline-flex bg-muted/40 border border-border/40 px-1.5 py-0.5 rounded-md shrink-0">
+                          <UserRound className="size-2.5" />
+                          <span className="truncate">{task.assignee}</span>
+                        </span>
+                      )}
+                      {task.dueDate && (
+                        <span className="hidden items-center gap-1 text-[10px] font-medium text-muted-foreground/85 md:inline-flex bg-muted/40 border border-border/40 px-1.5 py-0.5 rounded-md shrink-0">
+                          <Clock3 className="size-2.5" />
+                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                      {priority.label !== "None" && (
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide uppercase select-none shrink-0 ${priority.className}`}>
+                          {priority.label}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

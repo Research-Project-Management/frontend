@@ -12,6 +12,7 @@ import { useDocumentTitle } from "~/hooks";
 import { useEditorTabsStore } from "~/stores/editor-tabs";
 import { useEditorSettingsStore } from "~/stores/editor-settings";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
+import { resolveFileUrl } from "~/lib/api";
 
 // ── Inline image viewer rendered inside the editor column ──────────────────
 
@@ -40,7 +41,7 @@ function ImagePanel({ asset }: { asset: AssetInfo }) {
       <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
         {asset.url ? (
           <img
-            src={asset.url}
+            src={resolveFileUrl(asset.url) || ""}
             alt={asset.filename}
             crossOrigin="use-credentials"
             className="max-w-full max-h-full object-contain rounded shadow-sm"
@@ -120,7 +121,7 @@ export default function EditorLayout() {
   const activePage = childPage ?? parentPage;
   const isLoading = parentLoading || (fileId ? childLoading : false);
 
-  const { getEditorContent, setCurrentPage, setWorkspaceId, editorRef, selectedAsset, compileRef, setActiveFilePage } = usePageContext();
+  const { getEditorContent, setCurrentPage, setWorkspaceId, editorRef, selectedAsset, setSelectedAsset, compileRef, setActiveFilePage } = usePageContext();
   const { autoCompile } = useEditorSettingsStore();
 
   // True when the current ?file= param points to an image asset (not a page).
@@ -141,7 +142,22 @@ export default function EditorLayout() {
 
   useDocumentTitle(editorTitle);
 
-  const { openTab, closeAllForProject } = useEditorTabsStore();
+  const { openTab, closeAllForProject, getTabs } = useEditorTabsStore();
+  const tabs = pageId ? getTabs(pageId) : [];
+
+  // Restore selectedAsset if the active fileId is an asset tab (image)
+  useEffect(() => {
+    if (fileId && (!selectedAsset || selectedAsset._id !== fileId)) {
+      const tab = tabs.find((t) => t.id === fileId);
+      if (tab && tab.fileUrl) {
+        setSelectedAsset({
+          _id: tab.id,
+          filename: tab.title,
+          url: tab.fileUrl,
+        });
+      }
+    }
+  }, [fileId, selectedAsset, tabs, setSelectedAsset]);
   // Track whether we've already fired the initial auto-compile for this root page
   const autoCompileFiredRef = useRef<string | null>(null);
   // Track previous pageId so we can clean up its tabs when navigating away

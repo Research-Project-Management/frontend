@@ -11,6 +11,10 @@ function normalizeMarkdown(text: string): string {
     .replace(/\u200B/g, "")
     .replace(/\\+([*_`[\]()#>+\-.!|%])/g, "$1");
 
+  // Convert inline HTML spans/font styling to bold markdown to prevent raw HTML leak
+  result = result.replace(/<span\s+style="[^"]*">([\s\S]*?)<\/span>/gi, "**$1**");
+  result = result.replace(/<font\s+color="[^"]*">([\s\S]*?)<\/font>/gi, "**$1**");
+
   // Convert inline bullet lists like "prefix: * A * B * C" into multiline markdown.
   // This handles responses where the AI puts all list items on one line separated by " * ".
   // Pattern: a line that contains " * text * text" (multiple asterisk-prefixed items inline)

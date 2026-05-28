@@ -129,7 +129,50 @@ export default function YourWorks() {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden bg-background">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden bg-background print:h-auto print:overflow-visible print:bg-white">
+      {/* Premium Print Stylesheet */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Hide sidebar, topbar, nav, dropdown, fallback buttons, and popovers */
+          nav, aside, header, button, .no-print, [role="menu"], [data-state] {
+            display: none !important;
+          }
+          
+          /* Force standard document scroll behavior instead of app layout grids */
+          body, html, #root, 
+          div[class*="h-dvh"], 
+          div[class*="flex-col"], 
+          div[class*="overflow-hidden"],
+          div[class*="overflow-y-auto"],
+          .h-full, .min-h-0 {
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            overflow-y: visible !important;
+            position: static !important;
+            background: white !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          
+          /* Stretch main container to full printed page */
+          .flex-1 {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          
+          @page {
+            margin: 1.5cm;
+            size: auto;
+          }
+        }
+      `}} />
+
       <Topbar title="Your works" Icon={UserStar}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -165,7 +208,13 @@ export default function YourWorks() {
         </DropdownMenu>
       </Topbar>
       
-      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+      {/* Printable Report Header */}
+      <div className="hidden print:flex flex-col gap-1 border-b-2 border-zinc-800 pb-4 mb-6">
+        <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Your Works Status Report</h1>
+        <p className="text-xs text-zinc-500">Flux Workspace • Created on {new Date().toLocaleDateString('vi-VN')} • User: {user?.name}</p>
+      </div>
+
+      <div className="flex-1 p-6 space-y-10 overflow-y-auto print:overflow-visible print:p-0 print:space-y-6 print:h-auto">
         {activeTab === "Summary" && (
           <div className="space-y-10 animate-fade-in animate-slide-up">
             <OverviewSection 
@@ -318,16 +367,16 @@ function TaskListView({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-zinc-400 font-semibold uppercase text-[11px] tracking-wider">
+      <div className="flex items-center justify-between px-1 print:mb-2">
+        <h2 className="text-zinc-400 font-semibold uppercase text-[11px] tracking-wider print:text-zinc-700 print:text-xs">
             {title}
-            <span className="ml-2 text-[12px] text-zinc-400 font-normal">({tasks.length})</span>
+            <span className="ml-2 text-[12px] text-zinc-400 font-normal print:text-zinc-600">({tasks.length})</span>
         </h2>
       </div>
       
-      <div className="border border-border/80 overflow-hidden flex flex-col divide-y divide-border/80">
+      <div className="space-y-4 print:space-y-6">
         {groups.length === 0 ? (
-          <div className="text-center py-16 bg-white">
+          <div className="text-center py-16 bg-white border border-border/40 rounded-xl">
             <div className="size-12 rounded-full bg-zinc-50 flex items-center justify-center mx-auto mb-3">
                 <CheckSquare className="size-6 text-zinc-200" />
             </div>
@@ -338,85 +387,92 @@ function TaskListView({
             const isCollapsed = expandedIds.has(group.key);
             
             return (
-            <div key={group.key} className="flex flex-col bg-[#f4f5f7]">
+            <div 
+              key={group.key} 
+              className="border border-border/40 rounded-xl overflow-hidden bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.015)] transition-all duration-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] print:border-zinc-300 print:shadow-none print:bg-white"
+            >
                 {/* Group Header */}
                 <div 
-                    className="flex items-center gap-2 px-3 py-2.5 transition-colors group cursor-pointer hover:bg-zinc-200/50"
+                    className="flex items-center gap-2.5 px-4 py-3 bg-[#f8f9fa] border-b border-border/40 transition-colors group cursor-pointer hover:bg-zinc-100/50 print:bg-zinc-50 print:border-zinc-300"
                     onClick={() => toggleExpand(group.key)}
                 >
                     <ChevronRight 
-                        className={`size-3.5 text-zinc-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''}`} 
+                        className={`size-3.5 text-zinc-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''} print:hidden`} 
                     />
-                    <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-                    <span className="text-[13.5px] font-semibold text-zinc-900">{group.label}</span>
-                    <span className="text-[12px] text-zinc-400 font-normal">{group.items.length}</span>
+                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                    <span className="text-[13.5px] font-bold text-zinc-800 tracking-tight">{group.label}</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-200/50 text-zinc-500 font-medium">{group.items.length}</span>
                 </div>
 
-                {!isCollapsed && (
-                    <div className="bg-white border-t border-border/40 divide-y divide-border/40">
-                        {group.items.map((task) => {
-                            const projectInfo = taskProjectMap[task._id];
-                            const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.columnId !== 'done';
-                            
-                            return (
-                            <div 
-                                key={task._id} 
-                                onClick={() => onTaskClick(task._id)}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-zinc-50 transition-all text-left group cursor-pointer relative"
-                            >
-                                <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                                    <span className={`text-[13.5px] truncate transition-all duration-200 ${
-                                        task.columnId === 'done' ? "text-zinc-400 line-through" : "text-zinc-700 group-hover:text-black font-semibold"
+                <div className={cn(
+                    "bg-white divide-y divide-border/30",
+                    isCollapsed ? "hidden print:block print:divide-y print:divide-zinc-200" : "block"
+                )}>
+                    {group.items.map((task) => {
+                        const projectInfo = taskProjectMap[task._id];
+                        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.columnId !== 'done';
+                        
+                        return (
+                        <div 
+                            key={task._id} 
+                            onClick={() => onTaskClick(task._id)}
+                            className="w-full flex items-center gap-4 px-5 py-3.5 bg-white hover:bg-zinc-50/70 transition-all text-left group cursor-pointer relative"
+                        >
+                            <div className="flex-1 min-w-0 flex items-center gap-3">
+                                <CheckSquare className="size-4 text-zinc-300 shrink-0 group-hover:text-primary transition-colors print:text-zinc-400" />
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 min-w-0">
+                                    <span className={`text-[13.5px] truncate font-medium transition-all duration-200 ${
+                                        task.columnId === 'done' ? "text-zinc-400 line-through font-normal" : "text-zinc-800 group-hover:text-primary"
                                     }`}>
                                         {task.title}
                                     </span>
 
                                     {projectInfo && (
-                                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tighter shrink-0">
+                                        <span className="inline-flex items-center text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 w-fit print:text-zinc-700 print:bg-zinc-100 print:border-zinc-300">
                                             {projectInfo.name}
                                         </span>
                                     )}
                                 </div>
+                            </div>
 
-                                {/* Metadata & Dates */}
-                                <div className="flex items-center gap-3 shrink-0">
-                                    {/* Meta Icons */}
-                                    <div className="flex items-center gap-2 text-zinc-300 transition-colors">
-                                        {(task.commentCount ?? 0) > 0 && (
-                                            <div className="flex items-center gap-0.5 text-[11px]" title="Comments">
-                                                <MessageSquare className="size-3" />
-                                                <span>{task.commentCount}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {task.dueDate && (
-                                        <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded transition-all duration-200 ${
-                                            isOverdue
-                                                ? "bg-[#c9372c] text-white font-semibold" 
-                                                : "text-zinc-400 group-hover:text-zinc-600"
-                                        }`}>
-                                            {!isOverdue && <Clock3 className="size-3" />}
-                                            <span className="whitespace-nowrap">
-                                                {formatDateShort(task.dueDate)}
-                                            </span>
-                                        </span>
-                                    )}
-
-                                    {task.assignee && (
-                                        <Avatar className="size-5 shrink-0 border border-white transition-transform">
-                                            <AvatarImage src={task.assignee.avatar} />
-                                            <AvatarFallback className="text-[9px] font-bold bg-zinc-100">
-                                                {task.assignee.name?.charAt(0)}
-                                            </AvatarFallback>
-                                        </Avatar>
+                            {/* Metadata & Dates */}
+                            <div className="flex items-center gap-3 shrink-0 print:gap-4">
+                                {/* Meta Icons */}
+                                <div className="flex items-center gap-2 text-zinc-300 transition-colors print:hidden">
+                                    {(task.commentCount ?? 0) > 0 && (
+                                        <div className="flex items-center gap-0.5 text-[11px]" title="Comments">
+                                            <MessageSquare className="size-3" />
+                                            <span>{task.commentCount}</span>
+                                        </div>
                                     )}
                                 </div>
+
+                                {task.dueDate && (
+                                    <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded transition-all duration-200 ${
+                                        isOverdue
+                                            ? "bg-destructive/10 text-destructive border border-destructive/20 font-semibold print:text-red-700 print:bg-red-50" 
+                                            : "text-zinc-400 group-hover:text-zinc-600 bg-zinc-100 print:text-zinc-600"
+                                    }`}>
+                                        {!isOverdue && <Clock3 className="size-3 print:hidden" />}
+                                        <span className="whitespace-nowrap font-medium">
+                                            {formatDateShort(task.dueDate)}
+                                        </span>
+                                    </span>
+                                )}
+
+                                {task.assignee && (
+                                    <Avatar className="size-5.5 shrink-0 border border-white transition-transform hover:scale-110 print:border-zinc-200">
+                                        <AvatarImage src={task.assignee.avatar} />
+                                        <AvatarFallback className="text-[9px] font-bold bg-zinc-100">
+                                            {task.assignee.name?.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                )}
                             </div>
-                            );
-                        })}
-                    </div>
-                )}
+                        </div>
+                        );
+                    })}
+                </div>
             </div>
           )})
         )}

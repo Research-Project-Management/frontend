@@ -6,6 +6,7 @@ import {
   type LaTeXEngine,
 } from "~/stores/editor-settings";
 import { usePageContext } from "./PageContext";
+import { usePageFiles, useSetPageMainFile } from "~/query/page";
 import {
   X,
   Cpu,
@@ -140,6 +141,7 @@ function MainFileSelect({
     return (
       <input
         type="text"
+        aria-label="Root document filename"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-28 text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground text-right focus:outline-none focus:ring-1 focus:ring-primary"
@@ -150,6 +152,7 @@ function MainFileSelect({
   return (
     <div className="relative">
       <select
+        aria-label="Select root document"
         value={options.includes(value) ? value : ""}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
@@ -200,21 +203,44 @@ export default function SettingsPanel() {
     toggleSettingsPanel,
   } = useEditorSettingsStore();
 
-  const { texFiles } = usePageContext();
+  const { texFiles, currentPage } = usePageContext();
+
+  const setMainFileMutation = useSetPageMainFile();
+  const { data: files } = usePageFiles(currentPage?._id ?? null);
+
+  const dbMainFile =
+    currentPage?.mainFile && typeof currentPage.mainFile === "object"
+      ? (currentPage.mainFile as any).title
+      : null;
+  const currentMainFile = dbMainFile || mainFile || "main.tex";
 
   useEffect(() => {
     if (texFiles.length === 0) return;
 
     if (texFiles.includes("main.tex")) {
       setMainFile("main.tex");
-    } else if (!texFiles.includes(mainFile)) {
+    } else if (!texFiles.includes(currentMainFile)) {
       toast.warning("Please select a main file for compilation", {
         description: "No \"main.tex\" found. Choose the root .tex file from the Settings panel.",
         duration: 6000,
         id: "select-main-file",
       });
     }
-  }, [texFiles]);
+  }, [texFiles, currentMainFile]);
+
+  const handleMainFileChange = (newTitle: string) => {
+    setMainFile(newTitle);
+    if (files && currentPage) {
+      const matchedPage = files.find((f) => f.title === newTitle);
+      if (matchedPage) {
+        setMainFileMutation.mutate({
+          pageId: currentPage._id,
+          fileId: matchedPage._id,
+        });
+        toast.success(`Main file updated to "${newTitle}"!`);
+      }
+    }
+  };
 
   return (
     <div className="h-full w-[280px] border-l border-border bg-background flex flex-col shrink-0">
@@ -262,7 +288,7 @@ export default function SettingsPanel() {
           </SettingRow>
 
           <SettingRow icon={FileText} label="Main file" description="Root document">
-            <MainFileSelect value={mainFile} options={texFiles} onChange={setMainFile} />
+            <MainFileSelect value={currentMainFile} options={texFiles} onChange={handleMainFileChange} />
           </SettingRow>
         </SettingGroup>
 

@@ -285,6 +285,18 @@ export async function deleteChatSession(chatId: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete chat: ${res.status}`);
 }
 
+/** Clear all AI memories for a workspace. */
+export async function clearAiMemory(workspaceId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/ai/memory/clear`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId }),
+  });
+  if (!res.ok) throw new Error(`Failed to clear AI memory: ${res.status}`);
+}
+
+
 export async function uploadDocument(
   file: File,
   chatId?: string,

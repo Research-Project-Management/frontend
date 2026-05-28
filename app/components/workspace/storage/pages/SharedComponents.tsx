@@ -28,6 +28,7 @@ import { Button } from "~/components/ui/button";
 import DeleteModal from "~/components/workspace/settings/general/components/deleteModal";
 import { toast } from "sonner";
 import type { StorageItem, FileType } from "../types";
+import { resolveFileUrl } from "~/lib/api";
 
 export function getFileType(item: StorageItem): FileType {
   if (item.isFolder) return "folder";
@@ -395,7 +396,7 @@ export function StorageListView({
                   >
                     {item.thumbnail || (fileType === "image" && item.url) ? (
                       <img
-                        src={item.thumbnail || item.url}
+                        src={resolveFileUrl(item.thumbnail || item.url) || ""}
                         alt={item.filename}
                         className="size-5 rounded object-cover"
                       />
@@ -533,7 +534,7 @@ export function StorageGridView({
             >
               {item.thumbnail || (fileType === "image" && item.url) ? (
                 <img
-                  src={item.thumbnail || item.url}
+                  src={resolveFileUrl(item.thumbnail || item.url) || ""}
                   alt={item.filename}
                   className="w-full h-full object-cover"
                 />

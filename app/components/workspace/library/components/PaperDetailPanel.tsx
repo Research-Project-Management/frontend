@@ -11,6 +11,7 @@ import {
   Plus,
   Calendar,
   FileText,
+  FileJson,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { cn } from "~/lib/utils";
@@ -18,6 +19,7 @@ import { API_URL } from "~/lib/api";
 import { useUpdatePaper } from "~/query/library";
 import { lookupDoi } from "~/query/storage";
 import type { Paper, Collection } from "~/types/library";
+import PaperBibtexDialog from "./PaperBibtexDialog";
 
 function formatSize(bytes: number): string {
   if (!bytes) return "";
@@ -130,6 +132,7 @@ export function PaperDetailPanel({
 
   const updatePaper = useUpdatePaper(workspaceId, paper.collection || "");
   const [isCrawling, setIsCrawling] = useState(false);
+  const [bibtexOpen, setBibtexOpen] = useState(false);
 
   // Manual Edit States
   const [isEditing, setIsEditing] = useState(false);
@@ -191,6 +194,7 @@ export function PaperDetailPanel({
     setIsAddingNote(false);
     setEditingNoteId(null);
     setEditingNoteContent("");
+    setBibtexOpen(false);
   }, [paper]);
 
   const handleSaveMetadata = () => {
@@ -891,6 +895,13 @@ export function PaperDetailPanel({
             <FileText className="size-4" />
             Open Reader
           </Link>
+          <button
+            onClick={() => setBibtexOpen(true)}
+            className="flex items-center justify-center w-9 h-9 rounded-md border border-border bg-background hover:bg-muted/50 transition-all duration-200 text-muted-foreground hover:text-foreground shrink-0"
+            title="Export BibTeX citation"
+          >
+            <FileJson className="size-4" />
+          </button>
           <a
             href={resolvedUrl}
             target="_blank"
@@ -902,6 +913,11 @@ export function PaperDetailPanel({
           </a>
         </div>
       )}
+      <PaperBibtexDialog
+        paper={paper}
+        open={bibtexOpen}
+        onOpenChange={setBibtexOpen}
+      />
     </div>
   );
 }

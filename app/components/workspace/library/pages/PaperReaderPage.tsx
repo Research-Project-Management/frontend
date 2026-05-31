@@ -17,6 +17,7 @@ import {
   StickyNote,
   Trash2,
   X,
+  FileJson,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ import { cn } from "~/lib/utils";
 import type { Collection, Paper } from "~/types/library";
 import PdfViewer from "../components/PdfViewer";
 import ReaderChatPanel from "../components/ReaderChatPanel";
+import PaperBibtexDialog from "../components/PaperBibtexDialog";
 
 type ReaderPanel = "ai" | "details" | "notes";
 
@@ -674,6 +676,7 @@ export default function PaperReaderPage() {
   const [selectionContext, setSelectionContext] = useState("");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
+  const [bibtexOpen, setBibtexOpen] = useState(false);
 
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
@@ -689,6 +692,7 @@ export default function PaperReaderPage() {
   useEffect(() => {
     setDraftTitle(paper?.title || "");
     setIsEditingTitle(false);
+    setBibtexOpen(false);
   }, [paper?._id, paper?.title]);
 
   useEffect(() => {
@@ -878,6 +882,19 @@ export default function PaperReaderPage() {
                 <a href={paperUrl} download={paper?.filename || "paper.pdf"}>
                   <Download className="size-4" />
                 </a>
+              </Button>
+            </IconTooltip>
+          ) : null}
+
+          {paper ? (
+            <IconTooltip label="Export BibTeX">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setBibtexOpen(true)}
+                title="Export BibTeX citation"
+              >
+                <FileJson className="size-4" />
               </Button>
             </IconTooltip>
           ) : null}
@@ -1097,6 +1114,13 @@ export default function PaperReaderPage() {
           />
         ) : null}
       </div>
+      {paper ? (
+        <PaperBibtexDialog
+          paper={paper}
+          open={bibtexOpen}
+          onOpenChange={setBibtexOpen}
+        />
+      ) : null}
     </div>
   );
 }

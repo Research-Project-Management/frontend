@@ -310,7 +310,7 @@ export default function UploadDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload Files</DialogTitle>
             <DialogDescription>
@@ -318,12 +318,12 @@ export default function UploadDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 w-full">
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors w-full ${
                 isDragging
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50"
@@ -352,7 +352,7 @@ export default function UploadDialog({
             </div>
 
             {hasFiles && (
-              <div className="max-h-64 overflow-y-auto space-y-2">
+              <div className="max-h-64 overflow-y-auto overflow-x-hidden space-y-2 w-full">
                 {files.map((fileItem, index) => (
                   <div
                     key={index}

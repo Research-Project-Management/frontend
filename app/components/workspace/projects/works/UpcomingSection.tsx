@@ -73,7 +73,7 @@ export default function UpcomingSection({
 
                 {/* Info in Center */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                  <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors whitespace-normal break-words">
                     {task.title}
                   </h4>
                   {projectInfo && (

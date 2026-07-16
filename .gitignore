@@ -11,3 +11,4 @@ yarn.lock
 .env.local
 .dev.env
 .test.env
+.vercel

@@ -47,7 +47,7 @@ function normalizeTask(task: TaskLike) {
     dueDate: task.dueDate || null,
     isOverdue: Boolean(task.isOverdue),
     completed: Boolean(task.completed),
-    project: task.project || null,
+    project: task.project ? { name: task.project.name || "Unknown Project", avatar: task.project.avatar } : null,
   };
 }
 

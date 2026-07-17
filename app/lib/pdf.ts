@@ -46,7 +46,6 @@ export type PdfMetadata = {
   rights?: string;
   license?: string;
   publicationTitle?: string;
-  publicationDate?: string;
   place?: string;
   keywordsList?: string[];
 };

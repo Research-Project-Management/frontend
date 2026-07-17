@@ -38,6 +38,7 @@ export type ResponseWidget =
           dueDate?: string | null;
           isOverdue?: boolean;
           completed?: boolean;
+          project?: { name: string; avatar?: string } | null;
         }>;
       }>;
     }

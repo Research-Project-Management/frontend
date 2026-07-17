@@ -124,7 +124,8 @@ export default function ProjectTeam() {
   );
 
   const canManageTeam =
-    projectUserRole === "manager" || 
+    projectUserRole === "admin" || 
+    projectUserRole === "owner" ||
     workspaceRole === "owner" || 
     workspaceRole === "admin" ||
     project.createdBy?._id === currentUser?._id;
@@ -240,7 +241,7 @@ export default function ProjectTeam() {
                                 handleUpdateRole(member.user?._id, val)
                               }
                             >
-                              <DropdownMenuRadioItem value="manager" className="text-xs">Manager</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="admin" className="text-xs">Admin</DropdownMenuRadioItem>
                               <DropdownMenuRadioItem value="member" className="text-xs">Member</DropdownMenuRadioItem>
                               <DropdownMenuRadioItem value="viewer" className="text-xs">Viewer</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>

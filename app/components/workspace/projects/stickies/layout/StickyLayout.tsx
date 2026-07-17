@@ -144,9 +144,14 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
     
     if (oldIdx !== -1 && newIdx !== -1) {
       const newOrderIds = arrayMove(notes.map(n => n._id), oldIdx, newIdx);
-      handleReorder(newOrderIds);
+      // Pass projectId explicitly so useSticky routes to the right reorder endpoint
+      if (isProjectScope && resolvedProjectId) {
+        reorderProjectMutation.mutateAsync({ projectId: resolvedProjectId, stickyIds: newOrderIds });
+      } else {
+        handleReorder(newOrderIds);
+      }
     }
-  }, [notes, handleReorder]);
+  }, [notes, handleReorder, reorderProjectMutation, isProjectScope, resolvedProjectId]);
 
   const filteredNotes = useMemo(
     () =>
@@ -208,7 +213,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
             selectedLabels={selectedLabels}
             addLabel={copy.addLabel}
             labelType="sticky"
-            projectId={undefined}
+            projectId={isProjectScope ? resolvedProjectId : undefined}
             onToggleLabel={(labelId) =>
               setSelectedLabels((prev) =>
                 prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]

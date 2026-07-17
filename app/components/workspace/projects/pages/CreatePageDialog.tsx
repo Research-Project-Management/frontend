@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useCreatePage } from "~/query/page";
 import { useProjects } from "~/hooks/useWorkspace";
 import { useAuth } from "~/hooks/useAuth";
@@ -227,6 +227,7 @@ export default function CreatePageDialog({
 
   const { projects, isLoading: isLoadingProjects } = useProjects();
   const { user } = useAuth();
+  const { workspaceId } = useParams();
   const createPageMutation = useCreatePage();
   const navigate = useNavigate();
 
@@ -278,9 +279,18 @@ export default function CreatePageDialog({
           
           // Force navigation to the new page with unique timestamp to prevent cache
           if (rootPageId) {
-            const url = mainFileId
-              ? `/editor/${rootPageId}?file=${mainFileId}&t=${Date.now()}`
-              : `/editor/${rootPageId}?t=${Date.now()}`;
+            // Navigate using project-scoped URL when possible so PageLayout has full context
+            let url: string;
+            if (workspaceId && selectedProjectId) {
+              const base = `/${workspaceId}/projects/${selectedProjectId}/pages/${rootPageId}`;
+              url = mainFileId
+                ? `${base}?file=${mainFileId}&t=${Date.now()}`
+                : `${base}?t=${Date.now()}`;
+            } else {
+              url = mainFileId
+                ? `/editor/${rootPageId}?file=${mainFileId}&t=${Date.now()}`
+                : `/editor/${rootPageId}?t=${Date.now()}`;
+            }
             console.log("[CreatePageDialog] Navigating to:", url);
             navigate(url, { replace: true });
           }

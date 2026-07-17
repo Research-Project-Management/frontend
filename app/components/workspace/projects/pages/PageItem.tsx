@@ -7,7 +7,7 @@ import {
   Clock,
 } from "lucide-react";
 import React, { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -56,6 +56,7 @@ function relativeTime(dateStr: string) {
 
 export default function PageItem({ page, viewMode }: PageItemProps) {
   const navigate = useNavigate();
+  const { workspaceId } = useParams();
   const projectId =
     typeof page.project === "string" ? page.project : page.project._id;
   const projectName =
@@ -106,10 +107,16 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
       ? page.mainFile.title
       : null;
 
-  const openEditor = () =>
-    mainFileId
-      ? navigate(`/editor/${page._id}?file=${mainFileId}`)
-      : navigate(`/editor/${page._id}`);
+  const openEditor = () => {
+    // Prefer project-scoped URL so PageLayout gets workspaceId & projectId in params
+    if (workspaceId && projectId) {
+      const base = `/${workspaceId}/projects/${projectId}/pages/${page._id}`;
+      navigate(mainFileId ? `${base}?file=${mainFileId}` : base);
+    } else {
+      // Fallback to global editor route
+      navigate(mainFileId ? `/editor/${page._id}?file=${mainFileId}` : `/editor/${page._id}`);
+    }
+  };
 
   const ActionMenu = () => (
     <DropdownMenu>

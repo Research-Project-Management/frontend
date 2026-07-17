@@ -109,7 +109,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
     <SidebarPanel>
       <SidebarHeader
         title="Search"
-        icon={null}
+        icon={undefined}
         actions={
           <SidebarIconButton
             label="Toggle replace"

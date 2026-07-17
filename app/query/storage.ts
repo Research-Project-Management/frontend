@@ -217,7 +217,7 @@ export const uploadFile = async (
                 });
 
                 if (thumbUploadResponse.ok) {
-                    thumbnailUrl = `/api/files/${thumbPath}`;
+                    thumbnailUrl = `/api/files/r2/${thumbPath}`;
                 }
             }
         } catch (e) {
@@ -243,7 +243,7 @@ export const uploadFile = async (
         filename: file.name,
         size: file.size,
         mimeType: file.type,
-        url: `/api/files/${path}`,
+        url: `/api/files/r2/${path}`,
         thumbnail: thumbnailUrl,
         parentId: params.parentId || null,
         metaData: extractedMetadata,
@@ -588,7 +588,7 @@ export const useUploadFileForEditor = () => {
       });
       if (!uploadRes.ok) throw new Error("Upload to R2 failed");
 
-      const fileUrl = `/api/files/${path}`;
+      const fileUrl = `/api/files/r2/${path}`;
 
       // 3. Save metadata + send base64 so backend can sync to compiler
       //    immediately without re-fetching from R2.

@@ -62,7 +62,8 @@ export default function ModulesSettings() {
   if (!project) return <div className="p-6">Project not found</div>;
 
   const canManage =
-    userRole === "manager" ||
+    userRole === "admin" ||
+    userRole === "owner" ||
     workspaceRole === "owner" ||
     workspaceRole === "admin";
 

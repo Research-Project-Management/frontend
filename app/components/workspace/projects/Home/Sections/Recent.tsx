@@ -1,6 +1,6 @@
 import React from "react";
 import HomeSection from "../HomeSection";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { ChevronRight, Loader2, Folder, FileText, File } from "lucide-react";
 import { useRecentItems } from "~/query/workspace";
 import { useParams, Link } from "react-router";
 import { formatDistanceToNow } from "date-fns";
@@ -34,7 +34,9 @@ export default function Recent() {
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent
                            hover:bg-secondary/60 hover:border-border/40 transition-all duration-200 group cursor-pointer"
               >
-                <span className="text-lg shrink-0 group-hover:scale-110 transition-transform">{item.icon}</span>
+                <span className="text-lg shrink-0 group-hover:scale-110 transition-transform">
+                  {item.icon === "Folder" ? <Folder className="h-5 w-5" /> : item.icon === "FileText" ? <FileText className="h-5 w-5" /> : <File className="h-5 w-5" />}
+                </span>
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">

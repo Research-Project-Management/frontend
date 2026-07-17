@@ -39,6 +39,7 @@ export default [
         ":workspaceId/pages",
         "./routes/workspace/$workspaceId/pages/index.tsx",
       ),
+
       route(
         ":workspaceId/stickies",
         "./routes/workspace/$workspaceId/stickies/index.tsx",
@@ -72,7 +73,7 @@ export default [
 
       route(
         ":workspaceId/projects/:projectId/pages",
-        "./routes/workspace/$workspaceId/project/pages.tsx",
+        "./routes/workspace/$workspaceId/project/$projectId/pages.tsx",
       ),
       route(
         ":workspaceId/projects/:projectId/storage",
@@ -150,6 +151,11 @@ export default [
 
   layout("./components/workspace/$pageId/layout/PageLayout.tsx", [
     route("/editor/:pageId", "./routes/workspace/$pageId/$pageId.tsx", { id: "editor-direct" }),
+    route(
+      ":workspaceId/pages/:pageId",
+      "./routes/workspace/$pageId/$pageId.tsx",
+      { id: "workspace-page-detail" }
+    ),
     route(
       ":workspaceId/projects/:projectId/pages/:pageId",
       "./routes/workspace/$pageId/$pageId.tsx",

@@ -865,7 +865,13 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
   const replaceLastAssistantSummary = useCallback((content: string) => {
     setMessages(prev => {
-      const idx = prev.findLastIndex(m => m.role === "assistant" && !parseAiEditStatus(m.content));
+      let idx = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].role === "assistant" && !parseAiEditStatus(prev[i].content)) {
+          idx = i;
+          break;
+        }
+      }
       if (idx < 0) return prev;
       const updated = [...prev];
       updated[idx] = { ...prev[idx], content };
@@ -1841,11 +1847,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                 }
 
                 return (
-                  <div key={i} className={`flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`group relative ${msg.role === "user"
-                      ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-3 py-2 border border-zinc-200 dark:border-zinc-700"
-                      : "max-w-[92%]"
-                      }`}>
+                  <div key={i} className={`flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 justify-start`}>
+                    <div className={`group relative max-w-[92%]`}>
                       {isEditorActionMessage(msg.content) ? (
                         <AssistantMessage
                           content={msg.content}

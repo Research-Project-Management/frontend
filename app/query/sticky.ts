@@ -102,7 +102,13 @@ export const useCreateSticky = () => {
       color?: string;
       position?: { x: number; y: number };
       labels?: string[];
-    }) => apiPost<{ sticky: Sticky }>(`/api/workspace/${variables.workspaceId}/stickies`, variables),
+    }) => {
+      // Use project-scoped endpoint when projectId is present
+      if (variables.projectId) {
+        return apiPost<{ sticky: Sticky }>(`/api/project/${variables.projectId}/stickies`, variables);
+      }
+      return apiPost<{ sticky: Sticky }>(`/api/workspace/${variables.workspaceId}/stickies`, variables);
+    },
     onSuccess: (data, variables) => {
       invalidateAllStickies(queryClient, variables.workspaceId, variables.projectId);
       if (variables.projectId) {
@@ -115,6 +121,7 @@ export const useCreateSticky = () => {
     },
   });
 };
+
 
 export const useUpdateSticky = () => {
   const queryClient = useQueryClient();

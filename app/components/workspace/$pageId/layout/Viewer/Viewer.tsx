@@ -994,7 +994,7 @@ export default function Viewer() {
       let fraction = 0.5; // default to center
       const smap = synctexMapRef.current;
 
-      const activeFilename = activeFilePage?.title || activeFilePage?.filename || "main.tex";
+      const activeFilename = activeFilePage?.title || "main.tex";
       const activeBasename = activeFilename.split("/").pop()?.toLowerCase() || activeFilename.toLowerCase();
       const activeTag = smap?.pathToTag.get(activeBasename) || 1;
       const key = `${activeTag}:${line}`;

@@ -23,7 +23,7 @@ export function useUpload() {
 
       if (!uploadResponse.ok) throw new Error("Failed to upload file to storage");
 
-      return `${API_URL}/api/files/${path}`;
+      return `${API_URL}/api/files/r2/${path}`;
     } finally {
       setIsUploading(false);
     }

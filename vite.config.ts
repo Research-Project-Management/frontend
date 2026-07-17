@@ -4,11 +4,26 @@ import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import svgr from "vite-plugin-svgr";
 import devtoolsJson from 'vite-plugin-devtools-json';
+import istanbul from 'vite-plugin-istanbul';
+
 export default defineConfig({
-  plugins: [tailwindcss(), reactRouter(), tsconfigPaths(), svgr(), devtoolsJson()],
+  plugins: [
+    tailwindcss(),
+    reactRouter(),
+    tsconfigPaths(),
+    svgr(),
+    devtoolsJson(),
+    istanbul({
+      include: 'app/*',
+      exclude: ['node_modules', 'test/'],
+      extension: ['.js', '.ts', '.jsx', '.tsx'],
+      requireEnv: false,
+      forceBuildInstrument: true
+    })
+  ],
   appType: "spa",
   server: {
-    port: 5173,
+    port: 2915,
     strictPort: true,
     allowedHosts: ["flux.aisq.dev"]
   },

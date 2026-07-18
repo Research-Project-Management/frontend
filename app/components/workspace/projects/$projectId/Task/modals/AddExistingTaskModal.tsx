@@ -46,14 +46,14 @@ export function AddExistingTaskModal({
       const matchesSearch = task.title.toLowerCase().includes(keyword) ||
                           task.identifier?.toLowerCase().includes(keyword);
       // Filter out tasks already in the current cycle
-      const notInCurrentCycle = task.cycle?._id !== currentCycleId;
+      const notInCurrentCycle = task.cycleId?._id !== currentCycleId;
       return matchesSearch && notInCurrentCycle;
     });
 
     // 2. Sort: Prioritize tasks without a cycle (Unassigned -> Assigned)
     return [...filtered].sort((a, b) => {
-      const aHasCycle = !!a.cycle?._id;
-      const bHasCycle = !!b.cycle?._id;
+      const aHasCycle = !!a.cycleId?._id;
+      const bHasCycle = !!b.cycleId?._id;
 
       if (!aHasCycle && bHasCycle) return -1;
       if (aHasCycle && !bHasCycle) return 1;
@@ -90,7 +90,7 @@ export function AddExistingTaskModal({
         projectId,
         taskIds: selectedIds,
         data: {
-          cycle: currentCycleId
+          cycleId: currentCycleId
         }
       });
       
@@ -162,7 +162,7 @@ export function AddExistingTaskModal({
           ) : (
             filteredTasks.map((task) => {
               const checked = selectedIds.includes(task._id);
-              const otherCycle = task.cycle;
+              const otherCycle = task.cycleId;
 
               return (
                 <div key={task._id} className="px-2">

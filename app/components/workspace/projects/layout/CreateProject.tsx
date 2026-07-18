@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useParams } from "react-router";
 import { apiPost } from "~/lib/api";
 import {
@@ -181,6 +182,9 @@ export default function CreateProject({
         return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
       });
       onSuccess?.();
+    },
+    onError(error: any) {
+      toast.error(error?.message || "Failed to create project");
     },
   });
 

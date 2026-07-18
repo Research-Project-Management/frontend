@@ -99,7 +99,7 @@ export default function YourWorks() {
 
   const handleOpenTask = (taskId: string) => {
     const task = tasks.find(t => t._id === taskId);
-    const pId = task ? (typeof task.project === 'object' ? task.project?._id : task.project) : null;
+    const pId = task ? (typeof task.projectId === 'object' ? task.projectId?._id : task.projectId) : null;
     if (task && pId) {
       setSelectedTask({ taskId, projectId: pId });
     }

@@ -18,13 +18,14 @@ import { Button } from "../ui/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 
 export default function Create() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("flux");
+  const [url, setUrl] = useState("");
   const [avatar, setAvatar] = useState<string | null>(
     "https://i.pinimg.com/736x/5f/08/52/5f085214d65b511a9992497e2d818625.jpg",
   );
@@ -81,6 +82,10 @@ export default function Create() {
       const workspaceUrl = `/${data.workspace.url}`;
       navigate(workspaceUrl, { replace: true });
     },
+    onError(error: any) {
+      setUploadError(error?.message || "Failed to create workspace");
+      toast.error(error?.message || "Failed to create workspace");
+    },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,7 +141,7 @@ export default function Create() {
 
       const workspaceData = {
         name,
-        url,
+        url: url || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
         avatar: finalAvatar,
       };
 

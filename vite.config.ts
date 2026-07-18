@@ -25,7 +25,17 @@ export default defineConfig({
   server: {
     port: 2915,
     strictPort: true,
-    allowedHosts: ["flux.aisq.dev"]
+    allowedHosts: ["flux.aisq.site"],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/auth': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      }
+    }
   },
   build: {
     chunkSizeWarningLimit: 900,

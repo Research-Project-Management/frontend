@@ -231,8 +231,8 @@ export default function ToolBar() {
   };
 
   const projectName =
-    currentPage && typeof currentPage.project === "object"
-      ? currentPage.project.name
+    currentPage && typeof currentPage.projectId === "object"
+      ? currentPage.projectId.name
       : null;
 
   const LayoutIcon =
@@ -256,9 +256,9 @@ export default function ToolBar() {
             <span className="text-muted-foreground/40 mx-1 text-sm select-none">/</span>
             <button
               onClick={() => {
-                const proj = currentPage?.project;
+                const proj = currentPage?.projectId;
                 if (proj && typeof proj === "object") {
-                  const ws = proj.workspace;
+                  const ws = proj.workspaceId;
                   const wsUrl = ws && typeof ws === "object" ? ws.url : null;
                   if (wsUrl) {
                     navigate(`/${wsUrl}/projects/${proj._id}/pages`);

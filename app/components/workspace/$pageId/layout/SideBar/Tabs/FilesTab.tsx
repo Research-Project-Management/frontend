@@ -707,7 +707,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // IMPORTANT: Use parentPageId (root page) as the key for fetching files
   // Each root page has its own independent file system
   // projectId is derived from parentPage for tab management
-  const projectId = (parentPage?.project as any)?._id ?? "";
+  const projectId = (parentPage?.projectId as any)?._id ?? "";
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === "object"
       ? parentPage.mainFile._id
@@ -723,7 +723,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   // Derive workspaceId from parentPage.project.workspace for uploads
   const workspaceId: string =
-    (parentPage?.project as any)?.workspace?._id ?? "";
+    (parentPage?.projectId as any)?.workspaceId?._id ?? "";
 
   const { data: files, isLoading } = usePageFiles(parentPageId);
 
@@ -1405,7 +1405,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleUploadToFolder = useCallback(
     (files: File[], folderId: string) => {
       if (!parentPageId) return;
-      const tabProjectId = (parentPage?.project as any)?._id ?? "";
+      const tabProjectId = (parentPage?.projectId as any)?._id ?? "";
       setUploadingCount((prev) => prev + files.length);
 
       const settle = () =>

@@ -11,11 +11,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/unit/setup.ts'],
+    // @ts-ignore - type definitions might be out of sync
     poolOptions: {
       threads: {
         singleThread: true,
       },
     },
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/*.spec.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

@@ -130,7 +130,7 @@ export function PaperDetailPanel({
     ? `${API_URL}${paper.fileUrl}`
     : paper.fileUrl;
 
-  const updatePaper = useUpdatePaper(workspaceId, paper.collection || "");
+  const updatePaper = useUpdatePaper(workspaceId, paper.collectionId || "");
   const [isCrawling, setIsCrawling] = useState(false);
   const [bibtexOpen, setBibtexOpen] = useState(false);
 
@@ -707,8 +707,8 @@ export function PaperDetailPanel({
             </div>
           </div>
 
-          {/* Keywords & Tags */}
-          {(paper.keywords && paper.keywords.length > 0) || (paper.tags && paper.tags.length > 0) ? (
+          {/* Keywords & Labels */}
+          {(paper.keywords && paper.keywords.length > 0) || (paper.labels && paper.labels.length > 0) ? (
             <div className="border-t border-border/30 pt-3 space-y-2">
               {paper.keywords && paper.keywords.length > 0 && (
                 <DetailRow label="Keywords">
@@ -724,10 +724,10 @@ export function PaperDetailPanel({
                   </div>
                 </DetailRow>
               )}
-              {paper.tags && paper.tags.length > 0 && (
-                <DetailRow label="Tags">
+              {paper.labels && paper.labels.length > 0 && (
+                <DetailRow label="Labels">
                   <div className="flex flex-wrap gap-1 mt-0.5">
-                    {paper.tags.map((t) => (
+                    {paper.labels.map((t) => (
                       <span
                         key={t}
                         className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 font-medium"

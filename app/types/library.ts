@@ -6,9 +6,9 @@ export type Collection = {
   description: string;
   color: string;
   icon: string;
-  workspace: string;
+  workspaceId: string;
   parent: string | null;
-  createdBy: {
+  createdBy?: {
     _id: string;
     name: string;
     email: string;
@@ -71,12 +71,14 @@ export type Paper = {
   filename: string;
   mimeType: string;
   size: number;
-  tags: string[];
+
+  labels: string[];
+
   ragDocId: string | null;
   ragStatus: "pending" | "indexed" | "failed" | null;
   ragIndexedAt: string | null;
-  workspace: string;
-  collection: string | null;
+  workspaceId: string;
+  collectionId: string | null;
   uploadedBy: {
     _id: string;
     name: string;
@@ -99,8 +101,8 @@ export type ProjectCollection = {
   _id: string;
   name: string;
   description: string;
-  project: string;
-  workspace: string;
+  projectId: string;
+  workspaceId: string;
   createdBy: {
     _id: string;
     name: string;

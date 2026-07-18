@@ -24,8 +24,8 @@ export const fetchLabels = async (workspaceId: string, type?: string, projectId?
   if (projectId) params.append("projectId", projectId);
   
   const queryStr = params.toString() ? `?${params.toString()}` : "";
-  const data = await apiGet<{ labels?: Label[]; tags?: Label[] }>(`/api/workspace/${workspaceId}/labels${queryStr}`);
-  return data.labels ?? data.tags ?? [];
+  const data = await apiGet<{ labels?: Label[] }>(`/api/workspace/${workspaceId}/labels${queryStr}`);
+  return data.labels ?? [];
 };
 
 // ── Query Hooks ───────────────────────────────────────────────────────────────

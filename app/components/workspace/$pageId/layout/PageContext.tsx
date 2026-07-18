@@ -27,7 +27,7 @@ interface PageContextType {
    */
   activeFilePage: Page | null;
   setActiveFilePage: React.Dispatch<React.SetStateAction<Page | null>>;
-  /** The workspace ID derived from currentPage.project.workspace — used by sidebar AI tab. */
+  /** The workspace ID derived from currentPage.projectId.workspaceId — used by sidebar AI tab. */
   workspaceId: string | null;
   setWorkspaceId: React.Dispatch<React.SetStateAction<string | null>>;
   /** Scroll Viewer to a given PDF page (1-based); registered by Viewer, called by OutlineTab. */

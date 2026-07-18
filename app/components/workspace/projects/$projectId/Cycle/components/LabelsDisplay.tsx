@@ -8,7 +8,7 @@ interface Tag {
 }
 
 interface LabelsDisplayProps {
-  tags: Tag[];
+  labels: Tag[];
   onOpen: () => void;
   disabled?: boolean;
   showAddButton?: boolean;
@@ -27,14 +27,14 @@ const BADGE_W = 42;   // "+N" badge ~36px + gap 6px
  * 4. Since useLayoutEffect is synchronous with the paint, user never sees the clipped version
  */
 export function LabelsDisplay({
-  tags,
+  labels,
   onOpen,
   disabled = false,
   showAddButton = true,
 }: LabelsDisplayProps) {
   const LIMIT = 4;
-  const visibleTags = tags.slice(0, LIMIT);
-  const hiddenCount = tags.length > LIMIT ? tags.length - LIMIT : 0;
+  const visibleLabels = labels.slice(0, LIMIT);
+  const hiddenCount = labels.length > LIMIT ? labels.length - LIMIT : 0;
 
   return (
     <button
@@ -45,14 +45,14 @@ export function LabelsDisplay({
         disabled ? "cursor-default" : "cursor-pointer"
       }`}
     >
-      {visibleTags.map((tag, i) => (
+      {visibleLabels.map((label, i) => (
         <div
-          key={tag._id}
+          key={label._id}
           data-chip-idx={i}
           className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-[12px] font-semibold text-white shadow-sm"
-          style={{ backgroundColor: tag.color }}
+          style={{ backgroundColor: label.color }}
         >
-          <span className="whitespace-nowrap drop-shadow-sm">{tag.name}</span>
+          <span className="whitespace-nowrap drop-shadow-sm">{label.name}</span>
         </div>
       ))}
 

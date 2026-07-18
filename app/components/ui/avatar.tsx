@@ -23,6 +23,7 @@ const AvatarImage = React.forwardRef<
   <img
     ref={ref}
     className={cn("aspect-square h-full w-full animate-in fade-in duration-500", className)}
+    referrerPolicy="no-referrer"
     {...props}
   />
 ));

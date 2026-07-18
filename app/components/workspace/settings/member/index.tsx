@@ -97,8 +97,8 @@ export default function MemberPage() {
     () =>
       members.filter(
         (m: any) =>
-          m.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
+          m.user && (m.user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.user.email?.toLowerCase().includes(searchTerm.toLowerCase())),
       ),
     [members, searchTerm],
   );

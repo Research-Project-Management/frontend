@@ -127,7 +127,7 @@ function createTaskSnapshot(payload: TaskMutationInput) {
     recurrence: payload.recurrence ?? "none",
     reminder: payload.reminder ?? "1day",
     labels: [...(payload.labels ?? [])].sort(),
-    assignee: payload.assignee ?? null,
+    assigneeId: payload.assigneeId ?? null,
     checklists: payload.checklists ?? [],
     completed: payload.completed ?? false,
     attachments: payload.attachments ?? [],
@@ -550,7 +550,7 @@ export function TaskDialog({
       setCompleted(card.completed || false);
       setAttachments(card.attachments || []);
 
-      const assignee = card.assignee;
+      const assignee = card.assigneeId;
       setAssigneeId(resolveTaskAssigneeId(assignee));
     } else {
       setTitle("");
@@ -582,8 +582,8 @@ export function TaskDialog({
       recurrence: card?.recurrence || "none",
       reminder: card?.reminder || "1day",
       labels: uniqueLabels(card?.labels),
-      assignee:
-        resolveTaskAssigneeId(card?.assignee as Task["assignee"] | string | null | undefined),
+      assigneeId:
+        resolveTaskAssigneeId(card?.assigneeId as Task["assigneeId"] | string | null | undefined),
       checklists: card?.checklists || [],
       completed: card?.completed || false,
       attachments: card?.attachments ?? EMPTY_ATTACHMENTS,
@@ -669,7 +669,7 @@ export function TaskDialog({
     recurrence: recurrence || "none",
     reminder: reminder || "1day",
     labels: uniqueLabels(labels),
-    assignee: assigneeId,
+    assigneeId: assigneeId,
     checklists: normalizeChecklistsForPayload(checklists),
     completed,
     attachments,
@@ -679,7 +679,7 @@ export function TaskDialog({
     initialSnapshotRef.current = createTaskSnapshot(payload);
     autosaveSignatureRef.current = JSON.stringify({
       columnId: payload.columnId ?? "",
-      assignee: payload.assignee ?? null,
+      assigneeId: payload.assigneeId ?? null,
       dueDate: payload.dueDate ?? "",
       completed: payload.completed ?? false,
       checklists: payload.checklists ?? [],
@@ -732,7 +732,7 @@ export function TaskDialog({
   const autosaveSignature = useMemo(
     () => JSON.stringify({
       columnId,
-      assignee: assigneeId,
+      assigneeId: assigneeId,
       startDate: startDate || "",
       dueDate: dueDate || "",
       completed,

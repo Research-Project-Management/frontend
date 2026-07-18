@@ -186,10 +186,10 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
   update_page:            { label: "Updating Page",           icon: "✏️", category: "update" },
   delete_page:            { label: "Deleting Page",           icon: "🗑️", category: "delete" },
 
-  // ─── Tags ─────────────────────────────────────────────────────────────────
-  list_tags:              { label: "Listing Tags",            icon: "🏷️", category: "read" },
-  create_tag:             { label: "Creating Tag",            icon: "🏷️", category: "create" },
-  delete_tag:             { label: "Deleting Tag",            icon: "🗑️", category: "delete" },
+  // ─── Labels ─────────────────────────────────────────────────────────────────
+  list_labels:              { label: "Listing Labels",            icon: "🏷️", category: "read" },
+  create_label:             { label: "Creating Label",            icon: "🏷️", category: "create" },
+  delete_label:             { label: "Deleting Label",            icon: "🗑️", category: "delete" },
 
   // ─── Stickies ─────────────────────────────────────────────────────────────
   list_stickies:          { label: "Listing Stickies",        icon: "📌", category: "read" },

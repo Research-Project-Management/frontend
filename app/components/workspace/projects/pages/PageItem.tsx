@@ -58,9 +58,9 @@ export default function PageItem({ page, viewMode }: PageItemProps) {
   const navigate = useNavigate();
   const { workspaceId } = useParams();
   const projectId =
-    typeof page.project === "string" ? page.project : page.project._id;
+    typeof page.projectId === "string" ? page.projectId : page.projectId?._id ?? "";
   const projectName =
-    typeof page.project === "string" ? "—" : page.project.name;
+    typeof page.projectId === "string" ? "—" : (page.projectId?.name ?? "—");
 
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);

@@ -90,7 +90,7 @@ export const useEditorContext = () => {
 export default function EditorLayout() {
   const navigate = useNavigate();
   // pageId from URL = project root page (stable — never changes when switching files)
-  const { pageId } = useParams<{ pageId: string }>();
+  const { workspaceId, projectId, pageId } = useParams<{ workspaceId?: string; projectId?: string; pageId: string }>();
   // fileId from ?file=... = the child file currently being edited
   const [searchParams] = useSearchParams();
   const fileId = searchParams.get("file");
@@ -163,14 +163,33 @@ export default function EditorLayout() {
   // Track previous pageId so we can clean up its tabs when navigating away
   const prevPageIdRef = useRef<string | null>(null);
 
-  // Validate and redirect if pageId is a child page
+  // Validate and redirect if pageId is a child page, or to upgrade to scoped URL
   useEffect(() => {
     const validateAndRedirect = async () => {
       if (!pageId || !parentPage || parentLoading) return;
 
+      const proj = parentPage.projectId;
+      const projId = proj && typeof proj === "object" ? proj._id : null;
+      const ws = proj && typeof proj === "object" ? proj.workspaceId : null;
+      const wsUrl = ws && typeof ws === "object" ? ws.url : null;
+
       if (parentPage.parentPage) {
         console.log(`[Editor] ${pageId} is a child page, redirecting to root ${parentPage.parentPage}`);
-        navigate(`/editor/${parentPage.parentPage}?file=${pageId}`, { replace: true });
+        let redirectUrl = `/editor/${parentPage.parentPage}?file=${pageId}`;
+        const currentWorkspaceId = workspaceId || wsUrl;
+        const currentProjectId = projectId || projId;
+        if (currentWorkspaceId && currentProjectId) {
+          redirectUrl = `/${currentWorkspaceId}/projects/${currentProjectId}/pages/${parentPage.parentPage}?file=${pageId}`;
+        } else if (currentWorkspaceId) {
+          redirectUrl = `/${currentWorkspaceId}/pages/${parentPage.parentPage}?file=${pageId}`;
+        }
+        navigate(redirectUrl, { replace: true });
+        return;
+      }
+
+      if (!workspaceId && !projectId && wsUrl && projId) {
+        const fileParam = fileId ? `?file=${fileId}` : "";
+        navigate(`/${wsUrl}/projects/${projId}/pages/${pageId}${fileParam}`, { replace: true });
         return;
       }
 
@@ -179,12 +198,12 @@ export default function EditorLayout() {
         pageId,
         title: parentPage.title,
         hasMainFile: !!parentPage.mainFile,
-        projectId: typeof parentPage.project === "object" ? (parentPage.project as any)._id : parentPage.project,
+        projectId: typeof parentPage.projectId === "object" ? (parentPage.projectId as any)._id : parentPage.projectId,
       });
     };
 
     validateAndRedirect();
-  }, [pageId, parentPage, parentPage?.parentPage, parentPage?.title, parentPage?.mainFile, parentPage?.project, parentLoading, navigate]);
+  }, [pageId, parentPage, parentPage?.parentPage, parentPage?.title, parentPage?.mainFile, parentPage?.projectId, parentLoading, workspaceId, projectId, fileId, navigate]);
 
   // Clear tabs when navigating to a different root page
   useEffect(() => {
@@ -231,9 +250,9 @@ export default function EditorLayout() {
     if (parentPage) {
       setCurrentPage(parentPage);
       // Extract workspaceId from populated project.workspace for sidebar AI tab
-      const proj = parentPage.project;
+      const proj = parentPage.projectId;
       if (typeof proj === "object") {
-        const ws = (proj as any).workspace;
+        const ws = (proj as any).workspaceId;
         const wid = typeof ws === "object" ? ws?._id : typeof ws === "string" ? ws : null;
         if (wid) setWorkspaceId(wid);
       }

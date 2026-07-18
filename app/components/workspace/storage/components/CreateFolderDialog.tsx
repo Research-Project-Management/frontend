@@ -39,6 +39,13 @@ export default function CreateFolderDialog({
     if (!folderName.trim()) return;
 
     try {
+      console.log("CreateFolderDialog: handleCreate with variables:", {
+        name: folderName,
+        scope,
+        projectId,
+        workspaceId,
+        parentId,
+      });
       await createFolderMutation.mutateAsync({
         name: folderName,
         scope,
@@ -46,12 +53,13 @@ export default function CreateFolderDialog({
         workspaceId,
         parentId,
       });
+      console.log("CreateFolderDialog: handleCreate mutation finished successfully");
       toast.success(`Created folder "${folderName}"`);
       onOpenChange(false);
       setFolderName("");
     } catch (error) {
       toast.error("Failed to create folder");
-      console.error("Error creating folder:", error);
+      console.error("CreateFolderDialog: handleCreate mutation threw error:", error);
     }
   };
 

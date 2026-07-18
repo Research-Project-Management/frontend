@@ -24,6 +24,10 @@ export default function Activity() {
               to={
                 activity.type === "page_update" && activity.project
                   ? `/${workspaceId}/projects/${activity.project._id}/pages/${activity.itemId}`
+                  : activity.type === "task_update" && activity.project
+                  ? `/${workspaceId}/projects/${activity.project._id}/tasks`
+                  : activity.type === "file_upload" && activity.project
+                  ? `/${workspaceId}/projects/${activity.project._id}/storage`
                   : activity.project
                   ? `/${workspaceId}/projects/${activity.project._id}/overview`
                   : `/${workspaceId}`

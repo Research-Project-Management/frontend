@@ -1,5 +1,5 @@
 export interface WorkspaceMember {
-  user: string | {
+  userId: string | {
     _id: string;
     name: string;
     email: string | null;

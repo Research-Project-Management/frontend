@@ -13,7 +13,6 @@ export interface Label {
     name: string;
     avatar?: string;
   };
-  createdAt?: string;
   updatedAt?: string;
 }
 
@@ -79,12 +78,9 @@ export interface Sticky {
   labels?: Label[];
   scope?: "workspace" | "project";
   category?: "sticky" | "note";
-  workspace?: string;
-  workspaceId?: string;
+  workspaceId?: string | { _id: string; name?: string };
   projectId?: string | { _id: string; name?: string };
-  project?: { _id: string; name: string };
-  author?: Partial<TypeUser>;
-  authorId?: string;
+  authorId?: string | Partial<TypeUser>;
   position?: { x: number; y: number };
   createdAt: string;
   updatedAt: string;
@@ -94,10 +90,8 @@ export interface StickyChildLink {
   _id: string;
   sticky: Sticky;
   note?: Sticky;
-  project?: {
-    _id: string;
-    name: string;
-  };
+  projectId?: string | { _id: string; name: string };
+  authorId?: string | { _id: string; name: string; avatar?: string };
 }
 
 export type NoteColor = StickyColor;

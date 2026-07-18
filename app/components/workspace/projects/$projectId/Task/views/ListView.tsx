@@ -179,7 +179,7 @@ const TaskRowContent = ({
     return { hasDescription, commentCount, attachmentCount, checklistTotal: total, checklistDone: done };
   }, [task.description, task.content, task.commentCount, task.attachments, task.checklists]);
 
-  const isCurrentUserAssignee = task.assignee?._id === currentUserId;
+  const isCurrentUserAssignee = task.assigneeId?._id === currentUserId;
 
   return (
     <div
@@ -263,13 +263,13 @@ const TaskRowContent = ({
         )}
       </div>
 
-      {task.assignee && (
+      {task.assigneeId && (
         <Avatar className="size-5 shrink-0 border border-white shadow-sm transition-transform group-hover:scale-110">
           <AvatarImage
-            src={isCurrentUserAssignee && !task.assignee.avatar ? currentUserAvatar : task.assignee.avatar}
+            src={isCurrentUserAssignee && !task.assigneeId.avatar ? currentUserAvatar : task.assigneeId.avatar}
           />
           <AvatarFallback className="text-[9px] font-bold bg-zinc-100">
-            {task.assignee.name?.charAt(0)}
+            {task.assigneeId.name?.charAt(0)}
           </AvatarFallback>
         </Avatar>
       )}
@@ -613,6 +613,9 @@ export default function ListView({
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const quickAddInputRef = useRef<HTMLInputElement | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => { setIsMounted(true); }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -743,7 +746,7 @@ export default function ListView({
           ))}
         </div>
       </div>
-      {createPortal(
+      {isMounted && createPortal(
         <DragOverlay>
           {activeTask ? (
             <div className="w-[calc(100vw-400px)] max-w-full bg-white shadow-xl border border-zinc-200 rounded-sm overflow-hidden">

@@ -1,8 +1,7 @@
-gh.DS_Store
+.DS_Store
 /node_modules/
 
 coverage/
-tests
 
 # React Router
 /.react-router/
@@ -15,3 +14,9 @@ yarn.lock
 .dev.env
 .test.env
 .vercel
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

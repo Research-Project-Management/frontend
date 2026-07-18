@@ -20,6 +20,8 @@ export const useProjects = () => {
         queryFn: ({ signal }) => fetchProjectsByWorkspaceId(workspaceId!, signal),
         enabled: !!workspaceId,
     });
+    
+    console.log("useProjects fetched data:", data);
 
     return { projects: data?.projects ?? [], isLoading, isError };
 }

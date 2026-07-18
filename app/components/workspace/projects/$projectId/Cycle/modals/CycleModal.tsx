@@ -169,7 +169,7 @@ export const CycleModal = ({
               <div className="flex shrink-0 flex-col gap-1.5">
                 <span className="text-[12px] font-bold text-zinc-400 uppercase tracking-wider">Labels</span>
                 <LabelsDisplay
-                  tags={workspaceLabels.filter(t => formLabels.includes(t._id))}
+                  labels={workspaceLabels.filter(t => formLabels.includes(t._id))}
                   onOpen={() => labelsTriggerRef.current?.click()}
                   disabled={isReadOnly}
                   showAddButton={!isReadOnly}

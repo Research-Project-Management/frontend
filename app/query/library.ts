@@ -153,8 +153,8 @@ export const useAddPaper = (workspaceId: string, collectionId: string) => {
       fileUrl: string;
       filename: string;
       mimeType?: string;
+      labels?: string[];
       size?: number;
-      tags?: string[];
       volume?: string;
       issue?: string;
       section?: string;
@@ -220,7 +220,6 @@ export const useUpdatePaper = (workspaceId: string, collectionId: string) => {
       publicationTitle?: string;
       publicationDate?: string;
       publisher?: string;
-      tags?: string[];
       place?: string;
       volume?: string;
       issue?: string;

@@ -54,7 +54,7 @@ export type Page = {
   title: string;
   content: any; // JSON structure for editor
   status: "draft" | "published" | "archived";
-  project: string | { _id: string; name: string; workspace?: string | { _id: string; url: string } }; // Project ID or populated object
+  projectId: string | { _id: string; name: string; workspaceId?: string | { _id: string; url: string } }; // Project ID or populated object
   author: {
     _id: string;
     name: string;

@@ -229,8 +229,8 @@ export const useRecentItems = (workspaceId: string) =>
   useQuery({
     queryKey: ["workspace", workspaceId, "recent"],
     queryFn: async () => {
-      const data = await apiGet<{ items: RecentItem[] }>(`/api/workspace/${workspaceId}/recent`);
-      return data.items;
+      const data = await apiGet<RecentItem[]>(`/api/dashboard/workspaces/${workspaceId}/recent`);
+      return data;
     },
     enabled: !!workspaceId,
   });
@@ -239,8 +239,8 @@ export const useActivityFeed = (workspaceId: string) =>
   useQuery({
     queryKey: ["workspace", workspaceId, "activity"],
     queryFn: async () => {
-      const data = await apiGet<{ activities: Activity[] }>(`/api/workspace/${workspaceId}/activity`);
-      return data.activities;
+      const data = await apiGet<Activity[]>(`/api/dashboard/workspaces/${workspaceId}/activity`);
+      return data;
     },
     enabled: !!workspaceId,
     refetchInterval: 30000,
@@ -400,7 +400,6 @@ export const useUpdateWorkspace = () => {
       context?.previousWorkspacesQueries?.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
-      toast.error(error.message || "Failed to update workspace", { id: "ws-error" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
@@ -427,10 +426,6 @@ export const useDeleteWorkspace = () => {
       context?.previousWorkspaces?.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
-      toast.error(error.message || "Failed to delete workspace", { id: "ws-error" });
-    },
-    onSuccess: () => {
-      toast.success("Workspace removed", { id: "ws-action" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });

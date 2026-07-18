@@ -43,7 +43,9 @@ export function useBlobUrl(url: string | undefined | null) {
       })
       .catch((err) => {
         if (cancelled) return;
-        console.error("useBlobUrl error:", err);
+        if (!err.message.includes("404")) {
+          console.error("useBlobUrl error:", err);
+        }
         setError(err.message);
       })
       .finally(() => {

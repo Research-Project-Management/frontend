@@ -143,8 +143,8 @@ const StickyNote = memo(function StickyNote({
                 <span className="text-[11px] font-medium truncate flex-1 opacity-80">
                   {(link.sticky || link.note)?.title || "Untitled"}
                 </span>
-                {link.project && (
-                  <span className="text-[9px] opacity-40 shrink-0">{link.project.name}</span>
+                {link.projectId && typeof link.projectId === "object" && (
+                  <span className="text-[9px] opacity-40 shrink-0">{link.projectId.name}</span>
                 )}
               </div>
             ))}

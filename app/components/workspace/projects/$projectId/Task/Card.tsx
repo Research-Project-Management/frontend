@@ -143,7 +143,7 @@ function CardContent({
     .map(t => ({ id: t!._id, color: t!.color, title: t!.name }))
     .filter((label) => label.color);
 
-  const assignee = card.assignee;
+  const assignee = card.assigneeId;
   const assigneeInitials = assignee ? getAssigneeInitials(assignee.name) : "";
   const isCurrentUserAssignee = Boolean(currentUserId && assignee?._id === currentUserId);
   const resolvedAssigneeAvatar =

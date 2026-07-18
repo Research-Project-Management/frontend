@@ -37,7 +37,7 @@ export const fetchProject = (projectId: string) =>
   apiGet(`/api/project/${projectId}`);
 
 export const fetchProjectOverview = (projectId: string) =>
-  apiGet<ProjectOverviewData>(`/api/project/${projectId}/overview`);
+  apiGet<ProjectOverviewData>(`/api/dashboard/projects/${projectId}/overview`);
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 

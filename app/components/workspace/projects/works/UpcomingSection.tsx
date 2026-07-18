@@ -25,7 +25,7 @@ export default function UpcomingSection({
         
         const d = new Date(t.dueDate);
         const taskDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        const assigneeId = typeof t.assignee === 'object' ? t.assignee?._id : t.assignee;
+        const assigneeId = typeof t.assigneeId === 'object' ? t.assigneeId?._id : t.assigneeId;
         
         return assigneeId === user?._id && taskDate >= today;
     })

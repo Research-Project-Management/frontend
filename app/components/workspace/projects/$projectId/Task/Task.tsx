@@ -103,11 +103,11 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
     let hasUnassignedTask = false;
 
     for (const task of allTasks) {
-      if (task.assignee?._id) {
-        byId.set(task.assignee._id, {
-          id: task.assignee._id,
-          name: task.assignee.name,
-          avatar: task.assignee.avatar,
+      if (task.assigneeId?._id) {
+        byId.set(task.assigneeId._id, {
+          id: task.assigneeId._id,
+          name: task.assigneeId.name,
+          avatar: task.assigneeId.avatar,
         });
       } else {
         hasUnassignedTask = true;
@@ -133,7 +133,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
     return allTasks.filter((t) => {
       if (selectedColumnIds.length > 0 && !selectedColumnIds.includes(t.columnId)) return false;
       if (selectedAssigneeIds.length > 0) {
-        const assigneeId = t.assignee?._id ?? "__unassigned__";
+        const assigneeId = t.assigneeId?._id ?? "__unassigned__";
         if (!selectedAssigneeIds.includes(assigneeId)) return false;
       }
       return true;
@@ -212,8 +212,8 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
         columnId,
         title: quickTitle,
         dueDate,
-        cycle: cycleId,
-        assignee: null,
+        cycleId: cycleId,
+        assigneeId: null,
       }, {
         onSuccess: () => {
           toast.success(cycleId ? "Task added to cycle" : "Task created");
@@ -226,8 +226,8 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
       columnId,
       title: title?.trim() || "",
       dueDate,
-      cycle: cycleId as any,
-      assignee: null,
+      cycleId: cycleId as any,
+      assigneeId: null,
     });
     setDialogOpen(true);
   };
@@ -268,7 +268,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
     createTaskMutation.mutate(
       {
         projectId: projectId!,
-        cycle: cycleId,
+        cycleId: cycleId,
         ...cardData,
       },
       {
@@ -409,23 +409,23 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
 
   const handleJoinCard = (card: TaskType) => {
     if (!currentUser?._id) return;
-    if (card.assignee?._id === currentUser._id) return;
+    if (card.assigneeId?._id === currentUser._id) return;
 
     updateTaskMutation.mutate({
       taskId: card._id,
       projectId: projectId!,
-      assignee: currentUser._id,
+      assigneeId: currentUser._id,
     });
   };
 
   const handleLeaveCard = (card: TaskType) => {
     if (!currentUser?._id) return;
-    if (card.assignee?._id !== currentUser._id) return;
+    if (card.assigneeId?._id !== currentUser._id) return;
 
     updateTaskMutation.mutate({
       taskId: card._id,
       projectId: projectId!,
-      assignee: null,
+      assigneeId: null,
     });
   };
 
@@ -433,7 +433,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
     updateTaskMutation.mutate({
       taskId: card._id,
       projectId: projectId!,
-      cycle: null,
+      cycleId: null,
     }, {
       onSuccess: () => {
         toast.success("Task removed from cycle");

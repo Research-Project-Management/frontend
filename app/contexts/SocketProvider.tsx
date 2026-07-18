@@ -10,7 +10,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     socket.connect();
+    const onConnectError = () => {
+      // Silently handle – socket.io-client auto-reconnects
+    };
+    socket.on("connect_error", onConnectError);
     return () => {
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
     };
   }, [socket]);

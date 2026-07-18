@@ -18,8 +18,8 @@ export const fetchProjectTasks = (projectId: string, cycleId?: string) =>
   apiGet<ProjectTasksData>(`/api/project/${projectId}/tasks${cycleId ? `?cycle=${cycleId}` : ""}`);
 
 export const fetchWorkspaceTasks = async (workspaceId: string) => {
-  const data = await apiGet<{ tasks: Task[] }>(`/api/workspace/${workspaceId}/tasks`);
-  return data.tasks;
+  const response = await apiGet<{ data: Task[] }>(`/api/workspace/${workspaceId}/tasks`);
+  return response.data;
 };
 
 // ── Queries ───────────────────────────────────────────────────────────────────
@@ -54,6 +54,8 @@ export const useProjectTasks = (projectId: string, cycleId?: string) => {
     const onCreated = ({ task }: { task: Task }) => {
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
+        const taskBelongsToThisView = !cycleId || task.cycleId?._id === cycleId || (task.cycleId as any) === cycleId;
+        if (!taskBelongsToThisView) return old;
         if (old.tasks.some((t) => t._id === task._id)) return old;
         return { ...old, tasks: [...old.tasks, task] };
       });
@@ -73,7 +75,7 @@ export const useProjectTasks = (projectId: string, cycleId?: string) => {
       queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
         if (!old) return old;
 
-        const taskBelongsToThisView = !cycleId || task.cycle?._id === cycleId;
+        const taskBelongsToThisView = !cycleId || task.cycleId?._id === cycleId || (task.cycleId as any) === cycleId;
         const taskAlreadyInList = old.tasks.some((t) => t._id === task._id);
 
         if (taskBelongsToThisView) {
@@ -188,9 +190,9 @@ export const useUpdateTask = () => {
       const {
         taskId,
         projectId,
-        assignee,
-        cycle,
-        parentTask,
+        assigneeId,
+        cycleId,
+        parentTaskId,
         checklists,
         ...optimisticFields
       } = newValues;
@@ -349,7 +351,7 @@ export const useUpdateColumn = () => {
 
 export type TaskAttachment = Task["attachments"][number];
 
-export function resolveTaskAssigneeId(value: Task["assignee"] | string | null | undefined): string | null {
+export function resolveTaskAssigneeId(value: Task["assigneeId"] | string | null | undefined): string | null {
   if (!value) return null;
   return typeof value === "object" ? value._id : value;
 }

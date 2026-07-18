@@ -251,7 +251,9 @@ export const uploadFile = async (
 };
 
 export const createFolder = (name: string, params: ScopedStorageParams) => {
+    console.log("createFolder function called with name:", name, "and params:", params);
     const scopeBody = resolveScopedStorageBody(params);
+    console.log("createFolder scopeBody resolved:", scopeBody);
     return apiPost("/api/files/folder", {
         ...scopeBody,
         name,

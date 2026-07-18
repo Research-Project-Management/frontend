@@ -62,8 +62,8 @@ export default function LibraryHomePage() {
     if (selectedPaperId === paperId) setSelectedPaperId(null);
   };
 
-  const selectedCollection = selectedPaper?.collection
-    ? collectionMap[selectedPaper.collection] ?? null
+  const selectedCollection = selectedPaper?.collectionId
+    ? collectionMap[selectedPaper.collectionId] ?? null
     : null;
 
   return (
@@ -150,7 +150,7 @@ export default function LibraryHomePage() {
                   <PaperTableRow
                     key={paper._id}
                     paper={paper}
-                    collection={paper.collection ? collectionMap[paper.collection] ?? null : null}
+                    collection={paper.collectionId ? collectionMap[paper.collectionId] ?? null : null}
                     onDelete={handleDeletePaper}
                     isSelected={selectedPaperId === paper._id}
                     onSelect={(p) => setSelectedPaperId(p._id)}

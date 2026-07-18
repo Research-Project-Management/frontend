@@ -77,7 +77,7 @@ export default function AddToLibraryPopover({
         filename: item.filename,
         mimeType: item.mimeType || "application/pdf",
         size: item.size || 0,
-        tags: [],
+        labels: [],
       },
       {
         onSuccess: () => {

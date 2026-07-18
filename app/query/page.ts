@@ -85,11 +85,11 @@ export const usePage = (pageId: string) => {
     if (!socket || !pageId) return;
     socket.emit("join:page", pageId);
 
-    const onUpdated = ({ pageId: uid, title, status }: { pageId: string; title?: string; status?: Page["status"] }) => {
-      if (uid !== pageId) return;
+    const onUpdated = ({ page }: { page: Page }) => {
+      if (page._id !== pageId) return;
       queryClient.setQueryData<Page>(["page", pageId], (old) => {
         if (!old) return old;
-        return { ...old, ...(title !== undefined && { title }), ...(status !== undefined && { status }) };
+        return { ...old, ...page };
       });
     };
 
@@ -129,7 +129,8 @@ export const useCreatePage = () => {
       };
     },
     onSuccess: (data) => {
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["pages"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
       if (data.rootPageId && data.page) {
         queryClient.setQueryData(["page", data.rootPageId], data.page);
       }

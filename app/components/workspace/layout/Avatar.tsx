@@ -32,6 +32,7 @@ export const Avatar = ({ src, name, className, fallbackType = "user" }: AvatarPr
           src={displaySrc}
           alt={name}
           className="size-full object-cover"
+          referrerPolicy="no-referrer"
           onError={(e) => {
             (e.target as HTMLImageElement).src = fallbackUrl;
           }}

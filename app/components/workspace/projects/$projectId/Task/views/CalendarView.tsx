@@ -130,6 +130,9 @@ export default function CalendarView({
   const [selectedExistingTaskIds, setSelectedExistingTaskIds] = useState<string[]>([]);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [draggedWidth, setDraggedWidth] = useState<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => { setIsMounted(true); }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -606,7 +609,7 @@ export default function CalendarView({
           </DialogContent>
         </Dialog>
       </div>
-      {createPortal(
+      {isMounted && createPortal(
         <DragOverlay>
           {activeTask ? (
             <div 

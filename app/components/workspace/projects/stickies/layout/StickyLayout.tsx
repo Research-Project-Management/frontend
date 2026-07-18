@@ -54,6 +54,9 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => { setIsMounted(true); }, []);
 
   const { data: allLabels = [] } = useLabelsQuery(workspaceId || "", "sticky");
 
@@ -265,7 +268,7 @@ export default function StickyLayout({ scope = "workspace" }: StickyLayoutProps)
               </div>
             </SortableContext>
 
-            {createPortal(
+            {isMounted && createPortal(
               <DragOverlay dropAnimation={{
                 sideEffects: defaultDropAnimationSideEffects({
                   styles: {

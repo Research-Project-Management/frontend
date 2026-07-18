@@ -834,7 +834,7 @@ export default function Viewer() {
   const saveThumbnailMutation = useUpdatePageThumbnail();
 
   // pageId from URL is always the project root.
-  const { pageId: urlPageId } = useParams<{ pageId: string }>();
+  const { workspaceId, projectId, pageId: urlPageId } = useParams<{ workspaceId?: string; projectId?: string; pageId: string }>();
   const parentPageIdRef = useRef<string | null>(null);
   parentPageIdRef.current = urlPageId ?? null;
 
@@ -959,7 +959,13 @@ export default function Viewer() {
         const matchingPage = findPageByBasename(basename);
         if (matchingPage && matchingPage._id !== activeFilePage?._id) {
           setActiveFilePage(matchingPage);
-          navigate(`/editor/${rootPageId}?file=${matchingPage._id}`);
+          let redirectUrl = `/editor/${rootPageId}?file=${matchingPage._id}`;
+          if (workspaceId && projectId) {
+            redirectUrl = `/${workspaceId}/projects/${projectId}/pages/${rootPageId}?file=${matchingPage._id}`;
+          } else if (workspaceId) {
+            redirectUrl = `/${workspaceId}/pages/${rootPageId}?file=${matchingPage._id}`;
+          }
+          navigate(redirectUrl);
           // Wait briefly for editor component to switch active content before scrolling
           setTimeout(() => {
             scrollToLineRef.current?.(approxLine);

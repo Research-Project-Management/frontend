@@ -1,5 +1,5 @@
 export interface ProjectMember {
-  user: string | {
+  userId: string | {
     _id: string;
     name: string;
     email: string | null;
@@ -20,7 +20,7 @@ export interface Project {
   avatar: string | null;
   description: string;
   modules: string[];
-  workspace: string | Workspace;
+  workspaceId: string | Workspace;
   members: ProjectMember[];
   settings?: {
     parallelCycles?: boolean;

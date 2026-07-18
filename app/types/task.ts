@@ -79,9 +79,9 @@ export type Task = {
   title: string;
   content: string;
   description: string;
-  project: string;
+  projectId: string;
   columnId: string;
-  assignee?: {
+  assigneeId?: {
     _id: string;
     name: string;
     avatar?: string;
@@ -90,16 +90,18 @@ export type Task = {
   startDate?: string | null;
   labels: string[];
   rank: number;
-  author: string;
+  authorId: string;
   priority: Priority;
   estimate?: number;
-  cycle?: {
+  cycleId?: {
     _id: string;
     name: string;
     phase: CyclePhase;
     status: CycleStatus;
+    startDate: string;
+    endDate: string;
   } | null;
-  parentTask?: {
+  parentTaskId?: {
     _id: string;
     title: string;
     identifier: string;
@@ -150,10 +152,10 @@ export type TaskMutationInput = Partial<
 > & {
   dueDate?: string | null;
   startDate?: string | null;
-  assignee?: string | null;
-  cycle?: string | null;
+  assigneeId?: string | null;
+  cycleId?: string | null;
   checklists?: ChecklistInput[];
-  parentTask?: string | null;
+  parentTaskId?: string | null;
 };
 
 export type CyclePhase = string;

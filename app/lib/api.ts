@@ -1,5 +1,5 @@
 
-export const API_URL = import.meta.env.VITE_API_URL;
+export const API_URL = import.meta.env.VITE_API_URL || "";
 
 /**
  * Normalizes a file URL stored in the database to always use the current API_URL.

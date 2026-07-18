@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
   type DropAnimation,
 } from "@dnd-kit/core";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Column } from "../Column";
 import { CardUI, type TaskCardLabel } from "../Card";
@@ -70,6 +70,9 @@ export default function BoardView({
   isReadOnly,
 }: BoardViewProps) {
   const [activeCard, setActiveCard] = useState<Task | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => { setIsMounted(true); }, []);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -89,6 +92,7 @@ export default function BoardView({
   }, [columns, tasks]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    if (isReadOnly) return;
     const card = tasks.find((c) => c._id === event.active.id);
     if (card) {
       setActiveCard(card);
@@ -170,7 +174,7 @@ export default function BoardView({
           )}
         </div>
 
-        {createPortal(
+        {isMounted && createPortal(
           <DragOverlay 
             dropAnimation={dropAnimation}
             style={{ pointerEvents: 'none' }}

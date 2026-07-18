@@ -1,4 +1,6 @@
 import { useState, useCallback } from "react";
+import { useParams } from "react-router";
+import { useWorkspace } from "~/hooks/useWorkspace";
 import { toast } from "sonner";
 import Toolbar from "./Toolbar";
 import { StorageListView, StorageGridView } from "../pages/SharedComponents";
@@ -105,7 +107,9 @@ export default function FileExplorer({
 
   const uploadMutation = useUploadFile();
 
-  const effectiveWorkspaceId = wsId || workspaceId;
+  const params = useParams();
+  const { workspace } = useWorkspace();
+  const effectiveWorkspaceId = wsId || workspaceId || workspace?.workspace?._id || params.workspaceId;
 
   function toggleViewMode() {
     setViewMode((prev) => (prev === "list" ? "grid" : "list"));

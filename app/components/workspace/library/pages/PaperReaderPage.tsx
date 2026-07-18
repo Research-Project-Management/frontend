@@ -198,7 +198,7 @@ function ReaderDetails({
   collection: Collection | null;
   workspaceId: string;
 }) {
-  const updatePaper = useUpdatePaper(workspaceId, paper.collection || "");
+  const updatePaper = useUpdatePaper(workspaceId, paper.collectionId || "");
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const autoFetchedRef = useRef<string | null>(null);
   const fileType = paper.mimeType?.split("/")[1] ?? paper.mimeType;
@@ -413,7 +413,7 @@ function ReaderNotes({
   paper: Paper;
   workspaceId: string;
 }) {
-  const updatePaper = useUpdatePaper(workspaceId, paper.collection || "");
+  const updatePaper = useUpdatePaper(workspaceId, paper.collectionId || "");
   const [newNote, setNewNote] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -651,7 +651,7 @@ export default function PaperReaderPage() {
   const { data: collections } = useCollections(workspaceId);
 
   const paper = papers?.find((p) => p._id === paperId) ?? null;
-  const updatePaperTitle = useUpdatePaper(workspaceId, paper?.collection || "");
+  const updatePaperTitle = useUpdatePaper(workspaceId, paper?.collectionId || "");
 
   useDocumentTitle(
     paper?.title ? `${paper.title} - Reader` : "Reader"
@@ -660,7 +660,7 @@ export default function PaperReaderPage() {
     () => Object.fromEntries((collections ?? []).map((collection) => [collection._id, collection])),
     [collections],
   );
-  const paperCollection = paper?.collection ? collectionMap[paper.collection] ?? null : null;
+  const paperCollection = paper?.collectionId ? collectionMap[paper.collectionId] ?? null : null;
   const paperUrl = resolveFileUrl(paper?.fileUrl) || "";
 
   const [activePanel, setActivePanel] = useState<ReaderPanel | null>(() => {

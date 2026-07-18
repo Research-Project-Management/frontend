@@ -85,7 +85,7 @@ function getToolSummary(
     cycles: "cycles",
     pages: "pages",
     stickies: "notes",
-    tags: "tags",
+    labels: "labels",
     comments: "comments",
     versions: "versions",
     results: "results",

@@ -1,0 +1,343 @@
+﻿'use client';
+
+import React, { createContext, useContext, useRef, useEffect, useState } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { usePage } from '@/features/pages';
+import type { Page } from "@/features/pages/types/page.types";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import dynamic from "next/dynamic";
+const Editor = dynamic(() => import("./Editor"), { ssr: false });
+import TabBar from "./TabBar";
+import type { editor } from "monaco-editor";
+import { usePageContext, type AssetInfo } from "../PageContext";
+import { useSocketRoom } from "@/shared/hooks/useSocketRoom";
+import { useDocumentTitle } from "@/shared/hooks";
+import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";
+import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
+import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
+import { resolveFileUrl } from "@/shared/lib/api";
+
+// Ã¢â€â‚¬Ã¢â€â‚¬ Inline image viewer rendered inside the editor column Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+
+function ImagePanel({ asset }: { asset: AssetInfo }) {
+  const ext = asset.filename.split(".").pop()?.toUpperCase() ?? "";
+  const sizeLabel = asset.size
+    ? asset.size < 1024
+      ? `${asset.size} B`
+      : asset.size < 1024 * 1024
+        ? `${(asset.size / 1024).toFixed(1)} KB`
+        : `${(asset.size / (1024 * 1024)).toFixed(1)} MB`
+    : null;
+
+  return (
+    <div className="flex flex-col h-full w-full bg-background">
+      {/* Info bar */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-xs text-muted-foreground shrink-0">
+        <FileImage className="size-3.5" />
+        <span className="font-medium text-foreground truncate">{asset.filename}</span>
+        {ext && (
+          <span className="px-1.5 py-0.5 rounded bg-secondary font-mono">{ext}</span>
+        )}
+        {sizeLabel && <span>{sizeLabel}</span>}
+      </div>
+      {/* Image viewer */}
+      <div className="flex-1 flex items-center justify-center p-8 overflow-auto">
+        {asset.url ? (
+          <img
+            src={resolveFileUrl(asset.url) || ""}
+            alt={asset.filename}
+            crossOrigin="use-credentials"
+            className="max-w-full max-h-full object-contain rounded shadow-sm"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <AlertCircle className="size-6" />
+            <span className="text-sm">Image URL not available.</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Ã¢â€â‚¬Ã¢â€â‚¬ Empty state when no file is open Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+
+function EmptyEditorState() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
+      <FileCode2 className="size-10 text-muted-foreground/20" />
+      <p className="text-sm text-muted-foreground">No file open</p>
+      <p className="text-xs text-muted-foreground/60">
+        Open a file from the Explorer to start editing.
+      </p>
+    </div>
+  );
+}
+
+// Ã¢â€â‚¬Ã¢â€â‚¬ Editor layout Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+
+interface EditorContextType {
+  editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>;
+}
+
+const EditorContext = createContext<EditorContextType | null>(null);
+
+export const useEditorContext = () => {
+  const context = useContext(EditorContext);
+  if (!context) {
+    throw new Error("useEditorContext must be used within EditorLayout");
+  }
+  return context;
+};
+
+export default function EditorLayout() {
+  const router = useRouter();
+  // pageId from URL = project root page (stable Ã¢â‚¬â€ never changes when switching files)
+  const { workspaceId, projectId, pageId } = useParams<{ workspaceId?: string; projectId?: string; pageId: string }>();
+  // fileId from ?file=... = the child file currently being edited
+  const searchParams = useSearchParams();
+  const fileId = searchParams.get("file");
+
+  // Redirect AI panel events to the Flux AI tab in the sidebar.
+  useEffect(() => {
+    const openAiTab = () => {
+      document.dispatchEvent(
+        new CustomEvent("flux:open-panel", { detail: "Flux AI" })
+      );
+    };
+    document.addEventListener("flux:toggle-ai-panel", openAiTab);
+    document.addEventListener("flux:open-ai-panel", openAiTab);
+    return () => {
+      document.removeEventListener("flux:toggle-ai-panel", openAiTab);
+      document.removeEventListener("flux:open-ai-panel", openAiTab);
+    };
+  }, []);
+
+
+  // Always fetch the root page (needed for project metadata & tab bar)
+  const { data: parentPage, isLoading: parentLoading } = usePage(pageId!);
+
+  // When a child file is selected, fetch it separately
+  const { data: childPage, isLoading: childLoading } = usePage(fileId ?? "");
+
+  // The page shown in the Monaco editor: child file if selected, else project root
+  const activePage = childPage ?? parentPage;
+  const isLoading = parentLoading || (fileId ? childLoading : false);
+
+  const { getEditorContent, setCurrentPage, setWorkspaceId, editorRef, selectedAsset, setSelectedAsset, compileRef, setActiveFilePage } = usePageContext();
+  const { autoCompile } = useEditorSettingsStore();
+
+  // True when the current ?file= param points to an image asset (not a page).
+  const isAssetTab = !!fileId && !!selectedAsset && selectedAsset._id === fileId;
+
+  // True when a real child file is being viewed now.
+  const hasChildFile = !!activePage && activePage._id !== pageId;
+
+  // The page to render: only when a child file is active. When no tab is open,
+  // displayPage is null and EditorLayout shows the EmptyEditorState.
+  const displayPage = hasChildFile ? activePage : null;
+
+  const editorTitle = parentPage
+    ? displayPage
+      ? `${displayPage.title} - ${parentPage.title}`
+      : parentPage.title
+    : "";
+
+  useDocumentTitle(editorTitle);
+
+  const { openTab, closeAllForProject, getTabs } = useEditorTabsStore();
+  const tabs = pageId ? getTabs(pageId) : [];
+
+  // Restore selectedAsset if the active fileId is an asset tab (image)
+  useEffect(() => {
+    if (fileId && (!selectedAsset || selectedAsset._id !== fileId)) {
+      const tab = tabs.find((t) => t.id === fileId);
+      if (tab && tab.fileUrl) {
+        setSelectedAsset({
+          _id: tab.id,
+          filename: tab.title,
+          url: tab.fileUrl,
+        });
+      }
+    }
+  }, [fileId, selectedAsset, tabs, setSelectedAsset]);
+  // Track whether we've already fired the initial auto-compile for this root page
+  const autoCompileFiredRef = useRef<string | null>(null);
+  // Track previous pageId so we can clean up its tabs when navigating away
+  const prevPageIdRef = useRef<string | null>(null);
+
+  // Validate and redirect if pageId is a child page, or to upgrade to scoped URL
+  useEffect(() => {
+    const validateAndRedirect = async () => {
+      if (!pageId || !parentPage || parentLoading) return;
+
+      const proj = parentPage.projectId;
+      const projId = proj && typeof proj === "object" ? proj._id : null;
+      const ws = proj && typeof proj === "object" ? proj.workspaceId : null;
+      const wsUrl = ws && typeof ws === "object" ? ws.url : null;
+
+      if (parentPage.parentPage) {
+        console.log(`[Editor] ${pageId} is a child page, redirecting to root ${parentPage.parentPage}`);
+        let redirectUrl = `/editor/${parentPage.parentPage}?file=${pageId}`;
+        const currentWorkspaceId = workspaceId || wsUrl;
+        const currentProjectId = projectId || projId;
+        if (currentWorkspaceId && currentProjectId) {
+          redirectUrl = `/${currentWorkspaceId}/projects/${currentProjectId}/pages/${parentPage.parentPage}?file=${pageId}`;
+        } else if (currentWorkspaceId) {
+          redirectUrl = `/${currentWorkspaceId}/pages/${parentPage.parentPage}?file=${pageId}`;
+        }
+        router.replace(redirectUrl);
+        return;
+      }
+
+      if (!workspaceId && !projectId && wsUrl && projId) {
+        const fileParam = fileId ? `?file=${fileId}` : "";
+        router.replace(`/${wsUrl}/projects/${projId}/pages/${pageId}${fileParam}`);
+        return;
+      }
+
+      // Log current page info for debugging
+      console.log(`[Editor] Loading root page: ${pageId}`, {
+        pageId,
+        title: parentPage.title,
+        hasMainFile: !!parentPage.mainFile,
+        projectId: typeof parentPage.projectId === "object" ? (parentPage.projectId as any)._id : parentPage.projectId,
+      });
+    };
+
+    validateAndRedirect();
+  }, [pageId, parentPage, parentPage?.parentPage, parentPage?.title, parentPage?.mainFile, parentPage?.projectId, parentLoading, workspaceId, projectId, fileId, router]);
+
+  // Clear tabs when navigating to a different root page
+  useEffect(() => {
+    if (prevPageIdRef.current && prevPageIdRef.current !== pageId) {
+      closeAllForProject(prevPageIdRef.current);
+    }
+    prevPageIdRef.current = pageId ?? null;
+  }, [pageId, closeAllForProject]);
+
+  // Join the project-root socket room ONLY Ã¢â‚¬â€ stable across tab switches.
+  // Joining per-child-file would cause leave/rejoin on every file switch.
+  useSocketRoom("page", pageId);
+
+  // Register a stable content-getter so the Viewer can read the editor text at compile time.
+  useEffect(() => {
+    getEditorContent.current = () => editorRef.current?.getValue() ?? "";
+    return () => {
+      getEditorContent.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+  // Auto-compile on first open when autoCompile is enabled.
+  // Fires once per root page visit, after sync completes (small delay).
+  useEffect(() => {
+    if (!autoCompile) return;
+    if (!pageId || autoCompileFiredRef.current === pageId) return;
+    if (!activePage || !activePage._id) return;
+    autoCompileFiredRef.current = pageId;
+    // Small delay to let the sync complete and the editor mount
+    const timer = setTimeout(() => {
+      compileRef.current?.();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [pageId, activePage?._id, autoCompile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync the ROOT page into shared context so sidebar/toolbar can access project metadata.
+  // We intentionally use parentPage (root), NOT activePage (child file), because:
+  //  Ã¢â‚¬Â¢ parentPage is stable Ã¢â‚¬â€ it doesn't change when the user switches tabs
+  //  Ã¢â‚¬Â¢ ToolBar reads currentPage.project.name Ã¢â€ â€™ needs root page (project is populated there)
+  //  Ã¢â‚¬Â¢ PresenceAvatars calls usePagePresence(currentPage._id) Ã¢â€ â€™ must match the socket
+  //    room joined above (useSocketRoom("page", pageId) = root page ID)
+  useEffect(() => {
+    if (parentPage) {
+      setCurrentPage(parentPage);
+      // Extract workspaceId from populated project.workspace for sidebar AI tab
+      const proj = parentPage.projectId;
+      if (typeof proj === "object") {
+        const ws = (proj as any).workspaceId;
+        const wid = typeof ws === "object" ? ws?._id : typeof ws === "string" ? ws : null;
+        if (wid) setWorkspaceId(wid);
+      }
+    }
+    return () => { setCurrentPage(''); setWorkspaceId(''); };
+  }, [parentPage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register the active file as an open tab whenever it changes.
+  // Key is the root pageId from the URL Ã¢â‚¬â€ each LaTeX page-project is isolated.
+  // IMPORTANT: skip the root page itself (it's a container, not an editable file).
+  useEffect(() => {
+    if (!activePage || !pageId) return;
+    if (activePage._id === pageId) return; // root page is not a tab
+    openTab(pageId, { id: activePage._id, title: activePage.title });
+    // Keep activeFilePage in context in sync with the current tab
+    setActiveFilePage(activePage);
+  }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+  if (isLoading) {
+    return (
+      <div className="h-full w-full flex flex-col animate-in fade-in duration-300">
+        {/* Toolbar skeleton */}
+        <div className="h-11 border-b border-border flex items-center gap-2 px-3">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-5 w-16" />
+          <div className="flex-1" />
+          <Skeleton className="h-6 w-6 rounded" />
+          <Skeleton className="h-6 w-6 rounded" />
+        </div>
+        {/* TabBar skeleton */}
+        <div className="h-11 border-b border-border bg-muted/20 flex items-center gap-px px-1">
+          {[90, 110, 75].map((w, i) => (
+            <Skeleton key={i} className="h-5 rounded" style={{ width: w }} />
+          ))}
+        </div>
+        {/* Code lines skeleton */}
+        <div className="flex-1 bg-[var(--editor-bg,hsl(var(--background)))] p-4 space-y-2">
+          {Array.from({ length: 24 }).map((_, i) => {
+            const widths = ["60%", "45%", "75%", "30%", "55%", "80%", "40%", "65%", "20%", "70%", "50%", "35%"];
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-8 text-right">
+                  <Skeleton className="h-3.5 w-5 ml-auto" />
+                </span>
+                <Skeleton
+                  className="h-3.5 rounded-sm"
+                  style={{ width: widths[i % widths.length] }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (!activePage) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Page not found</p>
+      </div>
+    );
+  }
+
+  return (
+    <EditorContext.Provider value={{ editorRef }}>
+      <div className="h-full w-full overflow-hidden flex flex-col">
+        {/* Tab bar Ã¢â‚¬â€ keyed by rootPageId so each LaTeX page-project is isolated */}
+        {pageId && <TabBar rootPageId={pageId} activeFileId={fileId ?? activePage?._id ?? ""} />}
+        <div className="flex-1 overflow-hidden">
+          {/* Editor / Asset panel */}
+          {isAssetTab ? (
+            <ImagePanel asset={selectedAsset!} />
+          ) : displayPage ? (
+            <Editor page={displayPage} />
+          ) : (
+            <EmptyEditorState />
+          )}
+        </div>
+      </div>
+    </EditorContext.Provider>
+  );
+}

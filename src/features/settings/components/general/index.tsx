@@ -1,0 +1,192 @@
+'use client';
+
+import TopBar from "../layout/TopBar";
+import { Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { toast } from "sonner";
+
+import ProfileSection from "./sections/ProfileSection";
+import GeneralForm from "./sections/GeneralForm";
+import DangerZone from "./sections/DangerZone";
+import DeleteModal from "./components/deleteModal";
+
+import { useDocumentTitle } from "@/shared/hooks";
+import { useUpdateWorkspace, useDeleteWorkspace, useWorkspaces, useWorkspace } from '@/features/workspaces';
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { useUpload } from '@/features/storage';
+import { MemberAvatar as Avatar } from "@/shared/components/shared/MemberAvatar";
+
+export default function GeneralPage() {
+  const router = useRouter();
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
+  const { workspaceId } = useParams() as { workspaceId: string };
+  const { workspace, isLoading, error } = useWorkspace(workspaceId);
+  const { workspaces } = useWorkspaces();
+  const { uploadAvatar, isUploading: isUploadingAvatar } = useUpload();
+
+  const updateMutation = useUpdateWorkspace();
+  const deleteMutation = useDeleteWorkspace();
+
+  const wsName = workspace?.name;
+  useDocumentTitle(wsName ? `Settings - ${wsName} · Flux` : "Settings · Flux");
+
+  useEffect(() => {
+    if (workspace?.avatar) {
+      setCurrentAvatar(workspace.avatar);
+    }
+  }, [workspace?.avatar]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+      <div className="px-4 h-13 border-b border-border flex items-center">
+          <Skeleton className="h-6 w-32" />
+        </div>
+        <div className="flex-1 px-8 py-8 space-y-6 max-w-3xl">
+          <div className="flex items-center gap-5">
+            <Skeleton className="size-16 rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !workspace) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Workspace not found
+      </div>
+    );
+  }
+
+  const ws = workspace;
+
+  const handleAvatarUpload = async (file: File) => {
+    try {
+      const finalAvatarUrl = await uploadAvatar(file);
+      setCurrentAvatar(finalAvatarUrl);
+
+      updateMutation.mutate(
+        { id: ws._id, data: { avatar: finalAvatarUrl } },
+        {
+          onSuccess: () => {
+            toast.success("Avatar updated");
+          },
+          onError: (err: any) => {
+            toast.error(err?.message || "Failed to update avatar");
+            setCurrentAvatar(ws.avatar || null);
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload avatar. Please try again.");
+      setCurrentAvatar(ws.avatar || null);
+    }
+  };
+
+  const handleUpdate = (values: {
+    name: string;
+    url?: string;
+    avatar?: string | null;
+    teamSize?: string;
+  }) => {
+    const payload: any = { ...values };
+    if (payload.teamSize) {
+      payload.companySize = payload.teamSize;
+      delete payload.teamSize;
+    }
+    if (payload.avatar === null) {
+      delete payload.avatar;
+    }
+
+    updateMutation.mutate(
+      { id: ws._id, data: payload },
+      {
+        onSuccess: () => toast.success("Workspace updated"),
+        onError: (err: any) =>
+          toast.error(err?.message || "Failed to update workspace"),
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    const shouldRedirectToCreate = (workspaces?.length || 0) === 1;
+
+    deleteMutation.mutate(ws._id, {
+      onSuccess: () => {
+        setIsDeleteOpen(false);
+        toast.success("Workspace deleted");
+        router.push(shouldRedirectToCreate ? "/create" : "/");
+      },
+      onError: (err: any) =>
+        toast.error(err?.message || "Failed to delete workspace"),
+    });
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <TopBar
+        title="General"
+        Icon={Settings}
+      />
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-8 py-8 space-y-8 max-w-3xl">
+          <ProfileSection
+            name={ws.name}
+            url={ws.url}
+            avatar={currentAvatar || ws.avatar}
+            onAvatarUpload={handleAvatarUpload}
+            isUploadingAvatar={isUploadingAvatar}
+          />
+
+          <hr className="border-border" />
+
+          <GeneralForm
+            id={ws._id}
+            name={ws.name}
+            url={ws.url}
+            avatar={ws.avatar}
+            teamSize={ws.companySize}
+            onSubmit={handleUpdate}
+            isSubmitting={updateMutation.isPending}
+          />
+
+          <hr className="border-border" />
+
+          <DangerZone onDelete={() => setIsDeleteOpen(true)} />
+
+          <DeleteModal
+            isOpen={isDeleteOpen}
+            onClose={() => {
+              if (!deleteMutation.isPending) {
+                setIsDeleteOpen(false);
+              }
+            }}
+            onConfirm={handleDelete}
+            title="Delete workspace?"
+            description="Are you sure you want to delete this workspace? This action cannot be undone."
+            confirmText="Delete"
+            cancelText="Cancel"
+            loading={deleteMutation.isPending}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

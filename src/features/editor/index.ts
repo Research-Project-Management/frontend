@@ -1,0 +1,14 @@
+export { useEditorSettingsStore, type LayoutMode, type CompileMode, type LaTeXEngine } from './store/editor-settings.store';
+export { useCompileStore } from './store/compile.store';
+export { buildRichContext, parseLatexStructure } from './services/latex-utils';
+export { parseAiEditResponse, parseDiffToEdits, validateAiEdits, isEditSafe, applyAiEdits, highlightEditedLines, previewAiEdits, type AiEditPreviewHandle, type AiEditResponse, type AiEditOperation } from './types/ai-edit-types';
+export { findLatexCommandRange } from './services/ai-edit-helpers';
+export { tryLocalCommandEdit } from './services/ai-edit-engine';
+export { parseAiResponse } from './services/ai-response-parser';
+export { extractPdfMetadataFromFile, type PdfMetadata, extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata, parsePdfDate } from './services/pdf';
+export { useEditorTabsStore } from './store/editor-tabs.store';
+export { usePagePresence, type PresenceUser } from './hooks/usePagePresence';
+export { useRemoteCursors } from './hooks/useRemoteCursors';
+export { default as EditorLayout } from './components/Editor/EditorLayout';
+export { PageContextProvider, usePageContext } from './components/PageContext';
+export { default as PageLayout } from './components/PageLayout';

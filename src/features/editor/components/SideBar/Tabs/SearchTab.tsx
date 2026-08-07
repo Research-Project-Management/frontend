@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useMemo } from "react";
 import {
   Search as SearchIcon,
@@ -11,7 +11,7 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext } from "../../PageContext";
-import { useDebounce } from "@/shared/hooks/useDebounce";
+import { useDebounce } from '@/shared/hooks/use-debounce';
 import {
   SidebarEmptyState,
   SidebarHeader,

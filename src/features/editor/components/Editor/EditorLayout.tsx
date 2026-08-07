@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useContext, useRef, useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ const Editor = dynamic(() => import("./Editor"), { ssr: false });
 import TabBar from "./TabBar";
 import type { editor } from "monaco-editor";
 import { usePageContext, type AssetInfo } from "../PageContext";
-import { useSocketRoom } from "@/shared/hooks/useSocketRoom";
+
 import { useDocumentTitle } from "@/shared/hooks";
 import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
@@ -215,10 +215,6 @@ export default function EditorLayout() {
     }
     prevPageIdRef.current = pageId ?? null;
   }, [pageId, closeAllForProject]);
-
-  // Join the project-root socket room ONLY Ã¢â‚¬â€ stable across tab switches.
-  // Joining per-child-file would cause leave/rejoin on every file switch.
-  useSocketRoom("page", pageId);
 
   // Register a stable content-getter so the Viewer can read the editor text at compile time.
   useEffect(() => {

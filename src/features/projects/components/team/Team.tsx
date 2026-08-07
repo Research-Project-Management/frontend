@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -21,7 +21,8 @@ import {
   Loader2,
 } from "lucide-react";
 import Loading from "@/shared/components/ui/Loading";
-import { getRoleName, getRoleColor, cn } from "@/shared/lib/utils";
+import { cn } from "@/shared/lib/utils";
+import { getRoleName, getRoleColor } from "@/shared/lib/roles";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";

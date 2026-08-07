@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Task, Column, TaskMutationInput, TaskActivityLog, Cycle } from "@/features/tasks/types/task.types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { useSocket } from "@/shared/components/providers/SocketProvider";
+
 import { toast } from "sonner";
 
 export type ProjectTasksData = {
@@ -28,123 +28,7 @@ export const fetchWorkspaceTasks = async (workspaceId: string) => {
 
 export const useProjectTasks = (projectId: string, cycleId?: string) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  const updateTaskCommentCount = (taskId: string, delta: number) => {
-    queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
-      if (!old) return old;
-
-      return {
-        ...old,
-        tasks: old.tasks.map((task) => {
-          if (task._id !== taskId) return task;
-
-          const nextCount = Math.max(0, (task.commentCount ?? 0) + delta);
-          return {
-            ...task,
-            commentCount: nextCount,
-          };
-        }),
-      };
-    });
-  };
-
-  useEffect(() => {
-    if (!socket || !projectId) return;
-    socket.emit("join:project", projectId);
-
-    const onCreated = ({ task }: { task: Task }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
-        if (!old) return old;
-        const taskBelongsToThisView = !cycleId || task.cycleId?._id === cycleId || (task.cycleId as any) === cycleId;
-        if (!taskBelongsToThisView) return old;
-        if (old.tasks.some((t) => t._id === task._id)) return old;
-        return { ...old, tasks: [...old.tasks, task] };
-      });
-    };
-
-    const onUpdated = ({ task }: { task: Task }) => {
-      const hasPendingLocalUpdate = queryClient.isMutating({
-        mutationKey: ["update-task"],
-        predicate: (mutation) => {
-          const variables = mutation.state.variables as { taskId?: string } | undefined;
-          return variables?.taskId === task._id;
-        },
-      }) > 0;
-
-      if (hasPendingLocalUpdate) return;
-
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
-        if (!old) return old;
-
-        const taskBelongsToThisView = !cycleId || task.cycleId?._id === cycleId || (task.cycleId as any) === cycleId;
-        const taskAlreadyInList = old.tasks.some((t) => t._id === task._id);
-
-        if (taskBelongsToThisView) {
-          if (taskAlreadyInList) {
-            return { ...old, tasks: old.tasks.map((t) => (t._id === task._id ? task : t)) };
-          } else {
-            return { ...old, tasks: [...old.tasks, task] };
-          }
-        } else {
-          if (taskAlreadyInList) {
-            return { ...old, tasks: old.tasks.filter((t) => t._id !== task._id) };
-          }
-          return old;
-        }
-      });
-      queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
-    };
-
-    const onDeleted = ({ taskId }: { taskId: string }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
-        if (!old) return old;
-        return { ...old, tasks: old.tasks.filter((t) => t._id !== taskId) };
-      });
-      queryClient.invalidateQueries({ queryKey: ["workspace-tasks"] });
-    };
-
-    const onColumnCreated = ({ columns }: { columns: Column[] }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
-        if (!old) return old;
-        return { ...old, columns };
-      });
-    };
-
-    const onColumnUpdated = ({ columns }: { columns: Column[] }) => {
-      queryClient.setQueryData<ProjectTasksData>(["tasks", projectId, cycleId], (old) => {
-        if (!old) return old;
-        return { ...old, columns };
-      });
-    };
-
-    const onTaskCommentCreated = ({ taskId }: { taskId: string }) => {
-      updateTaskCommentCount(taskId, 1);
-    };
-
-    const onTaskCommentDeleted = ({ taskId }: { taskId: string }) => {
-      updateTaskCommentCount(taskId, -1);
-    };
-
-    socket.on("task:created", onCreated);
-    socket.on("task:updated", onUpdated);
-    socket.on("task:deleted", onDeleted);
-    socket.on("column:created", onColumnCreated);
-    socket.on("column:updated", onColumnUpdated);
-    socket.on("task-comment:created", onTaskCommentCreated);
-    socket.on("task-comment:deleted", onTaskCommentDeleted);
-
-    return () => {
-      socket.emit("leave:project", projectId);
-      socket.off("task:created", onCreated);
-      socket.off("task:updated", onUpdated);
-      socket.off("task:deleted", onDeleted);
-      socket.off("column:created", onColumnCreated);
-      socket.off("column:updated", onColumnUpdated);
-      socket.off("task-comment:created", onTaskCommentCreated);
-      socket.off("task-comment:deleted", onTaskCommentDeleted);
-    };
-  }, [socket, projectId, cycleId, queryClient]);
 
   return useQuery({
     queryKey: ["tasks", projectId, cycleId],
@@ -416,30 +300,7 @@ export type TaskComment = {
 
 export const useTaskComments = (taskId: string | null) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !taskId) return;
-
-    const refetchTaskComments = ({ taskId: emittedTaskId }: { taskId: string }) => {
-      if (emittedTaskId !== taskId) return;
-      queryClient.invalidateQueries({ queryKey: ["task-comments", taskId] });
-    };
-
-    socket.on("task-comment:created", refetchTaskComments);
-    socket.on("task-comment:updated", refetchTaskComments);
-    socket.on("task-comment:deleted", refetchTaskComments);
-    socket.on("task-reply:added", refetchTaskComments);
-    socket.on("task-reply:removed", refetchTaskComments);
-
-    return () => {
-      socket.off("task-comment:created", refetchTaskComments);
-      socket.off("task-comment:updated", refetchTaskComments);
-      socket.off("task-comment:deleted", refetchTaskComments);
-      socket.off("task-reply:added", refetchTaskComments);
-      socket.off("task-reply:removed", refetchTaskComments);
-    };
-  }, [socket, taskId, queryClient]);
 
   return useQuery({
     queryKey: ["task-comments", taskId],
@@ -552,42 +413,7 @@ export const useReactTaskComment = () => {
 
 export const useTaskActivity = (taskId: string | null) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !taskId) return;
-
-    const refreshTaskActivity = (payload: {
-      taskId?: string;
-      task?: { _id?: string };
-      activity?: TaskActivityLog;
-    }) => {
-      const emittedTaskId = payload?.taskId || payload?.task?._id;
-      if (emittedTaskId !== taskId) return;
-
-      if (payload?.activity?._id) {
-        queryClient.setQueryData<TaskActivityLog[]>(["task-activity", taskId], (old = []) => {
-          if (old.some((item) => item._id === payload.activity!._id)) {
-            return old;
-          }
-          return [payload.activity!, ...old];
-        });
-        return;
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["task-activity", taskId] });
-    };
-
-    socket.on("task-activity:created", refreshTaskActivity);
-    socket.on("task:updated", refreshTaskActivity);
-    socket.on("task:created", refreshTaskActivity);
-
-    return () => {
-      socket.off("task-activity:created", refreshTaskActivity);
-      socket.off("task:updated", refreshTaskActivity);
-      socket.off("task:created", refreshTaskActivity);
-    };
-  }, [socket, taskId, queryClient]);
 
   return useQuery({
     queryKey: ["task-activity", taskId],

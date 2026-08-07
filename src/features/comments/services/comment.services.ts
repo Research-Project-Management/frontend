@@ -1,57 +1,16 @@
-﻿'use client';
+'use client';
 
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { PageComment } from "@/features/pages/types/page.types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { useSocket } from "@/shared/components/providers/SocketProvider";
+
 
 // â”€â”€ Fetch + real-time subscription â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const usePageComments = (pageId: string | null) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !pageId) return;
-    socket.emit("join:page", pageId);
-
-    const onCreated = ({ comment }: { comment: PageComment }) => {
-      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
-        old.some((c) => c._id === comment._id) ? old : [comment, ...old],
-      );
-    };
-    const onUpdated = ({ comment }: { comment: PageComment }) => {
-      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
-        old.map((c) => (c._id === comment._id ? comment : c)),
-      );
-    };
-    const onDeleted = ({ commentId }: { commentId: string }) => {
-      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
-        old.filter((c) => c._id !== commentId),
-      );
-    };
-    const onReplyChanged = ({ comment }: { comment: PageComment }) => {
-      queryClient.setQueryData<PageComment[]>(["page-comments", pageId], (old = []) =>
-        old.map((c) => (c._id === comment._id ? comment : c)),
-      );
-    };
-
-    socket.on("comment:created", onCreated);
-    socket.on("comment:updated", onUpdated);
-    socket.on("comment:deleted", onDeleted);
-    socket.on("reply:added", onReplyChanged);
-    socket.on("reply:removed", onReplyChanged);
-
-    return () => {
-      socket.emit("leave:page", pageId);
-      socket.off("comment:created", onCreated);
-      socket.off("comment:updated", onUpdated);
-      socket.off("comment:deleted", onDeleted);
-      socket.off("reply:added", onReplyChanged);
-      socket.off("reply:removed", onReplyChanged);
-    };
-  }, [socket, pageId, queryClient]);
 
   return useQuery({
     queryKey: ["page-comments", pageId],

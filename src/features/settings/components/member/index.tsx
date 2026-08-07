@@ -1,16 +1,15 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspace, useAddWorkspaceMember, useUpdateWorkspaceMemberRole, useRemoveWorkspaceMember, syncWorkspaceIntoCaches } from '@/features/workspaces';
 import { useRoles } from '@/features/workspaces';
-import { useSocket } from "@/shared/components/providers/SocketProvider";
-import { useSocketRoom } from "@/shared/hooks/useSocketRoom";
 import { apiGet } from "@/shared/lib/api";
 import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from "lucide-react";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { getRoleName, getRoleColor, cn } from "@/shared/lib/utils";
+import { cn } from "@/shared/lib/utils";
+import { getRoleName, getRoleColor } from "@/shared/lib/roles";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
@@ -40,7 +39,7 @@ import { useDocumentTitle } from "@/shared/hooks";
 export default function MemberPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
   const queryClient = useQueryClient();
-  const socket = useSocket();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -52,7 +51,6 @@ export default function MemberPage() {
   useDocumentTitle(workspace?.name ? `Members - ${workspace.name} Â· Flux` : "Members Â· Flux");
   const { data: rolesData } = useRoles(workspace?._id ?? "");
   const roles = Array.isArray(rolesData) ? rolesData : [];
-  useSocketRoom("workspace", workspace?._id);
 
   // Mutations
   const updateRoleMutation = useUpdateWorkspaceMemberRole();
@@ -69,25 +67,7 @@ export default function MemberPage() {
     [members],
   );
 
-  useEffect(() => {
-    if (!socket || !workspace?._id) return;
 
-    const handleMembersChanged = (payload: any) => {
-      if (payload?.workspaceId !== workspace._id) return;
-
-      if (payload.workspace) {
-        syncWorkspaceIntoCaches(queryClient, payload.workspace);
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceUrl] });
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-    };
-
-    socket.on("workspace:members-changed", handleMembersChanged);
-    return () => {
-      socket.off("workspace:members-changed", handleMembersChanged);
-    };
-  }, [queryClient, socket, workspace?._id, workspaceUrl]);
 
   const filteredMembers = useMemo(
     () =>

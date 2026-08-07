@@ -1,111 +1,103 @@
-
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
 /**
- * Normalizes a file URL stored in the database to always use the current API_URL.
+ * shared/lib/api.ts
  *
- * Handles three cases:
- *   1. Relative path:  "/api/files/..."       → "${API_URL}/api/files/..."
- *   2. Legacy absolute: "http://localhost:.../api/files/..." → "${API_URL}/api/files/..."
- *   3. Correct absolute: "https://rpm.aisq.dev/api/files/..." → returned as-is
+ * Centralized HTTP client built on the native Fetch API.
+ *
+ * Features:
+ * - Automatic JSON serialization / deserialization
+ * - Cookie-based auth (credentials: 'include')
+ * - Typed ApiError with HTTP status and field-level errors
+ * - Query string builder via `params` option
+ * - Tree-shakeable named helpers: apiGet, apiPost, apiPut, apiPatch, apiDelete
  */
-export function resolveFileUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
 
-  // Already a relative path starting with /api/files/
-  if (url.startsWith("/api/files/")) {
-    return `${API_URL}${url}`;
-  }
-
-  // If it's a relative storage key starting with workspace/ or project/
-  if (url.startsWith("workspace/") || url.startsWith("project/")) {
-    return `${API_URL}/api/files/${url}`;
-  }
-
-  // Absolute URL — extract the /api/files/... path and reattach to current API_URL
-  // This fixes legacy records that stored localhost or an old domain
-  const match = url.match(/\/api\/files\/(.+)/);
-  if (match) {
-    return `${API_URL}/api/files/${match[1]}`;
-  }
-
-  // If it does not start with http:// or https:// or /, treat it as a relative storage key
-  if (!/^https?:\/\//i.test(url) && !url.startsWith("/")) {
-    return `${API_URL}/api/files/${url}`;
-  }
-
-  // External URL (e.g. ui-avatars, gravatar) — return as-is
-  return url;
-}
+import { API_BASE_URL } from '@/shared/constants';
+import { ApiError } from '@/shared/types';
+import type { RequestOptions } from '@/shared/types';
 
 
-// ── Custom error class ────────────────────────────────────────────────────────
+// ─── Query String Builder ─────────────────────────────────────────────────────
 
-export class ApiError extends Error {
-  status: number;
-  data?: any;
+function buildUrl(
+  path: string,
+  params?: RequestOptions['params'],
+): string {
+  const base = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  if (!params) return base;
 
-  constructor(message: string, status: number, data?: any) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.data = data;
-  }
-}
-
-// ── Core fetch wrapper ────────────────────────────────────────────────────────
-
-export async function apiFetch<T = any>(
-  endpoint: string,
-  options?: RequestInit,
-): Promise<T> {
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      ...options?.headers,
-    },
-  });
-
-  if (!res.ok) {
-    let data: any;
-    try {
-      data = await res.json();
-    } catch {
-      /* empty body */
+  const query = new URLSearchParams();
+  for (const [key, val] of Object.entries(params)) {
+    if (val !== undefined && val !== null) {
+      query.set(key, String(val));
     }
-    throw new ApiError(
-      data?.error || data?.message || `Request failed (${res.status})`,
-      res.status,
-      data,
-    );
   }
-
-  // Handle 204 No Content
-  if (res.status === 204) return null as T;
-
-  const text = await res.text();
-  return text ? JSON.parse(text) : (null as T);
+  const qs = query.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
-// ── Convenience helpers ───────────────────────────────────────────────────────
+// ─── Core Fetch ───────────────────────────────────────────────────────────────
 
-export const apiGet = <T = any>(url: string, options?: RequestInit) =>
-  apiFetch<T>(url, options);
+export async function apiFetch<T>(
+  path: string,
+  method: string,
+  body?: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  const { params, headers: extraHeaders, ...rest } = options;
 
-export const apiPost = <T = any>(url: string, body?: unknown) =>
-  apiFetch<T>(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body != null ? JSON.stringify(body) : undefined,
+  const url = buildUrl(path, params);
+
+  const response = await fetch(url, {
+    method,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...extraHeaders,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    ...rest,
   });
 
-export const apiPut = <T = any>(url: string, body?: unknown) =>
-  apiFetch<T>(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: body != null ? JSON.stringify(body) : undefined,
-  });
+  if (!response.ok) {
+    let payload: { message?: string; errors?: Record<string, string[]> } = {};
 
-export const apiDelete = <T = any>(url: string) =>
-  apiFetch<T>(url, { method: "DELETE" });
+    try {
+      payload = await response.json();
+    } catch {
+      // non-JSON error body — use status text
+    }
+
+    throw new ApiError({
+      message: payload.message ?? response.statusText ?? 'Request failed',
+      statusCode: response.status,
+      errors: payload.errors,
+    });
+  }
+
+  // 204 No Content — return undefined cast to T
+  if (response.status === 204) return undefined as T;
+
+  return response.json() as Promise<T>;
+}
+
+// ─── Method Helpers ───────────────────────────────────────────────────────────
+
+export const apiGet = <T>(path: string, options?: RequestOptions) =>
+  apiFetch<T>(path, 'GET', undefined, options);
+
+export const apiPost = <T>(path: string, body?: unknown, options?: RequestOptions) =>
+  apiFetch<T>(path, 'POST', body, options);
+
+export const apiPut = <T>(path: string, body?: unknown, options?: RequestOptions) =>
+  apiFetch<T>(path, 'PUT', body, options);
+
+export const apiPatch = <T>(path: string, body?: unknown, options?: RequestOptions) =>
+  apiFetch<T>(path, 'PATCH', body, options);
+
+export const apiDelete = <T>(path: string, options?: RequestOptions) =>
+  apiFetch<T>(path, 'DELETE', undefined, options);
+
+// ─── Re-export for convenience ────────────────────────────────────────────────
+
+export { ApiError };
+

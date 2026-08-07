@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -14,7 +14,7 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Progress } from "@/shared/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
-import { getRoleName } from "@/shared/lib/utils";
+import { getRoleName } from "@/shared/lib/roles";
 import { memo } from "react";
 import Topbar from "./Topbar";
 import ProjectRecentActivity from "./RecentActivity";

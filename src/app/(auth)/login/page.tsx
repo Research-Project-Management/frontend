@@ -1,11 +1,8 @@
-﻿import type { Metadata } from 'next';
-import { LoginForm } from '@/features/auth';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Login',
-  description: 'Login to your account',
+  title: 'Login · Flux',
+  description: 'Sign in to your Flux account',
 };
 
-export default function LoginPage() {
-  return <LoginForm />;
-}
+export { default } from '@/features/auth/pages/login-page';

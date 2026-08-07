@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { Page, PageVersion, PageEvent } from "@/features/pages/types/page.types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { useSocket } from "@/shared/components/providers/SocketProvider";
+
 import { toast } from "sonner";
 
 // â”€â”€ Workspace Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -36,34 +36,7 @@ const fetchProjectPages = async (projectId: string, status?: string, search?: st
 
 export const useProjectPages = (projectId: string, status?: string, search?: string, options?: { enabled?: boolean }) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !projectId) return;
-    socket.emit("join:project", projectId);
-
-    const onCreated = ({ page }: { page: Page }) => {
-      queryClient.setQueryData<Page[]>(["pages", projectId, status], (old = []) =>
-        old.some((p) => p._id === page._id) ? old : [...old, page],
-      );
-      queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
-    };
-    const onDeleted = ({ pageId }: { pageId: string }) => {
-      queryClient.setQueryData<Page[]>(["pages", projectId, status], (old = []) =>
-        old.filter((p) => p._id !== pageId),
-      );
-      queryClient.invalidateQueries({ queryKey: ["workspace-pages"] });
-    };
-
-    socket.on("page:created", onCreated);
-    socket.on("page:deleted", onDeleted);
-
-    return () => {
-      socket.emit("leave:project", projectId);
-      socket.off("page:created", onCreated);
-      socket.off("page:deleted", onDeleted);
-    };
-  }, [socket, projectId, status, queryClient]);
 
   return useQuery({
     queryKey: ["pages", projectId, status],
@@ -81,26 +54,7 @@ const fetchPage = async (pageId: string) => {
 
 export const usePage = (pageId: string) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !pageId) return;
-    socket.emit("join:page", pageId);
-
-    const onUpdated = ({ page }: { page: Page }) => {
-      if (page._id !== pageId) return;
-      queryClient.setQueryData<Page>(["page", pageId], (old) => {
-        if (!old) return old;
-        return { ...old, ...page };
-      });
-    };
-
-    socket.on("page:updated", onUpdated);
-    return () => {
-      socket.emit("leave:page", pageId);
-      socket.off("page:updated", onUpdated);
-    };
-  }, [socket, pageId, queryClient]);
 
   return useQuery({
     queryKey: ["page", pageId],
@@ -206,25 +160,7 @@ type PageFile = { _id: string; title: string; updatedAt: string };
 
 export const usePageFiles = (pageId: string | null | undefined) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !pageId) return;
-    socket.emit("join:page", pageId);
-
-    const onFileCreated = ({ file }: { file: PageFile }) => {
-      queryClient.setQueryData<PageFile[]>(
-        ["page-files", pageId],
-        (old = []) => (old.some((f) => f._id === file._id) ? old : [...old, file]),
-      );
-    };
-
-    socket.on("file:created", onFileCreated);
-    return () => {
-      socket.emit("leave:page", pageId);
-      socket.off("file:created", onFileCreated);
-    };
-  }, [socket, pageId, queryClient]);
 
   return useQuery({
     queryKey: ["page-files", pageId],

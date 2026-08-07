@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Cycle } from "@/features/tasks/types/task.types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { useSocket } from "@/shared/components/providers/SocketProvider";
+
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
@@ -15,49 +15,7 @@ export const fetchProjectCycles = (projectId: string) =>
 
 export const useProjectCycles = (projectId: string) => {
   const queryClient = useQueryClient();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !projectId) return;
-
-    const onCreated = ({ cycle }: { cycle: Cycle }) => {
-      queryClient.setQueryData<{ cycles: Cycle[] }>(["cycles", projectId], (old) => {
-        if (!old) return old;
-        if (old.cycles.some((c) => c._id === cycle._id)) return old;
-        return { ...old, cycles: [...old.cycles, cycle] };
-      });
-    };
-
-    const onUpdated = ({ cycle }: { cycle: Cycle }) => {
-      queryClient.setQueryData<{ cycles: Cycle[] }>(["cycles", projectId], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          cycles: old.cycles.map((c) => (c._id === cycle._id ? cycle : c)),
-        };
-      });
-    };
-
-    const onDeleted = ({ cycleId }: { cycleId: string }) => {
-      queryClient.setQueryData<{ cycles: Cycle[] }>(["cycles", projectId], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          cycles: old.cycles.filter((c) => c._id !== cycleId),
-        };
-      });
-    };
-
-    socket.on("cycle:created", onCreated);
-    socket.on("cycle:updated", onUpdated);
-    socket.on("cycle:deleted", onDeleted);
-
-    return () => {
-      socket.off("cycle:created", onCreated);
-      socket.off("cycle:updated", onUpdated);
-      socket.off("cycle:deleted", onDeleted);
-    };
-  }, [socket, projectId, queryClient]);
 
   return useQuery({
     queryKey: ["cycles", projectId],

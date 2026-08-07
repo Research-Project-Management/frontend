@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -25,7 +25,7 @@ import {
 } from "@/features/comments/services/comment.services";
 import type { PageComment, CommentReply } from "@/features/pages/types/page.types";
 import { usePageContext } from "../../PageContext";
-import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaceActionsStore } from "@/features/workspaces/store/workspace.store";
 import { cn } from "@/shared/lib/utils";
 import {

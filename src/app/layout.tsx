@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { Toaster } from 'sonner';
 import '@/shared/styles/globals.css';
 import Providers from './providers';
+
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Flux - Keep Research Moving Forward',
@@ -26,22 +34,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
-        />
-      </head>
-      <body suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>
           {children}
+          <Toaster richColors position='top-right' />
         </Providers>
+
       </body>
     </html>
   );

@@ -13,7 +13,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Progress } from "@/shared/components/ui/progress";
 import { useUploadFile, checkDuplicate, deleteFile } from "@/features/storage/services/storage.services";
-import { generateUniqueName } from "@/shared/lib/utils";
+import { generateUniqueName } from "@/shared/lib/files";
 import DuplicateFileDialog from "./DuplicateFileDialog";
 import type { DuplicateAction } from "./DuplicateFileDialog";
 import { toast } from "sonner";

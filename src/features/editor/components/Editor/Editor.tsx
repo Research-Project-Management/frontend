@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -40,15 +40,12 @@ import { usePageComments } from '@/features/comments';
 import type { Page } from "@/features/pages/types/page.types";
 import type { PageComment } from "@/features/pages/types/page.types";
 import { useWorkspaceActionsStore } from '@/features/workspaces';
-import { useDebounce } from "@/shared/hooks/useDebounce";
+import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useEditorContext } from "./EditorLayout";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
 import { cn } from "@/shared/lib/utils";
-import { useSocket } from "@/shared/components/providers/SocketProvider";
-import { usePagePresence } from "@/features/editor/hooks/usePagePresence";
-import { useRemoteCursors } from "@/features/editor/hooks/useRemoteCursors";
 import { FluxIcon } from "@/shared/components/shared";
 import EditorToolbar from "./EditorToolbar";
 
@@ -216,45 +213,13 @@ export default function Editor({ page }: EditorProps) {
     newName: string;
   } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  const socket = useSocket();
-  // Tracks the last content received via socket to avoid re-saving/re-emitting remote changes.
-  const lastRemoteContentRef = useRef<string | null>(null);
-  // Remote cursor widgets
-  const presenceUsers = usePagePresence(pageIdParam);
-  const remoteCursors = useRemoteCursors(pageIdParam);
-  const [editorMounted, setEditorMounted] = useState(false);
-  const cursorWidgetsRef = useRef<Map<string, editor.IContentWidget>>(
-    new Map(),
-  );
 
-  // Realtime: receive content changes from other collaborators
-  useEffect(() => {
-    if (!socket || !page._id) return;
-    const handleRemote = ({
-      pageId,
-      content: remote,
-    }: {
-      pageId: string;
-      content: string;
-    }) => {
-      if (pageId !== page._id) return;
-      const ed = editorRef.current;
-      if (ed && ed.getValue() === remote) return;
-      lastRemoteContentRef.current = remote;
-      setContent(remote);
-    };
-    socket.on("page:content", handleRemote);
-    return () => {
-      socket.off("page:content", handleRemote);
-    };
-  }, [socket, page._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save when content changes (debounced) â€” skip if it originated from socket.
   // Guard against stale debounce firing after a tab switch: compare the page id
   // captured when the debounce started with the currently-active page.
   useEffect(() => {
     if (activePageIdRef.current !== page._id) return;
-    if (debouncedContent === lastRemoteContentRef.current) return;
     if (debouncedContent && debouncedContent !== page.content) {
       // Push into global dirty map so compile can flush ALL open tabs
       markDirty(page._id, debouncedContent);
@@ -277,18 +242,7 @@ export default function Editor({ page }: EditorProps) {
     }
   }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Realtime: broadcast local content changes to other collaborators (debounced)
-  useEffect(() => {
-    if (!socket || !page._id || !debouncedContent) return;
-    if (activePageIdRef.current !== page._id) return;
-    if (debouncedContent === lastRemoteContentRef.current) return;
-    // Never broadcast AI preview edits to other users
-    if (isAiPreviewingRef.current) return;
-    socket.emit("page:content", {
-      pageId: page._id,
-      content: debouncedContent,
-    });
-  }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Reset editor state only when switching to a different page.
   // IMPORTANT: Do NOT include `content` or `page.content` in the deps â€” that would cause
@@ -297,7 +251,6 @@ export default function Editor({ page }: EditorProps) {
   useEffect(() => {
     // Update the ref FIRST so any in-flight debounce from the old page is rejected.
     activePageIdRef.current = page._id;
-    lastRemoteContentRef.current = null;
     pendingCompileRef.current = false;
     setContent(page.content || "");
   }, [page._id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -597,74 +550,7 @@ export default function Editor({ page }: EditorProps) {
   ];
 
 
-  // Draw / update remote cursor content widgets whenever cursors or presence changes
-  useEffect(() => {
-    const ed = editorRef.current;
-    if (!editorMounted || !ed) return;
 
-    // Remove stale widgets first
-    cursorWidgetsRef.current.forEach((w) => ed.removeContentWidget(w));
-    cursorWidgetsRef.current.clear();
-
-    // Add a widget for each remote cursor we know about
-    remoteCursors.forEach((cursor, socketId) => {
-      const user = presenceUsers.find((u) => u.socketId === socketId);
-      if (!user) return;
-
-      const color = stringToColor(user._id);
-
-      const outer = document.createElement("div");
-      outer.style.cssText = "position:relative;pointer-events:none;";
-
-      const label = document.createElement("div");
-      // Show label below the cursor bar when near the top of the editor to
-      // avoid it being clipped by Monaco's overflow:hidden container.
-      const labelAbove = cursor.line > 3;
-      label.style.cssText = [
-        "position:absolute",
-        labelAbove ? "bottom:100%" : "top:110%",
-        "left:0",
-        `background:${color}`,
-        "color:#fff",
-        "font-size:10px",
-        "padding:1px 5px",
-        labelAbove
-          ? "border-radius:3px 3px 3px 0"
-          : "border-radius:0 3px 3px 3px",
-        "white-space:nowrap",
-        "font-family:system-ui,sans-serif",
-        "line-height:1.5",
-        "user-select:none",
-      ].join(";");
-      label.textContent = user.name;
-
-      const bar = document.createElement("div");
-      bar.style.cssText = `width:2px;height:1.3em;background:${color};margin-top:-1px;`;
-
-      outer.appendChild(label);
-      outer.appendChild(bar);
-
-      const capturedCursor = cursor;
-      const widget: editor.IContentWidget = {
-        getId: () => `rc:${socketId}`,
-        getDomNode: () => outer,
-        getPosition: () => ({
-          position: {
-            lineNumber: capturedCursor.line,
-            column: capturedCursor.column,
-          },
-          preference: [0 as editor.ContentWidgetPositionPreference],
-        }),
-      };
-      ed.addContentWidget(widget);
-      cursorWidgetsRef.current.set(socketId, widget);
-    });
-
-    return () => {
-      cursorWidgetsRef.current.forEach((w) => ed.removeContentWidget(w));
-      cursorWidgetsRef.current.clear();
-    };
-  }, [editorMounted, remoteCursors, presenceUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reactively apply editor settings whenever they change in the SettingsPanel.
   // Theme is handled separately â€” it's a controlled prop on <MonacoEditor>.
@@ -779,14 +665,6 @@ export default function Editor({ page }: EditorProps) {
       });
     });
 
-    // Emit cursor position to collaborators on every cursor move
-    editor.onDidChangeCursorPosition((e) => {
-      socket?.emit("page:cursor", {
-        pageId: page._id,
-        line: e.position.lineNumber,
-        column: e.position.column,
-      });
-    });
 
     // Monaco Keyboard shortcuts override
     editor.onKeyDown((e) => {

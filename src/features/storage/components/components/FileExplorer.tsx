@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
@@ -22,7 +22,7 @@ import {
   checkDuplicate,
   deleteFile,
 } from "@/features/storage/services/storage.services";
-import { generateUniqueName } from "@/shared/lib/utils";
+import { generateUniqueName } from "@/shared/lib/files";
 import { Upload } from "lucide-react";
 
 type SourceFilter =
@@ -38,7 +38,7 @@ type FileExplorerProps = {
   currentFolder?: string | null;
   breadcrumbs?: Array<{ id: string | null; name: string }>;
   workspaceId?: string;
-  // ThÃªm workspaceId riÃªng cho workspace-level uploads
+  // Thêm workspaceId riêng cho workspace-level uploads
   wsId?: string;
 
   // Actions
@@ -184,7 +184,7 @@ export default function FileExplorer({
 
   const onRenameHandler = onRenameProp ? handleRenameRequest : undefined;
 
-  // â”€â”€ File upload with duplicate check â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── File upload with duplicate check ──────────────────────────────────────
 
   const uploadWithDuplicateCheck = useCallback(
     async (file: File, targetFolder: string | null) => {
@@ -202,7 +202,7 @@ export default function FileExplorer({
           return;
         }
 
-        // No duplicate â€” upload directly
+        // No duplicate — upload directly
         await uploadMutation.mutateAsync({
           file,
           scope: storageScope,
@@ -274,7 +274,7 @@ export default function FileExplorer({
     ],
   );
 
-  // â”€â”€ Drag-and-drop on main area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Drag-and-drop on main area ────────────────────────────────────────────
 
   const handleAreaDragOver = useCallback(
     (e: React.DragEvent) => {
@@ -320,7 +320,7 @@ export default function FileExplorer({
     [enableUpload],
   );
 
-  // â”€â”€ Drop file onto a folder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Drop file onto a folder ───────────────────────────────────────────────
 
   const handleDropOnFolder = useCallback(
     async (folder: StorageItem, e: React.DragEvent) => {

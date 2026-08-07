@@ -1,11 +1,8 @@
 import type { Metadata } from 'next';
-import { ForgotPasswordForm } from '@/features/auth';
 
 export const metadata: Metadata = {
   title: 'Forgot Password · Flux',
+  description: 'Reset your Flux account password',
 };
 
-export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />;
-}
-
+export { default } from '@/features/auth/pages/forgot-password-page';

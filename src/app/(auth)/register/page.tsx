@@ -1,11 +1,8 @@
-﻿import type { Metadata } from 'next';
-import { RegisterForm } from '@/features/auth';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Register',
-  description: 'Create a new account',
+  title: 'Register · Flux',
+  description: 'Create a new Flux account',
 };
 
-export default function RegisterPage() {
-  return <RegisterForm />;
-}
+export { default } from '@/features/auth/pages/register-page';

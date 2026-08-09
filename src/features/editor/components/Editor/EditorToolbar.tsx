@@ -4,7 +4,7 @@ import React from "react";
 import { useEditorContext } from "./EditorLayout";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { useWorkspaceActionsStore } from '@/features/workspaces';
-import { FluxLogo as FluxIcon } from "@/shared/components/ui/FluxLogo";
+import { FluxLogo as FluxIcon } from "@/shared/components/ui";
 import {
   Bold,
   Italic,
@@ -39,7 +39,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   TooltipProvider
-} from "@/shared/components/ui/tooltip";
+} from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +50,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 
 interface ToolbarButtonProps {
   onClick: () => void;
@@ -507,7 +507,7 @@ export default function EditorToolbar() {
             onClick={handleAiAsk}
             icon={FluxIcon}
             label=""
-            tooltip="Ask Flux AI"
+            tooltip="Ask AI"
             variant="ai"
           />
 

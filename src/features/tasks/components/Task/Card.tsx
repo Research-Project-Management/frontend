@@ -17,13 +17,13 @@ import {
   UserPlus,
   RotateCcw,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import type { Task } from "@/features/tasks/types/task.types";
 
 export type TaskCardLabel = {

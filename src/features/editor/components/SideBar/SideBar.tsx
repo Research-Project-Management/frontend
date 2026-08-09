@@ -10,7 +10,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
+} from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
 import SearchTab from "./Tabs/SearchTab";
@@ -24,7 +24,7 @@ const sideBarItems = [
   { name: "Search", icon: Search },
   { name: "Review", icon: MessageSquareQuote },
   { name: "History", icon: History },
-  { name: "Flux AI", imageSrc: "/Chat.svg" },
+  { name: "AI", imageSrc: "/Chat.svg" },
 ] as const;
 
 type Tab = (typeof sideBarItems)[number]["name"];
@@ -32,7 +32,7 @@ type Tab = (typeof sideBarItems)[number]["name"];
 function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
-  if (tab === "Flux AI") return <ChatAiTab onClose={onClose} />;
+  if (tab === "AI") return <ChatAiTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
   if (tab === "History") return <HistoryTab onClose={onClose} />;
   return null;

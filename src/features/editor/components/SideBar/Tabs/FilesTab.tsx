@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, {
   useRef,
   useState,
@@ -37,20 +37,20 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
+} from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/ui/dialog";
+} from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext, type AssetInfo } from "../../PageContext";
 import {
@@ -61,14 +61,14 @@ import {
   useUpdatePageTitle,
   useUpdatePageContent,
   usePage,
-} from "@/features/pages/services/page.services";
+} from "@/features/workspaces";
 import {
   useProjectFilesEditor,
   useUploadFileForEditor,
   useDeleteFileForEditor,
   useRenameFileForEditor,
   useCreateFolderForEditor,
-} from "@/features/storage/services/storage.services";
+} from "@/features/workspaces";
 import type { StorageItem } from "@/features/storage/components/types";
 
 // GÃ¶Ã‡GÃ¶Ã‡ File icon helper GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡GÃ¶Ã‡

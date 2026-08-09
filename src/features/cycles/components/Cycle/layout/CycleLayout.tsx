@@ -8,7 +8,7 @@ import { useProjects } from '@/features/workspaces';
 import { useDocumentTitle } from "@/features/cycles/hooks/useDocumentTitle";
 import { useCycle, type DerivedStatus } from "@/features/cycles/hooks/useCycle";
 import { useLabels } from '@/features/labels';
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Skeleton } from "@/shared/components/ui";
 import { 
   Plus,
   RotateCcw
@@ -20,12 +20,12 @@ import { Item, ListViewGroup, EmptyState } from "../sections/ListViewSection";
 import { DeleteModal } from "../modals/DeleteModal";
 import { CycleModal } from "../modals/CycleModal";
 import { StatusModal, type StatusModalType } from "../modals/StatusModal";
-import { Topbar } from '@/features/projects';
+import { Topbar } from '@/features/workspaces';
 import type { Cycle, CycleMilestone } from "@/features/tasks/types/task.types";
 import TopBar from "./Topbar";
 
 import { PHASE_CONFIG } from '@/features/tasks/types/task.types';
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 
 const PHASES = Object.entries(PHASE_CONFIG).map(([id, config]) => ({
   id,

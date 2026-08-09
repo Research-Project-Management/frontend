@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from "react";
 import { 
@@ -13,11 +13,11 @@ import {
   Popover, 
   PopoverContent, 
   PopoverTrigger 
-} from "@/shared/components/ui/popover";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
-import { Checkbox } from "@/shared/components/ui/checkbox";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
 import { useParams } from "next/navigation";
 import { useLabels } from '@/features/labels';
 import { AVAILABLE_LABEL_COLORS } from '@/features/labels';

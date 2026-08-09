@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { User, Camera, Loader2, Github, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import TopBar from "@/features/settings/components/layout/TopBar";
+import TopBar from "@/features/workspaces/settings/components/layout/TopBar";
 import { useAuth } from '@/features/auth';
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import { useQueryClient } from "@tanstack/react-query";
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import { useUpload } from '@/features/storage';
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+import { Skeleton } from "@/shared/components/ui";
+import { useUpload } from '@/features/workspaces';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { apiPut } from "@/shared/lib/api";
 import { changePassword } from '@/features/auth';
 

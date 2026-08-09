@@ -17,15 +17,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
+} from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext } from "./PageContext";
-import { useUpdatePageTitle } from "@/features/pages/services/page.services";
+import { useUpdatePageTitle } from "@/features/workspaces";
 import {
   useEditorSettingsStore,
   type LayoutMode,

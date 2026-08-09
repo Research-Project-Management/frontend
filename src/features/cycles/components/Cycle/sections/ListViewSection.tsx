@@ -1,4 +1,4 @@
-﻿import { useMemo, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { 
   ChevronDown,
   Trash2,
@@ -14,13 +14,13 @@ import {
   Pencil,
   AlignLeft
 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import type { Cycle } from "@/features/tasks/types/task.types";
 import { PHASE_CONFIG as STATIC_PHASE_CONFIG } from '@/features/tasks';
 import { PhaseIconRenderer } from "../components/PhaseIconRenderer";
@@ -149,7 +149,7 @@ export function Item({
     const stat = (STATIC_PHASE_CONFIG as any)[cycle.phase];
     if (stat) return stat;
 
-    return { label: "Custom", color: "#6b7280", icon: "ðŸ“‹" };
+    return { label: "Custom", color: "#6b7280", icon: "📋" };
   }, [phases, cycle.phase]);
 
   const cycleLabels = useMemo(() => {

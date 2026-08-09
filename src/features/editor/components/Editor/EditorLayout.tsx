@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useRef, useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { usePage } from '@/features/pages';
-import type { Page } from "@/features/pages/types/page.types";
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { usePage } from '@/features/workspaces/projects';
+import type { Page } from "@/features/workspaces/projects/types/page.types";
+import { Skeleton } from "@/shared/components/ui";
 import dynamic from "next/dynamic";
 const Editor = dynamic(() => import("./Editor"), { ssr: false });
 import TabBar from "./TabBar";
@@ -98,11 +98,11 @@ export default function EditorLayout() {
   const searchParams = useSearchParams();
   const fileId = searchParams.get("file");
 
-  // Redirect AI panel events to the Flux AI tab in the sidebar.
+  // Redirect AI panel events to the AI tab in the sidebar.
   useEffect(() => {
     const openAiTab = () => {
       document.dispatchEvent(
-        new CustomEvent("flux:open-panel", { detail: "Flux AI" })
+        new CustomEvent("flux:open-panel", { detail: "AI" })
       );
     };
     document.addEventListener("flux:toggle-ai-panel", openAiTab);

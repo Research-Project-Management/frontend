@@ -7,8 +7,8 @@ import {
   isAfter, isBefore, parseISO, startOfDay, addYears, subYears
 } from "date-fns";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
-import { Dialog, DialogContent } from "@/shared/components/ui/dialog";
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent } from "@/shared/components/ui";
 
 interface DoubleCalendarProps {
   startDate: string;

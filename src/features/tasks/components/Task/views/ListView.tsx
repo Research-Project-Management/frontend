@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useEffect, memo, useRef, useCallback } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import {
   AlignLeft,
   CheckSquare,
@@ -16,13 +16,13 @@ import {
   UserMinus,
   UserPlus,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import {
   PRIORITY_CONFIG,
   resolveTaskColumnColor,

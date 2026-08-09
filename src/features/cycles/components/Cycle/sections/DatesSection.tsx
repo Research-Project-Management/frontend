@@ -5,8 +5,8 @@ import {
   Popover, 
   PopoverContent, 
   PopoverTrigger 
-} from "@/shared/components/ui/popover";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { 
   CalendarDays, 
   ChevronLeft, 

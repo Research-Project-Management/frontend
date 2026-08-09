@@ -35,10 +35,10 @@ import {
   Circle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useUpdatePageContent } from '@/features/pages';
+import { useUpdatePageContent } from '@/features/workspaces/projects';
 import { usePageComments } from '@/features/comments';
-import type { Page } from "@/features/pages/types/page.types";
-import type { PageComment } from "@/features/pages/types/page.types";
+import type { Page } from "@/features/workspaces/projects/types/page.types";
+import type { PageComment } from "@/features/workspaces/projects/types/page.types";
 import { useWorkspaceActionsStore } from '@/features/workspaces';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useEditorContext } from "./EditorLayout";
@@ -46,7 +46,7 @@ import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
 import { cn } from "@/shared/lib/utils";
-import { FluxLogo as FluxIcon } from "@/shared/components/ui/FluxLogo";
+import { FluxLogo as FluxIcon } from "@/shared/components/ui";
 import EditorToolbar from "./EditorToolbar";
 
 
@@ -534,7 +534,7 @@ export default function Editor({ page }: EditorProps) {
       },
       {
         icon: FluxIcon,
-        label: "Ask Flux AI about this",
+        label: "Ask AI about this",
         action: () => {
           if (ctxSelText) {
             setPendingAiContext({
@@ -967,10 +967,10 @@ Your conclusions here.
                 setSelFloating(null);
               }}
               className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
-              title="Ask Flux AI"
+              title="Ask AI"
             >
               <img src="/Flux.svg" alt="Flux" className="size-3.5" />
-              <span>Ask Flux AI</span>
+              <span>Ask AI</span>
             </button>
           </div>,
           document.body,

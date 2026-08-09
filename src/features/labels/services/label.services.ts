@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import { toast } from "sonner";
-import type { Label } from "@/features/stickies/types/sticky.types";
+import type { Label } from "@/features/workspaces/projects/types/sticky.types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

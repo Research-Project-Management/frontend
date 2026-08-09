@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogOverlay,
   DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 
 export interface DeleteModalProps {
   isOpen: boolean;

@@ -5,10 +5,10 @@ import {
   Popover, 
   PopoverContent, 
   PopoverTrigger 
-} from "@/shared/components/ui/popover";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { UserPlus, Search, Check, X } from "lucide-react";
 
 interface MembersSectionProps {

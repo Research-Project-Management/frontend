@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useUpload } from '@/features/storage';
+import { useUpload } from '@/features/workspaces';
 import {
   useUpdateWorkspace as useWorkspaceUpdateMutation,
   useDeleteWorkspace as useWorkspaceDeleteMutation,
+  createWorkspace,
 } from '@/features/workspaces';
 import { queryKeys } from '@/shared/constants';
-import { createWorkspace } from '../services/workspace-service';
 import type { CreateWorkspaceSchema } from '../schemas/workspace-schemas';
 import type { Workspace } from '../types/workspace-types';
 

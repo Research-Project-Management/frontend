@@ -7,10 +7,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
-import { Textarea } from "@/shared/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { SmilePlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/shared/lib/utils";

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -24,7 +24,7 @@ import {
   useAddReply,
   useDeleteReply,
 } from "@/features/comments/services/comment.services";
-import type { PageComment, CommentReply } from "@/features/pages/types/page.types";
+import type { PageComment, CommentReply } from "@/features/workspaces/projects/types/page.types";
 import { usePageContext } from "@/features/editor/components/PageContext";
 import { useUserStore } from '@/features/profile';
 import { useWorkspaceActionsStore } from '@/features/workspaces';

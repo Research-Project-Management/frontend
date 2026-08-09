@@ -4,11 +4,11 @@ import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { Search, X, Check, ChevronRight } from "lucide-react";
 import { useProjectTasks, useBulkUpdateTasks } from "@/features/tasks/services/task.services";
-import { Checkbox } from "@/shared/components/ui/checkbox";
+import { Checkbox } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import { TaskDialog } from "../task_dialog/CardDetail";

@@ -7,8 +7,8 @@ import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { cn } from '@/shared/lib/utils';
-import { Button, Input, Label } from '@/shared/components/ui-version';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Button, Input, Label } from '@/shared/components/ui';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
 import { useCreateWorkspace } from '../hooks/use-workspace';
 import { createWorkspaceSchema, type CreateWorkspaceSchema } from '../schemas/workspace-schemas';
 import { useAuth } from '@/features/auth';

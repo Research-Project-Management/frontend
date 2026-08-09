@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { ChevronDown, Plus } from "lucide-react";
 import {
@@ -9,13 +9,13 @@ import {
   type SetStateAction,
 } from "react";
 import { parseISO, isValid, format } from "date-fns";
-import { Button } from "@/shared/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+import { Button } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
 import { useParams } from "next/navigation";
 import { useAuth } from '@/features/auth';
 import type {

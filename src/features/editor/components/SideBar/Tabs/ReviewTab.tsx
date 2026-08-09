@@ -23,10 +23,10 @@ import {
   useAddReply,
   useDeleteReply,
 } from "@/features/comments/services/comment.services";
-import type { PageComment, CommentReply } from "@/features/pages/types/page.types";
+import type { PageComment, CommentReply } from "@/features/workspaces/projects/types/page.types";
 import { usePageContext } from "../../PageContext";
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useWorkspaceActionsStore } from "@/features/workspaces/store/workspace.store";
+import { useWorkspaceActionsStore } from '@/features/workspaces';
 import { cn } from "@/shared/lib/utils";
 import {
   SidebarEmptyState,

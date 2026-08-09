@@ -1,0 +1,322 @@
+'use client';
+
+import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useProjectOverview } from "@/features/workspaces";
+import { useDocumentTitle } from "@/features/workspaces";
+import {
+  HardDrive,
+  CalendarDays,
+  ChartBarBig,
+  CheckSquare,
+  Users,
+} from "lucide-react";
+import { Skeleton } from "@/shared/components/ui";
+import { Progress } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { memo } from "react";
+import Topbar from "./Topbar";
+import ProjectRecentActivity from "./RecentActivity";
+
+function getRoleName(member?: { role?: string; user?: any } | string): string {
+  const role = typeof member === "string" ? member : member?.role;
+  if (!role) return "Member";
+  switch (role.toLowerCase()) {
+    case "owner": return "Owner";
+    case "admin": return "Admin";
+    case "member": return "Member";
+    case "viewer": return "Viewer";
+    default: return role;
+  }
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 2);
+}
+
+function UserAvatar({
+  name,
+  avatar,
+  className,
+  fallbackClassName,
+}: {
+  name: string;
+  avatar?: string;
+  className: string;
+  fallbackClassName?: string;
+}) {
+  const [hasImageError, setHasImageError] = useState(false);
+  const avatarValue = avatar?.trim() || "";
+  const isImageAvatar =
+    !hasImageError &&
+    (avatarValue.startsWith("http://") ||
+      avatarValue.startsWith("https://") ||
+      avatarValue.startsWith("/") ||
+      avatarValue.startsWith("data:image/"));
+
+  return (
+    <Avatar className={className}>
+      {isImageAvatar ? (
+        <AvatarImage
+          src={avatarValue}
+          alt={name}
+          onError={() => setHasImageError(true)}
+        />
+      ) : null}
+      <AvatarFallback className={fallbackClassName}>
+        {avatarValue && !isImageAvatar ? avatarValue : getInitials(name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+const Section = memo(
+  ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="w-full">
+      <h2 className="text-muted-foreground font-semibold mb-4">{title}</h2>
+      <div className="relative">{children}</div>
+    </div>
+  ),
+);
+
+Section.displayName = "Section";
+
+export default function ProjectOverview() {
+  const { projectId, workspaceId } = useParams() as { projectId: string, workspaceId: string };
+  const router = useRouter();
+  const { data, isLoading, error } = useProjectOverview(projectId!);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useDocumentTitle(
+    data?.project?.name ? `Overview - ${data.project.name}` : "Overview"
+  );
+
+  const formatSize = useMemo(
+    () => (bytes: number) => {
+      if (bytes === 0) return "0 B";
+      const k = 1024;
+      const sizes = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    },
+    [],
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+        <div className="flex justify-between items-start">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-md" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="p-4 rounded-xl bg-secondary/20 space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-8 rounded-lg" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-7 w-12" />
+              <Skeleton className="h-1.5 w-full rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
+          <div className="col-span-4 space-y-4">
+            <Skeleton className="h-5 w-24" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 p-3">
+                <Skeleton className="size-10 rounded-lg" />
+                <div className="space-y-1 flex-1">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="col-span-3 space-y-4">
+            <Skeleton className="h-5 w-28" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-2">
+                <Skeleton className="size-9 rounded-full" />
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (error || !data)
+    return <div className="p-6 text-destructive">Failed to load overview</div>;
+
+  const { project, stats } = data;
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <Topbar
+        project={{ name: project.name, avatar: project.avatar }}
+        title="Overview"
+        Icon={ChartBarBig}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+      <div className="flex-1 p-6 space-y-10 overflow-y-auto">
+        {project.description && (
+          <p className="text-muted-foreground max-w-3xl -mb-4">
+            {project.description}
+          </p>
+        )}
+
+      {/* Stats Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div
+          onClick={() => router.push(`/${workspaceId}/projects/${projectId}/tasks`)}
+          className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <CheckSquare className="h-4 w-4" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">
+              Total Tasks
+            </span>
+          </div>
+          <div className="text-2xl font-bold pl-1">{stats.tasks.total}</div>
+          <div className="mt-3 flex items-center gap-2">
+            <Progress
+              value={
+                stats.tasks.total > 0
+                  ? (stats.tasks.completed / stats.tasks.total) * 100
+                  : 0
+              }
+              className="h-1.5 flex-1"
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {stats.tasks.completed} done
+            </span>
+          </div>
+        </div>
+
+        <div
+          onClick={() => router.push(`/${workspaceId}/projects/${projectId}/settings/team`)}
+          className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <Users className="h-4 w-4" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">
+              Team
+            </span>
+          </div>
+          <div className="text-2xl font-bold pl-1">{stats.members}</div>
+          <div className="flex -space-x-2 mt-3 overflow-hidden pl-1">
+            {project.members.slice(0, 5).map((m, i) => (
+              <UserAvatar
+                key={i}
+                name={m.user.name}
+                avatar={m.user.avatar}
+                className="inline-block h-6 w-6 border-2 border-background"
+                fallbackClassName="text-[10px]"
+              />
+            ))}
+          </div>
+        </div>
+
+        <div
+          onClick={() => router.push(`/${workspaceId}/projects/${projectId}/storage`)}
+          className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/20 hover:bg-secondary/40 transition-all duration-200 cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <HardDrive className="h-4 w-4" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">
+              Storage
+            </span>
+          </div>
+          <div className="text-2xl font-bold pl-1">{stats.files.count}</div>
+          <p className="text-xs text-muted-foreground mt-1 pl-1">
+            {formatSize(stats.files.totalSize)} used
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-primary/10 transition-colors">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+              <CalendarDays className="h-4 w-4" />
+            </div>
+            <span className="text-sm font-medium text-muted-foreground">
+              Age
+            </span>
+          </div>
+          <div className="text-2xl font-bold pl-1">
+            {Math.ceil(
+              (Date.now() - new Date(project.createdAt).getTime()) /
+                (1000 * 60 * 60 * 24),
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 pl-1">Days active</p>
+        </div>
+      </div>
+
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
+        {/* Project Activity */}
+        <div className="col-span-4">
+          <Section title="Recent Activity">
+            <ProjectRecentActivity
+              projectId={projectId!}
+              workspaceId={workspaceId!}
+              recentFiles={stats.files.recent}
+            />
+          </Section>
+        </div>
+
+        {/* Team List */}
+        <div className="col-span-3">
+          <Section title="Team Members">
+            <div className="grid gap-2">
+              {project.members.map((member) => {
+                const roleName = getRoleName(member);
+
+                return (
+                  <div
+                    key={member.user._id}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-secondary/50 transition-all duration-200 group"
+                  >
+                    <UserAvatar
+                      name={member.user.name}
+                      avatar={member.user.avatar}
+                      className="h-9 w-9 border border-border/50"
+                    />
+                    <div>
+                      <p className="text-sm font-medium leading-none group-hover:text-primary transition-colors">
+                        {member.user.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground capitalize mt-1">
+                        {roleName}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        </div>
+      </div>
+    </div>
+  </div>
+  );
+}

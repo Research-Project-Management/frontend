@@ -13,19 +13,19 @@ import {
   FolderOpen,
   ChevronDown,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import type { Column } from "@/features/tasks/types/task.types";
 import { resolveTaskColumnColor, resolveTaskColumnId } from "@/features/tasks/types/task.types";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 
 type ViewMode = "board" | "list" | "calendar";
 type AssigneeFilterOption = {

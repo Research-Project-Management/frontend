@@ -28,21 +28,21 @@ import {
   subMonths,
   subDays,
 } from "date-fns";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { CardUI } from "../Card";
 import {
   Dialog,
   DialogContent,
-} from "@/shared/components/ui/dialog";
-import { Checkbox } from "@/shared/components/ui/checkbox";
+} from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
 import type { Column, Task } from "@/features/tasks/types/task.types";
 import { resolveTaskColumnId, resolveTaskColumnColor } from "@/features/tasks/types/task.types";
 import {

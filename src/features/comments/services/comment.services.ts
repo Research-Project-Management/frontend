@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { PageComment } from "@/features/pages/types/page.types";
+import type { PageComment } from "@/features/workspaces/projects/types/page.types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 
 

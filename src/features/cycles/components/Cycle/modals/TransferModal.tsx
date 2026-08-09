@@ -1,14 +1,14 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { Search, ArrowRightLeft, FolderKanban, PlayCircle, CircleDashed, AlertCircle, X, ChevronRight } from "lucide-react";
 import { useBulkUpdateTasks } from '@/features/tasks';
-import { Checkbox } from "@/shared/components/ui/checkbox";
+import { Checkbox } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import { TaskDialog } from "@/features/tasks/components/Task/task_dialog/CardDetail";
@@ -19,7 +19,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/components/ui/select";
+} from "@/shared/components/ui";
 
 interface TransferModalProps {
   open: boolean;

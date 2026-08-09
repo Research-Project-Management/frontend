@@ -8,14 +8,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
+} from "@/shared/components/ui";
 import { Check, CheckSquare, ExternalLink, MoreHorizontal, Paperclip, X } from "lucide-react";
 
 import type {
@@ -29,7 +29,7 @@ import type {
   TaskActivityLog,
 } from "@/features/tasks/types/task.types";
 import { resolveTaskColumnId } from "@/features/tasks/types/task.types";
-import type { Project } from "@/features/projects/services/project.services";
+import type { Project } from "@/features/workspaces/services/project.services";
 import {
   resolveTaskAssigneeId,
   useCreateTaskComment,

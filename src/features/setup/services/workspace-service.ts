@@ -1,29 +1,25 @@
 /**
- * workspace-service.ts
+ * setup/services/workspace-service.ts
  *
- * Raw network layer for the setup/workspace domain.
- * Only exposes operations that are unique to onboarding.
+ * Onboarding-specific workspace operations.
  *
- * NOTE: `updateWorkspace` and `deleteWorkspace` mutations with optimistic-update
- * and cache-sync logic already exist in `@/features/workspaces`.
- * Import `useUpdateWorkspace` / `useDeleteWorkspace` from there instead.
+ * NOTE:
+ * - `createWorkspace` → defined in @/features/workspaces (shell), import from there.
+ * - `updateWorkspace` / `deleteWorkspace` → use hooks `useUpdateWorkspace` / `useDeleteWorkspace`
+ *    from @/features/workspaces — they include optimistic update + cache sync.
  */
 
-import { apiPost, apiPatch } from '@/shared/lib/api';
-import type { CreateWorkspaceSchema, UpdateWorkspaceSchema } from '../schemas/workspace-schemas';
+import { apiPatch } from '@/shared/lib/api';
+import type { UpdateWorkspaceSchema } from '../schemas/workspace-schemas';
 import type { Workspace } from '../types/workspace-types';
-
-// ─── createWorkspace ──────────────────────────────────────────────────────────
-
-/** Creates a new workspace and returns the created workspace object. */
-export async function createWorkspace(data: CreateWorkspaceSchema): Promise<Workspace> {
-  const json = await apiPost<{ workspace: Workspace }>('/api/workspace', data);
-  return json.workspace;
-}
 
 // ─── updateWorkspace ──────────────────────────────────────────────────────────
 
-/** Partially updates a workspace by ID. Prefer `useUpdateWorkspace` hook for cache-aware mutations. */
+/**
+ * Partially updates a workspace by ID.
+ * Prefer `useUpdateWorkspace` hook from @/features/workspaces for cache-aware mutations.
+ * Use this only for one-off non-reactive updates (e.g., onboarding step).
+ */
 export async function updateWorkspace(id: string, data: UpdateWorkspaceSchema): Promise<Workspace> {
   const json = await apiPatch<{ workspace: Workspace }>(`/api/workspace/${id}`, data);
   return json.workspace;

@@ -22,22 +22,22 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { Button } from "@/shared/components/ui/button";
-import { Checkbox } from "@/shared/components/ui/checkbox";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/components/ui/select";
+} from "@/shared/components/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
 import type { TaskRecurrence, TaskReminder } from "@/features/tasks/types/task.types";
 
 const DEFAULT_DUE_TIME = "00:00";
@@ -352,13 +352,24 @@ export function ActionDateSection({
                     (activeInput === "start" && isSameDay(day, tempStartDate || 0)) ||
                     (activeInput === "end" && isSameDay(day, tempEndDate || 0));
 
+                  const isTodayUnselected = isToday(day) && !isSelectedStart && !isSelectedEnd;
+                  const dayShape = isTodayUnselected ? 'rounded-none' : 'rounded-sm';
+                  const dayInMonth = !isSameMonth(day, currentMonth)
+                    ? 'text-muted-foreground/30'
+                    : 'text-foreground hover:bg-zinc-100 cursor-pointer';
+                  const dayRange = isInRange ? 'bg-zinc-100 text-foreground' : '';
+                  const daySelected = (isSelectedStart || isSelectedEnd) ? 'bg-zinc-200 text-foreground font-bold' : '';
+                  const dayActive = isActive ? 'ring-2 ring-inset ring-primary shadow-sm' : '';
+                  const dayToday = isTodayUnselected ? 'text-foreground border-b-2 border-primary font-bold' : '';
+                  const dayClassName = `h-9 text-sm flex items-center justify-center transition-all relative ${dayShape} ${dayInMonth} ${dayRange} ${daySelected} ${dayActive} ${dayToday}`;
+
                   return (
                     <button
                       key={i}
                       onClick={() => handleDateClick(day)}
-                      className={`h-9 text-sm flex items-center justify-center rounded-sm transition-all relative ${!isSameMonth(day, currentMonth) ? "text-muted-foreground/30" : "text-foreground hover:bg-zinc-100 cursor-pointer"} ${isInRange ? "bg-zinc-100 text-foreground" : ""} ${isSelectedStart || isSelectedEnd ? "bg-zinc-200 text-foreground font-bold" : ""} ${isActive ? "ring-2 ring-inset ring-primary shadow-sm" : ""} ${isToday(day) && !isSelectedStart && !isSelectedEnd ? "text-foreground border-b-2 border-primary rounded-none font-bold" : ""}`}
+                      className={dayClassName}
                     >
-                      {format(day, "d")}
+                      {format(day, 'd')}
                     </button>
                   );
                 })}

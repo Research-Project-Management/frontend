@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useMemo, useRef } from "react";
 import { LabelsDisplay } from "../components/LabelsDisplay";
@@ -8,14 +8,14 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/components/ui/select";
+} from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
   DialogFooter
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -144,7 +144,7 @@ export const CycleModal = ({
             </div>
           )}
 
-          {/* Details row â€” Phase / Labels / Dates all side-by-side */}
+          {/* Details row — Phase / Labels / Dates all side-by-side */}
           <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
             {/* Phase */}
             <div className="flex shrink-0 flex-col gap-1.5">

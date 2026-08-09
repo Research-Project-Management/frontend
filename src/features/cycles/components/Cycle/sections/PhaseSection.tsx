@@ -5,10 +5,10 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger
-} from "@/shared/components/ui/popover";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 import {
   ClipboardList,
   Plus,

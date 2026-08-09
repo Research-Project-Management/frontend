@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
@@ -21,11 +21,11 @@ import {
   useDeletePageVersion,
   useProjectHistory,
   useRestoreProjectToEvent,
-} from "@/features/pages/services/page.services";
+} from "@/features/workspaces";
 import type { PageEvent } from "@/features/pages/types/page.types";
 import { usePageContext } from "../../PageContext";
 import { cn } from "@/shared/lib/utils";
-import { Input } from "@/shared/components/ui/input";
+import { Input } from "@/shared/components/ui";
 import {
   SidebarEmptyState,
   SidebarHeader,

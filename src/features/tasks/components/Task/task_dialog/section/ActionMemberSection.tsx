@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { UserPlus, X } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
 
 type ActionMemberSectionProps = {
   actionBtnClass?: string;

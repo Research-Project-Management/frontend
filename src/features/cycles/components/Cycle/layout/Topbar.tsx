@@ -2,11 +2,11 @@
 
 import { useState, useRef } from "react";
 import { Search, Filter, Plus, X, Check, ChevronDown, ChevronUp } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { addWeeks, addMonths, startOfDay, format } from "date-fns";
 import { DoubleCalendarModal } from "../modals/DateRangeFilterModal";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
 interface TopBarProps {

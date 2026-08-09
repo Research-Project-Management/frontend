@@ -2,12 +2,12 @@
 
 import { useRef, useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { Paperclip } from "lucide-react";
-import { useUpload } from '@/features/storage';
+import { useUpload } from '@/features/workspaces';
 import {
   createTaskAttachmentFromUpload,
   type TaskAttachment,
 } from "@/features/tasks/services/task.services";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 
 type ActionAttachmentSectionProps = {
   actionBtnClass?: string;

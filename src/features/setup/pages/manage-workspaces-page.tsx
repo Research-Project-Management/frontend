@@ -14,9 +14,9 @@ import {
   Input,
   Label,
   Spinner,
-} from '@/shared/components/ui-version';
+} from '@/shared/components/ui';
 import { useWorkspaces } from '@/features/workspaces';
-import { DeleteModal } from '@/features/settings';
+import { DeleteModal } from '@/features/workspaces';
 
 import { useEditWorkspace, useDeleteWorkspace } from '../hooks/use-workspace';
 import type { Workspace } from '../types/workspace-types';

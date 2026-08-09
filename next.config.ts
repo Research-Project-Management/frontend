@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
+  },
   // Webpack config to support SVG as React components and Monaco Editor / PDF.js
   webpack: (config, { isServer }) => {
     // Support SVG as React components (replaces vite-plugin-svgr)
@@ -29,28 +37,12 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
     optimizePackageImports: [
       'lucide-react',
       '@heroicons/react',
       'framer-motion',
       'date-fns',
       '@radix-ui/react-icons',
-      '@/features/projects',
-      '@/features/workspaces',
-      '@/features/settings',
-      '@/features/tasks',
-      '@/features/cycles',
-      '@/features/stickies',
-      '@/features/storage',
-      '@/features/library',
     ],
   },
   eslint: {

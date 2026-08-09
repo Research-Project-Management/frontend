@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import TopBar from "./TopBar";
-import { Topbar } from '@/features/projects';
+import { Topbar } from '@/features/workspaces';
 import BoardView from "./views/BoardView";
 import ListView from "./views/ListView";
 import CalendarView from "./views/CalendarView";
@@ -23,7 +23,7 @@ import {
   useUpdateColumn,
 } from "@/features/tasks/services/task.services";
 import { useLabelsQuery } from '@/features/labels';
-import { useProjectDetails } from '@/features/projects';
+import { useProjectDetails } from '@/features/workspaces';
 import { useProjectCycles } from '@/features/cycles';
 import { useProjects } from '@/features/workspaces';
 import { useDocumentTitle } from "@/features/tasks/hooks/useDocumentTitle";
@@ -33,7 +33,7 @@ import type {
   TaskMutationInput,
 } from "@/features/tasks/types/task.types";
 import { resolveTaskColumnId } from "@/features/tasks/types/task.types";
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Skeleton } from "@/shared/components/ui";
 import { toast } from "sonner";
 import { useAuth } from '@/features/auth';
 import { KanbanSquare, ChevronDown, Check, Search, ChevronRight, RotateCcw, Plus, Info, ArrowRightLeft } from "lucide-react";
@@ -42,7 +42,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import { useRouter } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
 

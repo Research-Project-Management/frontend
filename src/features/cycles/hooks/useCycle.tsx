@@ -8,7 +8,7 @@ import {
   useDeleteCycle 
 } from "@/features/cycles/services/cycle.services";
 import { useLabelsQuery } from '@/features/labels';
-import { useProjectDetails } from '@/features/projects';
+import { useProjectDetails } from '@/features/workspaces';
 import type { Cycle } from "@/features/tasks/types/task.types";
 
 export type DerivedStatus = "active" | "planned" | "completed";

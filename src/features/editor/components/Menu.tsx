@@ -11,7 +11,7 @@ import {
   MenubarSub,
   MenubarSubTrigger,
   MenubarSubContent,
-} from "@/shared/components/ui/menubar";
+} from "@/shared/components/ui";
 import { usePageContext } from "./PageContext";
 import {
   useEditorSettingsStore,

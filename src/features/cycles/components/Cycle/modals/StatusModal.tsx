@@ -6,8 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { PlayCircle, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 

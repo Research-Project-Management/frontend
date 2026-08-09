@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect } from "react";
 import { toast } from "sonner";
 import {
@@ -7,7 +7,7 @@ import {
   type LaTeXEngine,
 } from "@/features/editor/store/editor-settings.store";
 import { usePageContext } from "./PageContext";
-import { usePageFiles, useSetPageMainFile } from "@/features/pages/services/page.services";
+import { usePageFiles, useSetPageMainFile } from "@/features/workspaces";
 import {
   X,
   Cpu,
@@ -24,9 +24,9 @@ import {
   Plus,
   ChevronDown,
 } from "lucide-react";
-import { Separator } from "@/shared/components/ui/separator";
+import { Separator } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui";
 
 // ΓöÇΓöÇ Setting row components ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 

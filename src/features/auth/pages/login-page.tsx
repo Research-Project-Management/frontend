@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { useAuth, useLogin, loginSchema, type LoginSchema } from '@/features/auth';
-import { Button, Input, Label, Spinner } from '@/shared/components/ui-version';
+import { Button, Input, Label, Spinner } from '@/shared/components/ui';
 
 const LoginPage = () => {
   const router = useRouter();

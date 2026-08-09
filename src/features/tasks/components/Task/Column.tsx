@@ -7,13 +7,13 @@ import {
 } from "@dnd-kit/sortable";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, MoreHorizontal, Trash2, Pencil, Minimize2, Maximize2 } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import { Card, type TaskCardLabel } from "./Card";
 import type { Task, Column as ColumnType } from "@/features/tasks/types/task.types";
 import {

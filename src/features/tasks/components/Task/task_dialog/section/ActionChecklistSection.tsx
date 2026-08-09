@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { CheckSquare, X } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
 
 type ActionChecklistSectionProps = {
   onAddChecklist: (title: string) => void;

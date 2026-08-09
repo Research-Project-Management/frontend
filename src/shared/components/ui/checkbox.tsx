@@ -1,9 +1,10 @@
-import * as React from "react"
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
-import { CheckIcon } from "lucide-react"
-import { motion } from "framer-motion"
+'use client';
 
-import { cn } from "@/shared/lib/utils"
+import * as React from 'react';
+import { CheckIcon } from 'lucide-react';
+import { Checkbox as CheckboxPrimitive } from 'radix-ui';
+
+import { cn } from '@/shared/lib/utils';
 
 function Checkbox({
   className,
@@ -11,27 +12,21 @@ function Checkbox({
 }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
   return (
     <CheckboxPrimitive.Root
-      data-slot="checkbox"
+      data-slot='checkbox'
       className={cn(
-        "peer border-input dark:bg-input/30 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:bg-primary data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        'peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs transition-shadow outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30 dark:aria-invalid:ring-destructive/40 dark:data-[state=checked]:bg-primary',
         className
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator
-        asChild
-        className="grid place-content-center text-current"
+        data-slot='checkbox-indicator'
+        className='grid place-content-center text-current transition-none'
       >
-        <motion.span
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        >
-          <CheckIcon className="size-3.5" />
-        </motion.span>
+        <CheckIcon className='size-3.5' />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
-  )
+  );
 }
 
-export { Checkbox }
+export { Checkbox };

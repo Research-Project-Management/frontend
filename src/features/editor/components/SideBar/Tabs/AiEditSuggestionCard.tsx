@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 /**
  * AiEditSuggestionCard.tsx
  *
@@ -9,7 +9,7 @@
 import React, { useState } from "react";
 import { Check, X, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import type { AiEditResponse, AiEditOperation } from "@/features/editor/types/ai-edit-types";
-import { renderMarkdown } from "@/features/chat-ai/components/ai/layout/renderMarkdown";
+import { renderMarkdown } from "@/features/workspaces";
 
 // ΓöÇΓöÇ Diff viewer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
@@ -94,7 +94,7 @@ export default function AiEditSuggestionCard({
 }: AiEditSuggestionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const {
-    explanation = "Flux AI did not return any editable changes.",
+    explanation = "AI did not return any editable changes.",
     intent,
   } = editResponse ?? {};
   const edits = Array.isArray(editResponse?.edits) ? editResponse.edits : [];
@@ -109,7 +109,7 @@ export default function AiEditSuggestionCard({
       {/* Explanation row */}
       <div className="px-3.5 pt-3 pb-2.5 border-b border-border/35">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-semibold text-primary/80 uppercase tracking-wide">Flux AI</span>
+          <span className="text-[10px] font-semibold text-primary/80 uppercase tracking-wide">AI</span>
           {editCount > 1 && (
             <span className="rounded-full border border-primary/25 bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">
               {editCount} changes

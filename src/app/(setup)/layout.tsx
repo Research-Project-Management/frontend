@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Loading from '@/shared/components/ui/Loading';
+import { Skeleton } from '@/shared/components/ui';
 import { useAuth } from '@/features/auth';
 
 export default function WorkspacesLayout({
@@ -12,7 +12,7 @@ export default function WorkspacesLayout({
   const { isLoading } = useAuth();
 
   if (isLoading) {
-    return <Loading />;
+    return <Skeleton className="h-48 w-full rounded-xl" />;
   }
 
   return <>{children}</>;

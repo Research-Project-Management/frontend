@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 /**
  * ChatAiTab ΓÇö Full-featured AI assistant in the sidebar.
  * Replaces the old editor-side AIChatPanel.
@@ -16,9 +16,9 @@ import { useParams } from "next/navigation";
 import {
   getPageChat, streamEditorChat, appendChatMessages, createChatSession,
   clearPageChat, compilePreview, getChatSession, type PreviewCompileResult,
-} from "@/features/chat-ai/services/chat-ai.services";
+} from "@/features/workspaces";
 import type { ChatMessage, ChatSession } from "@/features/chat-ai/types/chat.types";
-import { useWorkspaceActionsStore } from "@/features/workspaces/store/workspace.store";
+import { useWorkspaceActionsStore } from "@/features/workspaces";
 import { usePageContext } from "../../PageContext";
 import { useCompileStore } from "@/features/editor/store/compile.store";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
@@ -43,8 +43,8 @@ import {
   tryLocalCommandEdit,
 } from "@/features/editor/services/ai-edit-helpers";
 import AiEditSuggestionCard from "./AiEditSuggestionCard";
-import ChatHistoryModal from "@/features/chat-ai/components/ai/layout/ChatHistoryModal";
-import { renderMarkdown } from "@/features/chat-ai/components/ai/layout/renderMarkdown";
+import { ChatHistoryModal } from "@/features/workspaces";
+import { renderMarkdown } from "@/features/workspaces";
 
 function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   if (!value || typeof value !== "object") return false;
@@ -409,7 +409,7 @@ function isEditorActionMessage(content: string): boolean {
 
 type AiEditStatus = "applied" | "dismissed";
 
-const AI_EDIT_STATUS_RE = /^<!-- flux-ai-edit-status:([a-z0-9]+):(applied|dismissed) -->$/;
+const AI_EDIT_STATUS_RE = /^<!-- ai-edit-status:([a-z0-9]+):(applied|dismissed) -->$/;
 
 function hashAiEditContent(content: string): string {
   let hash = 5381;
@@ -422,7 +422,7 @@ function hashAiEditContent(content: string): string {
 function makeAiEditStatusMessage(hash: string, status: AiEditStatus): ChatMessage {
   return {
     role: "assistant",
-    content: `<!-- flux-ai-edit-status:${hash}:${status} -->`,
+    content: `<!-- ai-edit-status:${hash}:${status} -->`,
   };
 }
 
@@ -1546,8 +1546,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         {/* ΓöÇΓöÇ Header ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
           <div className="flex items-center gap-2">
-            <img src="/Chat.svg" alt="Flux AI" className="size-4" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Flux AI</span>
+            <img src="/Chat.svg" alt="AI" className="size-4" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI</span>
           </div>
           <div className="flex items-center gap-0.5">
             <button
@@ -1652,8 +1652,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             <div className="h-full flex flex-col items-center justify-center px-4 gap-6">
               <div className="flex flex-col items-center gap-2 text-center">
                 <div className="flex group flex-col items-center">
-                  <img src="/Chat.svg" alt="Flux AI" className="size-10 mb-2 group-hover:rotate-180 transition-transform duration-1000" />
-                  <p className="text-sm font-semibold">Flux AI Editor</p>
+                  <img src="/Chat.svg" alt="AI" className="size-10 mb-2 group-hover:rotate-180 transition-transform duration-1000" />
+                  <p className="text-sm font-semibold">AI Editor</p>
                   <p className="text-[11px] text-muted-foreground/60 mt-0.5">Your LaTeX co-pilot. Select code, then ask.</p>
                 </div>
               </div>
@@ -2010,7 +2010,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                 if (e.key === "Escape" && slashMenuOpen) { setSlashMenuOpen(false); return; }
                 if (e.key === "Enter" && !e.shiftKey && !slashMenuOpen) { e.preventDefault(); handleSend(); }
               }}
-              placeholder={activeCommand ? `${activeCommand.label}: describe what you needΓÇª` : "Ask Flux AIΓÇª or type / for commands"}
+              placeholder={activeCommand ? `${activeCommand.label}: describe what you needΓÇª` : "Ask AIΓÇª or type / for commands"}
               rows={1}
               className="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none placeholder:text-muted-foreground/50 max-h-[140px] leading-relaxed"
               disabled={isLoading}
@@ -2047,7 +2047,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         activeChatId={chatId}
         onSelectChat={handleSelectHistoryChat}
         title="Editor Chat History"
-        description="Open previous Flux AI conversations without keeping a second history panel in the editor."
+        description="Open previous AI conversations without keeping a second history panel in the editor."
       />
     </>
   );

@@ -4,14 +4,14 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/components/ui/select";
+} from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { Button } from "@/shared/components/ui/button";
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { MoreHorizontal, X, Copy, Trash2, UserMinus, UserPlus, RotateCcw } from "lucide-react";
 import { resolveTaskColumnId, type Column } from "@/features/tasks/types/task.types";
 

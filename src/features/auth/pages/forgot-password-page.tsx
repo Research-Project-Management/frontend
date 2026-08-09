@@ -10,7 +10,7 @@ import {
   forgotPasswordSchema,
   type ForgotPasswordSchema,
 } from '@/features/auth';
-import { Button, Input, Label } from '@/shared/components/ui-version';
+import { Button, Input, Label } from '@/shared/components/ui';
 
 const ForgotPasswordPage = () => {
   const { sendResetLink, isPending, isSubmitted, error, handleTryAgain } =

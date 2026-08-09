@@ -28,15 +28,15 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
+} from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/shared/components/ui/dropdown-menu";
-import { Separator } from "@/shared/components/ui/separator";
+} from "@/shared/components/ui";
+import { Separator } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL as API_URL } from "@/shared/constants";
 import { parseCompileErrors } from "@/features/editor/services/latex-utils";
@@ -45,8 +45,8 @@ import { useEditorSettingsStore, type LaTeXEngine } from "@/features/editor/stor
 import { useCompileStore } from "@/features/editor/store/compile.store";
 
 import { toast } from "sonner";
-import { useUpdatePageThumbnail, usePageFiles } from '@/features/pages';
-import type { Page as ProjectPage } from "@/features/pages/types/page.types";
+import { useUpdatePageThumbnail, usePageFiles } from '@/features/workspaces/projects';
+import type { Page as ProjectPage } from "@/features/workspaces/projects/types/page.types";
 
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -266,12 +266,19 @@ function LogPanel({ log, onClose }: { log: string; onClose: () => void }) {
   const badgeClass = (key: LogTab) => {
     const n = countOf(key);
     if (n === null) return "";
-    if (key === "errors")
-      return n > 0 ? "bg-red-500 text-white" : "bg-zinc-700 text-zinc-400";
-    if (key === "warnings")
-      return n > 0 ? "bg-amber-500 text-white" : "bg-zinc-700 text-zinc-400";
-    if (key === "badboxes")
-      return n > 0 ? "bg-blue-500 text-white" : "bg-zinc-700 text-zinc-400";
+    const inactive = 'bg-zinc-700 text-zinc-400';
+    if (key === "errors") {
+      if (n > 0) return 'bg-red-500 text-white';
+      return inactive;
+    }
+    if (key === "warnings") {
+      if (n > 0) return 'bg-amber-500 text-white';
+      return inactive;
+    }
+    if (key === "badboxes") {
+      if (n > 0) return 'bg-blue-500 text-white';
+      return inactive;
+    }
     return "";
   };
 

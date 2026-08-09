@@ -17,8 +17,7 @@ import {
 } from "lucide-react";
 import type { StorageItem } from "../types";
 import { getFileType, formatFileSize, formatDate } from "../pages/SharedComponents";
-import { useBlobUrl, downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
-import { resolveFileUrl } from "@/shared/lib/api";
+import { useBlobUrl, downloadFileAsBlob, resolveFileUrl } from "@/features/storage/hooks/useBlobUrl";
 
 interface FilePreviewModalProps {
   item: StorageItem | null;

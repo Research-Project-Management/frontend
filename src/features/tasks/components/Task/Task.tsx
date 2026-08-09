@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
@@ -26,7 +26,7 @@ import { useLabelsQuery } from '@/features/labels';
 import { useProjectDetails } from '@/features/projects';
 import { useProjectCycles } from '@/features/cycles';
 import { useProjects } from '@/features/workspaces';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/tasks/hooks/useDocumentTitle";
 import type {
   Task as TaskType,
   Column,
@@ -59,13 +59,14 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   const { workspaceId, projectId } = useParams() as { workspaceId: string, projectId: string };
   const { data, isLoading } = useProjectTasks(projectId!, cycleId);
   const { data: projectData } = useProjectDetails(projectId!);
+  const pData = projectData as any;
   const { data: cyclesData } = useProjectCycles(projectId!);
   const { data: taskLabels = [] } = useLabelsQuery(workspaceId || "", "task", projectId);
   const currentCycle = cyclesData?.cycles.find(c => c._id === cycleId);
 
   const pageTitle = cycleId && currentCycle
-    ? `${currentCycle.name} - ${projectData?.project?.name || "Project"}`
-    : `Tasks${projectData?.project?.name ? ` - ${projectData.project.name}` : ""}`;
+    ? `${currentCycle.name} - ${pData?.project?.name || "Project"}`
+    : `Tasks${pData?.project?.name ? ` - ${pData.project.name}` : ""}`;
 
   useDocumentTitle(pageTitle);
 
@@ -99,7 +100,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
 
   const allTasks = data?.tasks ?? [];
   const columns = data?.columns ?? [];
-  const members = projectData?.members ?? [];
+  const members = pData?.members ?? [];
   const assigneeFilterOptions = useMemo<AssigneeFilterOption[]>(() => {
     const byId = new Map<string, AssigneeFilterOption>();
     let hasUnassignedTask = false;
@@ -501,7 +502,7 @@ export default function Task({ cycleId, isReadOnly }: { cycleId?: string, isRead
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full overflow-hidden">
       <Topbar
-        project={projectData?.project ? { name: projectData.project.name, avatar: projectData.project.avatar } : undefined}
+        project={pData?.project ? { name: pData.project.name, avatar: pData.project.avatar } : undefined}
         title={cycleId && currentCycle ? "Cycles" : "Tasks"}
         onTitleClick={cycleId ? () => router.push(`/${workspaceId}/projects/${projectId}/cycles`) : undefined}
         Icon={cycleId ? RotateCcw : KanbanSquare}

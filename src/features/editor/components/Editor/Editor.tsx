@@ -46,7 +46,7 @@ import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
 import { cn } from "@/shared/lib/utils";
-import { FluxIcon } from "@/shared/components/shared";
+import { FluxLogo as FluxIcon } from "@/shared/components/ui/FluxLogo";
 import EditorToolbar from "./EditorToolbar";
 
 
@@ -183,6 +183,7 @@ export default function Editor({ page }: EditorProps) {
   const { markDirty } = useCompileStore();
   const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useEditorSettingsStore();
   const [content, setContent] = useState(page.content || "");
+  const [editorMounted, setEditorMounted] = useState(false);
   // Tracks the current page._id to detect tab switches
   const activePageIdRef = useRef(page._id);
   const debouncedContent = useDebounce(content, 1000);

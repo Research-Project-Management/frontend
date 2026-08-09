@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useCallback, useMemo } from "react";
 import { cn } from "@/shared/lib/utils";
@@ -35,7 +35,7 @@ import Stickies from "./Sections/Stickies";
 import { useUserStore } from '@/features/profile';
 import { format } from "date-fns";
 import { useAuth } from '@/features/auth';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/projects/hooks/useDocumentTitle";
 import { useWorkspace } from "@/features/workspaces";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 

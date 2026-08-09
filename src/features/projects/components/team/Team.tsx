@@ -22,7 +22,30 @@ import {
 } from "lucide-react";
 import Loading from "@/shared/components/ui/Loading";
 import { cn } from "@/shared/lib/utils";
-import { getRoleName, getRoleColor } from "@/shared/lib/roles";
+
+function getRoleName(roleOrMember?: string | { role?: string }): string {
+  const role = typeof roleOrMember === 'string' ? roleOrMember : roleOrMember?.role;
+  if (!role) return 'Member';
+  switch (role.toLowerCase()) {
+    case 'owner': return 'Owner';
+    case 'admin': return 'Admin';
+    case 'member': return 'Member';
+    case 'viewer': return 'Viewer';
+    default: return role;
+  }
+}
+
+function getRoleColor(roleOrMember?: string | { role?: string }): string {
+  const role = typeof roleOrMember === 'string' ? roleOrMember : roleOrMember?.role;
+  if (!role) return 'bg-zinc-100 text-zinc-700';
+  switch (role.toLowerCase()) {
+    case 'owner': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    case 'admin': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
+    case 'member': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+    case 'viewer': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400';
+    default: return 'bg-zinc-100 text-zinc-700';
+  }
+}
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
@@ -52,6 +75,7 @@ export default function ProjectTeam() {
   const { data: projectData, isLoading: isProjectLoading } = useProjectDetails(
     projectId!,
   );
+  const pData = projectData as any;
   const { workspace, yourRole: workspaceRole, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
@@ -60,7 +84,7 @@ export default function ProjectTeam() {
 
   const project = useMemo(() => {
     // 1. Try data from direct fetch
-    const p = (projectData?.project || projectData) as Project;
+    const p = (pData?.project || pData) as Project;
     if (p && p._id) return p;
 
     // 2. Fallback to projects list from workspace
@@ -68,9 +92,9 @@ export default function ProjectTeam() {
       return projects.find((p: any) => p._id === projectId || p.url === projectId || p.name === projectId) as Project;
     }
     return null;
-  }, [projectData, projects, projectId]);
+  }, [pData, projects, projectId]);
 
-  const projectUserRole = projectData?.yourRole || projectData?.role; // Role cá»§a ngÆ°á»i Ä‘ang xem trong project
+  const projectUserRole = pData?.yourRole || pData?.role; // Role cá»§a ngÆ°á»i Ä‘ang xem trong project
   const { user: currentUser } = useAuth();
 
   // Mutations

@@ -20,21 +20,6 @@ export function SplashLoader({ isLoading }: SplashLoaderProps) {
           <div className="relative">
             {/* Animated Logo */}
             <img src="/Flux.svg" alt="Flux"className="size-32" />
-
-            {/* Glow Effect */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{
-                opacity: [0.1, 0.3, 0.1],
-                scale: [1, 1.2, 1],
-              }}
-              transition={{
-                duration: 0.9,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-              className="absolute inset-0 bg-primary/20 blur-3xl rounded-full"
-            />
           </div>
 
           {/* Text reveal */}

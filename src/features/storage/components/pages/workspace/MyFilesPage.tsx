@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -12,8 +12,8 @@ import { useWorkspace } from '@/features/workspaces';
 import Loading from "@/shared/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
-import { downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
-import { useDocumentTitle } from "@/shared/hooks";
+import { downloadFileAsBlob } from "@/features/storage/hooks/useBlobUrl";
+import { useDocumentTitle } from "@/features/storage/hooks/useDocumentTitle";
 
 export default function WorkspaceMyFilesPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };

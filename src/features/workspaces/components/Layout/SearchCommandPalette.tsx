@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import { FileText, FolderOpen, File, Loader2, Folder, StickyNote } from "lucide-react";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 
 type SearchResult = {
   type: "project" | "page" | "file" | "folder" | "sticky";

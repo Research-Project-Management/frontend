@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams, usePathname, useRouter } from 'next/navigation';
 
@@ -91,7 +91,8 @@ export function TopBar() {
     enabled: !!workspaceId,
     staleTime: 60_000,
   });
-  const projects = projectsData?.projects;
+  const pData = projectsData as any;
+  const projects = pData?.projects || pData;
 
   // Fetch current project name if in a project route
   const { data: project } = useQuery({
@@ -159,11 +160,11 @@ export function TopBar() {
                 <DropdownMenuLabel className="text-xs text-muted-foreground">
                   Actions
                 </DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => router.push("/create")}>
+                <DropdownMenuItem onClick={() => router.push("/create-workspace")}>
                   <PlusCircle className="mr-2 size-4" />
                   Create Workspace
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/manage")}>
+                <DropdownMenuItem onClick={() => router.push("/manage-workspace")}>
                   <LayoutGrid className="mr-2 size-4" />
                   Manage Workspaces
                 </DropdownMenuItem>
@@ -301,7 +302,7 @@ export function SelectWorkspaces() {
       </SelectTrigger>
       <SelectContent className="w-[200px] p-2">
         <Label className=" py-1 px-2 text-primary/60">Workspaces</Label>
-        <Link href="/create">
+        <Link href="/create-workspace">
           <Button
             variant="ghost"
             className="w-full justify-start text-xs text-foreground font-semibold"
@@ -311,7 +312,7 @@ export function SelectWorkspaces() {
             Create
           </Button>
         </Link>
-        <Link href="/manage">
+        <Link href="/manage-workspace">
           <Button
             variant="ghost"
             className="w-full justify-start text-xs text-foreground font-semibold"

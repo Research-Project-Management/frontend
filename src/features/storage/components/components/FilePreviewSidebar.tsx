@@ -13,8 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import type { StorageItem } from "../types";
 import { getFileType, getFileIcon, getFileColor, formatFileSize, formatDate } from "../pages/SharedComponents";
-import { useBlobUrl, downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
-import { resolveFileUrl } from "@/shared/lib/api";
+import { useBlobUrl, downloadFileAsBlob, resolveFileUrl } from "@/features/storage/hooks/useBlobUrl";
 import {
   searchCrossref, lookupDoi, useUpdateFileMetadata,
   type CrossrefWork,

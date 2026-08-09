@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * ChatView â€” unified chat UI for both new chats and existing sessions.
@@ -70,7 +70,7 @@ import {
 import { fetchCollectionPapers } from '@/features/library';
 import { useWorkspace } from '@/features/workspaces';
 import { toast } from "sonner";
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/chat-ai/hooks/useDocumentTitle";
 import { renderMarkdown } from "./renderMarkdown";
 import ChatAi from "../chatAi";
 import { ActionCardsGroup } from "../ActionCard";

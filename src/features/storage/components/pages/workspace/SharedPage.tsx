@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -12,8 +12,8 @@ import { Share2 } from "lucide-react";
 import Loading from "@/shared/components/ui/Loading";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
-import { downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
-import { useDocumentTitle } from "@/shared/hooks";
+import { downloadFileAsBlob } from "@/features/storage/hooks/useBlobUrl";
+import { useDocumentTitle } from "@/features/storage/hooks/useDocumentTitle";
 
 export default function WorkspaceSharedPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };

@@ -5,7 +5,7 @@ import type {
   SourceItem,
   AgentAction,
 } from "@/features/chat-ai/types/chat.types";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 
 /**
  * Stream chat responses from the AI backend via RPM-BE proxy.

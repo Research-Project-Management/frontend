@@ -16,7 +16,7 @@ export const useLogin = () => {
     mutationFn: loginUser,
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.auth.session, user);
-      router.push('/create');
+      router.push('/create-workspace');
     },
     onError: (err: unknown) => {
       const message =

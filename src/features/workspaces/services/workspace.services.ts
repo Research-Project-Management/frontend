@@ -214,7 +214,8 @@ export const useWorkspace = (workspaceUrl: string) => {
     enabled: !!workspaceUrl,
   });
 
-  return { workspace: data?.workspace, yourRole: data?.yourRole, isLoading, error };
+  const res = data as any;
+  return { workspace: res?.workspace || res, yourRole: res?.yourRole, isLoading, error };
 };
 
 export const useWorkspaceProjects = (workspaceId: string) => {
@@ -224,7 +225,8 @@ export const useWorkspaceProjects = (workspaceId: string) => {
     enabled: !!workspaceId,
   });
 
-  return { projects: (data?.projects || []) as any[], isLoading, error };
+  const res = data as any;
+  return { projects: (res?.projects || (Array.isArray(res) ? res : [])) as any[], isLoading, error };
 };
 
 export const useRecentItems = (workspaceId: string) =>
@@ -259,8 +261,9 @@ export const useAddWorkspaceMember = () => {
       toast.loading("Adding member...", { id: "ws-member-action" });
     },
     onSuccess: (data) => {
-      if (data?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      const res = data as any;
+      if (res?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, res.workspace);
       }
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
@@ -328,8 +331,9 @@ export const useUpdateWorkspaceMemberRole = () => {
       toast.error(error.message || "Failed to update member role", { id: "ws-member-action" });
     },
     onSuccess: (data) => {
-      if (data?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      const res = data as any;
+      if (res?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, res.workspace);
       }
       toast.success("Member role updated", { id: "ws-member-action" });
     },
@@ -350,8 +354,9 @@ export const useRemoveWorkspaceMember = () => {
       toast.loading("Removing member...", { id: "ws-member-action" });
     },
     onSuccess: (data) => {
-      if (data?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      const res = data as any;
+      if (res?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, res.workspace);
       }
       queryClient.invalidateQueries({ queryKey: ["workspace"] });
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
@@ -391,8 +396,9 @@ export const useUpdateWorkspace = () => {
       };
     },
     onSuccess: (data) => {
-      if (data?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, data.workspace);
+      const res = data as any;
+      if (res?.workspace) {
+        syncWorkspaceIntoCaches(queryClient, res.workspace);
       }
     },
     onError: (error: any, _variables, context) => {

@@ -23,7 +23,8 @@ export default function TaskDialogWrapper({ open, onOpenChange, taskId, projectI
 
   const task = projectTasks?.tasks.find(t => t._id === taskId);
   const columns = projectTasks?.columns || [];
-  const members = projectDetails?.members || [];
+  const pDetails = projectDetails as any;
+  const members = pDetails?.members || [];
 
   const handleSave = (data: TaskMutationInput) => {
     updateTaskMutation.mutate({

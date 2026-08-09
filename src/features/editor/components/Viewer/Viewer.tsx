@@ -38,7 +38,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/lib/utils";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 import { parseCompileErrors } from "@/features/editor/services/latex-utils";
 import { usePageContext } from "../PageContext";
 import { useEditorSettingsStore, type LaTeXEngine } from "@/features/editor/store/editor-settings.store";

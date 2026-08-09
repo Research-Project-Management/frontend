@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useProjectOverview } from "@/features/projects/services/project.services";
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/projects/hooks/useDocumentTitle";
 import {
   HardDrive,
   CalendarDays,
@@ -14,10 +14,21 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Progress } from "@/shared/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
-import { getRoleName } from "@/shared/lib/roles";
 import { memo } from "react";
 import Topbar from "./Topbar";
 import ProjectRecentActivity from "./RecentActivity";
+
+function getRoleName(member?: { role?: string; user?: any } | string): string {
+  const role = typeof member === "string" ? member : member?.role;
+  if (!role) return "Member";
+  switch (role.toLowerCase()) {
+    case "owner": return "Owner";
+    case "admin": return "Admin";
+    case "member": return "Member";
+    case "viewer": return "Viewer";
+    default: return role;
+  }
+}
 
 function getInitials(name: string) {
   return name

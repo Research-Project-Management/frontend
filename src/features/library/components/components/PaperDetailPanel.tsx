@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/shared/lib/utils";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 import { useUpdatePaper } from "@/features/library/services/library.services";
 import { lookupDoi } from '@/features/storage';
 import type { Paper, Collection } from "@/features/library/types/library.types";

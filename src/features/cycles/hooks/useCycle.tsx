@@ -46,8 +46,12 @@ export function useCycle(projectId: string, workspaceId?: string, options?: { sk
   const { data: cyclesData, isLoading: isCyclesLoading } = useProjectCycles(projectId);
   const cycles = useMemo(() => cyclesData?.cycles || [], [cyclesData]);
 
-  const { data: projectDetails } = useProjectDetails(projectId, { enabled: !options?.skipProjectDetails });
-  const projectData = projectDetails?.project || projectDetails;
+  const { data: projectDetails } = useProjectDetails(projectId, {
+    enabled: !options?.skipProjectDetails,
+  });
+
+  const pDetails = projectDetails as any;
+  const projectData = pDetails?.project || pDetails;
 
   const createMutation = useCreateCycle();
   const updateMutation = useUpdateCycle();

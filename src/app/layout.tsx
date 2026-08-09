@@ -4,10 +4,10 @@ import { Toaster } from 'sonner';
 import '@/shared/styles/globals.css';
 import Providers from './providers';
 
-
 const inter = Inter({ 
   subsets: ['latin'],
   display: 'swap',
+  variable: '--font-sans',
 });
 
 export const metadata: Metadata = {
@@ -34,7 +34,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <Providers>
           {children}
           <Toaster richColors position='top-right' />

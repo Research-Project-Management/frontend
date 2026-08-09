@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import StickyNote from "../note/StickyNote";
@@ -8,7 +8,7 @@ import { useSticky } from "@/features/stickies/hooks/useSticky";
 import { useLabelsQuery } from '@/features/labels';
 import { Badge } from "@/shared/components/ui/badge";
 import { Layers2, Loader2, StickyNote as StickyNoteIcon, X } from "lucide-react";
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/stickies/hooks/useDocumentTitle";
 
 import { useWorkspace, useProjects } from "@/features/workspaces";
 import {

@@ -15,15 +15,29 @@ import FilePreviewModal from "./FilePreviewModal";
 import DuplicateFileDialog from "./DuplicateFileDialog";
 import type { DuplicateAction } from "./DuplicateFileDialog";
 import type { StorageItem } from "../types";
-import { downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
+import { downloadFileAsBlob } from "@/features/storage/hooks/useBlobUrl";
 import {
   useUploadFile,
   useMoveFile,
   checkDuplicate,
   deleteFile,
 } from "@/features/storage/services/storage.services";
-import { generateUniqueName } from "@/shared/lib/files";
 import { Upload } from "lucide-react";
+
+function generateUniqueName(filename: string, existingNames: Iterable<string> | Set<string> | string[]): string {
+  const nameSet = new Set(existingNames);
+  const dotIndex = filename.lastIndexOf(".");
+  const name = dotIndex !== -1 ? filename.substring(0, dotIndex) : filename;
+  const ext = dotIndex !== -1 ? filename.substring(dotIndex) : "";
+
+  let count = 1;
+  let newName = `${name} (${count})${ext}`;
+  while (nameSet.has(newName)) {
+    count++;
+    newName = `${name} (${count})${ext}`;
+  }
+  return newName;
+}
 
 type SourceFilter =
   | { kind: "all" }

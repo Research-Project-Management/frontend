@@ -30,7 +30,7 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import { useWorkspace } from '@/features/workspaces';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/library/hooks/useDocumentTitle";
 import {
   reindexPaper,
   useAllPapers,
@@ -38,7 +38,7 @@ import {
   useUpdatePaper,
 } from "@/features/library/services/library.services";
 import { lookupDoi, searchCrossref, type CrossrefWork } from '@/features/storage';
-import { resolveFileUrl } from "@/shared/lib/api";
+import { resolveFileUrl } from "@/features/library/hooks/useBlobUrl";
 import { cn } from "@/shared/lib/utils";
 import type { Collection, Paper } from "@/features/library/types/library.types";
 import dynamic from "next/dynamic";

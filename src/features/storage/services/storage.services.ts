@@ -6,7 +6,8 @@ import {
     useMutation,
     useQueryClient,
 } from "@tanstack/react-query";
-import { API_URL, apiFetch, apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { apiFetch, apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 import type { StorageItem } from "@/features/storage/components/types";
 import { extractPdfMetadataFromFile } from '@/features/editor';
 
@@ -43,6 +44,15 @@ const resolveScopedStorageBody = (params: ScopedStorageParams) => {
     };
 };
 
+// ── Response Types ────────────────────────────────────────────────────────────
+
+export interface StorageResponse {
+    files?: StorageItem[];
+    project?: { _id: string; name: string };
+    yourRole?: string;
+    [key: string]: any;
+}
+
 // ── Workspace-level fetch ─────────────────────────────────────────────────────
 
 export const fetchWorkspaceHome = (workspaceId: string) =>
@@ -52,40 +62,40 @@ export const fetchWorkspaceHome = (workspaceId: string) =>
     }>(`/api/files/workspace/${workspaceId}/home`);
 
 export const fetchWorkspaceFiles = (workspaceId: string, parentId?: string | null) =>
-    apiGet(parentId
+    apiGet<StorageResponse>(parentId
         ? `/api/files/workspace/${workspaceId}/all?parentId=${parentId}`
         : `/api/files/workspace/${workspaceId}/all`);
 
 export const fetchWorkspaceMyFiles = (workspaceId: string) =>
-    apiGet(`/api/files/workspace/${workspaceId}/my-files`);
+    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/my-files`);
 
 export const fetchWorkspaceStarredFiles = (workspaceId: string) =>
-    apiGet(`/api/files/workspace/${workspaceId}/starred`);
+    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/starred`);
 
 export const fetchWorkspaceSharedFiles = (workspaceId: string) =>
-    apiGet(`/api/files/workspace/${workspaceId}/shared`);
+    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/shared`);
 
 export const fetchWorkspaceTrashedFiles = (workspaceId: string) =>
-    apiGet(`/api/files/workspace/${workspaceId}/trash`);
+    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/trash`);
 
 // ── Project-level fetch ───────────────────────────────────────────────────────
 
 export const fetchFiles = (projectId: string, parentId?: string | null) =>
-    apiGet(parentId
+    apiGet<StorageResponse>(parentId
         ? `/api/files/project/${projectId}?parentId=${parentId}`
         : `/api/files/project/${projectId}`);
 
 export const fetchMyFiles = (projectId: string) =>
-    apiGet(`/api/files/my-files/${projectId}`);
+    apiGet<StorageResponse>(`/api/files/my-files/${projectId}`);
 
 export const fetchStarredFiles = (projectId: string) =>
-    apiGet(`/api/files/starred/${projectId}`);
+    apiGet<StorageResponse>(`/api/files/starred/${projectId}`);
 
 export const fetchSharedFiles = (projectId: string) =>
-    apiGet(`/api/files/shared/${projectId}`);
+    apiGet<StorageResponse>(`/api/files/shared/${projectId}`);
 
 export const fetchTrashedFiles = (projectId: string) =>
-    apiGet(`/api/files/trash/${projectId}`);
+    apiGet<StorageResponse>(`/api/files/trash/${projectId}`);
 
 const invalidateStorageQueries = (
     queryClient: QueryClient,

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiPost } from "@/shared/lib/api";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 
 export function useUpload() {
   const [isUploading, setIsUploading] = useState(false);

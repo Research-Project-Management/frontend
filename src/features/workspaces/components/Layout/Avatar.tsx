@@ -1,7 +1,54 @@
 import React from "react";
-import { useBlobUrl } from "@/shared/hooks/useBlobUrl";
 import { cn } from "@/shared/lib/utils";
-import { API_URL, resolveFileUrl } from "@/shared/lib/api";
+import { API_BASE_URL } from "@/shared/constants";
+
+function resolveFileUrl(url?: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
+function useBlobUrl(url?: string | null) {
+  const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (!url) {
+      setBlobUrl(null);
+      setLoading(false);
+      return;
+    }
+    let isMounted = true;
+    let objectUrlToClean: string | null = null;
+
+    async function fetchBlob() {
+      try {
+        setLoading(true);
+        const res = await fetch(url!, { credentials: "include" });
+        if (res.ok) {
+          const blob = await res.blob();
+          if (isMounted) {
+            objectUrlToClean = URL.createObjectURL(blob);
+            setBlobUrl(objectUrlToClean);
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    fetchBlob();
+    return () => {
+      isMounted = false;
+      if (objectUrlToClean) URL.revokeObjectURL(objectUrlToClean);
+    };
+  }, [url]);
+
+  return { blobUrl, loading };
+}
 
 type AvatarProps = {
   src?: string | null;

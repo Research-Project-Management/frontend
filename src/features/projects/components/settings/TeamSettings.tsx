@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams } from "next/navigation";
 import { useProjectDetails, type Project } from "@/features/projects/services/project.services";
@@ -16,9 +16,10 @@ export default function TeamSettings() {
   const { isLoading: isWorkspaceLoading } = useWorkspace(workspaceId!);
   const { projects, isLoading: isProjectsLoading } = useWorkspaceProjects(workspaceId!);
 
+  const pData = projectData as any;
   const project = useMemo(() => {
     // 1. Try data from direct fetch
-    const p = (projectData?.project || projectData) as Project;
+    const p = (pData?.project || pData) as Project;
     if (p && p._id) return p;
 
     // 2. Fallback to projects list from workspace

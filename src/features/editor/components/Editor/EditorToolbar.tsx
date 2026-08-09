@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 import React from "react";
 import { useEditorContext } from "./EditorLayout";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { useWorkspaceActionsStore } from '@/features/workspaces';
-import { FluxIcon } from "@/shared/components/shared";
+import { FluxLogo as FluxIcon } from "@/shared/components/ui/FluxLogo";
 import {
   Bold,
   Italic,

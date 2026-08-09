@@ -1,6 +1,6 @@
 import { FileText, ExternalLink, Trash2, User, CalendarDays } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 import type { Paper } from "@/features/library/types/library.types";
 
 interface Props {

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -11,16 +11,17 @@ import { Trash2 } from "lucide-react";
 import Loading from "@/shared/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
-import { downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
+import { downloadFileAsBlob } from "@/features/storage/hooks/useBlobUrl";
 import { useProject } from '@/features/projects';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/storage/hooks/useDocumentTitle";
 
 export default function TrashPage() {
   const { projectId } = useParams() as { projectId: string };
   const { data: projectData } = useProject(projectId!, { enabled: !!projectId });
+  const pData = projectData as any;
   useDocumentTitle(
-    projectData?.project?.name
-      ? `Trash - ${projectData.project.name}`
+    pData?.project?.name
+      ? `Trash - ${pData.project.name}`
       : "Trash"
   );
 

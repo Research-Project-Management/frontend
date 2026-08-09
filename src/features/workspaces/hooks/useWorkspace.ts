@@ -25,6 +25,7 @@ export const useProjects = () => {
     
     console.log("useProjects fetched data:", data);
 
-    return { projects: data?.projects ?? [], isLoading, isError };
+    const pData = data as any;
+    return { projects: pData?.projects ?? (Array.isArray(pData) ? pData : []), isLoading, isError };
 }
 

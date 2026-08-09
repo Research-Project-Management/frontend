@@ -11,11 +11,10 @@ import GeneralForm from "./sections/GeneralForm";
 import DangerZone from "./sections/DangerZone";
 import DeleteModal from "./components/deleteModal";
 
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/settings/hooks/useDocumentTitle";
 import { useUpdateWorkspace, useDeleteWorkspace, useWorkspaces, useWorkspace } from '@/features/workspaces';
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useUpload } from '@/features/storage';
-import { MemberAvatar as Avatar } from "@/shared/components/shared/MemberAvatar";
 
 export default function GeneralPage() {
   const router = useRouter();
@@ -132,7 +131,7 @@ export default function GeneralPage() {
       onSuccess: () => {
         setIsDeleteOpen(false);
         toast.success("Workspace deleted");
-        router.push(shouldRedirectToCreate ? "/create" : "/");
+        router.push(shouldRedirectToCreate ? "/create-workspace" : "/");
       },
       onError: (err: any) =>
         toast.error(err?.message || "Failed to delete workspace"),

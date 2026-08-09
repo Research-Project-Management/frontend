@@ -1,91 +1,116 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
+  // Harden: debounce + passive scroll listener
+  const handleScroll = useCallback(() => {
+    setIsScrolled(window.scrollY > 10);
+  }, []);
 
-    window.addEventListener('scroll', handleScroll);
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  // Harden: close menu on escape
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMenuOpen(false);
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
   return (
     <nav
-      className={`fixed top-0 z-50 w-full transition-all duration-200 ${
-        isScrolled
-          ? 'bg-background/90 backdrop-blur-md border-b border-border'
-          : 'bg-transparent'
-      }`}
+      className={`fixed top-0 z-50 w-full border-b border-border transition-colors duration-200 ${isScrolled
+          ? 'bg-card/90 backdrop-blur-md'
+          : 'bg-background'
+        }`}
+      aria-label='Main navigation'
     >
       <div className='flux-container'>
-        <div className='flex justify-between items-center h-16'>
+        <div className='flex justify-between items-center h-14'>
+
           {/* Logo */}
           <Link
             href='/'
-            className='flex gap-2.5 items-center'
+            className='flex gap-2.5 items-center min-h-[44px]'
             onClick={() => setIsMenuOpen(false)}
+            aria-label='Flux home'
           >
-            <img src='/Flux.svg' className='w-6 h-6 text-foreground' alt='Flux' />
-            <div className='font-semibold text-lg'>Flux</div>
+            <img src='/Flux.svg' className='h-8 w-auto object-contain' alt='' aria-hidden='true' />
+            <span className='font-bold text-lg tracking-tight'>Flux</span>
           </Link>
 
           {/* Desktop Actions */}
-          <div className='hidden md:flex items-center gap-2'>
+          <div className='hidden md:flex items-center gap-1'>
             <Link
               href='/login'
-              className='px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors'
+              className='flex h-9 items-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             >
               Sign in
             </Link>
             <Link
-              href='/create'
-              className='group flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90'
+              href='/create-workspace'
+              className='group flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             >
               Get started
-              <ArrowRight className='w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform' />
+              <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className='rounded-md p-2 transition-colors hover:bg-secondary md:hidden'
+            className='flex items-center justify-center w-11 h-11 rounded-lg transition-colors hover:bg-secondary md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label='Toggle menu'
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMenuOpen}
           >
-            {isMenuOpen ? <X className='w-5 h-5' /> : <Menu className='w-5 h-5' />}
+            {isMenuOpen
+              ? <X className='w-5 h-5' aria-hidden='true' />
+              : <Menu className='w-5 h-5' aria-hidden='true' />
+            }
           </button>
         </div>
 
         {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className='md:hidden py-4 border-t border-border'>
-            <div className='flex flex-col gap-2'>
-              <Link
-                href='/login'
-                className='rounded-md border border-border px-4 py-2.5 text-center text-sm font-medium transition-colors hover:bg-secondary'
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign in
-              </Link>
-              <Link
-                href='/create'
-                className='flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2.5 text-center text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90'
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Get started
-                <ArrowRight className='w-3.5 h-3.5' />
-              </Link>
-            </div>
-          </div>
-        )}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className='md:hidden py-4 border-t border-border'
+            >
+              <div className='flex flex-col gap-2'>
+                <Link
+                  href='/login'
+                  className='flex items-center justify-center min-h-[44px] rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href='/create-workspace'
+                  className='flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Get started
+                  <ArrowRight className='w-3.5 h-3.5' aria-hidden='true' />
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );

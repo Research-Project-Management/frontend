@@ -1,0 +1,53 @@
+/**
+ * workspace-types.ts
+ * Domain types for the setup/workspace feature.
+ * Derived from backend Mongoose schema (workspace.schema.js).
+ */
+
+// ─── Sub-types ────────────────────────────────────────────────────────────────
+
+/** Populated user shape returned when a member is populated. */
+export type WorkspaceMemberUser = {
+  _id: string;
+  name: string;
+  email: string | null;
+  avatar: string | null;
+};
+
+/** Populated role shape returned when roleId is populated. */
+export type WorkspaceMemberRole = {
+  _id: string;
+  name: string;
+};
+
+// ─── WorkspaceMember ──────────────────────────────────────────────────────────
+
+/**
+ * A workspace member entry as returned by the API.
+ * `userId` and `role` can be either an ID string (un-populated) or a full object (populated).
+ */
+export type WorkspaceMember = {
+  userId: string | WorkspaceMemberUser;
+  role: WorkspaceMemberRole | 'owner' | 'admin' | 'member' | string;
+  joinedAt: string;
+};
+
+// ─── Workspace ────────────────────────────────────────────────────────────────
+
+export type Workspace = {
+  _id: string;
+  name: string;
+  url: string;
+  avatar: string;
+  companySize?: string;
+  inviteCode?: string;
+  createdById?: string;
+  settings?: Record<string, unknown>;
+  members: WorkspaceMember[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+// ─── Role ─────────────────────────────────────────────────────────────────────
+
+export type WorkspaceRole = 'owner' | 'admin' | 'member';

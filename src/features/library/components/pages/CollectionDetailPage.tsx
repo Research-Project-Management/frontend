@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, Fragment } from "react";
 import {
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useWorkspace } from '@/features/workspaces';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/library/hooks/useDocumentTitle";
 import {
   useCollectionPapers,
   useAddPaper,
@@ -31,7 +31,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 import PaperUploadDialog from "../components/PaperUploadDialog";
 import type { Paper } from "@/features/library/types/library.types";
 import { PaperTableRow } from "../components/PaperTableRow";

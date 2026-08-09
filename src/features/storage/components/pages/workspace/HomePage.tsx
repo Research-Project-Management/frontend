@@ -13,8 +13,8 @@ import { useWorkspace } from '@/features/workspaces';
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import FileExplorer from "../../components/FileExplorer";
 import type { StorageItem } from "../../types";
-import { downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
-import { useDocumentTitle } from "@/shared/hooks";
+import { downloadFileAsBlob } from "@/features/storage/hooks/useBlobUrl";
+import { useDocumentTitle } from "@/features/storage/hooks/useDocumentTitle";
 
 export default function WorkspaceHomePage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
@@ -7,25 +7,26 @@ import { useProject } from '@/features/projects';
 import Loading from "@/shared/components/ui/Loading";
 import FileExplorer from "../components/FileExplorer";
 import type { StorageItem } from "../types";
-import { downloadFileAsBlob } from "@/shared/hooks/useBlobUrl";
-import { useDocumentTitle } from "@/shared/hooks";
+import { downloadFileAsBlob } from "@/features/storage/hooks/useBlobUrl";
+import { useDocumentTitle } from "@/features/storage/hooks/useDocumentTitle";
 
 export default function StoragePage() {
   const { projectId } = useParams() as { projectId: string };
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<Array<{ id: string | null; name: string }>>([]);
   const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
+  const pData = projectData as any;
 
   const { data, isLoading: isFilesLoading } = useFiles(projectId!, currentFolder);
 
   useDocumentTitle(
-    projectData?.project?.name
-      ? `Storage - ${projectData.project.name}`
+    pData?.project?.name
+      ? `Storage - ${pData.project.name}`
       : "Storage"
   );
   const toggleStarMutation = useToggleStar();
   const deleteFileMutation = useDeleteFile();
-  const canUpload = projectData?.yourRole !== "viewer";
+  const canUpload = pData?.yourRole !== "viewer";
 
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);

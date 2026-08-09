@@ -9,7 +9,28 @@ import { apiGet } from "@/shared/lib/api";
 import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from "lucide-react";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-import { getRoleName, getRoleColor } from "@/shared/lib/roles";
+
+function getRoleName(role?: string): string {
+  if (!role) return 'Member';
+  switch (role.toLowerCase()) {
+    case 'owner': return 'Owner';
+    case 'admin': return 'Admin';
+    case 'member': return 'Member';
+    case 'viewer': return 'Viewer';
+    default: return role;
+  }
+}
+
+function getRoleColor(role?: string): string {
+  if (!role) return 'bg-zinc-100 text-zinc-700';
+  switch (role.toLowerCase()) {
+    case 'owner': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    case 'admin': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
+    case 'member': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+    case 'viewer': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400';
+    default: return 'bg-zinc-100 text-zinc-700';
+  }
+}
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
@@ -34,7 +55,7 @@ import {
 import { Badge } from "@/shared/components/ui/badge";
 import TopBar from "../layout/TopBar";
 import DeleteModal from "../general/components/deleteModal";
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/settings/hooks/useDocumentTitle";
 
 export default function MemberPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };

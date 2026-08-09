@@ -11,11 +11,11 @@ import TabBar from "./TabBar";
 import type { editor } from "monaco-editor";
 import { usePageContext, type AssetInfo } from "../PageContext";
 
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/editor/hooks/useDocumentTitle";
 import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { FileImage, AlertCircle, FileCode2 } from "lucide-react";
-import { resolveFileUrl } from "@/shared/lib/api";
+import { resolveFileUrl } from "@/features/editor/hooks/useBlobUrl";
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Inline image viewer rendered inside the editor column Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 

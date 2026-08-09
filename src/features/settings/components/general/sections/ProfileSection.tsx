@@ -1,8 +1,18 @@
-﻿'use client';
+'use client';
 
 import { Camera, Loader2 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
-import { MemberAvatar as Avatar } from "@/shared/components/shared/MemberAvatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+
+function ProfileAvatar({ avatar, name }: { avatar?: string | null; name: string }) {
+  const initial = (name || "X").charAt(0).toUpperCase();
+  return (
+    <Avatar className="size-full">
+      {avatar && <AvatarImage src={avatar} className="object-cover" />}
+      <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg uppercase">{initial}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 type ProfileSectionProps = {
   name: string;
@@ -40,7 +50,7 @@ export default function ProfileSection({
         disabled={isUploadingAvatar}
         className="relative group size-16 shrink-0 rounded-xl flex items-center justify-center text-2xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
       >
-        <div className="size-full"><Avatar avatar={avatar || undefined} name={name}  /></div>
+        <div className="size-full"><ProfileAvatar avatar={avatar || undefined} name={name}  /></div>
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           {isUploadingAvatar ? (

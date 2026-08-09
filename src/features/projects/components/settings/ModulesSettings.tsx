@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -46,9 +46,10 @@ export default function ModulesSettings() {
   } = useWorkspace(workspaceId!);
   const { projects, isLoading: isProjectsLoading } = useWorkspaceProjects(workspaceId!);
 
+  const pData = projectData as any;
   const project = useMemo(() => {
     // 1. Try data from direct fetch
-    const p = (projectData?.project || projectData) as Project;
+    const p = (pData?.project || pData) as Project;
     if (p && p._id) return p;
 
     // 2. Fallback to projects list from workspace
@@ -56,9 +57,9 @@ export default function ModulesSettings() {
       return projects.find((p: any) => p._id === projectId || p.url === projectId) as Project;
     }
     return null;
-  }, [projectData, projects, projectId]);
+  }, [pData, projects, projectId]);
 
-  const userRole = projectData?.yourRole || projectData?.role;
+  const userRole = pData?.yourRole || pData?.role;
 
   if ((isProjectLoading && !project) || isWorkspaceLoading || (isProjectsLoading && !projects)) return <Loading />;
   if (!project) return <div className="p-6">Project not found</div>;

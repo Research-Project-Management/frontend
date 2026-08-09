@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* =============================================================================
+ * Loader -- ripple animation
+ * ========================================================================== */
+
 .loader {
   --cell-size: 24px;
   --cell-spacing: 4px;
@@ -21,242 +25,646 @@
   animation: 0.8s ripple ease infinite;
 }
 
-.cell.d-1 {
-  animation-delay: 60ms;
-}
+.cell.d-1 { animation-delay: 60ms; }
+.cell.d-2 { animation-delay: 120ms; }
+.cell.d-3 { animation-delay: 180ms; }
+.cell.d-4 { animation-delay: 240ms; }
 
-.cell.d-2 {
-  animation-delay: 120ms;
-}
+.cell:nth-child(1) { --cell-color: #000000; }
+.cell:nth-child(2) { --cell-color: #171717; }
+.cell:nth-child(3) { --cell-color: #353535; }
+.cell:nth-child(4) { --cell-color: #232323; }
+.cell:nth-child(5) { --cell-color: #303030; }
+.cell:nth-child(6) { --cell-color: #3d3d3d; }
+.cell:nth-child(7) { --cell-color: #454545; }
+.cell:nth-child(8) { --cell-color: #535353; }
+.cell:nth-child(9) { --cell-color: #606060; }
 
-.cell.d-3 {
-  animation-delay: 180ms;
-}
-
-.cell.d-4 {
-  animation-delay: 240ms;
-}
-
-.cell:nth-child(1) {
-  --cell-color: #000000;
-}
-
-.cell:nth-child(2) {
-  --cell-color: #171717;
-}
-
-.cell:nth-child(3) {
-  --cell-color: #353535;
-}
-
-.cell:nth-child(4) {
-  --cell-color: #232323;
-}
-
-.cell:nth-child(5) {
-  --cell-color: #303030;
-}
-
-.cell:nth-child(6) {
-  --cell-color: #3d3d3d;
-}
-
-.cell:nth-child(7) {
-  --cell-color: #454545;
-}
-
-.cell:nth-child(8) {
-  --cell-color: #535353;
-}
-
-.cell:nth-child(9) {
-  --cell-color: #606060;
-}
-
-/*Animation*/
 @keyframes ripple {
-  0% {
-    background-color: transparent;
-  }
-
-  30% {
-    background-color: var(--cell-color);
-  }
-
-  60% {
-    background-color: transparent;
-  }
-
-  100% {
-    background-color: transparent;
-  }
+  0%   { background-color: transparent; }
+  30%  { background-color: var(--cell-color); }
+  60%  { background-color: transparent; }
+  100% { background-color: transparent; }
 }
+
+/* =============================================================================
+ * Tailwind v4 -- theme tokens
+ * ========================================================================== */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+  /* -------------------------------------------------------------------------
+   * Font family
+   * System default sans-serif stack with Inter Variable preference
+   * ------------------------------------------------------------------------- */
   --font-sans:
-    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    var(--font-sans), ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    
+  --font-serif:
+    var(--font-serif), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
+  /* -------------------------------------------------------------------------
+   * Font size scale — 90% of Tailwind default
+   * High-density typography optimized for data-rich interfaces.
+   * By setting html { font-size: 14.4px } below, all default Tailwind rem
+   * values automatically scale down to exactly 90% (e.g. text-sm = 12.6px).
+   * ------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------
+   * Font weight scale
+   * Sharp rendering weights for small UI text
+   * ------------------------------------------------------------------------- */
+  --font-weight-extralight: 200;
+  --font-weight-light:      300;
+  --font-weight-normal:     405;
+  --font-weight-medium:     500;
+  --font-weight-bold:       700;
+  --font-weight-extrabold:  800;
+
+  /* -------------------------------------------------------------------------
+   * Line height scale
+   * Matches Tailwind v3 defaults.
+   * ------------------------------------------------------------------------- */
+  --leading-none:    1;
+  --leading-tight:   1.25;
+  --leading-snug:    1.375;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose:   2;
+
+  /* -------------------------------------------------------------------------
+   * Letter spacing scale
+   * Matches Tailwind v3 defaults.
+   * ------------------------------------------------------------------------- */
+  --tracking-tighter: -0.05em;
+  --tracking-tight:   -0.025em;
+  --tracking-normal:   0em;
+  --tracking-wide:     0.025em;
+  --tracking-wider:    0.05em;
+  --tracking-widest:   0.1em;
+
+  /* -------------------------------------------------------------------------
+   * Animations
+   * ------------------------------------------------------------------------- */
   --animate-smooth-pulse: smooth-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
 
-  /* Custom Easings */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* -------------------------------------------------------------------------
+   * Easing functions
+   * ------------------------------------------------------------------------- */
+  --ease-out-expo:    cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes smooth-pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.4;
-  }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }
 
 @keyframes shimmer {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(100%);
-  }
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
 }
 
-button {
-  cursor: pointer;
-}
+/* =============================================================================
+ * Global resets
+ * ========================================================================== */
+
+button { cursor: pointer; }
 
 html,
 body {
   min-width: 320px;
   min-height: 100%;
+  font-size: 14.4px;           /* 0.9rem × 16 = 14.4px — System base */
+  line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   @apply bg-background text-foreground;
-
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
 }
+
+/* =============================================================================
+ * Tailwind v4 -- inline theme mapping
+ * Maps CSS variables to Tailwind color utilities.
+ * ========================================================================== */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Semantic tokens (shadcn/ui) */
+  --color-background:                  var(--background);
+  --color-foreground:                  var(--foreground);
+  --color-card:                        var(--card);
+  --color-card-foreground:             var(--card-foreground);
+  --color-popover:                     var(--popover);
+  --color-popover-foreground:          var(--popover-foreground);
+  --color-primary:                     var(--primary);
+  --color-primary-foreground:          var(--primary-foreground);
+  --color-secondary:                   var(--secondary);
+  --color-secondary-foreground:        var(--secondary-foreground);
+  --color-muted:                       var(--muted);
+  --color-muted-foreground:            var(--muted-foreground);
+  --color-accent:                      var(--accent);
+  --color-accent-foreground:           var(--accent-foreground);
+  --color-destructive:                 var(--destructive);
+  --color-border:                      var(--border);
+  --color-input:                       var(--input);
+  --color-ring:                        var(--ring);
+  --color-chart-1:                     var(--chart-1);
+  --color-chart-2:                     var(--chart-2);
+  --color-chart-3:                     var(--chart-3);
+  --color-chart-4:                     var(--chart-4);
+  --color-chart-5:                     var(--chart-5);
+  --color-sidebar:                     var(--sidebar);
+  --color-sidebar-foreground:          var(--sidebar-foreground);
+  --color-sidebar-primary:             var(--sidebar-primary);
+  --color-sidebar-primary-foreground:  var(--sidebar-primary-foreground);
+  --color-sidebar-accent:              var(--sidebar-accent);
+  --color-sidebar-accent-foreground:   var(--sidebar-accent-foreground);
+  --color-sidebar-border:              var(--sidebar-border);
+  --color-sidebar-ring:                var(--sidebar-ring);
+
+  /* Application-specific */
   --color-bar-background: #f9f9f9;
   --color-bar-foreground: #5f5e61;
-  --color-highlight: #f3df00;
+  --color-highlight:      #f3df00;
 }
+
+/* =============================================================================
+ * Design tokens -- light theme (default)
+ *
+ * High-contrast minimalist palette optimized for long-session research workflows.
+ * 
+ * Light palette reference:
+ *   background-100  #ffffff   primary canvas
+ *   background-90   #f7f7f7   hover surface
+ *   background-80   #e8e8e8   pressed/active surface
+ *   text-100        #171717   primary text
+ *   text-200        #3a3a3a   secondary text
+ *   text-300        #525252   tertiary text
+ *   text-400        #a3a3a3   placeholder
+ *   border-200      #e5e5e5   default border
+ *   border-300      #d4d4d4   strong border
+ *   primary-100     #3f76ff   brand blue
+ * ========================================================================== */
 
 :root {
-  --radius: 0.5rem;
-  --background: #ffffff;
-  --foreground: #202222;
-  --card: #ffffff;
-  --card-foreground: #202222;
-  --popover: #ffffff;
-  --popover-foreground: #202222;
-  --primary: #255fdc;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f3f4;
-  --secondary-foreground: #202222;
-  --tertiary: #ffcb2c;
-  --muted: #f1f3f4;
-  --muted-foreground: #5f6368;
-  --accent: #e8efff;
-  --accent-foreground: #001a4d;
-  --destructive: #d93025;
-  --border: #dadce0;
-  --input: #dadce0;
-  --ring: #255fdc;
+  --radius: 0.375rem; /* 6px */
+
+  /* -------------------------------------------------------------------------
+   * Primary tonal scale
+   * RGB triplets for rgba() usage
+   * ------------------------------------------------------------------------- */
+  --color-primary-10:  236, 241, 255;
+  --color-primary-20:  217, 228, 255;
+  --color-primary-30:  197, 214, 255;
+  --color-primary-40:  178, 200, 255;
+  --color-primary-50:  159, 187, 255;
+  --color-primary-60:  140, 173, 255;
+  --color-primary-70:  121, 159, 255;
+  --color-primary-80:  101, 145, 255;
+  --color-primary-90:   82, 132, 255;
+  --color-primary-100:  63, 118, 255; /* #3f76ff */
+  --color-primary-200:  57, 106, 230;
+  --color-primary-300:  50,  94, 204;
+  --color-primary-400:  44,  83, 179;
+  --color-primary-500:  38,  71, 153;
+  --color-primary-600:  32,  59, 128;
+  --color-primary-700:  25,  47, 102;
+  --color-primary-800:  19,  35,  76;
+  --color-primary-900:  13,  24,  51;
+
+  /* -------------------------------------------------------------------------
+   * Error tonal scale
+   * ------------------------------------------------------------------------- */
+  --color-error-10:  255, 252, 252;
+  --color-error-20:  255, 247, 247;
+  --color-error-30:  255, 219, 220;
+  --color-error-100: 244, 170, 170;
+  --color-error-200: 220,  62,  62;
+  --color-error-500: 140,  51,  58;
+
+  /* -------------------------------------------------------------------------
+   * Background scale
+   * ------------------------------------------------------------------------- */
+  --color-background-100: 255, 255, 255; /* #ffffff  primary canvas    */
+  --color-background-90:  247, 247, 247; /* #f7f7f7  hover surface      */
+  --color-background-80:  232, 232, 232; /* #e8e8e8  pressed surface    */
+
+  --color-background-primary: var(--color-primary-10);
+  --color-background-error:   var(--color-error-20);
+
+  /* -------------------------------------------------------------------------
+   * Text scale
+   * ------------------------------------------------------------------------- */
+  --color-text-100:  23,  23,  23; /* #171717  primary text      */
+  --color-text-200:  58,  58,  58; /* #3a3a3a  secondary text    */
+  --color-text-300:  82,  82,  82; /* #525252  tertiary text     */
+  --color-text-350: 130, 130, 130;
+  --color-text-400: 163, 163, 163; /* #a3a3a3  placeholder       */
+
+  --color-text-primary: var(--color-primary-100);
+  --color-text-error:   var(--color-error-200);
+
+  --color-scrollbar: 163, 163, 163;
+
+  /* -------------------------------------------------------------------------
+   * Border scale
+   * ------------------------------------------------------------------------- */
+  --color-border-100: 245, 245, 245; /* #f5f5f5  subtle 1          */
+  --color-border-200: 229, 229, 229; /* #e5e5e5  subtle 2 (default)*/
+  --color-border-300: 212, 212, 212; /* #d4d4d4  strong 1          */
+  --color-border-400: 185, 185, 185; /* #b9b9b9  strong 2          */
+
+  --color-border-primary: var(--color-primary-40);
+  --color-border-error:   var(--color-error-100);
+
+  /* -------------------------------------------------------------------------
+   * Shadow scale
+   * Strict flat-by-default shadow definitions
+   * ------------------------------------------------------------------------- */
+  --color-shadow-2xs:
+    0px 0px 1px 0px rgba(23, 23, 23, 0.06),
+    0px 1px 2px 0px rgba(23, 23, 23, 0.06),
+    0px 1px 2px 0px rgba(23, 23, 23, 0.14);
+  --color-shadow-xs:
+    0px 1px 2px 0px rgba(0, 0, 0, 0.16),
+    0px 2px 4px 0px rgba(16, 24, 40, 0.12),
+    0px 1px 8px -1px rgba(16, 24, 40, 0.1);
+  --color-shadow-sm:
+    0px 1px 4px 0px rgba(0, 0, 0, 0.01),
+    0px 4px 8px 0px rgba(0, 0, 0, 0.02),
+    0px 1px 12px 0px rgba(0, 0, 0, 0.12);
+  --color-shadow-rg:
+    0px 3px 6px 0px rgba(0, 0, 0, 0.1),
+    0px 4px 4px 0px rgba(16, 24, 40, 0.08),
+    0px 1px 12px 0px rgba(16, 24, 40, 0.04);
+  --color-shadow-md:
+    0px 4px 8px 0px rgba(0, 0, 0, 0.12),
+    0px 6px 12px 0px rgba(16, 24, 40, 0.12),
+    0px 1px 16px 0px rgba(16, 24, 40, 0.12);
+  --color-shadow-lg:
+    0px 6px 12px 0px rgba(0, 0, 0, 0.12),
+    0px 8px 16px 0px rgba(0, 0, 0, 0.12),
+    0px 1px 24px 0px rgba(16, 24, 40, 0.12);
+  --color-shadow-xl:
+    0px 0px 18px 0px rgba(0, 0, 0, 0.16),
+    0px 0px 24px 0px rgba(16, 24, 40, 0.16),
+    0px 0px 52px 0px rgba(16, 24, 40, 0.16);
+  --color-shadow-2xl:
+    0px 8px 16px 0px rgba(0, 0, 0, 0.12),
+    0px 12px 24px 0px rgba(16, 24, 40, 0.12),
+    0px 1px 32px 0px rgba(16, 24, 40, 0.12);
+  --color-shadow-3xl:
+    0px 12px 24px 0px rgba(0, 0, 0, 0.12),
+    0px 16px 32px 0px rgba(0, 0, 0, 0.12),
+    0px 1px 48px 0px rgba(16, 24, 40, 0.12);
+  --color-shadow-4xl:
+    0px 8px 40px 0px rgba(0, 0, 61, 0.05),
+    0px 12px 32px -16px rgba(0, 0, 0, 0.05);
+  --color-onboarding-shadow-sm: 0px 4px 20px 0px rgba(126, 139, 171, 0.1);
+
+  /* -------------------------------------------------------------------------
+   * Onboarding colors (light)
+   * ------------------------------------------------------------------------- */
+
+  --color-onboarding-text-100: 23, 23, 23;
+  --color-onboarding-text-200: 58, 58, 58;
+  --color-onboarding-text-300: 82, 82, 82;
+  --color-onboarding-text-400: 163, 163, 163;
+
+  --color-onboarding-background-100: 236, 241, 255;
+  --color-onboarding-background-200: 255, 255, 255;
+  --color-onboarding-background-300: 236, 241, 255;
+  --color-onboarding-background-400: 177, 206, 250;
+
+  --color-onboarding-border-100: 229, 229, 229;
+  --color-onboarding-border-200: 217, 228, 255;
+  --color-onboarding-border-300: 229, 229, 229, 0.5;
+
+  /* -------------------------------------------------------------------------
+   * Toast theme (light)
+   * Distinctive high-contrast notification colors
+   * ------------------------------------------------------------------------- */
+  --color-toast-success-text:      62, 155,  79;
+  --color-toast-error-text:        var(--color-error-200);
+  --color-toast-warning-text:      255, 186,  24;
+  --color-toast-info-text:          51,  88, 212;
+  --color-toast-loading-text:       28,  32,  36;
+  --color-toast-secondary-text:    128, 131, 141;
+  --color-toast-tertiary-text:      96, 100, 108;
+
+  --color-toast-success-background: 253, 253, 254;
+  --color-toast-error-background:   var(--color-error-10);
+  --color-toast-warning-background: 254, 253, 251;
+  --color-toast-info-background:    253, 253, 254;
+  --color-toast-loading-background: 253, 253, 254;
+
+  --color-toast-success-border: 218, 241, 219;
+  --color-toast-error-border:   var(--color-error-30);
+  --color-toast-warning-border: 255, 247, 194;
+  --color-toast-info-border:    217, 228, 255;
+  --color-toast-loading-border: 229, 229, 229;
+
+  /* -------------------------------------------------------------------------
+   * Sidebar aliases (all ref main canvas in light mode)
+   * ------------------------------------------------------------------------- */
+  --color-sidebar-background-100: var(--color-background-100);
+  --color-sidebar-background-90:  var(--color-background-90);
+  --color-sidebar-background-80:  var(--color-background-80);
+
+  --color-sidebar-text-100: var(--color-text-100);
+  --color-sidebar-text-200: var(--color-text-200);
+  --color-sidebar-text-300: var(--color-text-300);
+  --color-sidebar-text-400: var(--color-text-400);
+
+  --color-sidebar-border-100: var(--color-border-100);
+  --color-sidebar-border-200: var(--color-border-100);
+  --color-sidebar-border-300: var(--color-border-100);
+  --color-sidebar-border-400: var(--color-border-100);
+
+  --color-sidebar-shadow-2xs: var(--color-shadow-2xs);
+  --color-sidebar-shadow-xs:  var(--color-shadow-xs);
+  --color-sidebar-shadow-sm:  var(--color-shadow-sm);
+  --color-sidebar-shadow-rg:  var(--color-shadow-rg);
+  --color-sidebar-shadow-md:  var(--color-shadow-md);
+  --color-sidebar-shadow-lg:  var(--color-shadow-lg);
+  --color-sidebar-shadow-xl:  var(--color-shadow-xl);
+  --color-sidebar-shadow-2xl: var(--color-shadow-2xl);
+  --color-sidebar-shadow-3xl: var(--color-shadow-3xl);
+  --color-sidebar-shadow-4xl: var(--color-shadow-4xl);
+
+  /* -------------------------------------------------------------------------
+   * Semantic tokens (shadcn/ui)
+   * These map the base palette to Tailwind utility classes.
+   * ------------------------------------------------------------------------- */
+
+  /* Surfaces */
+  --background:         oklch(100% 0 0);              /* #ffffff  background-100    */
+  --foreground:         oklch(20.46% 0 0);             /* #171717  text-100          */
+  --card:               oklch(100% 0 0);
+  --card-foreground:    oklch(20.46% 0 0);
+  --popover:            oklch(100% 0 0);
+  --popover-foreground: oklch(20.46% 0 0);
+
+  /* Brand -- primary-100: rgb(63, 118, 255) = #3f76ff */
+  --primary:            oklch(54.97% 0.1712 266.81);
+  --primary-foreground: oklch(100% 0 0);
+
+  /* Neutrals -- background-90 = #f7f7f7 (hover surface) */
+  --secondary:            oklch(97.61% 0 0);           /* #f7f7f7  background-90     */
+  --secondary-foreground: oklch(20.46% 0 0);
+  --muted:                oklch(97.61% 0 0);
+  --muted-foreground:     oklch(71.55% 0 0);           /* #a3a3a3  text-400          */
+  --accent:               oklch(97.61% 0 0);
+  --accent-foreground:    oklch(34.85% 0 0);           /* #3a3a3a  text-200          */
+
+  /* Application-specific */
+  --tertiary: oklch(79.00% 0.1466 82.04);              /* amber -- annotation only   */
+
+  /* Semantic */
+  --destructive: oklch(58.30% 0.2387 28.48);           /* #e5433a                    */
+
+  /* Borders -- border-200: rgb(229, 229, 229) = #e5e5e5 */
+  --border: oklch(92.19% 0 0);
+  --input:  oklch(92.19% 0 0);
+  --ring:   oklch(54.97% 0.1712 266.81);
+
+  /* Charts */
   --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-2: oklch(0.6   0.118 184.704);
+  --chart-3: oklch(0.398 0.07  227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: #ffffff;
-  --sidebar-foreground: #202222;
-  --sidebar-primary: #255fdc;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e6eeff;
-  --sidebar-accent-foreground: #001a4d;
-  --sidebar-border: #dadce0;
-  --sidebar-ring: #255fdc;
+
+  /* Sidebar */
+  --sidebar:                    oklch(96.86% 0 0);      /* #f5f5f5  */
+  --sidebar-foreground:         oklch(20.46% 0 0);
+  --sidebar-primary:            oklch(54.97% 0.1712 266.81);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent:             oklch(97.61% 0 0);
+  --sidebar-accent-foreground:  oklch(34.85% 0 0);
+  --sidebar-border:             oklch(92.19% 0 0);
+  --sidebar-ring:               oklch(54.97% 0.1712 266.81);
 }
 
+/* =============================================================================
+ * Design tokens -- dark theme
+ *
+ * Dark palette reference:
+ *   background-100  #191919   primary dark canvas
+ *   background-90   #202020   hover surface (dark)
+ *   background-80   #2c2c2c   pressed/active (dark)
+ *   text-100        #e5e5e5   primary text
+ *   text-200        #a3a3a3   secondary text
+ *   text-300        #737373   tertiary text
+ *   text-400        #525252   placeholder
+ *   border-100      #222222   subtle border
+ *   border-200      #262626   default border
+ *   border-300      #2e2e2e   strong border
+ *   border-400      #3a3a3a   strong border 2
+ * ========================================================================== */
+
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* -------------------------------------------------------------------------
+   * Background scale (dark)
+   * ------------------------------------------------------------------------- */
+  --color-background-100:  25,  25,  25; /* #191919  dark canvas       */
+  --color-background-90:   32,  32,  32; /* #202020  hover surface     */
+  --color-background-80:   44,  44,  44; /* #2c2c2c  pressed surface   */
+
+  --color-background-primary: var(--color-background-90);
+  --color-background-error:   var(--color-background-90);
+
+  /* -------------------------------------------------------------------------
+   * Text scale (dark)
+   * ------------------------------------------------------------------------- */
+  --color-text-100: 229, 229, 229; /* #e5e5e5  primary text      */
+  --color-text-200: 163, 163, 163; /* #a3a3a3  secondary text    */
+  --color-text-300: 115, 115, 115; /* #737373  tertiary text     */
+  --color-text-350: 130, 130, 130;
+  --color-text-400:  82,  82,  82; /* #525252  placeholder       */
+
+  --color-text-primary: var(--color-primary-40);
+  --color-text-error:   var(--color-error-100);
+
+  --color-scrollbar: 82, 82, 82;
+
+  /* -------------------------------------------------------------------------
+   * Border scale (dark)
+   * ------------------------------------------------------------------------- */
+  --color-border-100:  34,  34,  34; /* #222222  subtle 1          */
+  --color-border-200:  38,  38,  38; /* #262626  subtle 2          */
+  --color-border-300:  46,  46,  46; /* #2e2e2e  strong 1          */
+  --color-border-400:  58,  58,  58; /* #3a3a3a  strong 2          */
+
+  --color-border-primary: var(--color-primary-200);
+  --color-border-error:   var(--color-error-500);
+
+  /* -------------------------------------------------------------------------
+   * Shadow scale (dark)
+   * ------------------------------------------------------------------------- */
+  --color-shadow-2xs:
+    0px 0px 1px 0px rgba(0, 0, 0, 0.15),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.5);
+  --color-shadow-xs:
+    0px 0px 2px 0px rgba(0, 0, 0, 0.2),
+    0px 2px 4px 0px rgba(0, 0, 0, 0.5);
+  --color-shadow-sm:
+    0px 0px 4px 0px rgba(0, 0, 0, 0.2),
+    0px 2px 6px 0px rgba(0, 0, 0, 0.5);
+  --color-shadow-rg:
+    0px 0px 6px 0px rgba(0, 0, 0, 0.2),
+    0px 4px 6px 0px rgba(0, 0, 0, 0.5);
+  --color-shadow-md:
+    0px 2px 8px 0px rgba(0, 0, 0, 0.2),
+    0px 4px 8px 0px rgba(0, 0, 0, 0.5);
+  --color-shadow-lg:
+    0px 4px 12px 0px rgba(0, 0, 0, 0.25),
+    0px 4px 10px 0px rgba(0, 0, 0, 0.55);
+  --color-shadow-xl:
+    0px 0px 14px 0px rgba(0, 0, 0, 0.25),
+    0px 6px 10px 0px rgba(0, 0, 0, 0.55);
+  --color-shadow-2xl:
+    0px 0px 18px 0px rgba(0, 0, 0, 0.25),
+    0px 8px 12px 0px rgba(0, 0, 0, 0.6);
+  --color-shadow-3xl:
+    0px 4px 24px 0px rgba(0, 0, 0, 0.3),
+    0px 12px 40px 0px rgba(0, 0, 0, 0.65);
+  --color-shadow-4xl:
+    0px 8px 40px 0px rgba(0, 0, 0, 0.4),
+    0px 12px 32px -16px rgba(0, 0, 0, 0.3);
+  --color-onboarding-shadow-sm: 0px 4px 20px 0px rgba(39, 44, 56, 0.1);
+
+  /* -------------------------------------------------------------------------
+   * Onboarding colors (dark)
+   * ------------------------------------------------------------------------- */
+
+  --color-onboarding-text-100: 237, 238, 240;
+  --color-onboarding-text-200: 176, 180, 187;
+  --color-onboarding-text-300: 118, 123, 132;
+  --color-onboarding-text-400: 105, 110, 119;
+
+  --color-onboarding-background-100:  54,  58,  64;
+  --color-onboarding-background-200:  40,  42,  45;
+  --color-onboarding-background-300:  40,  42,  45;
+  --color-onboarding-background-400:  67,  72,  79;
+
+  --color-onboarding-border-100:  54,  58,  64;
+  --color-onboarding-border-200:  54,  58,  64;
+  --color-onboarding-border-300:  34,  35,  38, 0.5;
+
+  /* -------------------------------------------------------------------------
+   * Toast theme (dark)
+   * Distinctive high-contrast notification colors
+   * ------------------------------------------------------------------------- */
+  --color-toast-success-text:      178, 221, 181;
+  --color-toast-error-text:        206,  44,  49;
+  --color-toast-warning-text:      255, 186,  24;
+  --color-toast-info-text:         141, 164, 239;
+  --color-toast-loading-text:      255, 255, 255;
+  --color-toast-secondary-text:    185, 187, 198;
+  --color-toast-tertiary-text:     139, 141, 152;
+
+  --color-toast-success-background:  46,  46,  46;
+  --color-toast-error-background:    46,  46,  46;
+  --color-toast-warning-background:  46,  46,  46;
+  --color-toast-info-background:     46,  46,  46;
+  --color-toast-loading-background:  46,  46,  46;
+
+  --color-toast-success-border:  42, 126,  59;
+  --color-toast-error-border:   100,  23,  35;
+  --color-toast-warning-border:  79,  52,  34;
+  --color-toast-info-border:     58,  91, 199;
+  --color-toast-loading-border:  96, 100, 108;
+
+  /* -------------------------------------------------------------------------
+   * Sidebar aliases (dark)
+   * ------------------------------------------------------------------------- */
+  --color-sidebar-background-100: var(--color-background-100);
+  --color-sidebar-background-90:  var(--color-background-90);
+  --color-sidebar-background-80:  var(--color-background-80);
+
+  --color-sidebar-text-100: var(--color-text-100);
+  --color-sidebar-text-200: var(--color-text-200);
+  --color-sidebar-text-300: var(--color-text-300);
+  --color-sidebar-text-400: var(--color-text-400);
+
+  --color-sidebar-border-100: var(--color-border-100);
+  --color-sidebar-border-200: var(--color-border-100);
+  --color-sidebar-border-300: var(--color-border-100);
+  --color-sidebar-border-400: var(--color-border-100);
+
+  --color-sidebar-shadow-2xs: var(--color-shadow-2xs);
+  --color-sidebar-shadow-xs:  var(--color-shadow-xs);
+  --color-sidebar-shadow-sm:  var(--color-shadow-sm);
+  --color-sidebar-shadow-rg:  var(--color-shadow-rg);
+  --color-sidebar-shadow-md:  var(--color-shadow-md);
+  --color-sidebar-shadow-lg:  var(--color-shadow-lg);
+  --color-sidebar-shadow-xl:  var(--color-shadow-xl);
+  --color-sidebar-shadow-2xl: var(--color-shadow-2xl);
+  --color-sidebar-shadow-3xl: var(--color-shadow-3xl);
+  --color-sidebar-shadow-4xl: var(--color-shadow-4xl);
+
+  /* -------------------------------------------------------------------------
+   * Semantic tokens (shadcn/ui) -- dark overrides
+   * ------------------------------------------------------------------------- */
+
+  /* Surfaces */
+  --background:         oklch(14.48% 0 0);             /* #191919  dark canvas       */
+  --foreground:         oklch(91.86% 0 0);             /* #e5e5e5  text-100 dark     */
+  --card:               oklch(17.65% 0 0);             /* #202020  background-90     */
+  --card-foreground:    oklch(91.86% 0 0);
+  --popover:            oklch(17.65% 0 0);
+  --popover-foreground: oklch(91.86% 0 0);
+
+  /* Brand */
+  --primary:            oklch(54.97% 0.1712 266.81);   /* #3f76ff -- unchanged       */
+  --primary-foreground: oklch(100% 0 0);
+
+  /* Neutrals */
+  --secondary:            oklch(17.65% 0 0);           /* #202020  hover dark        */
+  --secondary-foreground: oklch(91.86% 0 0);
+  --muted:                oklch(17.65% 0 0);
+  --muted-foreground:     oklch(43.86% 0 0);           /* #525252  text-400 dark     */
+  --accent:               oklch(17.65% 0 0);
+  --accent-foreground:    oklch(71.55% 0 0);           /* #a3a3a3  text-200 dark     */
+
+  /* Semantic */
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+
+  /* Borders */
+  --border: oklch(22.54% 0 0);                         /* #222222  border-100 dark   */
+  --input:  oklch(22.54% 0 0 / 60%);
+  --ring:   oklch(54.97% 0.1712 266.81);
+
+  /* Charts */
   --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-2: oklch(0.696 0.17  162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+
+  /* Sidebar */
+  --sidebar:                    oklch(17.65% 0 0);
+  --sidebar-foreground:         oklch(91.86% 0 0);
+  --sidebar-primary:            oklch(54.97% 0.1712 266.81);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent:             oklch(22.54% 0 0);
+  --sidebar-accent-foreground:  oklch(71.55% 0 0);
+  --sidebar-border:             oklch(22.54% 0 0);
+  --sidebar-ring:               oklch(54.97% 0.1712 266.81);
 }
+
+/* =============================================================================
+ * Base layer -- global element defaults
+ * ========================================================================== */
 
 @layer base {
   * {
@@ -270,9 +678,95 @@ body {
   ::selection {
     @apply bg-primary/15 text-foreground;
   }
+
+  /* -------------------------------------------------------------------------
+   * Typography base styles
+   * Font sizes follow 90% scale. Line heights follow Tailwind defaults.
+   * Colors use text scale tokens via oklch.
+   * ------------------------------------------------------------------------- */
+  h1 {
+    font-size: 1.6875rem; /* text-3xl = 27px */
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: oklch(20.46% 0 0); /* text-100 #171717 */
+  }
+
+  h2 {
+    font-size: 1.35rem; /* text-2xl = 21.6px */
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: oklch(20.46% 0 0);
+  }
+
+  h3 {
+    font-size: 1.125rem; /* text-xl = 18px */
+    line-height: 1.375;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: oklch(20.46% 0 0);
+  }
+
+  h4 {
+    font-size: 1.0125rem; /* text-lg = 16.2px */
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: oklch(20.46% 0 0);
+  }
+
+  h5 {
+    font-size: 0.9rem; /* text-base = 14.4px */
+    line-height: 1.5;
+    font-weight: 500;
+    color: oklch(20.46% 0 0);
+  }
+
+  h6 {
+    font-size: 0.7875rem; /* text-sm = 12.6px */
+    line-height: 1.5;
+    font-weight: 500;
+    color: oklch(34.85% 0 0); /* text-200 #3a3a3a */
+  }
+
+  p {
+    font-size: 0.9rem; /* text-base = 14.4px */
+    line-height: 1.5;
+    color: oklch(20.46% 0 0);
+  }
+
+  small {
+    font-size: 0.7875rem; /* text-sm = 12.6px */
+    line-height: 1.5;
+  }
+
+  code, kbd, samp, pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                 "Liberation Mono", "Courier New", monospace;
+    font-size: 0.7875rem; /* text-sm */
+  }
+
+  a {
+    text-decoration: none;  /* No underline by default */
+  }
+
+  /* Underline only inside rich-text / prose contexts */
+  .prose a:hover,
+  article a:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+
+  strong, b { font-weight: 600; }
+  em, i     { font-style: italic; }
 }
 
-/* Landing Page Custom Styles */
+/* =============================================================================
+ * Utilities -- layout helpers
+ * ========================================================================== */
+
 @layer utilities {
   .flux-container {
     @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10;
@@ -289,133 +783,49 @@ body {
   .flux-page-pad {
     @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8;
   }
+}
 
-  .bg-grid-pattern {
-    background-image:
-      linear-gradient(to right, oklch(1 0 0 / 5%) 1px, transparent 1px),
-      linear-gradient(to bottom, oklch(1 0 0 / 5%) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
+/* =============================================================================
+ * Accessibility -- prefers-reduced-motion
+ * Preserves state-change transitions; disables decorative animations.
+ * ========================================================================== */
 
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.5s ease-out;
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.6s ease-out;
-  }
-
-  .animate-gradient {
-    animation: gradient 8s ease infinite;
-    background-size: 200% 200%;
-  }
-
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
-  }
-
-  .glass-morphism {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
-  }
-
-  .flux-logo-shimmer {
-    background: linear-gradient(90deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0) 100%);
-    background-size: 200% 100%;
-    animation: flux-logo-shimmer 2s infinite;
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-@keyframes flux-logo-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
+/* =============================================================================
+ * Scrollbar
+ * ========================================================================== */
 
-  100% {
-    background-position: 200% 0;
-  }
+html { scroll-behavior: smooth; }
+
+::-webkit-scrollbar { width: 10px; }
+
+.kanban-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #e4e4e7 transparent;
 }
 
-@keyframes float {
+.kanban-scrollbar::-webkit-scrollbar       { height: 10px; cursor: pointer; }
+.kanban-scrollbar::-webkit-scrollbar-track { background: transparent; margin: 0 24px; }
 
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-10px);
-  }
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #e4e4e7;
+  border-radius: 20px;
+  border: 2px solid white;
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
+/* =============================================================================
+ * Monaco editor -- overrides
+ * ========================================================================== */
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes glow {
-
-  0%,
-  100% {
-    filter: drop-shadow(0 0 10px rgba(251, 146, 60, 0.3));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 20px rgba(251, 146, 60, 0.6));
-  }
-}
-
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-/* Monaco editor comment glyph */
 .flux-comment-glyph {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%233370FF' stroke='%233370FF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E") no-repeat center;
   background-size: 12px 12px;
@@ -425,25 +835,14 @@ html {
   border-radius: 10px;
 }
 
-.flux-comment-glyph:hover {
-  opacity: 1;
-}
-
 .monaco-editor,
 .monaco-editor .margin,
 .monaco-editor-background {
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
-.monaco-editor .line-numbers {
-  font-variant-numeric: tabular-nums;
-}
-
-.monaco-editor .current-line {
-  border-radius: 6px;
-}
+.monaco-editor .line-numbers { font-variant-numeric: tabular-nums; }
+.monaco-editor .current-line { border-radius: 6px; }
 
 .monaco-editor .suggest-widget,
 .monaco-editor .monaco-hover,
@@ -452,7 +851,7 @@ html {
   border-color: var(--border) !important;
   box-shadow:
     0 18px 40px rgba(15, 23, 42, 0.14),
-    0 2px 8px rgba(15, 23, 42, 0.08) !important;
+    0 2px  8px  rgba(15, 23, 42, 0.08) !important;
 }
 
 .monaco-editor .find-widget {
@@ -460,44 +859,19 @@ html {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12) !important;
 }
 
-/* Kanban Horizontal Scrollbar */
-.kanban-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #e4e4e7 transparent;
-}
+/* =============================================================================
+ * react-pdf -- layout isolation
+ * ========================================================================== */
 
-.kanban-scrollbar::-webkit-scrollbar {
-  height: 10px;
-  cursor: pointer;
-}
+.react-pdf__Page { position: relative !important; margin: 0 auto; }
 
-.kanban-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 0 24px;
-}
-
-.kanban-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #e4e4e7;
-  /* zinc-200 */
-  border-radius: 20px;
-  border: 2px solid white;
-  transition: all 0.2s;
-}
-
-
-
-
-/* react-pdf custom styles to prevent layout breaks and double-text rendering */
-.react-pdf__Page {
-  position: relative !important;
-  margin: 0 auto;
-}
 .react-pdf__Page__textLayer,
 .textLayer {
   opacity: 1 !important;
   pointer-events: none !important;
   z-index: 2 !important;
 }
+
 .react-pdf__Page__textLayer span,
 .textLayer span {
   color: transparent !important;
@@ -505,6 +879,7 @@ html {
   background: transparent !important;
   pointer-events: auto !important;
 }
+
 .react-pdf__Page__annotationLayer,
 .annotationLayer {
   position: absolute !important;
@@ -514,6 +889,7 @@ html {
   bottom: 0 !important;
   z-index: 3 !important;
 }
+
 .react-pdf__Page__textLayer ::selection,
 .textLayer ::selection {
   background: rgba(37, 95, 220, 0.25) !important;
@@ -521,14 +897,13 @@ html {
   -webkit-text-fill-color: transparent !important;
 }
 
-/* Monaco active line flash highlight */
+/* =============================================================================
+ * Monaco -- active line flash
+ * ========================================================================== */
+
 @keyframes flux-flash-active-line {
-  0% {
-    background-color: rgba(37, 95, 220, 0.35); /* semi-transparent primary blue */
-  }
-  100% {
-    background-color: rgba(37, 95, 220, 0); /* fade out to transparent */
-  }
+  0%   { background-color: rgba(37, 95, 220, 0.35); }
+  100% { background-color: rgba(37, 95, 220, 0); }
 }
 
 .flux-active-line-flash {
@@ -536,3 +911,16 @@ html {
   box-shadow: inset 4px 0 0 0 var(--primary);
 }
 
+/* =============================================================================
+ * Third-party overrides -- Sonner, React Query Devtools
+ * Forces library UI to use app font; disables layout-thrashing transitions.
+ * ========================================================================== */
+
+[data-sonner-toast],
+.tsqd-parent-container * {
+  font-family: var(--font-sans) !important;
+  transition-property:
+    transform, opacity, background-color, border-color,
+    color, fill, stroke, box-shadow !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}

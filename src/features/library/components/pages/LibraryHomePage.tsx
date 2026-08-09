@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from "react";
 import {
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useWorkspace } from '@/features/workspaces';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/library/hooks/useDocumentTitle";
 import {
   useAllPapers,
   useCollections,
@@ -23,7 +23,7 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 import type { Paper, Collection } from "@/features/library/types/library.types";
 import { PaperTableRow } from "../components/PaperTableRow";
 import { PaperDetailPanel } from "../components/PaperDetailPanel";

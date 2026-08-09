@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
@@ -35,7 +35,7 @@ import {
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
 import { Separator } from "@/shared/components/ui/separator";
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/settings/hooks/useDocumentTitle";
 
 type Permission = {
   resource: string;

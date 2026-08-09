@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import { useRef, type ReactNode } from 'react';
 import Link from 'next/link';
+import { motion, useInView } from 'framer-motion';
 import {
-  FolderKanban,
   MessageSquare,
   FileText,
   CheckSquare,
@@ -15,195 +17,340 @@ import {
 import Navbar from '../components/navbar';
 import Footer from '../components/footer';
 
+// ─── Animation variants ────────────────────────────────────────────────────────
+
+const fadeUpBase = {
+  hidden: { opacity: 0, y: 18 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
+const fadeInBase = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.5, ease: 'easeOut' as const },
+  },
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const cardVariant = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
+function makeDelayed(delay: number) {
+  return {
+    hidden: { opacity: 0, y: 18 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay },
+    },
+  };
+}
+
+function makeFadeDelayed(delay: number) {
+  return {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { duration: 0.5, ease: 'easeOut' as const, delay },
+    },
+  };
+}
+
+// ─── Hooks ─────────────────────────────────────────────────────────────────────
+
+function useScrollReveal() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px 0px' });
+  return { ref, isInView };
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
 export default function LandingPage() {
+  const featuresReveal = useScrollReveal();
+  const stepsReveal = useScrollReveal();
+  const statsReveal = useScrollReveal();
+  const ctaReveal = useScrollReveal();
+
   return (
     <div className='min-h-screen flex flex-col bg-background'>
       <Navbar />
 
-      {/* Hero Section */}
+      {/* ── Hero ── */}
       <section className='pt-28 pb-16 sm:pt-32 lg:pt-36 lg:pb-24'>
         <div className='flux-container'>
           <div className='max-w-3xl mx-auto text-center space-y-6'>
-            <div className='inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold uppercase text-muted-foreground'>
-              <span className='w-1.5 h-1.5 rounded-full bg-green-500' />
-              Beta
-            </div>
 
-            <h1 className='text-4xl font-bold leading-[1.12] sm:text-5xl lg:text-6xl'>
+            {/* Badge */}
+            <motion.div
+              variants={makeFadeDelayed(0)}
+              initial='hidden'
+              animate='visible'
+              className='inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground'
+            >
+              <span className='w-1.5 h-1.5 rounded-full bg-primary/60' aria-hidden='true' />
+              Beta
+            </motion.div>
+
+            {/* H1 */}
+            <motion.h1
+              variants={makeDelayed(0.08)}
+              initial='hidden'
+              animate='visible'
+              className='text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl'
+            >
               The workspace for
               <br />
               research teams
-            </h1>
+            </motion.h1>
 
-            <p className='text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto'>
+            {/* Subtext */}
+            <motion.p
+              variants={makeDelayed(0.16)}
+              initial='hidden'
+              animate='visible'
+              className='text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto'
+            >
               Write, collaborate, and manage your research — all in one place.
-              Built for teams who want to move fast without losing context.
-            </p>
+              Built for teams who move fast without losing context.
+            </motion.p>
 
-            <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
+            {/* CTAs */}
+            <motion.div
+              variants={makeDelayed(0.24)}
+              initial='hidden'
+              animate='visible'
+              className='flex flex-col sm:flex-row gap-3 justify-center pt-2'
+            >
               <Link
-                href='/create'
-                className='group flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90'
+                href='/create-workspace'
+                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
               >
                 Start for free
-                <ArrowRight className='w-4 h-4 group-hover:translate-x-0.5 transition-transform' />
+                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
               </Link>
               <Link
                 href='/login'
-                className='flex h-11 items-center justify-center rounded-md border border-border bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-secondary'
+                className='flex h-9 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
               >
                 Sign in
               </Link>
-            </div>
+            </motion.div>
           </div>
 
           {/* Screenshot */}
-          <div className='mt-14 lg:mt-18 mx-auto max-w-6xl'>
-            <div className='overflow-hidden rounded-lg border border-border bg-card shadow-lg'>
+          <motion.div
+            variants={makeDelayed(0.36)}
+            initial='hidden'
+            animate='visible'
+            className='mt-14 lg:mt-18 mx-auto max-w-5xl'
+          >
+            <div className='overflow-hidden rounded-lg border border-border bg-card'>
               <img
                 src='/screenshot.png'
-                alt='Flux workspace'
+                alt='Flux workspace showing project dashboard with kanban board and document editor'
                 className='w-full h-auto'
+                loading='eager'
               />
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className='flux-section border-t border-border'>
+      {/* ── Features ── */}
+      <section
+        ref={featuresReveal.ref}
+        className='flux-section border-t border-border'
+        aria-labelledby='features-heading'
+      >
         <div className='flux-container'>
-          <div className='max-w-2xl mb-14'>
-            <p className='mb-3 text-xs font-semibold uppercase text-muted-foreground'>
-              Features
-            </p>
-            <h2 className='text-3xl font-bold lg:text-4xl'>
+          <motion.div
+            variants={fadeUpBase}
+            initial='hidden'
+            animate={featuresReveal.isInView ? 'visible' : 'hidden'}
+            className='max-w-2xl mb-14'
+          >
+            <h2 id='features-heading' className='text-3xl font-bold lg:text-4xl'>
               Everything your team needs
             </h2>
-            <p className='text-muted-foreground mt-3 text-lg'>
+            <p className='text-muted-foreground mt-3 text-lg leading-relaxed'>
               A focused set of tools designed for research workflows — from
               writing papers to managing project timelines.
             </p>
-          </div>
+          </motion.div>
 
-          <div className='grid overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2 lg:grid-cols-3'>
+          <motion.div
+            variants={staggerContainer}
+            initial='hidden'
+            animate={featuresReveal.isInView ? 'visible' : 'hidden'}
+            className='grid overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2 lg:grid-cols-3'
+          >
             <FeatureCard
-              icon={<FileText className='w-5 h-5' />}
+              icon={<FileText className='w-5 h-5' aria-hidden='true' />}
               title='Rich editor'
               description='Write documents with a powerful block editor. Supports markdown, code, math, and collaborative editing in real-time.'
             />
             <FeatureCard
-              icon={<Braces className='w-5 h-5' />}
+              icon={<Braces className='w-5 h-5' aria-hidden='true' />}
               title='LaTeX compiler'
-              description='Write and compile LaTeX directly in the browser. Multi-file projects, BibTeX, and instant PDF preview — like Overleaf.'
+              description='Write and compile LaTeX directly in the browser. Multi-file projects, BibTeX, and instant PDF preview.'
             />
             <FeatureCard
-              icon={<CheckSquare className='w-5 h-5' />}
+              icon={<CheckSquare className='w-5 h-5' aria-hidden='true' />}
               title='Task management'
               description='Track progress with tasks, deadlines, and priorities. Kanban boards and list views to match your workflow.'
             />
             <FeatureCard
-              icon={<MessageSquare className='w-5 h-5' />}
+              icon={<MessageSquare className='w-5 h-5' aria-hidden='true' />}
               title='AI assistant'
               description='Ask questions about your documents. The AI reads your uploaded files and gives contextual answers with sources.'
             />
             <FeatureCard
-              icon={<Upload className='w-5 h-5' />}
+              icon={<Upload className='w-5 h-5' aria-hidden='true' />}
               title='File storage'
               description='Upload and organize files per project. Version history, instant preview, and secure cloud storage included.'
             />
             <FeatureCard
-              icon={<Users className='w-5 h-5' />}
+              icon={<Users className='w-5 h-5' aria-hidden='true' />}
               title='Team collaboration'
               description='Invite members with role-based access. Real-time presence, comments, and activity feeds keep everyone aligned.'
             />
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className='flux-section border-t border-border bg-card/50'>
+      {/* ── How it works ── */}
+      <section
+        ref={stepsReveal.ref}
+        className='flux-section border-t border-border bg-secondary/40'
+        aria-labelledby='how-heading'
+      >
         <div className='flux-container'>
-          <div className='max-w-2xl mb-14'>
-            <p className='mb-3 text-xs font-semibold uppercase text-muted-foreground'>
-              How it works
-            </p>
-            <h2 className='text-3xl font-bold lg:text-4xl'>
+          <motion.div
+            variants={fadeUpBase}
+            initial='hidden'
+            animate={stepsReveal.isInView ? 'visible' : 'hidden'}
+            className='max-w-2xl mb-14'
+          >
+            <h2 id='how-heading' className='text-3xl font-bold lg:text-4xl'>
               From idea to publication
             </h2>
-          </div>
+          </motion.div>
 
-          <div className='grid lg:grid-cols-3 gap-12'>
+          <motion.div
+            variants={staggerContainer}
+            initial='hidden'
+            animate={stepsReveal.isInView ? 'visible' : 'hidden'}
+            className='grid lg:grid-cols-3 gap-12'
+          >
             <StepCard
-              number='01'
               title='Create a workspace'
               description='Set up your research workspace in seconds. Invite your team and organize projects by topic, deadline, or department.'
             />
             <StepCard
-              number='02'
               title='Write and collaborate'
               description='Use the rich editor or LaTeX compiler to write papers together. Everything syncs in real-time across your team.'
             />
             <StepCard
-              number='03'
               title='Ship your research'
               description='Export to PDF, compile LaTeX, and manage versions. Your work is always backed up and ready to submit.'
             />
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className='border-t border-border py-14 sm:py-16'>
+      {/* ── Stats ── */}
+      <section
+        ref={statsReveal.ref}
+        className='flux-section border-t border-border'
+        aria-label='Platform statistics'
+      >
         <div className='flux-container'>
-          <div className='grid grid-cols-2 md:grid-cols-4 gap-8'>
-            <div>
-              <div className='text-3xl font-bold lg:text-4xl'>99.9%</div>
-              <div className='text-sm text-muted-foreground mt-1'>Uptime</div>
-            </div>
-            <div>
-              <div className='text-3xl font-bold lg:text-4xl'>&lt;1s</div>
-              <div className='text-sm text-muted-foreground mt-1'>Compile time</div>
-            </div>
-            <div>
-              <div className='text-3xl font-bold lg:text-4xl'>E2E</div>
-              <div className='text-sm text-muted-foreground mt-1'>Encrypted</div>
-            </div>
-            <div>
-              <div className='text-3xl font-bold lg:text-4xl'>Free</div>
-              <div className='text-sm text-muted-foreground mt-1'>No credit card</div>
-            </div>
-          </div>
+          <motion.div
+            variants={staggerContainer}
+            initial='hidden'
+            animate={statsReveal.isInView ? 'visible' : 'hidden'}
+            className='grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 py-8'
+          >
+            <motion.div variants={fadeUpBase} className='group space-y-2'>
+              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>99.9%</h3>
+              <p className='text-sm font-medium text-muted-foreground'>Uptime</p>
+            </motion.div>
+            <motion.div variants={fadeUpBase} className='group space-y-2'>
+              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>&lt;1s</h3>
+              <p className='text-sm font-medium text-muted-foreground'>Compile time</p>
+            </motion.div>
+            <motion.div variants={fadeUpBase} className='group space-y-2'>
+              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>E2E</h3>
+              <p className='text-sm font-medium text-muted-foreground'>Encrypted</p>
+            </motion.div>
+            <motion.div variants={fadeUpBase} className='group space-y-2'>
+              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>Free</h3>
+              <p className='text-sm font-medium text-muted-foreground'>No credit card</p>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className='flux-section border-t border-border bg-card/50'>
+      {/* ── CTA ── */}
+      <section
+        ref={ctaReveal.ref}
+        className='flux-section border-t border-border'
+        aria-labelledby='cta-heading'
+      >
         <div className='flux-container'>
-          <div className='max-w-2xl mx-auto text-center space-y-6'>
-            <h2 className='text-3xl font-bold lg:text-4xl'>Ready to start?</h2>
+          <motion.div
+            variants={fadeUpBase}
+            initial='hidden'
+            animate={ctaReveal.isInView ? 'visible' : 'hidden'}
+            className='max-w-2xl mx-auto text-center space-y-6'
+          >
+            <h2 id='cta-heading' className='text-3xl font-bold lg:text-4xl'>
+              Ready to start?
+            </h2>
             <p className='text-lg text-muted-foreground'>
-              Create your workspace in under a minute. Free forever for small teams.
+              Create your workspace in under a minute. Free forever for small
+              teams.
             </p>
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
-                href='/create'
-                className='group flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90'
+                href='/create-workspace'
+                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
               >
                 Create workspace
-                <ArrowRight className='w-4 h-4 group-hover:translate-x-0.5 transition-transform' />
+                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
               </Link>
               <a
                 href='https://github.com/Research-Project-TDTU'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-secondary'
+                className='flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
               >
                 View on GitHub
-                <ArrowUpRight className='w-4 h-4' />
+                <ArrowUpRight className='w-3.5 h-3.5' aria-hidden='true' />
               </a>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -212,7 +359,7 @@ export default function LandingPage() {
   );
 }
 
-// ─── Private sub-components ───────────────────────────────────────────────────
+// ─── Sub-components ────────────────────────────────────────────────────────────
 
 function FeatureCard({
   icon,
@@ -224,28 +371,32 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className='group space-y-3 bg-card p-6 transition-colors hover:bg-accent/60 lg:p-8'>
-      <div className='text-foreground'>{icon}</div>
+    <motion.div
+      variants={cardVariant}
+      className='group space-y-3 bg-card p-6 transition-colors hover:bg-secondary lg:p-8'
+    >
+      <div className='inline-flex text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 group-hover:text-foreground origin-left'>
+        {icon}
+      </div>
       <h3 className='text-base font-semibold'>{title}</h3>
-      <p className='text-sm text-muted-foreground leading-relaxed'>{description}</p>
-    </div>
+      <p className='text-base text-muted-foreground leading-relaxed'>
+        {description}
+      </p>
+    </motion.div>
   );
 }
 
 function StepCard({
-  number,
   title,
   description,
 }: {
-  number: string;
   title: string;
   description: string;
 }) {
   return (
-    <div className='space-y-3'>
-      <span className='text-xs font-mono text-muted-foreground'>{number}</span>
-      <h3 className='text-xl font-semibold'>{title}</h3>
+    <motion.div variants={cardVariant} className='space-y-3'>
+      <h3 className='text-xl font-semibold transition-colors duration-200 group-hover:text-primary'>{title}</h3>
       <p className='text-muted-foreground leading-relaxed'>{description}</p>
-    </div>
+    </motion.div>
   );
 }

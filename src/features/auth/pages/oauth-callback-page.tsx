@@ -23,7 +23,7 @@ const OAuthCallbackPage = () => {
     queryClient
       .invalidateQueries({ queryKey: queryKeys.auth.session })
       .then(() => {
-        router.replace('/create');
+        router.replace('/create-workspace');
       })
       .catch(() => {
         router.replace('/login');

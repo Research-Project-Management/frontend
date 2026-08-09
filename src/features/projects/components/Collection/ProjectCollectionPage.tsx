@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from "react";
 import { Plus, BookMarked, Search, FolderOpen, Trash2, Import, BookOpen } from "lucide-react";
@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import type { ProjectCollection } from "@/features/library/types/library.types";
-import { API_URL } from "@/shared/lib/api";
+import { API_BASE_URL as API_URL } from "@/shared/constants";
 
 // â”€â”€ Create project collection dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 

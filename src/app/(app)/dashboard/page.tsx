@@ -15,7 +15,7 @@ export default function DashboardPage() {
     if (workspaces && workspaces.length > 0) {
       router.replace(`/${workspaces[0].url}`);
     } else {
-      router.replace('/create');
+      router.replace('/create-workspace');
     }
   }, [workspaces, isLoading, router]);
 

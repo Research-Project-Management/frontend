@@ -1,4 +1,4 @@
-﻿// Shared components for storage pages to avoid code duplication
+// Shared components for storage pages to avoid code duplication
 import { useState } from "react";
 import {
   File,
@@ -28,7 +28,7 @@ import { Button } from "@/shared/components/ui/button";
 import { DeleteModal } from "@/features/settings";
 import { toast } from "sonner";
 import type { StorageItem, FileType } from "../types";
-import { resolveFileUrl } from "@/shared/lib/api";
+import { resolveFileUrl } from "@/features/storage/hooks/useBlobUrl";
 
 export function getFileType(item: StorageItem): FileType {
   if (item.isFolder) return "folder";

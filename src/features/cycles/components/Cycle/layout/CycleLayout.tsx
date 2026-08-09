@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
 import { useProjects } from '@/features/workspaces';
-import { useDocumentTitle } from "@/shared/hooks";
+import { useDocumentTitle } from "@/features/cycles/hooks/useDocumentTitle";
 import { useCycle, type DerivedStatus } from "@/features/cycles/hooks/useCycle";
 import { useLabels } from '@/features/labels';
 import { Skeleton } from "@/shared/components/ui/skeleton";

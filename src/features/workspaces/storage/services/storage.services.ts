@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { apiFetch, apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import { API_BASE_URL as API_URL } from "@/shared/constants";
-import type { StorageItem } from "@/features/workspaces/storage/components/types";
+import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { extractPdfMetadataFromFile } from '@/features/editor';
 
 type StorageScope = "project" | "workspace";
@@ -699,4 +699,31 @@ export async function fetchFileArrayBufferService(url: string): Promise<ArrayBuf
     }
     return response.arrayBuffer();
 }
+
+export async function fetchBlobService(url: string): Promise<Blob> {
+    const response = await fetch(url, { credentials: "include" });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch blob: ${response.statusText}`);
+    }
+    return response.blob();
+}
+
+export const uploadGenericFile = async (file: File, prefix = "tasks"): Promise<string> => {
+    // 1. Get presigned URL
+    const { url: presignedUrl, path } = await apiPost<{ url: string; path: string }>(
+        "/api/files/presign",
+        { fileName: `${prefix}/${Date.now()}-${file.name}` }
+    );
+
+    // 2. Upload to R2
+    const uploadResponse = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+    });
+
+    if (!uploadResponse.ok) throw new Error("Failed to upload file to storage");
+
+    return `${API_URL}/api/files/r2/${path}`;
+};
 

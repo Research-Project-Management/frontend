@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { TeamSettings } from '@/features/workspaces';
+import { TeamPage } from '@/features/workspaces';
 
 export const metadata: Metadata = { title: 'Project Team · Flux' };
 
 export default function ProjectTeamSettingsPage() {
-  return <TeamSettings />;
+  return <TeamPage />;
 }

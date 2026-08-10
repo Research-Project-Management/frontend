@@ -3,17 +3,9 @@
 // Owns: workspace member management, roles, and settings UI components.
 
 // ── Components ────────────────────────────────────────────────────────────────
-export { default as DeleteModal } from './components/general/components/deleteModal';
+export { default as DeleteModal } from './components/DeleteModal';
+export { default as SideBar } from './components/SideBar';
 
-// ── Hooks: Roles ──────────────────────────────────────────────────────────────
-export {
-  useRoles,
-  useRole,
-  useCreateRole,
-  useUpdateRole,
-  useDeleteRole,
-  useDuplicateRole,
-} from './hooks/use-roles';
 
 // ── Hooks: Members ────────────────────────────────────────────────────────────
 export {

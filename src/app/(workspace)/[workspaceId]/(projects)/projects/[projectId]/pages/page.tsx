@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { PagesDashboard } from '@/features/workspaces/projects';
+import { DraftPage } from '@/features/workspaces/projects';
 
 interface Props {
   params: Promise<{ projectId: string }>;
@@ -9,5 +9,5 @@ interface Props {
 
 export default function ProjectPagesPage({ params }: Props) {
   const { projectId } = use(params);
-  return <PagesDashboard projectId={projectId} />;
+  return <DraftPage projectId={projectId} />;
 }

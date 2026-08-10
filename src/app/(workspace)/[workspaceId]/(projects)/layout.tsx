@@ -55,23 +55,9 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
           />
         )}
         <div className="relative flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              // Only trigger animation when the base section changes (overview, tasks, settings, etc.)
-              // to avoid re-animating the whole layout when navigating inside sub-sections (like settings tabs)
-              key={pathname.split('/').slice(0, 5).join('/')}
-              initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
-              transition={{
-                duration: 0.25,
-                ease: [0.22, 1, 0.36, 1]
-              }}
-              className="h-full w-full min-w-0"
-            >
+            <div className="h-full w-full min-w-0">
               {children}
-            </motion.div>
-          </AnimatePresence>
+            </div>
         </div>
       </div>
     </div>

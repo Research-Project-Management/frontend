@@ -381,3 +381,23 @@ export const useRemovePaperFromProjectCollection = (projectId: string) => {
       qc.invalidateQueries({ queryKey: QK.projectCollections(projectId) }),
   });
 };
+
+export const fetchPdfBlob = async (url: string): Promise<Blob> => {
+  const response = await fetch(url, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    const text = await response.text();
+    try {
+      const parsed = JSON.parse(text);
+      throw new Error(parsed.message || "Failed to load PDF (Server returned JSON)");
+    } catch {
+      throw new Error(`Server returned JSON instead of PDF: ${text.substring(0, 50)}...`);
+    }
+  }
+
+  return response.blob();
+};

@@ -111,23 +111,23 @@ export default function Topbar({
             {/* Project Switcher Box */}
             <DropdownMenu onOpenChange={() => setSearchValue("")}>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-2.5 px-2 py-1 rounded-sm hover:bg-zinc-100/80 data-[state=open]:bg-zinc-100 cursor-pointer transition-all group">
+                <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-zinc-100/80 data-[state=open]:bg-zinc-100 cursor-pointer transition-all group">
                   <ProjectAvatar avatar={project.avatar} name={project.name} />
-                  <span className="text-[13px] font-medium text-muted-foreground group-hover:text-black group-data-[state=open]:text-black truncate max-w-[150px]">
+                  <span className="text-sm font-medium text-muted-foreground group-hover:text-black group-data-[state=open]:text-black truncate max-w-[150px]">
                     {project.name}
                   </span>
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-60 p-0 rounded-sm border border-border bg-popover shadow-xl z-[100] overflow-hidden">
+              <DropdownMenuContent align="start" className="w-60 p-0 rounded-md border border-border bg-popover shadow-xl z-[100] overflow-hidden">
                 <div className="p-2 border-b border-border/40 bg-muted/20">
-                  <div className="relative flex items-center h-8 rounded-sm border border-border/50 bg-background overflow-hidden">
+                  <div className="relative flex items-center h-8 rounded-md border border-border/50 bg-background overflow-hidden">
                     <Search className="absolute left-2.5 size-3.5 text-muted-foreground/60" />
                     <Input
                       autoFocus
                       value={searchValue}
                       onChange={(e) => setSearchValue(e.target.value)}
                       placeholder="Search projects..."
-                      className="h-full text-[13px] py-0 border-none bg-transparent focus-visible:ring-0 shadow-none pl-8"
+                      className="h-full text-sm py-0 border-none bg-transparent focus-visible:ring-0 shadow-none pl-8"
                     />
                   </div>
                 </div>
@@ -139,7 +139,7 @@ export default function Topbar({
                         key={proj._id}
                         onClick={() => handleProjectClick(proj)}
                         className={cn(
-                          "flex items-center gap-2.5 px-3 py-2 text-[13px] cursor-pointer outline-none transition-colors",
+                          "flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer outline-none transition-colors",
                           isActive ? "bg-zinc-100/80 text-foreground font-medium" : "text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
                         )}
                       >
@@ -164,12 +164,12 @@ export default function Topbar({
         <div 
           onClick={onTitleClick}
           className={cn(
-            "flex items-center gap-2.5 px-1.5 py-1 rounded-sm transition-all ml-0.5",
+            "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all ml-1",
             onTitleClick ? "hover:bg-zinc-100 cursor-pointer" : ""
           )}
         >
-          <Icon className="size-3.5 text-foreground/80 shrink-0 mt-[1px]" />
-          <h1 className="text-[13px] font-semibold text-foreground tracking-tight whitespace-nowrap">
+          <Icon className="size-4 text-foreground/80 shrink-0 mt-[1px]" />
+          <h1 className="text-sm font-semibold text-foreground tracking-tight whitespace-nowrap">
             {title}
           </h1>
           {count !== undefined && !titleExtra && (
@@ -184,7 +184,7 @@ export default function Topbar({
       </div>
 
       {/* Center: Extra content */}
-      <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+      <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 flex items-center justify-center pointer-events-none z-10">
         <div className="pointer-events-auto flex items-center h-full">
           {centerContent}
         </div>

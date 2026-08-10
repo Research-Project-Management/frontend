@@ -13,7 +13,7 @@ import {
   DialogTitle,
   Input,
   Label,
-  Spinner,
+  
 } from '@/shared/components/ui';
 import { useWorkspaces } from '@/features/workspaces';
 import { DeleteModal } from '@/features/workspaces';
@@ -28,7 +28,7 @@ export default function ManageWorkspacesPage() {
   const editWorkspace = useEditWorkspace();
   const deleteWorkspace = useDeleteWorkspace();
 
-  if (isLoading) return <Spinner fullScreen />;
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div className='flex min-h-screen items-start justify-center bg-background px-4 py-12 sm:py-24'>

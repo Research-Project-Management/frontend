@@ -1,38 +1,14 @@
-﻿import type { TypeUser } from "@/features/profile/types/profile.types";
+import { z } from "zod";
+import { 
+  StickyLabelSchema, 
+  StickyColorSchema, 
+  StickySchema, 
+  StickyChildLinkSchema 
+} from "../schemas/sticky.schema";
 
-export interface Label {
-  _id: string;
-  id: string;
-  name: string;
-  color: string;
-  workspaceId?: string;
-  projectId?: string;
-  type?: string;
-  createdBy?: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  updatedAt?: string;
-}
+export type Label = z.infer<typeof StickyLabelSchema>;
 
-// Removed Tag type as it is replaced by Label
-
-export type StickyColor =
-  | "cyan-1"
-  | "cyan-2"
-  | "mint-1"
-  | "mint-2"
-  | "yellow-1"
-  | "lavender-1"
-  | "pink-1"
-  | "purple-1"
-  | "default"
-  | "yellow"
-  | "green"
-  | "blue"
-  | "pink"
-  | "purple";
+export type StickyColor = z.infer<typeof StickyColorSchema>;
 
 export const STICKY_COLOR_MAP: Record<
   StickyColor,
@@ -69,30 +45,9 @@ export const STICKY_COLOR_CYCLE = [
   "purple-1",
 ] as StickyColor[];
 
-export interface Sticky {
-  _id: string;
-  id?: string;
-  title?: string;
-  content: string;
-  color: StickyColor;
-  labels?: Label[];
-  scope?: "workspace" | "project";
-  category?: "sticky" | "note";
-  workspaceId?: string | { _id: string; name?: string };
-  projectId?: string | { _id: string; name?: string };
-  authorId?: string | Partial<TypeUser>;
-  position?: { x: number; y: number };
-  createdAt: string;
-  updatedAt: string;
-}
+export type Sticky = z.infer<typeof StickySchema>;
 
-export interface StickyChildLink {
-  _id: string;
-  sticky: Sticky;
-  note?: Sticky;
-  projectId?: string | { _id: string; name: string };
-  authorId?: string | { _id: string; name: string; avatar?: string };
-}
+export type StickyChildLink = z.infer<typeof StickyChildLinkSchema>;
 
 export type NoteColor = StickyColor;
 export const NOTE_COLOR_MAP = STICKY_COLOR_MAP;

@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { queryKeys } from '@/shared/constants';
-import { syncWorkspaceIntoCaches } from '@/features/workspaces';
+
 import {
   addWorkspaceMember,
   updateWorkspaceMemberRole,
@@ -27,10 +27,10 @@ export const useAddWorkspaceMember = () => {
     onMutate: () => {
       toast.loading('Adding member...', { id: 'ws-member-action' });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const res = data as any;
       if (res?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, res.workspace);
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspaceId) });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all });
       toast.success('Member added', { id: 'ws-member-action' });
@@ -104,10 +104,10 @@ export const useUpdateWorkspaceMemberRole = () => {
         id: 'ws-member-action',
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const res = data as any;
       if (res?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, res.workspace);
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspaceId) });
       }
       toast.success('Member role updated', { id: 'ws-member-action' });
     },
@@ -132,10 +132,10 @@ export const useRemoveWorkspaceMember = () => {
     onMutate: () => {
       toast.loading('Removing member...', { id: 'ws-member-action' });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const res = data as any;
       if (res?.workspace) {
-        syncWorkspaceIntoCaches(queryClient, res.workspace);
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspaceId) });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all });
       toast.success('Member removed', { id: 'ws-member-action' });

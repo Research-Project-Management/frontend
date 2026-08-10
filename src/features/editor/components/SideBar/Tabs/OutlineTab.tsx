@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { ChevronRight, Hash } from "lucide-react";
 import { pdfjs } from "react-pdf";
 import { cn } from "@/shared/lib/utils";
-import { usePageContext } from "../../PageContext";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { SidebarEmptyState, SidebarHeader, SidebarPanel } from "../SidebarChrome";
 
 interface OutlineEntry {

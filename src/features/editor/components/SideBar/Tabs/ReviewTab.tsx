@@ -22,11 +22,11 @@ import {
   useDeleteComment,
   useAddReply,
   useDeleteReply,
-} from "@/features/comments/services/comment.services";
+} from "@/features/workspaces/projects/project-id/drafts/services/comment.services";
 import type { PageComment, CommentReply } from "@/features/workspaces/projects/types/page.types";
-import { usePageContext } from "../../PageContext";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useWorkspaceActionsStore } from '@/features/workspaces';
+import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';
 import { cn } from "@/shared/lib/utils";
 import {
   SidebarEmptyState,
@@ -231,7 +231,7 @@ function CommentCard({
       {/* Replies section */}
       {expanded && (
         <div className="ml-5 border-l border-border/60 pl-3 pr-3 pb-2.5 bg-muted/10">
-          {comment.replies.map((reply) => (
+          {comment.replies.map((reply: any) => (
             <ReplyRow
               key={reply._id}
               reply={reply}
@@ -323,7 +323,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
 
   const { data: comments = [], isLoading } = usePageComments(pageId ?? null);
   const createMutation = useCreateComment();
-  const { pendingComment, clearPendingComment } = useWorkspaceActionsStore();
+  const { pendingComment, clearPendingComment } = useEditorActionsStore();
 
   const handleNavigateToLine = (line: number) => {
     scrollToLineRef.current?.(line);

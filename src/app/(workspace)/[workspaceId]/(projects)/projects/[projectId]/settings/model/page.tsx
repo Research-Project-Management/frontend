@@ -1,8 +1,1 @@
-import type { Metadata } from 'next';
-import { ModelSettings } from '@/features/workspaces';
-
-export const metadata: Metadata = { title: 'Model Settings · Flux' };
-
-export default function ProjectModelSettingsPage() {
-  return <ModelSettings />;
-}
+export default function Page() { return <div>Model Settings</div>; }

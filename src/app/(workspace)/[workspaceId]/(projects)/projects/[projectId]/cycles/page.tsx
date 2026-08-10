@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { CycleLayout } from '@/features/cycles';
+import { CyclePage } from "@/features/workspaces/projects/project-id/cycles";
 
 export const metadata: Metadata = { title: 'Research Cycles · Flux' };
 
 export default function CyclesPage() {
-  return <CycleLayout />;
+  return <CyclePage />;
 }

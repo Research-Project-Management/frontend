@@ -1,5 +1,5 @@
-export { default as StickyLayout } from './components/layout/StickyLayout';
+export { default as StickyPage } from './pages/StickyPage';
 export * from './services/sticky.services';
 export * from './types/sticky.types';
 
-export * from './hooks/useSticky';
+export * from './hooks/use-sticky';

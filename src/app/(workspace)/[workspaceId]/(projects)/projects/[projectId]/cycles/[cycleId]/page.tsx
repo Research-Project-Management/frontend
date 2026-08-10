@@ -1,9 +1,9 @@
 'use client';
 
 import { use } from 'react';
-import { Task } from '@/features/tasks';
-import { useProjectCycles } from '@/features/cycles';
-import { deriveStatus } from '@/features/cycles';
+import { Task } from '@/features/workspaces/projects/project-id/tasks';
+import { useProjectCycles } from '@/features/workspaces/projects/project-id/cycles';
+import { deriveStatus } from '@/features/workspaces/projects/project-id/cycles';
 
 interface Props {
   params: Promise<{ projectId: string; cycleId: string }>;

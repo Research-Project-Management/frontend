@@ -1,24 +1,6 @@
 import { apiGet } from '@/shared/lib/api';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type SearchResultType = 'project' | 'page' | 'file' | 'folder' | 'sticky';
-
-export type SearchResult = {
-  type: SearchResultType;
-  id: string;
-  name: string;
-  icon?: string | null;
-  projectId?: string;
-  projectName?: string;
-  content?: string;
-  mimeType?: string;
-  updatedAt?: string;
-};
-
-type SearchResponse = {
-  results: SearchResult[];
-};
+import type { SearchResponse } from '../types/search.types';
 
 // ── Raw fetcher ───────────────────────────────────────────────────────────────
 

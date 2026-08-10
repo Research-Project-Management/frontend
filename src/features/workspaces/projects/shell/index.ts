@@ -9,5 +9,5 @@ export { default as ProjectsHeader } from './components/header';
 export { default as CreateProject } from './components/create-project';
 
 // ── Services ──────────────────────────────────────────────────────────────────
-export * from './services/services/project.services';
-export { useDocumentTitle } from './hooks/hooks/useDocumentTitle';
+export * from './services/project.services';
+export { useDocumentTitle } from './hooks/use-document-title';

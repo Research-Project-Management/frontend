@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { useAuth, useLogin, loginSchema, type LoginSchema } from '@/features/auth';
-import { Button, Input, Label, Spinner } from '@/shared/components/ui';
+import { Button, Input, Label } from '@/shared/components/ui';
 
 const LoginPage = () => {
   const router = useRouter();
@@ -32,7 +32,7 @@ const LoginPage = () => {
   }, [isAuthLoading, user, router]);
 
 
-  if (isAuthLoading) return <Spinner fullScreen />;
+  if (isAuthLoading) return <Loader2 className="animate-spin" />;
   if (user) return null;
 
   const onSubmit = (data: LoginSchema) => {

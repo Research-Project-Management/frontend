@@ -39,15 +39,12 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: [
       'lucide-react',
-      '@heroicons/react',
       'framer-motion',
       'date-fns',
       '@radix-ui/react-icons',
     ],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+
   typescript: {
     ignoreBuildErrors: true,
   },

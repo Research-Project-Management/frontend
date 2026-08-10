@@ -10,5 +10,5 @@ export { createWorkspaceSchema, updateWorkspaceSchema } from './schemas/workspac
 export type { CreateWorkspaceSchema, UpdateWorkspaceSchema } from './schemas/workspace-schemas';
 
 // Types
-export type { Workspace, WorkspaceMember, WorkspaceMemberUser, WorkspaceMemberRole, WorkspaceRole } from './types/workspace-types';
+export type { Workspace, WorkspaceMember, WorkspaceMemberUser, WorkspaceRole } from './types/workspace-types';
 

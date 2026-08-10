@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from "react";
-import { User, Camera, Loader2, Github, CheckCircle2, XCircle } from "lucide-react";
+import { User, Camera, Loader2,  CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import TopBar from "@/features/workspaces/settings/components/layout/TopBar";
+import TopBar from "@/features/workspaces/settings/components/TopBar";
 import { useAuth } from '@/features/auth';
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
@@ -248,7 +248,7 @@ export default function ProfilePage() {
                   )}
                   {(user as any)?.githubId && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 text-gray-600 font-medium flex items-center gap-0.5">
-                      <Github className="size-3" /> GitHub
+                      <div className="size-3" /> GitHub
                     </span>
                   )}
                 </div>

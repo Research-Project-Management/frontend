@@ -7,7 +7,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 
 import { toast } from "sonner";
 
-// â”€â”€ Workspace Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Workspace Pages ───────────────────────────────────────────────────────────
 
 const fetchWorkspacePages = async (workspaceId: string, status?: string, search?: string) => {
   const params = new URLSearchParams();
@@ -24,7 +24,7 @@ export const useWorkspacePages = (workspaceId: string, status?: string, search?:
     enabled: !!workspaceId && (options?.enabled ?? true),
   });
 
-// â”€â”€ Project Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Project Pages ─────────────────────────────────────────────────────────────
 
 const fetchProjectPages = async (projectId: string, status?: string, search?: string) => {
   const params = new URLSearchParams();
@@ -45,7 +45,7 @@ export const useProjectPages = (projectId: string, status?: string, search?: str
   });
 };
 
-// â”€â”€ Single Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Single Page ───────────────────────────────────────────────────────────────
 
 const fetchPage = async (pageId: string) => {
   const data = await apiGet<{ page: Page }>(`/api/pages/${pageId}`);
@@ -66,7 +66,7 @@ export const usePage = (pageId: string) => {
   });
 };
 
-// â”€â”€ Page CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Page CRUD ─────────────────────────────────────────────────────────────────
 
 export const useCreatePage = () => {
   const queryClient = useQueryClient();
@@ -154,7 +154,7 @@ export const useUpdatePageTitle = () => {
   });
 };
 
-// â”€â”€ Page Files (child files inside a page-project) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Page Files (child files inside a page-project) ──────────────────────────
 
 type PageFile = { _id: string; title: string; updatedAt: string };
 
@@ -243,7 +243,7 @@ export const useSyncProjectToCompiler = () =>
     },
   });
 
-// â”€â”€ Version control â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Version control ───────────────────────────────────────────────────────────
 
 export const usePageVersions = (pageId: string | null) =>
   useQuery({
@@ -310,7 +310,7 @@ export const useDeletePageVersion = () => {
   });
 };
 
-// â”€â”€ Project history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Project history ───────────────────────────────────────────────────────────
 
 export const useProjectHistory = (rootPageId: string | null) =>
   useQuery({

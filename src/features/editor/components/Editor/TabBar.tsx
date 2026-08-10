@@ -7,7 +7,7 @@ import { cn } from "@/shared/lib/utils";
 import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";
 import type { EditorTab } from "@/features/editor/store/editor-tabs.store";
 
-// â”€â”€ File icon colour helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── File icon colour helpers ──────────────────────────────────────────────
 
 const EXT_COLORS: Record<string, string> = {
   tex: "text-sky-400",
@@ -23,7 +23,7 @@ function fileColor(title: string): string {
   return EXT_COLORS[ext] ?? "text-muted-foreground";
 }
 
-// â”€â”€ Single Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Single Tab ────────────────────────────────────────────────────────────
 
 interface TabItemProps {
   tab: EditorTab;
@@ -48,13 +48,13 @@ function TabItem({ tab, isActive, rootPageId }: TabItemProps) {
   const { closeTab } = useEditorTabsStore();
 
   const handleActivate = (e: React.MouseEvent) => {
-    // Middle-click â†’ close
+    // Middle-click → close
     if (e.button === 1) {
       e.preventDefault();
       return;
     }
     if (!isActive) {
-      // Only update the ?file= query param â€” URL path (pageId) stays stable.
+      // Only update the ?file= query param — URL path (pageId) stays stable.
       updateQueryParams(tab.id);
     }
   };
@@ -66,7 +66,7 @@ function TabItem({ tab, isActive, rootPageId }: TabItemProps) {
         // Switch to the next tab without changing the page path
         updateQueryParams(nextId);
       } else {
-        // No tabs left â€” clear the ?file param (shows root page)
+        // No tabs left — clear the ?file param (shows root page)
         updateQueryParams(null);
       }
     });
@@ -94,7 +94,7 @@ function TabItem({ tab, isActive, rootPageId }: TabItemProps) {
           : "bg-muted/30 text-muted-foreground hover:bg-background/50 hover:text-foreground/80",
       )}
     >
-      {/* Active indicator â€” top border */}
+      {/* Active indicator — top border */}
       {isActive && (
         <motion.span
           layoutId={`editor-tab-active-${rootPageId}`}
@@ -132,7 +132,7 @@ function TabItem({ tab, isActive, rootPageId }: TabItemProps) {
   );
 }
 
-// â”€â”€ Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tab Bar ───────────────────────────────────────────────────────────────
 
 interface TabBarProps {
   rootPageId: string;

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { usePageContext } from "../../PageContext";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import {
   SidebarEmptyState,

@@ -16,7 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/shared/components/ui';
 import { useProjects } from '@/features/workspaces';
-import type { Project } from '../../types/project.types';
+import type { Project } from '@/features/workspaces';
 import CreateProject from './create-project';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -31,14 +31,14 @@ const MODULE_ORDER: ProjectModuleKey[] = [
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
-  overview:   { label: 'Overview',    icon: ChartBarBig },
-  drafts:     { label: 'Drafts',       icon: PenLine },
-  tasks:      { label: 'Tasks',       icon: KanbanSquare },
-  cycles:     { label: 'Cycles',      icon: RotateCcw },
-  storage:    { label: 'Storage',     icon: Cloud },
-  collection: { label: 'Collection',  icon: BookMarked },
-  stickies:   { label: 'Notes',       icon: StickyNote },
-  settings:   { label: 'Settings',    icon: Settings },
+  overview: { label: 'Overview', icon: ChartBarBig },
+  drafts: { label: 'Drafts', icon: PenLine },
+  tasks: { label: 'Tasks', icon: KanbanSquare },
+  cycles: { label: 'Cycles', icon: RotateCcw },
+  storage: { label: 'Storage', icon: Cloud },
+  collection: { label: 'Collection', icon: BookMarked },
+  stickies: { label: 'Notes', icon: StickyNote },
+  settings: { label: 'Settings', icon: Settings },
 };
 
 // ── Sidebar items ─────────────────────────────────────────────────────────────
@@ -59,10 +59,10 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const id = useId();
 
   const navItems: NavItem[] = [
-    { label: 'Home',      icon: Home,     to: `/${workspaceId}`,            exact: true },
-    { label: 'Your Work', icon: UserStar, to: `/${workspaceId}/your-work`,   exact: false },
-    { label: 'All Drafts', icon: PenLine,  to: `/${workspaceId}/drafts`,       exact: false },
-    { label: 'Stickies',  icon: Layers2,  to: `/${workspaceId}/stickies`,    exact: false },
+    { label: 'Home', icon: Home, to: `/${workspaceId}`, exact: true },
+    { label: 'Your Work', icon: UserStar, to: `/${workspaceId}/your-work`, exact: false },
+    { label: 'All Drafts', icon: PenLine, to: `/${workspaceId}/drafts`, exact: false },
+    { label: 'Stickies', icon: Layers2, to: `/${workspaceId}/stickies`, exact: false },
   ];
 
   const { projects }: { projects?: Project[]; isLoading: boolean } = useProjects();
@@ -128,7 +128,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
               <Link
                 href={item.to}
                 key={item.label}
-                className='group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70'
+                className='group relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70'
               >
                 {active && (
                   <motion.div
@@ -138,8 +138,8 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <item.icon className={`relative z-10 size-4 shrink-0 ${active ? 'text-foreground' : 'text-muted-foreground group-hover/item:text-foreground'}`} />
-                <span className={`relative z-10 min-w-0 truncate text-sm ${active ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground group-hover/item:text-foreground'}`}>
+                <item.icon className={`relative z-10 size-4 shrink-0 transition-colors ${active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`} />
+                <span className={`relative z-10 min-w-0 truncate text-sm transition-colors ${active ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground group-hover:text-foreground'}`}>
                   {item.label}
                 </span>
               </Link>
@@ -208,9 +208,9 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                       <Link
                         href={link}
                         key={moduleKey}
-                        className={`flex h-9 items-center gap-2 rounded-md pl-8 pr-2.5 text-sm transition-colors ${modActive ? 'bg-accent text-foreground font-semibold' : 'text-muted-foreground hover:bg-accent/70 hover:text-foreground'}`}
+                        className={`group flex h-9 items-center gap-2 rounded-md pl-8 pr-2.5 text-sm transition-colors ${modActive ? 'bg-accent text-foreground font-semibold' : 'text-muted-foreground font-medium hover:bg-accent/70 hover:text-foreground'}`}
                       >
-                        <mod.icon className={`size-4 shrink-0 ${modActive ? 'text-foreground' : 'text-muted-foreground'}`} />
+                        <mod.icon className={`size-4 shrink-0 transition-colors ${modActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'}`} />
                         <span className='min-w-0 truncate'>{mod.label}</span>
                       </Link>
                     );

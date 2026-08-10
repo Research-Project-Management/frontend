@@ -66,18 +66,9 @@ export default function ProjectSettingLayout({ children }: { children?: React.Re
 
       <div className="flex-1 min-h-0 overflow-y-auto w-full relative">
         <div className="h-full bg-background">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="h-full w-full"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div className="h-full w-full">
+            {children}
+          </div>
         </div>
       </div>
     </div>

@@ -2,12 +2,10 @@
 
 import { useProjects, StorageSidebar } from '@/features/workspaces';
 import { Cloud, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from "framer-motion";
-import { useParams, usePathname } from 'next/navigation';
+import { useParams } from 'next/navigation';
 
 export default function StorageLayout({ children }: { children?: React.ReactNode }) {
     const { projectId } = useParams();
-    const pathname = usePathname();
     const { projects } = useProjects();
     const currentProject = projects?.find((p: { _id: string | undefined; }) => p._id === projectId);
 
@@ -42,21 +40,9 @@ export default function StorageLayout({ children }: { children?: React.ReactNode
                     </header>
                 )}
                 <main className="flex-1 min-h-0 overflow-y-auto relative">
-                    <AnimatePresence mode="wait" initial={false}>
-                        <motion.div
-                            key={pathname}
-                            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-                            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                            exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
-                            transition={{
-                                duration: 0.25,
-                                ease: [0.22, 1, 0.36, 1]
-                            }}
-                            className="h-full w-full"
-                        >
-                            {children}
-                        </motion.div>
-                    </AnimatePresence>
+                    <div className="h-full w-full">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

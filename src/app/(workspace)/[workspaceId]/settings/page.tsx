@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import GeneralPage from '@/features/workspaces/settings/components/general';
+import GeneralPage from '@/features/workspaces/settings/pages/GeneralPage';
 
 export const metadata: Metadata = { title: 'Settings Â· Flux' };
 

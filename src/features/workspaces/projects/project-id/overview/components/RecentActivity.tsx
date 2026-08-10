@@ -2,9 +2,9 @@ import { formatDistanceToNow } from "date-fns";
 import { FileText, CheckSquare, Activity as ActivityIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import { useProjectTasks } from '@/features/tasks';
-import { useActivityFeed } from '@/features/workspaces';
-import type { Activity } from "@/features/workspaces/services/workspace.service";
+import { useProjectTasks } from '@/features/workspaces/projects/project-id/tasks';
+import { useActivityFeed } from '@/features/workspaces/projects/home';
+type Activity = any;
 
 
 
@@ -71,14 +71,14 @@ export default function ProjectRecentActivity({
   limit = 8,
 }: ProjectRecentActivityProps) {
   const { data: taskData, isLoading: isTasksLoading } = useProjectTasks(projectId);
-  const { data: workspaceActivities = [], isLoading: isActivityLoading } = useActivityFeed(workspaceId);
+  const { data: workspaceActivities = [], isLoading: isActivityLoading } = useActivityFeed();
 
   const visibleActivities = useMemo(() => {
     // Defensive check for recentFiles
     const filesArray = Array.isArray(recentFiles) ? recentFiles : [];
     const tasksArray = taskData?.tasks || [];
 
-    const taskIds = new Set(tasksArray.map((task) => task._id).filter(Boolean));
+    const taskIds = new Set(tasksArray.map((task: any) => task._id).filter(Boolean));
     const fileIds = new Set(filesArray.map(getFileId).filter(Boolean));
     const seen = new Set<string>();
 

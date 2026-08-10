@@ -5,7 +5,8 @@ import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import { toast } from "sonner";
 import { useParams } from "next/navigation";
 import type { Sticky, StickyChildLink } from "@/features/workspaces";
-import { useLabelsQuery } from "@/features/labels";
+import { StickyListResponseSchema, StickyChildrenResponseSchema, CreateStickyPayloadSchema, UpdateStickyPayloadSchema } from "../schemas/sticky.schema";
+import { useLabelsQuery } from "@/features/workspaces/projects/project-id/tasks";
 
 const stickiesKey = (workspaceId: string, labels?: string[], projectId?: string, category?: string) => 
   ["stickies", workspaceId, { labels, projectId, category }];
@@ -22,7 +23,7 @@ const invalidateAllStickies = (queryClient: any, workspaceId: string | undefined
   queryClient.invalidateQueries({ queryKey: ["stickies", workspaceId] });
 };
 
-// â”€â”€ Fetchers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fetchers ──────────────────────────────────────────────────────────────────
 
 export const fetchStickies = async (workspaceId: string, labels?: string[], projectId?: string, category?: string) => {
   const params = new URLSearchParams();
@@ -49,7 +50,7 @@ export const fetchStickyChildren = async (stickyId: string) => {
   return data.children;
 };
 
-// â”€â”€ Query Hooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Query Hooks ───────────────────────────────────────────────────────────────
 
 export const useStickies = (
   workspaceId: string,
@@ -90,7 +91,7 @@ export const useStickyChildren = (stickyId?: string) => {
   });
 };
 
-// â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Mutations ─────────────────────────────────────────────────────────────────
 
 export const useCreateSticky = () => {
   const queryClient = useQueryClient();

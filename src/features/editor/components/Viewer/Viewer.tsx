@@ -38,11 +38,11 @@ import {
 } from "@/shared/components/ui";
 import { Separator } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { API_BASE_URL as API_URL } from "@/shared/constants";
-import { parseCompileErrors } from "@/features/editor/services/latex-utils";
-import { usePageContext } from "../PageContext";
+import { parseCompileErrors } from "@/features/editor/utils/latex-utils";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { useEditorSettingsStore, type LaTeXEngine } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
+import { flushPageContent, syncIncremental, compileLatex } from "../../services/viewer.services";
 
 import { toast } from "sonner";
 import { useUpdatePageThumbnail, usePageFiles } from '@/features/workspaces/projects';
@@ -55,7 +55,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// â”€â”€ Toolbar Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Toolbar Button ─────────────────────────────────────────────────────────
 
 interface ToolbarButtonProps {
   icon: React.ElementType;
@@ -103,7 +103,7 @@ function ToolbarButton({
   );
 }
 
-// â”€â”€ Log Parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Log Parser ──────────────────────────────────────────────────────────────
 
 interface LogEntry {
   message: string;
@@ -195,7 +195,7 @@ function parseLatexLog(raw: string): ParsedLog {
   return { errors, warnings, badBoxes };
 }
 
-// â”€â”€ Log Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Log Panel ──────────────────────────────────────────────────────────────
 
 type LogTab = "errors" | "warnings" | "badboxes" | "raw";
 
@@ -366,7 +366,7 @@ function LogPanel({ log, onClose }: { log: string; onClose: () => void }) {
   );
 }
 
-// â”€â”€ Thumbnail Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Thumbnail Generation ───────────────────────────────────────────────────
 
 async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   try {
@@ -376,14 +376,14 @@ async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
     });
     const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
-    // Scale 1.5 gives ~892 Ã— 1263 px for A4 â€” crisp on retina displays
+    // Scale 1.5 gives ~892 Ã— 1263 px for A4 — crisp on retina displays
     const viewport = page.getViewport({ scale: 1.5 });
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d")!;
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-    // Return base64 payload (strip the data-URL prefix â€” backend needs raw base64)
+    // Return base64 payload (strip the data-URL prefix — backend needs raw base64)
     const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
     return dataUrl.split(",")[1]; // raw base64 only
   } catch {
@@ -391,11 +391,7 @@ async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   }
 }
 
-// â”€â”€ SyncTeX types & parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-//
-// After compilation the server returns the decompressed SyncTeX text.  We
-// parse it once into a bidirectional map so both scroll-sync directions have
-// O(log n) lookups instead of linear scans.
+// ── SyncTeX types & parser ──────────────────────────────────────────────────────────────
 
 interface SyncTeXNode {
   line: number;
@@ -405,19 +401,19 @@ interface SyncTeXNode {
 }
 
 interface SyncTeXMap {
-  /** source line (1-based) â†’ first PDF page (1-based) it appears on (for tag 1) */
+  /** source line (1-based) → first PDF page (1-based) it appears on (for tag 1) */
   lineToPage: Map<number, number>;
-  /** `${tag}:${line}` â†’ page (1-based) */
+  /** `${tag}:${line}` → page (1-based) */
   tagLineToPage: Map<string, number>;
-  /** PDF page (1-based) â†’ sorted list of source lines rendered on it */
+  /** PDF page (1-based) → sorted list of source lines rendered on it */
   pageToLines: Map<number, number[]>;
-  /** all mapped source lines, sorted ascending â€” used for binary search */
+  /** all mapped source lines, sorted ascending — used for binary search */
   sortedLines: number[];
-  /** PDF page (1-based) â†’ list of all SyncTeX nodes on that page */
+  /** PDF page (1-based) → list of all SyncTeX nodes on that page */
   pageToNodes: Map<number, SyncTeXNode[]>;
-  /** `${tag}:${line}` â†’ node on that page */
+  /** `${tag}:${line}` → node on that page */
   tagLineToNode: Map<string, SyncTeXNode & { page: number }>;
-  /** tag â†’ filepath */
+  /** tag → filepath */
   tagToPath: Map<number, string>;
   /** basename to tag mapping */
   pathToTag: Map<string, number>;
@@ -467,7 +463,7 @@ function parseSyncTeX(text: string): SyncTeXMap {
       }
       continue;
     }
-    // Page end marker or header lines â€” skip
+    // Page end marker or header lines — skip
     if (first === 125 /* } */ || currentPage === 0) continue;
 
     // Unified regex for any box/node representation:
@@ -514,7 +510,7 @@ function parseSyncTeX(text: string): SyncTeXMap {
   };
 }
 
-/** Binary-search: index of first element â‰¥ target in a sorted array. */
+/** Binary-search: index of first element ≥ target in a sorted array. */
 function lowerBound(sorted: number[], target: number): number {
   let lo = 0,
     hi = sorted.length;
@@ -526,7 +522,7 @@ function lowerBound(sorted: number[], target: number): number {
   return lo;
 }
 
-/** Monaco line â†’ PDF page (1-based), with nearest-line fallback. */
+/** Monaco line → PDF page (1-based), with nearest-line fallback. */
 function syncTeXLineToPage(line: number, map: SyncTeXMap): number {
   const key = `1:${line}`;
   if (map.tagLineToPage.has(key)) return map.tagLineToPage.get(key)!;
@@ -542,7 +538,7 @@ function syncTeXLineToPage(line: number, map: SyncTeXMap): number {
 }
 
 /**
- * PDF page + Y-fraction (0..1) â†’ Monaco line.
+ * PDF page + Y-fraction (0..1) → Monaco line.
  * Uses exact coordinate matching based on the closest visual Y-coordinate.
  */
 function syncTeXPageFractionToLine(
@@ -596,9 +592,9 @@ function syncTeXPageFractionToLine(
   return 1;
 }
 
-// â”€â”€ Sync helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Sync helpers ──────────────────────────────────────────────────────────────
 // LaTeX preamble lines (before \begin{document}) produce no PDF output, so we
-// skip them for a more accurate line â†” page approximation.
+// skip them for a more accurate line ↔ page approximation.
 
 function getContentBounds(content: string): {
   firstContentLine: number; // 1-based line number of the first content line
@@ -612,7 +608,7 @@ function getContentBounds(content: string): {
 }
 
 /**
- * (pageIndex 0-based, clickFraction within page 0..1) â†’ Monaco line (1-based).
+ * (pageIndex 0-based, clickFraction within page 0..1) → Monaco line (1-based).
  * clickFraction = e.nativeEvent.offsetY / pageHeight gives sub-page precision.
  */
 function pdfPositionToLine(
@@ -631,7 +627,7 @@ function pdfPositionToLine(
   );
 }
 
-// â”€â”€ Compile Split Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Compile Split Button ──────────────────────────────────────────────────
 
 const ENGINE_SHORT: Record<LaTeXEngine, string> = {
   pdflatex: "pdf",
@@ -664,9 +660,9 @@ function CompileButton({
 }) {
   const isRunning = compileStatus !== "idle" && compileStatus !== "done" && compileStatus !== "error";
   const statusLabel: Record<string, string> = {
-    flushing: "Savingâ€¦",
-    syncing: "Syncingâ€¦",
-    compiling: "Compilingâ€¦",
+    flushing: "Saving…",
+    syncing: "Syncing…",
+    compiling: "Compiling…",
   };
   return (
     <div className="flex items-center">
@@ -681,7 +677,7 @@ function CompileButton({
         ) : (
           <Play className="size-3 fill-current" />
         )}
-        {isRunning ? (statusLabel[compileStatus] ?? "Workingâ€¦") : "Compile"}
+        {isRunning ? (statusLabel[compileStatus] ?? "Working…") : "Compile"}
 
       </button>
       <DropdownMenu>
@@ -715,7 +711,7 @@ function CompileButton({
   );
 }
 
-// â”€â”€ Optimized PDF Page (IntersectionObserver based Lazy Loading) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Optimized PDF Page (IntersectionObserver based Lazy Loading) ──────────────────────────────────────────────────────────────────────
 
 interface OptimizedPDFPageProps {
   pageIndex: number; // 0-based
@@ -806,7 +802,7 @@ function OptimizedPDFPage({
   );
 }
 
-// â”€â”€ Main Viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main Viewer ────────────────────────────────────────────────────────────────
 
 export default function Viewer() {
   const {
@@ -998,7 +994,7 @@ export default function Viewer() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Register lineâ†’page scroll function so Editor/ReviewTab can sync the PDF.
+  // Register line→page scroll function so Editor/ReviewTab can sync the PDF.
   useEffect(() => {
     scrollToPdfLineRef.current = (line: number) => {
       if (numPages === 0) return;
@@ -1015,7 +1011,7 @@ export default function Viewer() {
       const key = `${activeTag}:${line}`;
 
       if (smap && smap.tagLineToPage.has(key)) {
-        // SyncTeX path â€” accurate, compiler-derived mapping
+        // SyncTeX path — accurate, compiler-derived mapping
         pageNum = smap.tagLineToPage.get(key)!;
         const node = smap.tagLineToNode.get(key);
         if (node) {
@@ -1052,7 +1048,7 @@ export default function Viewer() {
       const pageEl = pageElemRefs.current[pageNum];
       if (!pageEl) return;
 
-      // Use live pixel positions â€” accounts for padding/gaps between PDF pages.
+      // Use live pixel positions — accounts for padding/gaps between PDF pages.
       const containerRect = container.getBoundingClientRect();
       const pageRect = pageEl.getBoundingClientRect();
       
@@ -1070,11 +1066,11 @@ export default function Viewer() {
     };
   }, [numPages, activeFilePage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // â”€â”€ Compile (3-phase, background non-blocking) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Compile (3-phase, background non-blocking) ────────────────────────────
   //
-  // Phase 1 â€” FLUSH: save all dirty tab content to DB in parallel
-  // Phase 2 â€” INCREMENTAL SYNC: push only changed files to compiler
-  // Phase 3 â€” COMPILE: trigger LaTeX compiler, receive PDF
+  // Phase 1 — FLUSH: save all dirty tab content to DB in parallel
+  // Phase 2 — INCREMENTAL SYNC: push only changed files to compiler
+  // Phase 3 — COMPILE: trigger LaTeX compiler, receive PDF
   //
   // The function is non-blocking: it fires and forgets, updating compileStatus
   // as it progresses. The editor remains fully interactive throughout.
@@ -1093,52 +1089,37 @@ export default function Viewer() {
     setCompileLog(null);
     setShowLog(false);
 
-    // â”€â”€ Phase 1: Flush all dirty tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Phase 1: Flush all dirty tabs ────────────────────────────────────────
     setCompileStatus("flushing");
     const dirtyFiles = getDirtyFiles();
     if (dirtyFiles.length > 0) {
       const flushResults = await Promise.allSettled(
-        dirtyFiles.map(({ fileId, content }) =>
-          fetch(`${API_URL}/api/pages/${fileId}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ content }),
-          }).then((r) => {
-            if (r.ok) clearDirty(fileId);
-          }),
-        ),
+        dirtyFiles.map(async ({ fileId, content }) => {
+          await flushPageContent(fileId, content);
+          clearDirty(fileId);
+        })
       );
       const failed = flushResults.filter((r) => r.status === "rejected").length;
       if (failed > 0) {
-        console.warn(`[compile] ${failed}/${dirtyFiles.length} file flushes failed â€” compiling anyway`);
+        console.warn(`[compile] ${failed}/${dirtyFiles.length} file flushes failed — compiling anyway`);
       }
     }
 
-    // â”€â”€ Phase 2: Incremental sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Phase 2: Incremental sync ─────────────────────────────────────────────
     setCompileStatus("syncing");
     try {
       const dirtyFileIds = dirtyFiles.map((f) => f.fileId);
-      const syncResp = await fetch(
-        `${API_URL}/api/pages/${rootPageId}/sync-incremental`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ dirtyFileIds }),
-        },
-      );
-      if (syncResp.ok) {
-        const { synced = [] } = await syncResp.json();
+      try {
+        const { synced = [] } = await syncIncremental(rootPageId, dirtyFileIds);
         synced.forEach((fileId: string) => markSynced(fileId));
-      } else {
-        console.warn("[compile] incremental sync failed, compiling anyway");
+      } catch (e) {
+        console.warn("[compile] incremental sync failed, compiling anyway", e);
       }
     } catch (syncErr) {
       console.warn("[compile] incremental sync error, compiling anyway:", syncErr);
     }
 
-    // â”€â”€ Phase 3: Compile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Phase 3: Compile ──────────────────────────────────────────────────────
     setCompileStatus("compiling");
     try {
       // Resolve which file is the root LaTeX document.
@@ -1156,20 +1137,12 @@ export default function Viewer() {
         use_cache: useCache,
       };
 
-      const response = await fetch(`${API_URL}/api/latex/compile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const pdfBytes = Uint8Array.from(atob(data.pdf), (c) => c.charCodeAt(0));
+      const data = await compileLatex(payload);
+      const pdfBytes = Uint8Array.from(atob(data.pdf), (c) => c.charCodeAt(0));
         const blob = new Blob([pdfBytes], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
 
-        // Build SyncTeX map for accurate lineâ†”page sync
+        // Build SyncTeX map for accurate line↔page sync
         synctexMapRef.current = data.synctex ? parseSyncTeX(data.synctex) : null;
 
         setPdfUrl(url);
@@ -1181,19 +1154,8 @@ export default function Viewer() {
         generateThumbnail(blob).then((base64) => {
           if (base64) saveThumbnailMutation.mutate({ pageId: rootPageId, dataUrl: base64 });
         });
-      } else {
-        let data: any = {};
-        try { data = await response.json(); } catch { data = { detail: { log: response.statusText } }; }
-        const log =
-          data?.detail?.log ?? data?.log ?? data?.message ?? "Compilation failed (unknown error).";
-        setCompileLog(log);
-        // Parse errors for AI /fix command
-        setCompileErrors(parseCompileErrors(log));
-        setShowLog(true);
-        setCompileStatus("error");
-      }
     } catch (err) {
-      const errStr = String(err);
+      const errStr = err instanceof Error ? err.message : String(err);
       setCompileLog(errStr);
       setCompileErrors(parseCompileErrors(errStr));
       setShowLog(true);
@@ -1208,19 +1170,13 @@ export default function Viewer() {
     }
   };
 
-  // â”€â”€ Force re-sync (recovery from compiler corruption) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Force re-sync (recovery from compiler corruption) ────────────────────
   // Calls sync-incremental with forceAll=true to re-upload all files.
   const handleForceSync = async () => {
     if (!parentPageIdRef.current) return;
     try {
       setCompileStatus("syncing");
-      const res = await fetch(`${API_URL}/api/pages/${parentPageIdRef.current}/sync-incremental`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ forceAll: true }),
-      });
-      const data = await res.json();
+      const data = await syncIncremental(parentPageIdRef.current, [], true);
       console.log("[force-sync] completed:", data);
       setCompileStatus("idle");
       // Auto-compile after force sync
@@ -1231,9 +1187,9 @@ export default function Viewer() {
     }
   };
 
-  // â”€â”€ Register compile ref so ToolBar/Menu can trigger compile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Register compile ref so ToolBar/Menu can trigger compile ────────────
   // Use a stable wrapper ref so compileRef always calls the latest handleCompile,
-  // regardless of which deps changed â€” avoids stale parentPageId in the closure.
+  // regardless of which deps changed — avoids stale parentPageId in the closure.
   const handleCompileLatestRef = useRef(handleCompile);
   handleCompileLatestRef.current = handleCompile;
 
@@ -1244,7 +1200,7 @@ export default function Viewer() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // â”€â”€ Ctrl+Enter / Ctrl+S shortcut (global â€” works regardless of focus) â”€â”€â”€â”€â”€
+  // ── Ctrl+Enter / Ctrl+S shortcut (global — works regardless of focus) ─────
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1258,7 +1214,7 @@ export default function Viewer() {
     return () => window.removeEventListener("keydown", handler);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // â”€â”€ Zoom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Zoom ─────────────────────────────────────────────────────────────────
 
   const handleZoomIn = () => {
     setAutoFit(false);
@@ -1276,7 +1232,7 @@ export default function Viewer() {
     setAutoFit((prev) => !prev);
   };
 
-  // â”€â”€ Pages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pages ─────────────────────────────────────────────────────────────────
 
   const handlePrevPage = () => setPageNumber((p) => Math.max(p - 1, 1));
   const handleNextPage = () => setPageNumber((p) => Math.min(p + 1, numPages));
@@ -1286,7 +1242,7 @@ export default function Viewer() {
     pdfDocRef.current = pdf;
   };
 
-  // â”€â”€ Download â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Download ──────────────────────────────────────────────────────────────
 
   const handleDownload = () => {
     if (!pdfUrl || !downloadRef.current) return;
@@ -1296,7 +1252,7 @@ export default function Viewer() {
     downloadRef.current.click();
   };
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ────────────────────────────────────────────────────────────────
 
   const showZoomGroup = containerWidth >= 650;
   const showUtilityGroup = containerWidth >= 500;
@@ -1317,7 +1273,7 @@ export default function Viewer() {
 
           {showZoomGroup ? (
             <>
-              {/* Re-sync Project button â€” recovers from compiler folder corruption */}
+              {/* Re-sync Project button — recovers from compiler folder corruption */}
               <ToolbarButton
                 icon={RefreshCw}
                 label="Re-sync Project (force full re-upload)"
@@ -1488,7 +1444,7 @@ export default function Viewer() {
               ) : (
                 <Play className="size-4" />
               )}
-              {compileStatus === "flushing" ? "Savingâ€¦" : compileStatus === "syncing" ? "Syncingâ€¦" : compileStatus === "compiling" ? "Compilingâ€¦" : "Compile"}
+              {compileStatus === "flushing" ? "Saving…" : compileStatus === "syncing" ? "Syncing…" : compileStatus === "compiling" ? "Compiling…" : "Compile"}
             </button>
           </div>
         ) : (
@@ -1539,13 +1495,13 @@ export default function Viewer() {
         <div className="flex items-center gap-2">
           {/* Phase-aware compile status */}
           {compileStatus === "flushing" && (
-            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Savingâ€¦</span>
+            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Saving…</span>
           )}
           {compileStatus === "syncing" && (
-            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Syncingâ€¦</span>
+            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Syncing…</span>
           )}
           {compileStatus === "compiling" && (
-            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Compilingâ€¦</span>
+            <span className="flex items-center gap-1"><Loader2 className="size-3 animate-spin" />Compiling…</span>
           )}
           {compileStatus === "done" && lastCompiledAt && (
             <span className="flex items-center gap-1 text-green-600">

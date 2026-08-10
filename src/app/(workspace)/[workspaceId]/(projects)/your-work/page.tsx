@@ -1,5 +1,2 @@
-import { YourWork } from '@/features/workspaces';
-
-export default function YourWorkPage() {
-  return <YourWork />;
-}
+import YourWorkPage from '@/features/workspaces/projects/your-work/pages/YourWorkPage';
+export default function Page() { return <YourWorkPage />; }

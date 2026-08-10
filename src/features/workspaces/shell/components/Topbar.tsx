@@ -12,25 +12,24 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui';
 import { logoutUser, useAuth } from '@/features/auth';
-import { useTopbar } from '../hooks/use-topbar';
-import Avatar from './avatar';
+import { useWorkspaces } from '../hooks/use-workspace';
+import { useParams } from 'next/navigation';
+import Avatar from './Avatar';
 
 export default function Topbar() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const {
-    workspaceId,
-    projectId,
-    currentWorkspace,
-    workspaces,
-    projects,
-    projectName,
-  } = useTopbar();
+  const params = useParams<{ workspaceId?: string }>();
+  const rawWorkspaceId = params?.workspaceId && params.workspaceId !== 'undefined' ? params.workspaceId : null;
+
+  const { workspaces } = useWorkspaces();
+  const currentWorkspace = workspaces.find((w) => w.url === rawWorkspaceId) ?? workspaces[0] ?? null;
+  const workspaceId = rawWorkspaceId ?? currentWorkspace?.url ?? '';
 
   return (
     <nav
       aria-label='Workspace Header Navigation'
-      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 border-b border-border/60 bg-[oklch(0.9543_0.001_230.67)] dark:bg-[oklch(0.1932_0.002_230.81)] px-4'
+      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-4'
     >
       {/* Left: Workspace & Project breadcrumb */}
       <div className='flex items-center gap-2 min-w-0 shrink-0'>
@@ -39,7 +38,7 @@ export default function Topbar() {
             <DropdownMenuTrigger asChild>
               <button
                 aria-label={`Current Workspace: ${currentWorkspace.name}`}
-                className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors hover:bg-accent/60'
+                className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors hover:bg-accent'
               >
                 <Avatar
                   src={currentWorkspace.avatar}
@@ -86,42 +85,12 @@ export default function Topbar() {
           </DropdownMenu>
         )}
 
-        {projectId && projectName && (
-          <>
-            <span className='select-none text-sm text-muted-foreground/30'>/</span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className='flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 outline-none transition-colors hover:bg-accent/60'>
-                  <span className='max-w-[120px] truncate text-sm font-medium text-muted-foreground sm:max-w-[160px]'>
-                    {projectName}
-                  </span>
-                  <ChevronDown className='size-3.5 text-muted-foreground/70' />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='start' className='w-56'>
-                <DropdownMenuLabel className='text-xs text-muted-foreground'>
-                  Switch
-                </DropdownMenuLabel>
-                {projects.map((p: any) => (
-                  <DropdownMenuItem
-                    key={p._id}
-                    onClick={() =>
-                      router.push(`/${workspaceId}/projects/${p._id}/overview`)
-                    }
-                    className={p._id === projectId ? 'bg-muted' : ''}
-                  >
-                    <span className='truncate'>{p.name}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        )}
+
       </div>
 
       {/* Center: Search placeholder */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
-        <button className='flex h-7 w-full items-center gap-2 rounded-md border border-border/50 bg-background/80 px-2.5 text-xs text-muted-foreground transition-all hover:bg-background hover:border-border/80 shadow-2xs'>
+        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-muted-foreground shadow-sm transition-colors hover:bg-accent'>
           <Search className='size-3.5 text-muted-foreground/70' />
           <span className='text-xs text-muted-foreground/80'>Search...</span>
         </button>
@@ -140,7 +109,7 @@ export default function Topbar() {
         {!isLoading && user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className='relative size-7 overflow-hidden rounded-full cursor-pointer ring-offset-background transition-all hover:ring-2 hover:ring-primary/20 outline-none'>
+              <button className='relative size-7 overflow-hidden rounded-full cursor-pointer ring-offset-background transition-shadow hover:ring-2 hover:ring-primary/20 outline-none'>
                 <Avatar
                   src={user.avatar}
                   name={user.name!}

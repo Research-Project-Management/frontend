@@ -1,5 +1,5 @@
 import { apiGet } from "@/shared/lib/api";
-import type { CrossrefWork } from "@/features/workspaces/services/storage.services";
+import type { CrossrefWork } from "@/features/workspaces/storage/services/storage.services";
 
 async function fetchLookupDoi(doi: string) {
   return apiGet<{ work: CrossrefWork }>(`/api/files/crossref/doi/${encodeURIComponent(doi)}`);

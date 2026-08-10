@@ -12,7 +12,7 @@ import {
   MenubarSubTrigger,
   MenubarSubContent,
 } from "@/shared/components/ui";
-import { usePageContext } from "./PageContext";
+import { usePageContext } from "@/features/editor/store/page-context";
 import {
   useEditorSettingsStore,
   type LayoutMode,

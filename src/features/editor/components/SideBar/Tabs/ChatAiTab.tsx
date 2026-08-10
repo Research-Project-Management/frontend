@@ -1,9 +1,4 @@
 'use client';
-/**
- * ChatAiTab ΓÇö Full-featured AI assistant in the sidebar.
- * Replaces the old editor-side AIChatPanel.
- * Reads editorRef from PageContext so no prop drilling needed.
- */
 
 import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import {
@@ -17,15 +12,15 @@ import {
   getPageChat, streamEditorChat, appendChatMessages, createChatSession,
   clearPageChat, compilePreview, getChatSession, type PreviewCompileResult,
 } from "@/features/workspaces";
-import type { ChatMessage, ChatSession } from "@/features/chat-ai/types/chat.types";
-import { useWorkspaceActionsStore } from "@/features/workspaces";
-import { usePageContext } from "../../PageContext";
+import type { ChatMessage, ChatSession } from "@/features/workspaces/ai/types/chat.types";
+import { useEditorActionsStore } from "@/features/editor/store/editor-actions.store";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { useCompileStore } from "@/features/editor/store/compile.store";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import {
   buildRichContext,
   parseLatexStructure,
-} from "@/features/editor/services/latex-utils";
+} from "@/features/editor/utils/latex-utils";
 import {
   parseAiEditResponse,
   parseDiffToEdits,
@@ -62,8 +57,6 @@ function normalizeSelectionContext(ctx?: ChatMessage["selectionContext"] | null)
   return ctx;
 }
 
-// ΓöÇΓöÇ Slash Commands ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-
 interface SlashCommand {
   cmd: string;
   label: string;
@@ -84,8 +77,6 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { cmd: "/abstract", label: "Improve abstract", "description": "Rewrite abstract academically", hint: "abstract", needsSelection: true },
   { cmd: "/translate", label: "Translate", description: "Translate selection to English", hint: "translate", needsSelection: true },
 ];
-
-// ΓöÇΓöÇ DiffApplyBlock ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 interface EditOp {
   action: "replace_lines" | "insert_after" | "insert_before" | "delete_lines";
@@ -165,8 +156,6 @@ function DiffApplyBlock({
     </div>
   );
 }
-
-// ΓöÇΓöÇ LaTeX block detection ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 const AssistantMessage = memo(function AssistantMessage({
   content,
@@ -547,7 +536,7 @@ function PDFPreviewModal({
 export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const { editorRef, currentPage, workspaceId, activeFilePage, isAiPreviewingRef, compileRef } = usePageContext();
-  const { pendingAiText, setPendingAiText, pendingAiContext, clearPendingAiContext } = useWorkspaceActionsStore();
+  const { pendingAiText, setPendingAiText, pendingAiContext, clearPendingAiContext } = useEditorActionsStore();
   const { compileErrors, compileStatus } = useCompileStore();
   const { autoCompile } = useEditorSettingsStore();
 

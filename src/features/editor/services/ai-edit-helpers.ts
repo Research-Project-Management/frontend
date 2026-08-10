@@ -1,5 +1,5 @@
 ﻿/**
- * ai-edit-helpers.ts â€” Deterministic LaTeX Command Detection
+ * ai-edit-helpers.ts — Deterministic LaTeX Command Detection
  *
  * These functions find the exact Monaco range of common LaTeX commands
  * without relying on AI, enabling fast & reliable simple edits.
@@ -9,7 +9,7 @@
 
 import type { AiEditOperation } from "../types/ai-edit-types";
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface LatexCommandRange {
   /** Full command match, e.g. \title{Old Title} */
@@ -24,7 +24,7 @@ export interface LatexCommandRange {
   lineNumber: number;
 }
 
-// â”€â”€ LaTeX Command Finders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LaTeX Command Finders ─────────────────────────────────────────────────────
 
 /**
  * Find the range of a LaTeX command like \title{...} in the document.
@@ -126,7 +126,7 @@ export function findLatexCommandRange(
  * Build a Monaco edit operation to replace the value inside a LaTeX command.
  *
  * Example: replaceLatexCommandValue(content, "title", "Hello World")
- * â†’ replaces \title{Old Title} with \title{Hello World}
+ * → replaces \title{Old Title} with \title{Hello World}
  */
 export function replaceLatexCommandValue(
   content: string,
@@ -194,7 +194,7 @@ export function findDocumentclassLine(content: string): number | null {
   return null;
 }
 
-// â”€â”€ Document Structure Queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Document Structure Queries ─────────────────────────────────────────────────
 
 /** Returns true if the content has a full LaTeX document structure. */
 export function hasDocumentStructure(content: string): boolean {
@@ -214,7 +214,7 @@ export function addLineNumbers(content: string): string {
     .join("\n");
 }
 
-// â”€â”€ Editor Context Collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Editor Context Collection ─────────────────────────────────────────────────
 
 export interface EditorEditContext {
   /** Full file content */
@@ -283,7 +283,7 @@ export function getEditorEditContext(
   };
 }
 
-// â”€â”€ Simple Command Intent Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Simple Command Intent Detection ──────────────────────────────────────────
 
 /**
  * Detect if the user prompt is a simple LaTeX command change (title/author/date/etc.)
@@ -298,7 +298,7 @@ export function tryLocalCommandEdit(
 ): { op: AiEditOperation; explanation: string } | null {
   const prompt = userPrompt.trim();
 
-  /** Extract new value: everything after the trigger word "to"/"thÃ nh"/etc. */
+  /** Extract new value: everything after the trigger word "to"/"thành"/etc. */
   function extractValue(trigger: string): string {
     const idx = prompt.toLowerCase().indexOf(trigger.toLowerCase());
     if (idx === -1) return "";
@@ -306,9 +306,9 @@ export function tryLocalCommandEdit(
   }
 
   // Triggers for each language
-  const valueTriggers = [" to ", " thÃ nh ", " sang ", " lÃ  ", "\u2192 ", ":  "];
+  const valueTriggers = [" to ", " thành ", " sang ", " là ", "\u2192 ", ":  "];
 
-  // â”€â”€ \title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── \title ────────────────────────────────────────────────────────────────
   const isTitleCmd =
     /sá»­a\s+title/i.test(prompt) ||
     /change\s+(?:the\s+)?title/i.test(prompt) ||
@@ -325,11 +325,11 @@ export function tryLocalCommandEdit(
     }
     if (newValue) {
       const op = replaceLatexCommandValue(content, "title", newValue);
-      if (op) return { op, explanation: `Changed \\title to â€œ${newValue}â€` };
+      if (op) return { op, explanation: `Changed \\title to “${newValue}â€` };
     }
   }
 
-  // â”€â”€ \author â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── \author ────────────────────────────────────────────────────────────────
   const isAuthorCmd =
     /sá»­a\s+author/i.test(prompt) ||
     /change\s+(?:the\s+)?author/i.test(prompt) ||
@@ -345,11 +345,11 @@ export function tryLocalCommandEdit(
     }
     if (newValue) {
       const op = replaceLatexCommandValue(content, "author", newValue);
-      if (op) return { op, explanation: `Changed \\author to â€œ${newValue}â€` };
+      if (op) return { op, explanation: `Changed \\author to “${newValue}â€` };
     }
   }
 
-  // â”€â”€ \date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── \date ────────────────────────────────────────────────────────────────
   const isDateCmd =
     /sá»­a\s+date/i.test(prompt) ||
     /change\s+(?:the\s+)?date/i.test(prompt) ||
@@ -363,7 +363,7 @@ export function tryLocalCommandEdit(
     }
     if (newValue) {
       const op = replaceLatexCommandValue(content, "date", newValue);
-      if (op) return { op, explanation: `Changed \\date to â€œ${newValue}â€` };
+      if (op) return { op, explanation: `Changed \\date to “${newValue}â€` };
     }
   }
 

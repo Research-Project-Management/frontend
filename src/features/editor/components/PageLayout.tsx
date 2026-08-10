@@ -1,12 +1,13 @@
 'use client';
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { TooltipProvider } from "@/shared/components/ui";
 
 import SideBar from "./SideBar/SideBar";
 import dynamic from "next/dynamic";
 const Viewer = dynamic(() => import("./Viewer/Viewer"), { ssr: false });
 import ToolBar from "./ToolBar";
 import SettingsPanel from "./SettingsPanel";
-import { PageContextProvider } from "./PageContext";
+import { PageContextProvider } from "@/features/editor/store/page-context";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 
 function ResizeHandle({
@@ -168,10 +169,12 @@ function PageInner({ children }: { children: React.ReactNode }) {
 
 export default function PageLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PageContextProvider>
-      <PageInner>
-        {children}
-      </PageInner>
-    </PageContextProvider>
+    <TooltipProvider delayDuration={200}>
+      <PageContextProvider>
+        <PageInner>
+          {children}
+        </PageInner>
+      </PageContextProvider>
+    </TooltipProvider>
   );
 }

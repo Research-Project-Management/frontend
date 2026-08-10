@@ -157,7 +157,7 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   list_projects:          { label: "Listing Projects",        icon: "📁", category: "read" },
-  get_project_overview:   { label: "Project Overview",        icon: "📊", category: "read" },
+  get_project_overview:   { label: "Project OverviewPage",        icon: "📊", category: "read" },
   get_project_details:    { label: "Project Details",         icon: "📁", category: "read" },
   update_project:         { label: "Updating Project",        icon: "✏️", category: "update" },
   add_project_member:     { label: "Adding Member",           icon: "👤", category: "create" },
@@ -167,7 +167,7 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
   // ─── Workspace ────────────────────────────────────────────────────────────
   search_workspace:       { label: "Searching",               icon: "🔍", category: "read" },
   list_members:           { label: "Listing Members",         icon: "👥", category: "read" },
-  get_workspace_overview: { label: "Workspace Overview",      icon: "🏠", category: "read" },
+  get_workspace_overview: { label: "Workspace OverviewPage",      icon: "🏠", category: "read" },
   get_workspace_activity: { label: "Activity Feed",           icon: "📰", category: "read" },
 
   // ─── Cycles ───────────────────────────────────────────────────────────────

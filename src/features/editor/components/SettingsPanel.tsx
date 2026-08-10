@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use client';
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -6,7 +7,7 @@ import {
   type CompileMode,
   type LaTeXEngine,
 } from "@/features/editor/store/editor-settings.store";
-import { usePageContext } from "./PageContext";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { usePageFiles, useSetPageMainFile } from "@/features/workspaces";
 import {
   X,

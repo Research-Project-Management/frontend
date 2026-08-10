@@ -24,7 +24,7 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { usePageContext } from "./PageContext";
+import { usePageContext } from "@/features/editor/store/page-context";
 import { useUpdatePageTitle } from "@/features/workspaces";
 import {
   useEditorSettingsStore,

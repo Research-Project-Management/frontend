@@ -1,7 +1,7 @@
 // ── Your Work public API ──────────────────────────────────────────────────────
 
 // Components
-export { default as YourWork } from './components/layout/YourWork';
+export { default as YourWorkPage } from './pages/YourWorkPage';
 
 // Hooks
 export { useYourWork } from './hooks/use-your-work';

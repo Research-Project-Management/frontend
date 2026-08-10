@@ -2,7 +2,7 @@
 
 import { Clock, Calendar } from "lucide-react";
 import { format, isSameDay, isTomorrow, differenceInCalendarDays } from "date-fns";
-import { useWorkspaceTasks } from '@/features/tasks';
+import { useWorkspaceTasks } from '@/features/workspaces/projects/project-id/tasks';
 import { useParams } from "next/navigation";
 import { useAuth } from '@/features/auth';
 

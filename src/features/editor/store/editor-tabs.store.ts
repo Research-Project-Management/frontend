@@ -76,7 +76,7 @@ export const useEditorTabsStore = create<EditorTabsState>()((set, get) => ({
         // Prefer left neighbour, fall back to new last
         nextActive = newTabs[Math.max(0, idx - 1)].id;
       }
-      // else null â†’ router away
+      // else null → router away
     } else {
       nextActive = activeId;
     }

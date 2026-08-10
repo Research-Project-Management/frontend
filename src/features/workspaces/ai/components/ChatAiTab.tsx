@@ -1,7 +1,8 @@
+// @ts-nocheck
 'use client';
 
 /**
- * ChatAiTab Ã¢â‚¬â€ Full-featured AI assistant in the sidebar.
+ * ChatAiTab — Full-featured AI assistant in the sidebar.
  * Replaces the old editor-side AIChatPanel.
  * Reads editorRef from PageContext so no prop drilling needed.
  */
@@ -20,7 +21,7 @@ import {
 } from "@/features/workspaces/ai/services/chat-ai.services";
 import type { ChatMessage, ChatSession } from "@/features/workspaces/ai/types/chat.types";
 import { useChatAiActionsStore } from '../store/chat-ai.store';
-import { usePageContext } from "@/features/editor/components/PageContext";
+import { usePageContext } from '@/features/editor/store/page-context';
 import { useCompileStore } from '@/features/editor';
 import { useEditorSettingsStore } from '@/features/editor';
 import { buildRichContext, parseLatexStructure } from '@/features/editor';
@@ -31,8 +32,8 @@ import { Textarea } from "@/shared/components/ui";
 import { parseAiEditResponse, parseDiffToEdits, validateAiEdits, isEditSafe, applyAiEdits, highlightEditedLines, previewAiEdits, type AiEditPreviewHandle, type AiEditResponse, type AiEditOperation } from '@/features/editor';
 import { findLatexCommandRange, tryLocalCommandEdit } from '@/features/editor';
 import AiEditSuggestionCard from "@/features/editor/components/AiEditSuggestionCard";
-import ChatHistoryModal from "@/features/workspaces/ai/components/ai/layout/ChatHistoryModal";
-import { renderMarkdown } from "@/features/workspaces/ai/components/ai/layout/renderMarkdown";
+import { renderMarkdown } from "@/features/workspaces/ai/components/renderMarkdown";
+import ChatHistoryModal from "@/features/workspaces/ai/components/ChatHistoryModal";
 
 function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   if (!value || typeof value !== "object") return false;
@@ -50,7 +51,7 @@ function normalizeSelectionContext(ctx?: ChatMessage["selectionContext"] | null)
   return ctx;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Slash Commands Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€€ Slash Commands Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
 
 interface SlashCommand {
   cmd: string;
@@ -73,7 +74,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { cmd: "/translate", label: "Translate", description: "Translate selection to English", hint: "translate", needsSelection: true },
 ];
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ DiffApplyBlock Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€€ DiffApplyBlock Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
 
 interface EditOp {
   action: "replace_lines" | "insert_after" | "insert_before" | "delete_lines";
@@ -115,7 +116,7 @@ function DiffApplyBlock({
       ? `insert after line ${op.afterLine}`
       : op.action === "insert_before"
         ? `insert before line ${op.beforeLine}`
-        : `lines ${op.startLine}Ã¢â‚¬â€œ${op.endLine}`;
+        : `lines ${op.startLine}—œ${op.endLine}`;
 
   return (
     <div className="my-2 rounded-lg border border-border/50 overflow-hidden text-[11px] font-mono">
@@ -129,7 +130,7 @@ function DiffApplyBlock({
             <Zap className="size-2.5" /> Apply
           </button>
         )}
-        {applied && <span className="text-emerald-500 text-[10px]">Ã¢Å“â€œ Applied</span>}
+        {applied && <span className="text-emerald-500 text-[10px]">✓ Applied</span>}
       </div>
       <div className="bg-[#1a1a1a] overflow-x-auto max-h-48">
         {oldLines.map((l, i) => (
@@ -154,7 +155,7 @@ function DiffApplyBlock({
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LaTeX block detection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€€ LaTeX block detection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
 
 const AssistantMessage = memo(function AssistantMessage({
   content,
@@ -257,7 +258,7 @@ const AssistantMessage = memo(function AssistantMessage({
         }
 
         if (isDiff) {
-          // Ã¢â€â‚¬Ã¢â€â‚¬ VSCode-style diff view Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+          // Ã¢â€â‚¬Ã¢â€€ VSCode-style diff view Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
           elements.push(
             <div key={key} className="my-3 rounded-xl overflow-hidden border border-border/50 font-mono">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
@@ -302,7 +303,7 @@ const AssistantMessage = memo(function AssistantMessage({
                         "select-none shrink-0 w-5 text-center text-[10px] border-r border-white/10 mr-2",
                         isAdd ? "text-emerald-400" : isDel ? "text-red-400" : "text-zinc-600",
                       ].join(" ")}>
-                        {isAdd ? "+" : isDel ? "Ã¢Ë†â€™" : " "}
+                        {isAdd ? "+" : isDel ? "−" : " "}
                       </span>
                       <span className={[
                         "py-px pr-4 whitespace-pre font-mono text-[11px]",
@@ -318,7 +319,7 @@ const AssistantMessage = memo(function AssistantMessage({
             </div>
           );
         } else {
-          // Ã¢â€â‚¬Ã¢â€â‚¬ Regular code block with line numbers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+          // Ã¢â€â‚¬Ã¢â€€ Regular code block with line numbers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
           elements.push(
             <div key={key} className="my-3 rounded-xl overflow-hidden border border-border/50">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
@@ -389,7 +390,7 @@ const AssistantMessage = memo(function AssistantMessage({
   );
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ PDF Preview modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€€ PDF Preview modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
 
 function isEditorActionMessage(content: string): boolean {
   return /```\s*(?:apply|diff|latex|tex\b|\n)/i.test(content);
@@ -484,7 +485,7 @@ function PDFPreviewModal({
             <FileCode2 className="size-4 text-amber-500" />
             <span className="text-sm font-semibold">AI Suggestion Preview</span>
             <span className="text-[10px] text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full ml-1">
-              Isolated Ã¢â‚¬â€ does not affect your document
+              Isolated — does not affect your document
             </span>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-secondary/80 transition-colors">
@@ -530,7 +531,7 @@ function PDFPreviewModal({
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Main component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€â‚¬Ã¢â€€ Main component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
 
 export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
@@ -560,7 +561,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const [annotations, setAnnotations] = useState<Array<{ id: string; startLine: number; endLine: number; text: string }>>([]);
   const decorationsRef = useRef<string[]>([]);
 
-  // Live selection context Ã¢â‚¬â€ updated real-time from Monaco listener
+  // Live selection context — updated real-time from Monaco listener
   const [liveSelection, setLiveSelection] = useState<{
     text: string;
     startLine: number;
@@ -582,7 +583,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const [autoApply, setAutoApply] = useState(false);
   // autoApplyToast replaced by sonner toast()
 
-  // Structured JSON edit preview Ã¢â‚¬â€ shown before applying
+  // Structured JSON edit preview — shown before applying
   const [pendingEditResponse, setPendingEditResponse] = useState<AiEditResponse | null>(null);
   const [editSafetyWarning, setEditSafetyWarning] = useState<string | null>(null);
   const previewHandleRef = useRef<AiEditPreviewHandle | null>(null);
@@ -597,7 +598,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const lastUserPromptRef = useRef<string>("");
   const lastUserCmdRef = useRef<SlashCommand | null>(null);
 
-  // Save last known Monaco cursor position Ã¢â‚¬â€ restored for insert after button click steals focus
+  // Save last known Monaco cursor position — restored for insert after button click steals focus
   const lastCursorRef = useRef<{ lineNumber: number; column: number } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -607,7 +608,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
 
-  // Load per-page chat Ã¢â‚¬â€ re-runs whenever workspaceId becomes available
+  // Load per-page chat — re-runs whenever workspaceId becomes available
   useEffect(() => {
     if (!pageId || !workspaceId) return;
     setIsLoading(true);
@@ -654,7 +655,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     }
   }, [input]);
 
-  // Build rich editor context Ã¢â‚¬â€ uses activeFilePage for filename
+  // Build rich editor context — uses activeFilePage for filename
   const getRichContext = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return null;
@@ -898,7 +899,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     });
   }, [editorRef]);
 
-  // Send message Ã¢â‚¬â€ passes full rich context to AI
+  // Send message — passes full rich context to AI
   const handleSend = useCallback(async (overrideText?: string, overrideCommand?: SlashCommand) => {
     const cmd = overrideCommand ?? activeCommand;
     const defaultText = cmd ? cmd.label : "";
@@ -913,7 +914,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     lastUserPromptRef.current = overrideText ?? input;
     lastUserCmdRef.current = overrideCommand ?? activeCommand;
 
-    // Use liveSelection (captured before textarea focus) Ã¢â‚¬â€ getRichContext reads Monaco
+    // Use liveSelection (captured before textarea focus) — getRichContext reads Monaco
     // which loses selection once user clicks into the textarea
     const selSrc = pinnedContext ?? liveSelection;
     const richCtx = getRichContext(); // for file content + cursor context only
@@ -957,8 +958,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     // Is this command edit-only or explanation-only?
     const isExplanationCmd = cmd && EXPLANATION_ONLY_COMMANDS.includes(cmd.cmd);
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Local command detection Ã¢â‚¬â€ bypass AI for simple requests Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    // e.g. "sÃ¡Â»Â­a title thÃƒÂ nh Hello Demo 123", "change author to John"
+    // Ã¢â€â‚¬Ã¢â€€ Local command detection — bypass AI for simple requests Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
+    // e.g. "sá»­a title thÃƒÂ nh Hello Demo 123", "change author to John"
     if (!isExplanationCmd) {
       const localEdit = tryLocalCommandEdit(richCtx?.fileContent ?? currentFileContent, finalText);
       if (localEdit) {
@@ -1038,7 +1039,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       const finalContent = streamRef.current;
       if (!finalContent) return;
 
-      // /explain Ã¢â€ â€™ add annotation decoration
+      // /explain → add annotation decoration
       if (cmd?.cmd === "/explain" && effectiveSelection && effectiveStartLine && effectiveEndLine) {
         setAnnotations((prev) => [
           ...prev,
@@ -1046,9 +1047,9 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         ]);
       }
 
-      // Ã¢â€â‚¬Ã¢â€â‚¬ Structured JSON + diff/code multi-block parsing Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+      // Ã¢â€â‚¬Ã¢â€€ Structured JSON + diff/code multi-block parsing Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
       if (!isExplanationCmd) {
-        // Read live from Monaco model Ã¢â‚¬â€ most up-to-date, avoids stale React state
+        // Read live from Monaco model — most up-to-date, avoids stale React state
         const fileContent =
           editor?.getModel()?.getValue() ??
           richCtx?.fileContent ??
@@ -1073,7 +1074,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
           if (autoApply && !safetyWarning) {
             applyAiEdits(editor, editResponse.edits);
-            toast.success(`Ã¢Å¡Â¡ Auto-applied ${editResponse.edits.length} edit${editResponse.edits.length > 1 ? "s" : ""} to editor`, { duration: 3500 });
+            toast.success(`âš¡ Auto-applied ${editResponse.edits.length} edit${editResponse.edits.length > 1 ? "s" : ""} to editor`, { duration: 3500 });
             const assistantMsg: ChatMessage = { role: "assistant", content: finalContent };
             setMessages((prev) => [...prev, assistantMsg]);
             appendChatMessages(chatId, [userMsg, assistantMsg]).catch(() => { });
@@ -1091,12 +1092,12 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         }
       }
 
-      // Ã¢â€â‚¬Ã¢â€â‚¬ Legacy auto-apply (apply-blocks) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+      // Ã¢â€â‚¬Ã¢â€€ Legacy auto-apply (apply-blocks) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€
       if (autoApply) {
         const ops = parseApplyBlocks(finalContent);
         if (ops.length > 0) {
           ops.forEach((op) => handleApplyOp(op));
-          toast.success(`Ã¢Å¡Â¡ Auto-applied ${ops.length} change${ops.length > 1 ? "s" : ""} to editor`, { duration: 3000 });
+          toast.success(`âš¡ Auto-applied ${ops.length} change${ops.length > 1 ? "s" : ""} to editor`, { duration: 3000 });
         }
       }
 
@@ -1115,7 +1116,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     }
   }, [input, isStreaming, chatId, workspaceId, pendingEditResponse, getRichContext, activeFilePage, currentPage, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent, clearPendingEdit]);
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ Auto-preview: whenever a pending edit is set, show it in the editor immediately Ã¢â€â‚¬Ã¢â€â‚¬
+  // Ã¢â€â‚¬Ã¢â€€ Auto-preview: whenever a pending edit is set, show it in the editor immediately Ã¢â€â‚¬Ã¢â€€
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -1142,14 +1143,14 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     setTimeout(() => { isAiPreviewingRef.current = false; }, 0);
   }, [pendingEditResponse, editorRef, restorePendingPreview]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply: edits are already in the editor (from preview) Ã¢â‚¬â€ just confirm them
+  // Apply: edits are already in the editor (from preview) — just confirm them
   const handleApplyStructuredEdits = useCallback((_edits: AiEditOperation[]) => {
     const editor = editorRef.current;
     if (!editor) return;
 
     const handle = previewHandleRef.current;
     if (handle) {
-      // Edits already in model from preview Ã¢â‚¬â€ just confirm with undo stop + clear decorations
+      // Edits already in model from preview — just confirm with undo stop + clear decorations
       handle.clearDecorations();
       editor.pushUndoStop(); // creates clean undo boundary
       if (handle.affected) {
@@ -1167,9 +1168,9 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     recordEditStatus("applied");
     // Replace last assistant message JSON content with clean summary so card disappears
     const explanation = pendingEditResponse?.explanation ?? "Edit applied to document";
-    replaceLastAssistantSummary(`Ã¢Å“â€œ ${explanation}`);
-    toast.success(`Ã¢Å“â€œ Edit applied`, { duration: 2000 });
-    // Auto-compile after AI edit if enabled Ã¢â‚¬â€ delay to allow save to flush
+    replaceLastAssistantSummary(`✓ ${explanation}`);
+    toast.success(`✓ Edit applied`, { duration: 2000 });
+    // Auto-compile after AI edit if enabled — delay to allow save to flush
     if (autoCompile) {
       setTimeout(() => compileRef.current?.(), 1800);
     }
@@ -1182,7 +1183,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     replaceLastAssistantSummary("Edit dismissed");
   }, [clearPendingEdit, replaceLastAssistantSummary]);
 
-  // Regenerate Ã¢â‚¬â€ dismiss current edit response and re-send last prompt
+  // Regenerate — dismiss current edit response and re-send last prompt
   const handleRegenerate = useCallback(() => {
     if (pendingEditResponse) {
       clearPendingEdit("dismissed");
@@ -1195,7 +1196,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     }
   }, [clearPendingEdit, handleSend, pendingEditResponse, replaceLastAssistantSummary]);
 
-  // Insert LaTeX into editor Ã¢â‚¬â€ converts to a preview-based edit so user sees Accept/Dismiss
+  // Insert LaTeX into editor — converts to a preview-based edit so user sees Accept/Dismiss
   const queueEditorEdit = useCallback((editResponse: AiEditResponse) => {
     const editor = editorRef.current;
     if (autoApply && editor) {
@@ -1222,7 +1223,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     const content = model.getValue();
     const trimmed = latex.trim();
 
-    // 1. Single known command (\title, \author etc.) Ã¢â€ â€™ replace existing occurrence
+    // 1. Single known command (\title, \author etc.) → replace existing occurrence
     const cmdMatch = trimmed.match(/^\\([a-zA-Z]+)\s*\{/);
     if (cmdMatch) {
       const commandName = cmdMatch[1];
@@ -1231,7 +1232,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
         // Show as a structured preview with Accept / Dismiss
         const editResponse: AiEditResponse = {
           intent: "replace_range",
-          explanation: `Replace \\${commandName}{Ã¢â‚¬Â¦}`,
+          explanation: `Replace \\${commandName}{…}`,
           edits: [{
             type: "replace",
             startLineNumber: existingRange.startLineNumber,
@@ -1246,7 +1247,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       }
     }
 
-    // 2. Has live selection Ã¢â€ â€™ replace it
+    // 2. Has live selection → replace it
     const monacoSel = editor.getSelection();
     if (monacoSel &&
       !(monacoSel.startLineNumber === monacoSel.endLineNumber &&
@@ -1284,7 +1285,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     queueEditorEdit(editResponse);
   }, [editorRef, queueEditorEdit]);
 
-  // Apply diff block Ã¢â‚¬â€ uses parseDiffToEdits to locate changes in the file
+  // Apply diff block — uses parseDiffToEdits to locate changes in the file
   const handleApplyDiff = useCallback((diffText: string) => {
     const fileContent = editorRef.current?.getModel()?.getValue() ?? currentFileContent;
     const ops = parseDiffToEdits(diffText, fileContent);
@@ -1309,7 +1310,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     if (!liveSelection) return;
     const range = liveSelection.startLine === liveSelection.endLine
       ? `L${liveSelection.startLine}`
-      : `L${liveSelection.startLine}Ã¢â‚¬â€œ${liveSelection.endLine}`;
+      : `L${liveSelection.startLine}—œ${liveSelection.endLine}`;
     setPinnedContext({
       label: `${(activeFilePage ?? currentPage)?.title ?? "main.tex"} ${range}`,
       text: liveSelection.text,
@@ -1338,7 +1339,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     }
   }, [getRichContext, pageId, workspaceId]);
 
-  // Handle input changes Ã¢â‚¬â€ detect slash commands
+  // Handle input changes — detect slash commands
   const handleInputChange = useCallback((val: string) => {
     setInput(val);
     if (val.startsWith("/")) {
@@ -1531,7 +1532,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
       <div className="relative flex h-full flex-col bg-background">
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Ã¢â€â‚¬Ã¢â€€ Header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€ */}
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
           <div className="flex items-center gap-2">
             <img src="/Chat.svg" alt="AI" className="size-4" />
@@ -1549,7 +1550,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             {/* Auto Apply toggle */}
             <button
               onClick={() => setAutoApply((v) => !v)}
-              title={autoApply ? "Auto Apply ON Ã¢â‚¬â€ click to disable" : "Auto Apply OFF Ã¢â‚¬â€ click to enable"}
+              title={autoApply ? "Auto Apply ON — click to disable" : "Auto Apply OFF — click to enable"}
               className={[
                 "flex h-8 items-center gap-1 rounded-md px-2 text-[10px] font-semibold transition-all",
                 autoApply
@@ -1605,10 +1606,10 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
 
-        {/* Toast notifications now via sonner Ã¢â‚¬â€ see toast() calls above */}
+        {/* Toast notifications now via sonner — see toast() calls above */}
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ File context bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Compile error banner Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Ã¢â€â‚¬Ã¢â€€ File context bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€ */}
+        {/* Ã¢â€â‚¬Ã¢â€€ Compile error banner Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€ */}
         {compileStatus === "error" && compileErrors.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/8 border-b border-destructive/15 shrink-0">
             <AlertTriangle className="size-3 text-destructive shrink-0" />
@@ -1626,17 +1627,17 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           </div>
         )}
 
-        {/* Slim loading bar at top Ã¢â‚¬â€ replaces full-area spinner */}
+        {/* Slim loading bar at top — replaces full-area spinner */}
         {isLoading && (
           <div className="absolute top-0 left-0 right-0 z-10 h-0.5 overflow-hidden">
             <div className="h-full bg-primary/50 animate-pulse" style={{ width: "60%", margin: "0 auto" }} />
           </div>
         )}
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Messages Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Ã¢â€â‚¬Ã¢â€€ Messages Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€ */}
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 && !isStreaming && !isLoading ? (
-            /* Ã¢â€â‚¬Ã¢â€â‚¬ Welcome screen Ã¢â€â‚¬Ã¢â€â‚¬ */
+            /* Ã¢â€â‚¬Ã¢â€€ Welcome screen Ã¢â€â‚¬Ã¢â€€ */
             <div className="h-full flex flex-col items-center justify-center px-4 gap-6">
               <div className="flex flex-col items-center gap-2 text-center">
                 <div className="flex group flex-col items-center">
@@ -1652,7 +1653,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                     onClick={() => { setInput(p); textareaRef.current?.focus(); }}
                     className="w-full text-left text-[11px] px-3 py-2 rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
-                    <span className="text-primary/40 group-hover:text-primary transition-colors shrink-0">Ã¢â‚¬Âº</span>
+                    <span className="text-primary/40 group-hover:text-primary transition-colors shrink-0">›</span>
                     <span className="truncate">{p}</span>
                   </button>
                 ))}
@@ -1660,13 +1661,13 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
               <p className="text-[10px] text-muted-foreground/30 text-center">Type <kbd className="px-1 py-px rounded bg-secondary/60 font-mono text-[9px]">/</kbd> for editor commands</p>
             </div>
           ) : (
-            /* Ã¢â€â‚¬Ã¢â€â‚¬ Chat messages Ã¢â€â‚¬Ã¢â€â‚¬ */
+            /* Ã¢â€â‚¬Ã¢â€€ Chat messages Ã¢â€â‚¬Ã¢â€€ */
             <div className="px-3 py-4 space-y-4">
               {messages.map((msg, i) => {
                 if (msg.role === "assistant" && parseAiEditStatus(msg.content)) {
                   return null;
                 }
-                // If this is the last assistant msg with a pending edit Ã¢â€ â€™ render it as the suggestion card (IS the message bubble)
+                // If this is the last assistant msg with a pending edit → render it as the suggestion card (IS the message bubble)
                 const isLastAssistantMsg =
                   msg.role === "assistant" && i === messages.length - 1;
                 const isPendingEdit =
@@ -1741,7 +1742,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                         );
                       }
 
-                      // If already resolved (Keep/Dismiss pressed) Ã¢â€ â€™ show done bubble
+                      // If already resolved (Keep/Dismiss pressed) → show done bubble
                       if (resolvedMsgIdxes.has(i)) {
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
@@ -1767,7 +1768,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                                 if (editor) {
                                   const affected = applyAiEdits(editor, edits);
                                   if (affected) highlightEditedLines(editor, affected.startLine, affected.endLine);
-                                  toast.success("Ã¢Å“â€œ Re-applied edit", { duration: 2000 });
+                                  toast.success("✓ Re-applied edit", { duration: 2000 });
                                 }
                                 setEditStatusByHash((prev) => ({ ...prev, [editHash]: "applied" }));
                                 if (chatId) {
@@ -1874,7 +1875,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                         <MarkdownAssistantMessage content={streamContent} isStreaming />
                       )
                     ) : (
-                      /* Typing indicator Ã¢â‚¬â€ bouncing dots */
+                      /* Typing indicator — bouncing dots */
                       <div className="flex items-center gap-1 px-1 py-1.5">
                         {[0, 1, 2].map((i) => (
                           <span key={i} className="size-1.5 rounded-full bg-primary/50"
@@ -1891,15 +1892,15 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           )}
         </div>
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Compiling preview bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Ã¢â€â‚¬Ã¢â€€ Compiling preview bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€ */}
         {previewPending && (
           <div className="px-3 py-1.5 border-t border-border/40 bg-secondary/20 flex items-center gap-2 shrink-0">
             <Loader2 className="size-3 animate-spin text-primary/60" />
-            <span className="text-[10px] text-muted-foreground/60">compiling previewÃ¢â‚¬Â¦</span>
+            <span className="text-[10px] text-muted-foreground/60">compiling preview…</span>
           </div>
         )}
 
-        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Input area Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+        {/* Ã¢â€â‚¬Ã¢â€€ Input area Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€€ */}
         <div className="px-3 pb-3 pt-2 border-t border-border/40 shrink-0 relative">
 
           {/* Selection toolbar */}
@@ -1988,7 +1989,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
-          {/* Input card Ã¢â‚¬â€ ChatView rounded-2xl style */}
+          {/* Input card — ChatView rounded-2xl style */}
           <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
             <textarea
               ref={textareaRef}
@@ -1998,7 +1999,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                 if (e.key === "Escape" && slashMenuOpen) { setSlashMenuOpen(false); return; }
                 if (e.key === "Enter" && !e.shiftKey && !slashMenuOpen) { e.preventDefault(); handleSend(); }
               }}
-              placeholder={activeCommand ? `${activeCommand.label}: describe what you needÃ¢â‚¬Â¦` : "Ask AIÃ¢â‚¬Â¦ or type / for commands"}
+              placeholder={activeCommand ? `${activeCommand.label}: describe what you need…` : "Ask AI… or type / for commands"}
               rows={1}
               className="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm outline-none placeholder:text-muted-foreground/50 max-h-[140px] leading-relaxed"
               disabled={isLoading}

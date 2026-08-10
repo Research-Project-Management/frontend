@@ -14,11 +14,7 @@ export type WorkspaceMemberUser = {
   avatar: string | null;
 };
 
-/** Populated role shape returned when roleId is populated. */
-export type WorkspaceMemberRole = {
-  _id: string;
-  name: string;
-};
+
 
 // ─── WorkspaceMember ──────────────────────────────────────────────────────────
 
@@ -28,7 +24,7 @@ export type WorkspaceMemberRole = {
  */
 export type WorkspaceMember = {
   userId: string | WorkspaceMemberUser;
-  role: WorkspaceMemberRole | 'owner' | 'admin' | 'member' | string;
+  role: 'owner' | 'admin' | 'member' | 'viewer' | string;
   joinedAt: string;
 };
 
@@ -50,4 +46,4 @@ export type Workspace = {
 
 // ─── Role ─────────────────────────────────────────────────────────────────────
 
-export type WorkspaceRole = 'owner' | 'admin' | 'member';
+export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';

@@ -26,3 +26,5 @@ export type StorageItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type StorageLevel = 'workspace' | 'project';

@@ -1,7 +1,7 @@
 'use client';
 
 import "./tiptap.css";
-import type { Note } from "@/features/workspaces";
+import type { Note } from "@/features/workspaces/projects/stickies/types/sticky.types";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TaskList from "@tiptap/extension-task-list";

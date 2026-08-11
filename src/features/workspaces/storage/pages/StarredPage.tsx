@@ -1,19 +1,13 @@
 'use client';
 
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import {
-  fetchWorkspaceStarredFiles,
-  useToggleStar,
-  useDeleteFile,
-} from "@/features/workspaces/storage/services/storage.services";
-import { useWorkspace } from '@/features/workspaces';
+import { useStarred } from "@/features/workspaces/storage/hooks/use-starred";
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Star } from "lucide-react";
 import { Skeleton } from '@/shared/components/ui';
 import FileExplorer from '../components/FileExplorer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import { useDocumentTitle } from '@/features/workspaces/storage/hooks/use-document-title';
 
 export default function WorkspaceStarredPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
@@ -22,32 +16,7 @@ export default function WorkspaceStarredPage() {
   );
   const workspaceId = workspace?._id;
 
-  useDocumentTitle(workspace?.name ? `Starred - ${workspace.name}` : "Starred");
-
-  const { data, isLoading: isFilesLoading } = useQuery({
-    queryKey: ["workspace-starred-files", workspaceId],
-    queryFn: () => fetchWorkspaceStarredFiles(workspaceId!),
-    enabled: !!workspaceId,
-  });
-
-  const toggleStarMutation = useToggleStar();
-  const deleteFileMutation = useDeleteFile();
-
-  const handleToggleStar = async (fileId: string) => {
-    try {
-      await toggleStarMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error toggling star:", error);
-    }
-  };
-
-  const handleDelete = async (fileId: string) => {
-    try {
-      await deleteFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-    }
-  };
+  const { data, isLoading: isFilesLoading, handleToggleStar, handleDelete } = useStarred(workspaceId!);
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
@@ -58,7 +27,7 @@ export default function WorkspaceStarredPage() {
     }
   };
 
-  const handleRenameTrigger = (_item: StorageItem) => {};
+  const handleRenameTrigger = (_item: StorageItem) => { };
 
   if (isWorkspaceLoading || isFilesLoading) {
     return <Skeleton className="h-48 w-full rounded-xl" />;
@@ -73,7 +42,7 @@ export default function WorkspaceStarredPage() {
   return (
     <FileExplorer
       items={files}
-      storageScope="workspace"
+
       workspaceId={workspaceId}
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}

@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import { Paperclip } from "lucide-react";
-import { useUpload } from '@/features/workspaces';
+import { useUpload } from '@/shared/hooks';
 import {
   createTaskAttachmentFromUpload,
   type TaskAttachment,
@@ -68,3 +68,4 @@ export function ActionAttachmentSection({
     </div>
   );
 }
+

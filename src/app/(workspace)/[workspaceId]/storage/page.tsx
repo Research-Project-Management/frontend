@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { WorkspaceHomePage } from '@/features/workspaces';
+import { WorkspaceHomePage } from '@/features/workspaces/storage';
 
 export const metadata: Metadata = { title: 'Storage · Flux' };
 

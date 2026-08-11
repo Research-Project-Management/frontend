@@ -15,8 +15,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/shared/components/ui';
-import { useProjects } from '@/features/workspaces';
-import type { Project } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import type { Project } from '@/features/workspaces/projects/shell';
 import CreateProject from './create-project';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

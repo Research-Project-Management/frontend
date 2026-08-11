@@ -32,11 +32,10 @@ import Recent from "../components/Recent";
 import ShortCut from "../components/ShortCut";
 import Activity from "../components/Activity";
 import Stickies from "../components/Stickies";
-import { useUserStore } from "@/features/profile";
 import { format } from "date-fns";
 import { useAuth } from '@/features/auth';
-import { useDocumentTitle } from "@/features/workspaces";
-import { useWorkspace } from "@/features/workspaces";
+import { useDocumentTitle } from '@/features/workspaces/projects/stickies/hooks/use-document-title';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Skeleton } from "@/shared/components/ui";
 
 
@@ -167,7 +166,7 @@ export default function HomePage() {
   const { workspace } = useWorkspace(workspaceId);
   useDocumentTitle(workspace?.name ? `${workspace.name} - Home` : "Home");
 
-  const user = useUserStore((s) => s.user);
+  const { user } = useAuth();
   const [config, setConfig] = useState<SectionConfig[]>(loadConfig);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -287,7 +286,7 @@ export default function HomePage() {
       </header>
 
       {/* ── Content ── */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="max-w-5xl mx-auto px-6 py-10 flex flex-col gap-10">
           {/* Greeting Section */}
           <div className="flex flex-col items-center justify-center text-center space-y-1 mt-4 mb-2">

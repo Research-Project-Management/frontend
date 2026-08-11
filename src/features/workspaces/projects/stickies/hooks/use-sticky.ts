@@ -2,15 +2,13 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { 
-  useStickies, 
-  useProjectStickies, 
-  useCreateSticky, 
-  useUpdateSticky, 
-  useDeleteSticky,
-  useReorderStickies,
-  useReorderProjectStickies
-} from "@/features/workspaces";
+import { useStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
+import { useProjectStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
+import { useCreateSticky } from '@/features/workspaces/projects/stickies/services/sticky.services';
+import { useUpdateSticky } from '@/features/workspaces/projects/stickies/services/sticky.services';
+import { useDeleteSticky } from '@/features/workspaces/projects/stickies/services/sticky.services';
+import { useReorderStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
+import { useReorderProjectStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
 
 export const useSticky = (options?: { projectId?: string; labels?: string[] }) => {
   const { workspaceId } = useParams() as { workspaceId: string };

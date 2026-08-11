@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { useWorkspace } from '@/features/workspaces';
-import { useAddWorkspaceMember, useUpdateWorkspaceMemberRole, useRemoveWorkspaceMember } from '@/features/workspaces/settings';
-import { apiGet } from "@/shared/lib/api";
-import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+
+import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from 'lucide-react';
+
+import { apiGet } from '@/shared/lib/api';
 import {
   Skeleton,
   Button,
@@ -21,8 +20,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -31,6 +28,10 @@ import {
   DialogTitle,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
+
+import { useMember, useAddWorkspaceMember } from '@/features/workspaces/settings/hooks/use-member';
+import TopBar from '@/features/workspaces/settings/components/TopBar';
+import DeleteModal from '@/features/workspaces/settings/components/DeleteModal';
 
 function getRoleName(role?: string): string {
   if (!role) return 'Member';
@@ -53,23 +54,32 @@ function getRoleColor(role?: string): string {
     default: return 'bg-zinc-100 text-zinc-700';
   }
 }
-import TopBar from '../components/TopBar';
-import DeleteModal from '../components/DeleteModal';
-import { useDocumentTitle } from '@/features/workspaces/settings/hooks/use-document-title';
 
 export default function MemberPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
-  const queryClient = useQueryClient();
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [addMemberOpen, setAddMemberOpen] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState<any | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const {
+    workspace,
+    isLoading,
+    yourRole,
+    filteredMembers,
+    existingMemberIds,
+    canManage,
+    searchTerm,
+    setSearchTerm,
+    addMemberOpen,
+    setAddMemberOpen,
+    isSearchExpanded,
+    setIsSearchExpanded,
+    memberToRemove,
+    setMemberToRemove,
+    searchInputRef,
+    handleUpdateRole,
+    handleRemoveMember,
+    isRemovingMember
+  } = useMember(workspaceUrl!);
 
-  // Fetch Workspace Data
-  const { workspace, isLoading, yourRole } = useWorkspace(workspaceUrl!);
-  useDocumentTitle(workspace?.name ? `Members - ${workspace.name} Â· Flux` : "Members Â· Flux");
+
   const roles = [
     { _id: 'owner', name: 'Owner' },
     { _id: 'admin', name: 'Admin' },
@@ -77,63 +87,10 @@ export default function MemberPage() {
     { _id: 'viewer', name: 'Viewer' }
   ];
 
-  // Mutations
-  const updateRoleMutation = useUpdateWorkspaceMemberRole();
-  const removeMemberMutation = useRemoveWorkspaceMember();
-
-  const members = workspace?.members || [];
-  const existingMemberIds = useMemo<Set<string>>(
-    () =>
-      new Set(
-        members
-          .map((m: any) => m.user?._id)
-          .filter((id: unknown): id is string => typeof id === "string"),
-      ),
-    [members],
-  );
-
-
-
-  const filteredMembers = useMemo(
-    () =>
-      members.filter(
-        (m: any) =>
-          m.user && (m.user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          m.user.email?.toLowerCase().includes(searchTerm.toLowerCase())),
-      ),
-    [members, searchTerm],
-  );
-
-  const canManage = yourRole === "owner" || yourRole === "admin";
-
-  const handleUpdateRole = useCallback(
-    (userId: string, newRole: string) => {
-      if (!workspace) return;
-      updateRoleMutation.mutate({
-        workspaceId: workspace._id,
-        userId,
-        newRole,
-      });
-    },
-    [updateRoleMutation, workspace],
-  );
-
-  const handleRemoveMember = useCallback(
-    (userId: string) => {
-      if (!workspace) return;
-      removeMemberMutation.mutate({ workspaceId: workspace._id, userId }, {
-        onSuccess: () => {
-          setMemberToRemove(null);
-        }
-      });
-    },
-    [removeMemberMutation, workspace],
-  );
-
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-      <div className="px-4 h-13 border-b border-border flex items-center">
+        <div className="px-4 h-13 border-b border-border flex items-center">
           <Skeleton className="h-6 w-24" />
         </div>
         <div className="flex-1 p-8 space-y-8">
@@ -151,6 +108,7 @@ export default function MemberPage() {
       </div>
     );
   }
+
   if (!workspace) return <div className="p-8 text-muted-foreground">Workspace not found</div>;
 
   return (
@@ -168,13 +126,13 @@ export default function MemberPage() {
               )}
               onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
             >
-              <Search 
+              <Search
                 className={cn(
                   "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 z-10",
-                  isSearchExpanded || searchTerm 
-                    ? "left-2.5 translate-x-0 text-muted-foreground/50" 
+                  isSearchExpanded || searchTerm
+                    ? "left-2.5 translate-x-0 text-muted-foreground/50"
                     : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
-                )} 
+                )}
               />
               <Input
                 ref={searchInputRef}
@@ -262,9 +220,9 @@ export default function MemberPage() {
                         style={
                           roleColor
                             ? {
-                                backgroundColor: `${roleColor}15`,
-                                color: roleColor,
-                              }
+                              backgroundColor: `${roleColor}15`,
+                              color: roleColor,
+                            }
                             : undefined
                         }
                       >
@@ -292,61 +250,61 @@ export default function MemberPage() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-2xl border-border/40 bg-background/95 backdrop-blur-xl rounded-sm">
-                              <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-2.5 py-2">
-                                Change Role
-                              </DropdownMenuLabel>
-                              <div className="space-y-0.5 px-0.5">
-                                {roles
-                                  ?.filter(
-                                    (r) => r.name.toLowerCase() !== "owner",
-                                  )
-                                  .filter(
-                                    (r) =>
-                                      yourRole === "owner" ||
-                                      r.name.toLowerCase() !== "admin",
-                                  )
-                                  .sort((a, b) => {
-                                    const priority: Record<string, number> = { admin: 1, member: 2 };
-                                    return (priority[a.name.toLowerCase()] || 99) - (priority[b.name.toLowerCase()] || 99);
-                                  })
-                                  .map((r) => {
-                                    const isSelected = roleName.toLowerCase() === r.name.toLowerCase();
-                                    return (
-                                      <DropdownMenuItem
-                                        key={r._id}
-                                        onClick={() => handleUpdateRole(member.user._id, r.name)}
-                                        className={cn(
-                                          "flex items-center justify-between px-3 py-2 rounded-sm cursor-pointer transition-colors duration-150",
-                                          isSelected ? "bg-[#f4f4f5] text-foreground" : "hover:bg-accent/50"
-                                        )}
-                                      >
-                                        <div className="flex items-center gap-2.5">
-                                          <div
-                                            className="size-1.5 rounded-full shrink-0"
-                                            style={{
-                                              backgroundColor: r.name.toLowerCase() === 'owner' ? '#f59e0b' : r.name.toLowerCase() === 'admin' ? '#3b82f6' : r.name.toLowerCase() === 'member' ? '#10b981' : '#6b7280',
-                                            }}
-                                          />
-                                          <span className={cn("text-[13px] font-bold tracking-tight", isSelected ? "text-foreground" : "text-muted-foreground")}>
-                                            {r.name}
-                                          </span>
-                                        </div>
-                                        {isSelected && <Check className="size-3.5 text-muted-foreground/60 stroke-[3px]" />}
-                                      </DropdownMenuItem>
-                                    );
-                                  })}
-                              </div>
-                              <DropdownMenuSeparator className="my-1.5 opacity-50" />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10 text-[13px] font-bold px-3 py-2 rounded-sm cursor-pointer"
-                                onClick={() => setMemberToRemove(member)}
-                              >
-                                <Trash2 className="mr-1.5 size-4" />
-                                Delete Member
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-2xl border-border/40 bg-background/95 backdrop-blur-xl rounded-sm">
+                            <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-2.5 py-2">
+                              Change Role
+                            </DropdownMenuLabel>
+                            <div className="space-y-0.5 px-0.5">
+                              {roles
+                                ?.filter(
+                                  (r) => r.name.toLowerCase() !== "owner",
+                                )
+                                .filter(
+                                  (r) =>
+                                    yourRole === "owner" ||
+                                    r.name.toLowerCase() !== "admin",
+                                )
+                                .sort((a, b) => {
+                                  const priority: Record<string, number> = { admin: 1, member: 2 };
+                                  return (priority[a.name.toLowerCase()] || 99) - (priority[b.name.toLowerCase()] || 99);
+                                })
+                                .map((r) => {
+                                  const isSelected = roleName.toLowerCase() === r.name.toLowerCase();
+                                  return (
+                                    <DropdownMenuItem
+                                      key={r._id}
+                                      onClick={() => handleUpdateRole(member.user._id, r.name)}
+                                      className={cn(
+                                        "flex items-center justify-between px-3 py-2 rounded-sm cursor-pointer transition-colors duration-150",
+                                        isSelected ? "bg-[#f4f4f5] text-foreground" : "hover:bg-accent/50"
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2.5">
+                                        <div
+                                          className="size-1.5 rounded-full shrink-0"
+                                          style={{
+                                            backgroundColor: r.name.toLowerCase() === 'owner' ? '#f59e0b' : r.name.toLowerCase() === 'admin' ? '#3b82f6' : r.name.toLowerCase() === 'member' ? '#10b981' : '#6b7280',
+                                          }}
+                                        />
+                                        <span className={cn("text-[13px] font-bold tracking-tight", isSelected ? "text-foreground" : "text-muted-foreground")}>
+                                          {r.name}
+                                        </span>
+                                      </div>
+                                      {isSelected && <Check className="size-3.5 text-muted-foreground/60 stroke-[3px]" />}
+                                    </DropdownMenuItem>
+                                  );
+                                })}
+                            </div>
+                            <DropdownMenuSeparator className="my-1.5 opacity-50" />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10 text-[13px] font-bold px-3 py-2 rounded-sm cursor-pointer"
+                              onClick={() => setMemberToRemove(member)}
+                            >
+                              <Trash2 className="mr-1.5 size-4" />
+                              Delete Member
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </td>
                   </tr>
@@ -388,7 +346,7 @@ export default function MemberPage() {
           description={`Are you sure you want to remove ${memberToRemove?.user?.name} from this workspace? They will lose access to all projects and tasks.`}
           confirmText="Delete Member"
           cancelText="Cancel"
-          loading={removeMemberMutation.isPending}
+          loading={isRemovingMember}
         />
       </div>
     </div>
@@ -411,25 +369,20 @@ function AddWorkspaceMemberDialog({
   const [isSearching, setIsSearching] = useState(false);
   const addMemberMutation = useAddWorkspaceMember();
 
-  // Debounced search effect
   useEffect(() => {
-    // Reset results if search is too short
     if (search.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
 
-    // Set searching state immediately
     setIsSearching(true);
 
-    // Debounce the API call
     const timeoutId = setTimeout(async () => {
       try {
         const params = new URLSearchParams({ query: search.trim() });
         const data = await apiGet<{ users?: any[] }>(`/auth/search?${params}`);
         const users = data.users || [];
-        // Filter out users already in the workspace
         const filtered = users.filter((u: any) => !existingMemberIds.has(u._id));
         setSearchResults(filtered);
       } catch (e) {
@@ -438,13 +391,10 @@ function AddWorkspaceMemberDialog({
       } finally {
         setIsSearching(false);
       }
-    }, 500); // Wait 500ms after user stops typing
+    }, 500);
 
-    // Cleanup function to cancel the timeout if search changes
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [search, existingMemberIds]); // Re-run when search or existingMemberIds changes
+    return () => clearTimeout(timeoutId);
+  }, [search, existingMemberIds]);
 
   const handleAdd = async (userId: string) => {
     try {
@@ -536,4 +486,3 @@ function AddWorkspaceMemberDialog({
     </Dialog>
   );
 }
-

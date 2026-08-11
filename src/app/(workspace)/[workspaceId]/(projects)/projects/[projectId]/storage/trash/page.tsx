@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { TrashPage } from '@/features/workspaces';
+import TrashPage from '@/features/workspaces/projects/project-id/storage/pages/TrashPage';
 
 export const metadata: Metadata = { title: 'Trash · Storage · Flux' };
 

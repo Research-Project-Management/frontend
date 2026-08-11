@@ -3,8 +3,12 @@
 import { useState } from "react";
 import { Plus, BookMarked, Search, FolderOpen, Trash2, Import, BookOpen } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useWorkspace } from '@/features/workspaces';
-import { useProjectCollections, useCreateProjectCollection, useDeleteProjectCollection, useImportLibraryCollection, useCollections } from '@/features/workspaces';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useProjectCollections } from '@/features/workspaces/library/services/library.services';
+import { useCreateProjectCollection } from '@/features/workspaces/library/services/library.services';
+import { useDeleteProjectCollection } from '@/features/workspaces/library/services/library.services';
+import { useImportLibraryCollection } from '@/features/workspaces/library/services/library.services';
+import { useCollections } from '@/features/workspaces/library/services/library.services';
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";

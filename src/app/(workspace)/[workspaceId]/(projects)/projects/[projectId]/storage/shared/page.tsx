@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { SharedPage } from '@/features/workspaces';
+import SharedPage from '@/features/workspaces/projects/project-id/storage/pages/SharedPage';
 
 export const metadata: Metadata = { title: 'Shared · Storage · Flux' };
 

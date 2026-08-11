@@ -1,6 +1,6 @@
 /**
  * shared/hooks/index.ts
- * Barrel export — only truly global hooks with zero feature dependencies.
+ * Barrel export - only truly global hooks with zero feature dependencies.
  */
 
 export { useDebounce } from './use-debounce';
@@ -15,3 +15,5 @@ export {
   useIsXl,
   usePrefersReducedMotion,
 } from './use-media-query';
+export { useUpload, type UploadOptions } from './use-upload';
+

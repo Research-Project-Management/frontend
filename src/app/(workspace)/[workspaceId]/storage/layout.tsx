@@ -1,6 +1,7 @@
 'use client';
 
-import { useProjects, StorageSidebar } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell';
+import { StorageSidebar } from '@/features/workspaces/storage';
 import { Cloud, ChevronRight } from 'lucide-react';
 import { useParams } from 'next/navigation';
 

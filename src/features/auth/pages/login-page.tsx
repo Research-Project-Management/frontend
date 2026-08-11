@@ -27,7 +27,19 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (!isAuthLoading && user) {
-      router.replace('/create-workspace');
+      import('@/shared/lib/api').then(({ apiGet }) => {
+        apiGet<{ workspaces: any[] }>('/api/workspaces')
+          .then(data => {
+            if (data.workspaces && data.workspaces.length > 0) {
+              router.replace(`/${data.workspaces[0].url}`);
+            } else {
+              router.replace('/create-workspace');
+            }
+          })
+          .catch(() => {
+            router.replace('/create-workspace');
+          });
+      });
     }
   }, [isAuthLoading, user, router]);
 

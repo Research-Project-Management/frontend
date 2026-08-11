@@ -14,13 +14,11 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
-import { useCreateFolder } from "@/features/workspaces/storage/services/storage.services";
-
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createFolder as workspaceCreateFolder } from "@/features/workspaces/storage/services/storage.services";
 type CreateFolderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scope: "project" | "workspace";
-  projectId?: string | null;
   parentId?: string | null;
   workspaceId?: string;
 };
@@ -28,33 +26,33 @@ type CreateFolderDialogProps = {
 export default function CreateFolderDialog({
   open,
   onOpenChange,
-  scope,
-  projectId,
   parentId,
   workspaceId,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
-  const createFolderMutation = useCreateFolder();
+  const queryClient = useQueryClient();
+  const createFolderMutation = useMutation({
+    mutationFn: (name: string) => {
+      return workspaceCreateFolder(name, {
+        workspaceId: workspaceId!,
+        parentId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-home-files'] });
+      queryClient.invalidateQueries({ queryKey: ['my-files'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-my-files'] });
+    }
+  });
 
 
   const handleCreate = async () => {
     if (!folderName.trim()) return;
 
     try {
-      console.log("CreateFolderDialog: handleCreate with variables:", {
-        name: folderName,
-        scope,
-        projectId,
-        workspaceId,
-        parentId,
-      });
-      await createFolderMutation.mutateAsync({
-        name: folderName,
-        scope,
-        projectId: projectId || undefined,
-        workspaceId,
-        parentId,
-      });
+      console.log("CreateFolderDialog: handleCreate mutation started");
+      await createFolderMutation.mutateAsync(folderName);
       console.log("CreateFolderDialog: handleCreate mutation finished successfully");
       toast.success(`Created folder "${folderName}"`);
       onOpenChange(false);

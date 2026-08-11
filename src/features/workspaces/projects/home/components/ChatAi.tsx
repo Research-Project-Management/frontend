@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/shared/components/ui";
 import { Switch } from "@/shared/components/ui";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import HomeSection from "./HomeSection";
 
 export default function ChatAi() {

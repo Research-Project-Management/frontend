@@ -1,4 +1,14 @@
-import { WorkspaceTopbar, WorkspaceSidebar } from '@/features/workspaces';
+import dynamic from 'next/dynamic';
+
+const WorkspaceTopbar = dynamic(
+  () => import('@/features/workspaces/shell').then((mod) => mod.WorkspaceTopbar),
+  { ssr: true, loading: () => null }
+);
+
+const WorkspaceSidebar = dynamic(
+  () => import('@/features/workspaces/shell').then((mod) => mod.WorkspaceSidebar),
+  { ssr: true, loading: () => null }
+);
 
 export default function WorkspaceLayout({
   children,

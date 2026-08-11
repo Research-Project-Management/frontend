@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useProjectDetails, useUpload } from "@/features/workspaces";
+import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
+import { useUpload } from "@/shared/hooks";
 import { useUpdateProject, useDeleteProject } from "@/features/workspaces/projects/shell/services/project.services";
 import { Button, Input, Label, Textarea, Skeleton } from "@/shared/components/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
@@ -14,7 +15,7 @@ export default function GeneralPage() {
   const router = useRouter();
   const { workspaceId, projectId } = useParams() as { workspaceId: string, projectId: string };
   const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
-  const { uploadAvatar, isUploading } = useUpload();
+  const { uploadFile, isUploading } = useUpload();
   
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
@@ -57,7 +58,7 @@ export default function GeneralPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const url = await uploadAvatar(file);
+      const url = await uploadFile(file, 'project/avatars');
       setCurrentAvatar(url);
       updateMutation.mutate({ projectId, avatar: url });
       toast.success("Avatar updated");
@@ -180,3 +181,4 @@ export default function GeneralPage() {
     </div>
   );
 }
+

@@ -1,79 +1,27 @@
-// @ts-nocheck
 'use client';
-import { 
-  useToggleStar, 
-  useDeleteFile, 
-  useRestoreFile, 
-  usePermanentlyDeleteFile, 
-  fetchSharedFiles, 
-  fetchStarredFiles, 
-  fetchTrashedFiles, 
-  fetchMyFiles,
-  fetchWorkspaceHome,
-  useFiles
-} from '@/features/workspaces/storage/services/storage.services';
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
+import { useHome } from "../hooks/use-home";
+import { useProject } from '@/features/workspaces/projects';
+import { Skeleton } from "@/shared/components/ui";
+import FileExplorer from '../components/FileExplorer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { Folder } from 'lucide-react';
-import FileExplorer from '@/features/workspaces/storage/components/FileExplorer';
-
-
-
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import { useDocumentTitle } from '@/features/workspaces/storage/hooks/use-document-title';
 
-export default function StoragePage() {
+export default function ProjectHomePage() {
   const { projectId } = useParams() as { projectId: string };
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [breadcrumbs, setBreadcrumbs] = useState<Array<{ id: string | null; name: string }>>([]);
+  const [breadcrumbs, setBreadcrumbs] = useState<
+    Array<{ id: string | null; name: string }>
+  >([]);
+  
   const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
-  const pData = projectData as any;
+  const project = projectData as any; // or proper type if available
+  const canUpload = !!project; // Or proper RBAC check if project has roles
 
-  const { data, isLoading: isFilesLoading } = useFiles(projectId!, currentFolder);
 
-  useDocumentTitle(
-    pData?.project?.name
-      ? `Storage - ${pData.project.name}`
-      : "Storage"
-  );
-  const toggleStarMutation = useToggleStar();
-  const deleteFileMutation = useDeleteFile();
-  const canUpload = pData?.yourRole !== "viewer";
-
-  const handleFolderClick = (folder: StorageItem) => {
-    setCurrentFolder(folder._id);
-    setBreadcrumbs([...breadcrumbs, { id: folder._id, name: folder.filename }]);
-  };
-
-  const handleBreadcrumbNavigate = (folderId: string | null) => {
-    setCurrentFolder(folderId);
-    if (folderId === null) {
-      setBreadcrumbs([]);
-    } else {
-      const index = breadcrumbs.findIndex((b) => b.id === folderId);
-      setBreadcrumbs(breadcrumbs.slice(0, index + 1));
-    }
-  };
-
-  const handleToggleStar = async (fileId: string) => {
-    try {
-      await toggleStarMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error toggling star:", error);
-    }
-  };
-
-  const handleDelete = async (fileId: string) => {
-    try {
-      await deleteFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-    }
-  };
+  const { data, isLoading: isHomeLoading, handleToggleStar, handleDelete } = useHome(projectId!, currentFolder);
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
@@ -84,26 +32,57 @@ export default function StoragePage() {
     }
   };
 
-  // W4: non-empty stub — FileExplorer uses its own internal RenameDialog
-  // but only activates it when onRename prop is truthy.
   const handleRenameTrigger = (_item: StorageItem) => {};
 
-  if (isFilesLoading || isProjectLoading) {
-    return <Skeleton className="h-48 w-full rounded-xl" />;
+  const handleFolderClick = (folder: StorageItem) => {
+    setCurrentFolder(folder._id);
+    setBreadcrumbs((prev) => [...prev, { id: folder._id, name: folder.filename }]);
+  };
+
+  const handleBreadcrumbNavigate = (folderId: string | null) => {
+    setCurrentFolder(folderId);
+    if (folderId === null) {
+      setBreadcrumbs([]);
+      return;
+    }
+
+    setBreadcrumbs((prev) => {
+      const index = prev.findIndex((item) => item.id === folderId);
+      return index >= 0 ? prev.slice(0, index + 1) : prev;
+    });
+  };
+
+  const files = useMemo(
+    () => (data?.files || []) as StorageItem[],
+    [data?.files],
+  );
+
+  if (isProjectLoading || isHomeLoading) {
+    return (
+      <div className="flex-1 p-6 space-y-4">
+        <Skeleton className="h-9 w-full rounded-lg" />
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full rounded" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!projectId) {
-    return <div className="p-6">Project not found</div>;
+    return <div className="p-6 text-muted-foreground">Project not found</div>;
   }
-
-  const files = (data?.files || []) as StorageItem[];
 
   return (
     <FileExplorer
       items={files}
-      projectId={projectId}
+
       currentFolder={currentFolder}
       breadcrumbs={breadcrumbs}
+      projectId={projectId}
+      workspaceId={project?.workspaceId}
+      wsId={project?.workspaceId}
       onNavigate={handleBreadcrumbNavigate}
       onFolderClick={handleFolderClick}
       onToggleStar={handleToggleStar}
@@ -112,6 +91,12 @@ export default function StoragePage() {
       onRename={handleRenameTrigger}
       enableUpload={canUpload}
       enableBreadcrumbs={true}
+      defaultView="list"
+      header={
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-lg font-semibold">Home</h1>
+        </div>
+      }
     />
   );
 }

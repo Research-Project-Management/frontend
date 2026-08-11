@@ -26,7 +26,7 @@ import {
 } from "@/features/workspaces/projects/project-id/drafts/services/comment.services";
 import type { PageComment, CommentReply } from "@/features/workspaces/projects/types/page.types";
 import { usePageContext } from '@/features/editor/store/page-context';
-import { useUserStore } from '@/features/profile';
+import { useAuth } from '@/features/auth';
 import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';
 import { cn } from "@/shared/lib/utils";
 import {
@@ -314,7 +314,7 @@ function ReplyRow({
 export default function ReviewTab({ onClose }: { onClose?: () => void }) {
   const { pageId } = useParams<{ pageId: string }>();
   const { editorRef, scrollToLineRef, scrollToPdfLineRef } = usePageContext();
-  const { user } = useUserStore();
+  const { user } = useAuth();
 
   const [filter, setFilter] = useState<Filter>("open");
   const [showAddForm, setShowAddForm] = useState(false);

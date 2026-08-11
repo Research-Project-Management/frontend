@@ -82,6 +82,24 @@ export const queryKeys = {
     list: (workspaceId: string, filters?: Record<string, unknown>) =>
       ['storage', workspaceId, 'list', filters] as const,
     detail: (id: string) => ['storage', 'detail', id] as const,
+    
+    // Legacy keys used by file explorer (can be refactored later if needed)
+    files: (projectId?: string) => projectId ? ['files', projectId] as const : ['files'] as const,
+    myFiles: (projectId?: string) => projectId ? ['my-files', projectId] as const : ['my-files'] as const,
+    starred: (projectId?: string) => projectId ? ['starred-files', projectId] as const : ['starred-files'] as const,
+    shared: (projectId?: string) => projectId ? ['shared-files', projectId] as const : ['shared-files'] as const,
+    trashed: (projectId?: string) => projectId ? ['trashed-files', projectId] as const : ['trashed-files'] as const,
+    
+    workspaceHome: (workspaceId?: string) => workspaceId ? ['workspace-home', workspaceId] as const : ['workspace-home'] as const,
+    workspaceHomeFiles: (workspaceId?: string) => workspaceId ? ['workspace-home-files', workspaceId] as const : ['workspace-home-files'] as const,
+    workspaceMyFiles: (workspaceId?: string) => workspaceId ? ['workspace-my-files', workspaceId] as const : ['workspace-my-files'] as const,
+    workspaceStarred: (workspaceId?: string) => workspaceId ? ['workspace-starred-files', workspaceId] as const : ['workspace-starred-files'] as const,
+    workspaceShared: (workspaceId?: string) => workspaceId ? ['workspace-shared-files', workspaceId] as const : ['workspace-shared-files'] as const,
+    workspaceTrashed: (workspaceId?: string) => workspaceId ? ['workspace-trashed-files', workspaceId] as const : ['workspace-trashed-files'] as const,
+    
+    // Editor specific storage keys
+    projectFilesEditor: (pageId?: string, parentId?: string | null) => 
+      pageId ? (parentId ? ['project-files-editor', pageId, parentId] as const : ['project-files-editor', pageId] as const) : ['project-files-editor'] as const,
   },
 
   // ──────────────── Library ────────────────

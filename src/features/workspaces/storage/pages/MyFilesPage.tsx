@@ -2,18 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import {
-  fetchWorkspaceFiles,
-  useToggleStar,
-  useDeleteFile,
-} from "@/features/workspaces/storage/services/storage.services";
-import { useWorkspace } from '@/features/workspaces';
+import { useMyFiles } from "@/features/workspaces/storage/hooks/use-my-files";
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Skeleton } from '@/shared/components/ui';
 import FileExplorer from '../components/FileExplorer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import { useDocumentTitle } from '@/features/workspaces/storage/hooks/use-document-title';
 
 export default function WorkspaceMyFilesPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
@@ -27,32 +21,7 @@ export default function WorkspaceMyFilesPage() {
   const workspaceId = workspace?._id;
   const canUpload = !yourRole || yourRole !== "viewer";
 
-  useDocumentTitle(workspace?.name ? `My Files - ${workspace.name}` : "My Files");
-
-  const { data, isLoading: isFilesLoading } = useQuery({
-    queryKey: ["workspace-my-files", workspaceId, currentFolder],
-    queryFn: () => fetchWorkspaceFiles(workspaceId!, currentFolder),
-    enabled: !!workspaceId,
-  });
-
-  const toggleStarMutation = useToggleStar();
-  const deleteFileMutation = useDeleteFile();
-
-  const handleToggleStar = async (fileId: string) => {
-    try {
-      await toggleStarMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error toggling star:", error);
-    }
-  };
-
-  const handleDelete = async (fileId: string) => {
-    try {
-      await deleteFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-    }
-  };
+  const { data, isLoading: isFilesLoading, handleToggleStar, handleDelete } = useMyFiles(workspaceId!);
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
@@ -63,7 +32,7 @@ export default function WorkspaceMyFilesPage() {
     }
   };
 
-  const handleRenameTrigger = (_item: StorageItem) => {};
+  const handleRenameTrigger = (_item: StorageItem) => { };
 
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);
@@ -103,7 +72,7 @@ export default function WorkspaceMyFilesPage() {
   return (
     <FileExplorer
       items={files}
-      storageScope="workspace"
+
       currentFolder={currentFolder}
       breadcrumbs={breadcrumbs}
       workspaceId={workspaceId}

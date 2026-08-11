@@ -14,7 +14,8 @@ import {
 import { logoutUser, useAuth } from '@/features/auth';
 import { useWorkspaces } from '../hooks/use-workspace';
 import { useParams } from 'next/navigation';
-import Avatar from './Avatar';
+import Avatar from '@/shared/components/Avatar';
+import AccountDropdown from './AccountDropdown';
 
 export default function Topbar() {
   const { user, isLoading } = useAuth();
@@ -106,41 +107,8 @@ export default function Topbar() {
           <Mail className='size-4' />
         </button>
 
-        {!isLoading && user && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className='relative size-7 overflow-hidden rounded-full cursor-pointer ring-offset-background transition-shadow hover:ring-2 hover:ring-primary/20 outline-none'>
-                <Avatar
-                  src={user.avatar}
-                  name={user.name!}
-                  className='size-full rounded-full'
-                  fallbackType='user'
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align='end' className='w-56'>
-              <DropdownMenuLabel>
-                <div className='flex flex-col space-y-1'>
-                  <p className='text-sm font-medium leading-none'>{user.name}</p>
-                  <p className='text-xs leading-none text-muted-foreground'>{user.email}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() =>
-                  workspaceId && router.push(`/${workspaceId}/settings/profile`)
-                }
-              >
-                <User className='mr-2 h-4 w-4' />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logoutUser} variant='destructive'>
-                <LogOut className='mr-2 h-4 w-4' />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {!isLoading && user && workspaceId && (
+          <AccountDropdown workspaceId={workspaceId} />
         )}
       </div>
     </nav>

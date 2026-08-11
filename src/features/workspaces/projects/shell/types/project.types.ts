@@ -2,6 +2,7 @@ export interface ProjectMember {
   userId: string | {
     _id: string;
     name: string;
+  createdBy?: string | any;
     email: string | null;
     avatar: string | null;
   };
@@ -17,6 +18,7 @@ export interface Workspace {
 export interface Project {
   _id: string;
   name: string;
+  createdBy?: string | any;
   avatar: string | null;
   description: string;
   modules: string[];

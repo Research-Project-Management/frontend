@@ -25,7 +25,7 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext } from "@/features/editor/store/page-context";
-import { useUpdatePageTitle } from "@/features/workspaces";
+import { useUpdatePageTitle } from '@/features/workspaces/projects/all-drafts/services/page.services';
 import {
   useEditorSettingsStore,
   type LayoutMode,

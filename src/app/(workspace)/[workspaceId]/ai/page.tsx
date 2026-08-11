@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { EmptyState } from '@/features/workspaces';
+import { EmptyState } from '@/features/workspaces/ai';
 
 export const metadata: Metadata = { title: 'AI' };
 

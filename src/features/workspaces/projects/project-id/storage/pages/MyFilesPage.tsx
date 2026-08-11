@@ -1,65 +1,22 @@
 'use client';
-import { 
-  useToggleStar, 
-  useDeleteFile, 
-  useRestoreFile, 
-  usePermanentlyDeleteFile, 
-  fetchSharedFiles, 
-  fetchStarredFiles, 
-  fetchTrashedFiles, 
-  fetchMyFiles,
-  fetchWorkspaceHome,
-  useFiles
-} from '@/features/workspaces/storage/services/storage.services';
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useMemo } from "react";
+import { useParams } from "next/navigation";
+import { useMyFiles } from "../hooks/use-my-files";
+import { useProject } from '@/features/workspaces/projects';
+import { Skeleton } from "@/shared/components/ui";
+import FileExplorer from '../components/FileExplorer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { Folder } from 'lucide-react';
-import FileExplorer from '@/features/workspaces/storage/components/FileExplorer';
-
-
-
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import { useProject } from '@/features/workspaces/projects/shell/services/project.services';
-import { useDocumentTitle } from '@/features/workspaces/storage/hooks/use-document-title';
 
-export default function MyFilesPage() {
+export default function ProjectMyFilesPage() {
   const { projectId } = useParams() as { projectId: string };
-  const { data: projectData } = useProject(projectId!, { enabled: !!projectId });
-  const pData = projectData as any;
-  useDocumentTitle(
-    pData?.project?.name
-      ? `My Files - ${pData.project.name}`
-      : "My Files"
-  );
+  const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
+  const project = projectData as any;
+  const canUpload = !!project;
 
-  const { data, isLoading: isFilesLoading } = useQuery({
-    queryKey: ["my-files", projectId],
-    queryFn: () => fetchMyFiles(projectId!),
-    enabled: !!projectId,
-  });
 
-  const toggleStarMutation = useToggleStar();
-  const deleteFileMutation = useDeleteFile();
-
-  const handleToggleStar = async (fileId: string) => {
-    try {
-      await toggleStarMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error toggling star:", error);
-    }
-  };
-
-  const handleDelete = async (fileId: string) => {
-    try {
-      await deleteFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-    }
-  };
+  const { data, isLoading: isFilesLoading, handleToggleStar, handleDelete } = useMyFiles(projectId!);
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
@@ -70,29 +27,49 @@ export default function MyFilesPage() {
     }
   };
 
-  const handleRenameTrigger = (item: StorageItem) => {
-     // Just a trigger
-  };
+  const handleRenameTrigger = (_item: StorageItem) => {};
 
-  if (isFilesLoading) {
-    return <Skeleton className="h-48 w-full rounded-xl" />;
+  const files = useMemo(
+    () => (data?.files || []) as StorageItem[],
+    [data?.files],
+  );
+
+  if (isProjectLoading || isFilesLoading) {
+    return (
+      <div className="flex-1 p-6 space-y-4">
+        <Skeleton className="h-9 w-full rounded-lg" />
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full rounded" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!projectId) {
-    return <div className="p-6">Project not found</div>;
+    return <div className="p-6 text-muted-foreground">Project not found</div>;
   }
-
-  const files = (data?.files || []) as StorageItem[];
 
   return (
     <FileExplorer
       items={files}
+
       projectId={projectId}
+      workspaceId={project?.workspaceId}
+      wsId={project?.workspaceId}
       onToggleStar={handleToggleStar}
       onDelete={handleDelete}
       onDownload={handleDownload}
       onRename={handleRenameTrigger}
-      header={<h1 className="text-2xl font-bold">My Files</h1>}
+      enableUpload={canUpload}
+      enableBreadcrumbs={false}
+      defaultView="list"
+      header={
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-lg font-semibold">My Files</h1>
+        </div>
+      }
     />
   );
 }

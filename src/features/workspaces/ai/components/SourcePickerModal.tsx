@@ -23,7 +23,8 @@ import { Input } from "@/shared/components/ui";
 import { Skeleton } from "@/shared/components/ui";
 import { useChatMode } from '@/features/workspaces/ai/hooks/use-chat-mode';
 import { cn } from "@/shared/lib/utils";
-import { useCollections, useCollectionPapers } from '@/features/workspaces';
+import { useCollections } from '@/features/workspaces/library/services/library.services';
+import { useCollectionPapers } from '@/features/workspaces/library/services/library.services';
 import type { Collection, Paper } from "@/features/workspaces/library/types/library.types";
 
 interface SourcePickerModalProps {

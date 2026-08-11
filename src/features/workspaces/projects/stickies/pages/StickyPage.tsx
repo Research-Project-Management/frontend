@@ -1,16 +1,19 @@
 'use client';
 
+import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
+import { useDocumentTitle } from '../hooks/use-document-title';
+import { useProjects } from '@/features/workspaces/projects/shell';
+import Topbar from "@/features/workspaces/projects/project-id/overview/components/Topbar";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import StickyNote from '../components/StickyNote';
-import { type Note, NOTE_COLOR_CYCLE } from "@/features/workspaces";
+import { type Note } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import { NOTE_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { useParams } from "next/navigation";
-import { useSticky } from "@/features/workspaces";
 import { useLabelsQuery } from '@/features/workspaces/projects/project-id/tasks';
 import { Badge } from "@/shared/components/ui";
 import { Layers2, Loader2, StickyNote as StickyNoteIcon, X } from "lucide-react";
-import { useDocumentTitle } from "@/features/workspaces";
 
-import { useWorkspace, useProjects } from "@/features/workspaces";
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
   DndContext,
   DragOverlay,
@@ -31,7 +34,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Topbar } from '@/features/workspaces';
+
 import TopBar from '../components/TopBar';
 
 interface StickyLayoutProps {
@@ -146,8 +149,8 @@ export default function StickyPage({ scope = "workspace" }: StickyLayoutProps) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     
-    const oldIdx = notes.findIndex((n) => n._id === String(active.id));
-    const newIdx = notes.findIndex((n) => n._id === String(over.id));
+    const oldIdx = notes.findIndex((n: any) => n._id === String(active.id));
+    const newIdx = notes.findIndex((n: any) => n._id === String(over.id));
     
     if (oldIdx !== -1 && newIdx !== -1) {
       const newOrderIds = arrayMove(notes.map(n => n._id), oldIdx, newIdx);
@@ -162,7 +165,7 @@ export default function StickyPage({ scope = "workspace" }: StickyLayoutProps) {
 
   const filteredNotes = useMemo(
     () =>
-      notes.filter((note) => {
+      notes.filter((note: any) => {
         const matchesSearch =
           !searchQuery ||
           note.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -170,7 +173,7 @@ export default function StickyPage({ scope = "workspace" }: StickyLayoutProps) {
 
         const matchesLabels =
           selectedLabels.length === 0 ||
-          selectedLabels.some((labelId: any) => note.labels?.some((l) => l._id === labelId));
+          selectedLabels.some((labelId: any) => note.labels?.some((l: any) => l._id === labelId));
 
         return matchesSearch && matchesLabels;
       }),
@@ -206,7 +209,7 @@ export default function StickyPage({ scope = "workspace" }: StickyLayoutProps) {
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       <Topbar
-        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
+        
         title={copy.title}
         Icon={copy.Icon}
         actions={
@@ -257,11 +260,11 @@ export default function StickyPage({ scope = "workspace" }: StickyLayoutProps) {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={filteredNotes.map((n) => n._id)}
+              items={filteredNotes.map((n: any) => n._id)}
               strategy={rectSortingStrategy}
             >
               <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 items-start">
-                {filteredNotes.map((note) => (
+                {filteredNotes.map((note: any) => (
                   <SortableNote
                     key={note._id}
                     note={note}
@@ -284,7 +287,7 @@ export default function StickyPage({ scope = "workspace" }: StickyLayoutProps) {
               }}>
                 {activeId
                   ? (() => {
-                      const note = filteredNotes.find((n) => n._id === activeId);
+                      const note = filteredNotes.find((n: any) => n._id === activeId);
                       return note ? (
                         <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
                           <StickyNote

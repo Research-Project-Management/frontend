@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useWorkspaceTasks } from '@/features/workspaces/projects/project-id/tasks';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { resolveTaskColumnColor, DEFAULT_TASK_COLUMN_COLORS } from '@/features/workspaces/projects/project-id/tasks';
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { useAuth } from '@/features/auth';
 import { cn } from "@/shared/lib/utils";
 import Topbar from '../../shell/components/header';

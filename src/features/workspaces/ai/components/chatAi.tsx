@@ -9,9 +9,9 @@ import {
 } from "@/shared/components/ui";
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
 import { Switch } from "@/shared/components/ui";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { useParams } from "next/navigation";
-import { useWorkspace } from '@/features/workspaces';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { AGENT_CONFIGS } from "@/features/workspaces/ai/types/chat.types";
 import type { AgentId } from "@/features/workspaces/ai/types/chat.types";
 import { toast } from "sonner";

@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui';
 import { useWorkspacePages, useProjectPages, useCreatePage } from '../services/page.services';
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { toast } from 'sonner';
 
 export default function DraftPage({ projectId: initialProjectId }: { projectId?: string }) {

@@ -30,7 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/shared/components/ui";
-import { useWorkspace } from '@/features/workspaces';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useDocumentTitle } from '@/features/workspaces/library/hooks/use-document-title';
 import {
   reindexPaper,
@@ -38,7 +38,9 @@ import {
   useCollections,
   useUpdatePaper,
 } from "@/features/workspaces/library/services/library.services";
-import { lookupDoi, searchCrossref, type CrossrefWork } from '@/features/workspaces';
+import { lookupDoi } from '@/features/workspaces/storage/services/crossref.services';
+import { searchCrossref } from '@/features/workspaces/storage/services/crossref.services';
+import { type CrossrefWork } from '@/features/workspaces/storage/services/crossref.services';
 import { resolveFileUrl } from '@/features/workspaces/library/hooks/use-blob-url';
 import { cn } from "@/shared/lib/utils";
 import type { Collection, Paper } from "@/features/workspaces/library/types/library.types";

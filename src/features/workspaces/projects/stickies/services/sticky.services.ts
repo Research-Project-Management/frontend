@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import { toast } from "sonner";
 import { useParams } from "next/navigation";
-import type { Sticky, StickyChildLink } from "@/features/workspaces";
+import type { Sticky, StickyChildLink } from "@/features/workspaces/projects/stickies/types/sticky.types";
 import { StickyListResponseSchema, StickyChildrenResponseSchema, CreateStickyPayloadSchema, UpdateStickyPayloadSchema } from "../schemas/sticky.schema";
 import { useLabelsQuery } from "@/features/workspaces/projects/project-id/tasks";
 

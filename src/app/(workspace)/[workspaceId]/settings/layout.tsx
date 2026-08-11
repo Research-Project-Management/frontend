@@ -1,5 +1,5 @@
 import React from "react";
-import { SideBar } from "@/features/workspaces";
+import SideBar from '@/features/workspaces/storage/components/SideBar';
 
 export default function SettingLayout({
   children,

@@ -17,7 +17,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
-import { useWorkspace } from '@/features/workspaces';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useDocumentTitle } from '@/features/workspaces/library/hooks/use-document-title';
 import {
   useCollectionPapers,

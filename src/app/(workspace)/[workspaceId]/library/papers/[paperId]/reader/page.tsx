@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PaperReaderPage } from '@/features/workspaces';
+import PaperReaderPage from '@/features/workspaces/library/pages/PaperReaderPage';
 
 export const metadata: Metadata = { title: 'Paper Reader · Flux' };
 

@@ -3,9 +3,9 @@
 import { useParams, usePathname } from 'next/navigation';
 
 import Link from "next/link";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell';
 import { Settings } from "lucide-react";
-import { Topbar } from "@/features/workspaces";
+import Topbar from "@/features/workspaces/projects/project-id/overview/components/Topbar";
 import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
 
 export default function ProjectSettingLayout({ children }: { children?: React.ReactNode }) {

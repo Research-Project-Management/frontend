@@ -3,7 +3,7 @@
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { ChatModeProvider, useChatMode, WikiChatFeatures, FluxAiSidebar } from "@/features/workspaces";
+import { ChatModeProvider, useChatMode, WikiChatFeatures, FluxAiSidebar } from "@/features/workspaces/ai";
 import { TooltipProvider } from "@/shared/components/ui";
 
 export default function ChatAiLayout({ children }: { children?: React.ReactNode }) {

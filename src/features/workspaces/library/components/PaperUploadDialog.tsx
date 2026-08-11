@@ -14,7 +14,9 @@ import { Input } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
 import { Textarea } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { uploadFile, fetchWorkspaceFiles, createFolder } from '@/features/workspaces';
+import { uploadFile } from '@/features/workspaces/storage/services/file.services';
+import { fetchWorkspaceFiles } from '@/features/workspaces/storage/services/storage.services';
+import { createFolder } from '@/features/workspaces/storage/services/storage.services';
 import { extractPdfMetadataFromFile } from '@/features/editor';
 
 interface PaperUploadData {
@@ -140,7 +142,6 @@ export default function PaperUploadDialog({
         folderId = existingFolder._id;
       } else {
         const newFolder = (await createFolder("Paper Upload", {
-          scope: "workspace",
           workspaceId,
         })) as any;
         folderId = newFolder?.folder?._id || newFolder?._id;
@@ -150,7 +151,6 @@ export default function PaperUploadDialog({
     }
 
     const res = (await uploadFile(f, {
-      scope: "workspace",
       workspaceId,
       parentId: folderId,
     })) as any;

@@ -1,6 +1,7 @@
 'use client';
 
-import { type Note, NOTE_COLOR_MAP } from "@/features/workspaces";
+import { type Note } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import { NOTE_COLOR_MAP } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import StickyContent from "./StickyContent";
 import StickyToolbar from "./StickyToolbar";
 import { useState, useEffect, useRef, memo, useMemo } from "react";
@@ -8,8 +9,8 @@ import type { Editor } from "@tiptap/react";
 import { GripVertical, FolderKanban, FileText } from "lucide-react";
 import { useParams } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
-import { useWorkspaceProjects } from '@/features/workspaces';
-import { useStickyChildren } from "@/features/workspaces";
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useStickyChildren } from '@/features/workspaces/projects/stickies/services/sticky.services';
 
 interface StickyNoteProps {
   note: Note;
@@ -94,7 +95,7 @@ const StickyNote = memo(function StickyNote({
           )}
           <div className="flex items-center gap-1 flex-wrap overflow-hidden min-h-6">
             {note.labels && note.labels.length > 0 ? (
-              note.labels.map((label) => (
+              note.labels.map((label: any) => (
                 <span
                   key={label._id}
                   className="px-1.5 py-0.5 text-[9px] rounded font-semibold text-white shrink-0"
@@ -139,7 +140,7 @@ const StickyNote = memo(function StickyNote({
             Notes ({children.length})
           </div>
           <div className="flex flex-col divide-y divide-black/5 max-h-32 overflow-y-auto">
-            {children.map((link) => (
+            {children.map((link: any) => (
               <div key={link._id} className="flex items-center gap-2 px-2.5 py-1.5">
                 <FileText className="h-3 w-3 opacity-40 shrink-0" />
                 <span className="text-[11px] font-medium truncate flex-1 opacity-80">

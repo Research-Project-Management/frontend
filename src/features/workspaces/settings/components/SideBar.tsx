@@ -17,7 +17,6 @@ export default function SideBar() {
   const basePath = `/${workspaceId}/settings`;
 
   const sidebarItems = [
-    { label: 'Profile', icon: User, to: `${basePath}/profile` },
     { label: 'General', icon: Settings, to: basePath },
     { label: 'Members', icon: Users, to: `${basePath}/members` },
   ];

@@ -8,10 +8,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useParams } from "next/navigation";
-import {
-  getPageChat, streamEditorChat, appendChatMessages, createChatSession,
-  clearPageChat, compilePreview, getChatSession, type PreviewCompileResult,
-} from "@/features/workspaces";
+import { getPageChat } from '@/features/workspaces/ai';
+import { streamEditorChat } from '@/features/workspaces/ai';
+import { appendChatMessages } from '@/features/workspaces/ai';
+import { createChatSession } from '@/features/workspaces/ai';
+import { clearPageChat } from '@/features/workspaces/ai';
+import { compilePreview } from '@/features/workspaces/ai';
+import { getChatSession } from '@/features/workspaces/ai';
+import { type PreviewCompileResult } from '@/features/workspaces/ai';
 import type { ChatMessage, ChatSession } from "@/features/workspaces/ai/types/chat.types";
 import { useEditorActionsStore } from "@/features/editor/store/editor-actions.store";
 import { usePageContext } from "@/features/editor/store/page-context";
@@ -38,8 +42,8 @@ import {
   tryLocalCommandEdit,
 } from "@/features/editor/services/ai-edit-helpers";
 import AiEditSuggestionCard from "./AiEditSuggestionCard";
-import { ChatHistoryModal } from "@/features/workspaces";
-import { renderMarkdown } from "@/features/workspaces";
+import ChatHistoryModal from '@/features/workspaces/ai/components/ChatHistoryModal';
+import { renderMarkdown } from '@/features/workspaces/ai/components/renderMarkdown';
 
 function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   if (!value || typeof value !== "object") return false;
@@ -615,10 +619,10 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
     // NOTE: keep existing messages visible while re-fetching so the UI never
     // shows a full-page spinner on top of a chat the user has already seen.
     getPageChat(pageId, workspaceId)
-      .then((session) => {
+      .then((session: any) => {
         setChatId(session._id);
         setMessages(
-          (session.messages ?? []).map(({ role, content, selectionContext }) => ({
+          (session.messages ?? []).map(({ role, content, selectionContext }: any) => ({
             role,
             content,
             selectionContext: normalizeSelectionContext(selectionContext),
@@ -1472,7 +1476,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
       const session = await getChatSession(chat._id);
       setChatId(session._id);
       setMessages(
-        (session.messages ?? []).map(({ role, content, sources, selectionContext }) => ({
+        (session.messages ?? []).map(({ role, content, sources, selectionContext }: any) => ({
           role,
           content,
           sources,

@@ -35,7 +35,8 @@ import {
   renameChatSession,
   clearAiMemory,
 } from "@/features/workspaces/ai/services/chat-ai.services";
-import { useWorkspaceProjects, useWorkspace } from '@/features/workspaces';
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { toast } from "sonner";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

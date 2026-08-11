@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/shared/components/ui";
-import type { Project } from '@/features/workspaces';
+import type { Project } from '@/features/workspaces/projects/shell';
 import { Pen, Trash } from "lucide-react";
 
 export default function DropMenu({ project }: { project: Project }) {

@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 
 import Link from "next/link";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { ChevronRight, Folder, ArrowRight } from "lucide-react";
 
 export default function QuickProjects() {

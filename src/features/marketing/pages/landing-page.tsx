@@ -1,7 +1,9 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { useRef, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/features/auth';
 import { motion, useInView } from 'framer-motion';
 import {
   MessageSquare,
@@ -91,6 +93,28 @@ export default function LandingPage() {
   const stepsReveal = useScrollReveal();
   const statsReveal = useScrollReveal();
   const ctaReveal = useScrollReveal();
+
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      // Fetch workspaces to determine where to redirect
+      import('@/shared/lib/api').then(({ apiGet }) => {
+        apiGet<{ workspaces: any[] }>('/api/workspaces')
+          .then(data => {
+            if (data.workspaces && data.workspaces.length > 0) {
+              router.push(`/${data.workspaces[0].url}`);
+            } else {
+              router.push('/create-workspace');
+            }
+          })
+          .catch(() => {
+            router.push('/create-workspace');
+          });
+      });
+    }
+  }, [isLoading, user, router]);
 
   return (
     <div className='min-h-screen flex flex-col bg-background'>

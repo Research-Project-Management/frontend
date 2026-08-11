@@ -1,6 +1,13 @@
 import type { NextConfig } from 'next';
 
+const skipBuildStrictChecks = process.env.SKIP_BUILD_STRICT === 'true';
+
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
+  output: 'standalone',
+
   turbopack: {
     rules: {
       '*.svg': {
@@ -9,25 +16,24 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  // Webpack config to support SVG as React components and Monaco Editor / PDF.js
+
   webpack: (config, { isServer }) => {
-    // Support SVG as React components (replaces vite-plugin-svgr)
     config.module.rules.push({
       test: /\.svg$/,
       use: ['@svgr/webpack'],
     });
 
     if (!isServer) {
-      // Monaco Editor worker files
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
       };
     }
+
     return config;
   },
-  // Image domains (add as needed)
+
   images: {
     remotePatterns: [
       {
@@ -36,6 +42,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   experimental: {
     optimizePackageImports: [
       'lucide-react',
@@ -46,7 +53,7 @@ const nextConfig: NextConfig = {
   },
 
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: skipBuildStrictChecks,
   },
 };
 

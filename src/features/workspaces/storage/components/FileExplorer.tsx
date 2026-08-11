@@ -2,42 +2,24 @@
 
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { useWorkspace } from '@/features/workspaces';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { toast } from "sonner";
 import Toolbar from "./Toolbar";
-import { StorageListView, StorageGridView } from '@/features/workspaces/projects/project-id/storage/pages/SharedComponents';
+import { StorageListView, StorageGridView } from './storage-views';
 import UploadDialog from "./UploadDialog";
 import CreateFolderDialog from "./CreateFolderDialog";
 import RenameDialog from "./RenameDialog";
 import Breadcrumb from "./Breadcrumb";
 import FilePreviewSidebar from "./FilePreviewSidebar";
 import FilePreviewModal from "./FilePreviewModal";
-import DuplicateFileDialog from "./DuplicateFileDialog";
-import type { DuplicateAction } from "./DuplicateFileDialog";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import {
-  useUploadFile,
-  useMoveFile,
-  checkDuplicate,
-  deleteFile,
-} from "@/features/workspaces/storage/services/storage.services";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  moveFile as workspaceMoveFile, 
+} from "@/features/workspaces/storage/services/file.services";
 import { Upload } from "lucide-react";
-
-function generateUniqueName(filename: string, existingNames: Iterable<string> | Set<string> | string[]): string {
-  const nameSet = new Set(existingNames);
-  const dotIndex = filename.lastIndexOf(".");
-  const name = dotIndex !== -1 ? filename.substring(0, dotIndex) : filename;
-  const ext = dotIndex !== -1 ? filename.substring(dotIndex) : "";
-
-  let count = 1;
-  let newName = `${name} (${count})${ext}`;
-  while (nameSet.has(newName)) {
-    count++;
-    newName = `${name} (${count})${ext}`;
-  }
-  return newName;
-}
+// Removed generateUniqueName as it's now handled by useStorage hook
 
 type SourceFilter =
   | { kind: "all" }
@@ -47,8 +29,6 @@ type SourceFilter =
 
 type FileExplorerProps = {
   items: StorageItem[];
-  storageScope?: "project" | "workspace";
-  projectId?: string;
   currentFolder?: string | null;
   breadcrumbs?: Array<{ id: string | null; name: string }>;
   workspaceId?: string;
@@ -75,8 +55,6 @@ type FileExplorerProps = {
 
 export default function FileExplorer({
   items,
-  storageScope = "project",
-  projectId,
   currentFolder,
   breadcrumbs = [],
   workspaceId,
@@ -111,17 +89,26 @@ export default function FileExplorer({
     null,
   );
 
+  const [uploadTargetFolder, setUploadTargetFolder] = useState<string | null>(null);
+
   // Drag-drop state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // Duplicate handling state
-  const [duplicateFile, setDuplicateFile] = useState<File | null>(null);
-  const [duplicateTargetFolder, setDuplicateTargetFolder] = useState<
-    string | null
-  >(null);
-  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
-
-  const uploadMutation = useUploadFile();
+  const queryClient = useQueryClient();
+  
+  const moveFileMutation = useMutation({
+    mutationFn: (args: any) => {
+      return workspaceMoveFile(args.fileId, args.parentId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-home-files'] });
+      queryClient.invalidateQueries({ queryKey: ['my-files'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-my-files'] });
+      queryClient.invalidateQueries({ queryKey: ['project-files'] });
+      queryClient.invalidateQueries({ queryKey: ['project-my-files'] });
+    }
+  });
 
   const params = useParams() as { workspaceId: string };
   const { workspace } = useWorkspace(params.workspaceId);
@@ -198,95 +185,7 @@ export default function FileExplorer({
 
   const onRenameHandler = onRenameProp ? handleRenameRequest : undefined;
 
-  // ── File upload with duplicate check ──────────────────────────────────────
-
-  const uploadWithDuplicateCheck = useCallback(
-    async (file: File, targetFolder: string | null) => {
-      try {
-        const { exists } = await checkDuplicate(file.name, targetFolder, {
-          scope: storageScope,
-          projectId,
-          workspaceId: effectiveWorkspaceId,
-        });
-
-        if (exists) {
-          setDuplicateFile(file);
-          setDuplicateTargetFolder(targetFolder);
-          setDuplicateDialogOpen(true);
-          return;
-        }
-
-        // No duplicate — upload directly
-        await uploadMutation.mutateAsync({
-          file,
-          scope: storageScope,
-          projectId,
-          workspaceId: effectiveWorkspaceId,
-          parentId: targetFolder,
-        });
-        toast.success(`Uploaded "${file.name}"`);
-      } catch (error) {
-        toast.error(`Failed to upload "${file.name}"`);
-      }
-    },
-    [storageScope, projectId, effectiveWorkspaceId, uploadMutation],
-  );
-
-  const handleDuplicateAction = useCallback(
-    async (action: DuplicateAction) => {
-      setDuplicateDialogOpen(false);
-      if (!duplicateFile) return;
-
-      const file = duplicateFile;
-      const targetFolder = duplicateTargetFolder;
-      setDuplicateFile(null);
-
-      if (action === "cancel") return;
-
-      try {
-        if (action === "overwrite") {
-          // Find and delete the existing file first
-          const existing = items.find(
-            (i) => i.filename === file.name && !i.isFolder,
-          );
-          if (existing) {
-            await deleteFile(existing._id);
-          }
-          await uploadMutation.mutateAsync({
-            file,
-            scope: storageScope,
-            projectId,
-            workspaceId: effectiveWorkspaceId,
-            parentId: targetFolder,
-          });
-          toast.success(`Replaced "${file.name}"`);
-        } else if (action === "keep-both") {
-          const existingFileNames = new Set(items.map((i) => i.filename));
-          const newName = generateUniqueName(file.name, existingFileNames);
-          const renamed = new File([file], newName, { type: file.type });
-          await uploadMutation.mutateAsync({
-            file: renamed,
-            scope: storageScope,
-            projectId,
-            workspaceId: effectiveWorkspaceId,
-            parentId: targetFolder,
-          });
-          toast.success(`Uploaded as "${newName}"`);
-        }
-      } catch {
-        toast.error(`Failed to upload "${file.name}"`);
-      }
-    },
-    [
-      duplicateFile,
-      duplicateTargetFolder,
-      items,
-      storageScope,
-      projectId,
-      effectiveWorkspaceId,
-      uploadMutation,
-    ],
-  );
+  // Upload logic delegated entirely to UploadDialog
 
   // ── Drag-and-drop on main area ────────────────────────────────────────────
 
@@ -328,10 +227,11 @@ export default function FileExplorer({
       if (droppedFiles.length === 0) return;
 
       // Open dialog with dropped files instead of uploading immediately
+      setUploadTargetFolder(currentFolder ?? null);
       setDropFiles(droppedFiles);
       setUploadDialogOpen(true);
     },
-    [enableUpload],
+    [enableUpload, currentFolder],
   );
 
   // ── Drop file onto a folder ───────────────────────────────────────────────
@@ -344,12 +244,12 @@ export default function FileExplorer({
       // Desktop files dropped onto a folder
       const droppedFiles = Array.from(e.dataTransfer.files);
       if (droppedFiles.length > 0) {
-        for (const file of droppedFiles) {
-          await uploadWithDuplicateCheck(file, folder._id);
-        }
+        setUploadTargetFolder(folder._id);
+        setDropFiles(droppedFiles);
+        setUploadDialogOpen(true);
       }
     },
-    [uploadWithDuplicateCheck],
+    [],
   );
 
   return (
@@ -391,7 +291,10 @@ export default function FileExplorer({
           onSourceChange={setSourceFilter}
           viewMode={viewMode}
           onToggleView={toggleViewMode}
-          onUpload={enableUpload ? () => setUploadDialogOpen(true) : undefined}
+          onUpload={enableUpload ? () => {
+            setUploadTargetFolder(currentFolder ?? null);
+            setUploadDialogOpen(true);
+          } : undefined}
           onCreateFolder={
             enableUpload ? () => setCreateFolderDialogOpen(true) : undefined
           }
@@ -435,11 +338,12 @@ export default function FileExplorer({
               open={uploadDialogOpen}
               onOpenChange={(open) => {
                 setUploadDialogOpen(open);
-                if (!open) setDropFiles([]);
+                if (!open) {
+                  setDropFiles([]);
+                  setUploadTargetFolder(null);
+                }
               }}
-              scope={storageScope}
-              projectId={projectId}
-              parentId={currentFolder}
+              parentId={uploadTargetFolder}
               workspaceId={effectiveWorkspaceId}
               initialFiles={dropFiles.length > 0 ? dropFiles : undefined}
             />
@@ -447,8 +351,6 @@ export default function FileExplorer({
             <CreateFolderDialog
               open={createFolderDialogOpen}
               onOpenChange={setCreateFolderDialogOpen}
-              scope={storageScope}
-              projectId={projectId}
               parentId={currentFolder}
               workspaceId={effectiveWorkspaceId}
             />
@@ -462,12 +364,6 @@ export default function FileExplorer({
           currentName={fileToRename?.name || ""}
         />
 
-        <DuplicateFileDialog
-          open={duplicateDialogOpen}
-          onOpenChange={setDuplicateDialogOpen}
-          filename={duplicateFile?.name || ""}
-          onAction={handleDuplicateAction}
-        />
       </div>
 
       {/* Right preview sidebar */}

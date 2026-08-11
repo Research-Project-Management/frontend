@@ -12,7 +12,5 @@ export {
   useAddWorkspaceMember,
   useUpdateWorkspaceMemberRole,
   useRemoveWorkspaceMember,
-} from './hooks/use-workspace-members';
+} from './hooks/use-member';
 
-export { useFilteredMembers } from './hooks/use-filtered-members';
-export { useMemberActions } from './hooks/use-member-actions';

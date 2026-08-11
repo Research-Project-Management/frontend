@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown, type LucideIcon, Search, Check, FolderKanban } from "lucide-react";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import {

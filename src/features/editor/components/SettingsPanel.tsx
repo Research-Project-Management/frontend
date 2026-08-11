@@ -8,7 +8,8 @@ import {
   type LaTeXEngine,
 } from "@/features/editor/store/editor-settings.store";
 import { usePageContext } from "@/features/editor/store/page-context";
-import { usePageFiles, useSetPageMainFile } from "@/features/workspaces";
+import { usePageFiles } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useSetPageMainFile } from '@/features/workspaces/projects/all-drafts/services/page.services';
 import {
   X,
   Cpu,

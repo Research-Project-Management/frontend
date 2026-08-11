@@ -1,27 +1,28 @@
-FROM node:20-alpine AS development-dependencies-env
+FROM node:20-alpine AS base
 RUN npm install -g pnpm
-COPY . /app
 WORKDIR /app
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS production-dependencies-env
-RUN npm install -g pnpm
-COPY ./package.json pnpm-lock.yaml /app/
-WORKDIR /app
-RUN pnpm install --frozen-lockfile --prod
-
-FROM node:20-alpine AS build-env
-RUN npm install -g pnpm
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-WORKDIR /app
+FROM base AS builder
 ENV NODE_OPTIONS="--max-old-space-size=2048"
+COPY . .
+COPY --from=deps /app/node_modules ./node_modules
 RUN pnpm run build
 
-FROM node:20-alpine
-RUN npm install -g pnpm
-COPY ./package.json pnpm-lock.yaml /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+FROM base AS runner
+ENV NODE_ENV=production
+ENV PORT=3000
 WORKDIR /app
-CMD ["pnpm", "run", "start"]
+
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

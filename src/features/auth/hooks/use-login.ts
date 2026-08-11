@@ -8,6 +8,8 @@ import { loginUser } from '../services/auth-service';
 import { queryKeys } from '@/shared/constants';
 import { API_BASE_URL } from '@/shared/constants';
 
+import { apiGet } from '@/shared/lib/api';
+
 export const useLogin = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -16,7 +18,19 @@ export const useLogin = () => {
     mutationFn: loginUser,
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.auth.session, user);
-      router.push('/create-workspace');
+      
+      // Fetch workspaces to determine routing
+      apiGet<{ workspaces: any[] }>('/api/workspaces')
+        .then(data => {
+          if (data.workspaces && data.workspaces.length > 0) {
+            router.push(`/${data.workspaces[0].url}`);
+          } else {
+            router.push('/create-workspace');
+          }
+        })
+        .catch(() => {
+          router.push('/create-workspace');
+        });
     },
     onError: (err: unknown) => {
       const message =

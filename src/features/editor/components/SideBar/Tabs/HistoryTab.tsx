@@ -14,14 +14,12 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import {
-  usePageVersions,
-  useSavePageVersion,
-  useRestorePageVersion,
-  useDeletePageVersion,
-  useProjectHistory,
-  useRestoreProjectToEvent,
-} from "@/features/workspaces";
+import { usePageVersions } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useSavePageVersion } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useRestorePageVersion } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useDeletePageVersion } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useProjectHistory } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useRestoreProjectToEvent } from '@/features/workspaces/projects/all-drafts/services/page.services';
 import type { PageEvent } from "@/features/workspaces/projects/types/page.types";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { cn } from "@/shared/lib/utils";

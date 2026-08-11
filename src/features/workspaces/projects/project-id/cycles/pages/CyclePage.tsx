@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { useDocumentTitle } from '@/features/workspaces/projects/project-id/cycles/hooks/use-document-title';
 import { useCycle, type DerivedStatus } from '@/features/workspaces/projects/project-id/cycles/hooks/use-cycle';
 const useLabels = () => ({ workspaceLabels: [] });
@@ -21,7 +21,6 @@ import { Item, ListViewGroup, EmptyState } from '../components/ListViewSection';
 import { DeleteModal } from '../components/DeleteModal';
 import { CycleModal } from '../components/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/StatusModal';
-import { Topbar } from '@/features/workspaces';
 import type { Cycle, CycleMilestone } from "@/features/workspaces/projects/project-id/tasks/types/task.types";
 import TopBar from '../components/Topbar';
 

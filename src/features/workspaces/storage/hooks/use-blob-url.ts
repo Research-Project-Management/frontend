@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '@/shared/constants';
-import { fetchBlobService } from '../services/storage.services';
+import { fetchBlobService } from '../services/file-fetch.services';
 
 export function useBlobUrl(url: string | null) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -71,7 +71,7 @@ export async function downloadFileAsBlob(url: string, filename: string) {
 
 export function resolveFileUrl(url?: string | null): string | null {
   if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
     return url;
   }
   return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;

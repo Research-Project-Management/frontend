@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CollectionDetailPage } from '@/features/workspaces';
+import CollectionDetailPage from '@/features/workspaces/library/pages/CollectionDetailPage';
 
 export const metadata: Metadata = { title: 'Collection · Library · Flux' };
 

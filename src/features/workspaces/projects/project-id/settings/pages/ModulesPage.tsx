@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { useProjectDetails } from "@/features/workspaces";
+import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
 import { useUpdateProject } from "@/features/workspaces/projects/shell/services/project.services";
 import { Button, Skeleton, Switch } from "@/shared/components/ui";
 import { Loader2, LayoutDashboard, Settings, FileText, CheckSquare, HardDrive, StickyNote, RefreshCcw } from "lucide-react";

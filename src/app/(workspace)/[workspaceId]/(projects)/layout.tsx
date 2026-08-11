@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { Button } from '@/shared/components/ui';
-import { motion, AnimatePresence } from "framer-motion";
-import { ProjectsSidebar } from '@/features/workspaces';
+
+const ProjectsSidebar = dynamic(
+  () => import('@/features/workspaces/projects/shell').then((mod) => mod.ProjectsSidebar),
+  { ssr: false, loading: () => null }
+);
 
 export default function Layout({ children }: { children?: React.ReactNode }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);

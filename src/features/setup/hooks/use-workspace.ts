@@ -5,12 +5,10 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useUpload } from '@/features/workspaces';
-import {
-  useUpdateWorkspace as useWorkspaceUpdateMutation,
-  useDeleteWorkspace as useWorkspaceDeleteMutation,
-  createWorkspace,
-} from '@/features/workspaces';
+import { useUpload } from '@/shared/hooks';
+import { useUpdateWorkspace as useWorkspaceUpdateMutation } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useDeleteWorkspace as useWorkspaceDeleteMutation } from '@/features/workspaces/shell/hooks/use-workspace';
+import { createWorkspace } from '@/features/workspaces/shell/services/workspace.service';
 import { queryKeys } from '@/shared/constants';
 import type { CreateWorkspaceSchema } from '../schemas/workspace-schemas';
 import type { Workspace } from '../types/workspace-types';
@@ -20,7 +18,7 @@ import type { Workspace } from '../types/workspace-types';
 export function useCreateWorkspace() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { uploadAvatar, isUploading: isUploadingAvatar } = useUpload();
+  const { uploadFile, isUploading: isUploadingAvatar } = useUpload();
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
@@ -68,7 +66,7 @@ export function useCreateWorkspace() {
 // ─── useEditWorkspace ─────────────────────────────────────────────────────────
 
 export function useEditWorkspace() {
-  const { uploadAvatar, isUploading: isUploadingAvatar } = useUpload();
+  const { uploadFile, isUploading: isUploadingAvatar } = useUpload();
   const updateMutation = useWorkspaceUpdateMutation();
 
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
@@ -154,3 +152,5 @@ export function useDeleteWorkspace() {
 
   return { deletingWorkspace, open, close, confirm, isPending: deleteMutation.isPending };
 }
+
+

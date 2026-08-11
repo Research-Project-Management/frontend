@@ -9,6 +9,7 @@ import React, {
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";
+import { useEditorStorage } from "@/features/editor/hooks/use-editor-storage";
 import {
   AlertTriangle,
   Check,
@@ -53,22 +54,14 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext, type AssetInfo } from "@/features/editor/store/page-context";
-import {
-  usePageFiles,
-  useCreatePageFile,
-  useSetPageMainFile,
-  useDeletePage,
-  useUpdatePageTitle,
-  useUpdatePageContent,
-  usePage,
-} from "@/features/workspaces";
-import {
-  useProjectFilesEditor,
-  useUploadFileForEditor,
-  useDeleteFileForEditor,
-  useRenameFileForEditor,
-  useCreateFolderForEditor,
-} from "@/features/workspaces";
+import { usePageFiles } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useCreatePageFile } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useSetPageMainFile } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useDeletePage } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useUpdatePageTitle } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { useUpdatePageContent } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { usePage } from '@/features/workspaces/projects/all-drafts/services/page.services';
+
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 
 // GöÇGöÇ File icon helper GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
@@ -287,7 +280,7 @@ function StorageFolderNode({
 
   // IMPORTANT: Log when folder is clicked and children are fetched
   // NOTE: projectId here is actually the parentPageId (root page ID)
-  const { data: children, isLoading } = useProjectFilesEditor(
+  const { children, isLoading } = useEditorStorage(
     projectId,
     expanded ? folder._id : undefined,
   );
@@ -303,8 +296,8 @@ function StorageFolderNode({
     }
   }, [expanded, children, folder._id, folder.filename, projectId]);
 
-  const deleteFileMutation = useDeleteFileForEditor();
-  const renameFileMutation = useRenameFileForEditor();
+  const { deleteFileMutation, renameFileMutation } = useEditorStorage(projectId, undefined);
+  
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -421,7 +414,7 @@ function StorageFolderNode({
               <Loader2 className="size-3 animate-spin text-muted-foreground" />
             </div>
           )}
-          {children?.map((child) =>
+          {children?.map((child: any) =>
             child.isFolder ? (
               <StorageFolderNode
                 key={child._id}
@@ -471,8 +464,7 @@ function StorageFileRow({
 }) {
   const isImage = item.mimeType?.startsWith("image/");
   const { icon: Icon, color } = getStorageIcon(item);
-  const deleteFileMutation = useDeleteFileForEditor();
-  const renameFileMutation = useRenameFileForEditor();
+  const { deleteFileMutation, renameFileMutation } = useEditorStorage(null, undefined);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -740,7 +732,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   useEffect(() => {
     if (!files) return;
-    const names = files.map((f) => f.title);
+    const names = files.map((f: any) => f.title);
     setTexFiles(names);
     console.log("[FilesTab] Page files updated:", names);
   }, [files, setTexFiles]);
@@ -804,18 +796,13 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // Storage files (images, pdfs, etc.) - FETCH BY PARENT PAGE ID, NOT PROJECT ID
   // Each root page has its own independent file system
   const {
-    data: projectFiles,
+    children: projectFiles,
     isLoading: projectFilesLoading,
-    refetch: refetchProjectFiles,
-  } = useProjectFilesEditor(parentPageId || null, undefined);
+    uploadFileMutation,
+    createFolderMutation,
+  } = useEditorStorage(parentPageId || null, undefined);
 
-  // Refetch project files when parentPageId changes
-  useEffect(() => {
-    if (parentPageId) {
-      console.log("[FilesTab] Refetching files for page:", parentPageId);
-      refetchProjectFiles();
-    }
-  }, [parentPageId, refetchProjectFiles]);
+  // Automatic refetch handled by useQuery dependencies.
 
   // Log project files when loaded
   useEffect(() => {
@@ -826,8 +813,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       parentPageId,
     );
   }, [projectFiles, parentPageId]);
-  const uploadFileMutation = useUploadFileForEditor();
-  const createFolderMutation = useCreateFolderForEditor();
+
+  
   const queryClient = useQueryClient();
 
   const handleOpenPreview = useCallback(
@@ -905,8 +892,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // Build a set of existing file names for duplicate detection (case-insensitive)
   const existingNames = useMemo(() => {
     const names = new Set<string>();
-    files?.forEach((f) => names.add(f.title.toLowerCase()));
-    projectFiles?.forEach((f) => {
+    files?.forEach((f: any) => names.add(f.title.toLowerCase()));
+    projectFiles?.forEach((f: any) => {
       if (!f.isFolder) names.add(f.filename.toLowerCase());
     });
     return names;
@@ -947,7 +934,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!picked.length) return;
-    setPendingUploads(markDuplicates(picked.map((f) => ({ file: f, name: f.name }))));
+    setPendingUploads(markDuplicates(picked.map((f: any) => ({ file: f, name: f.name }))));
     setUploadDialogOpen(true);
   };
 
@@ -957,7 +944,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     if (!picked.length) return;
     setPendingUploads(
       markDuplicates(
-        picked.map((f) => ({ file: f, name: (f as any).webkitRelativePath || f.name })),
+        picked.map((f: any) => ({ file: f, name: (f as any).webkitRelativePath || f.name })),
       ),
     );
     setUploadDialogOpen(true);
@@ -978,7 +965,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     createFileMutation.mutate(
       { parentPageId, title },
       {
-        onSuccess: (file) => {
+        onSuccess: (file: any) => {
           setIsCreatingFile(false);
           setNewFileName("");
           setSearchParams({ file: file._id });
@@ -996,8 +983,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         onSuccess: () => {
           setIsCreatingFolder(false);
           setNewFolderName("");
-          // Refetch files after creating folder
-          refetchProjectFiles();
+
         },
       },
     );
@@ -1015,7 +1001,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       return;
     }
     // Look up the current title so backend can rename the file in the compiler.
-    const oldTitle = files?.find((f) => f._id === fileId)?.title ?? "";
+    const oldTitle = files?.find((f: any) => f._id === fileId)?.title ?? "";
     updateTitleMutation.mutate(
       { pageId: fileId, title, oldTitle },
       { onSuccess: () => setRenamingId(null) },
@@ -1078,7 +1064,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       remaining = Math.max(0, remaining - 1);
       setUploadingCount(remaining);
       if (remaining === 0) {
-        refetchProjectFiles();
         if (parentPageId) {
           queryClient.invalidateQueries({
             queryKey: ["project-files-editor", parentPageId],
@@ -1101,7 +1086,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
           if (conflict === "duplicate" && resolution === "overwrite") {
             const existingPage = files?.find(
-              (f) => f.title.toLowerCase() === file.name.toLowerCase(),
+              (f: any) => f.title.toLowerCase() === file.name.toLowerCase(),
             );
             if (existingPage) {
               await updateContentMutation.mutateAsync({
@@ -1207,7 +1192,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
                 if (conflict === "duplicate" && resolution === "overwrite") {
                   const existingPage = files?.find(
-                    (f) => f.title.toLowerCase() === fullTitle.toLowerCase(),
+                    (f: any) => f.title.toLowerCase() === fullTitle.toLowerCase(),
                   );
                   if (existingPage) {
                     await updateContentMutation.mutateAsync({
@@ -1378,7 +1363,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         plainFiles.push(...Array.from(e.dataTransfer.files));
       }
 
-      plainFiles.forEach((f) => allItems.push({ file: f, name: f.name }));
+      plainFiles.forEach((f: any) => allItems.push({ file: f, name: f.name }));
 
       for (const dir of folderEntries) {
         const folderFiles = await readEntriesRecursively(dir, dir.name);
@@ -1596,14 +1581,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               const items: UnifiedItem[] = [];
 
               // Folders first
-              projectFiles?.forEach((f) => {
+              projectFiles?.forEach((f: any) => {
                 if (f.isFolder) items.push({ kind: "folder", data: f });
               });
 
               // Then tex files and non-tex files, sorted alphabetically
               const fileItems: UnifiedItem[] = [];
-              files?.forEach((f) => fileItems.push({ kind: "tex", data: f }));
-              projectFiles?.forEach((f) => {
+              files?.forEach((f: any) => fileItems.push({ kind: "tex", data: f }));
+              projectFiles?.forEach((f: any) => {
                 if (!f.isFolder) fileItems.push({ kind: "asset", data: f });
               });
               fileItems.sort((a, b) => {

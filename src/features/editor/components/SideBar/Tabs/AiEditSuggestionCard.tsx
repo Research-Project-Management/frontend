@@ -9,7 +9,7 @@
 import React, { useState } from "react";
 import { Check, X, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import type { AiEditResponse, AiEditOperation } from "@/features/editor/types/ai-edit-types";
-import { renderMarkdown } from "@/features/workspaces";
+import { renderMarkdown } from '@/features/workspaces/ai/components/renderMarkdown';
 
 // ΓöÇΓöÇ Diff viewer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 

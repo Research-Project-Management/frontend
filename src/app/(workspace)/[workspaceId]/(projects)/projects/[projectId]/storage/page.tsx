@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { StoragePage } from '@/features/workspaces';
+import StoragePage from '@/features/workspaces/projects/project-id/storage/pages/HomePage';
 
 export const metadata: Metadata = { title: 'Storage · Flux' };
 

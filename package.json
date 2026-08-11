@@ -2,7 +2,7 @@
   "name": "rpm",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 2915",
+    "dev": "next dev --turbopack --port 2915",
     "build": "next build",
     "start": "next start --port 2915",
     "clean": "node -e \"fs.rmSync('.next', {recursive: true, force: true})\"",

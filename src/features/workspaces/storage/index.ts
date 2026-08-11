@@ -8,7 +8,13 @@ export { default as WorkspaceHomePage } from './pages/HomePage';
 export { default as WorkspaceSharedPage } from './pages/SharedPage';
 export { default as WorkspaceStarredPage } from './pages/StarredPage';
 export { default as WorkspaceTrashPage } from './pages/TrashPage';
-export { lookupDoi, uploadFile, fetchWorkspaceFiles, createFolder, searchCrossref, type CrossrefWork, useProjectFilesEditor, useUploadFileForEditor, useDeleteFileForEditor, useRenameFileForEditor, useCreateFolderForEditor } from './services/storage.services';
-export { useUpload } from './hooks/use-upload';
+export { lookupDoi, searchCrossref, type CrossrefWork } from './services/crossref.services';
+export { 
+  fetchWorkspaceFiles, 
+  createFolder
+} from './services/storage.services';
+export {
+  uploadFile
+} from './services/file.services';
 export type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 export { default as StorageSidebar } from './components/SideBar';

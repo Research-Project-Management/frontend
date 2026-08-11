@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { useProjectOverview } from "@/features/workspaces";
-import { useDocumentTitle } from "@/features/workspaces";
+import { useProjectOverview } from '@/features/workspaces/projects/shell/services/project.services';
+import { useDocumentTitle } from '@/features/workspaces/projects/stickies/hooks/use-document-title';
 import {
   HardDrive,
   CalendarDays,

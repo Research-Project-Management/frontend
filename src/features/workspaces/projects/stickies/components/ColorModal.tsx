@@ -1,5 +1,7 @@
 import React from "react";
-import { type Note, type NoteColor, NOTE_COLOR_MAP } from "@/features/workspaces";
+import { type Note } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import { type NoteColor } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import { NOTE_COLOR_MAP } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import {
   Popover,
   PopoverContent,

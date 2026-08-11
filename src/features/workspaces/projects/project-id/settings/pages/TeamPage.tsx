@@ -3,14 +3,13 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import {
-  useProjectDetails,
-  useAddProjectMember,
-  useUpdateProjectMemberRole,
-  useRemoveProjectMember,
-  type Project,
-} from "@/features/workspaces";
-import { useWorkspace, useWorkspaceProjects } from '@/features/workspaces';
+import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
+import { useAddProjectMember } from '@/features/workspaces/projects/shell/services/project.services';
+import { useUpdateProjectMemberRole } from '@/features/workspaces/projects/shell/services/project.services';
+import { useRemoveProjectMember } from '@/features/workspaces/projects/shell/services/project.services';
+import { type Project } from '@/features/workspaces/projects/shell/types/project.types';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
 
 import { useAuth } from '@/features/auth';
 import {
@@ -150,7 +149,7 @@ export default function ProjectTeam() {
   if (!project) return <div className="p-12 text-center text-zinc-400 text-sm italic">Project not found</div>;
 
   const filteredMembers = (project.members || []).filter(
-    (m) =>
+    (m: any) =>
       m.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
@@ -209,7 +208,7 @@ export default function ProjectTeam() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filteredMembers.map((member) => {
+            {filteredMembers.map((member: any) => {
               const isCurrentUser = currentUser?._id === member.user?._id;
               const memberName = isCurrentUser ? (currentUser?.name || member.user?.name) : member.user?.name || "Unknown User";
               const memberEmail = isCurrentUser ? (currentUser?.email || member.user?.email) : member.user?.email || "No email";
@@ -305,7 +304,7 @@ export default function ProjectTeam() {
         onOpenChange={setAddMemberOpen}
         projectId={project._id}
         workspace={workspace}
-        existingMemberIds={new Set((project.members || []).map((m) => m.user?._id).filter(Boolean))}
+        existingMemberIds={new Set((project.members || []).map((m: any) => m.user?._id).filter(Boolean))}
       />
     </div>
   );

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import TopBar from "./TopBar";
-import { Topbar } from '@/features/workspaces';
+import Topbar from '@/features/workspaces/projects/project-id/overview/components/Topbar';
 import BoardView from "./BoardView";
 import ListView from "./ListView";
 import CalendarView from "./CalendarView";
@@ -23,9 +23,9 @@ import {
   useDeleteColumn, 
   useUpdateColumn 
 } from "@/features/workspaces/projects/project-id/tasks";
-import { useProjectDetails } from '@/features/workspaces';
+import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
 import { useProjectCycles } from "@/features/workspaces/projects/project-id/cycles";
-import { useProjects } from '@/features/workspaces';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { useDocumentTitle } from '@/features/workspaces/projects/project-id/tasks/hooks/use-document-title';
 import type {
   Task as TaskType,

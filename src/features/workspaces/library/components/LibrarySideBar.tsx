@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/shared/lib/utils";
-import { useWorkspace } from '@/features/workspaces';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
   useCollections,
   useCreateCollection,

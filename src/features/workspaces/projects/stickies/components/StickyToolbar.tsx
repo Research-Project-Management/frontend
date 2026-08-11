@@ -1,6 +1,6 @@
 'use client';
 
-import type { Note } from "@/features/workspaces";
+import type { Note } from "@/features/workspaces/projects/stickies/types/sticky.types";
 import { Palette, Bold, Italic, ListTodo, Trash2 } from "lucide-react";
 import React from "react";
 import type { Editor } from "@tiptap/react";
@@ -46,11 +46,11 @@ export default function StickyToolbar({
   const isDeleteOpen = activeModal === "delete";
 
   const handleToggleLabel = (labelId: string) => {
-    const currentLabelIds = (note.labels || []).map((l) => (typeof l === 'string' ? l : l._id));
+    const currentLabelIds = (note.labels || []).map((l: any) => (typeof l === 'string' ? l : l._id));
 
     let newLabelIds;
     if (currentLabelIds.includes(labelId)) {
-      newLabelIds = currentLabelIds.filter((id) => id !== labelId);
+      newLabelIds = currentLabelIds.filter((id: any) => id !== labelId);
     } else {
       newLabelIds = [...currentLabelIds, labelId];
     }
@@ -92,7 +92,7 @@ export default function StickyToolbar({
           <ListTodo size={14} />
         </ToolbarBtn>
         <LabelPicker
-          selectedLabelIds={(note.labels || []).map((l) => (typeof l === 'string' ? l : l._id))}
+          selectedLabelIds={(note.labels || []).map((l: any) => (typeof l === 'string' ? l : l._id))}
           onToggleLabel={handleToggleLabel}
         />
       </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { queryKeys } from '@/shared/constants';
+import { apiGet } from '@/shared/lib/api';
 
 /**
  * OAuthCallbackPage
@@ -23,7 +24,18 @@ const OAuthCallbackPage = () => {
     queryClient
       .invalidateQueries({ queryKey: queryKeys.auth.session })
       .then(() => {
-        router.replace('/create-workspace');
+        // Fetch workspaces to determine routing
+        apiGet<{ workspaces: any[] }>('/api/workspaces')
+          .then(data => {
+            if (data.workspaces && data.workspaces.length > 0) {
+              router.replace(`/${data.workspaces[0].url}`);
+            } else {
+              router.replace('/create-workspace');
+            }
+          })
+          .catch(() => {
+            router.replace('/create-workspace');
+          });
       })
       .catch(() => {
         router.replace('/login');

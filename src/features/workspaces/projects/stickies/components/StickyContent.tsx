@@ -1,4 +1,4 @@
-import type { Note } from "@/features/workspaces";
+import type { Note } from "@/features/workspaces/projects/stickies/types/sticky.types";
 import type { Editor } from "@tiptap/react";
 import { memo } from "react";
 import dynamic from "next/dynamic";

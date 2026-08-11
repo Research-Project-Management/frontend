@@ -16,8 +16,13 @@ import { toast } from "sonner";
 import { useParams } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import type { ChatMessage, SourceItem } from "@/features/workspaces/ai/types/chat.types";
-import { streamChatResponse, getChatSession, appendChatMessages, createChatSession, listChatSessions, deleteChatSession } from '@/features/workspaces';
-import { renderMarkdown } from "@/features/workspaces";
+import { streamChatResponse } from '@/features/workspaces/ai';
+import { getChatSession } from '@/features/workspaces/ai';
+import { appendChatMessages } from '@/features/workspaces/ai';
+import { createChatSession } from '@/features/workspaces/ai';
+import { listChatSessions } from '@/features/workspaces/ai';
+import { deleteChatSession } from '@/features/workspaces/ai';
+import { renderMarkdown } from '@/features/workspaces/ai/components/renderMarkdown';
 import { cn } from "@/shared/lib/utils";
 
 // ── Think-block parser ────────────────────────────────────────────────────────
@@ -219,16 +224,16 @@ export default function ReaderChatPanel({
 
     setIsLoadingHistory(true);
     listChatSessions(workspaceId)
-      .then((sessions) => {
+      .then((sessions: any) => {
         // Find a session that matches this ragDocId
         const matching = sessions.find(
           (s: any) => s.documentIds?.length === 1 && s.documentIds[0] === ragDocId
         );
         if (matching) {
           setChatId(matching._id);
-          return getChatSession(matching._id).then((session) => {
+          return getChatSession(matching._id).then((session: any) => {
             setMessages(
-              session.messages.map(({ role, content, sources, widgets }) => ({
+              session.messages.map(({ role, content, sources, widgets }: any) => ({
                 role,
                 content,
                 sources,
@@ -339,7 +344,7 @@ export default function ReaderChatPanel({
         cursorContext: hasSelectedText
           ? `The user selected this passage in the reader. Use it as the focus, but answer from the indexed paper context.`
           : undefined,
-        onMeta: (meta) => {
+        onMeta: (meta: any) => {
           if (meta.sources?.length) {
             activeSourcesRef.current = meta.sources;
           }

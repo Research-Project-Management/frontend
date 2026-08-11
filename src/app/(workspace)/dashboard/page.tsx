@@ -1,23 +1,23 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/shared/components/ui';
-import { useWorkspaces } from '@/features/workspaces';
+import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { workspaces, isLoading } = useWorkspaces();
 
-  useEffect(() => {
-    if (isLoading) return;
+  const redirectTarget = useMemo(() => {
+    if (isLoading || !workspaces) return null;
+    return workspaces.length > 0 ? `/${workspaces[0].url}` : '/create-workspace';
+  }, [isLoading, workspaces]);
 
-    if (workspaces && workspaces.length > 0) {
-      router.replace(`/${workspaces[0].url}`);
-    } else {
-      router.replace('/create-workspace');
-    }
-  }, [workspaces, isLoading, router]);
+  useEffect(() => {
+    if (!redirectTarget) return;
+    router.replace(redirectTarget);
+  }, [redirectTarget, router]);
 
   return <Skeleton className="h-48 w-full rounded-xl" />;
 }

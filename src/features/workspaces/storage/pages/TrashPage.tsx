@@ -1,19 +1,13 @@
 'use client';
 
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import {
-  fetchWorkspaceTrashedFiles,
-  useRestoreFile,
-  usePermanentlyDeleteFile,
-} from "@/features/workspaces/storage/services/storage.services";
-import { useWorkspace } from '@/features/workspaces';
+import { useTrash } from "@/features/workspaces/storage/hooks/use-trash";
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Trash2 } from "lucide-react";
 import { Skeleton } from '@/shared/components/ui';
 import FileExplorer from '../components/FileExplorer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import { useDocumentTitle } from '@/features/workspaces/storage/hooks/use-document-title';
 
 export default function WorkspaceTrashPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
@@ -22,32 +16,7 @@ export default function WorkspaceTrashPage() {
   );
   const workspaceId = workspace?._id;
 
-  useDocumentTitle(workspace?.name ? `Trash - ${workspace.name}` : "Trash");
-
-  const { data, isLoading: isFilesLoading } = useQuery({
-    queryKey: ["workspace-trashed-files", workspaceId],
-    queryFn: () => fetchWorkspaceTrashedFiles(workspaceId!),
-    enabled: !!workspaceId,
-  });
-
-  const restoreFileMutation = useRestoreFile();
-  const permanentlyDeleteFileMutation = usePermanentlyDeleteFile();
-
-  const handleRestore = async (fileId: string) => {
-    try {
-      await restoreFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error restoring file:", error);
-    }
-  };
-
-  const handlePermanentDelete = async (fileId: string) => {
-    try {
-      await permanentlyDeleteFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error permanently deleting file:", error);
-    }
-  };
+  const { data, isLoading: isFilesLoading, handleRestore, handlePermanentlyDelete } = useTrash(workspaceId!);
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
@@ -71,10 +40,10 @@ export default function WorkspaceTrashPage() {
   return (
     <FileExplorer
       items={files}
-      storageScope="workspace"
+
       workspaceId={workspaceId}
       onToggleStar={handleRestore}
-      onDelete={handlePermanentDelete}
+      onDelete={handlePermanentlyDelete}
       onDownload={handleDownload}
       enableUpload={false}
       enableBreadcrumbs={false}
@@ -90,4 +59,5 @@ export default function WorkspaceTrashPage() {
     />
   );
 }
+
 

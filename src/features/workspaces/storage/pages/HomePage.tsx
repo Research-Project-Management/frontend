@@ -2,19 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import {
-  fetchWorkspaceFiles,
-  useToggleStar,
-  useDeleteFile,
-  useRenameFile,
-} from "@/features/workspaces/storage/services/storage.services";
-import { useWorkspace } from '@/features/workspaces';
+import { useHome } from "@/features/workspaces/storage/hooks/use-home";
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Skeleton } from "@/shared/components/ui";
 import FileExplorer from '../components/FileExplorer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
-import { useDocumentTitle } from '@/features/workspaces/storage/hooks/use-document-title';
 
 export default function WorkspaceHomePage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
@@ -29,33 +22,7 @@ export default function WorkspaceHomePage() {
   // Allow all non-viewer members to upload at workspace level
   const canUpload = !!workspace && yourRole !== "viewer";
 
-  useDocumentTitle(workspace?.name ? `Storage - ${workspace.name}` : "Storage");
-
-  const { data, isLoading: isHomeLoading } = useQuery({
-    queryKey: ["workspace-home-files", workspaceId, currentFolder],
-    queryFn: () => fetchWorkspaceFiles(workspaceId!, currentFolder),
-    enabled: !!workspaceId,
-  });
-
-  const toggleStarMutation = useToggleStar();
-  const deleteFileMutation = useDeleteFile();
-  const renameMutation = useRenameFile();
-
-  const handleToggleStar = async (fileId: string) => {
-    try {
-      await toggleStarMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error toggling star:", error);
-    }
-  };
-
-  const handleDelete = async (fileId: string) => {
-    try {
-      await deleteFileMutation.mutateAsync(fileId);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-    }
-  };
+  const { data, isLoading: isHomeLoading, handleToggleStar, handleDelete } = useHome(workspaceId!, currentFolder);
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
@@ -66,7 +33,7 @@ export default function WorkspaceHomePage() {
     }
   };
 
-  const handleRenameTrigger = (_item: StorageItem) => {};
+  const handleRenameTrigger = (_item: StorageItem) => { };
 
   const handleFolderClick = (folder: StorageItem) => {
     setCurrentFolder(folder._id);
@@ -113,7 +80,7 @@ export default function WorkspaceHomePage() {
   return (
     <FileExplorer
       items={files}
-      storageScope="workspace"
+
       currentFolder={currentFolder}
       breadcrumbs={breadcrumbs}
       workspaceId={workspaceId}

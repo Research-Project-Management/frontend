@@ -20,7 +20,7 @@ export { useChangePassword } from './hooks/use-change-password';
 // ─── Services ─────────────────────────────────────────────────────────────────
 export {
   loginUser,
-  fetchUser,
+  getUser,
   registerUser,
   logoutUser,
   forgotPassword,

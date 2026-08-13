@@ -65,7 +65,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
     { label: 'Stickies', icon: Layers2, to: `/${workspaceId}/stickies`, exact: false },
   ];
 
-  const { projects }: { projects?: Project[]; isLoading: boolean } = useProjects();
+  const { projects }: { projects?: Project[]; isLoading: boolean } = useProjects(workspaceId);
 
   // ── Expanded projects (persisted) ──────────────────────────────────────────
 

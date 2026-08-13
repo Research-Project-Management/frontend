@@ -4,10 +4,10 @@ import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 
 const ProjectsSidebar = dynamic(
-  () => import('@/features/workspaces/projects/shell').then((mod) => mod.ProjectsSidebar),
+  () => import('@/features/workspaces/projects/shell/components/sidebar'),
   { ssr: false, loading: () => null }
 );
 

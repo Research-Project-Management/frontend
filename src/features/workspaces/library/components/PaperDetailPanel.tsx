@@ -21,7 +21,7 @@ import Link from "next/link";
 import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL as API_URL } from "@/shared/constants";
 import { useUpdatePaper } from "@/features/workspaces/library/services/library.services";
-import { lookupDoi } from '@/features/workspaces/storage/services/crossref.services';
+import { fetchLookupDoi } from '@/features/editor';
 import type { Paper, Collection } from "@/features/workspaces/library/types/library.types";
 import PaperBibtexDialog from "./PaperBibtexDialog";
 
@@ -245,7 +245,7 @@ export function PaperDetailPanel({
     if (!paper.doi) return;
     setIsCrawling(true);
     try {
-      const data = await lookupDoi(paper.doi);
+      const data = await fetchLookupDoi(paper.doi);
       const work = data.work;
 
       if (!work) {

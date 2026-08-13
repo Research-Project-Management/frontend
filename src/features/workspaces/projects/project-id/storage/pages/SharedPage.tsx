@@ -1,75 +1,77 @@
 'use client';
 
-import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useShared } from "../hooks/use-shared";
-import { useProject } from '@/features/workspaces/projects';
-import { Skeleton } from "@/shared/components/ui";
-import FileExplorer from '../components/FileExplorer';
-import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
 
-export default function ProjectSharedPage() {
+import { useProject } from '@/features/workspaces/projects/shell/services/project.services';
+import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
+
+import { Share2 } from "lucide-react";
+import { Skeleton } from '@/shared/components/ui';
+import ListView from '@/features/workspaces/projects/project-id/storage/components/views/ListView';
+import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
+import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
+import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
+import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
+import { downloadFileUrl } from '@/shared/utils/file';
+
+export default function SharedPage() {
+  const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   const { projectId } = useParams() as { projectId: string };
+  const { view } = useViewStore();
   const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
-  const project = projectData as any;
-  const canUpload = !!project;
+  const project = projectData && 'project' in projectData ? projectData.project : projectData;
 
-
-  const { data, isLoading: isFilesLoading, handleToggleStar, handleDelete } = useShared(projectId!);
+  const { data, isLoading: isFilesLoading } = useSharedFiles(projectId!);
+  const { mutateAsync: handleToggleStar } = useToggleStarItem();
+  const { mutateAsync: handleDelete } = useDeleteItem();
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
-      await downloadFileAsBlob(item.url, item.filename);
+      await downloadFileUrl(item.url, item.filename);
     } catch {
       window.open(item.url, "_blank");
     }
   };
 
-  const handleRenameTrigger = (_item: StorageItem) => {};
-
-  const files = useMemo(
-    () => (data?.files || []) as StorageItem[],
-    [data?.files],
-  );
+  const handleFolderClick = (folder: StorageItem) => {
+    // TODO: Implement folder navigation if necessary
+  };
 
   if (isProjectLoading || isFilesLoading) {
-    return (
-      <div className="flex-1 p-6 space-y-4">
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
+    return <Skeleton className="h-48 w-full rounded-xl" />;
   }
 
   if (!projectId) {
     return <div className="p-6 text-muted-foreground">Project not found</div>;
   }
 
-  return (
-    <FileExplorer
-      items={files}
+  const files = (data?.files || []) as StorageItem[];
 
-      projectId={projectId}
-      workspaceId={project?.workspaceId}
-      wsId={project?.workspaceId}
-      onToggleStar={handleToggleStar}
-      onDelete={handleDelete}
-      onDownload={handleDownload}
-      onRename={handleRenameTrigger}
-      enableUpload={false}
-      enableBreadcrumbs={false}
-      defaultView="list"
-      header={
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-lg font-semibold">Shared with Me</h1>
-        </div>
-      }
-    />
+  return (
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+        {view === 'list' ? (
+          <ListView
+            items={files}
+            onFolderClick={handleFolderClick}
+            onToggleStar={(id) => { handleToggleStar(id); }}
+            onDelete={(id) => { handleDelete(id); }}
+            onDownload={handleDownload}
+            onFileClick={(item) => setSelectedItem(item)}
+          />
+        ) : (
+          <GridView
+            items={files}
+            onFolderClick={handleFolderClick}
+            onToggleStar={(id) => { handleToggleStar(id); }}
+            onDelete={(id) => { handleDelete(id); }}
+            onDownload={handleDownload}
+            onFileClick={(item) => setSelectedItem(item)}
+          />
+        )}
+      </div>
+    </div>
   );
 }
+

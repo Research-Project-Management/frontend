@@ -5,7 +5,7 @@ export { parseAiEditResponse, parseDiffToEdits, validateAiEdits, isEditSafe, app
 export { findLatexCommandRange } from './services/ai-edit-helpers';
 export { tryLocalCommandEdit } from './services/ai-edit-engine';
 export { parseAiResponse } from './services/ai-response-parser';
-export { extractPdfMetadataFromFile, type PdfMetadata, extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata, parsePdfDate } from './services/pdf';
+export { extractPdfMetadataFromFile, type PdfMetadata, extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata, parsePdfDate, fetchLookupDoi, fetchSearchCrossref, type CrossrefWork } from './services/pdf';
 export { useEditorTabsStore } from './store/editor-tabs.store';
 export { usePagePresence, type PresenceUser } from './hooks/use-page-presence';
 export { useRemoteCursors } from './hooks/use-remote-cursors';

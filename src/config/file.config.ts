@@ -17,3 +17,7 @@ export const UPLOAD_ERROR_MESSAGES = {
 
 // We don't restrict MIME types for general Drive storage, but this can be extended later
 export const ALLOWED_STORAGE_EXTENSIONS = []; // Empty means all allowed
+
+// Thumbnail Generation Config
+export const THUMBNAIL_MAX_SIZE_PX = 300;
+export const THUMBNAIL_QUALITY = 0.7;

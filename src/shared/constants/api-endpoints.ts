@@ -1,6 +1,3 @@
-// api-endpoints.ts – centralized API URL definitions
-// Use environment variables for base URLs; fallback to dev defaults.
-
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 
 /** @deprecated Use API_BASE_URL instead. Will be removed once all features are migrated. */

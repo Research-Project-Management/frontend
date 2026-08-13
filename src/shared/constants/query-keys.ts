@@ -83,23 +83,24 @@ export const queryKeys = {
       ['storage', workspaceId, 'list', filters] as const,
     detail: (id: string) => ['storage', 'detail', id] as const,
     
-    // Legacy keys used by file explorer (can be refactored later if needed)
-    files: (projectId?: string) => projectId ? ['files', projectId] as const : ['files'] as const,
-    myFiles: (projectId?: string) => projectId ? ['my-files', projectId] as const : ['my-files'] as const,
-    starred: (projectId?: string) => projectId ? ['starred-files', projectId] as const : ['starred-files'] as const,
-    shared: (projectId?: string) => projectId ? ['shared-files', projectId] as const : ['shared-files'] as const,
-    trashed: (projectId?: string) => projectId ? ['trashed-files', projectId] as const : ['trashed-files'] as const,
+    // Project storage keys
+    projectFiles: (projectId?: string, parentId?: string | null) => 
+      projectId ? (parentId ? ['storage', 'project-files', projectId, parentId] as const : ['storage', 'project-files', projectId] as const) : ['storage', 'project-files'] as const,
+    projectMyFiles: (projectId?: string) => projectId ? ['storage', 'project-my-files', projectId] as const : ['storage', 'project-my-files'] as const,
+    projectStarred: (projectId?: string) => projectId ? ['storage', 'project-starred-files', projectId] as const : ['storage', 'project-starred-files'] as const,
+    projectShared: (projectId?: string) => projectId ? ['storage', 'project-shared-files', projectId] as const : ['storage', 'project-shared-files'] as const,
+    projectTrashed: (projectId?: string) => projectId ? ['storage', 'project-trashed-files', projectId] as const : ['storage', 'project-trashed-files'] as const,
     
-    workspaceHome: (workspaceId?: string) => workspaceId ? ['workspace-home', workspaceId] as const : ['workspace-home'] as const,
-    workspaceHomeFiles: (workspaceId?: string) => workspaceId ? ['workspace-home-files', workspaceId] as const : ['workspace-home-files'] as const,
-    workspaceMyFiles: (workspaceId?: string) => workspaceId ? ['workspace-my-files', workspaceId] as const : ['workspace-my-files'] as const,
-    workspaceStarred: (workspaceId?: string) => workspaceId ? ['workspace-starred-files', workspaceId] as const : ['workspace-starred-files'] as const,
-    workspaceShared: (workspaceId?: string) => workspaceId ? ['workspace-shared-files', workspaceId] as const : ['workspace-shared-files'] as const,
-    workspaceTrashed: (workspaceId?: string) => workspaceId ? ['workspace-trashed-files', workspaceId] as const : ['workspace-trashed-files'] as const,
+    workspaceHome: (workspaceId?: string) => workspaceId ? ['storage', 'workspace-home', workspaceId] as const : ['storage', 'workspace-home'] as const,
+    workspaceHomeFiles: (workspaceId?: string, parentId?: string | null) => workspaceId ? (parentId ? ['storage', 'workspace-home-files', workspaceId, parentId] as const : ['storage', 'workspace-home-files', workspaceId] as const) : ['storage', 'workspace-home-files'] as const,
+    workspaceMyFiles: (workspaceId?: string) => workspaceId ? ['storage', 'workspace-my-files', workspaceId] as const : ['storage', 'workspace-my-files'] as const,
+    workspaceStarred: (workspaceId?: string) => workspaceId ? ['storage', 'workspace-starred-files', workspaceId] as const : ['storage', 'workspace-starred-files'] as const,
+    workspaceShared: (workspaceId?: string) => workspaceId ? ['storage', 'workspace-shared-files', workspaceId] as const : ['storage', 'workspace-shared-files'] as const,
+    workspaceTrashed: (workspaceId?: string) => workspaceId ? ['storage', 'workspace-trashed-files', workspaceId] as const : ['storage', 'workspace-trashed-files'] as const,
     
     // Editor specific storage keys
     projectFilesEditor: (pageId?: string, parentId?: string | null) => 
-      pageId ? (parentId ? ['project-files-editor', pageId, parentId] as const : ['project-files-editor', pageId] as const) : ['project-files-editor'] as const,
+      pageId ? (parentId ? ['storage', 'project-files-editor', pageId, parentId] as const : ['storage', 'project-files-editor', pageId] as const) : ['storage', 'project-files-editor'] as const,
   },
 
   // ──────────────── Library ────────────────

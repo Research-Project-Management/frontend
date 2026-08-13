@@ -5,6 +5,7 @@
     "dev": "next dev --turbopack --port 2915",
     "build": "next build",
     "start": "next start --port 2915",
+    "postinstall": "node -e \"require('fs').copyFileSync('node_modules/pdfjs-dist/build/pdf.worker.min.mjs', 'public/pdf.worker.min.mjs')\"",
     "clean": "node -e \"fs.rmSync('.next', {recursive: true, force: true})\"",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

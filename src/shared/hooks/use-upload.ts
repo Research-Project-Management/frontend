@@ -146,7 +146,15 @@ export function useUpload() {
         xhr.onerror = () => reject(new Error("Network error during upload"));
         xhr.onabort = () => reject(new Error("Upload aborted by user"));
 
-        xhr.open("POST", `${API_BASE_URL}/api/files/upload-r2`, true);
+        let uploadEndpoint = "/api/files/upload-r2";
+        if (prefix) {
+          const [scopeType, scopeId] = prefix.split("/");
+          if (["workspace", "project", "page"].includes(scopeType) && scopeId) {
+            uploadEndpoint = `/api/files/${scopeType}/${scopeId}/upload-r2`;
+          }
+        }
+
+        xhr.open("POST", `${API_BASE_URL}${uploadEndpoint}`, true);
         xhr.send(formData);
 
         controller.signal.addEventListener("abort", () => {

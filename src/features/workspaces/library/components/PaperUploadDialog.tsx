@@ -14,8 +14,8 @@ import { Input } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
 import { Textarea } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { uploadFile } from '@/features/workspaces/storage/services/file.services';
-import { fetchWorkspaceFiles } from '@/features/workspaces/storage/services/storage.services';
+import { uploadFile } from '@/features/workspaces/storage/services/storage.services';
+import { getAllFiles } from "@/features/workspaces/storage/services/storage.services";
 import { createFolder } from '@/features/workspaces/storage/services/storage.services';
 import { extractPdfMetadataFromFile } from '@/features/editor';
 
@@ -133,7 +133,7 @@ export default function PaperUploadDialog({
   const uploadToStorage = async (f: File): Promise<string> => {
     let folderId = null;
     try {
-      const data = (await fetchWorkspaceFiles(workspaceId, null)) as any;
+      const data = (await getAllFiles(workspaceId, null)) as any;
       const files = data?.files || [];
       const existingFolder = files.find(
         (item: any) => item.isFolder && item.filename === "Paper Upload",

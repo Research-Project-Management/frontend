@@ -38,12 +38,10 @@ import {
   useCollections,
   useUpdatePaper,
 } from "@/features/workspaces/library/services/library.services";
-import { lookupDoi } from '@/features/workspaces/storage/services/crossref.services';
-import { searchCrossref } from '@/features/workspaces/storage/services/crossref.services';
-import { type CrossrefWork } from '@/features/workspaces/storage/services/crossref.services';
 import { resolveFileUrl } from '@/features/workspaces/library/hooks/use-blob-url';
 import { cn } from "@/shared/lib/utils";
 import type { Collection, Paper } from "@/features/workspaces/library/types/library.types";
+import { type CrossrefWork, fetchSearchCrossref, fetchLookupDoi } from '@/features/editor';
 import dynamic from "next/dynamic";
 const PdfViewer = dynamic(() => import("../components/PdfViewer"), { ssr: false });
 import ReaderChatPanel from "../components/ReaderChatPanel";
@@ -224,11 +222,11 @@ function ReaderDetails({
       try {
         let work: CrossrefWork | null = null;
         if (paper.doi) {
-          const result = await lookupDoi(paper.doi);
+          const result = await fetchLookupDoi(paper.doi);
           work = result.work;
         }
         if (!work && paper.title) {
-          const result = await searchCrossref(paper.title, 1);
+          const result = await fetchSearchCrossref(paper.title, 1);
           work = result.works?.[0] ?? null;
         }
         if (!work) throw new Error("No metadata returned");

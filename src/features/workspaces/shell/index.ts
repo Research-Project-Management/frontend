@@ -5,7 +5,6 @@
 // ── Components ────────────────────────────────────────────────────────────────
 export { default as WorkspaceTopbar } from './components/Topbar';
 export { default as WorkspaceSidebar } from './components/Sidebar';
-export { default as WorkspaceAvatar } from '@/shared/components/Avatar';
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
 

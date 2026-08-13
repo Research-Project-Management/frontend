@@ -42,13 +42,25 @@
 }
 
 @keyframes smooth-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes shimmer {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
 }
 
 @theme inline {
@@ -223,7 +235,9 @@
    -------------------------------------------------------------------------- */
 
 @layer base {
-  html, body {
+
+  html,
+  body {
     min-width: 320px;
     min-height: 100%;
     font-size: 14.4px;
@@ -234,25 +248,102 @@
     @apply bg-background text-foreground;
   }
 
-  * { @apply border-border outline-ring/50; }
-  ::selection { @apply bg-primary/15 text-foreground; }
-  button { cursor: pointer; }
+  * {
+    @apply border-border outline-ring/50;
+  }
 
-  h1 { font-size: 1.6875rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.025em; color: var(--foreground); }
-  h2 { font-size: 1.35rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.025em; color: var(--foreground); }
-  h3 { font-size: 1.125rem; line-height: 1.375; font-weight: 600; letter-spacing: -0.015em; color: var(--foreground); }
-  h4 { font-size: 1.0125rem; line-height: 1.5; font-weight: 500; letter-spacing: -0.01em; color: var(--foreground); }
-  h5 { font-size: 0.9rem; line-height: 1.5; font-weight: 500; color: var(--foreground); }
-  h6 { font-size: 0.7875rem; line-height: 1.5; font-weight: 500; color: var(--muted-foreground); }
-  
-  p { font-size: 0.9rem; line-height: 1.5; color: var(--foreground); }
-  small { font-size: 0.7875rem; line-height: 1.5; }
-  code, kbd, samp, pre { font-family: var(--font-mono); font-size: 0.7875rem; }
-  
-  a { text-decoration: none; }
-  .prose a:hover, article a:hover { text-decoration: underline; text-underline-offset: 2px; }
-  strong, b { font-weight: 600; }
-  em, i { font-style: italic; }
+  ::selection {
+    @apply bg-primary/15 text-foreground;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  h1 {
+    font-size: 1.6875rem;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--foreground);
+  }
+
+  h2 {
+    font-size: 1.35rem;
+    line-height: 1.25;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--foreground);
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.375;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--foreground);
+  }
+
+  h4 {
+    font-size: 1.0125rem;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+  }
+
+  h5 {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  h6 {
+    font-size: 0.7875rem;
+    line-height: 1.5;
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+
+  p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--foreground);
+  }
+
+  small {
+    font-size: 0.7875rem;
+    line-height: 1.5;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-size: 0.7875rem;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  .prose a:hover,
+  article a:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  strong,
+  b {
+    font-weight: 600;
+  }
+
+  em,
+  i {
+    font-style: italic;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -260,10 +351,21 @@
    -------------------------------------------------------------------------- */
 
 @layer utilities {
-  .flux-container { @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10; }
-  .flux-panel { @apply rounded-lg border border-border bg-card shadow-sm; }
-  .flux-section { @apply py-16 sm:py-20 lg:py-24; }
-  .flux-page-pad { @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8; }
+  .flux-container {
+    @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10;
+  }
+
+  .flux-panel {
+    @apply rounded-lg border border-border bg-card shadow-sm;
+  }
+
+  .flux-section {
+    @apply py-16 sm:py-20 lg:py-24;
+  }
+
+  .flux-page-pad {
+    @apply px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -279,44 +381,141 @@
    5. COMPONENTS & OVERRIDES
    -------------------------------------------------------------------------- */
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background-color: var(--gray-300); border-radius: 20px; border: 2px solid transparent; background-clip: padding-box; }
-.dark ::-webkit-scrollbar-thumb { background-color: oklch(30% 0 0); }
+::-webkit-scrollbar {
+  width: 8px;
+}
 
-.kanban-scrollbar { scrollbar-width: thin; scrollbar-color: var(--gray-200) transparent; }
-.kanban-scrollbar::-webkit-scrollbar { height: 8px; cursor: pointer; }
-.kanban-scrollbar::-webkit-scrollbar-track { background: transparent; margin: 0 24px; }
-.kanban-scrollbar::-webkit-scrollbar-thumb { background-color: var(--gray-200); border-radius: 20px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--gray-300);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: oklch(30% 0 0);
+}
+
+.kanban-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-200) transparent;
+}
+
+.kanban-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  cursor: pointer;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 24px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--gray-200);
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
 
 .flux-comment-glyph {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='%233b6fff' stroke='%233b6fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'%3E%3C/path%3E%3C/svg%3E") no-repeat center;
-  background-size: 12px 12px; cursor: pointer; opacity: 1; transition: opacity 0.15s; border-radius: 10px;
+  background-size: 12px 12px;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.15s;
+  border-radius: 10px;
 }
 
-.monaco-editor, .monaco-editor .margin, .monaco-editor-background { transition: background-color 160ms ease, color 160ms ease; }
-.monaco-editor .line-numbers { font-variant-numeric: tabular-nums; }
-.monaco-editor .current-line { border-radius: 6px; }
-.monaco-editor .suggest-widget, .monaco-editor .monaco-hover, .monaco-editor .parameter-hints-widget {
-  border-radius: 8px !important; border-color: var(--border) !important; box-shadow: 0 18px 40px oklch(0% 0 0 / 0.14), 0 2px 8px oklch(0% 0 0 / 0.08) !important;
+.monaco-editor,
+.monaco-editor .margin,
+.monaco-editor-background {
+  transition: background-color 160ms ease, color 160ms ease;
 }
-.monaco-editor .find-widget { border-radius: 8px !important; box-shadow: 0 12px 28px oklch(0% 0 0 / 0.12) !important; }
+
+.monaco-editor .line-numbers {
+  font-variant-numeric: tabular-nums;
+}
+
+.monaco-editor .current-line {
+  border-radius: 6px;
+}
+
+.monaco-editor .suggest-widget,
+.monaco-editor .monaco-hover,
+.monaco-editor .parameter-hints-widget {
+  border-radius: 8px !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 18px 40px oklch(0% 0 0 / 0.14), 0 2px 8px oklch(0% 0 0 / 0.08) !important;
+}
+
+.monaco-editor .find-widget {
+  border-radius: 8px !important;
+  box-shadow: 0 12px 28px oklch(0% 0 0 / 0.12) !important;
+}
 
 @keyframes flux-flash-active-line {
-  0% { background-color: oklch(50% 0.18 265 / 0.35); }
-  100% { background-color: oklch(50% 0.18 265 / 0); }
+  0% {
+    background-color: oklch(50% 0.18 265 / 0.35);
+  }
+
+  100% {
+    background-color: oklch(50% 0.18 265 / 0);
+  }
 }
-.flux-active-line-flash { animation: flux-flash-active-line 2s var(--ease-out-expo) forwards; box-shadow: inset 4px 0 0 0 var(--primary); }
 
-.react-pdf__Page { position: relative !important; margin: 0 auto; }
-.react-pdf__Page__textLayer, .textLayer { opacity: 1 !important; pointer-events: none !important; z-index: 2 !important; }
-.react-pdf__Page__textLayer span, .textLayer span { color: transparent !important; -webkit-text-fill-color: transparent !important; background: transparent !important; pointer-events: auto !important; }
-.react-pdf__Page__annotationLayer, .annotationLayer { position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 3 !important; }
-.react-pdf__Page__textLayer ::selection, .textLayer ::selection { background: oklch(50% 0.18 265 / 0.25) !important; color: transparent !important; -webkit-text-fill-color: transparent !important; }
+.flux-active-line-flash {
+  animation: flux-flash-active-line 2s var(--ease-out-expo) forwards;
+  box-shadow: inset 4px 0 0 0 var(--primary);
+}
 
-[data-sonner-toast], .tsqd-parent-container * {
+.react-pdf__Page {
+  position: relative !important;
+  margin: 0 auto;
+}
+
+.react-pdf__Page__textLayer,
+.textLayer {
+  opacity: 1 !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+.react-pdf__Page__textLayer span,
+.textLayer span {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  background: transparent !important;
+  pointer-events: auto !important;
+}
+
+.react-pdf__Page__annotationLayer,
+.annotationLayer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 3 !important;
+}
+
+.react-pdf__Page__textLayer ::selection,
+.textLayer ::selection {
+  background: oklch(50% 0.18 265 / 0.25) !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-sonner-toast],
+.tsqd-parent-container * {
   font-family: var(--font-sans) !important;
   transition-property: transform, opacity, background-color, border-color, color, fill, stroke, box-shadow !important;
   box-shadow: 0 1px 2px 0 oklch(0% 0 0 / 0.05) !important;

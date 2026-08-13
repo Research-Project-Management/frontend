@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import { DraftPage } from '@/features/workspaces/projects';
+import { DraftPage } from '@/features/workspaces/projects/all-drafts';
 
 interface Props {
   params: Promise<{ projectId: string }>;

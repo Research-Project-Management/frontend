@@ -14,7 +14,7 @@ import {
 import { logoutUser, useAuth } from '@/features/auth';
 import { useWorkspaces } from '../hooks/use-workspace';
 import { useParams } from 'next/navigation';
-import Avatar from '@/shared/components/Avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import AccountDropdown from './AccountDropdown';
 
 export default function Topbar() {
@@ -41,12 +41,10 @@ export default function Topbar() {
                 aria-label={`Current Workspace: ${currentWorkspace.name}`}
                 className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors hover:bg-accent'
               >
-                <Avatar
-                  src={currentWorkspace.avatar}
-                  name={currentWorkspace.name}
-                  className='size-6 rounded-md font-bold'
-                  fallbackType='workspace'
-                />
+                <Avatar className='size-6 rounded-md font-bold'>
+      {currentWorkspace.avatar ? <AvatarImage src={currentWorkspace.avatar} alt={String(currentWorkspace.name)} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{String(currentWorkspace.name).substring(0, 2).toUpperCase() || 'W'}</AvatarFallback>
+    </Avatar>
                 <span className='max-w-[140px] truncate text-sm font-medium text-foreground sm:max-w-[180px]'>
                   {currentWorkspace.name}
                 </span>
@@ -73,12 +71,10 @@ export default function Topbar() {
                   onClick={() => router.push(`/${ws.url}`)}
                   className={ws.url === workspaceId ? 'bg-muted' : ''}
                 >
-                  <Avatar
-                    src={ws.avatar}
-                    name={ws.name}
-                    className='mr-2 size-5 rounded-sm'
-                    fallbackType='workspace'
-                  />
+                  <Avatar className='mr-2 size-5 rounded-sm'>
+      {ws.avatar ? <AvatarImage src={ws.avatar} alt={String(ws.name)} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{String(ws.name).substring(0, 2).toUpperCase() || ('workspace' === 'workspace' ? 'W' : 'U')}</AvatarFallback>
+    </Avatar>
                   <span className='truncate'>{ws.name}</span>
                 </DropdownMenuItem>
               ))}

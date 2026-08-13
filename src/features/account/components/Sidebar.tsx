@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/features/auth';
-import Avatar from '@/shared/components/Avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { User, SlidersHorizontal, Bell, Lock, Key } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 interface SidebarProps {
@@ -22,7 +22,10 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     <aside className='w-[240px] shrink-0 border-r border-border/50 bg-background flex flex-col'>
       {/* Header Profile Info */}
       <div className='flex items-center gap-3 p-4'>
-        <Avatar src={user.avatar} name={user.name || ''} className='size-8' />
+        <Avatar className='size-8'>
+      {user.avatar ? <AvatarImage src={user.avatar} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+    </Avatar>
         <div className='flex min-w-0 flex-col'>
           <p className='truncate text-sm font-medium leading-tight text-foreground'>
             {user.name}

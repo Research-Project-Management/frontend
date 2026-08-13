@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { fetchUser } from '../services/auth-service';
+import { getUser } from '../services/auth-service';
 import { queryKeys } from '@/shared/constants';
 
 /**
@@ -16,7 +16,7 @@ import { queryKeys } from '@/shared/constants';
 export const useAuth = () => {
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.auth.session,
-    queryFn: fetchUser,
+    queryFn: getUser,
     staleTime: 5 * 60 * 1_000, // 5 minutes
     refetchOnWindowFocus: false,
     retry: (failureCount, error: unknown) => {

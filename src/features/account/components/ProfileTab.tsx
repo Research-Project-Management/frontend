@@ -5,7 +5,7 @@ import { useAuth } from '@/features/auth';
 import { useUpload } from '@/shared/hooks';
 import { useUpdateProfile } from '../hooks/use-profile';
 import { toast } from 'sonner';
-import Avatar from '@/shared/components/Avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { Button, Input } from '@/shared/components/ui';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -108,12 +108,10 @@ export default function ProfileTab() {
                 disabled={isUploading || updateProfileMutation.isPending}
                 className='relative group overflow-hidden rounded-full ring-4 ring-background bg-background transition-transform hover:scale-105 active:scale-95'
               >
-                <Avatar
-                  src={currentAvatar}
-                  name={currentName}
-                  className='size-20 rounded-full bg-background text-2xl font-semibold'
-                  fallbackType='user'
-                />
+                <Avatar className='size-20 rounded-full bg-background text-2xl font-semibold'>
+      {currentAvatar ? <AvatarImage src={currentAvatar} alt={String(currentName)} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{String(currentName).substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+    </Avatar>
                 <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
                   <span className='text-[10px] text-white font-medium'>Upload</span>
                 </div>

@@ -1,215 +1,152 @@
-import {
-    QueryClient,
-    useQuery,
-    useMutation,
-    useQueryClient,
-} from "@tanstack/react-query";
+/**
+ * @file storage.services.ts
+ * @description Handles API requests for workspace storage operations including listing files/folders, creating folders, uploading files, and mutating storage items (rename, move, delete).
+ */
+
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import { API_BASE_URL } from "@/shared/constants";
-import type { StorageResponse, StorageItem } from '../types/storage.types';
-import { extractPdfMetadataFromFile } from '@/features/editor';
+import { generateThumbnail } from '@/shared/utils/file';
+import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 
-// ── Queries ───────────────────────────────────────────────────────────────────
+// ── Read Operations (Workspace-level) ────────────────────────────────────────
 
-export const fetchFiles = (projectId: string, parentId?: string | null) =>
+export const getAllFiles = (projectId: string, parentId?: string | null) =>
     apiGet<StorageResponse>(parentId
         ? `/api/files/project/${projectId}?parentId=${parentId}`
         : `/api/files/project/${projectId}`);
 
-export const fetchMyFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/my-files/${projectId}`);
+export const getMyFiles = (projectId: string) =>
+    apiGet<StorageResponse>(`/api/files/project/${projectId}/my-files`);
 
-export const fetchStarredFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/starred/${projectId}`);
+export const getStarredFiles = (projectId: string) =>
+    apiGet<StorageResponse>(`/api/files/project/${projectId}/starred`);
 
-export const fetchSharedFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/shared/${projectId}`);
+export const getSharedFiles = (projectId: string) =>
+    apiGet<StorageResponse>(`/api/files/project/${projectId}/shared`);
 
-export const fetchTrashedFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/trash/${projectId}`);
+export const getTrashedFiles = (projectId: string) =>
+    apiGet<StorageResponse>(`/api/files/project/${projectId}/trash`);
 
-// ── Query Invalidation Helper ─────────────────────────────────────────────────
-
-const invalidateProjectStorageQueries = (queryClient: QueryClient, projectId?: string) => {
-    if (projectId) {
-        queryClient.invalidateQueries({ queryKey: ["project-files", projectId] });
-        queryClient.invalidateQueries({ queryKey: ["project-my-files", projectId] });
-        queryClient.invalidateQueries({ queryKey: ["project-starred-files", projectId] });
-        queryClient.invalidateQueries({ queryKey: ["project-shared-files", projectId] });
-        queryClient.invalidateQueries({ queryKey: ["project-trashed-files", projectId] });
-    } else {
-        queryClient.invalidateQueries({ queryKey: ["project-files"] });
-        queryClient.invalidateQueries({ queryKey: ["project-my-files"] });
-        queryClient.invalidateQueries({ queryKey: ["project-starred-files"] });
-        queryClient.invalidateQueries({ queryKey: ["project-shared-files"] });
-        queryClient.invalidateQueries({ queryKey: ["project-trashed-files"] });
-    }
-};
-
-// ── Thumbnail helper ──────────────────────────────────────────────────────────
-
-const generateThumbnail = async (file: File): Promise<Blob | null> => {
-    if (!file.type.startsWith("image/")) return null;
-
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement("canvas");
-                const MAX_SIZE = 300;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-                } else {
-                    if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                if (!ctx) { resolve(null); return; }
-                ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.7);
-            };
-            img.onerror = () => resolve(null);
-            img.src = e.target?.result as string;
-        };
-        reader.readAsDataURL(file);
-    });
-};
-
-// ── Mutations (plain functions) ───────────────────────────────────────────────
-
-export const uploadFile = async (
-    file: File,
-    params: { projectId: string; workspaceId: string; parentId?: string | null; parentPageId?: string | null; onProgress?: (progress: number) => void }
-) => {
-    const storagePrefix = `project/${params.projectId}`;
-    const timestamp = Date.now();
-    const fileName = `${storagePrefix}/${timestamp}-${file.name}`;
-    const thumbnailBlob = file.type.startsWith("image/") ? await generateThumbnail(file) : null;
-
-    return new Promise<void>((resolve, reject) => {
+const uploadBlobWithProgress = (
+    blob: Blob,
+    fileName: string,
+    uploadEndpoint: string,
+    onProgress?: (progress: number) => void
+): Promise<{ url: string }> => {
+    return new Promise((resolve, reject) => {
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", blob);
         formData.append("fileName", fileName);
 
         const xhr = new XMLHttpRequest();
         xhr.withCredentials = true;
         
-        xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable && params.onProgress) {
-                const percentComplete = Math.round((event.loaded / event.total) * 90);
-                params.onProgress(percentComplete);
-            }
-        };
+        if (onProgress) {
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    onProgress(percentComplete);
+                }
+            };
+        }
 
-        xhr.onload = async () => {
+        xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
                     const response = JSON.parse(xhr.responseText);
-                    const uploadUrl = `${API_BASE_URL}${response.url}`;
-                    let thumbnailUrl;
-
-                    if (thumbnailBlob) {
-                        const thumbName = `project/${params.projectId}/${Date.now()}-thumb.jpg`;
-                        const thumbFormData = new FormData();
-                        thumbFormData.append("file", thumbnailBlob);
-                        thumbFormData.append("fileName", thumbName);
-
-                        const thumbResponse = await fetch(`${API_BASE_URL}/api/files/upload-r2`, {
-                            method: "POST",
-                            body: thumbFormData,
-                            credentials: "include"
-                        });
-                        if (thumbResponse.ok) {
-                            const thumbData = await thumbResponse.json();
-                            thumbnailUrl = `${API_BASE_URL}${thumbData.url}`;
-                        }
-                    }
-
-                    let extractedMetadata = undefined;
-                    try {
-                        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-                            const pdfMeta = await extractPdfMetadataFromFile(file);
-                            if (pdfMeta) extractedMetadata = pdfMeta;
-                        }
-                    } catch (err) { console.error(err); }
-
-                    await apiPost("/api/files/upload", {
-                        scope: "project",
-                        workspaceId: params.workspaceId,
-                        projectId: params.projectId,
-                        filename: file.name,
-                        size: file.size,
-                        mimeType: file.type,
-                        url: uploadUrl,
-                        thumbnail: thumbnailUrl,
-                        parentId: params.parentId || null,
-                        metaData: extractedMetadata,
-                    });
-
-                    if (params.onProgress) params.onProgress(100);
-                    resolve();
-                } catch (error) { reject(error); }
+                    resolve({ url: response.url });
+                } catch (error) {
+                    reject(new Error("Failed to parse upload response"));
+                }
             } else {
-                reject(new Error("Failed to upload file to backend proxy"));
+                reject(new Error(`Failed to upload file. Status: ${xhr.status}`));
             }
         };
 
         xhr.onerror = () => reject(new Error("Network error during upload"));
         xhr.onabort = () => reject(new Error("Upload aborted"));
 
-        xhr.open("POST", `${API_BASE_URL}/api/files/upload-r2`, true);
+        xhr.open("POST", `${API_BASE_URL}${uploadEndpoint}`, true);
         xhr.send(formData);
     });
 };
 
-export const createFolder = (name: string, params: { projectId: string; workspaceId?: string; parentId?: string | null; parentPageId?: string | null }) => {
-    return apiPost("/api/files/folder", {
-        scope: "project",
+export const uploadFile = async (
+    file: File,
+    params: UploadFileParams
+) => {
+    const storagePrefix = `project/${params.projectId}`;
+    const timestamp = Date.now();
+    const fileName = `${storagePrefix}/${timestamp}-${file.name}`;
+    
+    const onMainFileProgress = params.onProgress 
+        ? (p: number) => params.onProgress!(Math.round(p * 0.9))
+        : undefined;
+
+    const uploadEndpoint = `/api/files/project/${params.projectId}/upload-r2`;
+    const { url: uploadPath } = await uploadBlobWithProgress(file, fileName, uploadEndpoint, onMainFileProgress);
+    const uploadUrl = `${API_BASE_URL}${uploadPath}`;
+
+    let thumbnailUrl;
+    if (file.type.startsWith("image/")) {
+        const thumbnailBlob = await generateThumbnail(file);
+        if (thumbnailBlob) {
+            const thumbName = `project/${params.projectId}/${Date.now()}-thumb.jpg`;
+            const { url: thumbPath } = await uploadBlobWithProgress(thumbnailBlob, thumbName, uploadEndpoint);
+            thumbnailUrl = `${API_BASE_URL}${thumbPath}`;
+        }
+    }
+
+    await createFileRecord({
         projectId: params.projectId,
-        workspaceId: params.workspaceId,
-        name,
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type,
+        url: uploadUrl,
+        thumbnail: thumbnailUrl,
+        parentId: params.parentId || null,
+        metaData: params.metaData,
+    });
+
+    if (params.onProgress) params.onProgress(100);
+};
+
+export const uploadGenericFile = async (file: File, projectId: string): Promise<string> => {
+    const fileName = `avatars/${projectId}-${Date.now()}`;
+    const { url: uploadPath } = await uploadBlobWithProgress(file, fileName, "/api/files/upload-r2");
+    return `${API_BASE_URL}${uploadPath}`;
+};
+
+export const createFileRecord = (params: CreateFileRecordParams) => {
+    return apiPost(`/api/files/project/${params.projectId}/upload`, {
+        filename: params.filename,
+        size: params.size,
+        mimeType: params.mimeType,
+        url: params.url,
+        thumbnail: params.thumbnail,
         parentId: params.parentId ?? null,
-        ...(params.parentPageId ? { parentPageId: params.parentPageId } : {}),
+        metaData: params.metaData,
     });
 };
 
-export const toggleStar = (fileId: string) =>
-    apiPut(`/api/files/${fileId}/star`);
+export const createFolder = (name: string, params: CreateFolderParams) => {
+    return apiPost(`/api/files/project/${params.projectId}/folder`, {
+        name,
+        parentId: params.parentId ?? null,
+        ...(params.pageId ? { pageId: params.pageId } : {}),
+    });
+};
 
-export const deleteFile = (fileId: string) =>
-    apiDelete(`/api/files/${fileId}`);
-
-export const restoreFile = (fileId: string) =>
-    apiPut(`/api/files/${fileId}/restore`);
-
-export const permanentlyDeleteFile = (fileId: string) =>
-    apiDelete(`/api/files/${fileId}/permanent`);
-
-export const shareFile = (fileId: string, userId: string, permission: "view" | "edit") =>
-    apiPut(`/api/files/${fileId}/share`, { userId, permission });
-
-export const renameFile = (fileId: string, name: string) =>
-    apiPut(`/api/files/${fileId}/rename`, { name });
-
-export const moveFile = (fileId: string, parentId: string | null) =>
-    apiPut(`/api/files/${fileId}/move`, { parentId });
-
-export const checkDuplicate = (
+export const checkDuplicateFile = (
+    projectId: string,
     filename: string,
-    parentId: string | null,
-    params: { projectId: string }
+    parentId: string | null = null,
 ) => {
-    if (!params.projectId) {
-        throw new Error("projectId is required for project storage actions");
+    if (!projectId) {
+        throw new Error("projectId is required for workspace storage actions");
     }
 
-    return fetchFiles(params.projectId, parentId).then((data: any) => {
+    return getAllFiles(projectId, parentId).then((data: any) => {
         const files: StorageItem[] = data?.files || [];
         const existingFile = files.find(
             (item) => !item.isFolder && item.filename === filename,
@@ -224,118 +161,42 @@ export const checkDuplicate = (
     });
 };
 
-// ── React Query Hooks ─────────────────────────────────────────────────────────
+export const toggleStarItem = (itemId: string) =>
+    apiPut(`/api/files/${itemId}/star`);
 
-export const useFiles = (projectId: string, parentId?: string | null) =>
-    useQuery({
-        queryKey: ["project-files", projectId, parentId],
-        queryFn: () => fetchFiles(projectId, parentId),
-        enabled: !!projectId,
-    });
+export const deleteItem = (itemId: string) =>
+    apiDelete(`/api/files/${itemId}`);
 
-export const useUploadFile = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ file, projectId, workspaceId, parentId, onProgress }: {
-            file: File;
-            projectId: string;
-            workspaceId: string;
-            parentId?: string | null;
-            onProgress?: (progress: number) => void;
-        }) =>
-            uploadFile(file, { projectId, workspaceId, parentId, onProgress }),
-        onSuccess: (_, variables) => {
-            invalidateProjectStorageQueries(queryClient, variables.projectId);
-        },
-    });
+export const restoreItem = (itemId: string) =>
+    apiPut(`/api/files/${itemId}/restore`);
+
+export const permanentlyDeleteItem = (itemId: string) =>
+    apiDelete(`/api/files/${itemId}/permanent`);
+
+export const shareItem = (itemId: string, userId: string, permission: "view" | "edit") =>
+    apiPut(`/api/files/${itemId}/share`, { userId, permission });
+
+export const renameItem = (itemId: string, name: string) =>
+    apiPut(`/api/files/${itemId}/rename`, { name });
+
+export const moveItem = (itemId: string, parentId: string | null) =>
+    apiPut(`/api/files/${itemId}/move`, { parentId });
+
+export const updateFileMetadata = (itemId: string, metaData: Record<string, any>) =>
+    apiPut(`/api/files/${itemId}/metadata`, { metaData });
+
+export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
+    const response = await fetch(url, { credentials: "include" });
+    if (!response.ok) {
+        throw new Error("Failed to fetch file buffer: " + response.statusText);
+    }
+    return response.arrayBuffer();
 };
 
-export const useCreateFolder = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ name, projectId, workspaceId, parentId }: {
-            name: string;
-            projectId: string;
-            workspaceId?: string;
-            parentId?: string | null;
-        }) =>
-            createFolder(name, { projectId, workspaceId, parentId }),
-        onSuccess: (_, variables) => {
-            invalidateProjectStorageQueries(queryClient, variables.projectId);
-        },
-    });
-};
-
-export const useToggleStar = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (args: string | { fileId: string; projectId?: string }) => {
-            const fileId = typeof args === "string" ? args : args.fileId;
-            return toggleStar(fileId);
-        },
-        onSuccess: (_, args) => {
-            invalidateProjectStorageQueries(queryClient, typeof args === "string" ? undefined : args.projectId);
-        },
-    });
-};
-
-export const useDeleteFile = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (args: string | { fileId: string; projectId?: string }) => {
-            const fileId = typeof args === "string" ? args : args.fileId;
-            return deleteFile(fileId);
-        },
-        onSuccess: (_, args) => {
-            invalidateProjectStorageQueries(queryClient, typeof args === "string" ? undefined : args.projectId);
-        },
-    });
-};
-
-export const useRestoreFile = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (args: string | { fileId: string; projectId?: string }) => {
-            const fileId = typeof args === "string" ? args : args.fileId;
-            return restoreFile(fileId);
-        },
-        onSuccess: (_, args) => {
-            invalidateProjectStorageQueries(queryClient, typeof args === "string" ? undefined : args.projectId);
-        },
-    });
-};
-
-export const usePermanentlyDeleteFile = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (args: string | { fileId: string; projectId?: string }) => {
-            const fileId = typeof args === "string" ? args : args.fileId;
-            return permanentlyDeleteFile(fileId);
-        },
-        onSuccess: (_, args) => {
-            invalidateProjectStorageQueries(queryClient, typeof args === "string" ? undefined : args.projectId);
-        },
-    });
-};
-
-export const useRenameFile = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (args: { fileId: string; name: string; projectId?: string }) =>
-            renameFile(args.fileId, args.name),
-        onSuccess: (_, args) => {
-            invalidateProjectStorageQueries(queryClient, args.projectId);
-        },
-    });
-};
-
-export const useMoveFile = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (args: { fileId: string; parentId: string | null; projectId?: string }) =>
-            moveFile(args.fileId, args.parentId),
-        onSuccess: (_, args) => {
-            invalidateProjectStorageQueries(queryClient, args.projectId);
-        },
-    });
+export const getFileBlob = async (url: string): Promise<Blob> => {
+    const response = await fetch(url, { credentials: "include" });
+    if (!response.ok) {
+        throw new Error("Failed to fetch file blob: " + response.statusText);
+    }
+    return response.blob();
 };

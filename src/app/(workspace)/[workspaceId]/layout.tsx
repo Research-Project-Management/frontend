@@ -1,12 +1,12 @@
 import dynamic from 'next/dynamic';
 
 const WorkspaceTopbar = dynamic(
-  () => import('@/features/workspaces/shell').then((mod) => mod.WorkspaceTopbar),
+  () => import('@/features/workspaces/shell/components/Topbar'),
   { ssr: true, loading: () => null }
 );
 
 const WorkspaceSidebar = dynamic(
-  () => import('@/features/workspaces/shell').then((mod) => mod.WorkspaceSidebar),
+  () => import('@/features/workspaces/shell/components/Sidebar'),
   { ssr: true, loading: () => null }
 );
 

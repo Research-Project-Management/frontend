@@ -14,7 +14,7 @@ export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
   return data.user;
 };
 
-export const fetchUser = async (): Promise<AuthUser> => {
+export const getUser = async (): Promise<AuthUser> => {
   const data = await apiGet<{ user: AuthUser }>('/auth/user');
   return data.user;
 };

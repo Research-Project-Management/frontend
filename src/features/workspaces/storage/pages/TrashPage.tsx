@@ -1,27 +1,38 @@
 'use client';
 
 import { useParams } from "next/navigation";
-import { useTrash } from "@/features/workspaces/storage/hooks/use-trash";
+
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useTrash, useRestoreItem, usePermanentlyDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
+
+
 import { Trash2 } from "lucide-react";
 import { Skeleton } from '@/shared/components/ui';
-import FileExplorer from '../components/FileExplorer';
+import ListView from '../components/views/ListView';
+import GridView from '../components/views/GridView';
+import { useViewStore } from '../store/use-view-store';
+import { usePreviewStore } from '../store/use-preview-store';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadFileAsBlob } from '@/features/workspaces/storage/hooks/use-blob-url';
+import { downloadFileUrl } from '@/shared/utils/file';
+import Topbar from '../components/layout/Topbar';
 
 export default function WorkspaceTrashPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
+  const { view } = useViewStore();
+  const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
   const workspaceId = workspace?._id;
 
-  const { data, isLoading: isFilesLoading, handleRestore, handlePermanentlyDelete } = useTrash(workspaceId!);
+  const { data, isLoading: isFilesLoading } = useTrash(workspaceId!);
+  const { mutateAsync: handleRestore } = useRestoreItem();
+  const { mutateAsync: handlePermanentlyDelete } = usePermanentlyDeleteItem();
 
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
-      await downloadFileAsBlob(item.url, item.filename);
+      await downloadFileUrl(item.url, item.filename);
     } catch {
       window.open(item.url, "_blank");
     }
@@ -38,25 +49,30 @@ export default function WorkspaceTrashPage() {
   const files = (data?.files || []) as StorageItem[];
 
   return (
-    <FileExplorer
-      items={files}
-
-      workspaceId={workspaceId}
-      onToggleStar={handleRestore}
-      onDelete={handlePermanentlyDelete}
-      onDownload={handleDownload}
-      enableUpload={false}
-      enableBreadcrumbs={false}
-      isTrash={true}
-      defaultView="list"
-      header={
-        <div className="flex items-center gap-2.5">
-          <div>
-            <h1 className="text-lg font-semibold">Trash</h1>
-          </div>
-        </div>
-      }
-    />
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <Topbar title="Trash" icon={Trash2} workspaceId={workspaceId} />
+      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+        {view === 'list' ? (
+          <ListView
+            items={files}
+            onToggleStar={(id) => { handleRestore(id); }}
+            onDelete={(id) => { handlePermanentlyDelete(id); }}
+            onDownload={handleDownload}
+            onFileClick={(item) => setSelectedItem(item)}
+            isTrash={true}
+          />
+        ) : (
+          <GridView
+            items={files}
+            onToggleStar={(id) => { handleRestore(id); }}
+            onDelete={(id) => { handlePermanentlyDelete(id); }}
+            onDownload={handleDownload}
+            onFileClick={(item) => setSelectedItem(item)}
+            isTrash={true}
+          />
+        )}
+      </div>
+    </div>
   );
 }
 

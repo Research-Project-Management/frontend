@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui';
 import { logoutUser, useAuth } from '@/features/auth';
-import Avatar from '@/shared/components/Avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import AccountModal from '@/features/account/pages/AccountModal';
 
 interface AccountDropdownProps {
@@ -34,12 +34,10 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-accent/50 outline-none data-[state=open]:bg-accent/50'>
-            <Avatar
-              src={user.avatar}
-              name={user.name || ''}
-              className='size-7 rounded-full'
-              fallbackType='user'
-            />
+            <Avatar className='size-7 rounded-full'>
+      {user.avatar ? <AvatarImage src={user.avatar} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+    </Avatar>
           </button>
         </DropdownMenuTrigger>
         
@@ -56,12 +54,10 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
             />
             {/* Content */}
             <div className='relative z-10 flex flex-col items-center gap-2'>
-              <Avatar
-                src={user.avatar}
-                name={user.name || ''}
-                className='size-12 rounded-full border border-background shadow-sm'
-                fallbackType='user'
-              />
+              <Avatar className='size-12 rounded-full border border-background shadow-sm'>
+      {user.avatar ? <AvatarImage src={user.avatar} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+    </Avatar>
               <div className='flex flex-col items-center text-center'>
                 <p className='text-sm font-medium text-foreground'>{user.name}</p>
                 <p className='text-xs text-muted-foreground'>{user.email}</p>

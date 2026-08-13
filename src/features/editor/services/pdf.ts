@@ -1,11 +1,48 @@
 import { apiGet } from "@/shared/lib/api";
-import type { CrossrefWork } from "@/features/workspaces/storage/services/crossref.services";
+export type CrossrefWork = {
+    title: string;
+    authors: string[];
+    editors?: string[];
+    doi: string;
+    journal: string;
+    publicationTitle?: string;
+    publicationDate?: string;
+    publisher: string;
+    place?: string;
+    issn: string;
+    isbn: string;
+    volume: string;
+    issue: string;
+    section?: string;
+    partNumber?: string;
+    partTitle?: string;
+    pages: string;
+    series?: string;
+    seriesTitle?: string;
+    seriesText?: string;
+    year: number | string;
+    type: string;
+    itemType?: string;
+    abstract: string;
+    url: string;
+    score: number;
+    language?: string;
+    journalAbbr?: string;
+    shortTitle?: string;
+    rights?: string;
+    license?: string;
+    libraryCatalog?: string;
+    keywords?: string[];
+    pmid?: string;
+    pmcid?: string;
+    extra?: string;
+};
 
-async function fetchLookupDoi(doi: string) {
+export async function fetchLookupDoi(doi: string) {
   return apiGet<{ work: CrossrefWork }>(`/api/files/crossref/doi/${encodeURIComponent(doi)}`);
 }
 
-async function fetchSearchCrossref(query: string, rows = 1) {
+export async function fetchSearchCrossref(query: string, rows = 1) {
   return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
     `/api/files/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
   );

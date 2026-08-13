@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/shared/lib/api";
 import { toast } from "sonner";
 
@@ -64,10 +65,13 @@ export const useProjectOverview = (projectId: string) =>
 export const useProjectDetails = useProject;
 
 export const useProjects = (workspaceId?: string) => {
+  const params = useParams();
+  const id = workspaceId || (params?.workspaceId as string);
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["projects", workspaceId],
-    queryFn: ({ signal }) => fetchProjectsByWorkspaceId(workspaceId!, signal),
-    enabled: !!workspaceId,
+    queryKey: ["projects", id],
+    queryFn: ({ signal }) => fetchProjectsByWorkspaceId(id!, signal),
+    enabled: !!id,
   });
 
   const pData = data as any;

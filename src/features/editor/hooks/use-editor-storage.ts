@@ -2,23 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, API_BASE_URL } from '@/shared/constants';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { fetchFiles, createFolder as createProjectFolder } from "@/features/workspaces/projects/project-id/storage/services/storage.services";
-import { uploadFile, permanentlyDeleteFile, renameFile, moveFile } from "@/features/workspaces/projects/project-id/storage/services/storage.services";
+import { getAllFiles, createFolder as createProjectFolder } from "@/features/workspaces/projects/project-id/storage/services/storage.services";
+import { uploadFile, permanentlyDeleteItem, renameItem, moveItem } from "@/features/workspaces/projects/project-id/storage/services/storage.services";
 
-export function useEditorStorage(parentPageId: string | null | undefined, parentId?: string | null) {
+export function useEditorStorage(pageId: string | null | undefined, parentId?: string | null) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.storage.projectFilesEditor(parentPageId ?? undefined, parentId);
+  const queryKey = queryKeys.storage.projectFilesEditor(pageId ?? undefined, parentId);
   const { data: children, isLoading, refetch } = useQuery({
     queryKey,
     queryFn: async (): Promise<StorageItem[]> => {
-      if (!parentPageId) return [];
+      if (!pageId) return [];
       const endpoint = parentId
-        ? `/api/files/page/${parentPageId}?parentId=${parentId}`
-        : `/api/files/page/${parentPageId}`;
+        ? `/api/files/page/${pageId}?parentId=${parentId}`
+        : `/api/files/page/${pageId}`;
       const data = await apiGet<{ files: StorageItem[] }>(endpoint);
       return data.files;
     },
-    enabled: !!parentPageId,
+    enabled: !!pageId,
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
@@ -29,13 +29,13 @@ export function useEditorStorage(parentPageId: string | null | undefined, parent
       file,
       projectId,
       workspaceId,
-      parentPageId,
+      pageId,
       parentId,
     }: {
       file: File;
       projectId: string;
       workspaceId: string;
-      parentPageId: string;
+      pageId: string;
       parentId?: string | null;
     }) => {
       const timestamp = Date.now();
@@ -50,7 +50,7 @@ export function useEditorStorage(parentPageId: string | null | undefined, parent
       formData.append("file", file);
       formData.append("fileName", fileName);
 
-      const response = await fetch(`${API_BASE_URL}/api/files/upload-r2`, {
+      const response = await fetch(`${API_BASE_URL}/api/files/page/${pageId}/upload-r2`, {
           method: "POST",
           body: formData,
           credentials: "include"
@@ -59,68 +59,70 @@ export function useEditorStorage(parentPageId: string | null | undefined, parent
       if (!response.ok) throw new Error("Upload to R2 proxy failed");
       
       const { url, path } = await response.json();
-      await apiPost(`/api/files/upload`, {
+      await apiPost(`/api/files/page/${pageId}/upload`, {
         filename: file.name,
         size: file.size,
         mimeType: file.type || "application/octet-stream",
         url: `/api/files/r2/${path}`,
-        workspaceId,
-        projectId,
         parentId: parentId || null,
-        parentPageId,
         fileBase64,
       });
     },
     onSuccess: (_, variables) => {
-      if (variables.parentPageId || variables.projectId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor(variables.parentPageId || variables.projectId) });
+      if (variables.pageId || variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId) });
       }
     },
   });
 
   const createFolderMutation = useMutation({
-    mutationFn: ({ name, projectId, workspaceId, parentId, parentPageId }: {
+    mutationFn: ({ name, projectId, workspaceId, parentId, pageId }: {
       name: string;
       projectId: string;
       workspaceId: string;
       parentId?: string | null;
-      parentPageId?: string | null;
-    }) =>
-      createProjectFolder(name, {
+      pageId?: string | null;
+    }) => {
+      if (pageId) {
+        return apiPost(`/api/files/page/${pageId}/folder`, {
+          name,
+          parentId: parentId ?? null,
+        });
+      }
+      return createProjectFolder(name, {
         projectId,
-        workspaceId,
         parentId: parentId ?? null,
-        parentPageId: parentPageId ?? null,
-      }),
+      });
+    },
     onSuccess: (_, variables) => {
-      if (variables.parentPageId || variables.projectId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor(variables.parentPageId || variables.projectId) });
+      if (variables.pageId || variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId) });
       }
     },
   });
 
   const deleteFileMutation = useMutation({
-    mutationFn: (fileId: string) => permanentlyDeleteFile(fileId),
+    mutationFn: (fileId: string) => permanentlyDeleteItem(fileId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor() }),
   });
 
   const renameFileMutation = useMutation({
-    mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameFile(fileId, name),
+    mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameItem(fileId, name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor() }),
   });
 
   const moveFileMutation = useMutation({
-    mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) => moveFile(fileId, parentId),
+    mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) => moveItem(fileId, parentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor() }),
   });
 
   return {
-    children,
+    files: children,
     isLoading,
-    uploadFileMutation,
-    createFolderMutation,
-    deleteFileMutation,
-    renameFileMutation,
-    moveFileMutation,
+    uploadFile: uploadFileMutation,
+    createFolder: createFolderMutation,
+    deleteFile: deleteFileMutation,
+    renameFile: renameFileMutation,
+    moveFile: moveFileMutation,
   };
 }

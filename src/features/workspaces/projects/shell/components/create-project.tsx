@@ -172,6 +172,7 @@ export default function CreateProject({
       modules: string[];
     }) => apiPost(`/api/workspace/${workspaceId}/project`, data),
     onSuccess() {
+      toast.success("Project created successfully");
       queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["projects-header", workspaceId] });
       // Reset

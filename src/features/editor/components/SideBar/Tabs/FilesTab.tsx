@@ -280,7 +280,7 @@ function StorageFolderNode({
 
   // IMPORTANT: Log when folder is clicked and children are fetched
   // NOTE: projectId here is actually the parentPageId (root page ID)
-  const { children, isLoading } = useEditorStorage(
+  const { files: children, isLoading } = useEditorStorage(
     projectId,
     expanded ? folder._id : undefined,
   );
@@ -296,8 +296,8 @@ function StorageFolderNode({
     }
   }, [expanded, children, folder._id, folder.filename, projectId]);
 
-  const { deleteFileMutation, renameFileMutation } = useEditorStorage(projectId, undefined);
-  
+  const { deleteFile, renameFile } = useEditorStorage(projectId, undefined);
+
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -362,13 +362,13 @@ function StorageFolderNode({
                 setRenamingId(null);
                 return;
               }
-              renameFileMutation.mutate(
+              renameFile.mutate(
                 { fileId: folder._id, name: n },
                 { onSuccess: () => setRenamingId(null) },
               );
             }}
             onCancel={() => setRenamingId(null)}
-            isPending={renameFileMutation.isPending}
+            isPending={renameFile.isPending}
           />
         ) : (
           <>
@@ -392,7 +392,7 @@ function StorageFolderNode({
                 className="text-[12px]! text-destructive focus:text-destructive"
                 onClick={(e) => {
                   e.stopPropagation();
-                  deleteFileMutation.mutate(folder._id);
+                  deleteFile.mutate(folder._id);
                 }}
               >
                 <Trash2 className="size-3.5 mr-2" />
@@ -464,7 +464,7 @@ function StorageFileRow({
 }) {
   const isImage = item.mimeType?.startsWith("image/");
   const { icon: Icon, color } = getStorageIcon(item);
-  const { deleteFileMutation, renameFileMutation } = useEditorStorage(null, undefined);
+  const { deleteFile, renameFile } = useEditorStorage(null, undefined);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -497,13 +497,13 @@ function StorageFileRow({
               setRenamingId(null);
               return;
             }
-            renameFileMutation.mutate(
+            renameFile.mutate(
               { fileId: item._id, name: n },
               { onSuccess: () => setRenamingId(null) },
             );
           }}
           onCancel={() => setRenamingId(null)}
-          isPending={renameFileMutation.isPending}
+          isPending={renameFile.isPending}
         />
       ) : (
         <>
@@ -537,7 +537,7 @@ function StorageFileRow({
               className="text-[12px]! text-destructive focus:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
-                deleteFileMutation.mutate(item._id);
+                deleteFile.mutate(item._id);
               }}
             >
               <Trash2 className="size-3.5 mr-2" />
@@ -632,7 +632,7 @@ async function findPdfPageForTitle(
         }
       }
     }
-  } catch {}
+  } catch { }
 
   for (let i = 1; i <= doc.numPages; i++) {
     try {
@@ -640,7 +640,7 @@ async function findPdfPageForTitle(
       const content = await page.getTextContent();
       const text = (content.items as any[]).map((it) => it.str).join(" ");
       if (text.toLowerCase().includes(needle)) return i;
-    } catch {}
+    } catch { }
   }
 
   return null;
@@ -796,10 +796,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // Storage files (images, pdfs, etc.) - FETCH BY PARENT PAGE ID, NOT PROJECT ID
   // Each root page has its own independent file system
   const {
-    children: projectFiles,
+    files: projectFiles,
     isLoading: projectFilesLoading,
-    uploadFileMutation,
-    createFolderMutation,
+    uploadFile,
+    createFolder,
   } = useEditorStorage(parentPageId || null, undefined);
 
   // Automatic refetch handled by useQuery dependencies.
@@ -814,7 +814,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     );
   }, [projectFiles, parentPageId]);
 
-  
+
   const queryClient = useQueryClient();
 
   const handleOpenPreview = useCallback(
@@ -977,8 +977,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleCreateFolder = () => {
     const name = newFolderName.trim();
     if (!parentPageId || !projectId || !name) return;
-    createFolderMutation.mutate(
-      { name, projectId, workspaceId, parentPageId },
+    createFolder.mutate(
+      { name, projectId, workspaceId, pageId: parentPageId },
       {
         onSuccess: () => {
           setIsCreatingFolder(false);
@@ -1120,11 +1120,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             name !== file.name
               ? new File([file], name, { type: file.type })
               : file;
-          await uploadFileMutation.mutateAsync({
+          await uploadFile.mutateAsync({
             file: renamedFile,
             projectId,
             workspaceId,
-            parentPageId,
+            pageId: parentPageId,
           });
         } catch (err) {
           console.error("Failed to upload asset:", err);
@@ -1155,12 +1155,12 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             const parentPath = parts.slice(0, -1).join("/");
             const parentId = parentPath ? folderIdMap[parentPath] : null;
 
-            const created = await createFolderMutation.mutateAsync({
+            const created = await createFolder.mutateAsync({
               name: folderName,
               projectId,
               workspaceId,
               parentId: parentId ?? undefined,
-              parentPageId,
+              pageId: parentPageId,
             });
             const folderId = (created as any).folder?._id ?? (created as any)._id;
             folderIdMap[folderPath] = folderId;
@@ -1170,7 +1170,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             const parts = name.split("/");
             const rawFileName = parts[parts.length - 1];
             const folderPath = parts.slice(0, -1).join("/");
-            
+
             const effectiveFileName =
               conflict === "duplicate" && resolution === "suffix"
                 ? autoSuffix(rawFileName)
@@ -1187,7 +1187,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   reader.onerror = reject;
                   reader.readAsText(file);
                 });
-                
+
                 const fullTitle = folderPath ? `${folderPath}/${effectiveFileName}` : effectiveFileName;
 
                 if (conflict === "duplicate" && resolution === "overwrite") {
@@ -1214,16 +1214,16 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               }
             } else {
               const parentId = folderPath ? folderIdMap[folderPath] : null;
-              const uploadFile =
+              const fileToUpload =
                 effectiveFileName !== file.name
                   ? new File([file], effectiveFileName, { type: file.type })
                   : file;
               try {
-                await uploadFileMutation.mutateAsync({
-                  file: uploadFile,
+                await uploadFile.mutateAsync({
+                  file: fileToUpload,
                   projectId,
                   workspaceId,
-                  parentPageId,
+                  pageId: parentPageId,
                   parentId: parentId ?? undefined,
                 });
               } catch (uploadErr) {
@@ -1299,8 +1299,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     editor.executeEdits("insert-asset", edits);
     editor.focus();
   };
-
-  // GöÇGöÇ Drag & drop GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
 
   const readEntriesRecursively = useCallback(
     async (
@@ -1396,8 +1394,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     e.preventDefault();
   };
 
-  // GöÇGöÇ Upload-to-folder callback GöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇGöÇ
-
   const handleUploadToFolder = useCallback(
     (files: File[], folderId: string) => {
       if (!parentPageId) return;
@@ -1410,7 +1406,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       files.forEach((file) => {
         const ext = "." + (file.name.split(".").pop() ?? "").toLowerCase();
         if (TEX_EXTS.has(ext)) {
-          // Tex file dropped into a folder GÇö create as PageModel child
+
           const reader = new FileReader();
           reader.onload = () => {
             createFileMutation.mutate(
@@ -1421,14 +1417,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           reader.readAsText(file);
         } else {
           // Binary asset GÇö upload to R2
-          uploadFileMutation.mutate(
-            { file, projectId: tabProjectId, workspaceId, parentPageId, parentId: folderId },
+          uploadFile.mutate(
+            { file, projectId: tabProjectId, workspaceId, pageId: parentPageId, parentId: folderId },
             { onSettled: settle },
           );
         }
       });
     },
-    [parentPageId, workspaceId, uploadFileMutation, createFileMutation, parentPage],
+    [parentPageId, workspaceId, uploadFile, createFileMutation, parentPage],
   );
 
 
@@ -1537,7 +1533,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               placeholder="folder name"
               onCommit={handleCreateFolder}
               onCancel={handleCancelCreateFolder}
-              isPending={createFolderMutation.isPending}
+              isPending={createFolder.isPending}
             />
           )}
 
@@ -1574,9 +1570,9 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 | { kind: "folder"; data: StorageItem }
                 | { kind: "asset"; data: StorageItem }
                 | {
-                    kind: "tex";
-                    data: { _id: string; title: string; updatedAt: string };
-                  };
+                  kind: "tex";
+                  data: { _id: string; title: string; updatedAt: string };
+                };
 
               const items: UnifiedItem[] = [];
 
@@ -1922,10 +1918,9 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             >
               {pendingUploads.some((p) => p.conflict === "duplicate" && !p.resolution)
                 ? "Resolve conflicts first"
-                : `Upload ${
-                  pendingUploads.length > 0
-                    ? `${pendingUploads.length} file${pendingUploads.length > 1 ? "s" : ""}`
-                    : ""
+                : `Upload ${pendingUploads.length > 0
+                  ? `${pendingUploads.length} file${pendingUploads.length > 1 ? "s" : ""}`
+                  : ""
                 }`}
             </button>
           </div>

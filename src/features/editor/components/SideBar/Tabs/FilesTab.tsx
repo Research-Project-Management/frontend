@@ -54,13 +54,13 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext, type AssetInfo } from "@/features/editor/store/page-context";
-import { usePageFiles } from '@/features/workspaces/projects/all-drafts/services/page.services';
-import { useCreatePageFile } from '@/features/workspaces/projects/all-drafts/services/page.services';
-import { useSetPageMainFile } from '@/features/workspaces/projects/all-drafts/services/page.services';
-import { useDeletePage } from '@/features/workspaces/projects/all-drafts/services/page.services';
-import { useUpdatePageTitle } from '@/features/workspaces/projects/all-drafts/services/page.services';
-import { useUpdatePageContent } from '@/features/workspaces/projects/all-drafts/services/page.services';
-import { usePage } from '@/features/workspaces/projects/all-drafts/services/page.services';
+import { usePageFiles } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { useCreatePageFile } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { useSetPageMainFile } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { useDeletePage } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { useUpdatePageTitle } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { useUpdatePageContent } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { usePage } from '@/features/workspaces/projects/all-pages/services/page.services';
 
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 

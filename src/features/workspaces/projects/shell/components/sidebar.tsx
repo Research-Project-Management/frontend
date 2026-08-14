@@ -32,12 +32,12 @@ const MODULE_ORDER: ProjectModuleKey[] = [
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
   overview: { label: 'Overview', icon: ChartBarBig },
-  drafts: { label: 'Drafts', icon: PenLine },
+  drafts: { label: 'Pages', icon: PenLine },
   tasks: { label: 'Tasks', icon: KanbanSquare },
   cycles: { label: 'Cycles', icon: RotateCcw },
   storage: { label: 'Storage', icon: Cloud },
   collection: { label: 'Collection', icon: BookMarked },
-  stickies: { label: 'Notes', icon: StickyNote },
+  stickies: { label: 'Stickies', icon: Layers2 },
   settings: { label: 'Settings', icon: Settings },
 };
 
@@ -61,7 +61,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   const navItems: NavItem[] = [
     { label: 'Home', icon: Home, to: `/${workspaceId}`, exact: true },
     { label: 'Your Work', icon: UserStar, to: `/${workspaceId}/your-work`, exact: false },
-    { label: 'All Drafts', icon: PenLine, to: `/${workspaceId}/drafts`, exact: false },
+    { label: 'All pages', icon: PenLine, to: `/${workspaceId}/pages`, exact: false },
     { label: 'Stickies', icon: Layers2, to: `/${workspaceId}/stickies`, exact: false },
   ];
 
@@ -107,7 +107,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <aside className='h-full w-60 overflow-x-hidden border-r border-border bg-card p-2 py-4'>
+    <aside className='h-full w-60 overflow-x-hidden border-r border-border bg-transparent p-2 py-4'>
       {/* Header */}
       <div className='mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground'>
         <span>Projects</span>
@@ -198,7 +198,7 @@ export default function SideBar({ onToggle }: { onToggle?: () => void }) {
                   </CollapsibleTrigger>
                 </div>
 
-                <CollapsibleContent className='overflow-hidden space-y-1 data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up'>
+                <CollapsibleContent className='overflow-hidden'>
                   {MODULE_ORDER.filter((k) => projectModules.includes(k)).map((moduleKey) => {
                     const mod = modulesConfig[moduleKey];
                     if (!mod) return null;

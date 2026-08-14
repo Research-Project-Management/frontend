@@ -301,7 +301,7 @@ export default function ListView({
                     ) : (
                       <>
                         {item.author?.avatar ? (
-                          <img src={item.author.avatar} alt="" className="size-5 rounded-full shrink-0" />
+                          <img src={resolveFileUrl(item.author.avatar) || ""} alt="" className="size-5 rounded-full shrink-0" />
                         ) : (
                           <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
                             <span className="text-[11px] font-medium text-muted-foreground">

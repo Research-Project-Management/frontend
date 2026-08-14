@@ -82,6 +82,7 @@ export const queryKeys = {
     list: (workspaceId: string, filters?: Record<string, unknown>) =>
       ['storage', workspaceId, 'list', filters] as const,
     detail: (id: string) => ['storage', 'detail', id] as const,
+    storageFilesSearch: (workspaceId?: string, projectId?: string, query?: string) => ['storage', 'search', workspaceId, projectId, query] as const,
     
     // Project storage keys
     projectFiles: (projectId?: string, parentId?: string | null) => 
@@ -114,8 +115,16 @@ export const queryKeys = {
   // ──────────────── Stickies ────────────────
   stickies: {
     all: ['stickies'] as const,
-    list: (workspaceId: string) => ['stickies', workspaceId, 'list'] as const,
-    detail: (id: string) => ['stickies', 'detail', id] as const,
+    workspace: (workspaceId: string) => ['stickies', 'workspace', workspaceId] as const,
+    workspaceList: (workspaceId: string, search?: string, projectId?: string) => ['stickies', 'workspace', workspaceId, { search, projectId }] as const,
+    projectList: (projectId: string, search?: string) => ['stickies', 'project', projectId, { search }] as const,
+  },
+
+  // ──────────────── Home ────────────────
+  home: {
+    all: ['home'] as const,
+    recent: (workspaceId: string) => ['home', workspaceId, 'recent'] as const,
+    activity: (workspaceId: string) => ['home', workspaceId, 'activity'] as const,
   },
 
   // ──────────────── Profile / Settings ────────────────

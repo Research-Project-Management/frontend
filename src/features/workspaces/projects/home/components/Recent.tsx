@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import HomeSection from './HomeSection';
+import { Section } from './layouts/section';
 import { Loader2, Folder, FileText, File } from 'lucide-react';
 import { useRecentItems } from '../hooks/use-home';
 import { useParams } from 'next/navigation';
@@ -13,7 +13,7 @@ export default function Recent() {
   const { data: items = [], isLoading } = useRecentItems();
 
   return (
-    <HomeSection title='Recent'>
+    <Section title='Recent'>
       {isLoading ? (
         <div className='flex items-center justify-center py-8'>
           <Loader2 className='w-6 h-6 animate-spin text-primary' />
@@ -25,23 +25,23 @@ export default function Recent() {
               item.type === 'project'
                 ? `/${workspaceId}/projects/${item.id}/overview`
                 : item.type === 'page' && item.project
-                ? `/${workspaceId}/projects/${item.project._id}/pages/${item.id}`
-                : item.type === 'file' && item.project
-                ? `/${workspaceId}/projects/${item.project._id}/storage`
-                : `/${workspaceId}/storage`;
+                  ? `/${workspaceId}/projects/${item.project._id}/pages/${item.id}`
+                  : item.type === 'file' && item.project
+                    ? `/${workspaceId}/projects/${item.project._id}/storage`
+                    : `/${workspaceId}/storage`;
 
             const Icon =
               item.type === 'project'
                 ? Folder
                 : item.type === 'page'
-                ? FileText
-                : File;
+                  ? FileText
+                  : File;
 
             return (
               <Link
                 key={item.id}
                 href={linkTo}
-                className='flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent hover:bg-secondary/60 hover:border-border/40 transition-all duration-200 group cursor-pointer'
+                className='flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:bg-muted/60 hover:border-border/40 transition-colors duration-200 group cursor-pointer'
               >
                 <Icon className='size-4 text-muted-foreground group-hover:text-primary transition-colors' />
                 <span className='text-sm font-medium text-foreground truncate flex-1'>
@@ -57,10 +57,10 @@ export default function Recent() {
           })}
         </div>
       ) : (
-        <div className='p-8 bg-secondary/20 border border-dashed border-border rounded-xl text-center text-xs text-muted-foreground'>
+        <div className='p-8 bg-muted/20 border border-dashed border-border rounded-lg text-center text-xs text-muted-foreground'>
           No recent items
         </div>
       )}
-    </HomeSection>
+    </Section>
   );
 }

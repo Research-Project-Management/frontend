@@ -37,7 +37,12 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <Providers>
           {children}
-          <Toaster richColors position='top-right' />
+          <Toaster 
+            position='bottom-right' 
+            toastOptions={{
+              className: 'bg-background text-foreground border-border shadow-lg font-sans'
+            }}
+          />
         </Providers>
 
       </body>

@@ -10,7 +10,7 @@ export default function Header({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-border bg-background/80 p-4 backdrop-blur-md">
+    <header className="flex items-center justify-between bg-transparent p-4">
       <div className="flex items-center gap-2" style={{ paddingLeft: "var(--header-offset, 0px)" }}>
         <h1 className="font-semibold text-foreground transition-all duration-300">{title}</h1>
       </div>

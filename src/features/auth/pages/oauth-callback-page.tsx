@@ -25,7 +25,7 @@ const OAuthCallbackPage = () => {
       .invalidateQueries({ queryKey: queryKeys.auth.session })
       .then(() => {
         // Fetch workspaces to determine routing
-        apiGet<{ workspaces: any[] }>('/api/workspaces')
+        apiGet<{ workspaces: any[] }>('/api/workspace')
           .then(data => {
             if (data.workspaces && data.workspaces.length > 0) {
               router.replace(`/${data.workspaces[0].url}`);

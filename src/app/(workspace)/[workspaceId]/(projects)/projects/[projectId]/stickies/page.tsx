@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import StickyPage from "@/features/workspaces/projects/stickies/pages/StickyPage";
+import StickyPage from "@/features/workspaces/projects/project-id/stickies/pages/StickyPage";
 
-export const metadata: Metadata = { title: 'Notes - Flux' };
+export const metadata: Metadata = { title: 'Stickies - Flux' };
 
-export default function ProjectStickiesPage() {
-  return <StickyPage scope="project" />;
+export default function ProjectStickiesPageRoute() {
+  return <StickyPage />;
 }

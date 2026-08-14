@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useProjectOverview } from '@/features/workspaces/projects/shell/services/project.services';
-import { useDocumentTitle } from '@/features/workspaces/projects/stickies/hooks/use-document-title';
+import { useDocumentTitle } from '@/features/workspaces/projects/shell/hooks/use-document-title';
 import {
   HardDrive,
   CalendarDays,
@@ -16,7 +16,6 @@ import { Progress } from "@/shared/components/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import { memo } from "react";
 import Topbar from '../components/Topbar';
-import ProjectRecentActivity from '../components/RecentActivity';
 
 function getRoleName(member?: { role?: string; user?: any } | string): string {
   const role = typeof member === "string" ? member : member?.role;
@@ -273,17 +272,6 @@ export default function ProjectOverview() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
-        {/* Project Activity */}
-        <div className="col-span-4">
-          <Section title="Recent Activity">
-            <ProjectRecentActivity
-              projectId={projectId!}
-              workspaceId={workspaceId!}
-              recentFiles={stats.files.recent}
-            />
-          </Section>
-        </div>
-
         {/* Team List */}
         <div className="col-span-3">
           <Section title="Team Members">

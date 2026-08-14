@@ -7,7 +7,7 @@ export * from './shell';
 // ── Workspace sections ────────────────────────────────────────────────────────
 export * from './home';
 export * from './your-work';
-export * from './all-drafts';
+export * from './all-pages';
 export * from './stickies';
 
 // ── Project Detail specific modules ───────────────────────────────────────────

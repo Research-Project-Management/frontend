@@ -1,11 +1,21 @@
-// ── Home services ─────────────────────────────────────────────────────────────
-// Fetchers for home dashboard data (recent items, activity feed, etc.)
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, apiPost } from '@/shared/lib/api';
 
-import type { RecentItem, Activity } from '../types/home.types';
+import type { RecentItem } from '../types/home.types';
 
-export const fetchRecentItems = (workspaceId: string, signal?: AbortSignal) =>
+export const getRecentItems = (workspaceId: string, signal?: AbortSignal) =>
   apiGet<RecentItem[]>(`/api/dashboard/workspaces/${workspaceId}/recent`, { signal });
 
-export const fetchActivityFeed = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet<Activity[]>(`/api/dashboard/workspaces/${workspaceId}/activity`, { signal });
+export const getStickies = async (workspaceId: string) => {
+  const data = await apiGet<{ stickies: any[] }>(`/api/workspace/${workspaceId}/stickies`);
+  return data.stickies;
+};
+
+export const createSticky = async (variables: {
+  workspaceId: string;
+  title?: string;
+  content: string;
+  color?: string;
+  position?: { x: number; y: number };
+}) => {
+  return apiPost(`/api/workspace/${variables.workspaceId}/stickies`, variables);
+};

@@ -128,7 +128,7 @@ export default function GridView({
                   {item.author && (
                     <div className="flex items-center gap-1.5" title={item.author.name}>
                       {item.author.avatar ? (
-                        <img src={item.author.avatar} alt="" className="size-4 rounded-full" />
+                        <img src={resolveFileUrl(item.author.avatar) || ""} alt="" className="size-4 rounded-full" />
                       ) : (
                         <div className="size-4 rounded-full bg-muted flex items-center justify-center">
                           <span className="text-[10px] font-medium">{item.author.name?.charAt(0)?.toUpperCase()}</span>

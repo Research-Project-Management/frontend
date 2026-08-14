@@ -103,7 +103,7 @@ export default function Topbar({
   };
 
   return (
-    <header className="flex items-center px-4 h-13 border-b border-border bg-background sticky top-0 z-50 shrink-0 gap-0">
+    <header className="flex items-center px-4 h-13 bg-background border-b border-border sticky top-0 z-50 shrink-0 gap-0">
       {/* Left: Breadcrumbs */}
       <div className="flex items-center min-w-0 flex-1">
         {project && (
@@ -161,7 +161,7 @@ export default function Topbar({
         )}
 
         {/* Module Title */}
-        <div 
+        <div
           onClick={onTitleClick}
           className={cn(
             "flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-all ml-1",

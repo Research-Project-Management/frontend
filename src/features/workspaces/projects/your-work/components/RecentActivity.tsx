@@ -3,7 +3,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useActivityFeed } from '@/features/workspaces/projects/home';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 
 export default function RecentActivity({ 
@@ -14,7 +13,8 @@ export default function RecentActivity({
   limit?: number;
 }) {
   const { workspaceId } = useParams() as { workspaceId: string };
-  const { data: activities = [], isLoading } = useActivityFeed();
+  const activities: any[] = [];
+  const isLoading = false;
 
   return (
     <div className="w-full">

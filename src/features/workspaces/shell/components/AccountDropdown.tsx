@@ -11,6 +11,7 @@ import {
 } from '@/shared/components/ui';
 import { logoutUser, useAuth } from '@/features/auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { resolveFileUrl } from '@/shared/utils/url';
 import AccountModal from '@/features/account/pages/AccountModal';
 
 interface AccountDropdownProps {
@@ -32,13 +33,11 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-accent/50 outline-none data-[state=open]:bg-accent/50'>
+        <DropdownMenuTrigger className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-accent/50 outline-none data-[state=open]:bg-accent/50'>
             <Avatar className='size-7 rounded-full'>
-      {user.avatar ? <AvatarImage src={user.avatar} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
+      {user.avatar ? <AvatarImage src={resolveFileUrl(user.avatar) || undefined} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
       <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
     </Avatar>
-          </button>
         </DropdownMenuTrigger>
         
         <DropdownMenuContent align='end' className='w-[260px] p-2' alignOffset={0}>
@@ -55,7 +54,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
             {/* Content */}
             <div className='relative z-10 flex flex-col items-center gap-2'>
               <Avatar className='size-12 rounded-full border border-background shadow-sm'>
-      {user.avatar ? <AvatarImage src={user.avatar} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
+      {user.avatar ? <AvatarImage src={resolveFileUrl(user.avatar) || undefined} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
       <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
     </Avatar>
               <div className='flex flex-col items-center text-center'>

@@ -29,7 +29,7 @@ const RegisterPage = () => {
   useEffect(() => {
     if (!isAuthLoading && user) {
       import('@/shared/lib/api').then(({ apiGet }) => {
-        apiGet<{ workspaces: any[] }>('/api/workspaces')
+        apiGet<{ workspaces: any[] }>('/api/workspace')
           .then(data => {
             if (data.workspaces && data.workspaces.length > 0) {
               router.replace(`/${data.workspaces[0].url}`);

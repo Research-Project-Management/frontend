@@ -39,10 +39,10 @@ export default function YourWorkPage() {
 
   const personalTasks = useMemo(() => {
     if (!user) return { assigned: [], upcomingCount: 0, upcoming: [], completed: [] };
-    
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     const assigned = tasks.filter((t: any) => {
       const assigneeId = typeof t.assignee === 'object' ? t.assignee?._id : t.assignee;
       return assigneeId === user._id;
@@ -130,7 +130,8 @@ export default function YourWorkPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden bg-background print:h-auto print:overflow-visible print:bg-white">
       {/* Premium Print Stylesheet */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media print {
           /* Hide sidebar, topbar, nav, dropdown, fallback buttons, and popovers */
           nav, aside, header, button, .no-print, [role="menu"], [data-state] {
@@ -191,8 +192,8 @@ export default function YourWorkPage() {
                   onClick={() => setActiveTab(tab)}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-all duration-200",
-                    isActive 
-                      ? "bg-secondary text-foreground font-semibold" 
+                    isActive
+                      ? "bg-secondary text-foreground font-semibold"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   )}
                 >
@@ -206,7 +207,7 @@ export default function YourWorkPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </Topbar>
-      
+
       {/* Printable Report Header */}
       <div className="hidden print:flex flex-col gap-1 border-b-2 border-zinc-800 pb-4 mb-6">
         <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Your Works Status Report</h1>
@@ -216,20 +217,20 @@ export default function YourWorkPage() {
       <div className="flex-1 p-6 space-y-10 overflow-y-auto print:overflow-visible print:p-0 print:space-y-6 print:h-auto">
         {activeTab === "Summary" && (
           <div className="space-y-10 animate-fade-in animate-slide-up">
-            <OverviewSection 
-                assigned={personalTasks.assigned.length} 
-                upcomingCount={personalTasks.upcomingCount}
-                completed={personalTasks.completed.length}
-                onCardClick={(tab: any) => setActiveTab(tab)}
+            <OverviewSection
+              assigned={personalTasks.assigned.length}
+              upcomingCount={personalTasks.upcomingCount}
+              completed={personalTasks.completed.length}
+              onCardClick={(tab: any) => setActiveTab(tab)}
             />
             <QuickProjects />
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
-                <div className="lg:col-span-4">
-                  <RecentActivity taskProjectMap={taskProjectMap} />
-               </div>
-               <div className="lg:col-span-3">
-                  <UpcomingSection onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
-               </div>
+              <div className="lg:col-span-4">
+                <RecentActivity taskProjectMap={taskProjectMap} />
+              </div>
+              <div className="lg:col-span-3">
+                <UpcomingSection onTaskClick={handleOpenTask} taskProjectMap={taskProjectMap} />
+              </div>
             </div>
           </div>
         )}
@@ -272,23 +273,23 @@ export default function YourWorkPage() {
 }
 
 const COLUMN_NAMES: Record<string, string> = {
-    backlog: "Backlog",
-    todo: "To Do",
-    doing: "In Progress",
-    review: "In Review",
-    done: "Done",
+  backlog: "Backlog",
+  todo: "To Do",
+  doing: "In Progress",
+  review: "In Review",
+  done: "Done",
 };
 
-function TaskListView({ 
-    title, 
-    tasks, 
-    onTaskClick,
-    taskProjectMap = {}
-}: { 
-    title: string; 
-    tasks: any[]; 
-    onTaskClick: (taskId: string) => void;
-    taskProjectMap?: Record<string, { id: string; name: string }>;
+function TaskListView({
+  title,
+  tasks,
+  onTaskClick,
+  taskProjectMap = {}
+}: {
+  title: string;
+  tasks: any[];
+  onTaskClick: (taskId: string) => void;
+  taskProjectMap?: Record<string, { id: string; name: string }>;
 }) {
   const { workspaceId } = useParams() as { workspaceId: string };
 
@@ -313,167 +314,166 @@ function TaskListView({
 
   useEffect(() => {
     if (isReady && typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(expandedIds)));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(expandedIds)));
     }
   }, [expandedIds, isReady, STORAGE_KEY]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
 
   const groups = useMemo(() => {
     const map = new Map<string, any[]>();
     tasks.forEach(task => {
-        const colId = task.columnId || 'todo';
-        if (!map.has(colId)) map.set(colId, []);
-        map.get(colId)!.push(task);
+      const colId = task.columnId || 'todo';
+      if (!map.has(colId)) map.set(colId, []);
+      map.get(colId)!.push(task);
     });
 
     // Sort tasks within each group by due date
     map.forEach((items) => {
-        items.sort((a, b) => {
-            if (!a.dueDate) return 1;
-            if (!b.dueDate) return -1;
-            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        });
+      items.sort((a, b) => {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
     });
 
     const order = ['backlog', 'todo', 'doing', 'review', 'done'];
     return Array.from(map.entries())
-        .sort((a, b) => {
-            const indexA = order.indexOf(a[0]);
-            const indexB = order.indexOf(b[0]);
-            if (indexA === -1 && indexB === -1) return a[0].localeCompare(b[0]);
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            return indexA - indexB;
-        })
-        .map(([key, items]) => {
-            const isStandard = COLUMN_NAMES[key];
-            return {
-                key,
-                label: COLUMN_NAMES[key] || key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-                color: DEFAULT_TASK_COLUMN_COLORS[key] || (isStandard ? "#6b7280" : "#94a3b8"),
-                items
-            };
-        });
+      .sort((a, b) => {
+        const indexA = order.indexOf(a[0]);
+        const indexB = order.indexOf(b[0]);
+        if (indexA === -1 && indexB === -1) return a[0].localeCompare(b[0]);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      })
+      .map(([key, items]) => {
+        const isStandard = COLUMN_NAMES[key];
+        return {
+          key,
+          label: COLUMN_NAMES[key] || key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          color: DEFAULT_TASK_COLUMN_COLORS[key] || (isStandard ? "#6b7280" : "#94a3b8"),
+          items
+        };
+      });
   }, [tasks]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between px-1 print:mb-2">
         <h2 className="text-zinc-400 font-semibold uppercase text-[11px] tracking-wider print:text-zinc-700 print:text-xs">
-            {title}
-            <span className="ml-2 text-[12px] text-zinc-400 font-normal print:text-zinc-600">({tasks.length})</span>
+          {title}
+          <span className="ml-2 text-[12px] text-zinc-400 font-normal print:text-zinc-600">({tasks.length})</span>
         </h2>
       </div>
-      
+
       <div className="space-y-4 print:space-y-6">
         {groups.length === 0 ? (
           <div className="text-center py-16 bg-white border border-border/40 rounded-xl">
             <div className="size-12 rounded-full bg-zinc-50 flex items-center justify-center mx-auto mb-3">
-                <CheckSquare className="size-6 text-zinc-200" />
+              <CheckSquare className="size-6 text-zinc-200" />
             </div>
             <p className="text-zinc-400 text-xs font-medium italic">No tasks found.</p>
           </div>
         ) : (
           groups.map((group) => {
             const isCollapsed = expandedIds.has(group.key);
-            
+
             return (
-            <div 
-              key={group.key} 
-              className="border border-border/40 rounded-xl overflow-hidden bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.015)] transition-all duration-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] print:border-zinc-300 print:shadow-none print:bg-white"
-            >
+              <div
+                key={group.key}
+                className="border border-border/40 rounded-xl overflow-hidden bg-card/60 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.015)] transition-all duration-300 hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] print:border-zinc-300 print:shadow-none print:bg-white"
+              >
                 {/* Group Header */}
-                <div 
-                    className="flex items-center gap-2.5 px-4 py-3 bg-[#f8f9fa] border-b border-border/40 transition-colors group cursor-pointer hover:bg-zinc-100/50 print:bg-zinc-50 print:border-zinc-300"
-                    onClick={() => toggleExpand(group.key)}
+                <div
+                  className="flex items-center gap-2.5 px-4 py-3 bg-[#f8f9fa] border-b border-border/40 transition-colors group cursor-pointer hover:bg-zinc-100/50 print:bg-zinc-50 print:border-zinc-300"
+                  onClick={() => toggleExpand(group.key)}
                 >
-                    <ChevronRight 
-                        className={`size-3.5 text-zinc-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''} print:hidden`} 
-                    />
-                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-                    <span className="text-[13.5px] font-bold text-zinc-800 tracking-tight">{group.label}</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-200/50 text-zinc-500 font-medium">{group.items.length}</span>
+                  <ChevronRight
+                    className={`size-3.5 text-zinc-400 transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''} print:hidden`}
+                  />
+                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                  <span className="text-[13.5px] font-bold text-zinc-800 tracking-tight">{group.label}</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-200/50 text-zinc-500 font-medium">{group.items.length}</span>
                 </div>
 
                 <div className={cn(
-                    "bg-white divide-y divide-border/30",
-                    isCollapsed ? "hidden print:block print:divide-y print:divide-zinc-200" : "block"
+                  "bg-white divide-y divide-border/30",
+                  isCollapsed ? "hidden print:block print:divide-y print:divide-zinc-200" : "block"
                 )}>
-                    {group.items.map((task) => {
-                        const projectInfo = taskProjectMap[task._id];
-                        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.columnId !== 'done';
-                        
-                        return (
-                        <div 
-                            key={task._id} 
-                            onClick={() => onTaskClick(task._id)}
-                            className="w-full flex items-center gap-4 px-5 py-3.5 bg-white hover:bg-zinc-50/70 transition-all text-left group cursor-pointer relative"
-                        >
-                            <div className="flex-1 min-w-0 flex items-center gap-3">
-                                <CheckSquare className="size-4 text-zinc-300 shrink-0 group-hover:text-primary transition-colors print:text-zinc-400" />
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 min-w-0">
-                                    <span className={`text-[13.5px] truncate font-medium transition-all duration-200 ${
-                                        task.columnId === 'done' ? "text-zinc-400 line-through font-normal" : "text-zinc-800 group-hover:text-primary"
-                                    }`}>
-                                        {task.title}
-                                    </span>
+                  {group.items.map((task) => {
+                    const projectInfo = taskProjectMap[task._id];
+                    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.columnId !== 'done';
 
-                                    {projectInfo && (
-                                        <span className="inline-flex items-center text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 w-fit print:text-zinc-700 print:bg-zinc-100 print:border-zinc-300">
-                                            {projectInfo.name}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
+                    return (
+                      <div
+                        key={task._id}
+                        onClick={() => onTaskClick(task._id)}
+                        className="w-full flex items-center gap-4 px-5 py-3.5 bg-white hover:bg-zinc-50/70 transition-all text-left group cursor-pointer relative"
+                      >
+                        <div className="flex-1 min-w-0 flex items-center gap-3">
+                          <CheckSquare className="size-4 text-zinc-300 shrink-0 group-hover:text-primary transition-colors print:text-zinc-400" />
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 min-w-0">
+                            <span className={`text-[13.5px] truncate font-medium transition-all duration-200 ${task.columnId === 'done' ? "text-zinc-400 line-through font-normal" : "text-zinc-800 group-hover:text-primary"
+                              }`}>
+                              {task.title}
+                            </span>
 
-                            {/* Metadata & Dates */}
-                            <div className="flex items-center gap-3 shrink-0 print:gap-4">
-                                {/* Meta Icons */}
-                                <div className="flex items-center gap-2 text-zinc-300 transition-colors print:hidden">
-                                    {(task.commentCount ?? 0) > 0 && (
-                                        <div className="flex items-center gap-0.5 text-[11px]" title="Comments">
-                                            <MessageSquare className="size-3" />
-                                            <span>{task.commentCount}</span>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {task.dueDate && (
-                                    <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded transition-all duration-200 ${
-                                        isOverdue
-                                            ? "bg-destructive/10 text-destructive border border-destructive/20 font-semibold print:text-red-700 print:bg-red-50" 
-                                            : "text-zinc-400 group-hover:text-zinc-600 bg-zinc-100 print:text-zinc-600"
-                                    }`}>
-                                        {!isOverdue && <Clock3 className="size-3 print:hidden" />}
-                                        <span className="whitespace-nowrap font-medium">
-                                            {formatDateShort(task.dueDate)}
-                                        </span>
-                                    </span>
-                                )}
-
-                                {task.assignee && (
-                                    <Avatar className="size-5.5 shrink-0 border border-white transition-transform hover:scale-110 print:border-zinc-200">
-                                        <AvatarImage src={task.assignee.avatar} />
-                                        <AvatarFallback className="text-[9px] font-bold bg-zinc-100">
-                                            {task.assignee.name?.charAt(0)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                )}
-                            </div>
+                            {projectInfo && (
+                              <span className="inline-flex items-center text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 w-fit print:text-zinc-700 print:bg-zinc-100 print:border-zinc-300">
+                                {projectInfo.name}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        );
-                    })}
+
+                        {/* Metadata & Dates */}
+                        <div className="flex items-center gap-3 shrink-0 print:gap-4">
+                          {/* Meta Icons */}
+                          <div className="flex items-center gap-2 text-zinc-300 transition-colors print:hidden">
+                            {(task.commentCount ?? 0) > 0 && (
+                              <div className="flex items-center gap-0.5 text-[11px]" title="Comments">
+                                <MessageSquare className="size-3" />
+                                <span>{task.commentCount}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {task.dueDate && (
+                            <span className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded transition-all duration-200 ${isOverdue
+                                ? "bg-destructive/10 text-destructive border border-destructive/20 font-semibold print:text-red-700 print:bg-red-50"
+                                : "text-zinc-400 group-hover:text-zinc-600 bg-zinc-100 print:text-zinc-600"
+                              }`}>
+                              {!isOverdue && <Clock3 className="size-3 print:hidden" />}
+                              <span className="whitespace-nowrap font-medium">
+                                {formatDateShort(task.dueDate)}
+                              </span>
+                            </span>
+                          )}
+
+                          {task.assignee && (
+                            <Avatar className="size-5.5 shrink-0 border border-white transition-transform hover:scale-110 print:border-zinc-200">
+                              <AvatarImage src={task.assignee.avatar} />
+                              <AvatarFallback className="text-[9px] font-bold bg-zinc-100">
+                                {task.assignee.name?.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-            </div>
-          )})
+              </div>
+            )
+          })
         )}
       </div>
     </div>
@@ -481,7 +481,7 @@ function TaskListView({
 }
 
 function formatDateShort(dateString: string) {
-    const date = new Date(dateString);
-    return `${date.getDate()} thg ${date.getMonth() + 1}`;
+  const date = new Date(dateString);
+  return `${date.getDate()} thg ${date.getMonth() + 1}`;
 }
 

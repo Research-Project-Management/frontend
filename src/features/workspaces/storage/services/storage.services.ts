@@ -10,10 +10,13 @@ import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordPa
 
 // ── Read Operations (Workspace-level) ────────────────────────────────────────
 
-export const getAllFiles = (workspaceId: string, parentId?: string | null) =>
-    apiGet<StorageResponse>(parentId
-        ? `/api/files/workspace/${workspaceId}?parentId=${parentId}`
-        : `/api/files/workspace/${workspaceId}`);
+export const getAllFiles = (workspaceId: string, parentId?: string | null) => {
+    let url = `/api/files/workspace/${workspaceId}`;
+    if (parentId !== undefined) {
+      url += `?parentId=${parentId === null ? 'null' : parentId}`;
+    }
+    return apiGet<StorageResponse>(url);
+};
 
 export const getMyFiles = (workspaceId: string) =>
     apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/my-files`);

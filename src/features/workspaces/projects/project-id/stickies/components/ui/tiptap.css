@@ -1,0 +1,97 @@
+/* Tiptap placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  pointer-events: none;
+  height: 0;
+  opacity: 0.6;
+}
+
+/* Checkbox */
+.ProseMirror {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.ProseMirror ul[data-type="taskList"] li > div {
+  margin-top: 5.245px;
+}
+
+.ProseMirror ul[data-type="taskList"] li > label > input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  transform: translateY(1px);
+
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+
+  display: inline-grid;
+  place-content: center;
+}
+
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]::before {
+  content: "";
+  width: 7px;
+  height: 4px;
+  border: 2px solid #fff;
+  border-top: 0;
+  border-right: 0;
+  transform: rotate(-45deg) scale(0);
+}
+
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:checked {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:hover {
+  border-color: rgba(0, 0, 0, 0.55);
+}
+
+.ProseMirror
+  ul[data-type="taskList"]
+  li
+  > label
+  > input[type="checkbox"]:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}

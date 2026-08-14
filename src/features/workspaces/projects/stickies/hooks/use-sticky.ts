@@ -1,77 +1,86 @@
-'use client';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { queryKeys } from "@/shared/constants/query-keys";
+import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.services";
+import type { Sticky } from "../types/sticky.types";
 
-import { useMemo } from "react";
-import { useParams } from "next/navigation";
-import { useStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
-import { useProjectStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
-import { useCreateSticky } from '@/features/workspaces/projects/stickies/services/sticky.services';
-import { useUpdateSticky } from '@/features/workspaces/projects/stickies/services/sticky.services';
-import { useDeleteSticky } from '@/features/workspaces/projects/stickies/services/sticky.services';
-import { useReorderStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
-import { useReorderProjectStickies } from '@/features/workspaces/projects/stickies/services/sticky.services';
+export const useSticky = (workspaceId: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {
+  const queryClient = useQueryClient();
+  const fullQueryKey = queryKeys.stickies.workspaceList(workspaceId, search, projectId);
+  const invalidateKey = queryKeys.stickies.all;
 
-export const useSticky = (options?: { projectId?: string; labels?: string[] }) => {
-  const { workspaceId } = useParams() as { workspaceId: string };
-  const projectId = options?.projectId;
-  const labels = options?.labels;
+  const query = useQuery({
+    queryKey: fullQueryKey,
+    queryFn: () => getStickies(workspaceId, search, projectId),
+    enabled: (options?.enabled ?? true) && !!workspaceId,
+    staleTime: 30_000,
+  });
 
-  // 1. Fetching logic
-  const { data: workspaceStickies = [], isLoading: isLoadingWorkspace } = useStickies(workspaceId!, labels, undefined, undefined, { enabled: !projectId });
-  const { data: projectStickies = [], isLoading: isLoadingProject } = useProjectStickies(projectId!, workspaceId!, labels, { enabled: !!projectId });
+  const create = useMutation({
+    mutationFn: createSticky,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invalidateKey });
+      toast.success("Sticky added", { id: "sticky-action" });
+    },
+    onError: () => toast.error("Failed to add sticky", { id: "sticky-action" }),
+  });
 
-  // Determine which stickies to use
-  const stickies = projectId ? projectStickies : workspaceStickies;
-  const isLoading = projectId ? isLoadingProject : isLoadingWorkspace;
+  const update = useMutation({
+    mutationFn: (variables: { stickyId: string; updates: Partial<Sticky> }) =>
+      updateSticky(variables.stickyId, variables.updates),
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: fullQueryKey });
+      const previous = queryClient.getQueryData(fullQueryKey);
+      queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
+        if (!old) return old;
+        return old.map((sticky) => (sticky._id === variables.stickyId ? { ...sticky, ...variables.updates } : sticky));
+      });
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(fullQueryKey, context?.previous);
+      toast.error("Update failed", { id: "sticky-action" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
+  });
 
-  // 2. Mutations
-  const createMutation = useCreateSticky();
-  const updateMutation = useUpdateSticky();
-  const deleteMutation = useDeleteSticky();
-  const reorderMutation = useReorderStickies();
-  const reorderProjectMutation = useReorderProjectStickies();
+  const remove = useMutation({
+    mutationFn: deleteSticky,
+    onMutate: async (stickyId) => {
+      await queryClient.cancelQueries({ queryKey: fullQueryKey });
+      const previous = queryClient.getQueryData(fullQueryKey);
+      queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
+        if (!old) return old;
+        return old.filter((sticky) => sticky._id !== stickyId);
+      });
+      toast.success("Sticky deleted", { id: "sticky-action" });
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(fullQueryKey, context?.previous);
+      toast.error("Failed to delete", { id: "sticky-action" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
+  });
 
-  const handleCreate = async (variables: {
-    content: string;
-    title?: string;
-    color?: string;
-    position?: { x: number; y: number };
-    labels?: string[];
-    parentStickyId?: string;
-  }) => {
-    return createMutation.mutateAsync({
-      workspaceId: workspaceId!,
-      projectId,
-      ...variables
-    });
-  };
+  const reorder = useMutation({
+    mutationFn: (stickyIds: string[]) => reorderStickies(workspaceId, stickyIds),
+    onMutate: async (stickyIds) => {
+      await queryClient.cancelQueries({ queryKey: fullQueryKey });
+      const previous = queryClient.getQueryData(fullQueryKey);
+      queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
+        if (!old) return old;
+        const mapped = new Map(old.map((sticky) => [sticky._id, sticky]));
+        return stickyIds.map((id: string) => mapped.get(id)).filter(Boolean) as Sticky[];
+      });
+      return { previous };
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(fullQueryKey, context?.previous);
+      toast.error("Reorder failed", { id: "sticky-action" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
+  });
 
-  const handleUpdate = async (stickyId: string, updates: any) => {
-    return updateMutation.mutateAsync({ stickyId, updates });
-  };
-
-  const handleDelete = async (stickyId: string) => {
-    return deleteMutation.mutateAsync(stickyId);
-  };
-
-  const handleReorder = async (stickyIds: string[]) => {
-    if (projectId) {
-      return reorderProjectMutation.mutateAsync({ projectId, stickyIds });
-    }
-    return reorderMutation.mutateAsync(stickyIds);
-  };
-
-  return {
-    stickies,
-    isLoading,
-    createMutation,
-    updateMutation,
-    deleteMutation,
-    reorderMutation,
-    reorderProjectMutation,
-    handleCreate,
-    handleUpdate,
-    handleDelete,
-    handleReorder,
-    isMutating: createMutation.isPending || updateMutation.isPending || deleteMutation.isPending
-  };
+  return { query, mutations: { create, update, remove, reorder } };
 };

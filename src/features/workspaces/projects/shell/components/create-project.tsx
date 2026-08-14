@@ -54,7 +54,7 @@ const ALL_MODULES: {
   { id: "tasks", label: "Tasks" },
   { id: "cycles", label: "Cycles" },
   { id: "storage", label: "Storage" },
-  { id: "stickies", label: "Notes" },
+  { id: "stickies", label: "Stickies" },
   { id: "settings", label: "Settings", locked: true },
 ];
 
@@ -89,7 +89,7 @@ const TEMPLATES: Template[] = [
   {
     id: "writing",
     name: "Writing & Docs",
-    description: "Focus on writing with project notes",
+    description: "Focus on writing with project stickies",
     icon: BookOpen,
     modules: ["overview", "pages", "storage", "stickies", "settings"],
     accent: "ring-zinc-900/80",

@@ -1,13 +1,12 @@
-'use client';
+import type { Metadata } from 'next';
+import { PagesPage } from '@/features/workspaces/projects/all-pages';
 
-import { use } from 'react';
-import { DraftPage } from '@/features/workspaces/projects/all-drafts';
+export const metadata: Metadata = { title: 'Pages · Flux' };
 
-interface Props {
-  params: Promise<{ projectId: string }>;
-}
-
-export default function ProjectPagesPage({ params }: Props) {
-  const { projectId } = use(params);
-  return <DraftPage projectId={projectId} />;
+export default function ProjectPagesRoute({
+  params: { projectId },
+}: {
+  params: { projectId: string };
+}) {
+  return <PagesPage projectId={projectId} />;
 }

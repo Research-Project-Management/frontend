@@ -25,11 +25,11 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="relative flex h-full overflow-hidden bg-background">
+    <div className="relative flex h-full">
       <div
         className={`absolute inset-y-0 left-0 z-40 h-full transition-all duration-300 ease-in-out lg:relative ${
           isSidebarVisible ? "w-60" : "w-0"
-        } overflow-hidden bg-card shadow-lg lg:shadow-none`}
+        } bg-transparent`}
       >
         <div className="h-full w-60">
           <ProjectsSidebar onToggle={() => setIsSidebarVisible(false)} />

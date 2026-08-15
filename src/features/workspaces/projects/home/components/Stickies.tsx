@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
-import { Plus, Loader2, Palette, Bold, Italic, ListTodo, Trash2, Search, X } from 'lucide-react';
-import type { Sticky } from '../types/home.types';
-import { STICKY_COLOR_MAP } from '../types/home.types';
-import { useStickies } from '../hooks/use-stickies';
+import { Plus, Loader2, Search, X } from 'lucide-react';
+import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
+import Card from '@/features/workspaces/projects/stickies/components/card/Card';
+import type { Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
+import { STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
 
 function stripHtml(html: string): string {
   return html
@@ -16,62 +16,21 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function MiniCard({
-  note,
-  workspaceUrl,
-}: {
-  note: Sticky;
-  workspaceUrl: string;
-}) {
-  const colorConfig = STICKY_COLOR_MAP[note.color] || STICKY_COLOR_MAP.yellow;
-  const plainContent = useMemo(
-    () => stripHtml(note.content || ''),
-    [note.content]
-  );
-
-  return (
-    <Link
-      href={`/${workspaceUrl}/stickies`}
-      className='group relative flex flex-col rounded-[6px] overflow-hidden transition-transform duration-200 min-h-[220px]'
-      style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
-    >
-      <div className='flex flex-col gap-2 p-4 grow'>
-        {note.title ? (
-          <p className='text-[15px] font-medium leading-snug break-words'>
-            {note.title}
-          </p>
-        ) : null}
-        <p className='text-[13px] leading-relaxed line-clamp-4 opacity-80 break-words'>
-          {plainContent || (
-            <span className='italic opacity-50'>Empty sticky</span>
-          )}
-        </p>
-      </div>
-
-      <div className="h-11 flex items-center justify-between px-4 shrink-0 mt-auto">
-        <div className="flex items-center gap-[18px] opacity-40">
-          <Palette className="size-[15px]" />
-          <Bold className="size-[15px]" />
-          <Italic className="size-[15px]" />
-          <ListTodo className="size-[15px]" />
-        </div>
-        <Trash2 className="size-[15px] opacity-40" />
-      </div>
-    </Link>
-  );
-}
-
 export default function Stickies() {
   const { workspaceId } = useParams() as { workspaceId: string };
-  const { notes, isLoading, isCreating, handleAdd } = useStickies(workspaceId);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { query, mutations } = useSticky(workspaceId, "", undefined);
+  const notes = (query.data || []) as Sticky[];
+  const isLoading = query.isLoading;
+  const isCreating = mutations.create.isPending;
 
   const filteredNotes = useMemo(() => {
     if (!searchQuery.trim()) return notes;
     const lower = searchQuery.toLowerCase();
-    return notes.filter((n) => 
-      n.title?.toLowerCase().includes(lower) || 
+    return notes.filter((n) =>
+      n.title?.toLowerCase().includes(lower) ||
       stripHtml(n.content || '').toLowerCase().includes(lower)
     );
   }, [notes, searchQuery]);
@@ -79,11 +38,26 @@ export default function Stickies() {
   const preview = useMemo(() => filteredNotes.slice(0, 7), [filteredNotes]);
   const hasMore = filteredNotes.length > 3;
 
+  const handleAdd = () => {
+    if (!workspaceId) return;
+    const lastColor = notes[0]?.color;
+    const idx = STICKY_COLOR_CYCLE.indexOf(lastColor || 'yellow-1');
+    const color = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];
+
+    mutations.create.mutate({
+      workspaceId,
+      content: '<p></p>',
+      color,
+      title: '',
+      position: { x: 0, y: 0 },
+    });
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4 px-1">
-        <h2 className="text-[15px] font-medium text-foreground tracking-tight select-none">
-          Your stickies
+        <h2 className="text-xs font-bold uppercase tracking-wider text-foreground select-none">
+          Stickies
         </h2>
         <div className="flex items-center gap-4">
           <div className="relative flex items-center h-8">
@@ -92,6 +66,7 @@ export default function Stickies() {
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                   <input
+                    aria-label="Search stickies"
                     type="text"
                     autoFocus
                     placeholder="Search stickies..."
@@ -104,6 +79,7 @@ export default function Stickies() {
                   />
                   {searchQuery ? (
                     <button
+                      aria-label="Clear search"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setSearchQuery('');
@@ -114,6 +90,7 @@ export default function Stickies() {
                     </button>
                   ) : (
                     <button
+                      aria-label="Close search"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         setIsSearchExpanded(false);
@@ -127,23 +104,24 @@ export default function Stickies() {
               </div>
             ) : (
               <button
+                aria-label="Search stickies"
                 onClick={() => setIsSearchExpanded(true)}
                 className='flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors'
                 title="Search stickies"
               >
-                <Search className='size-[15px]' />
+                <Search className='size-3.5' />
               </button>
             )}
           </div>
           <button
             onClick={handleAdd}
             disabled={isCreating}
-            className="flex items-center gap-1.5 text-[14px] font-medium text-primary hover:text-primary/90 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/90 transition-colors disabled:opacity-50"
           >
             {isCreating ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <Plus className="size-4" />
+              <Plus className="size-3.5" />
             )}
             Add sticky
           </button>
@@ -157,17 +135,19 @@ export default function Stickies() {
         </div>
       ) : (
         <div className="relative">
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${hasMore ? 'max-h-[400px] overflow-hidden' : ''}`}>
-            {preview.map((note: any) => (
-              <MiniCard
-                workspaceUrl={workspaceId || ''}
-                key={note._id}
-                note={note}
-              />
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${hasMore ? 'max-h-[800px] overflow-hidden' : ''}`}>
+            {preview.map((note) => (
+              <div key={note._id} className="min-h-[220px] flex flex-col">
+                <Card
+                  sticky={note}
+                  onUpdate={(id, updates) => mutations.update.mutate({ stickyId: id, updates })}
+                  onDelete={(id) => mutations.remove.mutate(id)}
+                />
+              </div>
             ))}
           </div>
           {hasMore && (
-            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background via-background/90 to-transparent flex items-end justify-center pb-2">
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/90 to-transparent flex items-end justify-center pb-2">
               <Link
                 href={`/${workspaceId}/stickies`}
                 className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"

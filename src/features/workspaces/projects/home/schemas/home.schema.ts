@@ -9,3 +9,8 @@ export const sectionConfigSchema = z.object({
   visible: z.boolean(),
 });
 export type SectionConfig = z.infer<typeof sectionConfigSchema>;
+
+export const quicklinkSchema = z.object({
+  url: z.string().url("Please enter a valid URL"),
+  title: z.string().optional(),
+});

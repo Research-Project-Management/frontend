@@ -1,6 +1,6 @@
 ﻿'use client';
 /**
- * AiEditPreview.tsx ΓÇö Preview-before-Apply Modal for AI Edits
+ * AiEditPreview.tsx G�� Preview-before-Apply Modal for AI Edits
  *
  * Shows a diff view of the AI's proposed edit before applying it.
  * Provides Apply / Cancel / Copy / Regenerate actions.
@@ -8,16 +8,16 @@
 
 import React, { useMemo, useState } from "react";
 import { X, Check, Copy, RefreshCw, Zap, AlertTriangle } from "lucide-react";
-import type { AiEditResponse, AiEditOperation } from "@/features/editor/types/ai-edit-types";
+import type { AiEditResponse, AiEditOperation } from "@/features/editor/services/ai-edit.services";
 
-// ΓöÇΓöÇ Single-edit diff row ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// G��G�� Single-edit diff row G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
 function DiffRow({ label, text, color }: { label: string; text: string; color: "red" | "green" }) {
   const lines = text.split("\n");
   const bgClass = color === "red" ? "bg-[#2b0d0d]" : "bg-[#0d2b0d]";
   const textClass = color === "red" ? "text-red-300 line-through opacity-70" : "text-emerald-200";
   const gutterClass = color === "red" ? "text-red-400" : "text-emerald-400";
-  const glyph = color === "red" ? "ΓêÆ" : "+";
+  const glyph = color === "red" ? "G��" : "+";
 
   return (
     <>
@@ -35,7 +35,7 @@ function DiffRow({ label, text, color }: { label: string; text: string; color: "
   );
 }
 
-// ΓöÇΓöÇ Per-edit diff block ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// G��G�� Per-edit diff block G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
 function EditDiffBlock({
   edit,
@@ -64,13 +64,13 @@ function EditDiffBlock({
   const rangeLabel =
     edit.startLineNumber === edit.endLineNumber
       ? `Line ${edit.startLineNumber}`
-      : `Lines ${edit.startLineNumber}ΓÇô${edit.endLineNumber}`;
+      : `Lines ${edit.startLineNumber}G��${edit.endLineNumber}`;
 
   return (
     <div className="rounded-lg border border-border/50 overflow-hidden text-[11px] font-mono mb-2">
       <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/60 border-b border-border/40">
         <span className="text-muted-foreground/60">
-          Edit {index + 1} ΓÇö {rangeLabel}
+          Edit {index + 1} G�� {rangeLabel}
         </span>
         <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">
           {edit.type}
@@ -93,7 +93,7 @@ function EditDiffBlock({
   );
 }
 
-// ΓöÇΓöÇ Main Modal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// G��G�� Main Modal G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
 interface AiEditPreviewProps {
   editResponse: AiEditResponse;
@@ -104,7 +104,7 @@ interface AiEditPreviewProps {
   onCancel: () => void;
   /** Called when user clicks Regenerate */
   onRegenerate?: () => void;
-  /** Safety warning ΓÇö show a caution message */
+  /** Safety warning G�� show a caution message */
   safetyWarning?: string;
 }
 

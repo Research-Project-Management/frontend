@@ -38,14 +38,15 @@ import {
 } from "@/shared/components/ui";
 import { Separator } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { parseCompileErrors } from "@/features/editor/utils/latex-utils";
+import { parseCompileErrors } from "@/features/editor/utils/latex";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { useEditorSettingsStore, type LaTeXEngine } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
-import { flushPageContent, syncIncremental, compileLatex } from "../../services/viewer.services";
+import { flushPageContent, syncIncremental, compileLatex } from "../../services/compile.services";
 
 import { toast } from "sonner";
-import { useUpdatePageThumbnail, usePageFiles } from '@/features/workspaces/projects';
+import { useQuery } from '@tanstack/react-query';
+import { pageFilesQueryOptions, usePageActions } from '@/features/editor/hooks/use-pages';
 import type { Page as ProjectPage } from "@/features/workspaces/projects/types/page.types";
 
 
@@ -836,7 +837,7 @@ export default function Viewer() {
     markSynced,
   } = useCompileStore();
 
-  const saveThumbnailMutation = useUpdatePageThumbnail();
+  const { updateThumbnail: saveThumbnailMutation } = usePageActions();
 
   // pageId from URL is always the project root.
   const { workspaceId, projectId, pageId: urlPageId } = useParams<{ workspaceId?: string; projectId?: string; pageId: string }>();
@@ -907,7 +908,10 @@ export default function Viewer() {
 
   const router = useRouter();
   const rootPageId = parentPageIdRef.current;
-  const { data: pageFiles = [] } = usePageFiles(rootPageId || "");
+  const { data: pageFiles = [] } = useQuery({
+    ...pageFilesQueryOptions(rootPageId || ""),
+    enabled: !!rootPageId,
+  });
 
   const findPageByBasename = (basename: string) => {
     const base = basename.replace(/\.tex$/, "").toLowerCase();

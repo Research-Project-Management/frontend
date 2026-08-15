@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import CollectionDetailPage from '@/features/workspaces/library/pages/CollectionDetailPage';
+import { LibraryPage } from '@/features/workspaces/library';
 
 export const metadata: Metadata = { title: 'Collection · Library · Flux' };
 
 export default function LibraryCollectionPage() {
-  return <CollectionDetailPage />;
+  return <LibraryPage />;
 }

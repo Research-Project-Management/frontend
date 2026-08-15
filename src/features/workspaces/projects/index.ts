@@ -11,7 +11,7 @@ export * from './all-pages';
 export * from './stickies';
 
 // ── Project Detail specific modules ───────────────────────────────────────────
-export { default as ProjectCollectionPage } from './project-id/collection/pages/ProjectCollectionPage';
+
 export { default as ProjectOverview } from './project-id/overview/pages/OverviewPage';
 export { default as Topbar } from './project-id/overview/components/Topbar';
 export { default as TeamPage } from './project-id/settings/pages/TeamPage';

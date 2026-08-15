@@ -11,7 +11,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
-import { quicklinkSchema } from "../../types/home.types";
+import { quicklinkSchema } from "../../schemas/home.schema";
 import type { QuicklinkFormData } from "../../types/home.types";
 
 interface QuicklinkModalProps {
@@ -78,7 +78,7 @@ export function QuicklinkModal({
               <Input
                 id="url"
                 placeholder="Type or paste a URL"
-                className="w-full h-9 bg-background border-border focus-visible:ring-1 focus-visible:ring-primary/30 text-[13px]"
+                className="w-full h-9 bg-background border-border focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-foreground/10 text-[13px] transition-colors"
                 {...register("url")}
               />
               {errors.url && (
@@ -94,7 +94,7 @@ export function QuicklinkModal({
               <Input
                 id="title"
                 placeholder="What you'd like to see this link as"
-                className="w-full h-9 bg-background border-border focus-visible:ring-1 focus-visible:ring-primary/30 text-[13px]"
+                className="w-full h-9 bg-background border-border focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-foreground/10 text-[13px] transition-colors"
                 {...register("title")}
               />
             </div>
@@ -111,7 +111,7 @@ export function QuicklinkModal({
             </Button>
             <Button
               type="submit"
-              className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+              className="h-8 px-4 text-xs font-medium transition-colors"
             >
               {initialData ? "Save changes" : "Add Quicklink"}
             </Button>

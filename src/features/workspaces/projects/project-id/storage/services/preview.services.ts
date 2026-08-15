@@ -1,7 +1,7 @@
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';
 import { extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata } from '../utils/preview.utils';
 import { apiGet } from '@/shared/lib/api';
-import { getFileArrayBuffer } from './storage.services';
+import { getFileArrayBuffer } from './file.services';
 
 let pdfjsLibPromise: Promise<any> | null = null;
 
@@ -154,12 +154,12 @@ export const previewServices = {
   },
 
   async getCrossrefByDoi(doi: string) {
-    return apiGet<{ work: CrossrefWork }>(`/api/files/crossref/doi/${encodeURIComponent(doi)}`);
+    return apiGet<{ work: CrossrefWork }>(`/api/library/reference/crossref/doi/${encodeURIComponent(doi)}`);
   },
 
   async getCrossrefSearch(query: string, rows = 1) {
     return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
-      `/api/files/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
+      `/api/library/reference/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
     );
   }
 };

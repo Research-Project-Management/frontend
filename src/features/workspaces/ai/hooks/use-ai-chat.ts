@@ -19,7 +19,7 @@ import { parseLatexStructure } from '@/features/editor';
 import { buildRichContext } from '@/features/editor';
 import { tryLocalCommandEdit } from '@/features/editor';
 import { parseAiResponse } from '@/features/editor';
-import type { ParsedAiResponse } from "@/features/editor/services/ai-response-parser";
+import type { ParsedAiResponse } from "@/features/editor/services/ai-edit.services";
 import { useCompileStore } from '@/features/editor';
 
 export interface SlashCommand {

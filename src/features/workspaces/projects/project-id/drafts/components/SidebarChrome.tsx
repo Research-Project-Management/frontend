@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export const SidebarPanel = ({ children, className }: any) => <div className={className}>{children}</div>;
 export const SidebarSegmented = ({ children, className }: any) => <div className={className}>{children}</div>;

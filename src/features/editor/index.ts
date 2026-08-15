@@ -1,15 +1,38 @@
 export { useEditorSettingsStore, type LayoutMode, type CompileMode, type LaTeXEngine } from './store/editor-settings.store';
 export { useCompileStore } from './store/compile.store';
-export { buildRichContext, parseLatexStructure } from '@/features/editor/utils/latex-utils';
-export { parseAiEditResponse, parseDiffToEdits, validateAiEdits, isEditSafe, applyAiEdits, highlightEditedLines, previewAiEdits, type AiEditPreviewHandle, type AiEditResponse, type AiEditOperation } from './types/ai-edit-types';
-export { findLatexCommandRange } from './services/ai-edit-helpers';
-export { tryLocalCommandEdit } from './services/ai-edit-engine';
-export { parseAiResponse } from './services/ai-response-parser';
-export { extractPdfMetadataFromFile, type PdfMetadata, extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata, parsePdfDate, fetchLookupDoi, fetchSearchCrossref, type CrossrefWork } from './services/pdf';
+export { buildRichContext, parseLatexStructure, resolveFileUrl } from './utils/latex';
+export {
+  parseAiEditResponse,
+  validateAiEdits,
+  isEditSafe,
+  applyAiEdits,
+  highlightEditedLines,
+  previewAiEdits,
+  applyEditsToEditor,
+  previewEditsInEditor,
+  highlightLines,
+  findLatexCommandRange,
+  replaceLatexCommandValue,
+  tryLocalCommandEdit,
+  parseAiResponse,
+  validateEdits,
+  getEditorEditContext,
+  type AiEditPreviewHandle,
+  type AiEditResponse,
+  type AiEditOperation,
+  type AiEditIntent,
+  type AiEditValidationResult,
+  type LatexCommandRange,
+  type ParsedAiResponse,
+} from './services/ai-edit.services';
+export { flushPageContent, syncIncremental, compileLatex, type CompileLatexPayload } from './services/compile.services';
+export { extractPdfMetadataFromFile, type PdfMetadata, extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata, parsePdfDate, fetchLookupDoi, fetchSearchCrossref, type CrossrefWork } from './services/pdf.services';
+export { PageVersionService } from './services/version.services';
+export { ProjectHistoryService } from './services/history.services';
+export { PageDocumentService, PageFileService } from './services/page-document.services';
 export { useEditorTabsStore } from './store/editor-tabs.store';
-export { usePagePresence, type PresenceUser } from './hooks/use-page-presence';
-export { useRemoteCursors } from './hooks/use-remote-cursors';
-export { default as EditorLayout } from './components/Editor/EditorLayout';
-export { PageContextProvider, usePageContext } from '@/features/editor/store/page-context';
-export { default as PageLayout } from './components/PageLayout';
-export { EditorPage } from './pages/EditorPage';
+export { EditorPage, useEditorContext, EditorContext } from './pages/EditorPage';
+export { PageContextProvider, usePageContext } from './store/page-context';
+export * from './hooks/use-pages';
+export * from './hooks/use-version';
+export * from './hooks/use-history';

@@ -8,6 +8,6 @@ export {
   getAllFiles, 
   createFolder,
   uploadFile
-} from './services/storage.services';
+} from './services/file.services';
 export type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 export { default as StorageSidebar } from './components/layout/Sidebar';

@@ -14,7 +14,7 @@ import {
   restoreItem,
   permanentlyDeleteItem,
   createFileRecord
-} from '../services/storage.services';
+} from '../services/file.services';
 
 // --- Queries ---
 

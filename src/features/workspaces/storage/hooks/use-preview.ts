@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFileArrayBuffer, updateFileMetadata } from '@/features/workspaces/storage/services/storage.services';
+import { getFileArrayBuffer, updateFileMetadata } from '@/features/workspaces/storage/services/file.services';
 import { previewServices } from '@/features/workspaces/storage/services/preview.services';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { resolveFileUrl } from '@/shared/utils/url';

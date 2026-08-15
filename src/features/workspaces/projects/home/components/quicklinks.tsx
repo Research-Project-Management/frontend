@@ -15,6 +15,17 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import type { Quicklink } from '../types/home.types';
+
+const getDisplayTitle = (title: string, url: string) => {
+  if (title && title !== url) return title;
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname.replace(/^www\./, '');
+  } catch {
+    return title || url;
+  }
+};
+
 // --- Main Component ---
 export default function Quicklinks() {
   const { workspaceId } = useParams() as { workspaceId: string };
@@ -51,13 +62,13 @@ export default function Quicklinks() {
             Loading...
           </div>
         ) : links.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {links.map((link) => (
               <div
                 key={link.id}
-                className="group relative flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border/50 bg-background hover:bg-muted/40 hover:border-border transition-colors duration-200"
+                className="group relative flex items-center gap-3.5 px-3 py-3 rounded-xl border border-border/80 bg-background hover:bg-muted/40 transition-colors duration-200"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-muted-foreground group-hover:text-foreground transition-colors" aria-hidden="true">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/70 text-muted-foreground" aria-hidden="true">
                   <Globe className="size-5" />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
@@ -65,11 +76,11 @@ export default function Quicklinks() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-foreground truncate hover:underline"
+                    className="text-sm font-semibold text-foreground truncate transition-colors before:absolute before:inset-0"
                   >
-                    {link.title}
+                    {getDisplayTitle(link.title, link.url)}
                   </a>
-                  <span className="text-sm text-muted-foreground truncate">
+                  <span className="text-xs font-medium text-muted-foreground truncate mt-0.5">
                     {formatDistanceToNow(new Date(link.createdAt))} ago
                   </span>
                 </div>
@@ -77,7 +88,7 @@ export default function Quicklinks() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 md:p-1.5 rounded-md opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-muted/60 text-muted-foreground transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 md:p-1.5 rounded-md opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-muted/60 text-muted-foreground transition-colors z-10"
                       aria-label="More options"
                     >
                       <MoreVertical className="size-4" aria-hidden="true" />

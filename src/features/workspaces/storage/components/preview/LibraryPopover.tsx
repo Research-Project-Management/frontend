@@ -10,10 +10,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui";
-import { useAddPaper } from '@/features/workspaces/library/services/library.services';
-import { useCollections } from '@/features/workspaces/library/services/library.services';
+import { usePapers, useCollections } from '@/features/workspaces/library';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import type { PdfMetadata } from "@/features/editor/services/pdf";
+import type { PdfMetadata } from "@/features/editor/services/pdf.services";
 
 interface AddToLibraryPopoverProps {
   item: StorageItem;
@@ -58,16 +57,16 @@ export default function LibraryPopover({
 }: AddToLibraryPopoverProps) {
   const [open, setOpen] = useState(false);
   const [collectionId, setCollectionId] = useState("");
-  const { data: collections = [], isLoading } = useCollections(workspaceId);
-  const addPaperMutation = useAddPaper(workspaceId, collectionId);
+  const { state: { collections, isLoading }, actions: { create: createCollection } } = useCollections(workspaceId);
+  const { actions: { addPaper }, state: { isAdding } } = usePapers({ workspaceId, collectionId });
 
   const selectedCollection = collections.find((c) => c._id === collectionId);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!collectionId || !selectedCollection || !item.url) return;
 
-    addPaperMutation.mutate(
-      {
+    try {
+      await addPaper({
         title: metadata?.title || item.filename.replace(/\.pdf$/i, ""),
         authors: toAuthors(metadata),
         year: toYear(metadata?.year),
@@ -81,16 +80,13 @@ export default function LibraryPopover({
         mimeType: item.mimeType || "application/pdf",
         size: item.size || 0,
         labels: [],
-      },
-      {
-        onSuccess: () => {
-          toast.success(`Added to ${selectedCollection.name}. Indexing in background...`);
-          setOpen(false);
-          setCollectionId("");
-        },
-        onError: () => toast.error("Failed to add PDF to Library"),
-      },
-    );
+      });
+      toast.success(`Added to ${selectedCollection.name}. Indexing in background...`);
+      setOpen(false);
+      setCollectionId("");
+    } catch (err) {
+      toast.error("Failed to add PDF to Library");
+    }
   };
 
   return (
@@ -137,10 +133,10 @@ export default function LibraryPopover({
         <Button
           size="sm"
           className="mt-3 w-full"
-          disabled={!collectionId || addPaperMutation.isPending}
+          disabled={!collectionId || isAdding}
           onClick={handleAdd}
         >
-          {addPaperMutation.isPending && (
+          {isAdding && (
             <Loader2 className="size-3.5 mr-1.5 animate-spin" />
           )}
           Add PDF

@@ -23,11 +23,11 @@ import CreateProject from './create-project';
 
 type ProjectModuleKey =
   | 'overview' | 'tasks' | 'cycles' | 'drafts'
-  | 'storage' | 'stickies' | 'collection' | 'settings';
+  | 'storage' | 'stickies' | 'settings';
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   'overview', 'drafts', 'tasks', 'cycles',
-  'storage', 'collection', 'stickies', 'settings',
+  'storage', 'stickies', 'settings',
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
@@ -36,7 +36,6 @@ const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon 
   tasks: { label: 'Tasks', icon: KanbanSquare },
   cycles: { label: 'Cycles', icon: RotateCcw },
   storage: { label: 'Storage', icon: Cloud },
-  collection: { label: 'Collection', icon: BookMarked },
   stickies: { label: 'Stickies', icon: Layers2 },
   settings: { label: 'Settings', icon: Settings },
 };

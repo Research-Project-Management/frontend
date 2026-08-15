@@ -9,7 +9,7 @@ import React, {
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";
-import { useEditorStorage } from "@/features/editor/hooks/use-editor-storage";
+import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import {
   AlertTriangle,
   Check,
@@ -54,13 +54,13 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext, type AssetInfo } from "@/features/editor/store/page-context";
-import { usePageFiles } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useCreatePageFile } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useSetPageMainFile } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useDeletePage } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useUpdatePageTitle } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useUpdatePageContent } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { usePage } from '@/features/workspaces/projects/all-pages/services/page.services';
+import {
+  pageDetailQueryOptions,
+  pageFilesQueryOptions,
+  usePageActions,
+  usePageFileActions,
+} from '@/features/editor/hooks/use-pages';
+import { useQuery } from '@tanstack/react-query';
 
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 
@@ -703,9 +703,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // pageId from URL is always the project root page after the routing refactor.
   const parentPageId: string | null = pageId ?? null;
 
-  const { data: parentPage, isLoading: parentPageLoading } = usePage(
-    parentPageId ?? "",
-  );
+  const { data: parentPage, isLoading: parentPageLoading } = useQuery({
+    ...pageDetailQueryOptions(parentPageId ?? ""),
+    enabled: !!parentPageId,
+  });
 
   // IMPORTANT: Use parentPageId (root page) as the key for fetching files
   // Each root page has its own independent file system
@@ -728,7 +729,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const workspaceId: string =
     (parentPage?.projectId as any)?.workspaceId?._id ?? "";
 
-  const { data: files, isLoading } = usePageFiles(parentPageId);
+  const { data: files, isLoading } = useQuery({
+    ...pageFilesQueryOptions(parentPageId ?? ""),
+    enabled: !!parentPageId,
+  });
 
   useEffect(() => {
     if (!files) return;
@@ -787,11 +791,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     getEditorContent,
   ]);
 
-  const createFileMutation = useCreatePageFile();
-  const setMainFileMutation = useSetPageMainFile();
-  const deletePageMutation = useDeletePage();
-  const updateTitleMutation = useUpdatePageTitle();
-  const updateContentMutation = useUpdatePageContent();
+  const { createFile: createFileMutation, setMainFile: setMainFileMutation } = usePageFileActions();
+  const { deletePage: deletePageMutation, updateTitle: updateTitleMutation, updateContent: updateContentMutation } = usePageActions();
 
   // Storage files (images, pdfs, etc.) - FETCH BY PARENT PAGE ID, NOT PROJECT ID
   // Each root page has its own independent file system
@@ -1011,7 +1012,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleDelete = (fileId: string) => {
     if (!parentPageId) return;
     deletePageMutation.mutate(
-      { pageId: fileId, projectId: projectId },
+      fileId,
       {
         onSuccess: () => {
           // If the deleted file was the active one, fall back to root page

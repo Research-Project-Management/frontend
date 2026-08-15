@@ -14,12 +14,13 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { usePageVersions } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useSavePageVersion } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useRestorePageVersion } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useDeletePageVersion } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useProjectHistory } from '@/features/workspaces/projects/all-pages/services/page.services';
-import { useRestoreProjectToEvent } from '@/features/workspaces/projects/all-pages/services/page.services';
+import { useQuery } from "@tanstack/react-query";
+import {
+  pageVersionsQueryOptions,
+  projectHistoryQueryOptions,
+  usePageVersionActions,
+  useProjectHistoryActions,
+} from '@/features/editor/hooks/use-pages';
 import type { PageEvent } from "@/features/workspaces/projects/types/page.types";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { cn } from "@/shared/lib/utils";
@@ -116,17 +117,18 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // Î“öÇΓöÇ "This file" data Î“öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-  const { data: versions, isLoading: versionsLoading } = usePageVersions(
-    activeFileId,
-  );
-  const saveMutation = useSavePageVersion();
-  const restoreFileMutation = useRestorePageVersion();
-  const deleteMutation = useDeletePageVersion();
+  const { data: versions, isLoading: versionsLoading } = useQuery({
+    ...pageVersionsQueryOptions(activeFileId ?? ""),
+    enabled: !!activeFileId,
+  });
+  const { saveVersion: saveMutation, restoreVersion: restoreFileMutation, deleteVersion: deleteMutation } = usePageVersionActions();
 
   // Î“öÇΓöÇ "Project" data Î“öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-  const { data: events, isLoading: eventsLoading } =
-    useProjectHistory(rootPageId);
-  const restoreProjectMutation = useRestoreProjectToEvent();
+  const { data: events, isLoading: eventsLoading } = useQuery({
+    ...projectHistoryQueryOptions(rootPageId ?? ""),
+    enabled: !!rootPageId,
+  });
+  const { restoreToEvent: restoreProjectMutation } = useProjectHistoryActions();
 
   // Î“öÇΓöÇ Handlers Î“öÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   const handleSave = () => {
@@ -157,7 +159,8 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
       { rootPageId, eventId },
       {
         onSuccess: (data) => {
-          const me = data.restored.find((r) => r.pageId === activeFileId);
+          const restoredArr = (data as any)?.restored as Array<{ pageId: string; content: string }> | undefined;
+          const me = restoredArr?.find((r) => r.pageId === activeFileId);
           if (me) editorRef.current?.setValue(me.content);
           setConfirmId(null);
         },

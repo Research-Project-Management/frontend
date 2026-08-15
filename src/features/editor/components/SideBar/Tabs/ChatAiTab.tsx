@@ -24,9 +24,10 @@ import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.
 import {
   buildRichContext,
   parseLatexStructure,
-} from "@/features/editor/utils/latex-utils";
+} from "@/features/editor/utils/latex";
 import {
   parseAiEditResponse,
+  parseAiResponse,
   parseDiffToEdits,
   validateAiEdits,
   isEditSafe,
@@ -36,14 +37,11 @@ import {
   type AiEditPreviewHandle,
   type AiEditResponse,
   type AiEditOperation,
-} from "@/features/editor/types/ai-edit-types";
-import {
   findLatexCommandRange,
   tryLocalCommandEdit,
-} from "@/features/editor/services/ai-edit-helpers";
+} from "@/features/editor/services/ai-edit.services";
 import AiEditSuggestionCard from "./AiEditSuggestionCard";
-import ChatHistoryModal from '@/features/workspaces/ai/components/ChatHistoryModal';
-import { renderMarkdown } from '@/features/workspaces/ai/components/renderMarkdown';
+import { ChatHistoryModal, renderMarkdown } from '@/features/workspaces/ai';
 
 function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   if (!value || typeof value !== "object") return false;
@@ -1058,7 +1056,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
           editor?.getModel()?.getValue() ??
           richCtx?.fileContent ??
           currentFileContent;
-        const editResponse = parseAiEditResponse(finalContent, fileContent);
+        const editResponse = parseAiResponse(finalContent, fileContent);
         if (isActionableAiEditResponse(editResponse) && editResponse.intent !== "no_change") {
           const totalLines = editor?.getModel()?.getLineCount() ?? 1;
           const validation = validateAiEdits(editResponse.edits, totalLines, fileContent);

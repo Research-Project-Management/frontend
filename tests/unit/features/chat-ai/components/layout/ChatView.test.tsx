@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ChatView from '@/features/chat-ai/components/layout/ChatView';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import ChatView from '@/features/workspaces/ai/components/chat/ChatView';
+// Legacy router mocks
+const MemoryRouter = ({ children }: any) => <div>{children}</div>;
+const Routes = ({ children }: any) => <div>{children}</div>;
+const Route = ({ element }: any) => <>{element}</>;
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 

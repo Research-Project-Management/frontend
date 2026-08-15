@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Lora } from 'next/font/google';
 import { Toaster } from 'sonner';
 import '@/shared/styles/globals.css';
 import Providers from './providers';
@@ -8,6 +8,12 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
+});
+
+const lora = Lora({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-serif',
 });
 
 export const metadata: Metadata = {
@@ -34,15 +40,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
-        <Providers>
-          {children}
-          <Toaster 
+      <body
+        className={`${inter.variable} ${lora.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary min-h-dvh flex flex-col`}
+      >    <Toaster 
             position='bottom-right' 
             toastOptions={{
               className: 'bg-background text-foreground border-border shadow-lg font-sans'
             }}
           />
+        <Providers>
+          {children}
         </Providers>
 
       </body>

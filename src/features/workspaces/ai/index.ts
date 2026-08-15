@@ -1,14 +1,25 @@
+export { default as ChatPage } from './pages/ChatPage';
 export { ChatModeProvider, useChatMode } from './hooks/use-chat-mode';
-export { default as WikiChatFeatures } from './components/WikiChatFeatures';
-export { getPageChat, streamEditorChat, clearPageChat, compilePreview, type PreviewCompileResult, streamChatResponse, getChatSession, appendChatMessages, createChatSession, listChatSessions, deleteChatSession } from './services/chat-ai.services';
+export { default as WikiChatFeatures } from './components/layout/WikiChatFeatures';
+export { default as FluxAiSidebar } from './components/layout/Sidebar';
+export { default as ChatHistoryModal } from './components/modals/ChatHistoryModal';
+export { default as SourcePickerModal } from './components/modals/SourcePickerModal';
+export { default as ChatView } from './components/chat/ChatView';
+export { renderMarkdown } from './utils/render-markdown';
 
-export { default as ChatAiDetail } from './components/ChatView'; // ChatView replaces ChatAiDetail
-export { default as EmptyState } from './components/ChatView'; // ChatView replaces EmptyState
-export { default as FluxAiSidebar } from './components/SideBar';
+export {
+  getPageChat,
+  streamEditorChat,
+  clearPageChat,
+  compilePreview,
+  type PreviewCompileResult,
+  streamChatResponse,
+  getChatSession,
+  appendChatMessages,
+  createChatSession,
+  listChatSessions,
+  deleteChatSession,
+} from './services/chat-ai.services';
 
-// ── Store ─────────────────────────────────────────────────────────────────────
-export { useChatAiActionsStore } from './store/chat-ai.store';
-export type { AiContext } from './store/chat-ai.store';
-export { default as ChatHistoryModal } from './components/ChatHistoryModal';
-export { renderMarkdown } from './components/renderMarkdown';
-
+export { useChatAiActionsStore, type AiContext } from './store/chat-ai.store';
+export * from './types/chat.types';

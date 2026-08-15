@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import ChatAiDetail from '@/features/workspaces/ai/components/ChatView';
+import { ChatPage } from '@/features/workspaces/ai';
 
-export const metadata: Metadata = { title: 'AI' };
+export const metadata: Metadata = { title: 'AI Chat · Flux' };
 
 export default function ChatDetailPage() {
-  return <ChatAiDetail />;
+  return <ChatPage />;
 }

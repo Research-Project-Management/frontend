@@ -177,13 +177,13 @@
   --sidebar-border: var(--gray-200);
   --sidebar-ring: var(--blue-500);
 
-  --shadow-2xs: 0px 1px 2px 0px oklch(0% 0 0 / 0.08);
-  --shadow-xs: 0px 1px 3px 0px oklch(0% 0 0 / 0.10), 0px 1px 2px -1px oklch(0% 0 0 / 0.06);
-  --shadow-sm: 0px 1px 4px 0px oklch(0% 0 0 / 0.08), 0px 2px 8px -1px oklch(0% 0 0 / 0.06);
-  --shadow-md: 0px 2px 8px 0px oklch(0% 0 0 / 0.10), 0px 4px 12px -2px oklch(0% 0 0 / 0.08);
-  --shadow-lg: 0px 4px 12px 0px oklch(0% 0 0 / 0.10), 0px 8px 20px -4px oklch(0% 0 0 / 0.08);
-  --shadow-xl: 0px 8px 24px 0px oklch(0% 0 0 / 0.12), 0px 16px 32px -8px oklch(0% 0 0 / 0.10);
-  --shadow-2xl: 0px 16px 40px -8px oklch(0% 0 0 / 0.14);
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
 }
 
 .dark {

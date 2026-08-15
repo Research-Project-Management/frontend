@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import React, { useRef, useEffect, useLayoutEffect, useState } from "react";
@@ -36,13 +35,13 @@ import {
   Circle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useUpdatePageContent } from '@/features/workspaces/projects';
-const usePageComments = () => ({ data: [] });
+import { usePageActions } from '@/features/editor/hooks/use-pages';
+const usePageComments = (_pageId?: string | null): { data: PageComment[] } => ({ data: [] });
 import type { Page } from "@/features/workspaces/projects/types/page.types";
 import type { PageComment } from "@/features/workspaces/projects/types/page.types";
 import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';
 import { useDebounce } from '@/shared/hooks/use-debounce';
-import { useEditorContext } from "./EditorLayout";
+import { useEditorContext } from "@/features/editor/pages/EditorPage";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
@@ -50,7 +49,7 @@ import { cn } from "@/shared/lib/utils";
 const FluxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 );
-import EditorToolbar from "./EditorToolbar";
+import EditorToolbar from "./Toolbar";
 
 
 // Register LaTeX language and custom theme before Monaco loads
@@ -192,7 +191,7 @@ export default function Editor({ page }: EditorProps) {
   const debouncedContent = useDebounce(content, 1000);
   // Ref to schedule a compile after the next successful save+sync.
   const pendingCompileRef = useRef(false);
-  const updateMutation = useUpdatePageContent();
+  const { updateContent: updateMutation } = usePageActions();
   const { pageId: pageIdParam } = useParams<{ pageId: string }>();
   const { setPendingComment, setPendingAiText, setPendingAiContext } = useEditorActionsStore();
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);

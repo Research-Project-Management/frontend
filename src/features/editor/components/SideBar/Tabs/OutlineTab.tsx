@@ -1,4 +1,4 @@
-๏ปฟ'use client';
+'use client';
 import React, { useEffect, useState } from "react";
 import { ChevronRight, Hash } from "lucide-react";
 import { pdfjs } from "react-pdf";
@@ -43,7 +43,7 @@ const LEVEL_COLORS = [
   "text-muted-foreground/70 italic",
 ];
 
-// ฮ“รถรฮ“รถร PDF page lookup ฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถรฮ“รถร
+// G๖วG๖ว PDF page lookup G๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖วG๖ว
 
 function flattenPdfOutline(items: any[]): any[] {
   const result: any[] = [];

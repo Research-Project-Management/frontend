@@ -1,121 +1,24 @@
+import { z } from "zod";
+import {
+  collectionSchema,
+  paperSchema,
+  paperAttachmentSchema,
+  primaryFileSchema,
+  projectPaperRefSchema,
+  projectCollectionSchema,
+  userSchema,
+  noteSchema
+} from "../schemas/library.schemas";
+
 // ── Library types ─────────────────────────────────────────────────────────────
 
-export type Collection = {
-  _id: string;
-  name: string;
-  description: string;
-  color: string;
-  icon: string;
-  workspaceId: string;
-  parent: string | null;
-  createdBy?: {
-    _id: string;
-    name: string;
-    email: string;
-    avatar: string;
-  };
-  paperCount: number;
-  createdAt: string;
-  updatedAt: string;
-};
+export type User = z.infer<typeof userSchema>;
+export type Note = z.infer<typeof noteSchema>;
+export type Collection = z.infer<typeof collectionSchema>;
+export type PaperAttachment = z.infer<typeof paperAttachmentSchema>;
+export type PrimaryFile = z.infer<typeof primaryFileSchema>;
+export type Paper = z.infer<typeof paperSchema>;
+export type ProjectPaperRef = z.infer<typeof projectPaperRefSchema>;
+export type ProjectCollection = z.infer<typeof projectCollectionSchema>;
 
-export type Paper = {
-  _id: string;
-  title: string;
-  authors: string[];
-  year: number | null;
-  doi: string;
-  abstract: string;
-  keywords: string[];
-  itemType?: string;
-  editors?: string[];
-  journal: string;
-  publicationTitle?: string;
-  publicationDate?: string;
-  publisher: string;
-  place?: string;
-  volume?: string;
-  issue?: string;
-  section?: string;
-  partNumber?: string;
-  partTitle?: string;
-  pages?: string;
-  series?: string;
-  seriesTitle?: string;
-  seriesText?: string;
-  issn?: string;
-  isbn?: string;
-  pmid?: string;
-  pmcid?: string;
-  url?: string;
-  type?: string;
-  language?: string;
-  journalAbbr?: string;
-  shortTitle?: string;
-  rights?: string;
-  license?: string;
-  citationKey?: string;
-  libraryCatalog?: string;
-  archive?: string;
-  archiveLocation?: string;
-  callNumber?: string;
-  accessedAt?: string | null;
-  extra?: string;
-  notes?: Array<{
-    _id: string;
-    content: string;
-    createdAt: string;
-    updatedAt: string;
-  }>;
-  fileUrl: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-
-  labels: string[];
-
-  ragDocId: string | null;
-  ragStatus: "pending" | "indexed" | "failed" | null;
-  ragIndexedAt: string | null;
-  workspaceId: string;
-  collectionId: string | null;
-  uploadedBy: {
-    _id: string;
-    name: string;
-    email: string;
-    avatar: string;
-  };
-  deletedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ProjectPaperRef = {
-  paper: Paper | null; // null = deleted paper (soft-delete)
-  addedBy: string;
-  note: string;
-  addedAt: string;
-};
-
-export type ProjectCollection = {
-  _id: string;
-  name: string;
-  description: string;
-  projectId: string;
-  workspaceId: string;
-  createdBy: {
-    _id: string;
-    name: string;
-    email: string;
-    avatar: string;
-  };
-  sourceCollection: {
-    _id: string;
-    name: string;
-    color: string;
-    icon: string;
-  } | null;
-  papers: ProjectPaperRef[];
-  createdAt: string;
-  updatedAt: string;
-};
+export type Result<T> = { success: true; data: T } | { success: false; error: string };

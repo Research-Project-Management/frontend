@@ -15,7 +15,6 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 import { Switch } from '@/shared/components/ui/switch';
-import { Button } from '@/shared/components/ui';
 
 export default function NotificationsTab() {
   const form = useForm<z.infer<typeof notificationsSchema>>({

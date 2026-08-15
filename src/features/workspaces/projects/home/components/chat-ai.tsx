@@ -134,14 +134,19 @@ export default function ChatAi({ onSend }: ChatAiProps) {
               </button>
             </PopoverTrigger>
 
-            <PopoverContent side="bottom" align="start" className="w-56 p-2 rounded-xl">
+            <PopoverContent
+              side="bottom"
+              align="start"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-56 p-2 rounded-xl bg-popover"
+            >
               <div className="px-2 pb-1.5 pt-1 text-xs font-medium text-muted-foreground">
                 Ask AI to use data from:
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedProject("workspace")}
-                className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${isWorkspace ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
+                className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${isWorkspace ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
                   }`}
               >
                 <Avatar className="size-5 rounded-full">
@@ -164,7 +169,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
                         key={project._id}
                         type="button"
                         onClick={() => setSelectedProject(project._id)}
-                        className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors ${isActive ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
+                        className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${isActive ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
                           }`}
                       >
                         {project.avatar ? (
@@ -212,13 +217,18 @@ export default function ChatAi({ onSend }: ChatAiProps) {
             {webSearch && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1 text-xs text-primary/80 hover:text-primary px-2 py-1 rounded-lg bg-primary/8 hover:bg-primary/15 transition-colors">
+                  <button className="flex items-center gap-1 text-xs text-primary/80 hover:text-primary px-2 py-1 rounded-lg bg-primary/8 hover:bg-primary/15 transition-colors cursor-pointer">
                     <Globe className="size-3" />
                     <span>{sites.length} sites</span>
                     <ChevronDown className="size-3" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-72 p-3 space-y-2">
+                <PopoverContent
+                  side="top"
+                  align="start"
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  className="w-72 p-3 space-y-2 bg-popover"
+                >
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                     Search filter sites
                   </p>

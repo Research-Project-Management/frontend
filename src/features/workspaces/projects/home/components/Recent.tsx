@@ -25,12 +25,16 @@ export default function Recent() {
   const filterAction = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/50 bg-background text-xs font-medium text-foreground hover:bg-muted/50 transition-colors">
+        <button className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/50 bg-background text-xs font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer">
           All
-          <ChevronDown className="size-3.5 text-muted-foreground" />
+          <ChevronDown className="size-3.5 text-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-36 rounded-xl">
+      <DropdownMenuContent
+        align="end"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-36 rounded-lg bg-popover"
+      >
         <DropdownMenuItem className="text-sm cursor-pointer">All</DropdownMenuItem>
         <DropdownMenuItem className="text-sm cursor-pointer">Work Items</DropdownMenuItem>
         <DropdownMenuItem className="text-sm cursor-pointer">Pages</DropdownMenuItem>

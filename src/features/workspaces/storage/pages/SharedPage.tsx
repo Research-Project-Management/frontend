@@ -23,9 +23,9 @@ export default function WorkspaceSharedPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
-  const workspaceId = workspace?._id;
+  const workspaceId = workspace?._id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useSharedFiles(workspaceId!);
+  const { data, isLoading: isFilesLoading } = useSharedFiles(workspaceId);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 

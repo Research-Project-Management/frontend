@@ -20,10 +20,10 @@ export default function WorkspaceHomePage() {
   const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id;
+  const workspaceId = workspace?._id || workspaceUrl;
 
   // Home view always fetches root items
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId!);
+  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 

@@ -5,10 +5,10 @@ import { motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
 import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter } from 'lucide-react';
 import { Input, Button, Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
-import { useTopbar } from '@/features/workspaces/projects/project-id/storage/hooks/use-topbar';
-import CreateFolderModal from '@/features/workspaces/projects/project-id/storage/components/modal/CreateFolderModal';
-import RenameModal from '@/features/workspaces/projects/project-id/storage/components/modal/RenameModal';
-import DuplicateModal from '@/features/workspaces/projects/project-id/storage/components/modal/DuplicateModal';
+import { useTopbar } from '../../hooks/use-topbar';
+import CreateFolderModal from '../modals/CreateFolderModal';
+import RenameModal from '../modals/RenameModal';
+import DuplicateModal from '../modals/DuplicateModal';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
 
 interface TopbarProps {
@@ -57,6 +57,7 @@ export default function Topbar({
         'flex h-12 w-full items-center justify-between border-b border-border/50 bg-background/80 px-4 py-2 backdrop-blur-md sticky top-0 z-10 shrink-0',
         className
       )}
+      style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2 overflow-hidden">
         {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}

@@ -59,7 +59,11 @@ export function QuicklinkModal({
       if (!val) handleClose();
       else onOpenChange(true);
     }}>
-      <DialogContent className="sm:max-w-[500px] p-0 border-0 shadow-xl overflow-hidden rounded-md" showCloseButton={false}>
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-[500px] p-0 border border-border shadow-2xl overflow-hidden rounded-lg bg-popover"
+        showCloseButton={false}
+      >
         <div className="px-5 pt-5 pb-2">
           <DialogHeader>
             <DialogTitle className="text-lg font-medium text-foreground">
@@ -100,18 +104,18 @@ export function QuicklinkModal({
             </div>
           </div>
 
-          <div className="px-5 py-3.5 border-t border-border bg-white flex items-center justify-end gap-2">
+          <div className="px-5 py-3.5 border-t border-border bg-muted/40 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
-              className="h-8 px-4 text-xs font-medium"
+              className="h-8 px-4 text-xs font-medium cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="h-8 px-4 text-xs font-medium transition-colors"
+              className="h-8 px-4 text-xs font-medium transition-colors cursor-pointer"
             >
               {initialData ? "Save changes" : "Add Quicklink"}
             </Button>

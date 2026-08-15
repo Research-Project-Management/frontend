@@ -94,7 +94,7 @@ export default function ProfileTab() {
             <Button
               variant='outline'
               size='sm'
-              className='absolute right-4 bottom-4 z-10 bg-background/50 backdrop-blur-sm'
+              className='absolute right-4 bottom-4 z-10 bg-background/50 backdrop-blur-sm cursor-pointer'
             >
               Change cover
             </Button>
@@ -106,7 +106,7 @@ export default function ProfileTab() {
                 type='button'
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploading || updateProfileMutation.isPending}
-                className='relative group overflow-hidden rounded-full ring-4 ring-background bg-background transition-transform hover:scale-105 active:scale-95'
+                className='relative group overflow-hidden rounded-full ring-4 ring-background bg-background transition-transform hover:scale-105 active:scale-95 cursor-pointer'
               >
                 <Avatar className='size-20 rounded-full bg-background text-2xl font-semibold'>
       {currentAvatar ? <AvatarImage src={currentAvatar} alt={String(currentName)} referrerPolicy="no-referrer" /> : null}
@@ -197,7 +197,7 @@ export default function ProfileTab() {
                   disabled
                   className='bg-muted/50 text-muted-foreground'
                 />
-                <button type='button' className='text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mt-1 inline-block'>
+                <button type='button' className='text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mt-1 inline-block cursor-pointer'>
                   Change email
                 </button>
               </div>
@@ -206,6 +206,7 @@ export default function ProfileTab() {
             <div>
               <Button
                 type='submit'
+                className='cursor-pointer'
                 disabled={!form.formState.isDirty || updateProfileMutation.isPending}
               >
                 {updateProfileMutation.isPending ? 'Saving...' : 'Save changes'}
@@ -223,7 +224,7 @@ export default function ProfileTab() {
                 When deactivating an account, all of the data and resources within that account will be permanently removed and cannot be recovered.
               </p>
             </div>
-            <Button variant='outline' className='text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0'>
+            <Button variant='outline' className='text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer'>
               Deactivate account
             </Button>
           </div>

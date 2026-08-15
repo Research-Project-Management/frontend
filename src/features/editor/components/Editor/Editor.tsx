@@ -37,8 +37,7 @@ import {
 import { useParams } from "next/navigation";
 import { usePageActions } from '@/features/editor/hooks/use-pages';
 const usePageComments = (_pageId?: string | null): { data: PageComment[] } => ({ data: [] });
-import type { Page } from "@/features/workspaces/projects/types/page.types";
-import type { PageComment } from "@/features/workspaces/projects/types/page.types";
+import type { Page, PageComment } from "@/features/editor/types/document.types";
 import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useEditorContext } from "@/features/editor/pages/EditorPage";

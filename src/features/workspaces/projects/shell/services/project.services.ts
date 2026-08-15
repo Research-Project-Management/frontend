@@ -5,42 +5,13 @@ import { useParams } from "next/navigation";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/shared/lib/api";
 import { toast } from "sonner";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type Project = {
-  _id: string;
-  name: string;
-  description: string;
-  avatar?: string;
-  isActive: boolean;
-  modules: string[];
-  workspace: string;
-  members: {
-    user: { _id: string; name: string; email: string; avatar?: string };
-    role: string;
-    joinedAt: string;
-  }[];
-  createdBy: { _id: string; name: string; email: string; avatar?: string };
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ProjectOverviewData = {
-  project: Project;
-  stats: {
-    files: { count: number; totalSize: number; recent: any[] };
-    tasks: { total: number; completed: number; pending: number; inProgress: number };
-    members: number;
-  };
-};
+import type { Project } from "../types/project.types";
+export type { Project };
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 export const fetchProject = (projectId: string) =>
   apiGet<{ project: Project } | Project>(`/api/project/${projectId}`);
-
-export const fetchProjectOverview = (projectId: string) =>
-  apiGet<ProjectOverviewData>(`/api/dashboard/projects/${projectId}/overview`);
 
 export const fetchProjectsByWorkspaceId = (workspaceIdOrUrl: string, signal?: AbortSignal) =>
   apiGet(`/api/workspace/${workspaceIdOrUrl}/projects`, { signal });
@@ -54,19 +25,12 @@ export const useProject = (projectId: string, options?: { enabled?: boolean }) =
     enabled: (options?.enabled ?? true) && !!projectId,
   });
 
-export const useProjectOverview = (projectId: string) =>
-  useQuery<ProjectOverviewData>({
-    queryKey: ["project-overview", projectId],
-    queryFn: () => fetchProjectOverview(projectId),
-    enabled: !!projectId,
-  });
-
 // Alias — consolidates the old useProjectDetails (which called the same endpoint)
 export const useProjectDetails = useProject;
 
 export const useProjects = (workspaceId?: string) => {
-  const params = useParams();
-  const id = workspaceId || (params?.workspaceId as string);
+  const params = useParams<{ workspaceId?: string; id?: string }>();
+  const id = workspaceId || params?.workspaceId || params?.id;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["projects", id],
@@ -75,8 +39,13 @@ export const useProjects = (workspaceId?: string) => {
   });
 
   const pData = data as any;
+  const projectsList =
+    pData?.projects ??
+    pData?.data?.projects ??
+    (Array.isArray(pData?.data) ? pData.data : Array.isArray(pData) ? pData : []);
+
   return {
-    projects: pData?.projects ?? (Array.isArray(pData) ? pData : []),
+    projects: projectsList as Project[],
     isLoading,
     isError,
   };

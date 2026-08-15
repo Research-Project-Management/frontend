@@ -245,12 +245,12 @@ export default function MemberPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent"
+                              className="h-8 w-8 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 transition-all hover:bg-accent text-foreground cursor-pointer outline-none"
                             >
-                              <MoreHorizontal className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4 text-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56 p-1.5 shadow-2xl border-border/40 bg-background/95 backdrop-blur-xl rounded-sm">
+                          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-56 p-1.5 shadow-2xl border-border/40 bg-background/95 backdrop-blur-xl rounded-sm">
                             <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-2.5 py-2">
                               Change Role
                             </DropdownMenuLabel>

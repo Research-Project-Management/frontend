@@ -45,7 +45,13 @@ const RegisterPage = () => {
   }, [isAuthLoading, user, router]);
 
 
-  if (isAuthLoading) return <Loader2 className="animate-spin" />;
+  if (isAuthLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   if (user) return null;
 
   const onSubmit = (data: RegisterSchema) => {
@@ -113,7 +119,7 @@ const RegisterPage = () => {
               <button
                 type='button'
                 onClick={() => setShowPassword(!showPassword)}
-                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors'
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
@@ -137,7 +143,7 @@ const RegisterPage = () => {
               <button
                 type='button'
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors'
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
                 aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
               >
                 {showConfirmPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
@@ -156,7 +162,7 @@ const RegisterPage = () => {
 
           <Button
             type='submit'
-            className='w-full h-10 mt-2 rounded-lg'
+            className='w-full h-10 mt-2 rounded-lg cursor-pointer'
             disabled={isPending}
           >
             {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
@@ -187,7 +193,7 @@ const RegisterPage = () => {
             variant='outline'
             type='button'
             onClick={() => handleOAuthLogin('google')}
-            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg'
+            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg cursor-pointer'
           >
             <img src='/google.svg' alt='' aria-hidden='true' className='w-4 h-4' />
             Google
@@ -196,7 +202,7 @@ const RegisterPage = () => {
             variant='outline'
             type='button'
             onClick={() => handleOAuthLogin('github')}
-            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg'
+            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg cursor-pointer'
           >
             <img src='/github.svg' alt='' aria-hidden='true' className='w-4 h-4' />
             Github

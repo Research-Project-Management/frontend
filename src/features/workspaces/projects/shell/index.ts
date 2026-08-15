@@ -1,13 +1,16 @@
 // ── projects/shell public API ─────────────────────────────────────────────────
-// Project-level chrome: workspace sub-sidebar (Home, Your Work, Stickies, Projects list)
-// Analogous to workspaces/shell for the project tab layer.
+// Project-level chrome: workspace sub-sidebar & Projects list page
 
-// ── Components ────────────────────────────────────────────────────────────────
+// ── Components & Pages ────────────────────────────────────────────────────────
+export { Sidebar as ProjectsSidebar, default as ProjectsSidebarDefault } from './components/layout/Sidebar';
+export { Topbar as ProjectsTopbar } from './components/layout/Topbar';
+export { CreateProjectModal, CreateProjectModal as CreateProject } from './components/modals/CreateProjectModal';
+export { Card, Card as ProjectCard } from './components/card/Card';
+export { ProjectsPage, ProjectsPage as default } from './pages/ProjectsPage';
 
-export { default as ProjectsSidebar } from './components/sidebar';
-export { default as ProjectsHeader } from './components/header';
-export { default as CreateProject } from './components/create-project';
+// ── Types ─────────────────────────────────────────────────────────────────────
+export * from './types/project.types';
 
-// ── Services ──────────────────────────────────────────────────────────────────
+// ── Services & Hooks ──────────────────────────────────────────────────────────
 export * from './services/project.services';
-export { useDocumentTitle } from './hooks/use-document-title';
+export * from './hooks/use-project';

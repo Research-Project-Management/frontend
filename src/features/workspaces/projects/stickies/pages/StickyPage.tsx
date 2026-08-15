@@ -2,7 +2,6 @@
 
 import { useCard } from '@/features/workspaces/projects/stickies/hooks/use-card';
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
-import Topbar from "@/features/workspaces/projects/project-id/overview/components/Topbar";
 import React, { useState, useEffect } from "react";
 import Card from '../components/card/Card';
 import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
@@ -70,21 +69,15 @@ export default function StickyPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Topbar
-        title={copy.title}
-        Icon={copy.Icon}
-        actions={
-          <TopBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onAddSticky={actions.add}
-            isAddingSticky={state.status.isAdding}
-            addLabel={copy.addLabel}
-            projectFilter={projectFilter}
-            onProjectFilterChange={setProjectFilter}
-            availableProjectIds={availableProjectIds}
-          />
-        }
+      <TopBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onAddSticky={actions.add}
+        isAddingSticky={state.status.isAdding}
+        addLabel={copy.addLabel}
+        projectFilter={projectFilter}
+        onProjectFilterChange={setProjectFilter}
+        availableProjectIds={availableProjectIds}
       />
 
       <main className="flex-1 overflow-auto p-5">

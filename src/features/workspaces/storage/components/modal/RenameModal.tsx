@@ -52,9 +52,12 @@ export default function RenameModal() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-md bg-popover"
+      >
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-foreground">
             Rename
           </DialogTitle>
         </DialogHeader>
@@ -82,12 +85,14 @@ export default function RenameModal() {
             variant="ghost"
             onClick={() => setOpen(false)}
             disabled={isPending}
+            className="text-foreground hover:bg-muted cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             onClick={handleRename}
             disabled={!newName.trim() || isPending}
+            className="cursor-pointer"
           >
             Save
           </Button>

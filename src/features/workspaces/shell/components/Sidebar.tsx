@@ -62,7 +62,7 @@ export default function Sidebar() {
                 'group relative flex w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg py-1 select-none outline-none transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
                 isActive
                   ? 'text-foreground'
-                  : 'text-foreground/70'
+                  : 'text-foreground/80 hover:text-foreground'
               )}
             >
               <div className={cn(
@@ -84,20 +84,17 @@ export default function Sidebar() {
                     alt={item.label}
                     className={cn(
                       'relative z-10 size-5 transition-opacity duration-200',
-                      isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'
+                      isActive ? 'opacity-100' : 'opacity-90 group-hover:opacity-100'
                     )}
                   />
                 ) : Icon ? (
                   <Icon
-                    className={cn(
-                      'relative z-10 size-5 transition-transform duration-200',
-                      isActive ? 'text-foreground' : 'text-foreground/70 group-hover:text-foreground'
-                    )}
+                    className="relative z-10 size-5 text-foreground transition-transform duration-200"
                   />
                 ) : null}
               </div>
 
-              <span className='relative z-10 max-w-full whitespace-nowrap text-[11px] font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground/70' data-active={isActive}>
+              <span className='relative z-10 max-w-full whitespace-nowrap text-[11px] font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground' data-active={isActive}>
                 {item.label}
               </span>
             </Link>

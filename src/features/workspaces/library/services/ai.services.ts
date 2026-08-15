@@ -161,7 +161,7 @@ export async function listChatSessions(
 ): Promise<Result<ChatSession[]>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats?workspaceId=${encodeURIComponent(workspaceId)}`,
+      `${API_URL}/api/chats?workspaceId=${encodeURIComponent(workspaceId)}`,
       { credentials: "include" },
     );
     if (!res.ok) return { success: false, error: `Failed to list chats: ${res.status}` };
@@ -181,7 +181,7 @@ export async function createChatSession(opts: {
   documentIds?: string[];
 }): Promise<Result<ChatSessionDetail>> {
   try {
-    const res = await fetch(`${API_URL}/api/ai/chats`, {
+    const res = await fetch(`${API_URL}/api/chats`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -207,7 +207,7 @@ export async function getChatSession(
 ): Promise<Result<ChatSessionDetail>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}`,
+      `${API_URL}/api/chats/${encodeURIComponent(chatId)}`,
       {
         credentials: "include",
       },
@@ -228,7 +228,7 @@ export async function appendChatMessages(
 ): Promise<Result<void>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}/messages`,
+      `${API_URL}/api/chats/${encodeURIComponent(chatId)}/messages`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -250,7 +250,7 @@ export async function renameChatSession(
 ): Promise<Result<void>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}/title`,
+      `${API_URL}/api/chats/${encodeURIComponent(chatId)}/title`,
       {
         method: "PATCH",
         credentials: "include",
@@ -269,7 +269,7 @@ export async function renameChatSession(
 export async function deleteChatSession(chatId: string): Promise<Result<void>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}`,
+      `${API_URL}/api/chats/${encodeURIComponent(chatId)}`,
       { method: "DELETE", credentials: "include" },
     );
     if (!res.ok) return { success: false, error: `Failed to delete chat: ${res.status}` };
@@ -282,16 +282,14 @@ export async function deleteChatSession(chatId: string): Promise<Result<void>> {
 /** Clear all AI memories for a workspace. */
 export async function clearAiMemory(workspaceId: string): Promise<Result<void>> {
   try {
-    const res = await fetch(`${API_URL}/api/ai/memory/clear`, {
+    const res = await fetch(`${API_URL}/api/memory/clear?workspaceId=${encodeURIComponent(workspaceId)}`, {
       method: "DELETE",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId }),
     });
-    if (!res.ok) return { success: false, error: `Failed to clear AI memory: ${res.status}` };
+    if (!res.ok) return { success: false, error: `Failed to clear memory: ${res.status}` };
     return { success: true, data: undefined };
   } catch (err: any) {
-    return { success: false, error: err.message || "Failed to clear AI memory" };
+    return { success: false, error: err.message || "Failed to clear memory" };
   }
 }
 
@@ -370,7 +368,7 @@ export async function getPageChat(
 ): Promise<Result<ChatSessionDetail>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats/page/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
+      `${API_URL}/api/chats/page/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
       { credentials: "include" },
     );
     if (!res.ok) return { success: false, error: `Failed to load page chat: ${res.status}` };
@@ -385,7 +383,7 @@ export async function getPageChat(
 export async function clearPageChat(pageId: string): Promise<Result<void>> {
   try {
     const res = await fetch(
-      `${API_URL}/api/ai/chats/page/${encodeURIComponent(pageId)}`,
+      `${API_URL}/api/chats/page/${encodeURIComponent(pageId)}`,
       { method: "DELETE", credentials: "include" },
     );
     if (!res.ok) return { success: false, error: `Failed to clear page chat: ${res.status}` };

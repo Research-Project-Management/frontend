@@ -69,17 +69,21 @@ export default function PaperBatchBar({
         {/* Move To Collection Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
-              <FolderInput className="size-3.5 text-muted-foreground" />
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-foreground hover:bg-muted cursor-pointer">
+              <FolderInput className="size-3.5 text-foreground" />
               Move to
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-56 p-1 text-xs">
-            <DropdownMenuItem onClick={() => onBatchMove(null)} className="text-xs">
+          <DropdownMenuContent
+            align="center"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            className="w-56 p-1 text-xs"
+          >
+            <DropdownMenuItem onClick={() => onBatchMove(null)} className="text-xs cursor-pointer">
               My Library (Root)
             </DropdownMenuItem>
             {collections.map((c) => (
-              <DropdownMenuItem key={c._id} onClick={() => onBatchMove(c._id)} className="text-xs">
+              <DropdownMenuItem key={c._id} onClick={() => onBatchMove(c._id)} className="text-xs cursor-pointer">
                 <span className="truncate">{c.name}</span>
               </DropdownMenuItem>
             ))}
@@ -91,10 +95,10 @@ export default function PaperBatchBar({
           variant="ghost"
           size="sm"
           onClick={handleExportAllBibtex}
-          className="h-8 gap-1.5 text-xs"
+          className="h-8 gap-1.5 text-xs text-foreground hover:bg-muted cursor-pointer"
           title="Copy BibTeX citations"
         >
-          <Copy className="size-3.5 text-muted-foreground" />
+          <Copy className="size-3.5 text-foreground" />
           Export BibTeX
         </Button>
 
@@ -103,20 +107,20 @@ export default function PaperBatchBar({
           variant="ghost"
           size="sm"
           onClick={onBatchDelete}
-          className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="h-8 gap-1.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 className="size-3.5 text-destructive" />
           Delete
         </Button>
 
         {/* Dismiss selection */}
         <button
           onClick={onClearSelection}
-          className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted ml-1 transition-colors"
+          className="flex size-6 items-center justify-center rounded-md text-foreground hover:bg-muted ml-1 transition-colors cursor-pointer"
           title="Clear selection"
           aria-label="Clear selection"
         >
-          <X className="size-3.5" />
+          <X className="size-3.5 text-foreground" />
         </button>
       </motion.div>
     </AnimatePresence>

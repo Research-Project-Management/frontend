@@ -48,7 +48,12 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
                   <span className="truncate">{s.source}</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-72 p-0 text-xs">
+              <PopoverContent
+                side="top"
+                align="start"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-72 p-0 text-xs bg-popover"
+              >
                 <div className="flex items-center gap-1.5 border-b border-border bg-muted/45 px-2.5 py-1.5">
                   <Quote className="size-3 shrink-0 text-primary" />
                   <span className="truncate text-[10px] font-semibold text-foreground/80">

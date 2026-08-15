@@ -67,18 +67,18 @@ export default function ModulesPage() {
   const hasChanges = JSON.stringify(activeModules.sort()) !== JSON.stringify([...(p?.modules || [])].sort());
 
   return (
-    <div className="flex-1 p-6 max-w-4xl mx-auto space-y-8 h-full bg-white">
+    <div className="flex-1 p-6 max-w-4xl mx-auto space-y-8 h-full bg-background">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-[17px] font-semibold text-zinc-900">Project Modules</h2>
-          <p className="text-[13px] text-zinc-400 mt-1">
+          <h2 className="text-[17px] font-semibold text-foreground">Project Modules</h2>
+          <p className="text-[13px] text-muted-foreground mt-1">
             Enable or disable features for this project.
           </p>
         </div>
         <Button 
           onClick={handleSave} 
           disabled={!hasChanges || updateMutation.isPending}
-          className="h-8.5 rounded-sm px-4 text-xs font-medium"
+          className="h-9 rounded-lg px-4 text-xs font-medium cursor-pointer"
         >
           {updateMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
           Save Changes
@@ -93,18 +93,18 @@ export default function ModulesPage() {
             <div 
               key={mod.id}
               className={cn(
-                "flex items-center justify-between p-4 rounded-md border",
-                isActive ? "border-zinc-200 bg-white" : "border-transparent bg-zinc-50/50",
+                "flex items-center justify-between p-4 rounded-lg border",
+                isActive ? "border-border bg-card" : "border-transparent bg-muted/40",
                 mod.locked && "opacity-75"
               )}
             >
               <div className="flex items-center gap-3">
-                <div className={cn("p-2 rounded-md", isActive ? "bg-zinc-200 text-zinc-900" : "bg-zinc-100 text-zinc-500")}>
+                <div className={cn("p-2 rounded-lg", isActive ? "bg-muted text-foreground" : "bg-muted/60 text-muted-foreground")}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-[13px] font-semibold text-zinc-900">{mod.label}</h3>
-                  <p className="text-[11px] text-zinc-500">{mod.locked ? "Required module" : "Optional module"}</p>
+                  <h3 className="text-[13px] font-semibold text-foreground">{mod.label}</h3>
+                  <p className="text-[11px] text-muted-foreground">{mod.locked ? "Required module" : "Optional module"}</p>
                 </div>
               </div>
               <Switch 

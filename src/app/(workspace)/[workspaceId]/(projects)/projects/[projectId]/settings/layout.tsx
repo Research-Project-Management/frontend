@@ -4,8 +4,7 @@ import { useParams, usePathname } from 'next/navigation';
 
 import Link from "next/link";
 import { useProjects } from '@/features/workspaces/projects/shell';
-import { Settings } from "lucide-react";
-import Topbar from "@/features/workspaces/projects/project-id/overview/components/Topbar";
+import Topbar from "@/features/workspaces/projects/project-id/settings/components/Topbar";
 import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
 
 export default function ProjectSettingLayout({ children }: { children?: React.ReactNode }) {
@@ -30,8 +29,6 @@ export default function ProjectSettingLayout({ children }: { children?: React.Re
     <div className="flex-1 min-w-0 flex flex-col h-full bg-background overflow-hidden relative">
       <Topbar
         project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
-        title="Settings"
-        Icon={Settings}
         centerContent={
           <LayoutGroup id="project-settings-tabs">
             <nav className="flex h-13 max-w-full items-stretch overflow-visible justify-center">

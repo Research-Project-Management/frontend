@@ -22,8 +22,8 @@ import {
   useDeleteComment,
   useAddReply,
   useDeleteReply,
-} from "@/features/workspaces/projects/project-id/drafts/services/comment.services";
-import type { PageComment, CommentReply } from "@/features/workspaces/projects/types/page.types";
+} from "@/features/editor/services/comment.services";
+import type { PageComment, CommentReply } from "@/features/editor/types/document.types";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';

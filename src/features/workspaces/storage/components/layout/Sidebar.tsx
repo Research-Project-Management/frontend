@@ -58,8 +58,8 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 key={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring max-md:shrink-0',
-                  isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
+                  'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring max-md:shrink-0 text-foreground',
+                  isActive ? 'font-semibold' : 'font-medium'
                 )}
               >
                 {isActive && (
@@ -71,17 +71,12 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   />
                 )}
                 <item.icon
-                  className={cn(
-                    'relative z-10 size-4 shrink-0',
-                    isActive ? 'text-foreground' : 'text-muted-foreground group-hover/item:text-foreground'
-                  )}
+                  className="relative z-10 size-4 shrink-0 text-foreground"
                 />
                 <span
                   className={cn(
-                    'relative z-10 min-w-0 truncate',
-                    isActive
-                      ? 'font-semibold text-foreground'
-                      : 'font-medium text-muted-foreground group-hover/item:text-foreground'
+                    'relative z-10 min-w-0 truncate text-foreground',
+                    isActive ? 'font-semibold' : 'font-medium'
                   )}
                 >
                   {item.label}

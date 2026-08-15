@@ -6,6 +6,12 @@ import { useAuth } from '@/features/auth';
 import { useWorkspaces } from '../hooks/use-workspace';
 import AccountDropdown from './AccountDropdown';
 import Switcher from './Switcher';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/shared/components/ui';
 
 export default function Topbar() {
   const { user, isLoading } = useAuth();
@@ -32,21 +38,30 @@ export default function Topbar() {
 
       {/* Center: Search placeholder */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
-        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-muted-foreground shadow-sm transition-colors hover:bg-accent'>
-          <Search className='size-3.5 text-muted-foreground/70' />
-          <span className='text-xs text-muted-foreground/80'>Search...</span>
+        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-foreground/80 shadow-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer'>
+          <Search className='size-3.5 text-foreground' />
+          <span className='text-xs text-foreground/80'>Search...</span>
         </button>
       </div>
 
       {/* Right: Inbox + User menu */}
       <div className='flex items-center gap-2 shrink-0'>
-        <button
-          type='button'
-          className='flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
-          title='Inbox'
-        >
-          <Mail className='size-4' />
-        </button>
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type='button'
+                className='flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent cursor-pointer outline-none'
+                aria-label='Inbox'
+              >
+                <Mail className='size-4 text-foreground' />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side='bottom' sideOffset={6}>
+              Inbox
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {!isLoading && user && workspaceId && (
           <AccountDropdown workspaceId={workspaceId} />

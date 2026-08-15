@@ -3,11 +3,10 @@
 import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { PanelLeftOpen } from "lucide-react";
-import { Button } from '@/shared/components/ui/button';
+import { PanelLeft } from "lucide-react";
 
 const ProjectsSidebar = dynamic(
-  () => import('@/features/workspaces/projects/shell/components/sidebar'),
+  () => import('@/features/workspaces/projects/shell/components/layout/Sidebar'),
   { ssr: false, loading: () => null }
 );
 
@@ -25,10 +24,10 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="relative flex h-full">
+    <div className="relative flex h-full overflow-hidden">
       <div
-        className={`absolute inset-y-0 left-0 z-40 h-full transition-all duration-300 ease-in-out lg:relative ${
-          isSidebarVisible ? "w-60" : "w-0"
+        className={`absolute inset-y-0 left-0 z-40 h-full overflow-hidden transition-all duration-300 ease-in-out lg:relative ${
+          isSidebarVisible ? "w-60 border-r border-border" : "w-0 border-r-0"
         } bg-transparent`}
       >
         <div className="h-full w-60">
@@ -41,27 +40,29 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
         style={{ "--header-offset": isSidebarVisible ? "0px" : "48px" } as React.CSSProperties}
       >
         {!isSidebarVisible && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarVisible(true)}
-            className="absolute left-4 top-4 z-50 h-9 w-9 rounded-md border border-border bg-card shadow-sm animate-in fade-in slide-in-from-left-2 hover:bg-secondary"
-          >
-            <PanelLeftOpen className="size-4 text-primary" />
-          </Button>
+          <div className="absolute left-4 top-0 h-14 flex items-center z-50 pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setIsSidebarVisible(true)}
+              title="Expand sidebar"
+              className="p-1.5 -ml-1.5 rounded-md text-foreground hover:bg-muted/80 cursor-pointer transition-colors flex items-center justify-center"
+            >
+              <PanelLeft className="size-4.5 text-foreground" />
+            </button>
+          </div>
         )}
         {isSidebarVisible && (
           <button
             type="button"
             aria-label="Close project sidebar"
-            className="absolute inset-0 z-30 bg-foreground/10 backdrop-blur-[1px] lg:hidden"
+            className="absolute inset-0 z-30 bg-foreground/10 backdrop-blur-[1px] lg:hidden cursor-pointer"
             onClick={() => setIsSidebarVisible(false)}
           />
         )}
         <div className="relative flex-1 overflow-y-auto">
-            <div className="h-full w-full min-w-0">
-              {children}
-            </div>
+          <div className="h-full w-full min-w-0">
+            {children}
+          </div>
         </div>
       </div>
     </div>

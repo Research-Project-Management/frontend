@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import BoardView from '@/features/workspaces/projects/project-id/tasks/components/BoardView';
+import BoardView from '@/features/workspaces/projects/project-id/tasks/components/views/BoardView';
 // Legacy router mocks
 const MemoryRouter = ({ children }: any) => <div>{children}</div>;
 import type { Task, Column } from '@/features/workspaces/projects/project-id/tasks/types/task.types';

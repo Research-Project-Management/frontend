@@ -33,16 +33,18 @@ export default function DeleteModal({
 }: DeleteModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
-
-      <DialogContent className="max-w-[560px] p-0 overflow-hidden">
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="max-w-[560px] p-0 overflow-hidden bg-popover border border-border shadow-2xl rounded-lg"
+      >
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
-            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-red-50">
-              <WarningIcon className="h-5 w-5 text-red-600" />
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+              <WarningIcon className="h-5 w-5 text-destructive" />
             </div>
 
             <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold">
+              <DialogTitle className="text-base font-semibold text-foreground">
                 {title}
               </DialogTitle>
               <DialogDescription className="mt-1 text-sm text-muted-foreground">
@@ -52,22 +54,24 @@ export default function DeleteModal({
           </DialogHeader>
         </div>
 
-        <div className="border-t px-6 py-4">
+        <div className="border-t border-border px-6 py-4">
           <DialogFooter className="flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={onCancel}
               disabled={isConfirmLoading}
+              className="cursor-pointer text-foreground hover:bg-muted"
             >
               {cancelText}
             </Button>
 
             <Button
               type="button"
+              variant="destructive"
               onClick={onConfirm}
               disabled={isConfirmLoading}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="cursor-pointer"
             >
               {isConfirmLoading ? "Deleting..." : confirmText}
             </Button>

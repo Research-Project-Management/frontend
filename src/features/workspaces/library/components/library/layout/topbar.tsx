@@ -20,6 +20,10 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@/shared/components/ui";
 
 export interface BreadcrumbItem {
@@ -92,14 +96,22 @@ export default function Topbar({
       {/* Left Section: Title or Breadcrumbs */}
       <div className="flex items-center gap-2 min-w-0">
         {!isOpen && (
-          <button
-            onClick={toggle}
-            title="Expand sidebar"
-            aria-label="Expand sidebar"
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors mr-0.5 shrink-0"
-          >
-            <PanelLeftOpen className="size-4" />
-          </button>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={toggle}
+                  aria-label="Expand sidebar"
+                  className="flex size-7 items-center justify-center rounded-md text-foreground hover:text-foreground hover:bg-secondary/80 transition-colors mr-0.5 shrink-0 cursor-pointer outline-none"
+                >
+                  <PanelLeftOpen className="size-4 text-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={6}>
+                Expand sidebar
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         {breadcrumbs && breadcrumbs.length > 0 ? (
           <div className="flex items-center gap-2 min-w-0 overflow-hidden">
@@ -108,10 +120,10 @@ export default function Topbar({
                 return (
                   <React.Fragment key={crumb._id || idx}>
                     {idx > 0 && (
-                      <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" />
+                      <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
                     )}
                     <div className="flex items-center justify-center shrink-0">
-                      <MoreHorizontal className="size-4 text-muted-foreground/60" />
+                      <MoreHorizontal className="size-4 text-foreground/60" />
                     </div>
                   </React.Fragment>
                 );
@@ -121,7 +133,7 @@ export default function Topbar({
               return (
                 <React.Fragment key={crumb._id || idx}>
                   {idx > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground/50 shrink-0" />
+                    <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
                   )}
                   <div
                     role={!isLast && onNavigateCrumb ? "button" : undefined}
@@ -148,7 +160,7 @@ export default function Topbar({
                       }
                     }}
                   >
-                    <FolderOpen className="size-4.5 text-muted-foreground shrink-0" />
+                    <FolderOpen className="size-4.5 text-foreground shrink-0" />
                     <span
                       className="text-[1.05rem] font-semibold tracking-tight text-foreground transition-colors duration-200 truncate max-w-[200px]"
                       title={crumb.name}
@@ -162,7 +174,7 @@ export default function Topbar({
           </div>
         ) : (
           <div className="flex items-center gap-2.5">
-            {Icon && <Icon className="size-4.5 text-muted-foreground shrink-0" />}
+            {Icon && <Icon className="size-4.5 text-foreground shrink-0" />}
             {title && (
               <h1 className="text-[1.05rem] font-semibold tracking-tight text-foreground transition-colors duration-200 truncate">
                 {title}
@@ -187,10 +199,10 @@ export default function Topbar({
           >
             <Search
               className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10",
+                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
                 isSearchExpanded || search
-                  ? "left-2.5 translate-x-0 text-muted-foreground/50"
-                  : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
+                  ? "left-2.5 translate-x-0"
+                  : "left-1/2 -translate-x-1/2"
               )}
             />
             <Input
@@ -210,10 +222,10 @@ export default function Topbar({
               <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handleClearSearch}
-                className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Clear search"
               >
-                <Plus className="size-3.5 rotate-45" />
+                <Plus className="size-3.5 rotate-45 text-foreground" />
               </button>
             )}
           </div>
@@ -223,22 +235,26 @@ export default function Topbar({
         {(onAddPaper || onAddCollection) && (
           <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <PopoverTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg">
-                <Plus className="size-3.5" />
+              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer">
+                <Plus className="size-3.5 text-primary-foreground" />
                 New
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-1">
+            <PopoverContent
+              align="end"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-48 p-1"
+            >
               {onAddPaper && (
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     onAddPaper();
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
                 >
-                  <Upload className="size-4 text-muted-foreground" />
-                  Add paper
+                  <Upload className="size-4 text-foreground" />
+                  Add PDF Document
                 </button>
               )}
               {onAddCollection && (
@@ -247,10 +263,10 @@ export default function Topbar({
                     setIsMenuOpen(false);
                     onAddCollection();
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
                 >
-                  <FolderPlus className="size-4 text-muted-foreground" />
-                  {isSubcollection ? "New subcollection" : "New collection"}
+                  <FolderPlus className="size-4 text-foreground" />
+                  {isSubcollection ? "New Subcollection" : "New Collection"}
                 </button>
               )}
             </PopoverContent>

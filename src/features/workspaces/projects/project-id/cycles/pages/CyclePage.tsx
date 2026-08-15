@@ -5,24 +5,23 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
-import { useDocumentTitle } from '@/features/workspaces/projects/project-id/cycles/hooks/use-document-title';
-import { useCycle, type DerivedStatus } from '@/features/workspaces/projects/project-id/cycles/hooks/use-cycle';
-const useLabels = () => ({ workspaceLabels: [] });
+import { useProjects } from '@/features/workspaces/projects/shell';
+import { useCycle, type DerivedStatus } from '../hooks/use-cycles';
+import { useLabels } from '../hooks/use-labels';
 import { Skeleton } from "@/shared/components/ui";
 import { 
   Plus,
   RotateCcw
 } from "lucide-react";
 
-import { Item, ListViewGroup, EmptyState } from '../components/ListViewSection';
+import { Item, ListViewGroup, EmptyState } from '../components/views/ListView';
 
 // Modals
-import { DeleteModal } from '../components/DeleteModal';
-import { CycleModal } from '../components/CycleModal';
-import { StatusModal, type StatusModalType } from '../components/StatusModal';
-import type { Cycle, CycleMilestone } from "@/features/workspaces/projects/project-id/tasks/types/task.types";
-import TopBar from '../components/Topbar';
+import { DeleteModal } from '../components/modals/DeleteModal';
+import { CycleModal } from '../components/modals/CycleModal';
+import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
+import type { Cycle, CycleMilestone } from "../types/cycle.types";
+import TopBar from '../components/layout/Topbar';
 
 const PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },
@@ -51,10 +50,6 @@ export function CyclePage() {
     deriveStatus,
     checkParallelConflict,
   } = useCycle(projectId!, workspaceId);
-
-  useDocumentTitle(
-    projectData?.name ? `Cycles - ${projectData.name}` : "Cycles"
-  );
 
   const { workspaceLabels: allLabels } = useLabels(workspaceId!, "cycle", projectId);
 
@@ -326,18 +321,18 @@ export function CyclePage() {
             <div className="mt-2">
               {cycles.length === 0 && !searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
-                  <RotateCcw className="size-10 text-zinc-200 mb-4" strokeWidth={1.5} />
+                  <RotateCcw className="size-10 text-foreground/40 mb-4" strokeWidth={1.5} />
                   <h3 className="text-[16px] font-semibold text-foreground mb-1.5">No cycles found</h3>
-                  <p className="text-[13px] text-zinc-500 max-w-[400px] mb-6 leading-relaxed">
+                  <p className="text-[13px] text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
-                  <Button onClick={openCreate} className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm shadow-none gap-2">
+                  <Button onClick={openCreate} className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm shadow-none gap-2 cursor-pointer">
                     <Plus className="size-4" />
                     <span>Create your first cycle</span>
                   </Button>
                 </div>
               ) : (
-                <div className="border border-border/80 overflow-hidden flex flex-col bg-white">
+                <div className="border border-border/80 overflow-hidden flex flex-col bg-card">
                   {(["active", "planned", "completed"] as DerivedStatus[]).map((status) => (
                 <ListViewGroup
                   key={status}

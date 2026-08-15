@@ -93,15 +93,16 @@ export function ItemActions({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 text-foreground hover:bg-muted cursor-pointer outline-none"
             onPointerDown={(e: React.MouseEvent) => e.stopPropagation()}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           >
-            <MoreVertical className="size-4" />
+            <MoreVertical className="size-4 text-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
+          onCloseAutoFocus={(e) => e.preventDefault()}
           onPointerDown={(e: React.MouseEvent) => e.stopPropagation()}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >

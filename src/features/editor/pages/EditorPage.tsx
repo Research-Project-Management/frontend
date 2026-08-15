@@ -17,7 +17,6 @@ import { useEditorSettingsStore } from '@/features/editor/store/editor-settings.
 import { resolveFileUrl } from '@/features/editor/utils/latex';
 import { useLayout } from '@/features/editor/hooks/use-layout';
 import type { AssetInfo } from '@/features/editor/store/page-context';
-import type { PageComment } from '@/features/workspaces/projects/types/page.types';
 
 const Editor = dynamic(() => import('../components/Editor/Editor'), { ssr: false });
 const Viewer = dynamic(() => import('../components/Viewer/Viewer'), { ssr: false });

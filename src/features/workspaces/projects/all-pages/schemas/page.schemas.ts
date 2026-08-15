@@ -1,52 +1,39 @@
-import { z } from "zod";
+import { z } from 'zod';
+
+// ── Page schema ─────────────────────────────────────────────────────────────
 
 export const pageSchema = z.object({
   _id: z.string(),
   title: z.string(),
   content: z.string().optional(),
-  status: z.enum(["draft", "published", "archived"]).optional(),
+  status: z.enum(['draft', 'published', 'archived']).optional(),
   pdfThumbnail: z.string().optional(),
   createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-  workspaceId: z.any().optional(),
-  projectId: z.any().optional(),
+  updatedAt: z.string(),
+  workspaceId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+  projectId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   parentPage: z.string().optional(),
-  mainFile: z.any().optional(),
+  mainFile: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+  author: z
+    .object({
+      _id: z.string().optional(),
+      name: z.string().optional(),
+      email: z.string().optional(),
+      avatar: z.string().optional(),
+    })
+    .optional(),
 });
 
-export const pageFileSchema = z.object({
-  _id: z.string(),
-  title: z.string(),
+// ── Create Page Input schema ────────────────────────────────────────────────
+
+export const createPageSchema = z.object({
+  projectId: z.string().min(1, 'Project is required'),
+  title: z.string().min(1, 'Title is required'),
   content: z.string().optional(),
-  pageId: z.string(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
+  status: z.enum(['draft', 'published', 'archived']).optional(),
 });
 
-export const pageVersionSchema = z.object({
-  _id: z.string(),
-  label: z.string().optional(),
-  pageId: z.string(),
-  rootPageId: z.string().optional(),
-  createdAt: z.string(),
-  savedBy: z.object({
-    name: z.string()
-  }).optional(),
-});
+// ── Inferred Types ──────────────────────────────────────────────────────────
 
-export const projectEventSchema = z.object({
-  _id: z.string(),
-  eventType: z.enum(["manual_save", "auto_save", "file_created", "file_deleted", "asset_uploaded", "asset_deleted"]),
-  fileName: z.string().optional(),
-  label: z.string().optional(),
-  projectId: z.string(),
-  createdAt: z.string(),
-  savedBy: z.object({
-    name: z.string()
-  }).optional(),
-});
-
-export type Page = z.infer<typeof pageSchema>;
-export type PageFile = z.infer<typeof pageFileSchema>;
-export type PageVersion = z.infer<typeof pageVersionSchema>;
-export type ProjectEvent = z.infer<typeof projectEventSchema>;
+export type PageSchema = z.infer<typeof pageSchema>;
+export type CreatePageSchema = z.infer<typeof createPageSchema>;

@@ -54,3 +54,24 @@ export type WithChildren<T = object> = T & {
 export type WithClassName<T = object> = T & {
   className?: string;
 };
+
+// ─── Discriminated Unions (Matt Pocock Pattern) ───────────────────────────────
+
+/**
+ * Type-safe state representing an async query or data-fetching operation.
+ * Eliminates impossible states like `{ isLoading: true, isError: true }`.
+ */
+export type AsyncState<T, E = Error> =
+  | { status: 'idle'; data: null; error: null }
+  | { status: 'loading'; data: T | null; error: null }
+  | { status: 'success'; data: T; error: null }
+  | { status: 'error'; data: null; error: E };
+
+/**
+ * Type-safe state representing a mutation, action, or form submission.
+ */
+export type ActionState<T = void, E = string> =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: E };

@@ -1,7 +1,6 @@
 'use client';
 
-import { useCard } from '@/features/workspaces/projects/project-id/stickies/hooks/use-card';
-import Topbar from "@/features/workspaces/projects/project-id/overview/components/Topbar";
+import { useCard } from '../hooks/use-card';
 import React, { useState, useEffect } from "react";
 import Card from '../components/card/Card';
 import type { Sticky } from '../types/sticky.types';
@@ -20,7 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableSticky } from '../components/card/Sortable';
 
-import TopBar from '../components/layout/TopBar';
+import TopBar from '../components/layout/Topbar';
 import EmptyState from '../components/layout/EmptyState';
 
 const copy = {
@@ -57,18 +56,12 @@ export default function StickyPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <Topbar
-        title={copy.title}
-        Icon={copy.Icon}
-        actions={
-          <TopBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onAddSticky={actions.add}
-            isAddingSticky={state.status.isAdding}
-            addLabel={copy.addLabel}
-          />
-        }
+      <TopBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onAddSticky={actions.add}
+        isAddingSticky={state.status.isAdding}
+        addLabel={copy.addLabel}
       />
 
       <main className="flex-1 overflow-auto p-5">

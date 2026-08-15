@@ -6,7 +6,7 @@ import { FileText, BookOpen, Trash2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { API_BASE_URL as API_URL } from '@/shared/constants';
+import { API_BASE_URL } from '@/shared/constants';
 import type { Paper, Collection } from '../../../types/library.types';
 
 interface PaperTableRowProps {

@@ -251,10 +251,13 @@ export default function PaperUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-lg max-h-[90vh] overflow-y-auto bg-popover"
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="size-4" />
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <Upload className="size-4 text-foreground" />
             Upload Paper
           </DialogTitle>
         </DialogHeader>

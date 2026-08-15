@@ -6,6 +6,18 @@ import type {
   AgentAction,
 } from "@/features/workspaces/ai/types/chat.types";
 import { API_BASE_URL as API_URL } from "@/shared/constants";
+import { getAuthToken } from "@/shared/lib/api";
+
+function getHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    ...extra,
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 /**
  * Stream chat responses from the AI backend via RPM-BE proxy.
@@ -36,10 +48,10 @@ export async function* streamChatResponse(
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
   const response = await fetch(`${API_URL}/api/ai/chat`, {
     method: "POST",
-    headers: {
+    headers: getHeaders({
       "Content-Type": "application/json",
       Accept: "text/event-stream",
-    },
+    }),
     credentials: "include",
     body: JSON.stringify({
       messages: aiMessages,
@@ -192,13 +204,21 @@ export interface ChatSyncResponse {
 export async function listChatSessions(
   workspaceId: string,
 ): Promise<ChatSession[]> {
-  const res = await fetch(
-    `${API_URL}/api/ai/chats?workspaceId=${encodeURIComponent(workspaceId)}`,
-    { credentials: "include" },
-  );
-  if (!res.ok) throw new Error(`Failed to list chats: ${res.status}`);
-  const data = await res.json();
-  return data.chats;
+  try {
+    const res = await fetch(
+      `${API_URL}/api/chats?workspaceId=${encodeURIComponent(workspaceId)}`,
+      { credentials: "include", headers: getHeaders() },
+    );
+    if (!res.ok) {
+      if (res.status === 401) return [];
+      throw new Error(`Failed to list chats: ${res.status}`);
+    }
+    const data = await res.json();
+    return data.chats || [];
+  } catch (err) {
+    console.warn("Failed to list chat sessions:", err);
+    return [];
+  }
 }
 
 /** Create a new chat session, optionally with initial messages already included. */
@@ -209,9 +229,9 @@ export async function createChatSession(opts: {
   messages?: ChatMessage[];
   documentIds?: string[];
 }): Promise<ChatSessionDetail> {
-  const res = await fetch(`${API_URL}/api/ai/chats`, {
+  const res = await fetch(`${API_URL}/api/chats`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getHeaders({ "Content-Type": "application/json" }),
     credentials: "include",
     body: JSON.stringify({
       workspaceId: opts.workspaceId,
@@ -231,9 +251,10 @@ export async function getChatSession(
   chatId: string,
 ): Promise<ChatSessionDetail> {
   const res = await fetch(
-    `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}`,
+    `${API_URL}/api/chats/${encodeURIComponent(chatId)}`,
     {
       credentials: "include",
+      headers: getHeaders(),
     },
   );
   if (!res.ok) throw new Error(`Failed to get chat: ${res.status}`);
@@ -248,10 +269,10 @@ export async function appendChatMessages(
   documentIds?: string[],
 ): Promise<void> {
   const res = await fetch(
-    `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}/messages`,
+    `${API_URL}/api/chats/${encodeURIComponent(chatId)}/messages`,
     {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders({ "Content-Type": "application/json" }),
       credentials: "include",
       body: JSON.stringify({ messages, documentIds }),
     },
@@ -265,11 +286,11 @@ export async function renameChatSession(
   title: string,
 ): Promise<void> {
   const res = await fetch(
-    `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}/title`,
+    `${API_URL}/api/chats/${encodeURIComponent(chatId)}/title`,
     {
       method: "PATCH",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ title }),
     },
   );
@@ -279,23 +300,21 @@ export async function renameChatSession(
 /** Delete a chat session. */
 export async function deleteChatSession(chatId: string): Promise<void> {
   const res = await fetch(
-    `${API_URL}/api/ai/chats/${encodeURIComponent(chatId)}`,
-    { method: "DELETE", credentials: "include" },
+    `${API_URL}/api/chats/${encodeURIComponent(chatId)}`,
+    { method: "DELETE", credentials: "include", headers: getHeaders() },
   );
   if (!res.ok) throw new Error(`Failed to delete chat: ${res.status}`);
 }
 
 /** Clear all AI memories for a workspace. */
 export async function clearAiMemory(workspaceId: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/ai/memory/clear`, {
+  const res = await fetch(`${API_URL}/api/memory/clear?workspaceId=${encodeURIComponent(workspaceId)}`, {
     method: "DELETE",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workspaceId }),
+    headers: getHeaders(),
   });
   if (!res.ok) throw new Error(`Failed to clear AI memory: ${res.status}`);
 }
-
 
 export async function uploadDocument(
   file: File,
@@ -304,13 +323,12 @@ export async function uploadDocument(
   const form = new FormData();
   form.append("file", file, file.name);
   form.append("title", file.name);
-  // Pass chatId as query param so RPM-BE can inject it into the multipart
-  // forwarded to ai, scoping the RAG chunks to this session.
   const url = new URL(`${API_URL}/api/ai/documents/upload`);
   if (chatId) url.searchParams.set("chatId", chatId);
   const res = await fetch(url.toString(), {
     method: "POST",
     credentials: "include",
+    headers: getHeaders(),
     body: form,
   });
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
@@ -324,7 +342,7 @@ export async function fetchDocumentsBulk(
   if (!ids.length) return [];
   const res = await fetch(
     `${API_URL}/api/ai/documents/bulk?ids=${ids.map(encodeURIComponent).join(",")}`,
-    { credentials: "include" },
+    { credentials: "include", headers: getHeaders() },
   );
   if (!res.ok)
     throw new Error(`Failed to fetch document metadata: ${res.status}`);
@@ -341,7 +359,7 @@ export async function fetchDocumentContent(docId: string): Promise<{
 }> {
   const res = await fetch(
     `${API_URL}/api/ai/documents/${encodeURIComponent(docId)}`,
-    { credentials: "include" },
+    { credentials: "include", headers: getHeaders() },
   );
   if (!res.ok)
     throw new Error(`Failed to fetch document content: ${res.status}`);
@@ -356,8 +374,8 @@ export async function getPageChat(
   workspaceId: string,
 ): Promise<ChatSessionDetail> {
   const res = await fetch(
-    `${API_URL}/api/ai/chats/page/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
-    { credentials: "include" },
+    `${API_URL}/api/chats/page/${encodeURIComponent(pageId)}?workspaceId=${encodeURIComponent(workspaceId)}`,
+    { credentials: "include", headers: getHeaders() },
   );
   if (!res.ok) throw new Error(`Failed to load page chat: ${res.status}`);
   const data = await res.json();
@@ -367,8 +385,8 @@ export async function getPageChat(
 /** Clear all messages from a page's AI chat (does NOT delete the session). */
 export async function clearPageChat(pageId: string): Promise<void> {
   const res = await fetch(
-    `${API_URL}/api/ai/chats/page/${encodeURIComponent(pageId)}`,
-    { method: "DELETE", credentials: "include" },
+    `${API_URL}/api/chats/page/${encodeURIComponent(pageId)}`,
+    { method: "DELETE", credentials: "include", headers: getHeaders() },
   );
   if (!res.ok) throw new Error(`Failed to clear page chat: ${res.status}`);
 }

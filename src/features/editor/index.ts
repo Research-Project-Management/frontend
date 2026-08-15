@@ -30,9 +30,11 @@ export { extractPdfMetadataFromFile, type PdfMetadata, extractDoiFromText, parse
 export { PageVersionService } from './services/version.services';
 export { ProjectHistoryService } from './services/history.services';
 export { PageDocumentService, PageFileService } from './services/page-document.services';
+export * from './services/comment.services';
 export { useEditorTabsStore } from './store/editor-tabs.store';
 export { EditorPage, useEditorContext, EditorContext } from './pages/EditorPage';
 export { PageContextProvider, usePageContext } from './store/page-context';
+export * from './types/document.types';
 export * from './hooks/use-pages';
 export * from './hooks/use-version';
 export * from './hooks/use-history';

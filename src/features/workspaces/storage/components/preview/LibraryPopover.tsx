@@ -92,7 +92,11 @@ export default function LibraryPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3">
+      <PopoverContent
+        align="end"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-72 p-3"
+      >
         <div className="flex items-center gap-2 pb-2">
           <BookOpen className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold">Add to Library</p>
@@ -113,11 +117,11 @@ export default function LibraryPopover({
               <button
                 key={collection._id}
                 onClick={() => setCollectionId(collection._id)}
-                className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent"
+                className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent cursor-pointer"
               >
                 <FolderOpen
                   className="size-4 shrink-0"
-                  style={{ color: collection.color || "#3370ff" }}
+                  style={{ color: collection.color || "var(--primary)" }}
                 />
                 <span className="min-w-0 flex-1 truncate text-xs font-medium">
                   {collection.name}
@@ -132,7 +136,7 @@ export default function LibraryPopover({
 
         <Button
           size="sm"
-          className="mt-3 w-full"
+          className="mt-3 w-full cursor-pointer"
           disabled={!collectionId || isAdding}
           onClick={handleAdd}
         >

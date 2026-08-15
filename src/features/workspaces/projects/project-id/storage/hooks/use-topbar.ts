@@ -2,8 +2,8 @@ import { useState, useRef, useCallback } from 'react';
 import { useUpload } from "@/shared/hooks";
 import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
-import { checkDuplicateFile, deleteItem } from '@/features/workspaces/projects/project-id/storage/services/file.services';
-import type { UploadMode } from '@/features/workspaces/projects/project-id/storage/components/modal/DuplicateModal';
+import { checkDuplicateFile, deleteItem } from '../services/file.services';
+import type { UploadMode } from '../components/modals/DuplicateModal';
 
 export function useTopbar({
   projectId,

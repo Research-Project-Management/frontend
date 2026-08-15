@@ -78,10 +78,10 @@ export default function GeneralPage() {
   };
 
   return (
-    <div className="flex-1 p-6 max-w-4xl mx-auto space-y-8 h-full bg-white">
+    <div className="flex-1 p-6 max-w-4xl mx-auto space-y-8 h-full bg-background">
       <div>
-        <h2 className="text-[17px] font-semibold text-zinc-900">Project Details</h2>
-        <p className="text-[13px] text-zinc-400 mt-1">
+        <h2 className="text-[17px] font-semibold text-foreground">Project Details</h2>
+        <p className="text-[13px] text-muted-foreground mt-1">
           Manage your project's identity and basic information.
         </p>
       </div>
@@ -89,15 +89,15 @@ export default function GeneralPage() {
       <div className="space-y-6">
         {/* Avatar */}
         <div className="flex items-center gap-6">
-          <Avatar className="h-16 w-16 border rounded-sm">
+          <Avatar className="h-16 w-16 border border-border rounded-lg">
             <AvatarImage src={currentAvatar || ""} className="object-cover" />
-            <AvatarFallback className="rounded-sm bg-zinc-100 text-zinc-500">
+            <AvatarFallback className="rounded-lg bg-muted text-muted-foreground">
               {name.charAt(0) || "P"}
             </AvatarFallback>
           </Avatar>
           <div className="space-y-2">
             <Label htmlFor="avatar-upload" className="cursor-pointer">
-              <div className="px-3 py-1.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 text-xs font-medium rounded-sm inline-flex items-center justify-center transition-colors">
+              <div className="px-3 py-1.5 bg-card border border-border hover:bg-secondary text-foreground text-xs font-medium rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer">
                 {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
                 Change Avatar
               </div>
@@ -112,7 +112,7 @@ export default function GeneralPage() {
             />
             {currentAvatar && (
               <div 
-                className="text-xs text-red-500 cursor-pointer hover:underline mt-1 inline-block"
+                className="text-xs text-destructive cursor-pointer hover:underline mt-1 inline-block"
                 onClick={() => {
                   setCurrentAvatar(null);
                   updateMutation.mutate({ projectId, avatar: "" });
@@ -126,27 +126,27 @@ export default function GeneralPage() {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-zinc-700">Project Name</Label>
+            <Label className="text-xs font-medium text-foreground">Project Name</Label>
             <Input 
               value={name} 
               onChange={(e) => setName(e.target.value)} 
-              className="max-w-md h-9 text-[13px] rounded-sm border-zinc-200"
+              className="max-w-md h-9 text-[13px] rounded-lg border-border"
             />
           </div>
           
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-zinc-700">Description</Label>
+            <Label className="text-xs font-medium text-foreground">Description</Label>
             <Textarea 
               value={description} 
               onChange={(e) => setDescription(e.target.value)}
-              className="max-w-xl text-[13px] min-h-[100px] rounded-sm border-zinc-200 resize-none"
+              className="max-w-xl text-[13px] min-h-[100px] rounded-lg border-border resize-none"
             />
           </div>
 
           <Button 
             onClick={handleUpdate} 
             disabled={updateMutation.isPending}
-            className="h-8.5 rounded-sm px-4 text-xs font-medium"
+            className="h-9 rounded-lg px-4 text-xs font-medium cursor-pointer"
           >
             {updateMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
             Save Changes
@@ -154,15 +154,15 @@ export default function GeneralPage() {
         </div>
       </div>
 
-      <div className="pt-8 border-t border-zinc-100 mt-12">
-        <h3 className="text-sm font-semibold text-red-600 mb-1">Danger Zone</h3>
-        <p className="text-xs text-zinc-500 mb-4">
+      <div className="pt-8 border-t border-border mt-12">
+        <h3 className="text-sm font-semibold text-destructive mb-1">Danger Zone</h3>
+        <p className="text-xs text-muted-foreground mb-4">
           Once you delete a project, there is no going back. Please be certain.
         </p>
         <Button 
           variant="destructive" 
           onClick={() => setIsDeleteOpen(true)}
-          className="h-8.5 rounded-sm text-xs font-medium"
+          className="h-9 rounded-lg text-xs font-medium cursor-pointer"
         >
           Delete Project
         </Button>

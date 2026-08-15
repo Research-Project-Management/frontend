@@ -42,7 +42,7 @@ export default function ManageWorkspacesPage() {
               Manage and switch between your workspaces.
             </p>
           </div>
-          <Button onClick={() => router.push('/create-workspace')} className='h-9 gap-2'>
+          <Button onClick={() => router.push('/create-workspace')} className='h-9 gap-2 cursor-pointer'>
             <Plus className='w-4 h-4' />
             New workspace
           </Button>
@@ -53,7 +53,7 @@ export default function ManageWorkspacesPage() {
           {workspaces?.length === 0 && (
             <div className='py-16 text-center text-muted-foreground text-sm'>
               No workspaces yet.{' '}
-              <button onClick={() => router.push('/create-workspace')} className='text-primary hover:underline'>
+              <button onClick={() => router.push('/create-workspace')} className='text-primary hover:underline cursor-pointer'>
                 Create one
               </button>
             </div>
@@ -88,7 +88,7 @@ export default function ManageWorkspacesPage() {
                 <Button
                   variant='ghost'
                   size='sm'
-                  className='h-7 w-7 p-0'
+                  className='h-7 w-7 p-0 cursor-pointer'
                   onClick={() => editWorkspace.open(workspace)}
                   aria-label='Edit workspace'
                 >
@@ -97,7 +97,7 @@ export default function ManageWorkspacesPage() {
                 <Button
                   variant='ghost'
                   size='sm'
-                  className='h-7 w-7 p-0 text-muted-foreground hover:text-destructive'
+                  className='h-7 w-7 p-0 text-muted-foreground hover:text-destructive cursor-pointer'
                   onClick={() => deleteWorkspace.open(workspace)}
                   aria-label='Delete workspace'
                 >
@@ -108,7 +108,7 @@ export default function ManageWorkspacesPage() {
               {/* Open */}
               <Button
                 size='sm'
-                className='h-8 gap-1.5 text-xs'
+                className='h-8 gap-1.5 text-xs cursor-pointer'
                 onClick={() => router.push(`/${workspace.url}`)}
               >
                 Open
@@ -156,7 +156,7 @@ export default function ManageWorkspacesPage() {
                   type='button'
                   variant='outline'
                   size='sm'
-                  className='h-9'
+                  className='h-9 cursor-pointer'
                   onClick={() => document.getElementById('edit-avatar-input')?.click()}
                 >
                   {editWorkspace.isUploadingAvatar ? 'Uploading...' : 'Change avatar'}
@@ -178,10 +178,10 @@ export default function ManageWorkspacesPage() {
           </div>
 
           <DialogFooter>
-            <Button variant='outline' onClick={editWorkspace.close} disabled={editWorkspace.isPending}>
+            <Button variant='outline' onClick={editWorkspace.close} disabled={editWorkspace.isPending} className='cursor-pointer'>
               Cancel
             </Button>
-            <Button onClick={editWorkspace.confirm} disabled={editWorkspace.isPending || editWorkspace.isUploadingAvatar || !editWorkspace.hasChanges}>
+            <Button onClick={editWorkspace.confirm} disabled={editWorkspace.isPending || editWorkspace.isUploadingAvatar || !editWorkspace.hasChanges} className='cursor-pointer'>
               {editWorkspace.isUploadingAvatar ? 'Uploading...' : editWorkspace.isPending ? 'Saving...' : 'Save changes'}
             </Button>
           </DialogFooter>

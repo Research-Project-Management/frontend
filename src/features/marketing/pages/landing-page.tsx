@@ -168,14 +168,14 @@ export default function LandingPage() {
             >
               <Link
                 href='/create-workspace'
-                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
+                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Start for free
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
               </Link>
               <Link
                 href='/login'
-                className='flex h-9 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
+                className='flex h-9 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Sign in
               </Link>
@@ -359,7 +359,7 @@ export default function LandingPage() {
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
                 href='/create-workspace'
-                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
+                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Create workspace
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
@@ -368,7 +368,7 @@ export default function LandingPage() {
                 href='https://github.com/Research-Project-TDTU'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0'
+                className='flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 View on GitHub
                 <ArrowUpRight className='w-3.5 h-3.5' aria-hidden='true' />

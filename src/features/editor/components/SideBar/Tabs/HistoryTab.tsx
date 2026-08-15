@@ -21,7 +21,7 @@ import {
   usePageVersionActions,
   useProjectHistoryActions,
 } from '@/features/editor/hooks/use-pages';
-import type { PageEvent } from "@/features/workspaces/projects/types/page.types";
+import type { PageEvent } from "@/features/editor/types/document.types";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/shared/components/ui";

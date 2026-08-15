@@ -47,9 +47,9 @@ export default function Quicklinks() {
   const actionButton = (
     <button
       onClick={handleAddClick}
-      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer"
     >
-      <Plus className="size-3.5" />
+      <Plus className="size-3.5 text-primary" />
       <span>Add quicklink</span>
     </button>
   );
@@ -68,8 +68,8 @@ export default function Quicklinks() {
                 key={link.id}
                 className="group relative flex items-center gap-3.5 px-3 py-3 rounded-xl border border-border/80 bg-background hover:bg-muted/40 transition-colors duration-200"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/70 text-muted-foreground" aria-hidden="true">
-                  <Globe className="size-5" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/70 text-foreground" aria-hidden="true">
+                  <Globe className="size-5 text-foreground" />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
                   <a
@@ -88,29 +88,30 @@ export default function Quicklinks() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 md:p-1.5 rounded-md opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:bg-muted/60 text-muted-foreground transition-colors z-10"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-muted text-foreground transition-all duration-150 z-10 cursor-pointer outline-none"
                       aria-label="More options"
                     >
-                      <MoreVertical className="size-4" aria-hidden="true" />
+                      <MoreVertical className="size-4 text-foreground" aria-hidden="true" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEditClick(link)}>
-                      <Pencil className="mr-2 size-4" />
+                  <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="bg-popover">
+                    <DropdownMenuItem onClick={() => handleEditClick(link)} className="cursor-pointer">
+                      <Pencil className="mr-2 size-4 text-foreground" />
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.open(link.url, '_blank')}>
-                      <ExternalLink className="mr-2 size-4" />
+                    <DropdownMenuItem onClick={() => window.open(link.url, '_blank')} className="cursor-pointer">
+                      <ExternalLink className="mr-2 size-4 text-foreground" />
                       Open in new tab
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(link.url)}>
-                      <Link2 className="mr-2 size-4" />
+                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(link.url)} className="cursor-pointer">
+                      <Link2 className="mr-2 size-4 text-foreground" />
                       Copy link
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setDeleteLinkId(link.id)}
+                      className="cursor-pointer text-destructive focus:text-destructive"
                     >
-                      <Trash2 className="mr-2 size-4" />
+                      <Trash2 className="mr-2 size-4 text-destructive" />
                       Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -123,7 +124,7 @@ export default function Quicklinks() {
             <p className="text-sm text-muted-foreground mb-2">No quicklinks added yet</p>
             <button
               onClick={handleAddClick}
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-xs font-medium text-primary hover:underline cursor-pointer"
             >
               Add your first quicklink
             </button>

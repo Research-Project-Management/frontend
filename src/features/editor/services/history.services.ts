@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from "@/shared/lib/api";
-import type { ProjectEvent } from "@/features/workspaces/projects/all-pages/schemas/page.schemas";
+import type { ProjectEvent } from "../types/document.types";
 
 export const ProjectHistoryService = {
   getByProjectId: async (projectId: string) => {

@@ -143,13 +143,13 @@ export default function CreateWorkspacePage() {
             {/* Actions */}
             <div className='flex items-center gap-4 pt-4'>
               <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 450, damping: 25 }}>
-                <Button type='submit' className='h-10 px-6 font-medium rounded-lg' disabled={!isValid || isPending}>
+                <Button type='submit' className='h-10 px-6 font-medium rounded-lg cursor-pointer' disabled={!isValid || isPending}>
                   {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
                   {isPending ? 'Creating...' : 'Create workspace'}
                 </Button>
               </motion.div>
               <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 450, damping: 25 }}>
-                <Button variant='outline' type='button' asChild className='h-10 px-6 font-medium text-muted-foreground rounded-lg hover:bg-secondary hover:text-foreground transition-colors'>
+                <Button variant='outline' type='button' asChild className='h-10 px-6 font-medium text-muted-foreground rounded-lg hover:bg-secondary hover:text-foreground transition-colors cursor-pointer'>
                   <Link href='/manage-workspace'>Go back</Link>
                 </Button>
               </motion.div>

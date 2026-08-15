@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
@@ -10,41 +10,15 @@ import { useRemoveProjectMember } from '@/features/workspaces/projects/shell/ser
 import { type Project } from '@/features/workspaces/projects/shell/types/project.types';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
-
 import { useAuth } from '@/features/auth';
 import {
   MoreVertical,
   UserPlus,
   Search,
-  Trash2,
   Loader2,
 } from "lucide-react";
 import { Skeleton } from '@/shared/components/ui';
 import { cn } from "@/shared/lib/utils";
-
-function getRoleName(roleOrMember?: string | { role?: string }): string {
-  const role = typeof roleOrMember === 'string' ? roleOrMember : roleOrMember?.role;
-  if (!role) return 'Member';
-  switch (role.toLowerCase()) {
-    case 'owner': return 'Owner';
-    case 'admin': return 'Admin';
-    case 'member': return 'Member';
-    case 'viewer': return 'Viewer';
-    default: return role;
-  }
-}
-
-function getRoleColor(roleOrMember?: string | { role?: string }): string {
-  const role = typeof roleOrMember === 'string' ? roleOrMember : roleOrMember?.role;
-  if (!role) return 'bg-zinc-100 text-zinc-700';
-  switch (role.toLowerCase()) {
-    case 'owner': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
-    case 'admin': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
-    case 'member': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
-    case 'viewer': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400';
-    default: return 'bg-zinc-100 text-zinc-700';
-  }
-}
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
@@ -64,6 +38,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui";
+
+function getRoleName(roleOrMember?: string | { role?: string }): string {
+  const role = typeof roleOrMember === 'string' ? roleOrMember : roleOrMember?.role;
+  if (!role) return 'Member';
+  switch (role.toLowerCase()) {
+    case 'owner': return 'Owner';
+    case 'admin': return 'Admin';
+    case 'member': return 'Member';
+    case 'viewer': return 'Viewer';
+    default: return role;
+  }
+}
 
 export default function ProjectTeam() {
   const { projectId, workspaceId: workspaceUrl } = useParams() as { projectId: string, workspaceId: string };
@@ -87,18 +73,16 @@ export default function ProjectTeam() {
   ];
 
   const project = useMemo(() => {
-    // 1. Try data from direct fetch
     const p = (pData?.project || pData) as Project;
     if (p && p._id) return p;
 
-    // 2. Fallback to projects list from workspace
     if (projects) {
-      return projects.find((p: any) => p._id === projectId || p.url === projectId || p.name === projectId) as Project;
+      return (projects.find((p: any) => p._id === projectId || p.url === projectId || p.name === projectId) as unknown as Project) || null;
     }
     return null;
   }, [pData, projects, projectId]);
 
-  const projectUserRole = pData?.yourRole || pData?.role; // Role cá»§a ngÆ°á»i Ä‘ang xem trong project
+  const projectUserRole = pData?.yourRole || pData?.role;
   const { user: currentUser } = useAuth();
 
   // Mutations
@@ -146,7 +130,7 @@ export default function ProjectTeam() {
       </div>
     );
   }
-  if (!project) return <div className="p-12 text-center text-zinc-400 text-sm italic">Project not found</div>;
+  if (!project) return <div className="p-12 text-center text-muted-foreground text-sm italic">Project not found</div>;
 
   const filteredMembers = (project.members || []).filter(
     (m: any) =>
@@ -162,22 +146,22 @@ export default function ProjectTeam() {
     project.createdBy?._id === currentUser?._id;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       <div className="flex-1 p-4 space-y-5 flex flex-col overflow-hidden max-w-3xl mx-auto w-full">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-[17px] font-semibold text-zinc-900">Project Team</h2>
-            <p className="text-[13px] text-zinc-400 mt-1">
+            <h2 className="text-[17px] font-semibold text-foreground">Project Team</h2>
+            <p className="text-[13px] text-muted-foreground mt-1">
               Manage team members and their roles within this project.
             </p>
             <div className="mt-2.5 flex items-center gap-2">
-               <span className="text-[11px] font-medium text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded-sm">
+               <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                   {(project.members || []).length} {(project.members || []).length === 1 ? "member" : "members"}
                </span>
             </div>
           </div>
         {canManageTeam && (
-          <Button onClick={() => setAddMemberOpen(true)} size="sm">
+          <Button onClick={() => setAddMemberOpen(true)} size="sm" className="cursor-pointer gap-2 rounded-lg">
             <UserPlus className="h-4 w-4" />
             Add Member
           </Button>
@@ -186,20 +170,20 @@ export default function ProjectTeam() {
 
       <div className="flex items-center space-x-2">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             type="search"
             placeholder="Search members..."
-            className="pl-9 h-8.5 rounded-sm border-zinc-200 text-[13px]"
+            className="pl-9 h-9 rounded-lg border-border text-[13px]"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto border border-border rounded-sm">
+      <div className="flex-1 overflow-auto border border-border rounded-lg">
         <table className="w-full text-[13px]">
-          <thead className="bg-muted sticky top-0 z-10 border-b border-border text-zinc-500">
+          <thead className="bg-muted sticky top-0 z-10 border-b border-border text-muted-foreground">
             <tr>
               <th className="text-left p-2.5 font-medium pl-4">User</th>
               <th className="text-left p-2.5 font-medium">Role</th>
@@ -218,21 +202,21 @@ export default function ProjectTeam() {
               return (
                 <tr
                   key={member.user?._id || Math.random()}
-                  className="group hover:bg-zinc-50 transition-colors"
+                  className="group hover:bg-muted/40 transition-colors"
                 >
                   <td className="p-2.5 pl-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8 rounded-full border border-border">
                         {memberAvatar && <AvatarImage src={memberAvatar} className="object-cover" />}
-                        <AvatarFallback className="bg-zinc-100 text-zinc-500 text-[11px] font-medium">
+                        <AvatarFallback className="bg-muted text-muted-foreground text-[11px] font-medium">
                           {initials || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="grid overflow-hidden">
-                        <span className="font-medium text-zinc-800 truncate">
+                        <span className="font-medium text-foreground truncate">
                           {memberName}
                         </span>
-                        <span className="text-[11px] text-zinc-400 truncate">
+                        <span className="text-[11px] text-muted-foreground truncate">
                           {memberEmail}
                         </span>
                       </div>
@@ -246,7 +230,7 @@ export default function ProjectTeam() {
                       workspaceRole={workspaceRole}
                     />
                   </td>
-                  <td className="p-2.5 text-zinc-400 text-[12px]">
+                  <td className="p-2.5 text-muted-foreground text-[12px]">
                     {new Date(
                       member.joinedAt || Date.now(),
                     ).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -260,24 +244,24 @@ export default function ProjectTeam() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-zinc-200/50"
+                              className="h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted cursor-pointer"
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4 text-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40 rounded-sm">
+                          <DropdownMenuContent align="end" className="w-40 rounded-lg">
                             <DropdownMenuRadioGroup
                               value={getRoleName(member).toLowerCase()}
                               onValueChange={(val) =>
                                 handleUpdateRole(member.user?._id, val)
                               }
                             >
-                              <DropdownMenuRadioItem value="admin" className="text-xs">Admin</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="member" className="text-xs">Member</DropdownMenuRadioItem>
-                              <DropdownMenuRadioItem value="viewer" className="text-xs">Viewer</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="admin" className="text-xs cursor-pointer">Admin</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="member" className="text-xs cursor-pointer">Member</DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value="viewer" className="text-xs cursor-pointer">Viewer</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                             <DropdownMenuItem
-                              className="text-destructive focus:bg-destructive/5 text-xs font-medium"
+                              className="text-destructive focus:bg-destructive/10 text-xs font-medium cursor-pointer"
                               onClick={() => handleRemoveMember(member.user?._id)}
                             >
                               Remove from Project
@@ -292,7 +276,7 @@ export default function ProjectTeam() {
           </tbody>
         </table>
         {filteredMembers.length === 0 && (
-          <div className="p-16 text-center text-zinc-400 text-sm italic">
+          <div className="p-16 text-center text-muted-foreground text-sm italic">
              No members found matching "{searchTerm}"
           </div>
         )}
@@ -313,7 +297,6 @@ export default function ProjectTeam() {
 function RoleDisplay({ member, roles, projectCreatorId, workspaceRole }: { member: any, roles: any[], projectCreatorId?: any, workspaceRole?: string }) {
   const roleNameRaw = getRoleName(member);
   
-  // Try to find the role name from the workspace roles list if it's a hex ID
   const isHexId = /^[0-9a-fA-F]{24}$/.test(roleNameRaw);
   let resolvedRoleName = roleNameRaw;
 
@@ -334,10 +317,10 @@ function RoleDisplay({ member, roles, projectCreatorId, workspaceRole }: { membe
   }
 
   const roleLower = resolvedRoleName.toLowerCase();
-  let textClass = "text-zinc-600";
+  let textClass = "text-muted-foreground";
 
   if (roleLower === "admin" || roleLower === "manager" || roleLower === "owner") {
-    textClass = "text-zinc-900 font-semibold";
+    textClass = "text-foreground font-semibold";
   }
 
   return (
@@ -364,7 +347,6 @@ function AddMemberDialog({
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const addMemberMutation = useAddProjectMember();
 
-  // Filter workspace members who are NOT in the project
   const availableMembers =
     workspace?.members.filter(
       (m: any) =>
@@ -392,11 +374,11 @@ function AddMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-sm border-zinc-200 shadow-lg p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md rounded-lg border-border shadow-lg p-0 overflow-hidden bg-background">
         <div className="p-5 pb-0">
           <DialogHeader>
-            <DialogTitle className="text-[16px] font-semibold text-zinc-900">Add Members</DialogTitle>
-            <DialogDescription className="text-[13px] text-zinc-400 mt-1">
+            <DialogTitle className="text-[16px] font-semibold text-foreground">Add Members</DialogTitle>
+            <DialogDescription className="text-[13px] text-muted-foreground mt-1">
               Select members from your workspace to add to this project.
             </DialogDescription>
           </DialogHeader>
@@ -404,48 +386,48 @@ function AddMemberDialog({
 
         <div className="p-5 space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search workspace members..."
-              className="pl-9 h-9 rounded-sm border-zinc-200 text-[13px]"
+              className="pl-9 h-9 rounded-lg border-border text-[13px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
 
-          <div className="max-h-[300px] overflow-y-auto border border-zinc-100 rounded-sm divide-y divide-zinc-50 bg-muted/30">
+          <div className="max-h-[300px] overflow-y-auto border border-border rounded-lg divide-y divide-border bg-muted/20">
             {availableMembers.length === 0 ? (
-              <div className="p-10 text-center text-[12px] text-zinc-400 italic">
+              <div className="p-10 text-center text-[12px] text-muted-foreground italic">
                 No members found.
               </div>
             ) : (
               availableMembers.map((m: any) => (
                 <div
                   key={m.user?._id}
-                  className={`flex items-center p-3 cursor-pointer hover:bg-white transition-all ${selectedUsers.includes(m.user?._id) ? "bg-white" : ""}`}
+                  className={`flex items-center p-3 cursor-pointer hover:bg-card transition-all ${selectedUsers.includes(m.user?._id) ? "bg-card" : ""}`}
                   onClick={() => toggleUser(m.user?._id)}
                 >
                   <div
                     className={cn(
-                      "w-4 h-4 border rounded-sm mr-3 flex items-center justify-center transition-all",
-                      selectedUsers.includes(m.user?._id) ? "bg-zinc-900 border-zinc-900" : "border-zinc-300"
+                      "w-4 h-4 border rounded-md mr-3 flex items-center justify-center transition-all",
+                      selectedUsers.includes(m.user?._id) ? "bg-primary border-primary" : "border-muted-foreground/40"
                     )}
                   >
                     {selectedUsers.includes(m.user?._id) && (
-                      <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                      <div className="w-1.5 h-1.5 bg-primary-foreground rounded-full" />
                     )}
                   </div>
-                  <Avatar className="h-7 w-7 mr-3 rounded-full border border-zinc-100">
+                  <Avatar className="h-7 w-7 mr-3 rounded-full border border-border">
                     <AvatarImage src={m.user?.avatar} className="object-cover" />
-                    <AvatarFallback className="text-[10px] font-medium bg-zinc-200 text-zinc-500">
+                    <AvatarFallback className="text-[10px] font-medium bg-muted text-muted-foreground">
                       {m.user?.name?.split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-[13px] font-medium truncate text-zinc-700">
+                    <p className="text-[13px] font-medium truncate text-foreground">
                       {m.user?.name}
                     </p>
-                    <p className="text-[11px] text-zinc-400 truncate">
+                    <p className="text-[11px] text-muted-foreground truncate">
                       {m.user?.email}
                     </p>
                   </div>
@@ -455,15 +437,15 @@ function AddMemberDialog({
           </div>
         </div>
 
-        <DialogFooter className="p-4 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-end gap-3">
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="text-zinc-500 hover:text-zinc-900 h-8 px-4">
+        <DialogFooter className="p-4 bg-muted/40 border-t border-border flex items-center justify-end gap-3">
+          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground h-8 px-4 cursor-pointer rounded-lg">
             Cancel
           </Button>
           <Button
             size="sm"
             onClick={handleAdd}
             disabled={selectedUsers.length === 0 || addMemberMutation.isPending}
-            className="h-8 px-6"
+            className="h-8 px-6 cursor-pointer rounded-lg"
           >
             {addMemberMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Add"}
           </Button>
@@ -472,4 +454,3 @@ function AddMemberDialog({
     </Dialog>
   );
 }
-

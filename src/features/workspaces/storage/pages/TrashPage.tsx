@@ -23,9 +23,9 @@ export default function WorkspaceTrashPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
-  const workspaceId = workspace?._id;
+  const workspaceId = workspace?._id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useTrash(workspaceId!);
+  const { data, isLoading: isFilesLoading } = useTrash(workspaceId);
   const { mutateAsync: handleRestore } = useRestoreItem();
   const { mutateAsync: handlePermanentlyDelete } = usePermanentlyDeleteItem();
 

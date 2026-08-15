@@ -126,7 +126,8 @@ export function ManageWidgetsModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[400px] border-none p-6"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-[400px] bg-popover border border-border shadow-2xl rounded-lg p-6"
         showCloseButton={false}
       >
         <DialogHeader className="mb-4">

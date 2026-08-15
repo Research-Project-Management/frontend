@@ -9,12 +9,12 @@ import { resolveTaskColumnColor, DEFAULT_TASK_COLUMN_COLORS } from '@/features/w
 import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
 import { useAuth } from '@/features/auth';
 import { cn } from "@/shared/lib/utils";
-import Topbar from '../../shell/components/header';
-const OverviewSection = (props: any) => null;
-const QuickProjects = (props: any) => null;
-const UpcomingSection = (props: any) => null;
-const RecentActivity = (props: any) => null;
-const TaskDialogWrapper = (props: any) => <>{props.children}</>;
+import Topbar from '../components/Topbar';
+import OverviewSection from '../components/OverviewSection';
+import QuickProjects from '../components/QuickProjects';
+import UpcomingSection from '../components/UpcomingSection';
+import RecentActivity from '../components/RecentActivity';
+import TaskDialogWrapper from '../components/TaskDialogWrapper';
 import { Skeleton } from "@/shared/components/ui";
 import {
   DropdownMenu,
@@ -43,9 +43,10 @@ export default function YourWorkPage() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    const currentUserId = user.id || user._id;
     const assigned = tasks.filter((t: any) => {
-      const assigneeId = typeof t.assignee === 'object' ? t.assignee?._id : t.assignee;
-      return assigneeId === user._id;
+      const assigneeId = typeof t.assignee === 'object' ? (t.assignee?.id || t.assignee?._id) : t.assignee;
+      return assigneeId === currentUserId;
     });
 
     const upcoming = assigned
@@ -75,7 +76,8 @@ export default function YourWorkPage() {
   const projectMap = useMemo(() => {
     const map: Record<string, { id: string; name: string }> = {};
     projects.forEach((p: any) => {
-      map[p._id] = { id: p._id, name: p.name };
+      const pid = p.id || p._id;
+      map[pid] = { id: pid, name: p.name };
     });
     return map;
   }, [projects]);
@@ -84,21 +86,23 @@ export default function YourWorkPage() {
   const taskProjectMap = useMemo(() => {
     const map: Record<string, { id: string; name: string }> = {};
     tasks.forEach((t: any) => {
+      const tid = t.id || t._id;
       const project = t.project;
       if (!project) return;
 
       if (typeof project === 'object') {
-        map[t._id] = { id: project._id, name: project.name };
+        const pid = project.id || project._id;
+        map[tid] = { id: pid, name: project.name };
       } else if (projectMap[project]) {
-        map[t._id] = projectMap[project];
+        map[tid] = projectMap[project];
       }
     });
     return map;
   }, [tasks, projectMap]);
 
   const handleOpenTask = (taskId: string) => {
-    const task = tasks.find(t => t._id === taskId);
-    const pId = task ? (typeof task.projectId === 'object' ? task.projectId?._id : task.projectId) : null;
+    const task = tasks.find(t => (t.id || t._id) === taskId);
+    const pId = task ? (typeof task.projectId === 'object' ? (task.projectId?.id || task.projectId?._id) : (task.projectId || task.project?.id || task.project?._id)) : null;
     if (task && pId) {
       setSelectedTask({ taskId, projectId: pId });
     }
@@ -180,7 +184,7 @@ export default function YourWorkPage() {
               <span className="truncate">
                 {activeTab}
               </span>
-              <ChevronDown size={14} className="text-foreground/40 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              <ChevronDown size={14} className="text-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 p-1 shadow-xl border-border/40 bg-background/95 backdrop-blur-xl rounded-md">
@@ -200,7 +204,7 @@ export default function YourWorkPage() {
                   <span className="text-[13px] tracking-wide">
                     {tab}
                   </span>
-                  {isActive && <Check className="size-3.5 text-primary stroke-[3px]" />}
+                  {isActive && <Check className="size-3.5 text-foreground stroke-[3px]" />}
                 </DropdownMenuItem>
               );
             })}

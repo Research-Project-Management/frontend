@@ -47,7 +47,7 @@ import { flushPageContent, syncIncremental, compileLatex } from "../../services/
 import { toast } from "sonner";
 import { useQuery } from '@tanstack/react-query';
 import { pageFilesQueryOptions, usePageActions } from '@/features/editor/hooks/use-pages';
-import type { Page as ProjectPage } from "@/features/workspaces/projects/types/page.types";
+import type { Page as ProjectPage } from "@/features/editor/types/document.types";
 
 
 import "react-pdf/dist/Page/AnnotationLayer.css";

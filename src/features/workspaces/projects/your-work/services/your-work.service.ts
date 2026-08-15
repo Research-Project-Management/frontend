@@ -3,4 +3,4 @@
 import { apiGet } from '@/shared/lib/api';
 
 export const fetchYourWork = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet(`/api/workspace/${workspaceId}/your-work`, { signal });
+  apiGet(`/api/dashboard/workspaces/${workspaceId}/your-work`, { signal });

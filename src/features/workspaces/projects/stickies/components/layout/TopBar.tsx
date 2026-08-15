@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from "react";
-import { Plus, Search, Loader2, ListFilter } from "lucide-react";
+import { Plus, Search, Layers2, ListFilter } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
@@ -21,6 +21,7 @@ import {
   CommandList,
 } from "@/shared/components/ui/command";
 import { Checkbox } from "@/shared/components/ui/checkbox";
+
 interface TopBarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -49,120 +50,130 @@ export default function TopBar({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const toggleProject = (projectId: string) => {
+    if (!onProjectFilterChange) return;
+    if (projectFilter.includes(projectId)) {
+      onProjectFilterChange(projectFilter.filter((id) => id !== projectId));
+    } else {
+      onProjectFilterChange([...projectFilter, projectId]);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3 shrink-0">
-      <div
-        className={cn(
-          "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
-          isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
-        )}
-        onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
-      >
-        <Search 
-          className={cn(
-            "absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-300 z-10",
-            isSearchExpanded || searchQuery 
-              ? "left-2.5 translate-x-0 text-muted-foreground/50" 
-              : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
-          )} 
-        />
-        <Input
-          ref={inputRef}
-          placeholder="Search by title"
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onBlur={() => !searchQuery && setIsSearchExpanded(false)}
-          className={cn(
-            "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity pl-8 pr-8",
-            isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}
-          autoFocus={isSearchExpanded}
-        />
-        {(isSearchExpanded || searchQuery) && (
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSearchChange("");
-              setIsSearchExpanded(false);
-            }}
-            className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-          >
-            <Plus className="size-3.5 rotate-45" />
-          </button>
-        )}
+    <header
+      className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0"
+      style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
+    >
+      <div className="flex items-center gap-3">
+        <Layers2 className="size-4 text-foreground" />
+        <h1 className="text-sm font-semibold text-foreground">Stickies</h1>
       </div>
 
-      {onProjectFilterChange && (
-        <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="size-8 rounded-md bg-transparent border-border/60">
-              <ListFilter className="size-4 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-0" align="end">
-            <Command>
-              <div className="p-2 [&_[data-slot=command-input-wrapper]]:border [&_[data-slot=command-input-wrapper]]:border-input [&_[data-slot=command-input-wrapper]]:rounded-md [&_[data-slot=command-input-wrapper]]:h-8 [&_[data-slot=command-input-wrapper]]:px-2">
-                <CommandInput placeholder="Search projects..." className="h-full" />
-              </div>
-              <CommandList>
-                <CommandEmpty>No projects found.</CommandEmpty>
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => {
-                      if (projectFilter.length === 0) return;
-                      onProjectFilterChange([]);
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        checked={projectFilter.length === 0} 
-                      />
-                      <span>All</span>
-                    </div>
-                  </CommandItem>
-                  {projects.map((project: any) => {
-                    const isSelected = projectFilter.includes(project._id);
-                    return (
-                      <CommandItem
-                        key={project._id}
-                        onSelect={() => {
-                          if (isSelected) {
-                            onProjectFilterChange(projectFilter.filter((id) => id !== project._id));
-                          } else {
-                            onProjectFilterChange([...projectFilter, project._id]);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-2 w-full">
-                          <Checkbox 
-                            checked={isSelected} 
-                          />
-                          <span className="truncate flex-1">{project.name}</span>
-                        </div>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      )}
+      <div className="flex items-center gap-3 shrink-0">
+        <div
+          className={cn(
+            "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
+            isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
+          )}
+          onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
+        >
+          <Search 
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-300 z-10 text-foreground",
+              isSearchExpanded || searchQuery 
+                ? "left-2.5 translate-x-0" 
+                : "left-1/2 -translate-x-1/2"
+            )} 
+          />
+          <Input
+            ref={inputRef}
+            placeholder="Search by title"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onBlur={() => !searchQuery && setIsSearchExpanded(false)}
+            className={cn(
+              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity pl-8 pr-8",
+              isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
+            autoFocus={isSearchExpanded}
+          />
+          {(isSearchExpanded || searchQuery) && (
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSearchChange("");
+                setIsSearchExpanded(false);
+              }}
+              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <Plus className="size-3.5 rotate-45 text-foreground" />
+            </button>
+          )}
+        </div>
 
-      <Button
-        size="sm"
-        className="h-8 gap-1.5"
-        onClick={onAddSticky}
-        disabled={isAddingSticky}
-      >
-        {isAddingSticky ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Plus className="size-4" />
+        {onProjectFilterChange && (
+          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-8 gap-2 border-border/50 bg-background hover:bg-secondary/80 text-xs font-normal text-foreground cursor-pointer",
+                  projectFilter.length > 0 && "border-primary/50 text-primary bg-primary/5"
+                )}
+              >
+                <ListFilter className="size-3.5 text-foreground" />
+                <span>Projects</span>
+                {projectFilter.length > 0 && (
+                  <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary leading-none">
+                    {projectFilter.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-56 p-0 bg-popover"
+              align="end"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+              <Command>
+                <CommandInput placeholder="Filter projects..." className="h-8 text-xs" />
+                <CommandList>
+                  <CommandEmpty className="py-2 text-center text-xs text-muted-foreground">
+                    No project found.
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {projects.map((project: any) => {
+                      const isSelected = projectFilter.includes(project._id);
+                      return (
+                        <CommandItem
+                          key={project._id}
+                          onSelect={() => toggleProject(project._id)}
+                          className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer"
+                        >
+                          <Checkbox checked={isSelected} className="size-3.5 rounded-sm" />
+                          <span className="truncate">{project.name}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         )}
-        {addLabel}
-      </Button>
-    </div>
+
+        <Button
+          size="sm"
+          onClick={onAddSticky}
+          disabled={isAddingSticky}
+          className="h-8 gap-1.5 rounded-lg px-3 text-xs cursor-pointer"
+        >
+          <Plus className="size-3.5 text-primary-foreground" />
+          {addLabel}
+        </Button>
+      </div>
+    </header>
   );
 }

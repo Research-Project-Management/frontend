@@ -8,9 +8,12 @@ type TopbarProps = {
 
 export default function Topbar({ title, Icon, children }: TopbarProps) {
   return (
-    <header className="flex items-center justify-between px-4 h-13 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
+    <header
+      className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0"
+      style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
+    >
       <div className="flex items-center gap-2.5">
-        <Icon className="size-4.5 text-primary" />
+        <Icon className="size-4.5 text-foreground" />
         <h1 className="text-sm font-semibold text-foreground transition-all duration-200">
           {title}
         </h1>

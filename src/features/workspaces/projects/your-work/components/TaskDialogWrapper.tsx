@@ -1,10 +1,15 @@
 'use client';
 
-import { TaskDialog } from "@/features/workspaces/projects/project-id/tasks/components/CardDetail";
-import { useProjectTasks, useUpdateTask, useDeleteTask, useDuplicateTask } from "@/features/workspaces/projects/project-id/tasks";
-import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
-import { useParams } from "next/navigation";
-import type { Task, TaskMutationInput } from "@/features/workspaces/projects/project-id/tasks/types/task.types";
+import {
+  TaskDialog,
+  useProjectTasks,
+  useUpdateTask,
+  useDeleteTask,
+  useDuplicateTask,
+  type Task,
+  type TaskMutationInput,
+} from "@/features/workspaces/projects/project-id/tasks";
+import { useProjectDetails } from '@/features/workspaces/projects/shell';
 
 type TaskDialogWrapperProps = {
   open: boolean;

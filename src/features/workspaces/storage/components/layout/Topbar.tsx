@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
 import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter } from 'lucide-react';
-import { Input, Button, Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
+import { Input, Button, Popover, PopoverTrigger, PopoverContent, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 import { useTopbar } from '../../hooks/use-topbar';
 import CreateFolderModal from '../modal/CreateFolderModal';
 import RenameModal from '../modal/RenameModal';
@@ -57,7 +57,7 @@ export default function Topbar({
       )}
     >
       <div className="flex items-center gap-2.5">
-        {Icon && <Icon className="size-4.5 text-muted-foreground" />}
+        {Icon && <Icon className="size-4.5 text-foreground" />}
         <h1 className="text-[1.05rem] font-semibold tracking-tight text-foreground transition-colors duration-200">
           {title}
         </h1>
@@ -73,10 +73,10 @@ export default function Topbar({
         >
           <Search
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10",
+              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
               isSearchExpanded || searchQuery
-                ? "left-2.5 translate-x-0 text-muted-foreground/50"
-                : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
+                ? "left-2.5 translate-x-0"
+                : "left-1/2 -translate-x-1/2"
             )}
           />
           <Input
@@ -95,74 +95,94 @@ export default function Topbar({
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
             >
-              <Plus className="size-3.5 rotate-45" />
+              <Plus className="size-3.5 rotate-45 text-foreground" />
             </button>
           )}
         </div>
 
         {/* View Toggle and Filter */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-muted p-1 rounded-lg">
-            {(['grid', 'list'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  "relative p-1.5 rounded-md transition-colors",
-                  view === v 
-                    ? "text-foreground" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-                aria-label={`${v} view`}
-              >
-                {view === v && (
-                  <motion.div
-                    layoutId="view-toggle"
-                    className="absolute inset-0 bg-black/10 dark:bg-white/10 rounded-md"
-                    transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
-                  />
-                )}
-                <span className="relative z-10 flex">
-                  {v === 'grid' && <Columns3 className="size-4" strokeWidth={2.5} />}
-                  {v === 'list' && <AlignJustify className="size-4" strokeWidth={2.5} />}
-                </span>
-              </button>
-            ))}
-          </div>
-          <Button variant="outline" size="icon" className="size-8 rounded-lg bg-transparent border-border/60">
-            <ListFilter className="size-4 text-muted-foreground" strokeWidth={2.5} />
-          </Button>
+          <TooltipProvider delayDuration={150}>
+            <div className="flex items-center bg-muted p-1 rounded-lg">
+              {(['grid', 'list'] as const).map((v) => (
+                <Tooltip key={v}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setView(v)}
+                      className={cn(
+                        "relative p-1.5 rounded-md transition-colors cursor-pointer outline-none",
+                        view === v 
+                          ? "text-foreground" 
+                          : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
+                      )}
+                      aria-label={`${v === 'grid' ? 'Grid' : 'List'} view`}
+                    >
+                      {view === v && (
+                        <motion.div
+                          layoutId="view-toggle"
+                          className="absolute inset-0 bg-black/10 dark:bg-white/10 rounded-md"
+                          transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
+                        />
+                      )}
+                      <span className="relative z-10 flex">
+                        {v === 'grid' && <Columns3 className="size-4 text-foreground" strokeWidth={2.5} />}
+                        {v === 'list' && <AlignJustify className="size-4 text-foreground" strokeWidth={2.5} />}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6}>
+                    {v === 'grid' ? 'Grid view' : 'List view'}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="size-8 rounded-lg bg-transparent border-border/60 cursor-pointer outline-none" aria-label="Filter">
+                  <ListFilter className="size-4 text-foreground" strokeWidth={2.5} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={6}>
+                Filter
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg">
-              <Plus className="size-3.5" />
+            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer">
+              <Plus className="size-3.5 text-primary-foreground" />
               New
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-48 p-1">
+          <PopoverContent
+            align="end"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            className="w-48 p-1"
+          >
             <button
               onClick={handleUploadFile}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
             >
-              <Upload className="size-4 text-muted-foreground" />
+              <Upload className="size-4 text-foreground" />
               Upload file
             </button>
             <button
               onClick={handleUploadFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
             >
-              <FolderUp className="size-4 text-muted-foreground" />
+              <FolderUp className="size-4 text-foreground" />
               Upload folder
             </button>
             <button
               onClick={handleCreateFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
             >
-              <FolderPlus className="size-4 text-muted-foreground" />
+              <FolderPlus className="size-4 text-foreground" />
               New folder
             </button>
           </PopoverContent>

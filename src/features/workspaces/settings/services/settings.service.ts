@@ -1,5 +1,6 @@
 import { apiPost, apiPut, apiDelete } from '@/shared/lib/api';
 import { WorkspaceDetailResponseSchema } from '@/features/workspaces/shell/schemas/workspace.schema';
+import type { WorkspaceRole } from '../schemas/settings.schema';
 
 // ── Raw fetchers — Settings management (Infrastructure layer) ───────────────────
 // Settings operations.
@@ -8,7 +9,7 @@ import { WorkspaceDetailResponseSchema } from '@/features/workspaces/shell/schem
 
 export const addWorkspaceMember = async (
   workspaceId: string,
-  payload: { userId: string; role: string }
+  payload: { userId: string; role: WorkspaceRole }
 ) => {
   const data = await apiPost(`/api/workspace/${workspaceId}/members`, payload);
   return WorkspaceDetailResponseSchema.parse(data);
@@ -17,9 +18,9 @@ export const addWorkspaceMember = async (
 export const updateWorkspaceMemberRole = async (
   workspaceId: string,
   userId: string,
-  payload: { role: string }
+  payload: { role: WorkspaceRole }
 ) => {
-  const data = await apiPut(`/api/workspace/${workspaceId}/members/${userId}/role`, payload);
+  const data = await apiPut(`/api/workspace/${workspaceId}/members/${userId}`, payload);
   return WorkspaceDetailResponseSchema.parse(data);
 };
 

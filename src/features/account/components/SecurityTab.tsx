@@ -88,7 +88,7 @@ export default function SecurityTab() {
                       <button
                         type='button'
                         onClick={() => setShowCurrent(!showCurrent)}
-                        className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                        className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer'
                       >
                         {showCurrent ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
                       </button>
@@ -117,7 +117,7 @@ export default function SecurityTab() {
                         <button
                           type='button'
                           onClick={() => setShowNew(!showNew)}
-                          className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                          className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer'
                         >
                           {showNew ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
                         </button>
@@ -145,7 +145,7 @@ export default function SecurityTab() {
                         <button
                           type='button'
                           onClick={() => setShowConfirm(!showConfirm)}
-                          className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+                          className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer'
                         >
                           {showConfirm ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
                         </button>
@@ -160,6 +160,7 @@ export default function SecurityTab() {
             <div className='pt-4'>
               <Button
                 type="submit"
+                className='cursor-pointer'
                 disabled={!form.formState.isDirty || changePasswordMutation.isPending}
               >
                 {changePasswordMutation.isPending ? 'Updating...' : 'Update password'}

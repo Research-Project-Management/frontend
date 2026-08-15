@@ -1,14 +1,20 @@
 import { z } from "zod";
 import {
-  CyclePhaseSchema,
-  CycleStatusSchema,
-  CycleMilestoneSchema,
-  CycleDeliverableSchema,
-  CycleSchema,
-} from "../schemas/cycle.schema";
+  cyclePhaseSchema,
+  cycleStatusSchema,
+  cycleMilestoneSchema,
+  cycleDeliverableSchema,
+  cycleSchema,
+  createCycleInputSchema,
+  updateCycleInputSchema,
+} from "../schemas/cycle.schemas";
 
-export type CyclePhase = z.infer<typeof CyclePhaseSchema>;
-export type CycleStatus = z.infer<typeof CycleStatusSchema>;
-export type CycleMilestone = z.infer<typeof CycleMilestoneSchema>;
-export type CycleDeliverable = z.infer<typeof CycleDeliverableSchema>;
-export type Cycle = z.infer<typeof CycleSchema>;
+export type CyclePhase = z.infer<typeof cyclePhaseSchema>;
+export type CycleStatus = z.infer<typeof cycleStatusSchema>;
+export type CycleMilestone = z.infer<typeof cycleMilestoneSchema>;
+export type CycleDeliverable = z.infer<typeof cycleDeliverableSchema>;
+export type Cycle = z.infer<typeof cycleSchema>;
+export type CreateCycleInput = z.infer<typeof createCycleInputSchema>;
+export type UpdateCycleInput = z.infer<typeof updateCycleInputSchema>;
+
+export type CycleFilter = "all" | "active" | "completed" | "planned" | "cancelled";

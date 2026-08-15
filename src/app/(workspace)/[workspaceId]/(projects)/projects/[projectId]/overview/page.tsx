@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import ProjectOverview from '@/features/workspaces/projects/project-id/overview/pages/OverviewPage';
+import { OverviewPage } from '@/features/workspaces/projects/project-id/overview';
 
-export const metadata: Metadata = { title: 'OverviewPage · Flux' };
+export const metadata: Metadata = { title: 'Overview · Flux' };
 
-export default function ProjectOverviewPage() {
-  return <ProjectOverview />;
+export default function ProjectOverviewRoute() {
+  return <OverviewPage />;
 }

@@ -58,3 +58,11 @@ export const isNonEmptyString = (value: unknown): value is string =>
 
 export const isValidObjectId = (value: string): boolean =>
   /^[a-f\d]{24}$/i.test(value);
+
+/**
+ * Exhaustive check helper for Discriminated Unions.
+ * Causes a TypeScript compile error if any variant is not handled.
+ */
+export function assertNever(x: never, message = `Unhandled discriminated union member: ${JSON.stringify(x)}`): never {
+  throw new Error(message);
+}

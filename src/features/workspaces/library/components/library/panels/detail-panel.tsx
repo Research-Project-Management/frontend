@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { Badge, Button, Input, Textarea } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { API_BASE_URL as API_URL } from '@/shared/constants';
+import { API_BASE_URL } from '@/shared/constants';
 import { usePapers } from '../../../hooks/data/use-papers';
 import { useReferences } from '../../../hooks/data/use-references';
 import type { Paper, Collection, Note } from '../../../types/library.types';
@@ -171,7 +171,7 @@ export default function DetailPanel({
 }: DetailPanelProps) {
   const { workspaceId: workspaceUrl } = useParams();
   const resolvedUrl = paper.fileUrl?.startsWith('/api/files/')
-    ? `${API_URL}${paper.fileUrl}`
+    ? `${API_BASE_URL}${paper.fileUrl}`
     : paper.fileUrl;
 
   const paperService = usePapers({ workspaceId, collectionId: paper.collectionId || '' });

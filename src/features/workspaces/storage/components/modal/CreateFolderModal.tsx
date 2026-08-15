@@ -50,9 +50,12 @@ export default function CreateFolderModal({ workspaceId, parentId }: CreateFolde
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-md bg-popover"
+      >
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-foreground">
             Create New Folder
           </DialogTitle>
         </DialogHeader>
@@ -80,12 +83,14 @@ export default function CreateFolderModal({ workspaceId, parentId }: CreateFolde
             variant="ghost"
             onClick={() => setOpen(false)}
             disabled={createFolderMutation.isPending}
+            className="text-foreground hover:bg-muted cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             onClick={handleCreate}
             disabled={!folderName.trim() || createFolderMutation.isPending}
+            className="cursor-pointer"
           >
             Create
           </Button>

@@ -61,7 +61,12 @@ export default function Switcher({
         )}
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align='start' className='w-[280px] p-0 rounded-xl overflow-hidden shadow-none border' sideOffset={8}>
+      <DropdownMenuContent
+        align='start'
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className='w-[280px] p-0 rounded-xl overflow-hidden shadow-none border bg-popover'
+        sideOffset={8}
+      >
         {/* Header email */}
         <div className='px-3 py-2 text-[12px] font-medium text-muted-foreground bg-background'>
           {user?.email || 'user@example.com'}
@@ -97,18 +102,18 @@ export default function Switcher({
             <Button
               variant='outline'
               size='sm'
-              className='h-7 px-2 bg-background font-medium shadow-none text-xs'
+              className='h-7 px-2 bg-background font-medium shadow-none text-xs cursor-pointer'
               onClick={() => router.push(`/${activeId}/settings`)}
             >
-              <Settings className='mr-1.5 size-3.5 text-foreground/80' /> Settings
+              <Settings className='mr-1.5 size-3.5 text-foreground' /> Settings
             </Button>
             <Button
               variant='outline'
               size='sm'
-              className='h-7 px-2 bg-background font-medium shadow-none text-xs'
+              className='h-7 px-2 bg-background font-medium shadow-none text-xs cursor-pointer'
               onClick={() => router.push(`/${activeId}/members`)}
             >
-              <UserPlus className='mr-1.5 size-3.5 text-foreground/80' /> Invite members
+              <UserPlus className='mr-1.5 size-3.5 text-foreground' /> Invite members
             </Button>
           </div>
         </div>

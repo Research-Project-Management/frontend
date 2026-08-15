@@ -1,32 +1,30 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/shared/components/ui';
-import { Input } from '@/shared/components/ui';
-import { Label } from '@/shared/components/ui';
-import {
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui';
+import type { Project } from '@/features/workspaces/projects/shell/services/project.services';
 
 interface CreateModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   title: string;
   setTitle: (title: string) => void;
-  initialProjectId?: string;
   selectedProjectId: string;
   setSelectedProjectId: (id: string) => void;
-  projects: any[];
+  projects: Project[];
   handleCreate: () => void;
   isCreating: boolean;
 }
@@ -36,7 +34,6 @@ export function CreateModal({
   setIsOpen,
   title,
   setTitle,
-  initialProjectId,
   selectedProjectId,
   setSelectedProjectId,
   projects,
@@ -66,30 +63,28 @@ export function CreateModal({
               }}
             />
           </div>
-          
-          {!initialProjectId && (
-            <div className="grid gap-2">
-              <Label>Project</Label>
-              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a project..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project: any) => (
-                    <SelectItem key={project._id} value={project._id}>
-                      {project.title || project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+
+          <div className="grid gap-2">
+            <Label>Project</Label>
+            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a project..." />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project._id} value={project._id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={isCreating}>
+          <Button onClick={handleCreate} disabled={isCreating || !title.trim() || !selectedProjectId}>
             {isCreating && <Loader2 className="mr-2 size-4 animate-spin" />}
             Create
           </Button>

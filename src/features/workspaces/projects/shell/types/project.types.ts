@@ -1,12 +1,14 @@
+export interface ProjectMemberUser {
+  _id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+}
+
 export interface ProjectMember {
-  userId: string | {
-    _id: string;
-    name: string;
-  createdBy?: string | any;
-    email: string | null;
-    avatar: string | null;
-  };
-  role: "manager" | "member" | "viewer";
+  user?: ProjectMemberUser;
+  userId?: string | ProjectMemberUser;
+  role: string;
   joinedAt: string;
 }
 
@@ -18,18 +20,27 @@ export interface Workspace {
 export interface Project {
   _id: string;
   name: string;
-  createdBy?: string | any;
-  avatar: string | null;
   description: string;
+  avatar?: string;
+  isActive?: boolean;
   modules: string[];
-  workspaceId: string | Workspace;
+  workspace?: string;
+  workspaceId?: string | Workspace;
   members: ProjectMember[];
+  createdBy?: {
+    _id: string;
+    name: string;
+    email?: string;
+    avatar?: string;
+  };
   settings?: {
     parallelCycles?: boolean;
+    isPrivate?: boolean;
     [key: string]: any;
   };
   createdAt: string;
   updatedAt: string;
+  key?: string;
 }
 
-export type ProjectRole = "manager" | "member" | "viewer";
+export type ProjectRole = "owner" | "manager" | "lead" | "member" | "viewer";

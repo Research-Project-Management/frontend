@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
-import type { PageVersion } from "@/features/workspaces/projects/all-pages/schemas/page.schemas";
+import type { PageVersion } from "../types/document.types";
 
 export const PageVersionService = {
   getByPageId: async (pageId: string) => {

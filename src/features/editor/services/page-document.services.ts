@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import type { Page, PageFile } from "@/features/workspaces/projects/all-pages/schemas/page.schemas";
+import type { Page, PageFile } from "../types/document.types";
 
 export const PageDocumentService = {
   getById: async (pageId: string) => {

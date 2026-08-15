@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FileText, BookOpen, Download, ExternalLink, HardDrive } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
-import { API_BASE_URL as API_URL } from '@/shared/constants';
+import { API_BASE_URL } from '@/shared/constants';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface FilesSectionProps {
@@ -24,7 +24,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
   const hasFile = Boolean(paper.fileUrl);
 
   const resolvedUrl = paper.fileUrl?.startsWith('/api/files/')
-    ? `${API_URL}${paper.fileUrl}`
+    ? `${API_BASE_URL}${paper.fileUrl}`
     : paper.fileUrl;
 
   const handleOpenReader = () => {

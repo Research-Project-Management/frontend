@@ -23,9 +23,9 @@ export default function WorkspaceStarredPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
-  const workspaceId = workspace?._id;
+  const workspaceId = workspace?._id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useStarredFiles(workspaceId!);
+  const { data, isLoading: isFilesLoading } = useStarredFiles(workspaceId);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 

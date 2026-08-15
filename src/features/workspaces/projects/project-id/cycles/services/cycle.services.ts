@@ -1,61 +1,16 @@
-'use client';
-
-import { useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Cycle } from "@/features/workspaces/projects/project-id/tasks/types/task.types";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import type { Cycle, CreateCycleInput, UpdateCycleInput } from "../types/cycle.types";
 
+export const CycleService = {
+  getProjectCycles: (projectId: string) =>
+    apiGet<{ cycles: Cycle[] }>(`/api/project/${projectId}/cycles`),
 
-// ── Fetch ─────────────────────────────────────────────────────────────────────
+  create: ({ projectId, ...data }: { projectId: string } & Partial<CreateCycleInput>) =>
+    apiPost<{ cycle?: Cycle }>(`/api/project/${projectId}/cycles`, data),
 
-export const fetchProjectCycles = (projectId: string) =>
-  apiGet<{ cycles: Cycle[] }>(`/api/project/${projectId}/cycles`);
+  update: ({ cycleId, ...data }: { cycleId: string; projectId?: string } & Partial<UpdateCycleInput>) =>
+    apiPut<{ cycle?: Cycle }>(`/api/cycles/${cycleId}`, data),
 
-// ── Queries ───────────────────────────────────────────────────────────────────
-
-export const useProjectCycles = (projectId: string) => {
-  const queryClient = useQueryClient();
-
-
-  return useQuery({
-    queryKey: ["cycles", projectId],
-    queryFn: () => fetchProjectCycles(projectId),
-    enabled: !!projectId,
-  });
-};
-
-// ── Mutations ─────────────────────────────────────────────────────────────────
-
-export const useCreateCycle = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ projectId, ...data }: { projectId: string } & Partial<Cycle>) =>
-      apiPost(`/api/project/${projectId}/cycles`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["cycles", variables.projectId] });
-    },
-  });
-};
-
-export const useUpdateCycle = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ cycleId, projectId, ...data }: { cycleId: string; projectId: string } & Partial<Cycle>) =>
-      apiPut(`/api/cycles/${cycleId}`, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["cycles", variables.projectId] });
-    },
-  });
-};
-
-export const useDeleteCycle = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ cycleId }: { cycleId: string; projectId: string }) =>
-      apiDelete(`/api/cycles/${cycleId}`),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["cycles", variables.projectId] });
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
-    },
-  });
+  delete: ({ cycleId }: { cycleId: string; projectId?: string }) =>
+    apiDelete<void>(`/api/cycles/${cycleId}`),
 };

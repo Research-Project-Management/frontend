@@ -33,14 +33,19 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-accent/50 outline-none data-[state=open]:bg-accent/50'>
+        <DropdownMenuTrigger className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-accent/50 outline-none data-[state=open]:bg-accent/50 cursor-pointer'>
             <Avatar className='size-7 rounded-full'>
       {user.avatar ? <AvatarImage src={resolveFileUrl(user.avatar) || undefined} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
       <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
     </Avatar>
         </DropdownMenuTrigger>
         
-        <DropdownMenuContent align='end' className='w-[260px] p-2' alignOffset={0}>
+        <DropdownMenuContent
+          align='end'
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className='w-[260px] p-2 bg-popover'
+          alignOffset={0}
+        >
           {/* Profile Card Header with Noise Background */}
           <div className='relative mb-2 flex flex-col items-center justify-center overflow-hidden rounded-md bg-muted p-4 pb-3'>
             {/* Noise texture overlay */}

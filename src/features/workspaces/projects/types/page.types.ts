@@ -1,2 +1,4 @@
-export type Page = any; export type Comment = any; export type PageComment = any; export type CommentReply = any;
-export type PageVersion = any; export type PageEvent = any;
+export type { Page, PageComment, CommentReply } from "@/features/editor/types/document.types";
+export type { PageVersion, PageEvent } from "@/features/editor/types/document.types";
+/** @deprecated Use PageComment instead. */
+export type Comment = import("@/features/editor/types/document.types").PageComment;

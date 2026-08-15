@@ -64,7 +64,7 @@ export default function Stickies() {
             {isSearchExpanded ? (
               <div className="flex items-center animate-in fade-in slide-in-from-right-2 duration-200">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground" />
                   <input
                     aria-label="Search stickies"
                     type="text"
@@ -84,9 +84,9 @@ export default function Stickies() {
                         e.preventDefault();
                         setSearchQuery('');
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:text-foreground cursor-pointer"
                     >
-                      <X className="size-3.5" />
+                      <X className="size-3.5 text-foreground" />
                     </button>
                   ) : (
                     <button
@@ -95,9 +95,9 @@ export default function Stickies() {
                         e.preventDefault();
                         setIsSearchExpanded(false);
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:text-foreground cursor-pointer"
                     >
-                      <X className="size-3.5" />
+                      <X className="size-3.5 text-foreground" />
                     </button>
                   )}
                 </div>
@@ -106,22 +106,22 @@ export default function Stickies() {
               <button
                 aria-label="Search stickies"
                 onClick={() => setIsSearchExpanded(true)}
-                className='flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors'
+                className='flex items-center justify-center text-foreground hover:bg-muted/80 rounded-md p-1 transition-colors cursor-pointer'
                 title="Search stickies"
               >
-                <Search className='size-3.5' />
+                <Search className='size-3.5 text-foreground' />
               </button>
             )}
           </div>
           <button
             onClick={handleAdd}
             disabled={isCreating}
-            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/90 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors disabled:opacity-50 cursor-pointer"
           >
             {isCreating ? (
-              <Loader2 className="size-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin text-primary" />
             ) : (
-              <Plus className="size-3.5" />
+              <Plus className="size-3.5 text-primary" />
             )}
             Add sticky
           </button>
@@ -130,7 +130,7 @@ export default function Stickies() {
 
       {isLoading ? (
         <div className='flex items-center gap-2 py-4 px-1 text-sm text-muted-foreground'>
-          <Loader2 className='size-4 animate-spin' />
+          <Loader2 className='size-4 animate-spin text-primary' />
           Loading...
         </div>
       ) : (
@@ -150,7 +150,7 @@ export default function Stickies() {
             <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/90 to-transparent flex items-end justify-center pb-2">
               <Link
                 href={`/${workspaceId}/stickies`}
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                className="text-sm font-medium text-primary hover:underline transition-colors"
               >
                 Show all
               </Link>

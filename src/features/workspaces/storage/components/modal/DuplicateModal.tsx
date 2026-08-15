@@ -49,7 +49,10 @@ export default function DuplicateModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md p-6 overflow-hidden gap-0 border-border bg-background shadow-none">
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-md p-6 overflow-hidden gap-0 border-border bg-popover shadow-xl"
+      >
         <DialogHeader className="mb-4">
           <DialogTitle className="text-[1.125rem] leading-snug font-semibold text-foreground">
             File already exists
@@ -105,14 +108,14 @@ export default function DuplicateModal({
             variant="ghost"
             onClick={onClose}
             disabled={isUploading}
-            className="h-9 px-4 font-medium text-muted-foreground hover:text-foreground"
+            className="h-9 px-4 font-medium text-foreground hover:bg-muted cursor-pointer"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isUploading}
-            className="h-9 px-5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="h-9 px-5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer"
           >
             Confirm
           </Button>

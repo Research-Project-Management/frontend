@@ -44,7 +44,13 @@ const LoginPage = () => {
   }, [isAuthLoading, user, router]);
 
 
-  if (isAuthLoading) return <Loader2 className="animate-spin" />;
+  if (isAuthLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   if (user) return null;
 
   const onSubmit = (data: LoginSchema) => {
@@ -122,7 +128,7 @@ const LoginPage = () => {
 
           <Button
             type='submit'
-            className='w-full h-10 mt-2 rounded-lg'
+            className='w-full h-10 mt-2 rounded-lg cursor-pointer'
             disabled={isPending}
           >
             {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
@@ -153,7 +159,7 @@ const LoginPage = () => {
             variant='outline'
             type='button'
             onClick={() => handleOAuthLogin('google')}
-            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg'
+            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg cursor-pointer'
           >
             <img src='/google.svg' alt='' aria-hidden='true' className='w-4 h-4' />
             Google
@@ -162,7 +168,7 @@ const LoginPage = () => {
             variant='outline'
             type='button'
             onClick={() => handleOAuthLogin('github')}
-            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg'
+            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg cursor-pointer'
           >
             <img src='/github.svg' alt='' aria-hidden='true' className='w-4 h-4' />
             Github

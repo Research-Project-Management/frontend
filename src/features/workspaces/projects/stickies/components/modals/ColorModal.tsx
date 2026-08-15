@@ -36,6 +36,7 @@ export default function ColorModal({
         </ToolbarBtn>
       </PopoverTrigger>
       <PopoverContent 
+        onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-[242px] p-0 rounded-lg shadow-2xl z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
         align="start" 
         side="top" 
@@ -50,7 +51,7 @@ export default function ColorModal({
               transition={{ duration: 0.2, ease: [0.2, 0, 0, 1.0] }}
               className="p-3"
             >
-              <div className="mb-2.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+              <div className="mb-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Background colors
               </div>
               <div className="grid grid-cols-6 gap-2">

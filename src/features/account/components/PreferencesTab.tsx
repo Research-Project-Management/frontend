@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Switch } from '@/shared/components/ui/switch';
-import { Button } from '@/shared/components/ui';
 
 export default function PreferencesTab() {
   const form = useForm<z.infer<typeof preferencesSchema>>({

@@ -79,7 +79,11 @@ export default function CreateCollectionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" showCloseButton={false}>
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="sm:max-w-md bg-popover"
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle className="text-base font-semibold text-foreground">
             New Collection

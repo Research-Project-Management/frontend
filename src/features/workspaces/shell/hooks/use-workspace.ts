@@ -24,9 +24,12 @@ export const useWorkspace = (explicitWorkspaceId?: string) => {
     enabled: !!workspaceId,
   });
 
+  const pData = data as any;
+  const workspace = pData?.workspace ?? pData?.data?.workspace ?? (pData?._id ? pData : undefined);
+
   return {
-    workspace: data?.workspace ?? undefined,
-    yourRole: data?.yourRole,
+    workspace: workspace as Workspace | undefined,
+    yourRole: pData?.yourRole,
     isLoading,
     isError,
   };

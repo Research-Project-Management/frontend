@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { Task } from '@/features/workspaces/projects/project-id/tasks';
+import { TaskPage } from '@/features/workspaces/projects/project-id/tasks';
 
 export const metadata: Metadata = { title: 'Tasks · Flux' };
 
-export default function TaskPage() {
-  return <Task />;
+export default function TasksRoute() {
+  return <TaskPage />;
 }

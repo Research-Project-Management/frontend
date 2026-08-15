@@ -51,14 +51,14 @@ const ForgotPasswordPage = () => {
               Didn&apos;t receive the email? Check your spam folder or{' '}
               <button
                 onClick={handleTryAgain}
-                className='text-primary font-semibold transition-opacity hover:opacity-80'
+                className='text-primary font-semibold transition-opacity hover:opacity-80 cursor-pointer'
               >
                 try again
               </button>
             </p>
           </div>
           <Link href='/login' className='w-full mt-4'>
-            <Button className='w-full h-10 rounded-lg'>Return to sign in</Button>
+            <Button className='w-full h-10 rounded-lg cursor-pointer'>Return to sign in</Button>
           </Link>
         </div>
       </div>
@@ -101,7 +101,7 @@ const ForgotPasswordPage = () => {
 
           <Button
             type='submit'
-            className='w-full h-10 mt-2 rounded-lg'
+            className='w-full h-10 mt-2 rounded-lg cursor-pointer'
             disabled={isPending}
           >
             {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}

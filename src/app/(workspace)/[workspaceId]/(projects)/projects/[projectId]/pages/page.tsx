@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PagesPage } from '@/features/workspaces/projects/all-pages';
+import { PagesPage } from '@/features/workspaces/projects/project-id/pages';
 
 export const metadata: Metadata = { title: 'Pages · Flux' };
 

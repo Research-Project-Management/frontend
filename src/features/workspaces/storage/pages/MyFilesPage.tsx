@@ -72,9 +72,9 @@ export default function WorkspaceMyFilesPage() {
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
 
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id;
+  const workspaceId = workspace?._id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId!, currentFolder);
+  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();

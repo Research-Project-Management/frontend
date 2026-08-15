@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/features/auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { User, SlidersHorizontal, Bell, Lock, Key } from 'lucide-react';
+import { User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 interface SidebarProps {
   activeTab: string;
@@ -90,7 +90,7 @@ function SidebarItem({
     <button
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors outline-none',
+        'flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors outline-none cursor-pointer',
         active
           ? 'bg-muted font-medium text-foreground'
           : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'

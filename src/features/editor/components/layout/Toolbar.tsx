@@ -25,7 +25,7 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageContext } from "@/features/editor/store/page-context";
-import { usePageActions } from '@/features/editor/hooks/use-pages';
+import { usePageActions } from '@/features/editor/hooks/use-page';
 import {
   useEditorSettingsStore,
   type LayoutMode,

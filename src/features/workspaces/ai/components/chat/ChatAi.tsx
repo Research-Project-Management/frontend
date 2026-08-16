@@ -9,7 +9,7 @@ import {
 } from "@/shared/components/ui";
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from "lucide-react";
 import { Switch } from "@/shared/components/ui";
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.service';
 import { useParams } from "next/navigation";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { AGENT_CONFIGS } from "@/features/workspaces/ai/types/chat.types";
@@ -293,7 +293,7 @@ export default function ChatAi({
           </div>
         )}
 
-        <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
+        <div className="relative rounded-lg border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
           <div className="flex items-center gap-2 px-3 pt-3">
 
             {/* ── Scope picker ── */}
@@ -485,7 +485,7 @@ export default function ChatAi({
             <button
               onClick={handleSend}
               disabled={!message.trim() || disabled}
-              className="size-8 flex items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+              className="size-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
             >
               {disabled ? (
                 <Square className="size-3.5" />

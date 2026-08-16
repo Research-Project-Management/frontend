@@ -19,7 +19,7 @@ import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
 import DeleteModal from '@/features/workspaces/settings/components/DeleteModal';
 
 import { useEditWorkspace, useDeleteWorkspace } from '../hooks/use-workspace';
-import type { Workspace } from '../types/workspace-types';
+import type { Workspace } from '../types/workspace.types';
 
 export default function ManageWorkspacesPage() {
   const router = useRouter();
@@ -58,7 +58,8 @@ export default function ManageWorkspacesPage() {
               </button>
             </div>
           )}
-          {workspaces?.map((workspace: Workspace) => (
+          {(workspaces as any[])?.map((workspace: any) => (
+
             <div
               key={workspace._id}
               className='flex items-center gap-4 px-4 py-3 bg-background hover:bg-secondary/40 transition-colors group'

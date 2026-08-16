@@ -6,9 +6,8 @@ export { default as ManageWorkspacesPage } from './pages/manage-workspaces-page'
 export { useCreateWorkspace, useEditWorkspace, useDeleteWorkspace } from './hooks/use-workspace';
 
 // Schemas
-export { createWorkspaceSchema, updateWorkspaceSchema } from './schemas/workspace-schemas';
-export type { CreateWorkspaceSchema, UpdateWorkspaceSchema } from './schemas/workspace-schemas';
+export { createWorkspaceSchema, updateWorkspaceSchema } from './schemas/workspace.schema';
+export type { CreateWorkspaceSchema, UpdateWorkspaceSchema } from './schemas/workspace.schema';
 
 // Types
-export type { Workspace, WorkspaceMember, WorkspaceMemberUser, WorkspaceRole } from './types/workspace-types';
-
+export type { Workspace, WorkspaceMember, WorkspaceMemberUser, WorkspaceRole } from './types/workspace.types';

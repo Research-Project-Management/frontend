@@ -1,5 +1,5 @@
 import { useQuery, queryOptions } from '@tanstack/react-query';
-import { OverviewService } from '../services/overview.services';
+import { OverviewService } from '../services/overview.service';
 
 export const overviewKeys = {
   all: ['overview'] as const,

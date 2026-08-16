@@ -143,7 +143,7 @@ export default function Sidebar({
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <div className="flex size-12 items-center justify-center rounded-xl border border-border bg-card">
+              <div className="flex size-12 items-center justify-center rounded-lg border border-border bg-card">
                 {ragStatus === 'pending' ? (
                   <Loader2 className="size-6 animate-spin text-primary" />
                 ) : ragStatus === 'failed' ? (

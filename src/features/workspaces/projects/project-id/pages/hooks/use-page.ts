@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
-import { PageService } from '../services/page.services';
+import { PageService } from '../services/page.service';
 import type { CreatePageInput } from '../types/page.types';
 import { toast } from 'sonner';
 

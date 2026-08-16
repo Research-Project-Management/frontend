@@ -10,7 +10,9 @@ import {
   deleteWorkspaceById,
 } from '../services/workspace.service';
 import type { WorkspaceListResponse, WorkspaceDetailResponse, WorkspacePatch } from '../services/workspace.service';
-import type { Workspace } from '@/features/setup/types/workspace-types';
+import type { Workspace } from '@/features/setup/types/workspace.types';
+
+
 
 // ── useWorkspace ──────────────────────────────────────────────────────────────
 // Reads current workspaceId from URL params automatically.
@@ -45,14 +47,16 @@ export const useWorkspaces = () => {
     select: (data: WorkspaceListResponse) => {
       const workspaces = data?.workspaces ?? [];
       const unique = Array.from(
-        new Map(workspaces.map((w) => [w._id, w])).values(),
+        new Map(workspaces.map((w: Workspace) => [w._id || (w as any).id, w])).values(),
       );
       return { workspaces: unique };
+
     },
   });
 
   return {
     workspaces: data?.workspaces ?? [],
+    data,
     isLoading,
     isError,
   };
@@ -95,9 +99,10 @@ export const useUpdateWorkspace = () => {
       if (previousWorkspaces) {
         queryClient.setQueryData<WorkspaceListResponse>(queryKeys.workspaces.all, {
           ...previousWorkspaces,
-          workspaces: previousWorkspaces.workspaces.map((w) =>
-            w._id === id ? { ...w, ...(data as any) } : w
+          workspaces: previousWorkspaces.workspaces.map((w: Workspace) =>
+            (w._id === id || (w as any).id === id) ? { ...w, ...(data as any) } : w
           ),
+
         });
       }
 

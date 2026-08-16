@@ -17,13 +17,15 @@ export {
   Card as PageCard,
 } from './all-pages';
 export * from './all-pages/types/page.types';
-export * from './all-pages/schemas/page.schemas';
-export * from './all-pages/services/page.services';
+export * from './all-pages/schemas/page.schema';
+export * from './all-pages/services/page.service';
 export * from './all-pages/hooks/use-page';
+
 export * from './stickies';
 
 // ── Project Detail specific modules ───────────────────────────────────────────
 export * from './project-id/overview';
-export { default as TeamPage } from './project-id/settings/pages/TeamPage';
+export * from './project-id/settings';
+export { default as MemberPage } from './project-id/settings/pages/MemberPage';
 export { default as ProjectGeneralPage } from './project-id/settings/pages/GeneralPage';
 export { default as ProjectModulesPage } from './project-id/settings/pages/ModulesPage';

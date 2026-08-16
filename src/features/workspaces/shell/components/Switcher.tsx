@@ -12,7 +12,7 @@ import {
   Button,
   Badge
 } from '@/shared/components/ui';
-import { logoutUser, useAuth } from '@/features/auth';
+import { useLogout, useAuth } from '@/features/auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { resolveFileUrl } from '@/shared/utils/url';
 
@@ -28,6 +28,7 @@ export default function Switcher({
   activeId,
 }: SwitcherProps) {
   const { user } = useAuth();
+  const { logout } = useLogout();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -64,7 +65,7 @@ export default function Switcher({
       <DropdownMenuContent
         align='start'
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className='w-[280px] p-0 rounded-xl overflow-hidden shadow-none border bg-popover'
+        className='w-[280px] p-0 rounded-lg overflow-hidden shadow-none border bg-popover'
         sideOffset={8}
       >
         {/* Header email */}
@@ -172,7 +173,7 @@ export default function Switcher({
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={logoutUser}
+            onClick={() => logout()}
             className='px-2.5 py-2 cursor-pointer rounded-md text-destructive focus:bg-accent focus:text-destructive mt-0.5'
           >
             <LogOut className='mr-2.5 size-4' />

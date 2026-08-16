@@ -100,13 +100,9 @@ export function useGeneral(workspaceId: string) {
       {
         onSuccess: () => {
           toast.success("Workspace deleted");
-          if (workspaces && workspaces.length > 0) {
-            const nextWs = workspaces.find((w: any) => w._id !== workspaceId);
-            if (nextWs) {
-              router.push(`/${nextWs.url}`);
-            } else {
-              router.push("/");
-            }
+          const nextWs: any = (workspaces as any[])?.find((w: any) => w._id !== workspaceId);
+          if (nextWs?.url) {
+            router.push(`/${nextWs.url}`);
           } else {
             router.push("/");
           }
@@ -117,6 +113,7 @@ export function useGeneral(workspaceId: string) {
       }
     );
   };
+
 
   const hasChanges = 
     form.watch("name") !== (workspace?.name || "") ||

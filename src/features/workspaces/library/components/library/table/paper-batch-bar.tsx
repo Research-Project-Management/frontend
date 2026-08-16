@@ -55,7 +55,7 @@ export default function PaperBatchBar({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 bg-popover/95 backdrop-blur-md border border-border/70 rounded-xl shadow-2xl select-none"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-2 bg-popover/95 backdrop-blur-md border border-border/70 rounded-lg shadow-2xl select-none"
       >
         <div className="flex items-center gap-2 pr-2 border-r border-border/60">
           <span className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold font-mono">

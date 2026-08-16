@@ -7,7 +7,8 @@ import {
   cycleSchema,
   createCycleInputSchema,
   updateCycleInputSchema,
-} from "../schemas/cycle.schemas";
+} from "../schemas/cycle.schema";
+
 
 export type CyclePhase = z.infer<typeof cyclePhaseSchema>;
 export type CycleStatus = z.infer<typeof cycleStatusSchema>;

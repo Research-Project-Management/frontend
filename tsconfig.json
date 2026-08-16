@@ -20,6 +20,8 @@
     "skipLibCheck": true,
     "strict": true,
     "incremental": true,
+    "isolatedModules": true,
+    "tsBuildInfoFile": ".next/cache/tsconfig.tsbuildinfo",
     "plugins": [
       {
         "name": "next"
@@ -44,7 +46,6 @@
   "exclude": [
     "node_modules",
     ".next",
-    "build",
-    ".react-router"
+    "build"
   ]
 }

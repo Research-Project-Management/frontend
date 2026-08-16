@@ -8,6 +8,7 @@
  * - Cookie-based auth (credentials: 'include')
  * - Typed ApiError with HTTP status and field-level errors
  * - Query string builder via `params` option
+ * - Transparent 401 auto-refresh via refresh token rotation
  * - Tree-shakeable named helpers: apiGet, apiPost, apiPut, apiPatch, apiDelete
  */
 
@@ -18,25 +19,99 @@ import type { RequestOptions } from '@/shared/types';
 
 // ─── Token Management ─────────────────────────────────────────────────────────
 
+const TOKEN_KEY = 'token';
+const ACCESS_KEY = 'accessToken';
+const REFRESH_KEY = 'refreshToken';
+
 export function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('token') || localStorage.getItem('accessToken') || null;
+    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(ACCESS_KEY) || null;
+  }
+  return null;
+}
+
+export function getRefreshToken(): string | null {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(REFRESH_KEY) || null;
   }
   return null;
 }
 
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('token', token);
-    localStorage.setItem('accessToken', token);
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(ACCESS_KEY, token);
   }
+}
+
+export function setRefreshToken(token: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(REFRESH_KEY, token);
+  }
+}
+
+/** Store both tokens at once (convenience for login/register flows) */
+export function setTokens(accessToken: string, refreshToken: string) {
+  setAuthToken(accessToken);
+  setRefreshToken(refreshToken);
 }
 
 export function removeAuthToken() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('accessToken');
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ACCESS_KEY);
+    localStorage.removeItem(REFRESH_KEY);
   }
+}
+
+// ─── Silent Refresh ───────────────────────────────────────────────────────────
+
+/** Mutex to prevent multiple concurrent refresh attempts */
+let refreshPromise: Promise<string | null> | null = null;
+
+async function silentRefresh(): Promise<string | null> {
+  const rt = getRefreshToken();
+  if (!rt) return null;
+
+  try {
+    const url = `${API_BASE_URL}/auth/refresh`;
+    const res = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = (await res.json()) as {
+      accessToken?: string;
+      refreshToken?: string;
+    };
+
+    if (data.accessToken) {
+      setAuthToken(data.accessToken);
+      // If backend rotates the refresh token, store the new one
+      if (data.refreshToken) {
+        setRefreshToken(data.refreshToken);
+      }
+      return data.accessToken;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Deduplicated refresh — all concurrent callers share one in-flight request */
+function tryRefresh(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = silentRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 // ─── Query String Builder ─────────────────────────────────────────────────────
@@ -79,14 +154,14 @@ function normalizeResponse<T>(data: T): T {
   return obj as T;
 }
 
-// ─── Core Fetch ───────────────────────────────────────────────────────────────
+// ─── Core Fetch (with auto-refresh on 401) ────────────────────────────────────
 
-export async function apiFetch<T>(
+async function rawFetch<T>(
   path: string,
   method: string,
   body?: unknown,
   options: RequestOptions = {},
-): Promise<T> {
+): Promise<Response> {
   const { params, headers: extraHeaders, ...rest } = options;
 
   const url = buildUrl(path, params);
@@ -99,13 +174,41 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
+  return fetch(url, {
     method,
     credentials: 'include',
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
     ...rest,
   });
+}
+
+export async function apiFetch<T>(
+  path: string,
+  method: string,
+  body?: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  let response = await rawFetch<T>(path, method, body, options);
+
+  // ── Auto-refresh on 401 ─────────────────────────────────────────────
+  // Skip refresh for auth endpoints to prevent infinite loops
+  const isAuthEndpoint = path.includes('/auth/refresh') || path.includes('/auth/login') || path.includes('/auth/register');
+
+  if (response.status === 401 && !isAuthEndpoint) {
+    const newToken = await tryRefresh();
+
+    if (newToken) {
+      // Retry the original request with the fresh token
+      response = await rawFetch<T>(path, method, body, options);
+    } else {
+      // Refresh failed — clear tokens, redirect to login
+      removeAuthToken();
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
+    }
+  }
 
   if (!response.ok) {
     let payload: { message?: string; errors?: Record<string, string[]> } = {};
@@ -146,6 +249,19 @@ export const apiPatch = <T>(path: string, body?: unknown, options?: RequestOptio
 
 export const apiDelete = <T>(path: string, options?: RequestOptions) =>
   apiFetch<T>(path, 'DELETE', undefined, options);
+
+// ─── Safe Fetch (Error as Value Pattern) ───────────────────────────────────────
+
+import { tryCatch, type Result } from '@/shared/utils/error.util';
+
+export const safeApiFetch = <T>(
+  path: string,
+  method = 'GET',
+  body?: unknown,
+  options?: RequestOptions,
+): Promise<Result<T, Error>> => {
+  return tryCatch(apiFetch<T>(path, method, body, options));
+};
 
 // ─── Re-export for convenience ────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchPdfBlob } from '../../services/paper.services';
+import { fetchPdfBlob } from '../../services/paper.service';
 
 interface UsePdfReturn {
   blobUrl: string | null;

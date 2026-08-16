@@ -4,9 +4,10 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-import { registerUser } from '../services/auth-service';
-import { API_BASE_URL } from '@/shared/constants';
-import type { RegisterPayload } from '../types/auth-types';
+import { registerUser } from '../services/auth.service';
+import { queryKeys, API_BASE_URL } from '@/shared/constants';
+import type { RegisterPayload } from '../types/auth.types';
+
 
 export const useRegister = () => {
   const router = useRouter();

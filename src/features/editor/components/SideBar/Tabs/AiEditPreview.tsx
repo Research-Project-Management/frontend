@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 /**
  * AiEditPreview.tsx G�� Preview-before-Apply Modal for AI Edits
  *
@@ -8,7 +8,7 @@
 
 import React, { useMemo, useState } from "react";
 import { X, Check, Copy, RefreshCw, Zap, AlertTriangle } from "lucide-react";
-import type { AiEditResponse, AiEditOperation } from "@/features/editor/services/ai-edit.services";
+import type { AiEditResponse, AiEditOperation } from "@/features/editor/services/ai-edit.service";
 
 // G��G�� Single-edit diff row G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
@@ -129,7 +129,7 @@ export default function AiEditPreview({
 
   return (
     <div className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200">
-      <div className="bg-background border border-border rounded-2xl shadow-2xl w-[600px] max-w-[94vw] max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-background border border-border rounded-lg shadow-2xl w-[600px] max-w-[94vw] max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function AiEditPreview({
             {onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl border border-border hover:bg-secondary/80 transition-colors text-muted-foreground"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-secondary/80 transition-colors text-muted-foreground"
               >
                 <RefreshCw className="size-3" />
                 Regenerate
@@ -209,7 +209,7 @@ export default function AiEditPreview({
             )}
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl border border-border hover:bg-secondary/80 transition-colors text-muted-foreground"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-secondary/80 transition-colors text-muted-foreground"
             >
               {copied ? (
                 <Check className="size-3 text-emerald-500" />
@@ -222,14 +222,14 @@ export default function AiEditPreview({
           <div className="flex items-center gap-2">
             <button
               onClick={onCancel}
-              className="px-4 py-1.5 text-xs rounded-xl border border-border hover:bg-secondary/80 transition-colors"
+              className="px-4 py-1.5 text-xs rounded-lg border border-border hover:bg-secondary/80 transition-colors"
             >
               Cancel
             </button>
             {!isNoChange && editResponse.edits.length > 0 && (
               <button
                 onClick={() => onApply(editResponse.edits)}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
               >
                 <Zap className="size-3" />
                 Apply{editResponse.edits.length > 1 ? ` ${editResponse.edits.length} edits` : ""}

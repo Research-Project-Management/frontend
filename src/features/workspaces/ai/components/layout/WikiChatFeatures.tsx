@@ -38,7 +38,7 @@ import {
   uploadDocument,
   fetchDocumentsBulk,
   fetchDocumentContent,
-} from "@/features/workspaces/ai/services/chat-ai.services";
+} from "@/features/workspaces/ai/services/chat-ai.service";
 import SourcePickerModal from "../modals/SourcePickerModal";
 
 type UploadingEntry = {

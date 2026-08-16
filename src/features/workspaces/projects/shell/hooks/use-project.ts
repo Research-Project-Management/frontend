@@ -10,4 +10,4 @@ export {
   useRemoveProjectMember,
   useUpdateProject,
   useDeleteProject,
-} from '../services/project.services';
+} from '../services/project.service';

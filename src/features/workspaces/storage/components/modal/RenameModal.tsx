@@ -12,7 +12,7 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { useRenameItem } from "@/features/workspaces/storage/hooks/use-storage";
-import { renameItemSchema } from "@/features/workspaces/storage/schemas/storage.schemas";
+import { renameItemSchema } from "@/features/workspaces/storage/schemas/storage.schema";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 
 export default function RenameModal() {

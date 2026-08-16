@@ -1,6 +1,24 @@
-// ── Your Work services ────────────────────────────────────────────────────────
-// Fetchers for current user's assigned tasks, pages, and recent activity.
+// ── Your Work API Service (Matching Backend Method Names & Endpoints) ─────────
 import { apiGet } from '@/shared/lib/api';
 
-export const fetchYourWork = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet(`/api/dashboard/workspaces/${workspaceId}/your-work`, { signal });
+/**
+ * Calls backend AnalyticsController.getYourWork
+ * Endpoint: GET /api/analytics/your-work/:workspaceId
+ */
+export const getYourWork = (workspaceId: string, signal?: AbortSignal) =>
+  apiGet(`/api/analytics/your-work/${workspaceId}`, { signal });
+
+/**
+ * Calls backend ActivityController.getWorkspaceActivityFeed
+ * Endpoint: GET /api/activity/workspaces/:workspaceId/feed
+ */
+export const getActivityFeed = (workspaceId: string, signal?: AbortSignal) =>
+  apiGet(`/api/activity/workspaces/${workspaceId}/feed`, { signal });
+
+/**
+ * Calls backend TaskController.getWorkspaceTasks
+ * Endpoint: GET /api/workspace/:workspaceId/tasks
+ */
+export const getWorkspaceTasks = (workspaceId: string, signal?: AbortSignal) =>
+  apiGet(`/api/workspace/${workspaceId}/tasks`, { signal });
+

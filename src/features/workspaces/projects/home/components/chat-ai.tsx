@@ -17,7 +17,7 @@ import {
 } from "@/shared/components/ui";
 
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProjects } from '@/features/workspaces/projects/shell/services/project.service';
 
 // We use standard semantic tokens instead of hardcoded colors to adhere to DESIGN.md
 
@@ -103,7 +103,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
 
   return (
     <div className="w-full">
-      <div className="relative flex flex-col bg-background border border-border/50 rounded-xl focus-within:border-border focus-within:ring-1 focus-within:ring-border/50 hover:border-border transition-all duration-200">
+      <div className="relative flex flex-col bg-background border border-border/50 rounded-lg focus-within:border-border focus-within:ring-1 focus-within:ring-border/50 hover:border-border transition-all duration-200">
 
         {/* Top row: Scope picker */}
         <div className="flex items-center gap-2 px-3 pt-3">
@@ -138,7 +138,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
               side="bottom"
               align="start"
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-56 p-2 rounded-xl bg-popover"
+              className="w-56 p-2 rounded-lg bg-popover"
             >
               <div className="px-2 pb-1.5 pt-1 text-xs font-medium text-muted-foreground">
                 Ask AI to use data from:

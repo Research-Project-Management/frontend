@@ -19,7 +19,7 @@ export function Team({ members }: TeamProps) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-lg border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground">Team Members</h2>
         <span className="text-xs text-muted-foreground">{members.length} members</span>

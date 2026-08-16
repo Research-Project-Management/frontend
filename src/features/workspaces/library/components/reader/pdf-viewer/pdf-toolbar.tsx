@@ -40,7 +40,7 @@ export default function PdfViewerToolbar({
   };
 
   return (
-    <div className="pointer-events-auto flex select-none items-center gap-2 rounded-2xl border border-border bg-background/90 px-2.5 py-2 shadow-lg backdrop-blur-xl">
+    <div className="pointer-events-auto flex select-none items-center gap-2 rounded-lg border border-border bg-background/90 px-2.5 py-2 shadow-lg backdrop-blur-xl">
       {/* Page navigation */}
       <div className="flex items-center gap-1.5">
         <Button

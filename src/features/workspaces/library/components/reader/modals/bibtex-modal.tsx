@@ -54,7 +54,7 @@ export default function PaperBibtexDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[540px] gap-4 bg-popover border border-border shadow-2xl rounded-xl"
+        className="sm:max-w-[540px] gap-4 bg-popover border border-border shadow-2xl rounded-lg"
       >
         <DialogHeader className="gap-1">
           <DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground">

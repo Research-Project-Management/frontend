@@ -1,14 +1,10 @@
 import { z } from "zod";
 
-export const TaskLabelSchema = z.object({
-  id: z.string(),
-  color: z.string(),
-  title: z.string(),
-});
+// ── Enums ────────────────────────────────────────────────────────────────────
 
-export const TaskPrioritySchema = z.enum(["urgent", "high", "medium", "low", "none"]);
+export const taskPrioritySchema = z.enum(["urgent", "high", "medium", "low", "none"]);
 
-export const TaskRecurrenceSchema = z.enum([
+export const taskRecurrenceSchema = z.enum([
   "none",
   "daily",
   "mon-fri",
@@ -17,7 +13,7 @@ export const TaskRecurrenceSchema = z.enum([
   "monthly-week",
 ]);
 
-export const TaskReminderSchema = z.enum([
+export const taskReminderSchema = z.enum([
   "none",
   "at-time",
   "5m",
@@ -29,7 +25,9 @@ export const TaskReminderSchema = z.enum([
   "2day",
 ]);
 
-export const ChecklistItemSchema = z.object({
+// ── Checklist Schemas ────────────────────────────────────────────────────────
+
+export const checklistItemSchema = z.object({
   _id: z.string(),
   title: z.string(),
   completed: z.boolean(),
@@ -37,101 +35,153 @@ export const ChecklistItemSchema = z.object({
   dueDate: z.string().nullable().optional(),
 });
 
-export const ChecklistSchema = z.object({
+export const checklistSchema = z.object({
   _id: z.string(),
   title: z.string(),
-  items: z.array(ChecklistItemSchema),
+  items: z.array(checklistItemSchema),
 });
 
-export const ChecklistItemInputSchema = z.object({
+export const checklistItemInputSchema = z.object({
   title: z.string(),
   completed: z.boolean(),
   assigneeId: z.string().optional(),
   dueDate: z.string().nullable().optional(),
 });
 
-export const ChecklistInputSchema = z.object({
+export const checklistInputSchema = z.object({
   title: z.string(),
-  items: z.array(ChecklistItemInputSchema),
+  items: z.array(checklistItemInputSchema),
 });
 
-export const TaskSchema = z.object({
+// ── Attachment Schema ────────────────────────────────────────────────────────
+
+export const taskAttachmentSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  size: z.string(),
+  createdAt: z.string(),
+  url: z.string(),
+});
+
+// ── Main Task Schema ─────────────────────────────────────────────────────────
+
+export const taskSchema = z.object({
   _id: z.string(),
   title: z.string(),
   content: z.string(),
   description: z.string(),
   projectId: z.string(),
   columnId: z.string(),
-  assigneeId: z.object({
-    _id: z.string(),
-    name: z.string(),
-    avatar: z.string().optional(),
-  }).nullable().optional(),
+  assigneeId: z
+    .object({
+      _id: z.string(),
+      name: z.string(),
+      avatar: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
   dueDate: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
   labels: z.array(z.string()),
   rank: z.number(),
   authorId: z.string(),
-  priority: TaskPrioritySchema,
+  priority: taskPrioritySchema,
   estimate: z.number().optional(),
-  cycleId: z.object({
-    _id: z.string(),
-    name: z.string(),
-    phase: z.string(), // Extracted from cycle feature
-    status: z.string(), // Extracted from cycle feature
-    startDate: z.string(),
-    endDate: z.string(),
-  }).nullable().optional(),
-  parentTaskId: z.object({
-    _id: z.string(),
-    title: z.string(),
-    identifier: z.string(),
-  }).nullable().optional(),
-  identifier: z.string(),
-  recurrence: TaskRecurrenceSchema.optional(),
-  reminder: TaskReminderSchema.optional(),
-  checklists: z.array(ChecklistSchema).optional(),
-  completed: z.boolean(),
+  cycleId: z
+    .union([
+      z.string(),
+      z.object({
+        _id: z.string().optional(),
+        id: z.string().optional(),
+        name: z.string().optional(),
+        phase: z.string().optional(),
+        status: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }),
+    ])
+    .nullable()
+    .optional(),
+  parentTaskId: z.union([z.string(), z.record(z.string(), z.unknown())]).nullable().optional(),
+  parentTask: z
+    .object({
+      id: z.string().optional(),
+      _id: z.string().optional(),
+      title: z.string().optional(),
+      identifier: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+  subtasks: z.array(z.any()).optional(),
+  subtaskCount: z.number().optional(),
+  subtaskCompletedCount: z.number().optional(),
+  identifier: z.string().nullable().optional(),
+  recurrence: taskRecurrenceSchema.optional(),
+  reminder: taskReminderSchema.optional(),
+  checklists: z.array(checklistSchema).optional(),
+  completed: z.boolean().optional(),
   commentCount: z.number().optional(),
   isOverdue: z.boolean().optional(),
   dueState: z.enum(["none", "onTime", "overdue"]).optional(),
-  permissions: z.object({
-    canEdit: z.boolean(),
-    canMove: z.boolean(),
-    canDelete: z.boolean(),
-    canDuplicate: z.boolean(),
-  }).optional(),
-  attachments: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    type: z.string(),
-    size: z.string(),
-    createdAt: z.string(),
-    url: z.string(),
-  })),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  permissions: z
+    .object({
+      canEdit: z.boolean(),
+      canMove: z.boolean(),
+      canDelete: z.boolean(),
+      canDuplicate: z.boolean(),
+    })
+    .optional(),
+  attachments: z.array(taskAttachmentSchema).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
-export const TaskMutationInputSchema = TaskSchema.pick({
-  title: true,
-  content: true,
-  description: true,
-  columnId: true,
-  labels: true,
-  priority: true,
-  estimate: true,
-  rank: true,
-  recurrence: true,
-  reminder: true,
-  completed: true,
-  commentCount: true,
-  attachments: true,
-}).partial().extend({
-  dueDate: z.string().nullable().optional(),
-  startDate: z.string().nullable().optional(),
-  assigneeId: z.string().nullable().optional(),
-  cycleId: z.string().nullable().optional(),
-  checklists: z.array(ChecklistInputSchema).optional(),
-  parentTaskId: z.string().nullable().optional(),
+// ── Mutation Input Schema ────────────────────────────────────────────────────
+
+export const taskMutationInputSchema = taskSchema
+  .pick({
+    title: true,
+    content: true,
+    description: true,
+    columnId: true,
+    labels: true,
+    priority: true,
+    estimate: true,
+    rank: true,
+    recurrence: true,
+    reminder: true,
+    completed: true,
+    commentCount: true,
+    attachments: true,
+  })
+  .partial()
+  .extend({
+    dueDate: z.string().nullable().optional(),
+    startDate: z.string().nullable().optional(),
+    assigneeId: z.string().nullable().optional(),
+    cycleId: z.string().nullable().optional(),
+    checklists: z.array(checklistInputSchema).optional(),
+    parentTaskId: z.string().nullable().optional(),
+  });
+
+// ── Column Schema ────────────────────────────────────────────────────────────
+
+export const columnSchema = z.object({
+  id: z.string(),
+  _id: z.string().optional(),
+  title: z.string(),
+  accentColor: z.string().optional(),
 });
+
+// ── Backward-compatible Aliases ──────────────────────────────────────────────
+
+export const TaskPrioritySchema = taskPrioritySchema;
+export const TaskRecurrenceSchema = taskRecurrenceSchema;
+export const TaskReminderSchema = taskReminderSchema;
+export const ChecklistItemSchema = checklistItemSchema;
+export const ChecklistSchema = checklistSchema;
+export const ChecklistItemInputSchema = checklistItemInputSchema;
+export const ChecklistInputSchema = checklistInputSchema;
+export const TaskSchema = taskSchema;
+export const TaskMutationInputSchema = taskMutationInputSchema;

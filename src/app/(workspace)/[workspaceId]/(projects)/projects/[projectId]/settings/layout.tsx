@@ -1,74 +1,60 @@
 'use client';
 
+import React from 'react';
 import { useParams, usePathname } from 'next/navigation';
+import {
+  Settings,
+  Users,
+  Clock,
+  LayoutGrid,
+  RefreshCcw,
+  Tag,
+} from 'lucide-react';
+import { Sidebar } from '@/features/workspaces/projects/project-id/settings';
 
-import Link from "next/link";
-import { useProjects } from '@/features/workspaces/projects/shell';
-import Topbar from "@/features/workspaces/projects/project-id/settings/components/Topbar";
-import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
+// ── Route → Header metadata ───────────────────────────────────────────────────
 
-export default function ProjectSettingLayout({ children }: { children?: React.ReactNode }) {
-  const { workspaceId, projectId } = useParams();
+const ROUTE_MAP: { match: (p: string) => boolean; title: string; icon: React.ElementType }[] = [
+  { match: (p) => p.includes('/settings/members') || p.includes('/settings/team'), title: 'Members', icon: Users },
+  { match: (p) => p.includes('/settings/worklogs'), title: 'Worklogs', icon: Clock },
+  { match: (p) => p.includes('/settings/modules'), title: 'Modules', icon: LayoutGrid },
+  { match: (p) => p.includes('/settings/cycles'), title: 'Cycles', icon: RefreshCcw },
+  { match: (p) => p.includes('/settings/labels'), title: 'Labels', icon: Tag },
+];
+
+function getHeaderInfo(pathname: string) {
+  const match = ROUTE_MAP.find((r) => r.match(pathname));
+  return match ?? { title: 'General', icon: Settings };
+}
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+
+export default function ProjectSettingLayout({
+  children,
+}: {
+  children?: React.ReactNode;
+}) {
   const pathname = usePathname();
-  const { projects } = useProjects();
-  const currentProject = projects?.find((p: { _id: string | undefined; url?: string }) => p._id === projectId || (p as any).url === projectId);
-  const basePath = `/${workspaceId}/projects/${projectId}/settings`;
-
-  const tabs = [
-    { label: "General", to: basePath },
-    { label: "Team", to: `${basePath}/team` },
-    { label: "Modules", to: `${basePath}/modules` },
-  ];
-
-  const activeTab = tabs.find((tab) => {
-    if (tab.to === basePath) return pathname === basePath;
-    return pathname.startsWith(tab.to);
-  }) || tabs[0];
+  const { title, icon: HeaderIcon } = getHeaderInfo(pathname);
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col h-full bg-background overflow-hidden relative">
-      <Topbar
-        project={currentProject ? { name: currentProject.name, avatar: currentProject.avatar } : undefined}
-        centerContent={
-          <LayoutGroup id="project-settings-tabs">
-            <nav className="flex h-13 max-w-full items-stretch overflow-visible justify-center">
-              {tabs.map((tab) => {
-                const isActive = activeTab.to === tab.to;
+    <div className="flex h-full w-full bg-background overflow-hidden">
+      {/* Left Sidebar */}
+      <Sidebar />
 
-                return (
-                  <Link
-                    key={tab.to}
-                    href={tab.to}
-                    className={`relative flex h-full min-w-[110px] items-center justify-center px-4 text-center text-sm font-medium whitespace-nowrap transition-colors ${
-                      isActive
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span className="relative z-10">{tab.label}</span>
-                    {isActive ? (
-                      <motion.div
-                        layoutId="activeTabUnderline"
-                        className="absolute -bottom-[1px] inset-x-0 h-[3px] bg-foreground z-20 rounded-t-sm"
-                        transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                      />
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </nav>
-          </LayoutGroup>
-        }
-      />
+      {/* Right Content Area */}
+      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+        {/* Topbar */}
+        <header className="flex items-center gap-2.5 px-7 h-12 border-b border-border/50 shrink-0">
+          <HeaderIcon className="size-4 text-muted-foreground" />
+          <h1 className="text-sm font-semibold text-foreground">{title}</h1>
+        </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto w-full relative">
-        <div className="h-full bg-background">
-          <div className="h-full w-full">
-            {children}
-          </div>
-        </div>
+        {/* Body */}
+        <main className="flex-1 min-h-0 overflow-y-auto">
+          {children}
+        </main>
       </div>
     </div>
   );
 }
-

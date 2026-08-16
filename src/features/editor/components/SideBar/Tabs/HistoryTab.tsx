@@ -20,7 +20,7 @@ import {
   projectHistoryQueryOptions,
   usePageVersionActions,
   useProjectHistoryActions,
-} from '@/features/editor/hooks/use-pages';
+} from '@/features/editor/hooks/use-page';
 import type { PageEvent } from "@/features/editor/types/document.types";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { cn } from "@/shared/lib/utils";

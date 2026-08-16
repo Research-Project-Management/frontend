@@ -12,5 +12,5 @@ export { ProjectsPage, ProjectsPage as default } from './pages/ProjectsPage';
 export * from './types/project.types';
 
 // ── Services & Hooks ──────────────────────────────────────────────────────────
-export * from './services/project.services';
-export * from './hooks/use-project';
+export * from './services/project.service';
+

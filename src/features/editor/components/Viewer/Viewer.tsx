@@ -42,11 +42,11 @@ import { parseCompileErrors } from "@/features/editor/utils/latex";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { useEditorSettingsStore, type LaTeXEngine } from "@/features/editor/store/editor-settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
-import { flushPageContent, syncIncremental, compileLatex } from "../../services/compile.services";
+import { flushPageContent, syncIncremental, compileLatex } from "../../services/compile.service";
 
 import { toast } from "sonner";
 import { useQuery } from '@tanstack/react-query';
-import { pageFilesQueryOptions, usePageActions } from '@/features/editor/hooks/use-pages';
+import { pageFilesQueryOptions, usePageActions } from '@/features/editor/hooks/use-page';
 import type { Page as ProjectPage } from "@/features/editor/types/document.types";
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
-import { fetchReferenceByDoi, searchReferences } from '../../services/reference.services';
+import { fetchReferenceByDoi, searchReferences } from '../../services/reference.service';
 
 export function useReferences() {
   const lookupDoiMutation = useMutation({

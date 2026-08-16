@@ -29,7 +29,7 @@ import type { Paper, Collection, Note } from '../../../types/library.types';
 import {
   paperFormSchema,
   type PaperFormValues,
-} from '../../../schemas/library.schemas';
+} from '../../../schemas/library.schema';
 import BibtexModal from '../../reader/modals/bibtex-modal';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,12 +210,13 @@ export default function DetailPanel({
       {
         paperId: paper._id,
         title: data.title.trim(),
-        authors: data.authors.split(',').map((a) => a.trim()).filter(Boolean),
+        authors: data.authors.split(',').map((a: string) => a.trim()).filter(Boolean),
         year: data.year ? parseInt(data.year) : null,
         doi: data.doi.trim(),
         journal: data.journal.trim(),
         publisher: data.publisher.trim(),
-        keywords: data.keywords.split(',').map((k) => k.trim()).filter(Boolean),
+        keywords: data.keywords.split(',').map((k: string) => k.trim()).filter(Boolean),
+
         abstract: data.abstract.trim(),
         volume: data.volume.trim(),
         issue: data.issue.trim(),

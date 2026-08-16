@@ -6,7 +6,7 @@ import {
   readerNavPanelSchema,
   readerSettingsSchema,
   selectionContextSchema,
-} from '../schemas/reader.schemas';
+} from '../schemas/reader.schema';
 import type { Paper, Collection } from './library.types';
 import type { ChatMessage, ChatSession, SourceItem } from './ai.types';
 

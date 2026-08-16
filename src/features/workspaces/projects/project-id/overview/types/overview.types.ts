@@ -3,7 +3,7 @@ import type {
   ProjectInfo,
   Stats,
   OverviewData,
-} from '../schemas/overview.schemas';
+} from '../schemas/overview.schema';
 
 // ── Domain Types (Inferred from Zod Schemas) ─────────────────────────────────
 

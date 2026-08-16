@@ -19,7 +19,7 @@ export {
   createChatSession,
   listChatSessions,
   deleteChatSession,
-} from './services/chat-ai.services';
+} from './services/chat-ai.service';
 
 export { useChatAiActionsStore, type AiContext } from './store/chat-ai.store';
 export * from './types/chat.types';

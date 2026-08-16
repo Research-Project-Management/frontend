@@ -1,4 +1,4 @@
-import type { PageSchema, CreatePageSchema } from '../schemas/page.schemas';
+import type { PageSchema, CreatePageSchema } from '../schemas/page.schema';
 
 // ── Domain & View-Model Types (Inferred from Schemas) ────────────────────────
 

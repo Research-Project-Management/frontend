@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useProject } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProject } from '@/features/workspaces/projects/shell/services/project.service';
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';

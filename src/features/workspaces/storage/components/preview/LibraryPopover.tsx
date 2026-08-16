@@ -12,7 +12,7 @@ import {
 } from "@/shared/components/ui";
 import { usePapers, useCollections } from '@/features/workspaces/library';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import type { PdfMetadata } from "@/features/editor/services/pdf.services";
+import type { PdfMetadata } from "@/features/editor";
 
 interface AddToLibraryPopoverProps {
   item: StorageItem;

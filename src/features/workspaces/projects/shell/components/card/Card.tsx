@@ -56,7 +56,7 @@ export function Card({ project, workspaceId }: CardProps) {
   return (
     <Link
       href={`/${workspaceId}/projects/${project._id}/overview`}
-      className="group relative flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {/* Banner */}
       <div className={cn("relative h-24 w-full bg-gradient-to-tr overflow-hidden", bannerClass)}>

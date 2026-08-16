@@ -13,10 +13,6 @@ vi.mock('@/shared/lib/api', () => ({
   apiDelete: vi.fn(),
 }));
 
-vi.mock('~/contexts/SocketProvider', () => ({
-  useSocket: vi.fn(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() })),
-}));
-
 // Create a wrapper with QueryClient
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -33,7 +29,7 @@ const createWrapper = () => {
   );
 };
 
-describe.skip('task queries', () => {
+describe('task queries', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

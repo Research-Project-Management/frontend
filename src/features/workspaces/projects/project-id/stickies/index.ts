@@ -1,6 +1,6 @@
 // Public API
 export { default as StickyPage } from './pages/StickyPage';
-export * from './services/sticky.services';
+export * from './services/sticky.service';
 export * from './types/sticky.types';
 export * from './schemas/sticky.schema';
 export * from './hooks/use-sticky';

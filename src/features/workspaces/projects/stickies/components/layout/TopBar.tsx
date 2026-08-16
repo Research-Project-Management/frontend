@@ -6,7 +6,7 @@ import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useParams } from "next/navigation";
-import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell';
 import {
   Popover,
   PopoverContent,
@@ -124,7 +124,6 @@ export default function TopBar({
                 )}
               >
                 <ListFilter className="size-3.5 text-foreground" />
-                <span>Projects</span>
                 {projectFilter.length > 0 && (
                   <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary leading-none">
                     {projectFilter.length}
@@ -137,11 +136,11 @@ export default function TopBar({
               align="end"
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              <Command>
-                <CommandInput placeholder="Filter projects..." className="h-8 text-xs" />
+              <Command className="[&_[data-slot=command-input-wrapper]]:border [&_[data-slot=command-input-wrapper]]:border-border [&_[data-slot=command-input-wrapper]]:rounded-lg [&_[data-slot=command-input-wrapper]]:m-2">
+                <CommandInput placeholder="Search..." className="h-8 text-xs" />
                 <CommandList>
                   <CommandEmpty className="py-2 text-center text-xs text-muted-foreground">
-                    No project found.
+                    No results found.
                   </CommandEmpty>
                   <CommandGroup>
                     {projects.map((project: any) => {

@@ -3,7 +3,8 @@ import { apiGet, apiPost } from '@/shared/lib/api';
 import type { RecentItem } from '../types/home.types';
 
 export const getRecentItems = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet<RecentItem[]>(`/api/dashboard/workspaces/${workspaceId}/recent`, { signal });
+  apiGet<RecentItem[]>(`/api/activity/workspaces/${workspaceId}/recent`, { signal });
+
 
 export const getStickies = async (workspaceId: string) => {
   const data = await apiGet<{ stickies: any[] }>(`/api/workspace/${workspaceId}/stickies`);

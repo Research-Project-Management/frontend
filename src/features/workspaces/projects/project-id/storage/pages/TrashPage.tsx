@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 
-import { useProject } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProject } from '@/features/workspaces/projects/shell/services/project.service';
 import { useTrash, useRestoreItem, usePermanentlyDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 
 
@@ -38,7 +38,7 @@ export default function ProjectTrashPage() {
   };
 
   if (isProjectLoading || isFilesLoading) {
-    return <Skeleton className="h-48 w-full rounded-xl" />;
+    return <Skeleton className="h-48 w-full rounded-lg" />;
   }
 
   if (!projectId) {

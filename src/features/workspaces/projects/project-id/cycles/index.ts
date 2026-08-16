@@ -1,12 +1,12 @@
 // ── Types & Schemas ──────────────────────────────────────────────────────────
 export * from "./types/cycle.types";
-export * from "./schemas/cycle.schemas";
+export * from "./schemas/cycle.schema";
 
 // ── Services & Hooks ────────────────────────────────────────────────────────
-export * from "./services/cycle.services";
-export * from "./services/label.services";
-export * from "./hooks/use-cycles";
-export * from "./hooks/use-labels";
+export * from "./services/cycle.service";
+export * from "./services/label.service";
+export * from "./hooks/use-cycle";
+export * from "./hooks/use-label";
 
 // ── Components ──────────────────────────────────────────────────────────────
 export { CyclePage, CyclePage as default } from "./pages/CyclePage";

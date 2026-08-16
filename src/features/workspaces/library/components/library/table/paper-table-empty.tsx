@@ -20,7 +20,7 @@ export default function PaperTableEmpty({
   if (isSearch) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-28 text-center px-6 select-none max-w-md mx-auto">
-        <div className="size-16 rounded-2xl bg-muted/60 flex items-center justify-center text-muted-foreground shadow-xs border border-border/40">
+        <div className="size-16 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground shadow-xs border border-border/40">
           <SearchX className="size-8" />
         </div>
         <div className="space-y-2">
@@ -47,7 +47,7 @@ export default function PaperTableEmpty({
 
   return (
     <div className="flex flex-col items-center justify-center gap-5 py-28 text-center px-6 select-none max-w-md mx-auto">
-      <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-xs border border-primary/20">
+      <div className="size-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-xs border border-primary/20">
         <BookOpen className="size-8" />
       </div>
       <div className="space-y-2">

@@ -18,7 +18,7 @@ import { Card } from "../components/card/Card";
 
 function ProjectCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden h-48 animate-pulse">
+    <div className="flex flex-col rounded-lg border border-border bg-card overflow-hidden h-48 animate-pulse">
       <div className="h-24 bg-muted/40" />
       <div className="pt-6 px-4 pb-4 space-y-2.5">
         <Skeleton className="h-4 w-3/4" />
@@ -84,7 +84,7 @@ export function ProjectsPage() {
         {/* Empty state: 0 projects in workspace */}
         {!isLoading && rawProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div className="size-12 rounded-2xl bg-muted/50 border border-border flex items-center justify-center text-foreground">
+            <div className="size-12 rounded-lg bg-muted/50 border border-border flex items-center justify-center text-foreground">
               <FolderKanban className="size-6 text-foreground" />
             </div>
             <div className="space-y-1 max-w-sm">
@@ -106,7 +106,7 @@ export function ProjectsPage() {
         {/* Empty state: Search query matched 0 projects */}
         {!isLoading && rawProjects.length > 0 && filteredProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div className="size-12 rounded-2xl bg-muted/50 border border-border flex items-center justify-center text-foreground">
+            <div className="size-12 rounded-lg bg-muted/50 border border-border flex items-center justify-center text-foreground">
               <FolderKanban className="size-6 text-foreground" />
             </div>
             <div className="space-y-1 max-w-sm">

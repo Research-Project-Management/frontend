@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { uploadFile, getAllFiles, createFolder } from '../../services/file.services';
+import { uploadFile, getAllFiles, createFolder } from '@/features/workspaces/storage/services/file.service';
+
+
+
 
 interface UseUploadOptions {
   workspaceId: string;

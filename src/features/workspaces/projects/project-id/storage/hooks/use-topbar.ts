@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useUpload } from "@/shared/hooks";
 import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
-import { checkDuplicateFile, deleteItem } from '../services/file.services';
+import { checkDuplicateFile, deleteItem } from '../services/file.service';
 import type { UploadMode } from '../components/modals/DuplicateModal';
 
 export function useTopbar({

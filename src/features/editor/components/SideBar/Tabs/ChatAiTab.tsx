@@ -39,7 +39,7 @@ import {
   type AiEditOperation,
   findLatexCommandRange,
   tryLocalCommandEdit,
-} from "@/features/editor/services/ai-edit.services";
+} from "@/features/editor/services/ai-edit.service";
 import AiEditSuggestionCard from "./AiEditSuggestionCard";
 import { ChatHistoryModal, renderMarkdown } from '@/features/workspaces/ai';
 
@@ -262,7 +262,7 @@ const AssistantMessage = memo(function AssistantMessage({
         if (isDiff) {
           // ΓöÇΓöÇ VSCode-style diff view ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
           elements.push(
-            <div key={key} className="my-3 rounded-xl overflow-hidden border border-border/50 font-mono">
+            <div key={key} className="my-3 rounded-lg overflow-hidden border border-border/50 font-mono">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">diff</span>
                 {!isStreaming && (
@@ -323,7 +323,7 @@ const AssistantMessage = memo(function AssistantMessage({
         } else {
           // ΓöÇΓöÇ Regular code block with line numbers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
           elements.push(
-            <div key={key} className="my-3 rounded-xl overflow-hidden border border-border/50">
+            <div key={key} className="my-3 rounded-lg overflow-hidden border border-border/50">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   {codeLang || "latex"}
@@ -481,7 +481,7 @@ function PDFPreviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200">
-      <div className="bg-background border border-border rounded-2xl shadow-2xl w-[820px] max-w-[92vw] h-[82vh] flex flex-col overflow-hidden">
+      <div className="bg-background border border-border rounded-lg shadow-2xl w-[820px] max-w-[92vw] h-[82vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <FileCode2 className="size-4 text-amber-500" />
@@ -518,11 +518,11 @@ function PDFPreviewModal({
           )}
         </div>
         <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-xl border border-border hover:bg-secondary/80 transition-colors">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-secondary/80 transition-colors">
             Discard
           </button>
           {result.success && (
-            <button onClick={onInsert} className="px-4 py-2 text-sm rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2">
+            <button onClick={onInsert} className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2">
               <Download className="size-3.5" />
               Insert into editor
             </button>
@@ -1653,7 +1653,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                   <button
                     key={p}
                     onClick={() => { setInput(p); textareaRef.current?.focus(); }}
-                    className="w-full text-left text-[11px] px-3 py-2 rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                    className="w-full text-left text-[11px] px-3 py-2 rounded-lg border border-border/40 bg-secondary/20 hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
                     <span className="text-primary/40 group-hover:text-primary transition-colors shrink-0">ΓÇ║</span>
                     <span className="truncate">{p}</span>
@@ -1733,7 +1733,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                         const isApplied = editStatus === "applied";
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
-                            <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm border text-[13px] ${isApplied
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg rounded-tl-sm border text-[13px] ${isApplied
                               ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                               : "bg-muted/50 border-border/50 text-muted-foreground"
                               }`}>
@@ -1748,7 +1748,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                       if (resolvedMsgIdxes.has(i)) {
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[13px]">
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[13px]">
                               <Check className="size-3.5 shrink-0" />
                               <span>{historicalEdit.explanation}</span>
                             </div>
@@ -1804,7 +1804,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                   return (
                     <div key={i} className="flex justify-end animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                       <div className="flex max-w-[85%] flex-col items-end gap-2">
-                        <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-3 py-2 border border-zinc-200 dark:border-zinc-700">
+                        <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-lg rounded-br-md px-3 py-2 border border-zinc-200 dark:border-zinc-700">
                           <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                         </div>
                         {ctx && (
@@ -1821,7 +1821,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                             </button>
                             {ctx.text && (
                               <div className="absolute bottom-full right-0 mb-2 hidden w-80 max-w-[75vw] group-hover:block z-50">
-                                <div className="rounded-xl border border-border bg-popover p-2.5 text-[10px] font-mono text-muted-foreground shadow-xl">
+                                <div className="rounded-lg border border-border bg-popover p-2.5 text-[10px] font-mono text-muted-foreground shadow-xl">
                                   <div className="mb-1.5 flex items-center gap-1.5">
                                     <FileCode2 className="size-3 text-primary/70" />
                                     <span className="truncate">{ctx.filename}</span>
@@ -1928,7 +1928,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
                 </button>
               </div>
               <div className="absolute bottom-full left-0 right-0 mb-1 hidden group-hover:block z-50 pointer-events-none">
-                <div className="bg-popover border border-border rounded-xl shadow-xl p-2.5 text-[10px] font-mono">
+                <div className="bg-popover border border-border rounded-lg shadow-xl p-2.5 text-[10px] font-mono">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     {"section" in selectionToolbarContext && selectionToolbarContext.section && (
                       <span className="px-1.5 py-px rounded-full bg-violet-500/10 text-violet-400/80 border border-violet-500/20">
@@ -1952,7 +1952,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
 
           {/* Slash command menu */}
           {slashMenuOpen && (
-            <div className="absolute bottom-full left-3 right-3 mb-1 bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in-0 slide-in-from-bottom-2 duration-150">
+            <div className="absolute bottom-full left-3 right-3 mb-1 bg-popover border border-border rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in-0 slide-in-from-bottom-2 duration-150">
               <div className="px-3 py-2 border-b border-border/40">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Editor Commands</p>
               </div>
@@ -1991,8 +1991,8 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
             </div>
           )}
 
-          {/* Input card ΓÇö ChatView rounded-2xl style */}
-          <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
+          {/* Input card ΓÇö ChatView rounded-lg style */}
+          <div className="relative rounded-lg border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:shadow-md focus-within:border-primary/30">
             <textarea
               ref={textareaRef}
               value={input}
@@ -2013,7 +2013,7 @@ export default function ChatAiTab({ onClose }: { onClose?: () => void }) {
               <button
                 onClick={isStreaming ? () => abortRef.current?.abort() : () => handleSend()}
                 disabled={(!input.trim() && !activeCommand && !isStreaming) || isLoading}
-                className="size-8 flex items-center justify-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
               >
                 {isStreaming ? <Square className="size-3.5" /> : <ArrowUp className="size-4" />}
               </button>

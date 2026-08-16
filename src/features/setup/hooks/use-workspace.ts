@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,8 +9,8 @@ import { useUpdateWorkspace as useWorkspaceUpdateMutation } from '@/features/wor
 import { useDeleteWorkspace as useWorkspaceDeleteMutation } from '@/features/workspaces/shell/hooks/use-workspace';
 import { createWorkspace } from '@/features/workspaces/shell/services/workspace.service';
 import { queryKeys } from '@/shared/constants';
-import type { CreateWorkspaceSchema } from '../schemas/workspace-schemas';
-import type { Workspace } from '../types/workspace-types';
+import type { CreateWorkspaceSchema } from '../schemas/workspace.schema';
+import type { Workspace } from '../types/workspace.types';
 
 // ─── useCreateWorkspace ────────────────────────────────────────────────────────
 
@@ -27,11 +26,11 @@ export function useCreateWorkspace() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateWorkspaceSchema) => {
-      const finalAvatar = avatarFile ? await uploadAvatar(avatarFile) : (data.avatar ?? null);
+      const finalAvatar = avatarFile ? await uploadFile(avatarFile) : (data.avatar ?? null);
       return createWorkspace({ ...data, avatar: finalAvatar ?? undefined });
     },
-    onSuccess: (response) => {
-      const workspace = response.workspace;
+    onSuccess: (response: any) => {
+      const workspace = response.workspace || response;
       queryClient.setQueriesData({ queryKey: queryKeys.workspaces.all }, (current: unknown) => {
         if (Array.isArray(current)) {
           const exists = current.some((w: { _id: string }) => w._id === workspace._id);
@@ -114,7 +113,7 @@ export function useEditWorkspace() {
     if (!editingWorkspace || !hasChanges) { close(); return; }
     if (!normalizedName) { toast.error('Workspace name is required'); return; }
 
-    const finalAvatar = editAvatarFile ? await uploadAvatar(editAvatarFile) : editAvatar;
+    const finalAvatar = editAvatarFile ? await uploadFile(editAvatarFile) : editAvatar;
 
     updateMutation.mutate(
       { id: editingWorkspace._id, data: { name: normalizedName, ...(finalAvatar ? { avatar: finalAvatar } : {}) } },
@@ -152,5 +151,3 @@ export function useDeleteWorkspace() {
 
   return { deletingWorkspace, open, close, confirm, isPending: deleteMutation.isPending };
 }
-
-

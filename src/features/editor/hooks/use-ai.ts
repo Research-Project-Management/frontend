@@ -20,7 +20,7 @@ import {
   findLatexCommandRange,
   type AiEditOperation,
   type AiEditPreviewHandle,
-} from "@/features/editor/services/ai-edit.services";
+} from "@/features/editor/services/ai-edit.service";
 
 interface UseEditorAiOpsOptions {
   editorRef: React.MutableRefObject<any | null>;

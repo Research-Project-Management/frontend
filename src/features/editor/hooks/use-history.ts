@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
-import { ProjectHistoryService } from "../services/history.services";
+import { ProjectHistoryService } from "../services/history.service";
 import { toast } from "sonner";
 
 export const editorHistoryKeys = {

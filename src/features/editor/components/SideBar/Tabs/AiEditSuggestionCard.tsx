@@ -8,7 +8,7 @@
 
 import React, { useState } from "react";
 import { Check, X, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
-import type { AiEditResponse, AiEditOperation } from "@/features/editor/services/ai-edit.services";
+import type { AiEditResponse, AiEditOperation } from "@/features/editor/services/ai-edit.service";
 import { renderMarkdown } from '@/features/workspaces/ai';
 
 // ΓöÇΓöÇ Diff viewer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -104,7 +104,7 @@ export default function AiEditSuggestionCard({
   const firstEdit = edits[0];
 
   return (
-    <div className="w-full overflow-hidden rounded-xl rounded-tl-sm border border-border/60 bg-card">
+    <div className="w-full overflow-hidden rounded-lg rounded-tl-sm border border-border/60 bg-card">
 
       {/* Explanation row */}
       <div className="px-3.5 pt-3 pb-2.5 border-b border-border/35">

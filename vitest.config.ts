@@ -17,8 +17,8 @@ export default defineConfig({
     setupFiles: ['./tests/unit/setup.ts'],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
+    pool: 'threads',
     fileParallelism: false,
-    maxWorkers: 1,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

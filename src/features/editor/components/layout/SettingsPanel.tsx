@@ -7,7 +7,7 @@ import {
   type LaTeXEngine,
 } from "@/features/editor/store/editor-settings.store";
 import { usePageContext } from "@/features/editor/store/page-context";
-import { pageFilesQueryOptions, usePageFileActions } from '@/features/editor/hooks/use-pages';
+import { pageFilesQueryOptions, usePageFileActions } from '@/features/editor/hooks/use-page';
 import { useQuery } from '@tanstack/react-query';
 import {
   X,

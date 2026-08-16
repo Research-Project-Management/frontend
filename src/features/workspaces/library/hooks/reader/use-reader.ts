@@ -9,7 +9,7 @@ import { useWorkspace } from '@/features/workspaces/shell';
 import { useCollections } from '../data/use-collections';
 import { usePapers } from '../data/use-papers';
 import { usePdf } from './use-pdf';
-import { reindexPaper } from '../../services/paper.services';
+import { reindexPaper } from '../../services/paper.service';
 import type { ReaderPanel } from '../../types/reader.types';
 
 const MIN_PANEL_WIDTH = 320;
@@ -114,8 +114,9 @@ export function useReader() {
   }, [isResizingPanel]);
 
   const handlePanelToggle = (panel: ReaderPanel) => {
-    setActivePanel((current) => (current === panel ? null : panel));
+    setActivePanel((current: any) => (current === panel ? null : panel));
   };
+
 
   const handleAskAi = (text: string) => {
     setSelectionContext(text);

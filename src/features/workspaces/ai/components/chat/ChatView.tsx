@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 /**
@@ -67,8 +66,10 @@ import {
   getChatSession,
   appendChatMessages,
   createChatSession,
-} from "@/features/workspaces/ai/services/chat-ai.services";
-import { getCollectionPapers as fetchCollectionPapers } from '@/features/workspaces/library/services/paper.services';
+} from "@/features/workspaces/ai/services/chat-ai.service";
+import { getCollectionPapers as fetchCollectionPapers } from '@/features/workspaces/library/services/paper.service';
+
+
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { toast } from "sonner";
 import { useDocumentTitle } from '@/features/workspaces/ai/hooks/use-document-title';
@@ -162,7 +163,7 @@ function ThinkingBlock({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="mb-3 rounded-xl border border-border/40 bg-secondary/20 overflow-hidden">
+    <div className="mb-3 rounded-lg border border-border/40 bg-secondary/20 overflow-hidden">
       <button
         onClick={() => setCollapsed((v) => !v)}
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/40 transition-colors"
@@ -292,7 +293,7 @@ const MessageBubble = memo(function MessageBubble({
 
       <div
         className={`group relative ${isUser
-            ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-br-md px-4 py-2.5 border border-zinc-200 dark:border-zinc-600"
+            ? "max-w-[85%] bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-lg rounded-br-md px-4 py-2.5 border border-zinc-200 dark:border-zinc-600"
             : "max-w-[90%]"
           }`}
       >
@@ -487,7 +488,7 @@ function StarterCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        "group flex min-h-28 items-start gap-3.5 rounded-xl border bg-card p-4 text-left transition-all",
+        "group flex min-h-28 items-start gap-3.5 rounded-lg border bg-card p-4 text-left transition-all",
         active
           ? "border-primary/40 bg-primary/5 shadow-sm"
           : "border-border/50 hover:border-primary/30 hover:bg-muted/30 hover:shadow-sm",
@@ -750,11 +751,12 @@ export default function ChatView() {
 
     preloadedCollectionRef.current = preloadCollection.id;
     fetchCollectionPapers(resolvedWorkspaceId, preloadCollection.id)
-      .then(({ papers }) => {
+      .then(({ papers }: { papers: any[] }) => {
         const indexedPapers = papers.filter(
-          (paper) => paper.ragStatus === "indexed" && paper.ragDocId,
+          (paper: any) => paper.ragStatus === "indexed" && paper.ragDocId,
         );
-        indexedPapers.forEach((paper) => addSource(paper.ragDocId!, paper.title));
+        indexedPapers.forEach((paper: any) => addSource(paper.ragDocId!, paper.title));
+
         if (indexedPapers.length > 0) {
           setFluxDataEnabled(true);
           toast.success(
@@ -992,7 +994,7 @@ export default function ChatView() {
                 ) : activeActions.length === 0 && (
                   /* Thinking indicator — shown before first token arrives */
                   <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary/30 border border-border/30">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/30 border border-border/30">
                       <div className="size-3.5 rounded-full border-2 border-primary/40 border-t-primary animate-spin" />
                       <span className="text-xs text-muted-foreground">Thinking…</span>
                     </div>

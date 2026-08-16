@@ -1,488 +1,327 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams } from 'next/navigation';
-
-import { Plus, Users, UserPlus, Search, MoreHorizontal, Trash2, Loader2, Check } from 'lucide-react';
-
-import { apiGet } from '@/shared/lib/api';
-import {
-  Skeleton,
-  Button,
-  Input,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Badge,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui';
+import { ChevronDown, Users } from 'lucide-react';
+import { Skeleton } from '@/shared/components/ui';
+import TopBar from '../components/TopBar';
+import { useMember } from '../hooks/use-member';
+import { MemberFilter } from '../components/member/Filter';
+import { MemberItem } from '../components/member/Item';
+import { InviteDialog } from '../components/member/Dialog';
+import { ImportModal } from '../components/member/ImportModal';
+import { PendingInvites } from '../components/member/Pending';
+import DeleteModal from '../components/DeleteModal';
 import { cn } from '@/shared/lib/utils';
 
-import { useMember, useAddWorkspaceMember } from '@/features/workspaces/settings/hooks/use-member';
-import TopBar from '@/features/workspaces/settings/components/TopBar';
-import DeleteModal from '@/features/workspaces/settings/components/DeleteModal';
-
-function getRoleName(role?: string): string {
-  if (!role) return 'Member';
-  switch (role.toLowerCase()) {
-    case 'owner': return 'Owner';
-    case 'admin': return 'Admin';
-    case 'member': return 'Member';
-    case 'viewer': return 'Viewer';
-    default: return role;
-  }
-}
-
-function getRoleColor(role?: string): string {
-  if (!role) return 'bg-zinc-100 text-zinc-700';
-  switch (role.toLowerCase()) {
-    case 'owner': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
-    case 'admin': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
-    case 'member': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
-    case 'viewer': return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400';
-    default: return 'bg-zinc-100 text-zinc-700';
-  }
-}
-
-export default function MemberPage() {
-  const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
+export default function WorkspaceMemberPage() {
+  const { workspaceId } = useParams() as { workspaceId: string };
 
   const {
     workspace,
+    currentUser,
     isLoading,
-    yourRole,
-    filteredMembers,
-    existingMemberIds,
     canManage,
-    searchTerm,
-    setSearchTerm,
-    addMemberOpen,
-    setAddMemberOpen,
-    isSearchExpanded,
-    setIsSearchExpanded,
+    activeTab,
+    setActiveTab,
+    members,
+    filteredMembers,
+    search,
+    setSearch,
+    roleFilter,
+    setRoleFilter,
+    authFilter,
+    setAuthFilter,
+    sortField,
+    sortDirection,
+    toggleSort,
+    inviteModalOpen,
+    setInviteModalOpen,
+    importModalOpen,
+    setImportModalOpen,
     memberToRemove,
     setMemberToRemove,
-    searchInputRef,
     handleUpdateRole,
     handleRemoveMember,
-    isRemovingMember
-  } = useMember(workspaceUrl!);
-
-
-  const roles = [
-    { _id: 'owner', name: 'Owner' },
-    { _id: 'admin', name: 'Admin' },
-    { _id: 'member', name: 'Member' },
-    { _id: 'viewer', name: 'Viewer' }
-  ];
+    handleInviteMembers,
+    handleImportCsv,
+    isInviting,
+    isRemoving,
+  } = useMember(workspaceId);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="px-4 h-13 border-b border-border flex items-center">
-          <Skeleton className="h-6 w-24" />
-        </div>
-        <div className="flex-1 p-8 space-y-8">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <Skeleton className="size-9 rounded-full" />
-              <div className="space-y-1 flex-1">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-48" />
-              </div>
-              <Skeleton className="h-5 w-16 rounded-full" />
-            </div>
-          ))}
+      <div className="flex h-full w-full flex-col bg-background">
+        <TopBar title="Members" Icon={Users} />
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          <div className="mx-auto max-w-5xl space-y-6">
+            <div className="h-8 w-44 bg-muted/60 rounded-lg animate-pulse" />
+            <div className="h-10 w-full bg-muted/40 rounded-lg animate-pulse" />
+            <div className="h-64 w-full bg-muted/30 rounded-lg animate-pulse" />
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!workspace) return <div className="p-8 text-muted-foreground">Workspace not found</div>;
-
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <TopBar
-        title="Members"
-        Icon={Users}
-        actions={
-          <div className="flex items-center gap-3">
-            {/* Expandable Search */}
-            <div
-              className={cn(
-                "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-sm overflow-hidden group",
-                isSearchExpanded || searchTerm ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
-              )}
-              onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
-            >
-              <Search
-                className={cn(
-                  "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 z-10",
-                  isSearchExpanded || searchTerm
-                    ? "left-2.5 translate-x-0 text-muted-foreground/50"
-                    : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
-                )}
-              />
-              <Input
-                ref={searchInputRef}
-                placeholder="Search members..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onBlur={() => !searchTerm && setIsSearchExpanded(false)}
-                className={cn(
-                  "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-all pl-8 pr-8",
-                  isSearchExpanded || searchTerm ? "opacity-100" : "opacity-0 pointer-events-none"
-                )}
-                autoFocus={isSearchExpanded}
-              />
-              {(isSearchExpanded || searchTerm) && (
+    <div className="flex h-full w-full flex-col bg-background">
+      {/* ── Topbar (Shared with General Settings) ── */}
+      <TopBar title="Members" Icon={Users} />
+
+      {/* ── Scrollable Body Content (Symmetrical Margins) ── */}
+      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="max-w-5xl mx-auto space-y-6 pb-12">
+          {/* ── Page Title & Subtitle ── */}
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              Members
+            </h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              Manage access to this workspace.
+            </p>
+          </div>
+
+          {/* ── Tabs & Toolbar Row (Matching Image) ── */}
+          <div className="flex items-center justify-between gap-4 flex-wrap border-b border-border/40 pb-0.5">
+            {/* Left Sub-Tabs: People & Pending invitations with bottom line indicator */}
+            <div className="flex items-center gap-2 text-xs">
+              <div className="relative pb-2 flex flex-col items-center">
                 <button
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSearchTerm("");
-                    setIsSearchExpanded(false);
-                  }}
-                  className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  type="button"
+                  onClick={() => setActiveTab('people')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer outline-none',
+                    activeTab === 'people'
+                      ? 'bg-muted text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  )}
                 >
-                  <Plus className="size-3.5 rotate-45" />
+                  People
                 </button>
-              )}
+                {activeTab === 'people' && (
+                  <div className="absolute -bottom-[2px] inset-x-1 h-[2px] bg-foreground rounded-full" />
+                )}
+              </div>
+
+              <div className="relative pb-2 flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('pending')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer outline-none',
+                    activeTab === 'pending'
+                      ? 'bg-muted text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  )}
+                >
+                  Pending invitations
+                </button>
+                {activeTab === 'pending' && (
+                  <div className="absolute -bottom-[2px] inset-x-1 h-[2px] bg-foreground rounded-full" />
+                )}
+              </div>
             </div>
 
-            {canManage && (
-              <Button
-                onClick={() => setAddMemberOpen(true)}
-                size="sm"
-                className="h-8 gap-1.5 text-xs font-semibold"
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                Add Member
-              </Button>
-            )}
+            {/* Right Toolbar: Search, Filters, Import, Add member */}
+            <div className="pb-2">
+              <MemberFilter
+                search={search}
+                roleFilter={roleFilter}
+                authFilter={authFilter}
+                canManage={canManage}
+                onSearchChange={setSearch}
+                onRoleFilterChange={setRoleFilter}
+                onAuthFilterChange={setAuthFilter}
+                onOpenImport={() => setImportModalOpen(true)}
+                onAddMember={() => setInviteModalOpen(true)}
+              />
+            </div>
           </div>
-        }
-      />
-      <div className="flex-1 p-8 space-y-8 flex flex-col overflow-hidden bg-background/50">
-        <div className="flex-1 overflow-auto border border-border/60 rounded-lg bg-card/30 backdrop-blur-sm shadow-sm">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-muted/50 sticky top-0 z-10">
-              <tr>
-                <th className="text-left px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">User</th>
-                <th className="text-left px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">Role</th>
-                <th className="text-left px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">Joined</th>
-                <th className="px-6 py-4 border-b border-border/60 w-[80px]"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {filteredMembers.map((member: any) => {
-                const roleName = getRoleName(member.role);
-                const roleColor = getRoleColor(member.role);
 
-                return (
-                  <tr
-                    key={member.user._id}
-                    className="hover:bg-accent/40 transition-colors group"
-                  >
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 rounded-sm border border-border/50 shadow-sm">
-                          <AvatarImage src={member.user.avatar} className="object-cover" />
-                          <AvatarFallback className="bg-primary/5 text-primary text-xs font-semibold rounded-sm">
-                            {member.user.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-[14px] text-foreground truncate tracking-tight">
-                            {member.user.name}
-                          </span>
-                          <span className="text-[12px] text-muted-foreground truncate font-medium">
-                            {member.user.email}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <Badge
-                        variant="outline"
-                        className="font-bold text-[10px] px-2 py-0.5 rounded-sm uppercase tracking-wider border-none"
-                        style={
-                          roleColor
-                            ? {
-                              backgroundColor: `${roleColor}15`,
-                              color: roleColor,
-                            }
-                            : undefined
-                        }
-                      >
-                        {roleName}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-5 text-muted-foreground text-[13px] font-medium">
-                      {new Date(
-                        member.joinedAt || Date.now(),
-                      ).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      {canManage && roleName.toLowerCase() !== "owner" && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 transition-all hover:bg-accent text-foreground cursor-pointer outline-none"
-                            >
-                              <MoreHorizontal className="h-4 w-4 text-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-56 p-1.5 shadow-2xl border-border/40 bg-background/95 backdrop-blur-xl rounded-sm">
-                            <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-2.5 py-2">
-                              Change Role
-                            </DropdownMenuLabel>
-                            <div className="space-y-0.5 px-0.5">
-                              {roles
-                                ?.filter(
-                                  (r) => r.name.toLowerCase() !== "owner",
-                                )
-                                .filter(
-                                  (r) =>
-                                    yourRole === "owner" ||
-                                    r.name.toLowerCase() !== "admin",
-                                )
-                                .sort((a, b) => {
-                                  const priority: Record<string, number> = { admin: 1, member: 2 };
-                                  return (priority[a.name.toLowerCase()] || 99) - (priority[b.name.toLowerCase()] || 99);
-                                })
-                                .map((r) => {
-                                  const isSelected = roleName.toLowerCase() === r.name.toLowerCase();
-                                  return (
-                                    <DropdownMenuItem
-                                      key={r._id}
-                                      onClick={() => handleUpdateRole(member.user._id, r.name)}
-                                      className={cn(
-                                        "flex items-center justify-between px-3 py-2 rounded-sm cursor-pointer transition-colors duration-150",
-                                        isSelected ? "bg-[#f4f4f5] text-foreground" : "hover:bg-accent/50"
-                                      )}
-                                    >
-                                      <div className="flex items-center gap-2.5">
-                                        <div
-                                          className="size-1.5 rounded-full shrink-0"
-                                          style={{
-                                            backgroundColor: r.name.toLowerCase() === 'owner' ? '#f59e0b' : r.name.toLowerCase() === 'admin' ? '#3b82f6' : r.name.toLowerCase() === 'member' ? '#10b981' : '#6b7280',
-                                          }}
-                                        />
-                                        <span className={cn("text-[13px] font-bold tracking-tight", isSelected ? "text-foreground" : "text-muted-foreground")}>
-                                          {r.name}
-                                        </span>
-                                      </div>
-                                      {isSelected && <Check className="size-3.5 text-muted-foreground/60 stroke-[3px]" />}
-                                    </DropdownMenuItem>
-                                  );
-                                })}
-                            </div>
-                            <DropdownMenuSeparator className="my-1.5 opacity-50" />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive focus:bg-destructive/10 text-[13px] font-bold px-3 py-2 rounded-sm cursor-pointer"
-                              onClick={() => setMemberToRemove(member)}
-                            >
-                              <Trash2 className="mr-1.5 size-4" />
-                              Delete Member
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+      {/* ── Tab Content: People (Table List) ── */}
+      {activeTab === 'people' && (
+        <div className="rounded-lg border border-border/80 overflow-hidden bg-background">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground select-none">
+                  {/* 1. Full name */}
+                  <th className="py-2.5 px-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('name')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span>Full name</span>
+                      <ChevronDown
+                        className={cn(
+                          'size-3 transition-transform',
+                          sortField === 'name' && sortDirection === 'asc' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                  </th>
+
+                  {/* 2. Display name */}
+                  <th className="py-2.5 px-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('displayName')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span>Display name</span>
+                      <ChevronDown
+                        className={cn(
+                          'size-3 transition-transform',
+                          sortField === 'displayName' && sortDirection === 'asc' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                  </th>
+
+                  {/* 3. Email */}
+                  <th className="py-2.5 px-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('email')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span>Email</span>
+                      <ChevronDown
+                        className={cn(
+                          'size-3 transition-transform',
+                          sortField === 'email' && sortDirection === 'asc' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                  </th>
+
+                  {/* 4. Role */}
+                  <th className="py-2.5 px-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('role')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span>Role</span>
+                      <ChevronDown
+                        className={cn(
+                          'size-3 transition-transform',
+                          sortField === 'role' && sortDirection === 'asc' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                  </th>
+
+                  {/* 5. Authentication */}
+                  <th className="py-2.5 px-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('auth')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span>Authentication</span>
+                      <ChevronDown
+                        className={cn(
+                          'size-3 transition-transform',
+                          sortField === 'auth' && sortDirection === 'asc' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                  </th>
+
+                  {/* 6. Joining date */}
+                  <th className="py-2.5 px-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('date')}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <span>Joining date</span>
+                      <ChevronDown
+                        className={cn(
+                          'size-3 transition-transform',
+                          sortField === 'date' && sortDirection === 'asc' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                  </th>
+
+                  {/* Actions */}
+                  <th className="py-2.5 px-2 w-10 pr-4"></th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-border/60">
+                {filteredMembers.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="py-12 text-center text-xs text-muted-foreground"
+                    >
+                      No members found matching your filters.
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filteredMembers.length === 0 && (
-            <div className="p-20 text-center flex flex-col items-center gap-3">
-              <div className="size-12 rounded-full bg-muted flex items-center justify-center">
-                <Users className="size-6 text-muted-foreground/50" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">No members found</p>
-                <p className="text-xs text-muted-foreground italic">
-                  Try adjusting your search for "{searchTerm}"
-                </p>
-              </div>
-            </div>
-          )}
+                ) : (
+                  filteredMembers.map((m) => (
+                    <MemberItem
+                      key={m.id || m.userId}
+                      member={m}
+                      currentUserId={currentUser?.id || (currentUser as any)?._id}
+                      canManage={canManage}
+                      onRoleChange={handleUpdateRole}
+                      onRemove={(member) => setMemberToRemove(member)}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+      )}
 
-        <AddWorkspaceMemberDialog
-          open={addMemberOpen}
-          onOpenChange={setAddMemberOpen}
-          workspaceId={workspace._id}
-          existingMemberIds={existingMemberIds}
+      {/* ── Tab Content: Pending Invitations ── */}
+      {activeTab === 'pending' && (
+        <PendingInvites
+          invites={[]}
+          canManage={canManage}
+          onCancelInvite={() => {}}
         />
+      )}
 
-        <DeleteModal
-          isOpen={!!memberToRemove}
-          onClose={() => setMemberToRemove(null)}
-          onConfirm={() => {
-            if (memberToRemove) {
-              handleRemoveMember(memberToRemove.user._id);
-            }
-          }}
-          title="Delete Member"
-          description={`Are you sure you want to remove ${memberToRemove?.user?.name} from this workspace? They will lose access to all projects and tasks.`}
-          confirmText="Delete Member"
-          cancelText="Cancel"
-          loading={isRemovingMember}
-        />
+      {/* ── Invite Members Dialog Modal ── */}
+      <InviteDialog
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+        onInvite={handleInviteMembers}
+        isInviting={isInviting}
+      />
+
+      {/* ── Import CSV Dialog Modal ── */}
+      <ImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImport={handleImportCsv}
+      />
+
+      {/* ── Remove Member Confirmation Modal ── */}
+      <DeleteModal
+        isOpen={Boolean(memberToRemove)}
+        onClose={() => setMemberToRemove(null)}
+        onConfirm={() => {
+          if (memberToRemove) {
+            handleRemoveMember(memberToRemove.userId);
+          }
+        }}
+        title="Remove member from workspace"
+        description={`Are you sure you want to remove ${memberToRemove?.user.name || 'this member'} from the workspace? They will lose access to all projects and resources.`}
+        confirmText="Remove member"
+        cancelText="Cancel"
+        loading={isRemoving}
+      />
+        </div>
       </div>
     </div>
-  );
-}
-
-function AddWorkspaceMemberDialog({
-  open,
-  onOpenChange,
-  workspaceId,
-  existingMemberIds,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  workspaceId: string;
-  existingMemberIds: Set<string>;
-}) {
-  const [search, setSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const addMemberMutation = useAddWorkspaceMember();
-
-  useEffect(() => {
-    if (search.length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        const params = new URLSearchParams({ query: search.trim() });
-        const data = await apiGet<{ users?: any[] }>(`/auth/search?${params}`);
-        const users = data.users || [];
-        const filtered = users.filter((u: any) => !existingMemberIds.has(u._id));
-        setSearchResults(filtered);
-      } catch (e) {
-        console.error("Search error", e);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [search, existingMemberIds]);
-
-  const handleAdd = async (userId: string) => {
-    try {
-      await addMemberMutation.mutateAsync({
-        workspaceId,
-        userId,
-        role: "member",
-      });
-      onOpenChange(false);
-      setSearch("");
-      setSearchResults([]);
-    } catch (e) {
-      console.error("Failed to add member", e);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add Team Member</DialogTitle>
-          <DialogDescription>
-            Search for a user by name or email to add them to this workspace.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or email..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              autoFocus
-            />
-          </div>
-
-          <div className="max-h-[300px] overflow-y-auto border rounded-md divide-y">
-            {isSearching ? (
-              <div className="p-4 text-center">
-                <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-              </div>
-            ) : searchResults.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                {search.length < 2
-                  ? "Type at least 2 characters to search"
-                  : "No users found"}
-              </div>
-            ) : (
-              searchResults.map((user: any) => (
-                <div
-                  key={user._id}
-                  className="flex items-center justify-between p-3 hover:bg-accent transition-colors group"
-                >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar} />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="grid overflow-hidden">
-                      <span className="text-sm font-medium truncate">
-                        {user.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate">
-                        {user.email}
-                      </span>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleAdd(user._id)}
-                    disabled={addMemberMutation.isPending}
-                  >
-                    Add
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

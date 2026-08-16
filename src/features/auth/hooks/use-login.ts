@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-import { loginUser } from '../services/auth-service';
+import { loginUser } from '../services/auth.service';
 import { queryKeys } from '@/shared/constants';
 import { API_BASE_URL } from '@/shared/constants';
 

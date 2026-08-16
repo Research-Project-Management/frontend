@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import BoardView from '@/features/workspaces/projects/project-id/tasks/components/views/BoardView';
-// Legacy router mocks
-const MemoryRouter = ({ children }: any) => <div>{children}</div>;
-import type { Task, Column } from '@/features/workspaces/projects/project-id/tasks/types/task.types';
+import { BoardView } from '@/features/workspaces/projects/project-id/tasks';
+import type { Task, Column } from '@/features/workspaces/projects/project-id/tasks';
 import React from 'react';
 
 const mockTasks: Task[] = [
@@ -21,7 +19,7 @@ const mockTasksByColumnId = new Map<string, Task[]>([
   ['col-2', [mockTasks[1]]],
 ]);
 
-describe.skip('BoardView Component', () => {
+describe('BoardView Component', () => {
   const defaultProps = {
     tasks: mockTasks,
     tasksByColumnId: mockTasksByColumnId,
@@ -33,11 +31,7 @@ describe.skip('BoardView Component', () => {
     onJoinCard: vi.fn(),
     onLeaveCard: vi.fn(),
     onRemoveFromCycle: vi.fn(),
-    onToggleCardCompleted: vi.fn(),
     onMoveCard: vi.fn(),
-    onAddColumn: vi.fn(),
-    onUpdateColumn: vi.fn(),
-    onDeleteColumn: vi.fn(),
   };
 
   beforeEach(() => {
@@ -45,33 +39,21 @@ describe.skip('BoardView Component', () => {
   });
 
   it('renders all columns', () => {
-    render(
-      <MemoryRouter>
-        <BoardView {...defaultProps} />
-      </MemoryRouter>
-    );
+    render(<BoardView {...defaultProps} />);
     
     expect(screen.getByText('To Do')).toBeInTheDocument();
     expect(screen.getByText('In Progress')).toBeInTheDocument();
   });
 
   it('renders tasks in their respective columns', () => {
-    render(
-      <MemoryRouter>
-        <BoardView {...defaultProps} />
-      </MemoryRouter>
-    );
+    render(<BoardView {...defaultProps} />);
 
     expect(screen.getByText('Test Task 1')).toBeInTheDocument();
     expect(screen.getByText('Test Task 2')).toBeInTheDocument();
   });
 
   it('calls onAddCard when adding a new card', () => {
-    render(
-      <MemoryRouter>
-        <BoardView {...defaultProps} />
-      </MemoryRouter>
-    );
+    render(<BoardView {...defaultProps} />);
 
     // There should be Add buttons for each column
     const addButtons = screen.getAllByRole('button', { name: /add/i });

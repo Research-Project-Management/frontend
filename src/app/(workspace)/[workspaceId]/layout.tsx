@@ -20,7 +20,7 @@ export default function WorkspaceLayout({
       <WorkspaceTopbar />
       <div className='flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row'>
         <WorkspaceSidebar />
-        <div className='order-1 flex-1 min-w-0 p-1 rounded-xl border border-border/50 bg-background shadow-2xs md:order-2'>
+        <div className='order-1 flex-1 min-w-0 p-1 rounded-lg border border-border/50 bg-background shadow-2xs md:order-2'>
           {children}
         </div>
       </div>

@@ -24,7 +24,7 @@ import {
   deleteChatSession,
   listChatSessions,
   renameChatSession,
-} from "@/features/workspaces/ai/services/chat-ai.services";
+} from "@/features/workspaces/ai/services/chat-ai.service";
 import type { ChatSession } from "@/features/workspaces/ai/types/chat.types";
 
 type TimeGroup = "today" | "week" | "month" | "older";

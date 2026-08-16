@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFileArrayBuffer, updateFileMetadata } from '@/features/workspaces/projects/project-id/storage/services/file.services';
-import { previewServices } from '@/features/workspaces/projects/project-id/storage/services/preview.services';
+import { getFileArrayBuffer, updateFileMetadata } from '@/features/workspaces/projects/project-id/storage/services/file.service';
+import { previewServices } from '@/features/workspaces/projects/project-id/storage/services/preview.service';
 import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 import { resolveFileUrl } from '@/shared/utils/url';
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';

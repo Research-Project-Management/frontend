@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import React, { useMemo, useRef } from "react";
@@ -26,7 +25,8 @@ import { LabelsSection } from "../dialog/Labels";
 import { DatesSection } from "../dialog/Dates";
 import { PhaseIconRenderer } from "../icons/PhaseIcon";
 import { useParams } from "next/navigation";
-import { useLabelsQuery } from '../../hooks/use-labels';
+import { useLabelsQuery } from "../../hooks/use-label";
+
 import { cn } from "@/shared/lib/utils";
 
 interface CycleModalProps {
@@ -83,7 +83,8 @@ export const CycleModal = ({
   isSaving = false,
 }: CycleModalProps) => {
   const { workspaceId, projectId } = useParams() as { workspaceId: string, projectId: string };
-  const { data } = useLabels(workspaceId!, "cycle", projectId);
+  const { data } = useLabelsQuery(workspaceId!, "cycle", projectId);
+
   const labelsTriggerRef = useRef<HTMLButtonElement>(null);
   const phaseTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -176,13 +177,14 @@ export const CycleModal = ({
               <div className="flex shrink-0 flex-col gap-1.5">
                 <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">Labels</span>
                 <LabelsDisplay
-                  labels={data.filter(t => formLabels.includes(t._id))}
+                  labels={(data || []).filter((t: any) => formLabels.includes(t._id || t.id))}
                   onOpen={() => labelsTriggerRef.current?.click()}
                   disabled={isReadOnly}
                   showAddButton={!isReadOnly}
                 />
               </div>
             )}
+
 
             {/* Dates */}
             {(formStart || formEnd) && (

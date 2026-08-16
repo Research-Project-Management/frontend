@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, API_BASE_URL } from '@/shared/constants';
 import { apiGet, apiPost } from '@/shared/lib/api';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { getAllFiles, createFolder as createProjectFolder } from "@/features/workspaces/projects/project-id/storage/services/file.services";
-import { uploadFile, permanentlyDeleteItem, renameItem, moveItem } from "@/features/workspaces/projects/project-id/storage/services/file.services";
+import { getAllFiles, createFolder as createProjectFolder } from "@/features/workspaces/projects/project-id/storage/services/file.service";
+import { uploadFile, permanentlyDeleteItem, renameItem, moveItem } from "@/features/workspaces/projects/project-id/storage/services/file.service";
 
 export function useEditorStorage(pageId: string | null | undefined, parentId?: string | null) {
   const queryClient = useQueryClient();

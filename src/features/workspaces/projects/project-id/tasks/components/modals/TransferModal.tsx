@@ -1,20 +1,31 @@
 'use client';
 
-import { useState, useMemo } from "react";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Dialog,
+import React, { useState, useMemo } from "react";
+import {
+  Dialog,
   DialogContent,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Checkbox,
+  Button,
 } from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Search, ArrowRightLeft, FolderKanban, PlayCircle, CircleDashed, AlertCircle, X, ChevronRight } from "lucide-react";
-import { useBulkUpdateTasks } from "../../hooks/use-tasks";
-import { TaskDialog } from "../dialog/CardDetail";
-import type { Task, Column } from "../../types/task.types";
-import { Checkbox } from "@/shared/components/ui";
-type Cycle = any;
+import {
+  Search,
+  ArrowRightLeft,
+  PlayCircle,
+  CircleDashed,
+  X,
+} from "lucide-react";
+import { useBulkUpdateTasks } from "../../hooks/use-task";
+import { TaskDetailModal as TaskDialog } from "./task/TaskDetailModal";
+import type { Task, Column, Cycle } from "../../types/task.types";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
-interface TransferModalProps {
+export interface TransferModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
@@ -48,239 +59,243 @@ export function TransferModal({
   const filteredTasks = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return tasks.filter((task) => {
-      const matchesSearch = task.title.toLowerCase().includes(keyword) ||
-                          task.identifier?.toLowerCase().includes(keyword);
-      return matchesSearch;
+      return (
+        task.title.toLowerCase().includes(keyword) ||
+        task.identifier?.toLowerCase().includes(keyword)
+      );
     });
   }, [tasks, searchTerm]);
 
   const targetCycles = useMemo(() => {
-    return availableCycles.filter(c => c._id !== sourceCycleId && c.status !== "completed");
+    return availableCycles.filter(
+      (c) => c._id !== sourceCycleId && c.status !== "completed"
+    );
   }, [availableCycles, sourceCycleId]);
 
-  const allFilteredSelected = useMemo(() => {
-    if (filteredTasks.length === 0) return false;
-    return filteredTasks.every((t) => selectedIds.includes(t._id));
-  }, [filteredTasks, selectedIds]);
-
-  const handleToggleTask = (taskId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (allFilteredSelected) {
-      const filteredIds = new Set(filteredTasks.map(t => t._id));
-      setSelectedIds(prev => prev.filter(id => !filteredIds.has(id)));
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredTasks.map((t) => t._id));
     } else {
-      const filteredIds = filteredTasks.map(t => t._id);
-      setSelectedIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+      setSelectedIds([]);
     }
   };
 
-  const resetState = () => {
-    setSelectedIds([]);
-    setSearchTerm("");
-    setTargetCycleId("");
+  const handleToggleSelect = (taskId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId]
+    );
   };
 
+  const handleTransfer = async () => {
+    if (!targetCycleId) {
+      toast.error("Please select a destination cycle");
+      return;
+    }
+    if (selectedIds.length === 0) {
+      toast.error("Please select at least one task to transfer");
+      return;
+    }
 
-
-  const handleExecuteTransfer = async () => {
     try {
       await bulkUpdateMutation.mutateAsync({
-        projectId,
         taskIds: selectedIds,
-        data: {
-          cycle: targetCycleId
-        }
+        data: { cycleId: targetCycleId === "unassigned" ? null : targetCycleId },
+        projectId,
       });
-      
-      const targetName = targetCycles.find(c => c._id === targetCycleId)?.name || "new cycle";
-      toast.success(`Successfully transferred ${selectedIds.length} tasks to ${targetName}`);
+
+      toast.success(`Successfully transferred ${selectedIds.length} tasks`);
       onOpenChange(false);
-      resetState();
+      setSelectedIds([]);
       onSuccess?.();
     } catch (error) {
-      // toast.error handled by mutation
+      toast.error("Failed to transfer tasks");
     }
   };
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(val) => {
-        if (!val) resetState();
-        onOpenChange(val);
-      }}>
-        <DialogContent className="w-130 max-w-[90vw] overflow-hidden rounded-sm border border-zinc-200 p-0 shadow-2xl bg-white" showCloseButton={false}>
-          <div className="flex flex-col max-h-[80vh]">
-            {/* Header / Target Cycle Selector */}
-            <div className="flex items-center justify-between px-6 py-3.5 border-b border-zinc-100 bg-white sticky top-0 z-20 shrink-0">
-              <div className="flex items-center gap-3">
-                <Select value={targetCycleId} onValueChange={setTargetCycleId}>
-                  <SelectTrigger className="h-8 w-auto min-w-30 max-w-[160px] rounded-sm border-0 bg-zinc-100 px-3 text-[13px] font-semibold text-foreground shadow-none hover:bg-zinc-200 focus:ring-0 transition-colors">
-                    <div className="truncate text-left flex-1">
-                      <SelectValue placeholder="Target Cycle" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-sm border-zinc-200 shadow-xl p-1">
-                    {targetCycles.map((cycle) => (
-                      <SelectItem key={cycle._id} value={cycle._id} className="py-2.5 focus:bg-zinc-100 rounded-sm">
-                        <div className="flex items-center gap-2">
-                          {cycle.status === "active" ? (
-                            <PlayCircle className="size-3.5 text-orange-500" />
-                          ) : (
-                            <CircleDashed className="size-3.5 text-blue-500" />
-                          )}
-                          <span className="text-[13px] font-semibold">{cycle.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                    {targetCycles.length === 0 && (
-                      <div className="p-4 text-center text-zinc-400 italic text-[12px]">
-                        No cycles available
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-xl p-0 overflow-hidden border-border bg-background shadow-2xl rounded-sm">
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-border/80 bg-muted/20">
+            <div className="flex items-center gap-2 text-foreground font-semibold text-base">
+              <ArrowRightLeft className="size-4.5 text-primary" />
+              <span>Transfer Tasks from Cycle</span>
+            </div>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              Select tasks to move from{" "}
+              <span className="font-semibold text-foreground">{sourceCycleName}</span> to another cycle.
+            </p>
+          </div>
+
+          {/* Controls */}
+          <div className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">
+                Destination Cycle
+              </label>
+              <Select value={targetCycleId} onValueChange={setTargetCycleId}>
+                <SelectTrigger className="w-full h-9 rounded-sm border-border bg-background text-sm">
+                  <SelectValue placeholder="Select target cycle..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-sm border-border">
+                  <SelectItem value="unassigned" className="cursor-pointer">
+                    <span className="text-muted-foreground font-medium">Remove from Cycle (Unassign)</span>
+                  </SelectItem>
+                  {targetCycles.map((cycle) => (
+                    <SelectItem key={cycle._id} value={cycle._id} className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        {cycle.status === "active" ? (
+                          <PlayCircle className="size-3.5 text-emerald-500" />
+                        ) : (
+                          <CircleDashed className="size-3.5 text-muted-foreground" />
+                        )}
+                        <span>{cycle.name}</span>
                       </div>
-                    )}
-                  </SelectContent>
-                </Select>
-                
-                <h2 className="text-[14px] font-bold text-foreground tracking-tight">Transfer tasks</h2>
-              </div>
-
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => onOpenChange(false)}
-                className="size-9 rounded-sm text-zinc-400 hover:text-foreground hover:bg-zinc-100 transition-all"
-              >
-                <X className="size-5" />
-              </Button>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Search bar */}
-            <div className="px-2 pt-4 pb-2">
-              <div className="relative flex items-center">
-                <Search className="absolute left-4 size-5 text-zinc-700" strokeWidth={2.25} />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Type to search"
-                  autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500"
-                />
-              </div>
+            {/* Search */}
+            <div className="relative flex items-center h-9 rounded-sm border border-border bg-background px-3 focus-within:border-primary transition-colors">
+              <Search className="size-3.5 text-muted-foreground mr-2 shrink-0" />
+              <input
+                type="text"
+                placeholder="Search tasks to transfer..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-full text-xs bg-transparent outline-none placeholder:text-muted-foreground text-foreground"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
             </div>
 
-            {/* Selected chips */}
-            {selectedIds.length > 0 && (
-              <div className="mt-1 flex min-h-9 flex-wrap items-center gap-2 px-5 py-2">
-                {selectedIds.map((taskId) => {
-                  const task = tasks.find((t) => t._id === taskId);
-                  if (!task) return null;
-                  return (
-                    <button
-                      key={taskId}
-                      type="button"
-                      onClick={() => handleToggleTask(taskId)}
-                      className="group inline-flex items-center gap-1.5 rounded-sm border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-50"
-                    >
-                      <span className="max-w-45 truncate">{task.title}</span>
-                      <X className="size-3 text-zinc-400 group-hover:text-zinc-600" />
-                    </button>
-                  );
-                })}
+            {/* Task list */}
+            <div className="border border-border rounded-sm overflow-hidden bg-background">
+              <div className="px-3 py-2 border-b border-border bg-muted/40 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={
+                      filteredTasks.length > 0 &&
+                      selectedIds.length === filteredTasks.length
+                    }
+                    onCheckedChange={handleSelectAll}
+                    id="select-all"
+                  />
+                  <label
+                    htmlFor="select-all"
+                    className="text-xs font-semibold text-muted-foreground cursor-pointer"
+                  >
+                    Select All ({filteredTasks.length})
+                  </label>
+                </div>
+                <span className="text-xs font-medium text-primary">
+                  {selectedIds.length} selected
+                </span>
               </div>
-            )}
 
-            {/* Task List */}
-            <div className="flex-1 overflow-y-auto px-1 py-2 custom-scrollbar min-h-[200px] max-h-[320px]">
-               {filteredTasks.length === 0 ? (
-                 <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-300">
-                   <FolderKanban className="size-8 mb-2 opacity-10" strokeWidth={1.5} />
-                   <p className="text-[13px] font-medium">No tasks found</p>
-                 </div>
-               ) : (
-                 filteredTasks.map((task) => {
-                    const isChecked = selectedIds.includes(task._id);
-                    const col = columns.find(c => c.id === task.columnId || c._id?.toString() === task.columnId);
-                    
+              <div className="max-h-56 overflow-y-auto divide-y divide-border/60">
+                {filteredTasks.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground">
+                    No tasks found matching criteria.
+                  </div>
+                ) : (
+                  filteredTasks.map((task) => {
+                    const isSelected = selectedIds.includes(task._id);
                     return (
-                      <div key={task._id} className="px-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleTask(task._id)}
-                          className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-[#091e420f]"
+                      <div
+                        key={task._id}
+                        onClick={() => handleToggleSelect(task._id)}
+                        className={cn(
+                          "px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                          isSelected && "bg-primary/5"
+                        )}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleToggleSelect(task._id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground truncate">
+                            {task.title}
+                          </p>
+                          {task.identifier && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {task.identifier}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailTask(task);
+                          }}
                         >
-                          <Checkbox
-                            checked={isChecked}
-                            className="size-4 shrink-0 rounded-[2px] border-zinc-300 bg-white data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-white"
-                          />
-                          <div className="flex flex-1 items-center gap-2.5 min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                               {col && (
-                                 <span className="shrink-0 text-[11px] font-medium text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded-[2px] truncate max-w-[100px]">
-                                   {col.title}
-                                 </span>
-                               )}
-                               <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-foreground transition-colors">
-                                 {task.title}
-                               </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDetailTask(task);
-                            }}
-                            className="inline-flex size-7 items-center justify-center rounded-sm text-zinc-300 hover:bg-zinc-200/50 hover:text-zinc-600 transition-all opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5"
-                          >
-                            <ChevronRight className="size-4" />
-                          </button>
-                        </button>
+                          View
+                        </Button>
                       </div>
                     );
                   })
-               )}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-1 flex items-center justify-end px-6 py-4 border-t border-zinc-100">
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => onOpenChange(false)}
-                  className="h-9 px-3 text-[#44546f] hover:bg-[#091e420f] text-[13px] font-medium"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleExecuteTransfer}
-                  disabled={selectedIds.length === 0 || !targetCycleId || bulkUpdateMutation.isPending}
-                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-30 text-[13px] font-medium rounded-sm"
-                >
-                  {bulkUpdateMutation.isPending ? "Transferring..." : "Transfer"}
-                </Button>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Footer */}
+          <div className="px-6 py-3 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              disabled={bulkUpdateMutation.isPending}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleTransfer}
+              disabled={
+                !targetCycleId ||
+                selectedIds.length === 0 ||
+                bulkUpdateMutation.isPending
+              }
+              className="text-xs font-semibold"
+            >
+              {bulkUpdateMutation.isPending ? "Transferring..." : "Transfer Tasks"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
-      
+
+      {/* Task Preview Dialog */}
       {detailTask && (
         <TaskDialog
           open={!!detailTask}
-          onOpenChange={(open: boolean) => !open && setDetailTask(null)}
+          onOpenChange={(v) => !v && setDetailTask(null)}
           card={detailTask}
           columns={columns}
           members={members}
           onSave={() => {}}
-          onDelete={() => {}}
-          onDuplicate={() => {}}
+          isReadOnly={true}
         />
       )}
     </>
   );
 }
+
+export default TransferModal;

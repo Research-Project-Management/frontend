@@ -9,7 +9,7 @@ interface EmptyStateProps {
 export function EmptyState({ onCreateClick }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 -mt-10">
-      <div className="flex items-center justify-center size-20 rounded-2xl bg-muted/40">
+      <div className="flex items-center justify-center size-20 rounded-lg bg-muted/40">
         <FileText className="size-8 text-muted-foreground/50" />
       </div>
       <div className="flex flex-col items-center gap-1 text-center">

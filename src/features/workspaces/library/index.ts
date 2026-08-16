@@ -12,7 +12,7 @@ export { default as Sidebar } from './components/library/layout/sidebar';
 export { default as Topbar } from './components/library/layout/topbar';
 
 // Services
-export { getCollectionPapers } from './services/paper.services';
+export { getCollectionPapers } from './services/paper.service';
 
 // Stores
 export { useLibrarySidebarStore } from './store/sidebar.store';
@@ -34,5 +34,5 @@ export type * from './types/reference.types';
 export type * from './types/ai.types';
 
 // Schemas
-export * from './schemas/library.schemas';
-export * from './schemas/reader.schemas';
+export * from './schemas/library.schema';
+export * from './schemas/reader.schema';

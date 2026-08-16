@@ -15,10 +15,15 @@ export default function WorkspacesLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading) {
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
+
       // If user already has workspaces, skip setup and go directly to their workspace
       apiGet<{ workspaces: any[] }>('/api/workspace')
-        .then(data => {
+        .then((data) => {
           if (data.workspaces && data.workspaces.length > 0) {
             router.replace(`/${data.workspaces[0].url}`);
           }
@@ -29,8 +34,12 @@ export default function WorkspacesLayout({
     }
   }, [isLoading, user, router]);
 
-  if (isLoading) {
-    return <Skeleton className="h-48 w-full rounded-xl" />;
+  if (isLoading || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Skeleton className="h-48 w-96 rounded-lg" />
+      </div>
+    );
   }
 
   return <>{children}</>;

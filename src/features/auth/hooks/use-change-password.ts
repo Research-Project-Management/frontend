@@ -3,8 +3,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { changePassword } from '../services/auth-service';
-import type { ChangePasswordPayload } from '../types/auth-types';
+import { changePassword } from '../services/auth.service';
+import type { ChangePasswordPayload } from '../types/auth.types';
 
 export const useChangePassword = () => {
   const { mutate, isPending, isSuccess, error, reset } = useMutation({

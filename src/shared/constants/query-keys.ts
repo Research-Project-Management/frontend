@@ -142,4 +142,4 @@ export const queryKeys = {
     messages: (sessionId: string) =>
       ['chat-ai', 'sessions', sessionId, 'messages'] as const,
   },
-} as const;
+} as const satisfies Record<string, Record<string, unknown>>;

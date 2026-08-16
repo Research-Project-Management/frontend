@@ -1,6 +1,6 @@
 /**
  * ai-edit.types.ts — Pure type declarations for AI editing.
- * No functions or logic. All runtime logic lives in services/ai-edit.services.ts
+ * No functions or logic. All runtime logic lives in services/ai-edit.service.ts
  */
 
 export type AiEditIntent =

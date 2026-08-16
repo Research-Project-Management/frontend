@@ -26,8 +26,7 @@ type ProjectModuleKey =
   | "cycles"
   | "pages"
   | "storage"
-  | "stickies"
-  | "settings";
+  | "stickies";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   "overview",
@@ -36,10 +35,9 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   "cycles",
   "storage",
   "stickies",
-  "settings",
 ];
 
-const LOCKED_MODULES: ProjectModuleKey[] = ["overview", "settings"];
+const LOCKED_MODULES: ProjectModuleKey[] = ["overview"];
 
 const ALL_MODULES: {
   id: ProjectModuleKey;
@@ -52,7 +50,6 @@ const ALL_MODULES: {
   { id: "cycles", label: "Cycles" },
   { id: "storage", label: "Storage" },
   { id: "stickies", label: "Stickies" },
-  { id: "settings", label: "Settings", locked: true },
 ];
 
 // ── Template definitions ──────────────────────────────────────────────────────
@@ -72,7 +69,7 @@ const TEMPLATES: Template[] = [
     name: "Research Paper",
     description: "Full research workflow with cycles & task tracking",
     icon: FlaskConical,
-    modules: ["overview", "pages", "tasks", "cycles", "storage", "settings"],
+    modules: ["overview", "pages", "tasks", "cycles", "storage"],
     accent: "ring-foreground/80",
   },
   {
@@ -80,7 +77,7 @@ const TEMPLATES: Template[] = [
     name: "General Project",
     description: "Standard project management with tasks & files",
     icon: FolderKanban,
-    modules: ["overview", "pages", "tasks", "storage", "settings"],
+    modules: ["overview", "pages", "tasks", "storage"],
     accent: "ring-foreground/80",
   },
   {
@@ -88,7 +85,7 @@ const TEMPLATES: Template[] = [
     name: "Writing & Docs",
     description: "Focus on writing with project stickies",
     icon: BookOpen,
-    modules: ["overview", "pages", "storage", "stickies", "settings"],
+    modules: ["overview", "pages", "storage", "stickies"],
     accent: "ring-foreground/80",
   },
   {
@@ -96,7 +93,7 @@ const TEMPLATES: Template[] = [
     name: "Custom",
     description: "Start from scratch, pick your modules",
     icon: Blocks,
-    modules: ["overview", "settings"],
+    modules: ["overview"],
     accent: "ring-foreground/80",
   },
 ];

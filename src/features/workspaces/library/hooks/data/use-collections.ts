@@ -8,7 +8,7 @@ import {
   createCollection,
   updateCollection,
   deleteCollection,
-} from '../../services/collection.services';
+} from '../../services/collection.service';
 
 export function useCollections(workspaceId: string) {
   const qc = useQueryClient();

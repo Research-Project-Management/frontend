@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useId } from 'react';
+import { useEffect, useState, useId, useMemo } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -22,6 +22,9 @@ import {
   Briefcase,
   MoreHorizontal,
   Archive,
+  Star,
+  Share2,
+  Link2,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
@@ -34,6 +37,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -43,7 +50,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProjects } from '../../services/project.service';
 import { CreateProjectModal } from '../modals/CreateProjectModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -54,8 +61,7 @@ type ProjectModuleKey =
   | 'tasks'
   | 'cycles'
   | 'storage'
-  | 'stickies'
-  | 'settings';
+  | 'stickies';
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   'overview',
@@ -64,7 +70,6 @@ const MODULE_ORDER: ProjectModuleKey[] = [
   'cycles',
   'storage',
   'stickies',
-  'settings',
 ];
 
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
@@ -74,7 +79,6 @@ const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon 
   cycles: { label: 'Cycles', icon: RotateCcw },
   storage: { label: 'Storage', icon: Cloud },
   stickies: { label: 'Stickies', icon: Layers2 },
-  settings: { label: 'Settings', icon: Settings },
 };
 
 type NavItem = {
@@ -120,9 +124,52 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // Collapsible section open states
   const [workspaceSectionOpen, setWorkspaceSectionOpen] = useState(true);
+  const [favoritesSectionOpen, setFavoritesSectionOpen] = useState(true);
   const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
 
   const { projects, isLoading } = useProjects(workspaceId);
+
+  // ── Favorite projects (persisted) ──────────────────────────────────────────
+  const [favoriteProjectIds, setFavoriteProjectIds] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved =
+        localStorage.getItem(`sidebar_favorite_projects_${workspaceId}`) ||
+        localStorage.getItem('sidebar_favorite_projects');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
+
+  const toggleFavorite = (projId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setFavoriteProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projId)) {
+        next.delete(projId);
+      } else {
+        next.add(projId);
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          `sidebar_favorite_projects_${workspaceId}`,
+          JSON.stringify(Array.from(next))
+        );
+        localStorage.setItem(
+          'sidebar_favorite_projects',
+          JSON.stringify(Array.from(next))
+        );
+      }
+      return next;
+    });
+  };
+
+  const favoriteProjects = useMemo(() => {
+    if (!projects || favoriteProjectIds.size === 0) return [];
+    return projects.filter((p) => favoriteProjectIds.has(p._id));
+  }, [projects, favoriteProjectIds]);
 
   // ── Expanded projects (persisted) ──────────────────────────────────────────
 
@@ -168,6 +215,193 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const isArchivesActive =
     pathname === `/${workspaceId}/storage/trash` ||
     pathname.startsWith(`/${workspaceId}/storage/trash`);
+
+  // ── Project Item Renderer ──────────────────────────────────────────────────
+
+  const renderProjectItem = (project: any, keyPrefix = '') => {
+    const isOpen = expandedProjects.has(project._id);
+    const projectModules = project.modules ?? [];
+    const isProjActive = pathname.includes(`/projects/${project._id}`);
+    const isFavorited = favoriteProjectIds.has(project._id);
+
+    return (
+      <Collapsible
+        className="w-full group/project-row"
+        key={`${keyPrefix}${project._id}`}
+        open={isOpen}
+        onOpenChange={() => toggleProject(project._id)}
+      >
+        <div
+          className={cn(
+            "group/row flex h-10 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors text-foreground select-none",
+            isProjActive ? "bg-accent/60 font-semibold" : "hover:bg-accent/70 font-medium"
+          )}
+        >
+          <Link
+            href={`/${workspaceId}/projects/${project._id}/overview`}
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm text-foreground transition-colors hover:text-foreground outline-none"
+          >
+            <span className="shrink-0 text-base leading-none">{project.avatar}</span>
+            <span
+              className={cn(
+                "min-w-0 truncate text-sm",
+                isProjActive ? "font-semibold text-foreground" : "text-foreground"
+              )}
+            >
+              {project.name}
+            </span>
+          </Link>
+
+          {/* Right Action Icons: 3 Dots Menu & Chevron Toggle (visible on row hover) */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* 3-dots dropdown menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Project options"
+                  className={cn(
+                    "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 outline-none",
+                    "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 focus:opacity-100"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="size-4 text-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="right"
+                align="start"
+                sideOffset={8}
+                className="w-52 p-1.5 shadow-xl border border-border bg-popover rounded-lg animate-in fade-in zoom-in-95 duration-150 z-50"
+              >
+                {/* 1. Add to favorites / Remove from favorites */}
+                <DropdownMenuItem
+                  onClick={(e) => toggleFavorite(project._id, e)}
+                  className="cursor-pointer text-sm font-medium flex items-center gap-2.5 px-2.5 py-2 rounded-lg"
+                >
+                  <Star
+                    className={cn(
+                      "size-4 shrink-0 transition-colors",
+                      isFavorited
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-foreground/80"
+                    )}
+                  />
+                  <span>
+                    {isFavorited
+                      ? "Remove from favorites"
+                      : "Add to favorites"}
+                  </span>
+                </DropdownMenuItem>
+
+                {/* 2. Publish project */}
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-lg"
+                >
+                  <Link
+                    href={`/${workspaceId}/projects/${project._id}/settings`}
+                    className="flex items-center gap-2.5 w-full"
+                  >
+                    <Share2 className="size-4 text-foreground/80 shrink-0" />
+                    <span>Publish project</span>
+                  </Link>
+                </DropdownMenuItem>
+
+                {/* 3. Copy link */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof window !== 'undefined') {
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/${workspaceId}/projects/${project._id}/overview`
+                      );
+                    }
+                  }}
+                  className="cursor-pointer text-sm font-medium flex items-center gap-2.5 px-2.5 py-2 rounded-lg"
+                >
+                  <Link2 className="size-4 text-foreground/80 shrink-0" />
+                  <span>Copy link</span>
+                </DropdownMenuItem>
+
+                {/* 4. Archives */}
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-lg"
+                >
+                  <Link
+                    href={`/${workspaceId}/storage/trash`}
+                    className="flex items-center gap-2.5 w-full"
+                  >
+                    <Archive className="size-4 text-foreground/80 shrink-0" />
+                    <span>Archives</span>
+                  </Link>
+                </DropdownMenuItem>
+
+                {/* 5. Settings */}
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-lg"
+                >
+                  <Link
+                    href={`/${workspaceId}/projects/${project._id}/settings`}
+                    className="flex items-center gap-2.5 w-full"
+                  >
+                    <Settings className="size-4 text-foreground/80 shrink-0" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Chevron collapse / expand toggle button */}
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                aria-label={isOpen ? "Collapse project" : "Expand project"}
+                className={cn(
+                  "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 outline-none",
+                  "opacity-0 group-hover/row:opacity-100 focus:opacity-100"
+                )}
+              >
+                <ChevronDown
+                  className={cn(
+                    "size-4 text-foreground transition-transform duration-200",
+                    isOpen ? "" : "-rotate-90"
+                  )}
+                />
+              </button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+
+        <CollapsibleContent className="overflow-hidden">
+          {MODULE_ORDER.filter((k) => projectModules.includes(k)).map((moduleKey) => {
+            const mod = modulesConfig[moduleKey];
+            if (!mod) return null;
+            const link = `/${workspaceId}/projects/${project._id}/${moduleKey}`;
+            const modActive =
+              pathname === link || pathname.startsWith(link + '/');
+            return (
+              <Link
+                href={link}
+                key={moduleKey}
+                className={`group flex h-9 items-center gap-2 rounded-md pl-8 pr-2.5 text-sm transition-colors ${
+                  modActive
+                    ? 'bg-accent text-foreground font-semibold'
+                    : 'text-foreground font-medium hover:bg-accent/70 hover:text-foreground'
+                }`}
+              >
+                <mod.icon className="size-4 shrink-0 text-foreground transition-colors" />
+                <span className="min-w-0 truncate">{mod.label}</span>
+              </Link>
+            );
+          })}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -312,7 +546,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 align="start"
                 sideOffset={8}
                 onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-56 p-1.5 shadow-lg border border-border bg-popover rounded-xl animate-in fade-in zoom-in-95 duration-150"
+                className="w-56 p-1.5 shadow-lg border border-border bg-popover rounded-lg animate-in fade-in zoom-in-95 duration-150"
               >
                 <div className="flex flex-col gap-0.5">
                   <Link
@@ -348,6 +582,44 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Favorites section (placed after Workspace & before Projects; only rendered when user has favorited projects) */}
+      {favoriteProjects.length > 0 && (
+        <Collapsible
+          open={favoritesSectionOpen}
+          onOpenChange={setFavoritesSectionOpen}
+          className="mt-4 select-none group/favorites-header"
+        >
+          <div className="flex items-center justify-between h-10 px-2.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent/70 transition-colors">
+            <CollapsibleTrigger asChild>
+              <button className="flex-1 text-left text-sm font-semibold text-foreground cursor-pointer outline-none">
+                Favorites
+              </button>
+            </CollapsibleTrigger>
+
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                title={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
+                className="size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors outline-none"
+              >
+                <ChevronDown
+                  className={cn(
+                    "size-4 text-foreground transition-transform duration-200",
+                    favoritesSectionOpen ? "" : "-rotate-90"
+                  )}
+                />
+              </button>
+            </CollapsibleTrigger>
+          </div>
+
+          <CollapsibleContent className="overflow-hidden mt-1">
+            <div className="flex flex-col gap-1">
+              {favoriteProjects.map((project) => renderProjectItem(project, 'fav-'))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {/* Projects section */}
       <Collapsible
@@ -438,69 +710,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             )}
 
             {!isLoading &&
-              (projects ?? []).map((project) => {
-                const isOpen = expandedProjects.has(project._id);
-                const projectModules = project.modules ?? [];
-                const isProjActive = pathname.includes(`/projects/${project._id}`);
-
-                return (
-                  <Collapsible
-                    className="w-full group"
-                    key={project._id}
-                    open={isOpen}
-                    onOpenChange={() => toggleProject(project._id)}
-                  >
-                    <div className="flex h-10 w-full items-center justify-between gap-2 rounded-md px-2.5 transition-colors hover:bg-accent/70">
-                      <Link
-                        href={`/${workspaceId}/projects/${project._id}/overview`}
-                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm font-medium text-foreground transition-colors hover:text-foreground"
-                      >
-                        <span className="shrink-0 text-base leading-none">{project.avatar}</span>
-                        <span
-                          className={`min-w-0 truncate ${
-                            isProjActive ? 'font-semibold text-foreground' : 'text-foreground'
-                          }`}
-                        >
-                          {project.name}
-                        </span>
-                      </Link>
-
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="rounded-md p-1 hover:bg-accent cursor-pointer"
-                        >
-                          <ChevronRight className="size-4 text-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
-                        </button>
-                      </CollapsibleTrigger>
-                    </div>
-
-                    <CollapsibleContent className="overflow-hidden">
-                      {MODULE_ORDER.filter((k) => projectModules.includes(k)).map((moduleKey) => {
-                        const mod = modulesConfig[moduleKey];
-                        if (!mod) return null;
-                        const link = `/${workspaceId}/projects/${project._id}/${moduleKey}`;
-                        const modActive =
-                          pathname === link || pathname.startsWith(link + '/');
-                        return (
-                          <Link
-                            href={link}
-                            key={moduleKey}
-                            className={`group flex h-9 items-center gap-2 rounded-md pl-8 pr-2.5 text-sm transition-colors ${
-                              modActive
-                                ? 'bg-accent text-foreground font-semibold'
-                                : 'text-foreground font-medium hover:bg-accent/70 hover:text-foreground'
-                            }`}
-                          >
-                            <mod.icon className="size-4 shrink-0 text-foreground transition-colors" />
-                            <span className="min-w-0 truncate">{mod.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              })}
+              (projects ?? []).map((project) => renderProjectItem(project))}
           </div>
         </CollapsibleContent>
       </Collapsible>

@@ -8,7 +8,7 @@ import {
   projectCollectionSchema,
   userSchema,
   noteSchema
-} from "../schemas/library.schemas";
+} from "../schemas/library.schema";
 
 // ── Library types ─────────────────────────────────────────────────────────────
 

@@ -39,7 +39,7 @@ export default function WorkspaceTrashPage() {
   };
 
   if (isWorkspaceLoading || isFilesLoading) {
-    return <Skeleton className="h-48 w-full rounded-xl" />;
+    return <Skeleton className="h-48 w-full rounded-lg" />;
   }
 
   if (!workspaceId) {

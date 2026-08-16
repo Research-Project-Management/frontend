@@ -8,8 +8,8 @@ import {
   createPaper,
   updatePaper,
   deletePaper,
-} from '../../services/paper.services';
-import { invalidateCollections } from '../../services/collection.services';
+} from '../../services/paper.service';
+import { invalidateCollections } from '../../services/collection.service';
 
 interface UsePapersOptions {
   workspaceId: string;

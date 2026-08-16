@@ -99,18 +99,17 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      // Fetch workspaces to determine where to redirect
       import('@/shared/lib/api').then(({ apiGet }) => {
         apiGet<{ workspaces: any[] }>('/api/workspace')
-          .then(data => {
+          .then((data) => {
             if (data.workspaces && data.workspaces.length > 0) {
-              router.push(`/${data.workspaces[0].url}`);
+              router.replace(`/${data.workspaces[0].url}`);
             } else {
-              router.push('/create-workspace');
+              router.replace('/create-workspace');
             }
           })
           .catch(() => {
-            router.push('/create-workspace');
+            router.replace('/create-workspace');
           });
       });
     }

@@ -1,16 +1,23 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { queryKeys } from '@/shared/constants';
-import { AddMemberBodySchema, UpdateMemberRoleBodySchema } from '@/features/workspaces/settings/schemas/settings.schema';
+import {
+  AddMemberBodySchema,
+  UpdateMemberRoleBodySchema,
+} from '@/features/workspaces/settings/schemas/settings.schema';
 import {
   addWorkspaceMember,
   updateWorkspaceMemberRole,
   removeWorkspaceMember,
 } from '@/features/workspaces/settings/services/settings.service';
+import type { WorkspaceMemberItem, WorkspaceRole } from '../types/member.types';
+
+// ── Mutations ─────────────────────────────────────────────────────────────────
 
 export const useAddWorkspaceMember = () => {
   const queryClient = useQueryClient();
@@ -77,34 +84,16 @@ export const useUpdateWorkspaceMemberRole = () => {
           return {
             ...old,
             workspaces: old.workspaces.map((w: any) => {
-              if (w._id !== workspaceId) return w;
+              if (w._id !== workspaceId && w.id !== workspaceId) return w;
               return {
                 ...w,
                 members: w.members?.map((m: any) =>
-                  m.user._id === userId ? { ...m, role: newRole } : m
+                  m.user?._id === userId || m.user?.id === userId ? { ...m, role: newRole } : m
                 ) || []
               };
             })
           };
         }
-      );
-
-      queryClient.setQueriesData(
-        { queryKey: queryKeys.workspaces.detail(workspaceId) },
-        (old: any) => {
-          if (!old?.workspace?.members) return old;
-          return {
-            ...old,
-            workspace: {
-              ...old.workspace,
-              members: old.workspace.members.map((m: any) =>
-                m.user._id === userId
-                  ? { ...m, role: newRole }
-                  : m,
-              ),
-            },
-          };
-        },
       );
 
       return { previousWorkspaceQueries };
@@ -161,86 +150,214 @@ export const useRemoveWorkspaceMember = () => {
   });
 };
 
+// ── Main useMember hook for MemberPage ────────────────────────────────────────
+
 export function useMember(workspaceId: string) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [addMemberOpen, setAddMemberOpen] = useState(false);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState<any | null>(null);
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
+  const { user: currentUser } = useAuth();
   const { workspace, isLoading, yourRole } = useWorkspace(workspaceId);
 
+  const addMemberMutation = useAddWorkspaceMember();
   const updateRoleMutation = useUpdateWorkspaceMemberRole();
   const removeMemberMutation = useRemoveWorkspaceMember();
 
-  const members = workspace?.members || [];
+  // Search & Filter State
+  const [activeTab, setActiveTab] = useState<'people' | 'pending'>('people');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [authFilter, setAuthFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<'name' | 'displayName' | 'email' | 'role' | 'auth' | 'date'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  const existingMemberIds = useMemo<Set<string>>(
-    () =>
-      new Set(
-        members
-          .map((m: any) => m.user?._id)
-          .filter((id: unknown): id is string => typeof id === 'string'),
-      ),
-    [members],
-  );
+  // Modals
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<WorkspaceMemberItem | null>(null);
 
-  const filteredMembers = useMemo(
-    () =>
-      members.filter(
-        (m: any) =>
-          m.user && (m.user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            m.user.email?.toLowerCase().includes(searchTerm.toLowerCase())),
-      ),
-    [members, searchTerm],
-  );
+  // Normalized Members
+  const rawMembers = workspace?.members || [];
 
+  const members: WorkspaceMemberItem[] = useMemo(() => {
+    return rawMembers.map((m: any) => {
+      const u = m.user || {};
+      const auth = u.authProvider || u.provider || (u.email?.endsWith('@gmail.com') ? 'Google' : 'Email');
+      return {
+        id: m.id || m._id || u.id || u._id || '',
+        userId: u.id || u._id || m.userId || '',
+        role: (m.role || 'member').toLowerCase() as WorkspaceRole,
+        createdAt: m.createdAt || m.joinedAt || new Date().toISOString(),
+        authProvider: auth,
+        user: {
+          id: u.id || u._id || '',
+          _id: u._id || u.id || '',
+          name: u.name || u.fullName || u.email?.split('@')[0] || 'Unknown User',
+          email: u.email || '',
+          avatar: u.avatar || null,
+          displayName: u.displayName || u.name?.toLowerCase().replace(/\s+/g, '') || u.email?.split('@')[0] || '',
+          authProvider: auth,
+        },
+      };
+    });
+  }, [rawMembers]);
+
+  // Filtered & Sorted Members
+  const filteredMembers = useMemo(() => {
+    let result = members.filter((m) => {
+      const q = search.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        m.user.name.toLowerCase().includes(q) ||
+        (m.user.displayName || '').toLowerCase().includes(q) ||
+        m.user.email.toLowerCase().includes(q);
+
+      const matchesRole =
+        roleFilter === 'all' || m.role === roleFilter.toLowerCase();
+
+      const matchesAuth =
+        authFilter === 'all' || (m.authProvider || '').toLowerCase() === authFilter.toLowerCase();
+
+      return matchesSearch && matchesRole && matchesAuth;
+    });
+
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'name') {
+        cmp = a.user.name.localeCompare(b.user.name);
+      } else if (sortField === 'displayName') {
+        cmp = (a.user.displayName || '').localeCompare(b.user.displayName || '');
+      } else if (sortField === 'email') {
+        cmp = a.user.email.localeCompare(b.user.email);
+      } else if (sortField === 'role') {
+        cmp = a.role.localeCompare(b.role);
+      } else if (sortField === 'auth') {
+        cmp = (a.authProvider || '').localeCompare(b.authProvider || '');
+      } else {
+        cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [members, search, roleFilter, authFilter, sortField, sortDirection]);
+
+  // Permission Check
   const canManage = yourRole === 'owner' || yourRole === 'admin';
 
+  // Actions
   const handleUpdateRole = useCallback(
-    (userId: string, newRole: string) => {
+    (userId: string, newRole: WorkspaceRole) => {
       if (!workspace) return;
+      const wsId = (workspace as any).id || workspace._id;
       updateRoleMutation.mutate({
-        workspaceId: workspace._id,
+        workspaceId: wsId,
         userId,
         newRole,
       });
     },
-    [updateRoleMutation, workspace],
+    [updateRoleMutation, workspace]
   );
 
   const handleRemoveMember = useCallback(
     (userId: string) => {
       if (!workspace) return;
-      removeMemberMutation.mutate({ workspaceId: workspace._id, userId }, {
-        onSuccess: () => {
-          setMemberToRemove(null);
+      const wsId = (workspace as any).id || workspace._id;
+      removeMemberMutation.mutate(
+        {
+          workspaceId: wsId,
+          userId,
+        },
+        {
+          onSuccess: () => setMemberToRemove(null),
         }
-      });
+      );
     },
-    [removeMemberMutation, workspace],
+    [removeMemberMutation, workspace]
   );
+
+  const handleInviteMembers = useCallback(
+    async (emails: string[], role: WorkspaceRole) => {
+      if (!workspace) return;
+      const wsId = (workspace as any).id || workspace._id;
+      for (const email of emails) {
+        if (email.trim()) {
+          await addMemberMutation.mutateAsync({
+            workspaceId: wsId,
+            userId: email.trim(),
+            role,
+          });
+        }
+      }
+      setInviteModalOpen(false);
+    },
+    [addMemberMutation, workspace]
+  );
+
+  const handleImportCsv = useCallback(
+    async (rows: { email: string; role: WorkspaceRole }[]) => {
+      if (!workspace) return;
+      const wsId = (workspace as any).id || workspace._id;
+      let count = 0;
+      for (const row of rows) {
+        if (row.email && row.email.includes('@')) {
+          try {
+            await addMemberMutation.mutateAsync({
+              workspaceId: wsId,
+              userId: row.email.trim(),
+              role: row.role || 'member',
+            });
+            count++;
+          } catch {}
+        }
+      }
+      toast.success(`Imported ${count} members successfully`);
+      setImportModalOpen(false);
+    },
+    [addMemberMutation, workspace]
+  );
+
+  const toggleSort = (field: 'name' | 'displayName' | 'email' | 'role' | 'auth' | 'date') => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   return {
     workspace,
+    currentUser,
     isLoading,
     yourRole,
+    canManage,
+    // Tab
+    activeTab,
+    setActiveTab,
+    // Data
     members,
     filteredMembers,
-    existingMemberIds,
-    canManage,
-    searchTerm,
-    setSearchTerm,
-    addMemberOpen,
-    setAddMemberOpen,
-    isSearchExpanded,
-    setIsSearchExpanded,
+    // Filter & Sort
+    search,
+    setSearch,
+    roleFilter,
+    setRoleFilter,
+    authFilter,
+    setAuthFilter,
+    sortField,
+    sortDirection,
+    toggleSort,
+    // Modals
+    inviteModalOpen,
+    setInviteModalOpen,
+    importModalOpen,
+    setImportModalOpen,
     memberToRemove,
     setMemberToRemove,
-    searchInputRef,
+    // Handlers
     handleUpdateRole,
     handleRemoveMember,
-    isRemovingMember: removeMemberMutation.isPending,
+    handleInviteMembers,
+    handleImportCsv,
+    isInviting: addMemberMutation.isPending,
+    isRemoving: removeMemberMutation.isPending,
   };
 }

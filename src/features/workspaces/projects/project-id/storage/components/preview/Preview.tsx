@@ -232,7 +232,7 @@ export default function Preview() {
 
             {/* Search panel */}
             {searchOpen && (
-              <div className="mb-4 rounded-xl border border-border/60 bg-muted/15 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="mb-4 rounded-lg border border-border/60 bg-muted/15 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
                 <div className="flex gap-1.5 p-2 border-b border-border/30">
                   <Input
                     placeholder="Title, DOI, authors…"

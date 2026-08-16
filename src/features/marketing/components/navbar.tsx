@@ -3,11 +3,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Menu, X } from 'lucide-react';
+import { ArrowRight, Menu, X, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '@/features/auth';
+import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const { workspaces = [], isLoading: isWorkspacesLoading } = useWorkspaces();
+
+  const isLoading = isAuthLoading || isWorkspacesLoading;
+  const workspaceTarget =
+    workspaces && workspaces.length > 0
+      ? `/${(workspaces[0] as any).url}`
+      : '/dashboard';
+
 
   // Harden: debounce + passive scroll listener
   const handleScroll = useCallback(() => {
@@ -30,10 +41,11 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`fixed top-0 z-50 w-full border-b border-border transition-colors duration-200 ${isScrolled
+      className={`fixed top-0 z-50 w-full border-b border-border transition-colors duration-200 ${
+        isScrolled
           ? 'bg-card/90 backdrop-blur-md'
           : 'bg-background'
-        }`}
+      }`}
       aria-label='Main navigation'
     >
       <div className='flux-container'>
@@ -51,20 +63,33 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Actions */}
-          <div className='hidden md:flex items-center gap-1'>
-            <Link
-              href='/login'
-              className='flex h-9 items-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
-            >
-              Sign in
-            </Link>
-            <Link
-              href='/create-workspace'
-              className='group flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
-            >
-              Get started
-              <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
-            </Link>
+          <div className='hidden md:flex items-center gap-2'>
+            {!isLoading && user ? (
+              <Link
+                href={workspaceTarget}
+                className='group flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+              >
+                <LayoutDashboard className='w-4 h-4' />
+                <span>Go to Workspace</span>
+                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href='/login'
+                  className='flex h-9 items-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href='/register'
+                  className='group flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                >
+                  Get started
+                  <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -92,21 +117,35 @@ export default function Navbar() {
               className='md:hidden py-4 border-t border-border'
             >
               <div className='flex flex-col gap-2'>
-                <Link
-                  href='/login'
-                  className='flex items-center justify-center min-h-[44px] rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href='/create-workspace'
-                  className='flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Get started
-                  <ArrowRight className='w-3.5 h-3.5' aria-hidden='true' />
-                </Link>
+                {!isLoading && user ? (
+                  <Link
+                    href={workspaceTarget}
+                    className='flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <LayoutDashboard className='w-4 h-4' />
+                    <span>Go to Workspace</span>
+                    <ArrowRight className='w-3.5 h-3.5' aria-hidden='true' />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href='/login'
+                      className='flex items-center justify-center min-h-[44px] rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      href='/register'
+                      className='flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Get started
+                      <ArrowRight className='w-3.5 h-3.5' aria-hidden='true' />
+                    </Link>
+                  </>
+                )}
               </div>
             </motion.div>
           )}

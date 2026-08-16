@@ -5,22 +5,34 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { queryKeys } from '@/shared/constants';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, setTokens, setAuthToken } from '@/shared/lib/api';
 
 /**
  * OAuthCallbackPage
  *
  * Handles redirect after Google / GitHub OAuth.
- * The backend sets a session cookie then redirects to /auth/callback.
- *
- * Flow: Backend → /auth/callback → invalidate session cache → redirect to app
+ * Reads accessToken / refreshToken from URL parameters, saves them,
+ * and routes the user into their workspace.
  */
 const OAuthCallbackPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Invalidate cached session so useAuth refetches with the new cookie
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('accessToken') || urlParams.get('token');
+      const rt = urlParams.get('refreshToken');
+      if (token) {
+        if (rt) {
+          setTokens(token, rt);
+        } else {
+          setAuthToken(token);
+        }
+      }
+    }
+
+    // Invalidate cached session so useAuth refetches with the new token
     queryClient
       .invalidateQueries({ queryKey: queryKeys.auth.session })
       .then(() => {

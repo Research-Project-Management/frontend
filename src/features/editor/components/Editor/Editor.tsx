@@ -35,7 +35,7 @@ import {
   Circle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { usePageActions } from '@/features/editor/hooks/use-pages';
+import { usePageActions } from '@/features/editor/hooks/use-page';
 const usePageComments = (_pageId?: string | null): { data: PageComment[] } => ({ data: [] });
 import type { Page, PageComment } from "@/features/editor/types/document.types";
 import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';
@@ -1037,7 +1037,7 @@ Your conclusions here.
               className="absolute inset-0 bg-black/40"
               onClick={() => setRenameDialog(null)}
             />
-            <div className="relative z-10 w-80 rounded-xl border border-border bg-popover shadow-2xl p-5 flex flex-col gap-4">
+            <div className="relative z-10 w-80 rounded-lg border border-border bg-popover shadow-2xl p-5 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">
                   Rename Occurrences

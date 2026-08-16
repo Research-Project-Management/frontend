@@ -1,184 +1,111 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
-import { useUpload } from "@/shared/hooks";
-import { useUpdateProject, useDeleteProject } from "@/features/workspaces/projects/shell/services/project.services";
-import { Button, Input, Label, Textarea, Skeleton } from "@/shared/components/ui";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
-import DeleteModal from '@/features/workspaces/settings/components/DeleteModal';
-import { Loader2 } from "lucide-react";
+import React from 'react';
+import { useParams } from 'next/navigation';
+import { Skeleton } from '@/shared/components/ui';
+import { GeneralBanner } from '../components/general/Banner';
+import { GeneralDetails } from '../components/general/Details';
+import { GeneralDanger } from '../components/general/Danger';
+import { useGeneral } from '../hooks/use-general';
 
 export default function GeneralPage() {
-  const router = useRouter();
-  const { workspaceId, projectId } = useParams() as { workspaceId: string, projectId: string };
-  const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
-  const { uploadFile, isUploading } = useUpload();
-  
-  const updateMutation = useUpdateProject();
-  const deleteMutation = useDeleteProject();
+  const { workspaceId, projectId } = useParams() as {
+    workspaceId: string;
+    projectId: string;
+  };
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
-  const p = (projectData as any)?.project || projectData;
-
-  useEffect(() => {
-    if (p) {
-      setName(p.name || "");
-      setDescription(p.description || "");
-      setCurrentAvatar(p.avatar || null);
-    }
-  }, [p]);
+  const {
+    project,
+    isLoading,
+    isError,
+    // Fields
+    name,
+    setName,
+    identifier,
+    setIdentifier,
+    description,
+    setDescription,
+    avatar,
+    cover,
+    isPrivate,
+    setIsPrivate,
+    timezone,
+    setTimezone,
+    isArchived,
+    createdAt,
+    // Actions
+    hasChanges,
+    save,
+    isSaving,
+    isUploading,
+    handleSelectAvatar,
+    handleSelectCover,
+    handleUploadCustomCover,
+    toggleArchive,
+    deleteProj,
+    isDeleting,
+  } = useGeneral(projectId, workspaceId);
 
   if (isLoading) {
-    return <div className="p-8"><Skeleton className="h-64 w-full rounded-xl" /></div>;
+    return (
+      <div className="p-8 max-w-4xl mx-auto space-y-6">
+        <Skeleton className="h-48 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-28 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+    );
   }
 
-  if (isError || !p) {
-    return <div className="p-8 text-zinc-500">Error loading project.</div>;
+  if (isError || !project) {
+    return (
+      <div className="p-8 text-sm text-muted-foreground">
+        Error loading project details.
+      </div>
+    );
   }
-
-  const handleUpdate = () => {
-    updateMutation.mutate({
-      projectId,
-      name,
-      description,
-      avatar: currentAvatar || undefined
-    }, {
-      onSuccess: () => toast.success("Project updated successfully")
-    });
-  };
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadFile(file, 'project/avatars');
-      setCurrentAvatar(url);
-      updateMutation.mutate({ projectId, avatar: url });
-      toast.success("Avatar updated");
-    } catch (err) {
-      toast.error("Failed to upload avatar");
-    }
-  };
-
-  const handleDelete = () => {
-    deleteMutation.mutate({ projectId }, {
-      onSuccess: () => {
-        toast.success("Project deleted");
-        router.push(`/${workspaceId}`);
-      },
-      onError: () => toast.error("Failed to delete project")
-    });
-  };
 
   return (
-    <div className="flex-1 p-6 max-w-4xl mx-auto space-y-8 h-full bg-background">
-      <div>
-        <h2 className="text-[17px] font-semibold text-foreground">Project Details</h2>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Manage your project's identity and basic information.
-        </p>
-      </div>
+    <div className="p-8 max-w-4xl mx-auto space-y-6">
+      {/* ── Visual Banner & Icon (Image 1) ── */}
+      <GeneralBanner
+        name={name}
+        identifier={identifier}
+        isPrivate={isPrivate}
+        avatar={avatar}
+        cover={cover}
+        isUploading={isUploading}
+        onSelectAvatar={handleSelectAvatar}
+        onSelectCover={handleSelectCover}
+        onUploadCustomCover={handleUploadCustomCover}
+      />
 
-      <div className="space-y-6">
-        {/* Avatar */}
-        <div className="flex items-center gap-6">
-          <Avatar className="h-16 w-16 border border-border rounded-lg">
-            <AvatarImage src={currentAvatar || ""} className="object-cover" />
-            <AvatarFallback className="rounded-lg bg-muted text-muted-foreground">
-              {name.charAt(0) || "P"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="space-y-2">
-            <Label htmlFor="avatar-upload" className="cursor-pointer">
-              <div className="px-3 py-1.5 bg-card border border-border hover:bg-secondary text-foreground text-xs font-medium rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer">
-                {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
-                Change Avatar
-              </div>
-            </Label>
-            <Input
-              id="avatar-upload"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarUpload}
-              disabled={isUploading}
-            />
-            {currentAvatar && (
-              <div 
-                className="text-xs text-destructive cursor-pointer hover:underline mt-1 inline-block"
-                onClick={() => {
-                  setCurrentAvatar(null);
-                  updateMutation.mutate({ projectId, avatar: "" });
-                }}
-              >
-                Remove avatar
-              </div>
-            )}
-          </div>
-        </div>
+      {/* ── Core Details Form & Update Action (Image 1 & 2) ── */}
+      <GeneralDetails
+        name={name}
+        identifier={identifier}
+        description={description}
+        isPrivate={isPrivate}
+        timezone={timezone}
+        createdAt={createdAt}
+        isSaving={isSaving}
+        hasChanges={hasChanges}
+        onNameChange={setName}
+        onIdentifierChange={setIdentifier}
+        onDescriptionChange={setDescription}
+        onPrivateChange={setIsPrivate}
+        onTimezoneChange={setTimezone}
+        onSubmit={save}
+      />
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-foreground">Project Name</Label>
-            <Input 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              className="max-w-md h-9 text-[13px] rounded-lg border-border"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-foreground">Description</Label>
-            <Textarea 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)}
-              className="max-w-xl text-[13px] min-h-[100px] rounded-lg border-border resize-none"
-            />
-          </div>
-
-          <Button 
-            onClick={handleUpdate} 
-            disabled={updateMutation.isPending}
-            className="h-9 rounded-lg px-4 text-xs font-medium cursor-pointer"
-          >
-            {updateMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-            Save Changes
-          </Button>
-        </div>
-      </div>
-
-      <div className="pt-8 border-t border-border mt-12">
-        <h3 className="text-sm font-semibold text-destructive mb-1">Danger Zone</h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Once you delete a project, there is no going back. Please be certain.
-        </p>
-        <Button 
-          variant="destructive" 
-          onClick={() => setIsDeleteOpen(true)}
-          className="h-9 rounded-lg text-xs font-medium cursor-pointer"
-        >
-          Delete Project
-        </Button>
-      </div>
-
-      <DeleteModal
-        isOpen={isDeleteOpen}
-        onClose={() => setIsDeleteOpen(false)}
-        onConfirm={handleDelete}
-        title="Delete Project"
-        description="Are you absolutely sure you want to delete this project? This action cannot be undone and will permanently remove all related data."
-        confirmText="Delete permanently"
-        cancelText="Cancel"
-        loading={deleteMutation.isPending}
+      {/* ── Danger Zone: Archive & Delete (Image 2) ── */}
+      <GeneralDanger
+        projectName={project.name || name}
+        isArchived={isArchived}
+        onToggleArchive={toggleArchive}
+        onDeleteProject={deleteProj}
+        isDeleting={isDeleting}
       />
     </div>
   );
 }
-

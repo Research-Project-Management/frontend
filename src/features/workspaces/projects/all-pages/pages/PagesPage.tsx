@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { workspacePagesQueryOptions, usePageActions } from '../hooks/use-page';
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProjects } from '@/features/workspaces/projects/shell';
 import { TopBar } from '../components/layout/TopBar';
 import { EmptyState } from '../components/layout/EmptyState';
 import { CreateModal } from '../components/modals/CreateModal';

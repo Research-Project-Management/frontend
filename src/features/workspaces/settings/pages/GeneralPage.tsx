@@ -46,7 +46,7 @@ export default function GeneralPage() {
       <div className="flex h-full w-full flex-col bg-background">
         <TopBar title="General Settings" Icon={Settings} />
         <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl">
-          <Skeleton className="h-64 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-lg" />
         </div>
       </div>
     );
@@ -70,8 +70,8 @@ export default function GeneralPage() {
     <div className="flex h-full w-full flex-col bg-background">
       <TopBar title="General Settings" Icon={Settings} />
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-        <div className="mx-auto max-w-4xl space-y-8 pb-12">
+      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="max-w-4xl mx-auto space-y-8 pb-12">
           
           {/* Profile Section */}
           <div className="flex items-center gap-5">
@@ -79,7 +79,7 @@ export default function GeneralPage() {
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={isUploadingAvatar}
-              className="relative group size-16 shrink-0 rounded-xl flex items-center justify-center text-2xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
+              className="relative group size-16 shrink-0 rounded-lg flex items-center justify-center text-2xl font-semibold overflow-hidden transition-opacity hover:opacity-90 cursor-pointer"
             >
               <div className="size-full">
                 <Avatar className="size-full">

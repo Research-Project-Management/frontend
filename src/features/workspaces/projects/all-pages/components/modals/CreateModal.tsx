@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui';
-import type { Project } from '@/features/workspaces/projects/shell/services/project.services';
+import type { Project } from '@/features/workspaces/projects/shell/services/project.service';
 
 interface CreateModalProps {
   isOpen: boolean;

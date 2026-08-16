@@ -1,5 +1,6 @@
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '@/shared/lib/api';
-import type { Workspace } from '@/features/setup/types/workspace-types';
+import type { Workspace } from '@/features/setup/types/workspace.types';
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

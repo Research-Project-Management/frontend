@@ -19,7 +19,7 @@ import {
   PopoverTrigger,
 } from "@/shared/components/ui";
 import { useParams } from "next/navigation";
-import { useLabels, AVAILABLE_LABEL_COLORS } from '../../hooks/use-labels';
+import { useLabels, AVAILABLE_LABEL_COLORS } from '../../hooks/use-label';
 
 const LabelSelect = ({ 
   selectedLabelIds = [], 
@@ -224,7 +224,7 @@ const LabelSelect = ({
     <Popover open={isOpen} onOpenChange={(val) => { setIsOpen(val); if(!val) setView("list"); }}>
       <PopoverTrigger asChild>
         {trigger || (
-          <Button variant="outline" className="h-10 rounded-xl border-border bg-background px-4 text-[14px] font-semibold text-foreground shadow-none hover:bg-muted cursor-pointer"><Tag className="mr-2 h-4 w-4 text-foreground" />Labels</Button>
+          <Button variant="outline" className="h-10 rounded-lg border-border bg-background px-4 text-[14px] font-semibold text-foreground shadow-none hover:bg-muted cursor-pointer"><Tag className="mr-2 h-4 w-4 text-foreground" />Labels</Button>
         )}
       </PopoverTrigger>
       <PopoverContent
@@ -232,7 +232,7 @@ const LabelSelect = ({
         side="bottom"
         sideOffset={-150}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="z-[1000] flex w-80 min-h-0 flex-col overflow-hidden rounded-xl border-border p-0 shadow-xl bg-popover"
+        className="z-[1000] flex w-80 min-h-0 flex-col overflow-hidden rounded-lg border-border p-0 shadow-xl bg-popover"
         style={{ height: view === "edit" ? 560 : "auto", maxHeight: "calc(100vh - 24px)" }}
       >
         <div key={view} className="flex flex-col h-full animate-in fade-in duration-200">

@@ -12,7 +12,7 @@ interface ListViewProps {
 export function ListView({ pages, workspaceId }: ListViewProps) {
   return (
     <div className="p-6">
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead className="bg-muted/40 text-muted-foreground border-b border-border text-xs uppercase tracking-wider">
             <tr>

@@ -3,6 +3,7 @@ export type FileType = "folder" | "document" | "image" | "video" | "audio" | "ar
 export type StorageLevel = "workspace" | "project";
 
 export type StorageItem = {
+    id?: string;
     _id: string;
     filename: string;
     isFolder: boolean;
@@ -17,6 +18,7 @@ export type StorageItem = {
         permission: 'view' | 'edit';
     }>;
     author: {
+        id?: string;
         name: string;
         email: string;
         avatar: string;
@@ -27,6 +29,7 @@ export type StorageItem = {
         entityId: string | null;
     };
     project?: {
+        id?: string;
         _id: string;
         name: string;
     };

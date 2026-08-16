@@ -175,7 +175,7 @@ export default function HomePage() {
               <Comp key={id} />
             ))
           ) : (
-            <div className="flex flex-col items-center justify-center p-12 text-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 mx-6 mb-6">
+            <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border-2 border-dashed border-border/60 bg-muted/10 mx-6 mb-6">
               <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-5">
                 <Shapes className="size-6" />
               </div>

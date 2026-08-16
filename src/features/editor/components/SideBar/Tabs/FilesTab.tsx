@@ -59,7 +59,7 @@ import {
   pageFilesQueryOptions,
   usePageActions,
   usePageFileActions,
-} from '@/features/editor/hooks/use-pages';
+} from '@/features/editor/hooks/use-page';
 import { useQuery } from '@tanstack/react-query';
 
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';

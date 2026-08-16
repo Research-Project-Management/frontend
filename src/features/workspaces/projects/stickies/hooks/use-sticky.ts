@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "@/shared/constants/query-keys";
-import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.services";
+import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.service";
 import type { Sticky } from "../types/sticky.types";
 
 export const useSticky = (workspaceId: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {

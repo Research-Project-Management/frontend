@@ -12,7 +12,7 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { useCreateFolder } from "@/features/workspaces/projects/project-id/storage/hooks/use-storage";
-import { createFolderSchema } from "@/features/workspaces/projects/project-id/storage/schemas/storage.schemas";
+import { createFolderSchema } from "@/features/workspaces/projects/project-id/storage/schemas/storage.schema";
 
 type CreateFolderModalProps = {
   projectId: string;

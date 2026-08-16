@@ -135,7 +135,7 @@ function MetricPill({
   }[tone];
 
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2 shadow-xs transition-all duration-150 hover:shadow-xs hover:border-border/80">
+    <div className="flex min-w-0 items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition-all duration-150 hover:shadow-xs hover:border-border/80">
       <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg border ${toneClass}`}>
         <Icon className="size-3.5" />
       </span>
@@ -149,7 +149,7 @@ function MetricPill({
 
 function TaskOverviewWidget({ widget }: { widget: Extract<ResponseWidget, { type: "task_overview" }> }) {
   return (
-    <div className="my-3 overflow-hidden rounded-xl border border-border/80 bg-sidebar/30 backdrop-blur-xs shadow-xs select-none">
+    <div className="my-3 overflow-hidden rounded-lg border border-border/80 bg-sidebar/30 backdrop-blur-xs shadow-xs select-none">
       <div className="flex items-center gap-3 border-b border-border/70 bg-background px-4 py-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#3370ff]/10 text-[#3370ff]">
           <ListTodo className="size-4" />
@@ -172,7 +172,7 @@ function TaskOverviewWidget({ widget }: { widget: Extract<ResponseWidget, { type
           const displayLabel = group.label.charAt(0).toUpperCase() + group.label.slice(1);
           
           return (
-            <div key={group.label} className="rounded-xl border border-border/70 bg-background/50 overflow-hidden">
+            <div key={group.label} className="rounded-lg border border-border/70 bg-background/50 overflow-hidden">
               <div className="flex items-center justify-between border-b border-border/50 bg-muted/20 px-3 py-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{displayLabel}</span>
                 <span className="rounded-full bg-[#e6eeff] dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-bold text-[#3370ff]">

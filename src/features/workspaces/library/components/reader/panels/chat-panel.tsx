@@ -115,7 +115,7 @@ const MessageBubble = React.memo(function MessageBubble({
         className={cn(
           'group relative select-text',
           isUser
-            ? 'max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2.5 text-primary-foreground'
+            ? 'max-w-[80%] rounded-lg rounded-br-md bg-primary px-3.5 py-2.5 text-primary-foreground'
             : 'max-w-[92%] text-foreground',
         )}
       >
@@ -129,7 +129,7 @@ const MessageBubble = React.memo(function MessageBubble({
                 'prose-headings:text-foreground prose-headings:font-semibold',
                 'prose-p:text-foreground/90 prose-p:leading-relaxed',
                 'prose-strong:text-foreground prose-strong:font-semibold',
-                'prose-pre:bg-card prose-pre:border prose-pre:border-border prose-pre:rounded-xl prose-pre:overflow-x-auto',
+                'prose-pre:bg-card prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:overflow-x-auto',
                 'prose-code:text-foreground prose-code:bg-muted prose-code:rounded prose-code:px-1',
                 isStreaming && 'animate-in fade-in duration-150',
               )}
@@ -357,7 +357,7 @@ export default function ChatPanel({
                       setInputMessage(prompt);
                       textareaRef.current?.focus();
                     }}
-                    className="group flex w-full items-center gap-2 rounded-xl border border-border/40 bg-secondary/20 px-3 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                    className="group flex w-full items-center gap-2 rounded-lg border border-border/40 bg-secondary/20 px-3 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                   >
                     <span className="shrink-0 text-primary/40 transition-colors group-hover:text-primary">›</span>
                     <span className="truncate">{prompt}</span>
@@ -417,7 +417,7 @@ export default function ChatPanel({
               </button>
             </div>
             <div className="pointer-events-none absolute bottom-full left-0 right-0 z-50 mb-1 hidden group-hover:block">
-              <div className="rounded-xl border border-border bg-popover p-2.5 text-[10px] font-mono shadow-xl">
+              <div className="rounded-lg border border-border bg-popover p-2.5 text-[10px] font-mono shadow-xl">
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <FileText className="size-3 text-primary/70" />
                   <span className="text-muted-foreground">Reader selection</span>
@@ -431,7 +431,7 @@ export default function ChatPanel({
           </div>
         )}
 
-        <div className="relative rounded-2xl border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:border-primary/30 focus-within:shadow-md">
+        <div className="relative rounded-lg border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:border-primary/30 focus-within:shadow-md">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -454,7 +454,7 @@ export default function ChatPanel({
             <button
               onClick={isStreaming ? handleStop : () => handleSend(inputMessage)}
               disabled={(!inputMessage.trim() && !selectionContext && !isStreaming) || isLoadingHistory}
-              className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-20"
+              className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-20"
             >
               {isStreaming ? <Square className="size-3.5" /> : <ArrowUp className="size-4" />}
             </button>

@@ -14,6 +14,8 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const pathname = usePathname();
 
+  const isProjectSettings = pathname.includes('/settings');
+
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1023px)");
     const syncSidebar = () => setIsSidebarVisible(!media.matches);
@@ -22,6 +24,10 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
     media.addEventListener("change", syncSidebar);
     return () => media.removeEventListener("change", syncSidebar);
   }, []);
+
+  if (isProjectSettings) {
+    return <div className="h-full w-full overflow-hidden">{children}</div>;
+  }
 
   return (
     <div className="relative flex h-full overflow-hidden">
@@ -59,7 +65,7 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
             onClick={() => setIsSidebarVisible(false)}
           />
         )}
-        <div className="relative flex-1 overflow-y-auto">
+        <div className="relative flex-1 min-h-0 overflow-hidden">
           <div className="h-full w-full min-w-0">
             {children}
           </div>

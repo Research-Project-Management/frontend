@@ -22,7 +22,7 @@ import {
   useDeleteComment,
   useAddReply,
   useDeleteReply,
-} from "@/features/editor/services/comment.services";
+} from "@/features/editor/services/comment.service";
 import type { PageComment, CommentReply } from "@/features/editor/types/document.types";
 import { usePageContext } from "@/features/editor/store/page-context";
 import { useAuth } from '@/features/auth/hooks/use-auth';

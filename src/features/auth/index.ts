@@ -25,7 +25,7 @@ export {
   logoutUser,
   forgotPassword,
   changePassword,
-} from './services/auth-service';
+} from './services/auth.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type {
@@ -35,7 +35,7 @@ export type {
   RegisterResponse,
   ChangePasswordPayload,
   ChangePasswordResponse,
-} from './types/auth-types';
+} from './types/auth.types';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 export {
@@ -43,11 +43,11 @@ export {
   registerSchema,
   forgotPasswordSchema,
   changePasswordSchema,
-} from './schemas/auth-schemas';
+} from './schemas/auth.schema';
 
 export type {
   LoginSchema,
   RegisterSchema,
   ForgotPasswordSchema,
   ChangePasswordSchema,
-} from './schemas/auth-schemas';
+} from './schemas/auth.schema';

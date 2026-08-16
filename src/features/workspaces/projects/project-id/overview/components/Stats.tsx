@@ -39,7 +39,7 @@ export function Stats({
       {/* Total Tasks */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/tasks`)}
-        className="p-4 rounded-xl bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
@@ -65,7 +65,7 @@ export function Stats({
       {/* Team */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/settings/team`)}
-        className="p-4 rounded-xl bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
@@ -95,7 +95,7 @@ export function Stats({
       {/* Files */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/storage`)}
-        className="p-4 rounded-xl bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
@@ -116,7 +116,7 @@ export function Stats({
       </div>
 
       {/* Active Age */}
-      <div className="p-4 rounded-xl bg-card border border-border flex flex-col justify-between">
+      <div className="p-4 rounded-lg bg-card border border-border flex flex-col justify-between">
         <div>
           <div className="flex items-center gap-2.5 mb-3">
             <div className="p-2 rounded-lg bg-muted text-foreground">

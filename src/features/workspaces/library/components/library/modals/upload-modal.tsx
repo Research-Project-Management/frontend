@@ -280,7 +280,7 @@ export default function PaperUploadDialog({
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
             >
-              <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10">
                 <FileText className="size-6 text-primary" />
               </div>
               <div className="text-center">

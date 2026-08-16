@@ -15,7 +15,7 @@ import {
   permanentlyDeleteItem,
   createFileRecord,
   uploadFile,
-} from '@/features/workspaces/projects/project-id/storage/services/file.services';
+} from '@/features/workspaces/projects/project-id/storage/services/file.service';
 
 // --- Queries ---
 

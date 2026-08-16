@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 
-import { useProject } from '@/features/workspaces/projects/shell/services/project.services';
+import { useProject } from '@/features/workspaces/projects/shell/services/project.service';
 import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 
 import { Share2 } from "lucide-react";
@@ -39,7 +39,7 @@ export default function SharedPage() {
   };
 
   if (isProjectLoading || isFilesLoading) {
-    return <Skeleton className="h-48 w-full rounded-xl" />;
+    return <Skeleton className="h-48 w-full rounded-lg" />;
   }
 
   if (!projectId) {

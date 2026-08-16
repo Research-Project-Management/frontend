@@ -9,7 +9,10 @@ import type { Editor } from "@tiptap/react";
 import { GripVertical, FolderKanban } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useParams } from "next/navigation";
-import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.service';
+
+
+
 
 interface CardProps {
   sticky: Sticky;

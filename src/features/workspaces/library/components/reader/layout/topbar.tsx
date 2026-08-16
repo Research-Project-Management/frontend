@@ -221,7 +221,8 @@ export default function Topbar({
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => setActivePanel((current) => (current ? null : 'details'))}
+          onClick={() => setActivePanel((current: any) => (current ? null : 'details'))}
+
           aria-label={activePanel ? 'Close panel' : 'Open details'}
         >
           {activePanel ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}

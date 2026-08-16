@@ -34,8 +34,8 @@ import {
   deleteChatSession,
   renameChatSession,
   clearAiMemory,
-} from "@/features/workspaces/ai/services/chat-ai.services";
-import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.services';
+} from "@/features/workspaces/ai/services/chat-ai.service";
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/services/project.service';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { toast } from "sonner";
 
@@ -270,7 +270,7 @@ export default function SideBar() {
       <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-2">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 px-4 text-center">
-            <div className="size-10 rounded-xl bg-[#e6eeff] flex items-center justify-center mb-3">
+            <div className="size-10 rounded-lg bg-[#e6eeff] flex items-center justify-center mb-3">
               <MessageSquare className="size-5 text-[#3370ff]" />
             </div>
             <p className="text-[12px] font-medium text-[#202222] mb-1">

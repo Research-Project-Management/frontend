@@ -37,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
-import { CardUI } from '../card/Card';
+import { CardUI } from '../kanban/Card';
 import {
   Dialog,
   DialogContent,
@@ -329,92 +329,91 @@ export default function CalendarView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="w-full">
-        <div className="mb-4 flex items-center justify-between px-1">
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handlePrevious}
-              className="h-8 w-8 rounded-sm text-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNext}
-              className="h-8 w-8 rounded-sm text-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-2 pl-1">
-              <h3 className="text-xl font-bold tracking-tight text-gray-900">
-                {title}
-              </h3>
+      <div className="w-full flex-1 overflow-y-auto px-6 py-4 bg-background">
+        <div className="w-full space-y-3 pb-8">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePrevious}
+                className="h-8 w-8 rounded-lg text-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNext}
+                className="h-8 w-8 rounded-lg text-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2 pl-1">
+                <h3 className="text-base font-semibold tracking-tight text-foreground">
+                  {title}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToday}
+                className="h-8 px-3 text-xs font-medium text-foreground hover:bg-muted hover:text-foreground rounded-lg cursor-pointer"
+              >
+                Today
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 border-border/80 px-3 text-xs font-medium text-foreground rounded-lg cursor-pointer"
+                  >
+                    Options
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                  className="w-48 rounded-lg p-1 text-xs"
+                >
+                  <DropdownMenuItem
+                    onSelect={() => setLayoutMode("month")}
+                    className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
+                  >
+                    <span className="flex-1 text-left text-foreground">Month layout</span>
+                    {layoutMode === "month" ? <Check className="h-4 w-4 ml-2 text-primary" /> : null}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setLayoutMode("week")}
+                    className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
+                  >
+                    <span className="flex-1 text-left text-foreground">Week layout</span>
+                    {layoutMode === "week" ? <Check className="h-4 w-4 ml-2 text-primary" /> : null}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToday}
-              className="h-8 px-3 text-xs font-medium text-foreground hover:bg-muted/70 hover:text-foreground"
-            >
-              Today
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 gap-1.5 bg-muted/70 px-3 text-xs font-medium text-foreground"
-                >
-                  Options
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-48 rounded-sm p-1"
-              >
-                <DropdownMenuItem
-                  onSelect={() => setLayoutMode("month")}
-                  className="pl-4 pr-2 py-2 flex items-center cursor-pointer"
-                >
-                  <span className="flex-1 text-left text-foreground">Month layout</span>
-                  {layoutMode === "month" ? <Check className="h-4 w-4 ml-2 text-foreground" /> : null}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => setLayoutMode("week")}
-                  className="pl-4 pr-2 py-2 flex items-center cursor-pointer"
-                >
-                  <span className="flex-1 text-left text-foreground">Week layout</span>
-                  {layoutMode === "week" ? <Check className="h-4 w-4 ml-2 text-foreground" /> : null}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div className="overflow-hidden border border-border bg-muted/30">
-          <div className="grid grid-cols-7 divide-x divide-border bg-muted/40">
-            {WEEK_DAY_LABELS.map((label, index) => (
+        <div className="overflow-hidden rounded-lg border border-border/80 bg-card">
+          <div className="grid grid-cols-7 divide-x divide-border/60 bg-muted/40">
+            {WEEK_DAY_LABELS.map((label) => (
               <div
                 key={label}
-                className={`py-2.5 text-center text-[11px] font-semibold ${
-                  index >= 5 ? "text-zinc-500" : "text-zinc-600"
-                }`}
+                className="py-2.5 text-center text-[11px] font-semibold text-muted-foreground"
               >
                 {label}
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 divide-x divide-y divide-zinc-200/70 bg-zinc-100/80">
+          <div className="grid grid-cols-7 divide-x divide-y divide-border/60 bg-background">
             {calendarDays.map((day) => {
               const dateKey = format(day, DATE_KEY_FORMAT);
               const dayTasks = tasksByDate.get(dateKey) || [];
@@ -614,15 +613,16 @@ export default function CalendarView({
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
       {isMounted && createPortal(
         <DragOverlay>
           {activeTask ? (
             <div 
               style={{ width: draggedWidth ?? 'auto' }} 
-              className="bg-white shadow-lg border border-zinc-200 rounded-sm overflow-hidden opacity-90"
+              className="bg-card border border-border/80 rounded-lg overflow-hidden opacity-90"
             >
-              <div className="relative flex items-center gap-2 px-3 py-1.5 text-[12px] font-semibold leading-tight text-foreground">
+              <div className="relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium leading-tight text-foreground">
                 <span
                   className="absolute left-0 top-1/2 h-5.5 w-0.5 -translate-y-1/2 rounded-r-full"
                   style={{ backgroundColor: resolveTaskColumnColor(activeTask.columnId) }}
@@ -676,8 +676,8 @@ const CalendarDayCell = memo(({
       style={{ minHeight: dayCellMinHeight }}
       className={cn(
         "group flex flex-col p-2.5 transition-colors",
-        !isCurrentMonth ? "bg-zinc-100" : "bg-white",
-        isOver && "bg-zinc-50 ring-1 ring-inset ring-zinc-300/50"
+        !isCurrentMonth ? "bg-muted/30" : "bg-card",
+        isOver && "bg-primary/5 ring-1 ring-inset ring-primary/40"
       )}
     >
       <div className="mb-2 flex items-start justify-end gap-1">
@@ -724,7 +724,7 @@ const CalendarDayCell = memo(({
               onClick={() => handleOpenAddTaskMenu(dateKey)}
               className={cn(
                 dayTasks.length > 0 ? "mt-1.5" : "mt-0",
-                "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-[11.5px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-200/60 hover:text-foreground active:bg-zinc-200/80",
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer",
                 "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
               )}
             >
@@ -736,18 +736,18 @@ const CalendarDayCell = memo(({
             align="start"
             sideOffset={6}
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-44 rounded-sm border border-border bg-popover p-1 shadow-lg"
+            className="w-44 rounded-lg border border-border bg-popover p-1 text-xs"
           >
             <DropdownMenuItem
               onSelect={() => onAddWorkItem(dateKey)}
-              className="rounded-sm px-3 py-2 text-[13px] font-medium text-foreground flex items-center gap-2.5 cursor-pointer outline-none hover:bg-muted"
+              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none hover:bg-muted"
             >
               <Plus className="size-3.5 text-foreground" />
               <span>Add task</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => onAddExistingWorkItem(dateKey)}
-              className="rounded-sm px-3 py-2 text-[13px] font-medium text-foreground flex items-center gap-2.5 cursor-pointer outline-none hover:bg-muted"
+              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none hover:bg-muted"
             >
               <FolderKanban className="size-3.5 text-foreground" />
               <span>Add existing task</span>
@@ -758,7 +758,7 @@ const CalendarDayCell = memo(({
 
       {isQuickAdding && (
         <div className="mt-2 flex flex-col gap-2">
-          <div className="relative flex w-full items-center rounded-sm border border-zinc-200 bg-zinc-50/50 focus-within:border-zinc-300">
+          <div className="relative flex w-full items-center rounded-md border border-border/80 bg-background focus-within:border-primary/50">
             <input
               type="text"
               autoFocus
@@ -776,15 +776,15 @@ const CalendarDayCell = memo(({
                 }
               }}
               placeholder="Task title..."
-              className="h-6.5 min-w-0 flex-1 bg-transparent px-2 text-[13px] text-foreground outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed"
+              className="h-7 min-w-0 flex-1 bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
               disabled={isAddingCard}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               type="button"
               size="sm"
-              className="h-6.5 bg-primary px-2 text-primary-foreground hover:bg-primary/90 shadow-none"
+              className="h-6.5 px-2.5 text-xs bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md cursor-pointer"
               onClick={onQuickAddSubmit}
               disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
             >
@@ -794,7 +794,7 @@ const CalendarDayCell = memo(({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-6.5 px-2 text-[#44546f] hover:bg-[#091e420f]"
+              className="h-6.5 px-2 text-xs rounded-md cursor-pointer"
               onClick={onCloseQuickAdd}
             >
               Cancel
@@ -864,8 +864,8 @@ const CalendarTaskItem = memo(({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-              "group relative flex w-full items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-1.5 text-left text-[12px] font-semibold leading-tight text-foreground transition-colors hover:bg-zinc-50",
-              isDragging && "shadow-xl z-50"
+              "group relative flex w-full items-center gap-2 rounded-md border border-border/70 bg-card px-2.5 py-1 text-left text-xs font-medium leading-tight text-foreground transition-colors hover:bg-muted/50 cursor-pointer",
+              isDragging && "z-50 opacity-40 border-primary"
             )}
           >
             <span

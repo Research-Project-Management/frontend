@@ -1,120 +1,75 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { toast } from "sonner";
-import { useProjectDetails } from '@/features/workspaces/projects/shell/services/project.services';
-import { useUpdateProject } from "@/features/workspaces/projects/shell/services/project.services";
-import { Button, Skeleton, Switch } from "@/shared/components/ui";
-import { Loader2, LayoutDashboard, Settings, FileText, CheckSquare, HardDrive, StickyNote, RefreshCcw } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
+import { useParams } from 'next/navigation';
+import { Button, Skeleton } from '@/shared/components/ui';
+import { Loader2, LayoutDashboard, FileText, CheckSquare, HardDrive, StickyNote, RefreshCcw } from 'lucide-react';
+import { Item } from '../components/module/Item';
+import { useModules } from '../hooks/use-module';
+import type { ModuleDef } from '../types/module.types';
 
-const ALL_MODULES = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard, locked: true },
-  { id: "pages", label: "Pages", icon: FileText, locked: false },
-  { id: "tasks", label: "Tasks", icon: CheckSquare, locked: false },
-  { id: "cycles", label: "Cycles", icon: RefreshCcw, locked: false },
-  { id: "storage", label: "Storage", icon: HardDrive, locked: false },
-  { id: "stickies", label: "Stickies", icon: StickyNote, locked: false },
-  { id: "settings", label: "Settings", icon: Settings, locked: true },
+// ── Module Registry ───────────────────────────────────────────────────────────
+
+const MODULES: ModuleDef[] = [
+  { id: 'overview', label: 'Overview', desc: 'Project dashboard and summary', icon: LayoutDashboard, locked: true },
+  { id: 'pages',    label: 'Pages',    desc: 'Collaborative documents and notes', icon: FileText },
+  { id: 'tasks',    label: 'Tasks',    desc: 'Issue tracking and work items', icon: CheckSquare },
+  { id: 'cycles',   label: 'Cycles',   desc: 'Sprint-based iteration planning', icon: RefreshCcw },
+  { id: 'storage',  label: 'Storage',  desc: 'File storage and attachments', icon: HardDrive },
+  { id: 'stickies', label: 'Stickies', desc: 'Quick sticky notes', icon: StickyNote },
 ];
+
+// ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function ModulesPage() {
   const { projectId } = useParams() as { projectId: string };
-  const { data: projectData, isLoading, isError } = useProjectDetails(projectId);
-  const updateMutation = useUpdateProject();
-
-  const [activeModules, setActiveModules] = useState<string[]>([]);
-
-  const p = (projectData as any)?.project || projectData;
-
-  useEffect(() => {
-    if (p?.modules) {
-      setActiveModules(p.modules);
-    }
-  }, [p]);
+  const { active, toggle, hasChanges, save, isSaving, isLoading, isError, project } = useModules(projectId);
 
   if (isLoading) {
-    return <div className="p-8"><Skeleton className="h-64 w-full rounded-xl" /></div>;
+    return (
+      <div className="p-8 max-w-4xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-44 rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-lg" />
+      </div>
+    );
   }
 
-  if (isError || !p) {
-    return <div className="p-8 text-zinc-500">Error loading project.</div>;
+  if (isError || !project) {
+    return <div className="p-8 text-sm text-muted-foreground">Error loading project.</div>;
   }
-
-  const toggleModule = (moduleId: string) => {
-    const isLocked = ALL_MODULES.find(m => m.id === moduleId)?.locked;
-    if (isLocked) return;
-
-    setActiveModules((prev) => {
-      if (prev.includes(moduleId)) {
-        return prev.filter((id) => id !== moduleId);
-      } else {
-        return [...prev, moduleId];
-      }
-    });
-  };
-
-  const handleSave = () => {
-    updateMutation.mutate({
-      projectId,
-      modules: activeModules
-    }, {
-      onSuccess: () => toast.success("Modules updated successfully")
-    });
-  };
-
-  const hasChanges = JSON.stringify(activeModules.sort()) !== JSON.stringify([...(p?.modules || [])].sort());
 
   return (
-    <div className="flex-1 p-6 max-w-4xl mx-auto space-y-8 h-full bg-background">
-      <div className="flex items-center justify-between">
+    <div className="p-8 max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-[17px] font-semibold text-foreground">Project Modules</h2>
-          <p className="text-[13px] text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Modules</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Enable or disable features for this project.
           </p>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={!hasChanges || updateMutation.isPending}
-          className="h-9 rounded-lg px-4 text-xs font-medium cursor-pointer"
+
+        <Button
+          size="sm"
+          onClick={save}
+          disabled={!hasChanges || isSaving}
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer shadow-2xs shrink-0"
         >
-          {updateMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-          Save Changes
+          {isSaving && <Loader2 className="mr-2 size-3.5 animate-spin" />}
+          Save changes
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {ALL_MODULES.map((mod) => {
-          const isActive = activeModules.includes(mod.id);
-          const Icon = mod.icon;
-          return (
-            <div 
-              key={mod.id}
-              className={cn(
-                "flex items-center justify-between p-4 rounded-lg border",
-                isActive ? "border-border bg-card" : "border-transparent bg-muted/40",
-                mod.locked && "opacity-75"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <div className={cn("p-2 rounded-lg", isActive ? "bg-muted text-foreground" : "bg-muted/60 text-muted-foreground")}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-[13px] font-semibold text-foreground">{mod.label}</h3>
-                  <p className="text-[11px] text-muted-foreground">{mod.locked ? "Required module" : "Optional module"}</p>
-                </div>
-              </div>
-              <Switch 
-                checked={isActive}
-                onCheckedChange={() => toggleModule(mod.id)}
-                disabled={mod.locked || updateMutation.isPending}
-              />
-            </div>
-          );
-        })}
+      {/* Module Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {MODULES.map((mod) => (
+          <Item
+            key={mod.id}
+            mod={mod}
+            active={active.includes(mod.id)}
+            disabled={isSaving}
+            onToggle={() => toggle(mod.id)}
+          />
+        ))}
       </div>
     </div>
   );

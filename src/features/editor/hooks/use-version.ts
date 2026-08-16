@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
-import { PageVersionService } from "../services/version.services";
+import { PageVersionService } from "../services/version.service";
 import { toast } from "sonner";
 
 export const editorVersionKeys = {

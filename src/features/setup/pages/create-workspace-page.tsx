@@ -10,7 +10,7 @@ import { cn } from '@/shared/lib/utils';
 import { Button, Input, Label } from '@/shared/components/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
 import { useCreateWorkspace } from '../hooks/use-workspace';
-import { createWorkspaceSchema, type CreateWorkspaceSchema } from '../schemas/workspace-schemas';
+import { createWorkspaceSchema, type CreateWorkspaceSchema } from '../schemas/workspace.schema';
 import { useAuth } from '@/features/auth';
 
 export default function CreateWorkspacePage() {

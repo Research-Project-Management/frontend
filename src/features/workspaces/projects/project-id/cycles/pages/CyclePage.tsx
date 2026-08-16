@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useMemo, useEffect } from "react";
@@ -6,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
 import { useProjects } from '@/features/workspaces/projects/shell';
-import { useCycle, type DerivedStatus } from '../hooks/use-cycles';
-import { useLabels } from '../hooks/use-labels';
+import { useCycle, useCompleteCycle, type DerivedStatus } from '../hooks/use-cycle';
+import { useLabels } from '../hooks/use-label';
 import { Skeleton } from "@/shared/components/ui";
 import { 
   Plus,
@@ -21,7 +20,8 @@ import { DeleteModal } from '../components/modals/DeleteModal';
 import { CycleModal } from '../components/modals/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
 import type { Cycle, CycleMilestone } from "../types/cycle.types";
-import TopBar from '../components/layout/Topbar';
+import Topbar from '@/features/workspaces/settings/components/TopBar';
+import CycleTopBarActions from '../components/layout/Topbar';
 
 const PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },
@@ -50,6 +50,8 @@ export function CyclePage() {
     deriveStatus,
     checkParallelConflict,
   } = useCycle(projectId!, workspaceId);
+
+  const completeMutation = useCompleteCycle();
 
   const { workspaceLabels: allLabels } = useLabels(workspaceId!, "cycle", projectId);
 
@@ -265,7 +267,7 @@ export function CyclePage() {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusAction = () => {
+  const confirmStatusAction = (payload?: { action: 'transfer' | 'backlog' | 'leave'; targetCycleId?: string }) => {
     if (!targetCycle) return;
 
     if (statusModalType === "start") {
@@ -274,65 +276,83 @@ export function CyclePage() {
         setStatusModalOpen(false);
         return;
       }
+      updateMutation.mutate({
+        cycleId: targetCycle._id,
+        projectId: projectId!,
+        status: "active",
+      }, {
+        onSuccess: () => {
+          toast.success("Cycle started successfully");
+          setStatusModalOpen(false);
+          setTargetCycle(null);
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.message || err?.message || "Failed to start cycle";
+          toast.error(msg);
+        }
+      });
+      return;
     }
 
-    updateMutation.mutate({
-      cycleId: targetCycle._id,
-      projectId: projectId!,
-      status: statusModalType === "start" ? "active" : "completed",
-    }, {
-      onSuccess: () => {
-        toast.success(`Cycle ${statusModalType === "start" ? "started" : "completed"} successfully`);
-        setStatusModalOpen(false);
-        setTargetCycle(null);
-      },
-      onError: (err: any) => {
-        const msg = err?.response?.data?.message || err?.message || `Failed to ${statusModalType} cycle`;
-        toast.error(msg);
-      }
-    });
+    if (statusModalType === "complete") {
+      completeMutation.mutate({
+        cycleId: targetCycle._id,
+        projectId: projectId!,
+        action: payload?.action || 'backlog',
+        targetCycleId: payload?.targetCycleId,
+      }, {
+        onSuccess: (res: any) => {
+          const count = res?.transferredCount ?? 0;
+          const extra = count > 0 ? ` (${count} task(s) processed)` : '';
+          toast.success(`Cycle completed successfully${extra}`);
+          setStatusModalOpen(false);
+          setTargetCycle(null);
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.message || err?.message || "Failed to complete cycle";
+          toast.error(msg);
+        }
+      });
+    }
   };
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      <div className="z-50 bg-background">
-        <Topbar
-          project={projectData ? { name: projectData.name, avatar: projectData.avatar } : undefined}
-          title="Cycles"
-          Icon={RotateCcw}
-          actions={
-            <TopBar
-              onAddCycle={openCreate}
-              searchQuery={searchTerm}
-              onSearchChange={setSearchTerm}
-              dateFilters={dateFilters}
-              onDateFilterChange={setDateFilters}
-            />
-          }
-        />
-      </div>
-      <main className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar">
-        <div className="px-4 py-4">
+      <Topbar
+        title="Cycles"
+        Icon={RotateCcw}
+        actions={
+          <CycleTopBarActions
+            onAddCycle={openCreate}
+            searchQuery={searchTerm}
+            onSearchChange={setSearchTerm}
+            dateFilters={dateFilters}
+            onDateFilterChange={setDateFilters}
+          />
+        }
+      />
+      <main className="w-full flex-1 overflow-y-auto px-6 py-4 scroll-smooth custom-scrollbar">
+        <div>
           {isLoading ? (
             <div className="space-y-6">
-              <Skeleton className="h-12 w-full rounded-sm" />
+              <Skeleton className="h-12 w-full rounded-md" />
             </div>
           ) : (
-            <div className="mt-2">
+            <div className="mt-1">
               {cycles.length === 0 && !searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
                   <RotateCcw className="size-10 text-foreground/40 mb-4" strokeWidth={1.5} />
-                  <h3 className="text-[16px] font-semibold text-foreground mb-1.5">No cycles found</h3>
-                  <p className="text-[13px] text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
+                  <h3 className="text-base font-semibold text-foreground mb-1.5">No cycles found</h3>
+                  <p className="text-xs text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
-                  <Button onClick={openCreate} className="h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-sm shadow-none gap-2 cursor-pointer">
+                  <Button onClick={openCreate} className="h-8 px-4 bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md gap-2 cursor-pointer text-xs">
                     <Plus className="size-4" />
                     <span>Create your first cycle</span>
                   </Button>
                 </div>
               ) : (
-                <div className="border border-border/80 overflow-hidden flex flex-col bg-card">
+                <div className="border border-border/80 rounded-lg overflow-hidden flex flex-col bg-card">
                   {(["active", "planned", "completed"] as DerivedStatus[]).map((status) => (
                 <ListViewGroup
                   key={status}
@@ -416,8 +436,9 @@ export function CyclePage() {
         onOpenChange={setStatusModalOpen}
         type={statusModalType}
         title={targetCycle?.name}
+        availableCycles={cycles.filter(c => c._id !== targetCycle?._id)}
         onConfirm={confirmStatusAction}
-        isSubmitting={updateMutation.isPending}
+        isSubmitting={updateMutation.isPending || completeMutation.isPending}
       />
     </div>
   );

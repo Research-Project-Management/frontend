@@ -22,7 +22,7 @@ import {
 import {
   collectionFormSchema,
   type CollectionFormValues,
-} from '../../../schemas/library.schemas';
+} from '../../../schemas/library.schema';
 import type { Collection } from '@/features/workspaces/library/types/library.types';
 
 interface CreateCollectionModalProps {

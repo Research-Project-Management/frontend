@@ -66,9 +66,9 @@ export default function Quicklinks() {
             {links.map((link) => (
               <div
                 key={link.id}
-                className="group relative flex items-center gap-3.5 px-3 py-3 rounded-xl border border-border/80 bg-background hover:bg-muted/40 transition-colors duration-200"
+                className="group relative flex items-center gap-3.5 px-3 py-3 rounded-lg border border-border/80 bg-background hover:bg-muted/40 transition-colors duration-200"
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/70 text-foreground" aria-hidden="true">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted/70 text-foreground" aria-hidden="true">
                   <Globe className="size-5 text-foreground" />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
@@ -120,7 +120,7 @@ export default function Quicklinks() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-8 bg-muted/20 border border-dashed border-border rounded-xl mt-3">
+          <div className="flex flex-col items-center justify-center p-8 bg-muted/20 border border-dashed border-border rounded-lg mt-3">
             <p className="text-sm text-muted-foreground mb-2">No quicklinks added yet</p>
             <button
               onClick={handleAddClick}

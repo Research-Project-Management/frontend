@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { pageDetailQueryOptions } from './use-pages';
+import { pageDetailQueryOptions } from './use-page';
 import { useQuery } from '@tanstack/react-query';
 import { usePageContext } from "@/features/editor/store/page-context";
 import { useEditorTabsStore } from "@/features/editor/store/editor-tabs.store";

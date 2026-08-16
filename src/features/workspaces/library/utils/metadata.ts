@@ -1,4 +1,4 @@
-import { fetchReferenceByDoi, searchReferences, type ReferenceData } from "../services/reference.services";
+import { fetchReferenceByDoi, searchReferences, type ReferenceData } from "../services/reference.service";
 
 export type PdfMetadata = {
   title?: string;

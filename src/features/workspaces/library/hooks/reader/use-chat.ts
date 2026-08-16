@@ -10,7 +10,7 @@ import {
   createChatSession,
   listChatSessions,
   deleteChatSession,
-} from '../../services/ai.services';
+} from '../../services/ai.service';
 
 interface UseChatOptions {
   workspaceId: string;

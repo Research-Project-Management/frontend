@@ -1,12 +1,8 @@
 import type { Metadata } from 'next';
-import { PagesPage } from '@/features/workspaces/projects/project-id/pages';
+import PagesPage from '@/features/workspaces/projects/project-id/pages/pages/PagesPage';
 
 export const metadata: Metadata = { title: 'Pages · Flux' };
 
-export default function ProjectPagesRoute({
-  params: { projectId },
-}: {
-  params: { projectId: string };
-}) {
-  return <PagesPage projectId={projectId} />;
+export default function ProjectPagesRoute() {
+  return <PagesPage />;
 }

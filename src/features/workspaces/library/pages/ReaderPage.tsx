@@ -3,11 +3,10 @@
 import React, { useEffect } from 'react';
 import { AlertTriangle, Loader2, FileText } from 'lucide-react';
 import { useReader } from '../hooks/reader/use-reader';
-import dynamic from 'next/dynamic';
-const PdfViewer = dynamic(() => import('../components/reader/pdf-viewer/pdf-viewer'), { ssr: false });
-import Topbar from '../components/reader/layout/topbar';
-import Sidebar from '../components/reader/layout/sidebar';
-import BibtexModal from '../components/reader/modals/bibtex-modal';
+import Viewer from '../components/reader/viewer/Viewer';
+import Topbar from '../components/reader/topbar/Topbar';
+import Panel from '../components/reader/panel/Panel';
+import BibtexModal from '../components/reader/system/BibtexModal';
 
 interface ReaderPageProps {
   paperId?: string | null;
@@ -122,7 +121,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               <p className="text-xs text-muted-foreground">Loading paper...</p>
             </div>
           ) : paperUrl ? (
-            <PdfViewer
+            <Viewer
               blobUrl={pdfBlobUrl}
               filename={paper?.filename || 'paper.pdf'}
               isLoading={pdfLoading}
@@ -167,7 +166,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         </main>
 
         {activePanel ? (
-          <Sidebar
+          <Panel
             paper={paper}
             collection={paperCollection}
             workspaceId={workspaceId}

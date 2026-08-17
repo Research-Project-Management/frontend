@@ -1,6 +1,6 @@
 'use client';
 
-import { Sidebar } from "@/features/workspaces/library";
+import Sidebar from "@/features/workspaces/library/components/sidebar/Sidebar";
 import React from "react";
 
 export default function LibraryLayout({

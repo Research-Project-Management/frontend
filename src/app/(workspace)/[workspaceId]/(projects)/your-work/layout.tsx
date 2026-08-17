@@ -2,11 +2,9 @@
 
 import React from 'react';
 import { UserStar } from 'lucide-react';
-import {
-  YourWorkTopbar,
-  YourWorkNavigationBar,
-  useSummaryWork,
-} from '@/features/workspaces/projects/your-work';
+import YourWorkTopbar from '@/features/workspaces/projects/your-work/components/layout/Topbar';
+import YourWorkNavigationBar from '@/features/workspaces/projects/your-work/components/layout/NavigationBar';
+import { useSummaryWork } from '@/features/workspaces/projects/your-work/hooks/use-summary-work';
 
 export default function YourWorkLayout({ children }: { children: React.ReactNode }) {
   const { state } = useSummaryWork();

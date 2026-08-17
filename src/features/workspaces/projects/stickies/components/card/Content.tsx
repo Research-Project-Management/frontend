@@ -53,14 +53,14 @@ export default memo(function Content({
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => {
         if (html !== sticky.content) {
-          onUpdate(sticky._id, { content: html });
+          onUpdate(sticky._id || sticky.id || '', { content: html });
         }
       }, 800);
     },
     onBlur: () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (contentRef.current !== sticky.content) {
-        onUpdate(sticky._id, { content: contentRef.current });
+        onUpdate(sticky._id || sticky.id || '', { content: contentRef.current });
       }
     },
   });

@@ -33,7 +33,7 @@ import {
   renameChatSession,
   clearAiMemory,
 } from '../../services/chat.service';
-import { useWorkspaceProjects } from '@/features/workspaces/projects/shell';
+import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { toast } from 'sonner';
 
 type ProjectGroup = { projectId: string | null; chats: ChatSession[] };

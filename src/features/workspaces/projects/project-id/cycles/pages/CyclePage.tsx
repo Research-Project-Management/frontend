@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
-import { useProjects } from '@/features/workspaces/projects/shell';
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useCycle, useCompleteCycle, type DerivedStatus } from '../hooks/use-cycle';
 import { useLabels } from '../hooks/use-label';
 import { Skeleton } from "@/shared/components/ui";

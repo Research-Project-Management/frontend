@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { BoardView } from '@/features/workspaces/projects/project-id/tasks';
-import type { Task, Column } from '@/features/workspaces/projects/project-id/tasks';
+import BoardView from '@/features/workspaces/projects/project-id/tasks/components/kanban/Board';
+import type { Task, Column } from '@/features/workspaces/projects/project-id/tasks/types/task.types';
 import React from 'react';
 
 const mockTasks: Task[] = [

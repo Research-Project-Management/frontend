@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DuplicatesPage } from '@/features/workspaces/library';
+import DuplicatesPage from '@/features/workspaces/library/pages/DuplicatesPage';
 
 export const metadata: Metadata = { title: 'Duplicate Items · Library · Flux' };
 

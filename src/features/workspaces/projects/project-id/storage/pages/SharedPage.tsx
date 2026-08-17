@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 
-import { useProject } from '@/features/workspaces/projects/shell/services/project.service';
+import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 
 import { Share2 } from "lucide-react";
@@ -12,6 +12,7 @@ import GridView from '@/features/workspaces/projects/project-id/storage/componen
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
 import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
+import { filterSharedFiles } from '../utils/shared.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 
 export default function SharedPage() {
@@ -46,7 +47,7 @@ export default function SharedPage() {
     return <div className="p-6 text-muted-foreground">Project not found</div>;
   }
 
-  const files = (data?.files || []) as StorageItem[];
+  const files = filterSharedFiles((data?.files || []) as StorageItem[]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">

@@ -56,9 +56,9 @@ export default function Topbar({
         className
       )}
     >
-      <div className="flex items-center gap-2.5">
-        {Icon && <Icon className="size-4.5 text-foreground" />}
-        <h1 className="text-[1.05rem] font-semibold tracking-tight text-foreground transition-colors duration-200">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon className="size-4 text-foreground/80" />}
+        <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
           {title}
         </h1>
       </div>

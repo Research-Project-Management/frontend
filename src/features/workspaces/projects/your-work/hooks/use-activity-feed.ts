@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useProjects } from '@/features/workspaces/projects/shell';
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { getActivityFeed, getWorkspaceTasks } from '../services/your-work.service';
 import { z } from 'zod';
 import { yourWorkActivityEventSchema, type YourWorkActivityEvent } from '../schemas/your-work.schema';

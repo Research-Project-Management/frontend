@@ -167,7 +167,7 @@ async function rawFetch<T>(
   const url = buildUrl(path, params);
   const token = getAuthToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     ...(extraHeaders as Record<string, string>),
   };
   if (token) {

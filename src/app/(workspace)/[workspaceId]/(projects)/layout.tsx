@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { PanelLeft } from "lucide-react";
 
 const ProjectsSidebar = dynamic(
-  () => import('@/features/workspaces/projects/shell/components/layout/Sidebar'),
+  () => import('@/features/workspaces/projects/shell/components/Sidebar'),
   { ssr: false, loading: () => null }
 );
 

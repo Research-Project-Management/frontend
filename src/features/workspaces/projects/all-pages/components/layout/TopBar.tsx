@@ -35,9 +35,9 @@ export function TopBar({ viewMode, setViewMode, onCreateClick, searchQuery = '',
       className="flex items-center justify-between border-b border-border/50 bg-background/80 px-6 h-14 backdrop-blur-md sticky top-0 z-10 shrink-0"
       style={{ paddingLeft: "max(1.5rem, var(--header-offset, 0px))" }}
     >
-      <div className="flex items-center gap-2.5">
-        <PenLine className="size-4.5 text-foreground" />
-        <h1 className="text-[1.05rem] font-semibold tracking-tight text-foreground transition-colors duration-200">All pages</h1>
+      <div className="flex items-center gap-2">
+        <PenLine className="size-4 text-foreground/80" />
+        <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">All pages</h1>
       </div>
       <div className="flex items-center gap-4">
         {/* Search */}

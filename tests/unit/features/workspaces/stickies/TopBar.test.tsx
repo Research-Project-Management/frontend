@@ -7,7 +7,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ workspaceId: 'ws-123' }),
 }));
 
-vi.mock('@/features/workspaces/projects/shell', () => ({
+vi.mock('@/features/workspaces/projects/shell/hooks/use-project', () => ({
   useWorkspaceProjects: () => ({
     projects: [
       { _id: 'proj-1', name: 'Project Alpha' },
@@ -50,7 +50,7 @@ describe('TopBar', () => {
       />,
     );
 
-    const input = screen.getByPlaceholderText('Search by title');
+    const input = screen.getByPlaceholderText(/Search by title/i);
     expect(input).toHaveValue('Research');
 
     const clearButton = screen.getByRole('button', { name: 'Clear search' });

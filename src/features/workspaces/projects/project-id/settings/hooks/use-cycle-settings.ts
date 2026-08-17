@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useProjectDetails, useUpdateProject } from '@/features/workspaces/projects/shell';
+import { useProjectDetails, useUpdateProject } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { toast } from 'sonner';
 
 export function useCycleSettings(projectId: string) {

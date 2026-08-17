@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { UnfiledPage } from '@/features/workspaces/library';
+import UnfiledPage from '@/features/workspaces/library/pages/UnfiledPage';
 
 export const metadata: Metadata = { title: 'Unfiled Items · Library · Flux' };
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useProjectDetails } from '@/features/workspaces/projects/shell';
+import { useProjectDetails } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { Button, Skeleton } from '@/shared/components/ui';
 import { DeleteModal } from '@/features/workspaces/settings';
 import { ArrowUpRight } from 'lucide-react';

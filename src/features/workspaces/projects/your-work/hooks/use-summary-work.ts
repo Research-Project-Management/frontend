@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth';
-import { useProjects } from '@/features/workspaces/projects/shell';
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { getYourWork, getWorkspaceTasks } from '../services/your-work.service';
 import { yourWorkSummaryResponseSchema, type YourWorkSummaryResponse } from '../schemas/your-work.schema';
 import { createProjectMap, categorizeTasks } from '../utils/your-work.util';

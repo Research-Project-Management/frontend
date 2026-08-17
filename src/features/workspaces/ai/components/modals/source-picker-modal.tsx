@@ -22,7 +22,8 @@ import { Input } from '@/shared/components/ui';
 import { Skeleton } from '@/shared/components/ui';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { cn } from '@/shared/lib/utils';
-import { useCollections, usePapers } from '@/features/workspaces/library';
+import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';
+import { usePapers } from '@/features/workspaces/library/hooks/data/use-papers';
 import type { Collection, Paper } from '@/features/workspaces/library/types/library.types';
 
 export interface SourcePickerModalProps {

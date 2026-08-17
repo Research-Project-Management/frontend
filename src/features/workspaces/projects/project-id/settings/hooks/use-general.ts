@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/utils/error.util';
-import { useProjectDetails, useUpdateProject, useDeleteProject } from '@/features/workspaces/projects/shell';
+import { useProjectDetails, useUpdateProject, useDeleteProject } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { uploadGenericFile } from '@/features/workspaces/storage/services/file.service';
 
 export function useGeneral(projectId: string, workspaceId: string) {

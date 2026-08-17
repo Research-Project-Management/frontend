@@ -1,20 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Star } from 'lucide-react';
-import Topbar from '../components/library/layout/topbar';
-import PaperTable from '../components/library/table/paper-table';
-import InspectorPanel from '../components/library/inspector/inspector-panel';
-import UploadModal from '../components/library/modals/upload-modal';
-import CreateCollectionModal from '../components/library/modals/create-collection-modal';
+import Topbar from '../components/topbar/Topbar';
+import PaperTable from '../components/table/PaperTable';
+import InspectorPanel from '../components/panel/Panel';
+import UploadModal from '../components/system/UploadModal';
+import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
+import { getLibraryEntityId } from '../utils/library.util';
+import { filterFavoritePapers } from '../utils/favorites.util';
 import type { Paper } from '../types/library.types';
 
 export default function FavoritesPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
-    workspaceUrl,
     papers,
     isLoading,
     search,
@@ -24,7 +25,6 @@ export default function FavoritesPage() {
     collectionMap,
     collections,
     uploadOpen,
-    uploadMode,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -39,11 +39,13 @@ export default function FavoritesPage() {
     handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
+    handleBatchDeletePapers,
+    handleBatchMovePapers,
   } = actions;
 
-  const favoritePapers = React.useMemo(() => {
+  const starredPapers = useMemo(() => {
     return papers
-      .filter((p) => !p.deletedAt && (p.labels?.includes('starred') || p.labels?.includes('favorite')))
+      .filter((p) => !p.deletedAt && (Boolean(p.isFavorite) || p.labels?.includes('starred') || Boolean((p as any).isStarred)))
       .filter((p) => {
         if (!search.trim()) return true;
         const q = search.toLowerCase();
@@ -55,10 +57,11 @@ export default function FavoritesPage() {
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
-    if (selectedPaperId === paper._id) {
+    const paperId = getLibraryEntityId(paper);
+    if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {
-      setSelectedPaperId(paper._id);
+      setSelectedPaperId(paperId);
     }
   };
 
@@ -74,8 +77,9 @@ export default function FavoritesPage() {
       />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Central Papers Table */}
         <PaperTable
-          papers={favoritePapers}
+          papers={starredPapers}
           collectionMap={collectionMap}
           collections={collections}
           isLoading={isLoading}
@@ -83,13 +87,14 @@ export default function FavoritesPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={actions.handleBatchDeletePapers}
-          onBatchMovePapers={actions.handleBatchMovePapers}
+          onBatchDeletePapers={handleBatchDeletePapers}
+          onBatchMovePapers={handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
           onAddPaper={() => handleOpenUpload('file')}
           showCollection={true}
         />
 
+        {/* Right Inspector Panel */}
         {selectedPaper && (
           <InspectorPanel
             paper={selectedPaper}
@@ -107,7 +112,6 @@ export default function FavoritesPage() {
           onSubmit={handleAddPaper}
           isPending={isAddingPaper}
           workspaceId={workspaceId}
-          initialMode={uploadMode}
         />
       )}
 

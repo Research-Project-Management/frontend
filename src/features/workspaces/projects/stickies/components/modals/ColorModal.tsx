@@ -69,7 +69,8 @@ export default function ColorModal({
                       backgroundColor: STICKY_COLOR_MAP[color].bg,
                     }}
                     onClick={() => {
-                      onUpdate(sticky._id, { color });
+                      const sId = sticky._id || (sticky as any).id;
+                      if (sId) onUpdate(sId, { color });
                       onActiveChange(false);
                     }}
                     aria-label={`Change color to ${color}`}

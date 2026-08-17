@@ -3,7 +3,7 @@
 import { useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { CycleService } from "../services/cycle.service";
-import { useProjectDetails } from "@/features/workspaces/projects/shell";
+import { useProjectDetails } from "@/features/workspaces/projects/shell/hooks/use-project";
 import type { Cycle, CreateCycleInput, UpdateCycleInput } from "../types/cycle.types";
 
 export type DerivedStatus = "active" | "planned" | "completed";

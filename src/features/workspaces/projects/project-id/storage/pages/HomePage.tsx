@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useProject } from '@/features/workspaces/projects/shell/services/project.service';
+import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
@@ -11,6 +11,7 @@ import ListView from '@/features/workspaces/projects/project-id/storage/componen
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
 import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 import { downloadFileUrl } from '@/shared/utils/file';
+import { filterHomeFiles } from '../utils/home.util';
 import Topbar from '../components/layout/Topbar';
 import { Home } from 'lucide-react';
 
@@ -36,7 +37,7 @@ export default function HomePage() {
   };
 
   const files = useMemo(
-    () => ((data?.files || []) as StorageItem[]).filter(item => !item.isFolder),
+    () => filterHomeFiles((data?.files || []) as StorageItem[]),
     [data?.files],
   );
 

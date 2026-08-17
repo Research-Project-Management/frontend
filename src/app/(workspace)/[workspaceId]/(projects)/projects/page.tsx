@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ProjectsPage } from '@/features/workspaces/projects/shell';
+import ProjectsPage from '@/features/workspaces/projects/shell/pages/ProjectsPage';
 
 export const metadata: Metadata = {
   title: 'Projects · Flux',

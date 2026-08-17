@@ -4,7 +4,8 @@ import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
 import { type Sticky, STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { isStickyEmpty } from '../utils/sticky.utils';
+import { isStickyEmpty } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
+import { toast } from "sonner";
 import {
   MouseSensor,
   TouchSensor,
@@ -17,7 +18,8 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
 export const useCard = (options?: { search?: string; projectId?: string }) => {
-  const { workspaceId } = useParams() as { workspaceId: string };
+  const params = useParams() as { workspaceId?: string; id?: string };
+  const workspaceId = params?.workspaceId || params?.id || '';
   const search = options?.search;
   const projectId = options?.projectId;
 
@@ -32,6 +34,9 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const getStickyId = (s: Sticky) => s._id || s.id || '';
+  const hasEmptySticky = stickies.some(isStickyEmpty);
+
   return {
     state: {
       items: stickies,
@@ -40,13 +45,20 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
       status: {
         isLoading: api.query.isLoading,
         isAdding: api.mutations.create.isPending,
+        hasEmptySticky,
         error: api.query.error,
       },
     },
     actions: {
       add: useCallback(() => {
         if (!workspaceId || api.mutations.create.isPending) return;
-        if (stickies.some(isStickyEmpty)) return;
+
+        if (stickies.some(isStickyEmpty)) {
+          toast.info("Please add content to your empty sticky before creating a new one", {
+            id: "empty-sticky-info",
+          });
+          return;
+        }
 
         const lastColor = stickies.length > 0 ? stickies[0].color : undefined;
         const idx = lastColor ? STICKY_COLOR_CYCLE.indexOf(lastColor) : -1;
@@ -67,7 +79,10 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
         [api.mutations.update],
       ),
       delete: useCallback(
-        (id: string) => api.mutations.remove.mutate(id),
+        (id: string) => {
+          if (!id) return;
+          api.mutations.remove.mutate(id);
+        },
         [api.mutations.remove],
       ),
 
@@ -82,15 +97,15 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
           if (!over || active.id === over.id) return;
 
           const oldIdx = stickies.findIndex(
-            (sticky) => sticky._id === String(active.id),
+            (sticky) => getStickyId(sticky) === String(active.id),
           );
           const newIdx = stickies.findIndex(
-            (sticky) => sticky._id === String(over.id),
+            (sticky) => getStickyId(sticky) === String(over.id),
           );
 
           if (oldIdx !== -1 && newIdx !== -1) {
             const newOrderIds = arrayMove(
-              stickies.map((sticky) => sticky._id),
+              stickies.map(getStickyId).filter(Boolean),
               oldIdx,
               newIdx,
             );

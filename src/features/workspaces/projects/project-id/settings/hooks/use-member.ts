@@ -9,7 +9,7 @@ import {
   useUpdateProjectMemberRole,
   useRemoveProjectMember,
   useUpdateProject,
-} from '@/features/workspaces/projects/shell';
+} from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useWorkspace } from '@/features/workspaces/shell';
 import { useAuth } from '@/features/auth';
 import { getErrorMessage } from '@/shared/utils/error.util';

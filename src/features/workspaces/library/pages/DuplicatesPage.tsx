@@ -1,20 +1,24 @@
 'use client';
 
-import React from 'react';
-import { Files } from 'lucide-react';
-import Topbar from '../components/library/layout/topbar';
-import PaperTable from '../components/library/table/paper-table';
-import InspectorPanel from '../components/library/inspector/inspector-panel';
-import UploadModal from '../components/library/modals/upload-modal';
-import CreateCollectionModal from '../components/library/modals/create-collection-modal';
+import React, { useState, useMemo } from 'react';
+import { Files, GitMerge } from 'lucide-react';
+import Topbar from '../components/topbar/Topbar';
+import PaperTable from '../components/table/PaperTable';
+import InspectorPanel from '../components/panel/Panel';
+import UploadModal from '../components/system/UploadModal';
+import CreateCollectionModal from '../components/system/CreateCollectionModal';
+import MergeDialog from '../components/duplicates/MergeDialog';
 import { useLibrary } from '../hooks/library/use-library';
+import { usePapers } from '../hooks/data/use-papers';
+import { getLibraryEntityId } from '../utils/library.util';
+import { findDuplicateClusters } from '../utils/duplicates.util';
+import { Button } from '@/shared/components/ui';
 import type { Paper } from '../types/library.types';
 
 export default function DuplicatesPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
-    workspaceUrl,
     papers,
     isLoading,
     search,
@@ -37,50 +41,90 @@ export default function DuplicatesPage() {
     handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
+    handleBatchDeletePapers,
+    handleBatchMovePapers,
   } = actions;
 
-  const duplicatePapers = React.useMemo(() => {
-    const doiMap = new Map<string, string[]>();
-    const titleMap = new Map<string, string[]>();
+  const paperDataService = usePapers({ workspaceId });
+  const [mergingCluster, setMergingCluster] = useState<Paper[] | null>(null);
+
+  // Group duplicates into clusters
+  const duplicateClusters = useMemo(() => {
+    const doiMap = new Map<string, Paper[]>();
+    const titleMap = new Map<string, Paper[]>();
 
     for (const p of papers) {
       if (p.deletedAt) continue;
       if (p.doi && p.doi.trim()) {
         const d = p.doi.trim().toLowerCase();
-        doiMap.set(d, [...(doiMap.get(d) || []), p._id]);
+        doiMap.set(d, [...(doiMap.get(d) || []), p]);
       }
       if (p.title && p.title.trim()) {
         const t = p.title.trim().toLowerCase();
-        titleMap.set(t, [...(titleMap.get(t) || []), p._id]);
+        titleMap.set(t, [...(titleMap.get(t) || []), p]);
       }
     }
 
-    const dupIds = new Set<string>();
-    for (const ids of doiMap.values()) {
-      if (ids.length > 1) ids.forEach((id) => dupIds.add(id));
-    }
-    for (const ids of titleMap.values()) {
-      if (ids.length > 1) ids.forEach((id) => dupIds.add(id));
+    const clusters: Paper[][] = [];
+    const seenIds = new Set<string>();
+
+    for (const group of doiMap.values()) {
+      if (group.length > 1) {
+        const unseen = group.filter((p) => !seenIds.has(getLibraryEntityId(p)));
+        if (unseen.length > 1) {
+          unseen.forEach((p) => seenIds.add(getLibraryEntityId(p)));
+          clusters.push(unseen);
+        }
+      }
     }
 
-    return papers
-      .filter((p) => dupIds.has(p._id))
-      .filter((p) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          p.title.toLowerCase().includes(q) ||
-          p.authors.some((a) => a.toLowerCase().includes(q))
-        );
-      });
-  }, [papers, search]);
+    for (const group of titleMap.values()) {
+      if (group.length > 1) {
+        const unseen = group.filter((p) => !seenIds.has(getLibraryEntityId(p)));
+        if (unseen.length > 1) {
+          unseen.forEach((p) => seenIds.add(getLibraryEntityId(p)));
+          clusters.push(unseen);
+        }
+      }
+    }
+
+    return clusters;
+  }, [papers]);
+
+  const allDuplicatePapers = useMemo(() => {
+    const list = duplicateClusters.flat();
+    if (!search.trim()) return list;
+    const q = search.toLowerCase();
+    return list.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.authors.some((a) => a.toLowerCase().includes(q))
+    );
+  }, [duplicateClusters, search]);
 
   const handleSelectPaper = (paper: Paper) => {
-    if (selectedPaperId === paper._id) {
+    const paperId = getLibraryEntityId(paper);
+    if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {
-      setSelectedPaperId(paper._id);
+      setSelectedPaperId(paperId);
     }
+  };
+
+  const handleExecuteMerge = async (
+    masterPaper: Paper,
+    mergedFields: Partial<Paper>,
+    duplicateIdsToDelete: string[]
+  ) => {
+    const masterId = getLibraryEntityId(masterPaper);
+    // 1. Update master record with consolidated data
+    await paperDataService.actions.updatePaper({ paperId: masterId, ...mergedFields });
+    // 2. Delete duplicate records
+    for (const dupId of duplicateIdsToDelete) {
+      await paperDataService.actions.deletePaper({ paperId: dupId });
+    }
+    // Refresh
+    await paperDataService.actions.refetchAll();
   };
 
   return (
@@ -90,13 +134,24 @@ export default function DuplicatesPage() {
         icon={Files}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={() => setUploadOpen(true)}
-        onAddCollection={() => setCreateCollectionOpen(true)}
-      />
+      >
+        {duplicateClusters.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setMergingCluster(duplicateClusters[0])}
+            className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
+          >
+            <GitMerge className="size-3.5" />
+            <span>Merge Group</span>
+          </Button>
+        )}
+      </Topbar>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Central Papers Table */}
         <PaperTable
-          papers={duplicatePapers}
+          papers={allDuplicatePapers}
           collectionMap={collectionMap}
           collections={collections}
           isLoading={isLoading}
@@ -104,13 +159,13 @@ export default function DuplicatesPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={actions.handleBatchDeletePapers}
-          onBatchMovePapers={actions.handleBatchMovePapers}
+          onBatchDeletePapers={handleBatchDeletePapers}
+          onBatchMovePapers={handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => setUploadOpen(true)}
           showCollection={true}
         />
 
+        {/* Right Inspector Panel */}
         {selectedPaper && (
           <InspectorPanel
             paper={selectedPaper}
@@ -120,6 +175,16 @@ export default function DuplicatesPage() {
           />
         )}
       </div>
+
+      {/* Smart Merge Dialog */}
+      {mergingCluster && (
+        <MergeDialog
+          open={Boolean(mergingCluster)}
+          onOpenChange={(open) => !open && setMergingCluster(null)}
+          duplicates={mergingCluster}
+          onMerge={handleExecuteMerge}
+        />
+      )}
 
       {workspaceId && (
         <UploadModal

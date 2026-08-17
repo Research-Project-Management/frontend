@@ -1,20 +1,21 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Inbox } from 'lucide-react';
-import Topbar from '../components/library/layout/topbar';
-import PaperTable from '../components/library/table/paper-table';
-import InspectorPanel from '../components/library/inspector/inspector-panel';
-import UploadModal from '../components/library/modals/upload-modal';
-import CreateCollectionModal from '../components/library/modals/create-collection-modal';
+import Topbar from '../components/topbar/Topbar';
+import PaperTable from '../components/table/PaperTable';
+import InspectorPanel from '../components/panel/Panel';
+import UploadModal from '../components/system/UploadModal';
+import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
+import { getLibraryEntityId } from '../utils/library.util';
+import { isUnfiledPaper } from '../utils/unfiled.util';
 import type { Paper } from '../types/library.types';
 
 export default function UnfiledPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
-    workspaceUrl,
     papers,
     isLoading,
     search,
@@ -24,7 +25,6 @@ export default function UnfiledPage() {
     collectionMap,
     collections,
     uploadOpen,
-    uploadMode,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -39,9 +39,11 @@ export default function UnfiledPage() {
     handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
+    handleBatchDeletePapers,
+    handleBatchMovePapers,
   } = actions;
 
-  const unfiledPapers = React.useMemo(() => {
+  const unfiledPapers = useMemo(() => {
     return papers
       .filter((p) => !p.deletedAt && !p.collectionId)
       .filter((p) => {
@@ -55,10 +57,11 @@ export default function UnfiledPage() {
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
-    if (selectedPaperId === paper._id) {
+    const paperId = getLibraryEntityId(paper);
+    if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {
-      setSelectedPaperId(paper._id);
+      setSelectedPaperId(paperId);
     }
   };
 
@@ -74,6 +77,7 @@ export default function UnfiledPage() {
       />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Central Papers Table */}
         <PaperTable
           papers={unfiledPapers}
           collectionMap={collectionMap}
@@ -83,13 +87,14 @@ export default function UnfiledPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={actions.handleBatchDeletePapers}
-          onBatchMovePapers={actions.handleBatchMovePapers}
+          onBatchDeletePapers={handleBatchDeletePapers}
+          onBatchMovePapers={handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
           onAddPaper={() => handleOpenUpload('file')}
           showCollection={false}
         />
 
+        {/* Right Inspector Panel */}
         {selectedPaper && (
           <InspectorPanel
             paper={selectedPaper}
@@ -107,7 +112,6 @@ export default function UnfiledPage() {
           onSubmit={handleAddPaper}
           isPending={isAddingPaper}
           workspaceId={workspaceId}
-          initialMode={uploadMode}
         />
       )}
 

@@ -13,12 +13,10 @@ import { usePreviewStore } from '../store/use-preview-store';
 import { Skeleton } from '@/shared/components/ui';
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
-import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
+import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/storage/types/storage.types';
+import { pushBreadcrumbFolder, navigateBreadcrumbPath, canDropIntoFolder } from '../utils/my-files.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
-
-// ── Breadcrumb ──────────────────────────────────────────────────────────────
-type BreadcrumbSegment = { _id: string | null; name: string };
 
 function Breadcrumbs({
   segments,
@@ -84,12 +82,12 @@ export default function WorkspaceMyFilesPage() {
   // ── Navigation ─────────────────────────────────────────────────────────
   const handleFolderClick = useCallback((folder: StorageItem) => {
     setCurrentFolder(folder._id);
-    setBreadcrumbs((prev) => [...prev, { _id: folder._id, name: folder.filename }]);
+    setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { _id: folder._id, name: folder.filename }));
   }, []);
 
   const handleBreadcrumbNavigate = useCallback((index: number, id: string | null) => {
     setCurrentFolder(id);
-    setBreadcrumbs((prev) => prev.slice(0, index + 1));
+    setBreadcrumbs((prev) => navigateBreadcrumbPath(prev, index));
   }, []);
 
   // ── Download ───────────────────────────────────────────────────────────
@@ -109,10 +107,10 @@ export default function WorkspaceMyFilesPage() {
 
   const handleDropOnFolder = useCallback(
     async (folder: StorageItem) => {
-      if (!draggingItem || draggingItem._id === folder._id) return;
-      const itemName = draggingItem.filename;
+      if (!canDropIntoFolder(draggingItem, folder)) return;
+      const itemName = draggingItem!.filename;
       try {
-        await moveItem({ itemId: draggingItem._id, parentId: folder._id });
+        await moveItem({ itemId: draggingItem!._id, parentId: folder._id });
         toast.success(`Moved "${itemName}" into "${folder.filename}"`);
       } catch {
         toast.error(`Failed to move "${itemName}"`);

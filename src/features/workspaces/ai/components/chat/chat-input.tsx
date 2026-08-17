@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Textarea } from '@/shared/components/ui';
+import { Textarea, Switch } from '@/shared/components/ui';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/shared/components/ui';
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from 'lucide-react';
-import { Switch } from '@/shared/components/ui';
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.service';
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useParams } from 'next/navigation';
 import { useWorkspace } from '@/features/workspaces/shell';
 import { AGENT_CONFIGS } from '../../types/chat.types';
@@ -311,14 +310,14 @@ export function ChatInput({
                         selectedProject === 'workspace' || !selectedProject
                           ? '#a1a1aa'
                           : projDot(
-                              (projects || []).findIndex((p) => p._id === selectedProject),
+                              (projects || []).findIndex((p: any) => (p._id || p.id) === selectedProject),
                             ),
                     }}
                   />
                   <span className="max-w-[120px] truncate">
                     {selectedProject === 'workspace' || !selectedProject
                       ? workspace?.name || 'Workspace'
-                      : (projects || []).find((p) => p._id === selectedProject)?.name || 'Project'}
+                      : (projects || []).find((p: any) => (p._id || p.id) === selectedProject)?.name || 'Project'}
                   </span>
                   <ChevronDown className="size-3 opacity-60" />
                 </button>
@@ -339,9 +338,9 @@ export function ChatInput({
                   <span className="size-2 rounded-full bg-zinc-400" />
                   <span className="truncate">{workspace?.name || 'Whole Workspace'}</span>
                 </button>
-                {(projects || []).map((proj, idx) => (
+                {(projects || []).map((proj: any, idx: number) => (
                   <button
-                    key={proj._id}
+                    key={proj._id || proj.id}
                     type="button"
                     onClick={() => setSelectedProject(proj._id)}
                     className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left ${

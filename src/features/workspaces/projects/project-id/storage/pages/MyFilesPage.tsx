@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
-import { useProject } from '@/features/workspaces/projects/shell/services/project.service';
+import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useHomeFiles, useToggleStarItem, useDeleteItem, useMoveItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
@@ -13,12 +13,10 @@ import { usePreviewStore } from '@/features/workspaces/projects/project-id/stora
 import { Skeleton } from '@/shared/components/ui';
 import ListView from '@/features/workspaces/projects/project-id/storage/components/views/ListView';
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
-import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
+import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
+import { pushBreadcrumbFolder, navigateBreadcrumbPath, canDropIntoFolder } from '../utils/my-files.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
-
-// ── Breadcrumb ──────────────────────────────────────────────────────────────
-type BreadcrumbSegment = { _id: string | null; name: string };
 
 function Breadcrumbs({
   segments,
@@ -83,12 +81,12 @@ export default function MyFilesPage() {
   // ── Navigation ─────────────────────────────────────────────────────────
   const handleFolderClick = useCallback((folder: StorageItem) => {
     setCurrentFolder(folder._id);
-    setBreadcrumbs((prev) => [...prev, { _id: folder._id, name: folder.filename }]);
+    setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { _id: folder._id, name: folder.filename }));
   }, []);
 
   const handleBreadcrumbNavigate = useCallback((index: number, id: string | null) => {
     setCurrentFolder(id);
-    setBreadcrumbs((prev) => prev.slice(0, index + 1));
+    setBreadcrumbs((prev) => navigateBreadcrumbPath(prev, index));
   }, []);
 
   // ── Download ───────────────────────────────────────────────────────────
@@ -108,10 +106,10 @@ export default function MyFilesPage() {
 
   const handleDropOnFolder = useCallback(
     async (folder: StorageItem) => {
-      if (!draggingItem || draggingItem._id === folder._id) return;
-      const itemName = draggingItem.filename;
+      if (!canDropIntoFolder(draggingItem, folder)) return;
+      const itemName = draggingItem!.filename;
       try {
-        await moveItem({ itemId: draggingItem._id, parentId: folder._id });
+        await moveItem({ itemId: draggingItem!._id, parentId: folder._id });
         toast.success(`Moved "${itemName}" into "${folder.filename}"`);
       } catch {
         toast.error(`Failed to move "${itemName}"`);

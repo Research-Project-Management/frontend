@@ -6,8 +6,7 @@ import { useWorkspace } from '@/features/workspaces/shell';
 
 import { useCollections } from '../data/use-collections';
 import { usePapers } from '../data/use-papers';
-import { filterPapers } from '../../utils/filter';
-import { getLibraryEntityId } from '../../utils/library.util';
+import { filterPapers, getLibraryEntityId } from '../../utils/library.util';
 import type { Paper, CollectionInput } from '../../types/library.types';
 
 export function useLibrary() {

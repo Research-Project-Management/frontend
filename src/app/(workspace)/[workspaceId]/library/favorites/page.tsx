@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { FavoritesPage } from '@/features/workspaces/library';
+import FavoritesPage from '@/features/workspaces/library/pages/FavoritesPage';
 
 export const metadata: Metadata = { title: 'Favorites · Library · Flux' };
 

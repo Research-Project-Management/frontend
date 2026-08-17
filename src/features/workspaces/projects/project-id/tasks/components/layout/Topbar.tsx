@@ -159,10 +159,10 @@ export function Topbar({
       )}
     >
       {/* Left: Title & Project/Cycle Context */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <HeaderIcon className="size-4.5 text-foreground shrink-0" />
+      <div className="flex items-center gap-2 min-w-0">
+        <HeaderIcon className="size-4 text-foreground/80 shrink-0" />
         <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-[1.05rem] font-semibold tracking-tight text-foreground truncate">
+          <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {currentCycle ? currentCycle.name : (project?.name || title)}
           </h1>
           {count !== undefined && (

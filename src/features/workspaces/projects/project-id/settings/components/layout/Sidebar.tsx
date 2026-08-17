@@ -13,7 +13,7 @@ import {
   Clock,
   type LucideIcon,
 } from 'lucide-react';
-import { useProjectDetails, useProjects } from '@/features/workspaces/projects/shell/services/project.service';
+import { useProjectDetails, useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth';
 import { cn } from '@/shared/lib/utils';
 import Switcher from './Switcher';

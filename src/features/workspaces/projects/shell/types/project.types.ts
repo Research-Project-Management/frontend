@@ -39,6 +39,8 @@ export interface Project {
   cover?: string | null;
   isActive?: boolean;
   isArchived?: boolean;
+  isFavorite?: boolean;
+  favoritedBy?: string[];
   isPrivate?: boolean;
   timezone?: string;
   modules: string[];
@@ -78,6 +80,7 @@ export interface UpdateProjectInput {
   isPrivate?: boolean;
   timezone?: string;
   isArchived?: boolean;
+  isFavorite?: boolean;
   modules?: string[];
   subscriberIds?: string[];
 }

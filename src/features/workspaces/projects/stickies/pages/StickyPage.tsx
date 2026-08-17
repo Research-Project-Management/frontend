@@ -104,13 +104,13 @@ export default function StickyPage() {
             onDragEnd={actions.dragEnd}
           >
             <SortableContext
-              items={state.items.map((sticky: Sticky) => sticky._id)}
+              items={state.items.map((sticky: Sticky) => sticky._id || sticky.id || '')}
               strategy={rectSortingStrategy}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
                 {state.items.map((sticky: Sticky) => (
                   <Sortable
-                    key={sticky._id}
+                    key={sticky._id || sticky.id}
                     sticky={sticky}
                     onUpdate={actions.update}
                     onDelete={actions.delete}
@@ -135,7 +135,7 @@ export default function StickyPage() {
                   {state.activeId
                     ? (() => {
                         const sticky = state.items.find(
-                          (n: any) => n._id === state.activeId,
+                          (n: any) => n._id === state.activeId || n.id === state.activeId,
                         );
                         return sticky ? (
                           <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">

@@ -92,7 +92,7 @@ export default function Toolbar({
         onCancel={() => onActiveModalChange(null)}
         onConfirm={() => {
           onActiveModalChange(null);
-          onDelete(sticky._id);
+          onDelete(sticky._id || sticky.id || '');
         }}
       />
     </div>

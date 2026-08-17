@@ -13,6 +13,7 @@ import GridView from '../components/views/GridView';
 import { useViewStore } from '../store/use-view-store';
 import { usePreviewStore } from '../store/use-preview-store';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
+import { filterTrashFiles } from '../utils/trash.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
 
@@ -46,7 +47,7 @@ export default function WorkspaceTrashPage() {
     return <div className="p-6">Workspace not found</div>;
   }
 
-  const files = (data?.files || []) as StorageItem[];
+  const files = filterTrashFiles((data?.files || []) as StorageItem[]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">

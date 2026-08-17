@@ -10,7 +10,7 @@ import {
   RefreshCcw,
   Tag,
 } from 'lucide-react';
-import { Sidebar } from '@/features/workspaces/projects/project-id/settings';
+import Sidebar from '@/features/workspaces/projects/project-id/settings/components/layout/Sidebar';
 
 // ── Route → Header metadata ───────────────────────────────────────────────────
 

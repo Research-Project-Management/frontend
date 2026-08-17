@@ -11,6 +11,7 @@ import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileUrl } from '@/shared/utils/file';
+import { filterHomeFiles } from '../utils/home.util';
 import Topbar from '../components/layout/Topbar';
 import { Home } from 'lucide-react';
 
@@ -37,7 +38,7 @@ export default function WorkspaceHomePage() {
   };
 
   const files = useMemo(
-    () => ((data?.files || []) as StorageItem[]).filter(item => !item.isFolder),
+    () => filterHomeFiles((data?.files || []) as StorageItem[]),
     [data?.files],
   );
 

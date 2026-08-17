@@ -6,7 +6,7 @@ export const StickyColorSchema = z.enum([
 ]);
 
 export const StickySchema = z.object({
-  _id: z.string(),
+  _id: z.string().optional(),
   id: z.string().optional(),
   title: z.string().optional(),
   content: z.string(),

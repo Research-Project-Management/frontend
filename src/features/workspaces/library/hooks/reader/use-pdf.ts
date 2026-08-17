@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fetchPdfBlob } from '../../services/paper.service';
-import { generateAcademicPdfBlob } from '../../utils/pdf-generator.util';
+import { generateAcademicPdfBlob } from '../../utils/reader.util';
 import { getErrorMessage } from '@/shared/utils/error.util';
 
 export interface PdfFallbackOptions {

@@ -26,9 +26,9 @@ export function Team({ members }: TeamProps) {
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {members.map((member) => (
+        {members.map((member, idx) => (
           <div
-            key={member.user._id}
+            key={member.user?.id || member.user?._id || idx}
             className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors"
           >
             <Avatar className="size-8 border border-border">

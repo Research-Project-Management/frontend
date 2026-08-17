@@ -23,6 +23,7 @@ export default function CollectionView() {
     selectedPaper,
     filtered,
     uploadOpen,
+    uploadMode,
     subCreateOpen,
     visibleBreadcrumbs,
     collections,
@@ -34,6 +35,7 @@ export default function CollectionView() {
     setSearch,
     setSelectedPaperId,
     setUploadOpen,
+    handleOpenUpload,
     setSubCreateOpen,
     handleAddPaper,
     handleDeletePaper,
@@ -42,16 +44,17 @@ export default function CollectionView() {
   } = actions;
 
   const handleSelectPaper = (paper: Paper) => {
-    if (selectedPaperId === paper._id) {
+    const pId = paper._id || (paper as any).id;
+    if (selectedPaperId === pId) {
       setSelectedPaperId(null);
     } else {
-      setSelectedPaperId(paper._id);
+      setSelectedPaperId(pId);
     }
   };
 
-  const breadcrumbs: BreadcrumbItem[] = (visibleBreadcrumbs || []).map((bc) => ({
-    _id: bc.id,
-    name: bc.name,
+  const breadcrumbs: BreadcrumbItem[] = (visibleBreadcrumbs || []).map((bc: any) => ({
+    _id: bc._id || bc.id || '',
+    name: bc.name || '',
     color: bc.color,
   }));
 
@@ -62,7 +65,7 @@ export default function CollectionView() {
         icon={Folder}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={() => setUploadOpen(true)}
+        onAddPaper={(mode) => handleOpenUpload(mode || 'file')}
         onAddCollection={() => setSubCreateOpen(true)}
         breadcrumbs={breadcrumbs.length > 0 ? breadcrumbs : undefined}
         onNavigateCrumb={(id) => navigate(`/${workspaceUrl}/library/${id}`)}
@@ -79,8 +82,10 @@ export default function CollectionView() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
+          onBatchDeletePapers={actions.handleBatchDeletePapers}
+          onBatchMovePapers={actions.handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => setUploadOpen(true)}
+          onAddPaper={() => handleOpenUpload('file')}
           collectionName={collection?.name}
           showCollection={false}
         />
@@ -103,6 +108,7 @@ export default function CollectionView() {
           onSubmit={handleAddPaper}
           isPending={isAddingPaper}
           workspaceId={workspaceId}
+          initialMode={uploadMode}
         />
       )}
 

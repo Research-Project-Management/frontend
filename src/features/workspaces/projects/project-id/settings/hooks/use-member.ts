@@ -10,17 +10,18 @@ import {
   useRemoveProjectMember,
   useUpdateProject,
 } from '@/features/workspaces/projects/shell';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from '@/features/workspaces/shell';
 import { useAuth } from '@/features/auth';
+import { getErrorMessage } from '@/shared/utils/error.util';
 import type { ProjectMemberItem, ProjectRole } from '../types/member.types';
 
 export function useMembers(projectId: string) {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
   const { user: currentUser } = useAuth();
-  
+
   const { data: projectData, isLoading: isProjectLoading, isError } = useProjectDetails(projectId);
   const { workspace, yourRole: workspaceRole, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl);
-  
+
   const project = useMemo(() => {
     return (projectData as any)?.project || projectData || null;
   }, [projectData]);
@@ -53,7 +54,7 @@ export function useMembers(projectId: string) {
           email: u.email || '',
           avatar: u.avatar || '',
         },
-        role: m.role || 'member',
+        role: m.role || 'contributor',
         joinedAt: m.joinedAt || project.createdAt || new Date().toISOString(),
       };
     });
@@ -70,7 +71,6 @@ export function useMembers(projectId: string) {
     return projectSettings.subscriberIds || [];
   }, [projectSettings]);
 
-  // Lead, Assignee, Subscribers members
   const leadMember = useMemo(() => {
     return members.find((m) => m.userId === leadId) || null;
   }, [members, leadId]);
@@ -80,73 +80,93 @@ export function useMembers(projectId: string) {
   }, [members, defaultAssigneeId]);
 
   // Handlers for Project Settings
-  const updateSettings = useCallback((newSettings: Record<string, any>) => {
-    const merged = {
-      ...projectSettings,
-      ...newSettings,
-    };
-    updateProjectMutation.mutate(
-      { projectId, settings: merged } as any,
-      {
-        onSuccess: () => {
-          toast.success('Project settings updated');
+  const updateSettings = useCallback(
+    (newSettings: Record<string, any>) => {
+      const merged = {
+        ...projectSettings,
+        ...newSettings,
+      };
+      updateProjectMutation.mutate(
+        { projectId, settings: merged } as any,
+        {
+          onSuccess: () => {
+            toast.success('Project settings updated');
+          },
+          onError: (err: any) => {
+            toast.error(err?.message || 'Failed to update project settings');
+          },
         },
-        onError: (err: any) => {
-          toast.error(err?.message || 'Failed to update project settings');
-        },
-      },
-    );
-  }, [projectId, projectSettings, updateProjectMutation]);
+      );
+    },
+    [projectId, projectSettings, updateProjectMutation],
+  );
 
-  const setLead = useCallback((userId: string | null) => {
-    updateSettings({ leadId: userId });
-  }, [updateSettings]);
+  const setLead = useCallback(
+    (userId: string | null) => {
+      updateSettings({ leadId: userId });
+    },
+    [updateSettings],
+  );
 
-  const setDefaultAssignee = useCallback((userId: string | null) => {
-    updateSettings({ defaultAssigneeId: userId });
-  }, [updateSettings]);
+  const setDefaultAssignee = useCallback(
+    (userId: string | null) => {
+      updateSettings({ defaultAssigneeId: userId });
+    },
+    [updateSettings],
+  );
 
-  const toggleSubscriber = useCallback((userId: string) => {
-    const current = new Set(subscriberIds);
-    if (current.has(userId)) {
-      current.delete(userId);
-    } else {
-      current.add(userId);
-    }
-    updateSettings({ subscriberIds: Array.from(current) });
-  }, [subscriberIds, updateSettings]);
-
-  // Handlers for Members
-  const addMembers = useCallback(async (userIds: string[], role: ProjectRole = 'member') => {
-    try {
-      for (const userId of userIds) {
-        await addMutation.mutateAsync({ projectId, userId, role });
+  const toggleSubscriber = useCallback(
+    (userId: string) => {
+      const current = new Set(subscriberIds);
+      if (current.has(userId)) {
+        current.delete(userId);
+      } else {
+        current.add(userId);
       }
-      toast.success('Member(s) added successfully');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to add member');
-    }
-  }, [projectId, addMutation]);
+      updateSettings({ subscriberIds: Array.from(current) });
+    },
+    [subscriberIds, updateSettings],
+  );
 
-  const updateRole = useCallback((userId: string, role: string) => {
-    updateRoleMutation.mutate(
-      { projectId, userId, newRole: role },
-      {
-        onSuccess: () => toast.success('Member role updated'),
-        onError: (err: any) => toast.error(err?.message || 'Failed to update role'),
-      },
-    );
-  }, [projectId, updateRoleMutation]);
+  const addMembers = useCallback(
+    async (userIds: string[], role: ProjectRole | string = 'contributor') => {
+      try {
+        for (const userId of userIds) {
+          await addMutation.mutateAsync({ projectId, userId, role });
+        }
+        toast.success('Member(s) added successfully');
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err) || 'Failed to add member');
+      }
+    },
+    [projectId, addMutation],
+  );
 
-  const removeMember = useCallback((userId: string) => {
-    removeMutation.mutate(
-      { projectId, userId },
-      {
-        onSuccess: () => toast.success('Member removed from project'),
-        onError: (err: any) => toast.error(err?.message || 'Failed to remove member'),
-      },
-    );
-  }, [projectId, removeMutation]);
+  const updateRole = useCallback(
+    (userId: string, role: string) => {
+      updateRoleMutation.mutate(
+        { projectId, userId, role, newRole: role },
+        {
+          onSuccess: () => toast.success('Member role updated'),
+          onError: (err: unknown) => toast.error(getErrorMessage(err) || 'Failed to update role'),
+        },
+      );
+    },
+    [projectId, updateRoleMutation],
+  );
+
+  const removeMember = useCallback(
+    (userId: string) => {
+      removeMutation.mutate(
+        { projectId, userId },
+        {
+          onSuccess: () => toast.success('Member removed from project'),
+          onError: (err: any) => toast.error(err?.message || 'Failed to remove member'),
+        },
+      );
+    },
+    [projectId, removeMutation],
+  );
 
   // Filter and sort members
   const filteredMembers = useMemo(() => {
@@ -156,7 +176,7 @@ export function useMembers(projectId: string) {
         !q ||
         m.user.name.toLowerCase().includes(q) ||
         (m.user.email || '').toLowerCase().includes(q);
-      
+
       const matchRole = !roleFilter || m.role.toLowerCase() === roleFilter.toLowerCase();
 
       return matchSearch && matchRole;
@@ -189,14 +209,17 @@ export function useMembers(projectId: string) {
     return list;
   }, [members, search, roleFilter, sortField, sortAsc]);
 
-  const toggleSort = (field: typeof sortField) => {
-    if (sortField === field) {
-      setSortAsc((prev) => !prev);
-    } else {
-      setSortField(field);
-      setSortAsc(true);
-    }
-  };
+  const toggleSort = useCallback((field: typeof sortField) => {
+    setSortField((currentField) => {
+      if (currentField === field) {
+        setSortAsc((prev) => !prev);
+        return currentField;
+      } else {
+        setSortAsc(true);
+        return field;
+      }
+    });
+  }, []);
 
   // Permissions
   const isOwnerOrAdmin = useMemo(() => {
@@ -210,38 +233,39 @@ export function useMembers(projectId: string) {
   }, [project, currentUser, workspaceRole, members]);
 
   return {
-    project,
-    members,
-    filteredMembers,
-    workspace,
-    workspaceRole,
-    currentUser,
-    isOwnerOrAdmin,
-    isLoading: isProjectLoading || isWorkspaceLoading,
-    isError,
-    // Project Settings
-    leadId,
-    leadMember,
-    setLead,
-    defaultAssigneeId,
-    defaultAssigneeMember,
-    setDefaultAssignee,
-    subscriberIds,
-    toggleSubscriber,
-    // Member actions
-    addMembers,
-    updateRole,
-    removeMember,
-    isAdding: addMutation.isPending,
-    isUpdatingRole: updateRoleMutation.isPending,
-    isRemoving: removeMutation.isPending,
-    // Search & Filter
-    search,
-    setSearch,
-    roleFilter,
-    setRoleFilter,
-    sortField,
-    sortAsc,
-    toggleSort,
+    state: {
+      project,
+      members,
+      filteredMembers,
+      workspace,
+      workspaceRole,
+      currentUser,
+      isOwnerOrAdmin,
+      leadId,
+      leadMember,
+      defaultAssigneeId,
+      defaultAssigneeMember,
+      subscriberIds,
+      search,
+      roleFilter,
+      sortField,
+      sortAsc,
+      isLoading: isProjectLoading || isWorkspaceLoading,
+      isError,
+      isAdding: addMutation.isPending,
+      isUpdatingRole: updateRoleMutation.isPending,
+      isRemoving: removeMutation.isPending,
+    },
+    actions: {
+      setLead,
+      setDefaultAssignee,
+      toggleSubscriber,
+      addMembers,
+      updateRole,
+      removeMember,
+      setSearch,
+      setRoleFilter,
+      toggleSort,
+    },
   };
 }

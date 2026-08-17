@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FileText, BookOpen, Download, ExternalLink, HardDrive } from 'lucide-react';
+import { FileText, BookOpen, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 import { API_BASE_URL } from '@/shared/constants';
+import { useLibraryReaderStore } from '@/features/workspaces/library/store/reader.store';
+import { getLibraryEntityId } from '@/features/workspaces/library/utils/library.util';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface FilesSectionProps {
@@ -21,6 +23,7 @@ function formatSize(bytes?: number): string {
 export default function FilesSection({ paper }: FilesSectionProps) {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams();
+  const paperId = getLibraryEntityId(paper);
   const hasFile = Boolean(paper.fileUrl);
 
   const resolvedUrl = paper.fileUrl?.startsWith('/api/files/')
@@ -28,7 +31,9 @@ export default function FilesSection({ paper }: FilesSectionProps) {
     : paper.fileUrl;
 
   const handleOpenReader = () => {
-    router.push(`/${workspaceUrl}/library/papers/${paper._id}/reader`);
+    if (paperId) {
+      router.push(`/${workspaceUrl}/library/papers/${paperId}`);
+    }
   };
 
   return (
@@ -42,8 +47,8 @@ export default function FilesSection({ paper }: FilesSectionProps) {
       {hasFile ? (
         <div className="space-y-3">
           <div className="p-3 bg-muted/30 rounded-lg border border-border/40 flex items-start gap-3">
-            <div className="size-9 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
-              <FileText className="size-5" />
+            <div className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <FileText className="size-5 text-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-xs font-medium text-foreground truncate" title={paper.filename || 'Paper PDF'}>
@@ -52,19 +57,40 @@ export default function FilesSection({ paper }: FilesSectionProps) {
               <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
                 <span>{formatSize(paper.size)}</span>
                 <span>•</span>
-                <span className="uppercase">{paper.mimeType?.split('/')[1] || 'PDF'}</span>
+                <span className="uppercase font-mono text-[10px]">{paper.mimeType?.split('/')[1] || 'PDF'}</span>
               </div>
             </div>
           </div>
 
-          {/* Prominent Open in Reader CTA */}
-          <Button
-            onClick={handleOpenReader}
-            className="w-full h-9 text-xs font-medium gap-2 shadow-sm"
-          >
-            <BookOpen className="size-4" />
-            Open PDF in Reader
-          </Button>
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleOpenReader}
+              className="w-full h-8.5 text-xs font-medium gap-2 shadow-xs cursor-pointer"
+            >
+              <BookOpen className="size-3.5" />
+              <span>Open PDF in Reader</span>
+            </Button>
+
+            {resolvedUrl && (
+              <a
+                href={resolvedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={paper.filename || `${paper.title || 'paper'}.pdf`}
+                className="w-full"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-8 text-xs font-medium gap-2 cursor-pointer"
+                >
+                  <Download className="size-3.5" />
+                  <span>Download PDF</span>
+                </Button>
+              </a>
+            )}
+          </div>
         </div>
       ) : (
         <div className="py-6 text-center text-muted-foreground text-xs bg-muted/10 rounded-lg border border-dashed border-border/40">

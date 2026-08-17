@@ -1,27 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Skeleton } from '@/shared/components/ui';
-
 import { useSubscribedWork } from '../hooks/use-subscribed-work';
+import { useTaskModal } from '../hooks/use-task-modal';
 import { SubscribedTaskList } from '../components/subscribed/SubscribedTaskList';
 import { TaskDialogModal } from '../components/shared/TaskDialogModal';
 
 export function SubscribedPage() {
-  const { allTasks, subscribedTasks, taskProjectMap, isLoading } = useSubscribedWork();
-  const [selectedTask, setSelectedTask] = useState<{ taskId: string; projectId: string } | null>(null);
-
-  const handleOpenTask = (taskId: string) => {
-    const task = allTasks.find((t) => (t.id || t._id) === taskId);
-    const pId = task
-      ? typeof task.projectId === 'object'
-        ? task.projectId?.id || task.projectId?._id
-        : task.projectId || task.project?.id || task.project?._id
-      : null;
-    if (task && pId) {
-      setSelectedTask({ taskId, projectId: pId });
-    }
-  };
+  const { state } = useSubscribedWork();
+  const { allTasks, subscribedTasks, taskProjectMap, isLoading } = state;
+  const { selectedTask, handleOpenTask, handleCloseTask } = useTaskModal(allTasks);
 
   if (isLoading) {
     return (
@@ -46,7 +35,7 @@ export function SubscribedPage() {
           taskId={selectedTask.taskId}
           projectId={selectedTask.projectId}
           open={!!selectedTask}
-          onOpenChange={(open) => !open && setSelectedTask(null)}
+          onOpenChange={(open) => !open && handleCloseTask()}
         />
       )}
     </div>

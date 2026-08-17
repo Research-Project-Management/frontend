@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -12,7 +14,7 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { useCreateFolder } from "@/features/workspaces/storage/hooks/use-storage";
-import { createFolderSchema } from "@/features/workspaces/storage/schemas/storage.schema";
+import { createFolderSchema, type CreateFolderInput } from "@/features/workspaces/storage/schemas/storage.schema";
 
 type CreateFolderModalProps = {
   workspaceId: string;
@@ -21,27 +23,44 @@ type CreateFolderModalProps = {
 
 export default function CreateFolderModal({ workspaceId, parentId }: CreateFolderModalProps) {
   const [open, setOpen] = useState(false);
-  const [folderName, setFolderName] = useState("");
   const createFolderMutation = useCreateFolder();
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<CreateFolderInput>({
+    resolver: zodResolver(createFolderSchema),
+    defaultValues: {
+      name: "",
+      workspaceId,
+      parentId: parentId || null,
+    },
+  });
+
+  const folderName = watch("name");
+
   useEffect(() => {
-    const handleOpen = () => setOpen(true);
+    const handleOpen = () => {
+      reset({
+        name: "",
+        workspaceId,
+        parentId: parentId || null,
+      });
+      setOpen(true);
+    };
     window.addEventListener('open-create-folder', handleOpen);
     return () => window.removeEventListener('open-create-folder', handleOpen);
-  }, []);
+  }, [workspaceId, parentId, reset]);
 
-  const handleCreate = async () => {
-    const result = createFolderSchema.safeParse({ name: folderName, workspaceId, parentId });
-    if (!result.success) {
-      toast.error(result.error.issues[0].message);
-      return;
-    }
-
+  const onFormSubmit = async (data: CreateFolderInput) => {
     try {
-      await createFolderMutation.mutateAsync(result.data);
-      toast.success(`Created folder "${result.data.name}"`);
+      await createFolderMutation.mutateAsync(data);
+      toast.success(`Created folder "${data.name}"`);
       setOpen(false);
-      setFolderName("");
+      reset();
     } catch (error) {
       toast.error("Failed to create folder");
       console.error(error);
@@ -54,48 +73,49 @@ export default function CreateFolderModal({ workspaceId, parentId }: CreateFolde
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-md bg-popover"
       >
-        <DialogHeader>
-          <DialogTitle className="text-foreground">
-            Create New Folder
-          </DialogTitle>
-        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              Create New Folder
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Input
-              id="folder-name"
-              placeholder="Folder name"
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && folderName.trim()) {
-                  handleCreate();
-                }
-              }}
-              disabled={createFolderMutation.isPending}
-              autoFocus
-            />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Input
+                id="folder-name"
+                placeholder="Folder name"
+                disabled={createFolderMutation.isPending}
+                autoFocus
+                {...register("name")}
+              />
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name.message}</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            disabled={createFolderMutation.isPending}
-            className="text-foreground hover:bg-muted cursor-pointer"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={!folderName.trim() || createFolderMutation.isPending}
-            className="cursor-pointer"
-          >
-            Create
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              disabled={createFolderMutation.isPending}
+              className="text-foreground hover:bg-muted cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!folderName?.trim() || createFolderMutation.isPending}
+              className="cursor-pointer"
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 }
+

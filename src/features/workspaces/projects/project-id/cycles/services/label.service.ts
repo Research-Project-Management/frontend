@@ -33,10 +33,13 @@ export const AVAILABLE_LABEL_COLORS = [
 export const DEFAULT_LABEL_COLOR = "#3b82f6";
 
 export const CycleLabelService = {
-  list: (workspaceId: string, type: string = "cycle", projectId?: string) =>
-    apiGet<CycleLabel[]>(`/api/workspace/${workspaceId}/labels`, {
+  list: async (workspaceId: string, type: string = "cycle", projectId?: string): Promise<CycleLabel[]> => {
+    const res = await apiGet<{ labels?: CycleLabel[] } | CycleLabel[]>(`/api/workspace/${workspaceId}/labels`, {
       params: { type, ...(projectId ? { projectId } : {}) },
-    }),
+    });
+    if (Array.isArray(res)) return res;
+    return (res as any)?.labels || (res as any)?.data || [];
+  },
 
   create: ({
     workspaceId,

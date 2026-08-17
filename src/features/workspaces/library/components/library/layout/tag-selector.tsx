@@ -27,56 +27,62 @@ export default function TagSelector({
   if (tags.length === 0) return null;
 
   return (
-    <div className="border-t border-border/50 p-2.5 select-none bg-background/30">
+    <div className="border-t border-border/50 p-2.5 select-none bg-transparent">
       {/* Header */}
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center justify-between mb-1.5 px-1">
         <button
           onClick={() => setIsExpanded((v) => !v)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-foreground transition-colors cursor-pointer"
         >
-          <Tag className="size-3.5 text-primary" />
+          <Tag className="size-3.5 text-foreground" />
           <span>Tags</span>
-          <span className="text-[10px] text-muted-foreground/60 font-mono">
+          <span className="text-[10px] text-muted-foreground font-mono">
             ({tags.length})
           </span>
+          <ChevronDown
+            className={cn(
+              'size-3 text-foreground transition-transform duration-200 ml-0.5',
+              !isExpanded && '-rotate-90'
+            )}
+          />
         </button>
 
         {selectedTag && (
           <button
             onClick={() => onSelectTag(null)}
-            className="flex items-center gap-0.5 text-[10px] text-primary hover:underline"
+            className="flex items-center gap-1 text-[10px] text-foreground hover:underline font-medium cursor-pointer"
             title="Clear tag filter"
           >
             <span>Clear</span>
-            <X className="size-3" />
+            <X className="size-2.5 text-foreground" />
           </button>
         )}
       </div>
 
       {isExpanded && (
-        <div className="space-y-1.5">
-          {tags.length > 6 && (
+        <div className="space-y-1.5 px-1">
+          {tags.length > 5 && (
             <div className="relative">
               <input
                 type="text"
                 placeholder="Filter tags..."
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                className="w-full h-6 px-2 text-[11px] rounded bg-muted/40 border border-border/30 placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60"
+                className="w-full h-6 px-2 text-[11px] rounded bg-muted/40 border border-border/40 placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring transition-colors"
               />
               {filterQuery && (
                 <button
                   onClick={() => setFilterQuery('')}
-                  className="absolute right-1.5 top-1 text-muted-foreground/60 hover:text-foreground"
+                  className="absolute right-1.5 top-1 text-foreground hover:text-foreground cursor-pointer"
                 >
-                  <X className="size-3" />
+                  <X className="size-3 text-foreground" />
                 </button>
               )}
             </div>
           )}
 
           {/* Tags list */}
-          <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pt-0.5">
+          <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pt-0.5 custom-scrollbar">
             {filteredTags.map((tag) => {
               const isSelected = selectedTag === tag;
               const count = tagCounts[tag];
@@ -85,21 +91,16 @@ export default function TagSelector({
                   key={tag}
                   onClick={() => onSelectTag(isSelected ? null : tag)}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all',
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer',
                     isSelected
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/30'
+                      ? 'bg-accent text-foreground font-semibold shadow-xs'
+                      : 'bg-muted/40 text-foreground hover:bg-muted border border-border/30'
                   )}
                 >
-                  <Hash className="size-2.5 opacity-60" />
+                  <Hash className="size-2.5 text-foreground/60" />
                   <span className="truncate max-w-[120px]">{tag}</span>
                   {count != null && count > 0 && (
-                    <span
-                      className={cn(
-                        'text-[9px] font-mono tabular-nums opacity-70 ml-0.5',
-                        isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
-                      )}
-                    >
+                    <span className="text-[9px] font-mono tabular-nums text-muted-foreground ml-0.5">
                       {count}
                     </span>
                   )}

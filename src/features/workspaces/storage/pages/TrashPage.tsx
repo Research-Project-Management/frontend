@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from '@/features/workspaces/shell';
 import { useTrash, useRestoreItem, usePermanentlyDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 
 

@@ -16,8 +16,8 @@ import {
   AvatarImage,
 } from "@/shared/components/ui";
 
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useProjects } from '@/features/workspaces/projects/shell/services/project.service';
+import { useWorkspace } from '@/features/workspaces/shell';
+import { useProjects } from '@/features/workspaces/projects/shell';
 
 // We use standard semantic tokens instead of hardcoded colors to adhere to DESIGN.md
 

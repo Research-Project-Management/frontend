@@ -104,6 +104,8 @@ export default function DuplicatesPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
+          onBatchDeletePapers={actions.handleBatchDeletePapers}
+          onBatchMovePapers={actions.handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
           onAddPaper={() => setUploadOpen(true)}
           showCollection={true}

@@ -24,6 +24,7 @@ export default function UnfiledPage() {
     collectionMap,
     collections,
     uploadOpen,
+    uploadMode,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -33,6 +34,7 @@ export default function UnfiledPage() {
     setSearch,
     setSelectedPaperId,
     setUploadOpen,
+    handleOpenUpload,
     setCreateCollectionOpen,
     handleAddPaper,
     handleCreateCollection,
@@ -67,7 +69,7 @@ export default function UnfiledPage() {
         icon={Inbox}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={() => setUploadOpen(true)}
+        onAddPaper={(mode) => handleOpenUpload(mode || 'file')}
         onAddCollection={() => setCreateCollectionOpen(true)}
       />
 
@@ -81,8 +83,10 @@ export default function UnfiledPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
+          onBatchDeletePapers={actions.handleBatchDeletePapers}
+          onBatchMovePapers={actions.handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => setUploadOpen(true)}
+          onAddPaper={() => handleOpenUpload('file')}
           showCollection={false}
         />
 
@@ -103,6 +107,7 @@ export default function UnfiledPage() {
           onSubmit={handleAddPaper}
           isPending={isAddingPaper}
           workspaceId={workspaceId}
+          initialMode={uploadMode}
         />
       )}
 

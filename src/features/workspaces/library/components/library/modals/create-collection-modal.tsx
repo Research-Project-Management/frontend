@@ -129,7 +129,7 @@ export default function CreateCollectionModal({
                     {/* Root My Library */}
                     <SelectItem value="root">
                       <div className="flex items-center gap-2">
-                        <Library className="size-4 text-primary" />
+                        <Library className="size-4 text-foreground" />
                         <span>My Library</span>
                       </div>
                     </SelectItem>
@@ -138,10 +138,7 @@ export default function CreateCollectionModal({
                     {collections.map((col) => (
                       <SelectItem key={col._id} value={col._id}>
                         <div className="flex items-center gap-2 pl-2">
-                          <Folder
-                            className="size-4 shrink-0 text-amber-500/90"
-                            style={col.color ? { color: col.color } : undefined}
-                          />
+                          <Folder className="size-4 shrink-0 text-foreground" />
                           <span className="truncate">{col.name}</span>
                         </div>
                       </SelectItem>

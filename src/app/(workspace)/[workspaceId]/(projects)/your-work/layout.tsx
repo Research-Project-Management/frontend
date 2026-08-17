@@ -9,7 +9,8 @@ import {
 } from '@/features/workspaces/projects/your-work';
 
 export default function YourWorkLayout({ children }: { children: React.ReactNode }) {
-  const { categorizedTasks } = useSummaryWork();
+  const { state } = useSummaryWork();
+  const { categorizedTasks } = state;
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden bg-background">

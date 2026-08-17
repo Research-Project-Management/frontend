@@ -21,7 +21,7 @@ export interface StatusModalProps {
   type: StatusModalType;
   title?: string;
   isSubmitting?: boolean;
-  availableCycles?: Array<{ _id: string; name: string }>;
+  availableCycles?: Array<{ _id?: string; id?: string; name: string }>;
 }
 
 export const StatusModal = ({
@@ -34,7 +34,9 @@ export const StatusModal = ({
   availableCycles = [],
 }: StatusModalProps) => {
   const [incompleteAction, setIncompleteAction] = useState<'transfer' | 'backlog' | 'leave'>('backlog');
-  const [targetCycleId, setTargetCycleId] = useState<string>(availableCycles[0]?._id || '');
+  const [targetCycleId, setTargetCycleId] = useState<string>(
+    availableCycles[0]?._id || availableCycles[0]?.id || ''
+  );
 
   const handleConfirm = () => {
     if (type === 'complete') {
@@ -131,11 +133,14 @@ export const StatusModal = ({
                           onChange={(e) => setTargetCycleId(e.target.value)}
                           className="w-full h-8 px-2 text-xs border border-border bg-background rounded-sm text-foreground focus:outline-none"
                         >
-                          {availableCycles.map((c) => (
-                            <option key={c._id} value={c._id}>
-                              {c.name}
-                            </option>
-                          ))}
+                          {availableCycles.map((c) => {
+                            const cId = c._id || c.id || '';
+                            return (
+                              <option key={cId} value={cId}>
+                                {c.name}
+                              </option>
+                            );
+                          })}
                         </select>
                       )}
                     </div>

@@ -51,7 +51,7 @@ export const TaskService = {
     apiPost(`/api/tasks/${taskId}/comments`, { content }),
 
   deleteComment: (taskId: string, commentId: string) =>
-    apiDelete(`/api/tasks/${taskId}/comments/${commentId}`),
+    apiDelete(`/api/tasks/comments/${commentId}`),
 
   getActivityLogs: (taskId: string) =>
     apiGet(`/api/tasks/${taskId}/activity`),

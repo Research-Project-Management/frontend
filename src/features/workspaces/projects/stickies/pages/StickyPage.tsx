@@ -2,7 +2,7 @@
 
 import { useCard } from '@/features/workspaces/projects/stickies/hooks/use-card';
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Card from '../components/card/Card';
 import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { useParams } from "next/navigation";
@@ -39,17 +39,30 @@ export default function StickyPage() {
   const [projectFilter, setProjectFilter] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => { setIsMounted(true); }, []);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  const allStickiesQuery = useSticky(workspaceId, "", undefined);
-  const allStickies = (allStickiesQuery.query.data || []) as Sticky[];
-  const availableProjectIds = React.useMemo(() => {
-    return Array.from(new Set(allStickies.map(s => s.projectId).filter(Boolean) as string[]));
-  }, [allStickies]);
+  const hasFilter = searchQuery.length > 0 || projectFilter.length > 0;
 
-  const { state, actions } = useCard({ search: searchQuery, projectId: projectFilter.join(',') });
+  // Single query when unfiltered; conditional background query only when filter is active to keep project options list complete
+  const allStickiesQuery = useSticky(workspaceId, "", undefined, {
+    enabled: hasFilter,
+  });
 
+  const { state, actions } = useCard({
+    search: searchQuery,
+    projectId: projectFilter.join(','),
+  });
 
+  const availableProjectIds = useMemo(() => {
+    const dataSource = hasFilter
+      ? ((allStickiesQuery.query.data || []) as Sticky[])
+      : state.items;
+    return Array.from(
+      new Set(dataSource.map((s) => s.projectId).filter(Boolean) as string[]),
+    );
+  }, [hasFilter, allStickiesQuery.query.data, state.items]);
 
   if (state.status.isLoading) {
     return (
@@ -106,38 +119,42 @@ export default function StickyPage() {
               </div>
             </SortableContext>
 
-            {isMounted && createPortal(
-              <DragOverlay dropAnimation={{
-                sideEffects: defaultDropAnimationSideEffects({
-                  styles: {
-                    active: {
-                      opacity: '0.5',
-                    },
-                  },
-                }),
-              }}>
-                {state.activeId
-                  ? (() => {
-                    const sticky = state.items.find((n: any) => n._id === state.activeId);
-                    return sticky ? (
-                      <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
-                        <Card
-                          sticky={sticky}
-                          onUpdate={actions.update}
-                          onDelete={actions.delete}
-                          isDragging={true}
-                        />
-                      </div>
-                    ) : null;
-                  })()
-                  : null}
-              </DragOverlay>,
-              document.body
-            )}
+            {isMounted &&
+              createPortal(
+                <DragOverlay
+                  dropAnimation={{
+                    sideEffects: defaultDropAnimationSideEffects({
+                      styles: {
+                        active: {
+                          opacity: '0.5',
+                        },
+                      },
+                    }),
+                  }}
+                >
+                  {state.activeId
+                    ? (() => {
+                        const sticky = state.items.find(
+                          (n: any) => n._id === state.activeId,
+                        );
+                        return sticky ? (
+                          <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
+                            <Card
+                              sticky={sticky}
+                              onUpdate={actions.update}
+                              onDelete={actions.delete}
+                              isDragging={true}
+                            />
+                          </div>
+                        ) : null;
+                      })()
+                    : null}
+                </DragOverlay>,
+                document.body,
+              )}
           </DndContext>
         )}
       </main>
     </div>
   );
 }
-

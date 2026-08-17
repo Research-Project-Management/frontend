@@ -1,11 +1,14 @@
 export interface ProjectMemberUser {
-  _id: string;
+  id?: string;
+  _id?: string;
   name: string;
   email?: string;
   avatar?: string;
 }
 
 export interface ProjectMember {
+  id?: string;
+  _id?: string;
   user?: ProjectMemberUser;
   userId?: string | ProjectMemberUser;
   role: string;
@@ -13,34 +16,70 @@ export interface ProjectMember {
 }
 
 export interface Workspace {
-  _id: string;
+  id?: string;
+  _id?: string;
   name: string;
+  slug?: string;
+}
+
+export interface ProjectSettings {
+  parallelCycles?: boolean;
+  isPrivate?: boolean;
+  [key: string]: any;
 }
 
 export interface Project {
+  id?: string;
   _id: string;
   name: string;
   description: string;
-  avatar?: string;
+  identifier?: string;
+  key?: string;
+  avatar?: string | null;
+  cover?: string | null;
   isActive?: boolean;
+  isArchived?: boolean;
+  isPrivate?: boolean;
+  timezone?: string;
   modules: string[];
   workspace?: string;
   workspaceId?: string | Workspace;
   members: ProjectMember[];
   createdBy?: {
-    _id: string;
+    id?: string;
+    _id?: string;
     name: string;
     email?: string;
     avatar?: string;
   };
-  settings?: {
-    parallelCycles?: boolean;
-    isPrivate?: boolean;
-    [key: string]: any;
-  };
+  settings?: ProjectSettings;
   createdAt: string;
   updatedAt: string;
-  key?: string;
 }
 
-export type ProjectRole = "owner" | "manager" | "lead" | "member" | "viewer";
+export interface CreateProjectInput {
+  name: string;
+  avatar?: string;
+  cover?: string | null;
+  description?: string;
+  identifier?: string;
+  isPrivate?: boolean;
+  timezone?: string;
+  modules?: string[];
+}
+
+export interface UpdateProjectInput {
+  projectId: string;
+  name?: string;
+  description?: string;
+  avatar?: string | null;
+  cover?: string | null;
+  identifier?: string;
+  isPrivate?: boolean;
+  timezone?: string;
+  isArchived?: boolean;
+  modules?: string[];
+  subscriberIds?: string[];
+}
+
+export type { ProjectRole } from '@/shared/types/iam.types';

@@ -1,4 +1,5 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
+import { API_BASE_URL } from "@/shared/constants";
 import type { Collection, Paper, PaperAttachment } from "@/features/workspaces/library/types/library.types";
 
 export const paperKeys = {
@@ -13,91 +14,137 @@ export const paperKeys = {
 
 // ── Unified Academic Ingestion Seam ─────────────────────────────────────────
 
-export const ingestPaper = (
-  workspaceId: string,
-  data: {
-    source?: "upload" | "storage" | "identifier";
-    fileId?: string | null;
-    collectionId?: string | null;
-    title?: string;
-    filename?: string;
-    fileUrl?: string;
-    size?: number;
-    mimeType?: string;
-    authors?: string[];
-    year?: number | null;
-    doi?: string;
-    citationKey?: string;
-  }
-) => apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/ingest`, data);
+export interface IngestPaperDTO {
+  source?: "upload" | "storage" | "identifier";
+  fileId?: string | null;
+  collectionId?: string | null;
+  title?: string;
+  filename?: string;
+  fileUrl?: string;
+  size?: number;
+  mimeType?: string;
+  authors?: string[];
+  year?: number | null;
+  doi?: string;
+  citationKey?: string;
+}
 
-// ── Standard Paper Operations ───────────────────────────────────────────────
+// ── Structured Paper Service ──────────────────────────────────────────────────
 
-export const getAllPapers = (workspaceId: string) =>
-  apiGet<{ papers: Paper[] }>(`/api/library/papers/${workspaceId}`);
+export const PaperService = {
+  getAll: (workspaceId: string, params?: { collectionId?: string; search?: string; limit?: number; skip?: number }) =>
+    apiGet<{ papers: Paper[]; total?: number }>(`/api/library/papers/${workspaceId}`, { params }),
 
-export const getPaperById = (workspaceId: string, paperId: string) =>
-  apiGet<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`);
+  getById: (workspaceId: string, paperId: string) =>
+    apiGet<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`),
 
-export const getCollectionPapers = (workspaceId: string, collectionId: string) =>
-  apiGet<{ collection: Collection; papers: Paper[] }>(
-    `/api/library/${workspaceId}/collections/${collectionId}/papers`
-  );
+  getByCollection: (workspaceId: string, collectionId: string, search?: string) =>
+    apiGet<{ collection: Collection; papers: Paper[] }>(
+      `/api/library/${workspaceId}/collections/${collectionId}/papers`,
+      { params: search ? { search } : undefined }
+    ),
 
-export const createPaper = (workspaceId: string, collectionId: string, data: Partial<Paper>) =>
-  apiPost<{ paper: Paper }>(`/api/library/${workspaceId}/collections/${collectionId}/papers`, data);
+  create: (workspaceId: string, collectionId: string, data: Partial<Paper>) =>
+    collectionId
+      ? apiPost<{ paper: Paper }>(`/api/library/${workspaceId}/collections/${collectionId}/papers`, data)
+      : apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/upload`, data),
 
-export const updatePaper = (workspaceId: string, paperId: string, data: Partial<Paper>) =>
-  apiPut<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`, data);
+  update: (workspaceId: string, paperId: string, data: Partial<Paper>) =>
+    apiPut<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`, data),
 
-export const deletePaper = (workspaceId: string, paperId: string) =>
-  apiDelete(`/api/library/papers/${workspaceId}/${paperId}`);
+  delete: (workspaceId: string, paperId: string) =>
+    apiDelete(`/api/library/papers/${workspaceId}/${paperId}`),
 
-export const addPaperAttachment = (
-  workspaceId: string,
-  paperId: string,
-  data: Partial<PaperAttachment>
-) =>
-  apiPost<{ paper: Paper }>(
-    `/api/library/papers/${workspaceId}/${paperId}/attachments`,
-    data
-  );
+  ingest: (workspaceId: string, data: IngestPaperDTO) =>
+    apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/ingest`, data),
 
-export const deletePaperAttachment = (
-  workspaceId: string,
-  paperId: string,
-  attachmentId: string
-) =>
-  apiDelete<{ paper: Paper }>(
-    `/api/library/papers/${workspaceId}/${paperId}/attachments/${attachmentId}`
-  );
+  addAttachment: (
+    workspaceId: string,
+    paperId: string,
+    data: Partial<PaperAttachment>
+  ) =>
+    apiPost<{ paper: Paper }>(
+      `/api/library/papers/${workspaceId}/${paperId}/attachments`,
+      data
+    ),
 
-export const importPaperFromStorage = (
-  workspaceId: string,
-  data: { fileId: string; collectionId?: string | null; title?: string; authors?: string[] }
-) =>
-  apiPost<{ paper: Paper }>(
-    `/api/library/papers/${workspaceId}/import-storage`,
-    data
-  );
+  deleteAttachment: (
+    workspaceId: string,
+    paperId: string,
+    attachmentId: string
+  ) =>
+    apiDelete<{ paper: Paper }>(
+      `/api/library/papers/${workspaceId}/${paperId}/attachments/${attachmentId}`
+    ),
 
-export const reindexPaper = (workspaceId: string, paperId: string) =>
-  apiPost<{ message: string; paperId: string }>(
-    `/api/library/papers/${workspaceId}/${paperId}/reindex`,
-  );
+  importFromStorage: (
+    workspaceId: string,
+    data: { fileId: string; collectionId?: string | null; title?: string; authors?: string[] }
+  ) =>
+    apiPost<{ paper: Paper }>(
+      `/api/library/papers/${workspaceId}/import-storage`,
+      data
+    ),
+
+  reindex: (workspaceId: string, paperId: string) =>
+    apiPost<{ message: string; paperId: string }>(
+      `/api/library/papers/${workspaceId}/${paperId}/reindex`,
+    ),
+
+  fetchPdfBlob: (url: string) => fetchPdfBlob(url),
+};
+
+// ── Backwards-compatible Function Aliases ─────────────────────────────────────
+
+export const ingestPaper = PaperService.ingest;
+export const getAllPapers = PaperService.getAll;
+export const getPaperById = PaperService.getById;
+export const getCollectionPapers = PaperService.getByCollection;
+export const createPaper = PaperService.create;
+export const updatePaper = PaperService.update;
+export const deletePaper = PaperService.delete;
+export const addPaperAttachment = PaperService.addAttachment;
+export const deletePaperAttachment = PaperService.deleteAttachment;
+export const importPaperFromStorage = PaperService.importFromStorage;
+export const reindexPaper = PaperService.reindex;
 
 export const fetchPdfBlob = async (url: string): Promise<Blob> => {
-  const response = await fetch(url, { credentials: "include" });
+  let targetUrl = url;
+
+  // Resolve mock / local storage hostnames to local static assets
+  if (targetUrl.includes('r2.rpm.local')) {
+    const match = targetUrl.match(/\/papers\/[^/?#]+/);
+    targetUrl = match ? match[0] : targetUrl.replace(/^https?:\/\/[^/]+/, '');
+  }
+
+  const isLocalStatic = targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
+  const resolvedUrl = isLocalStatic
+    ? targetUrl
+    : targetUrl.startsWith('http')
+      ? targetUrl
+      : `${API_BASE_URL}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
+
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token && !isLocalStatic) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(resolvedUrl, {
+    credentials: isLocalStatic ? 'same-origin' : 'include',
+    headers,
+  });
+
   if (!response.ok) {
     throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
   }
 
-  const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
     const text = await response.text();
     try {
       const parsed = JSON.parse(text);
-      throw new Error(parsed.message || "Failed to load PDF (Server returned JSON)");
+      throw new Error(parsed.message || 'Failed to load PDF (Server returned JSON)');
     } catch {
       throw new Error(`Server returned JSON instead of PDF: ${text.substring(0, 50)}...`);
     }

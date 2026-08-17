@@ -46,7 +46,9 @@ export const previewServices = {
         for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
-          const text = textContent.items.map((t: any) => t.str).join(' ');
+          const text = textContent.items
+            .map((t: unknown) => (typeof t === 'object' && t !== null && 'str' in t ? String((t as { str: unknown }).str) : ''))
+            .join(' ');
           const found = extractDoiFromText(text);
           if (found) { 
             doi = found; 

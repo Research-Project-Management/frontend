@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import type { Quicklink } from '../types/home.types';
 
@@ -66,5 +68,8 @@ export function useQuicklinks(workspaceId: string) {
     [storageKey]
   );
 
-  return { links, isLoaded, addQuicklink, updateQuicklink, removeQuicklink };
+  return {
+    state: { links, isLoaded },
+    actions: { addQuicklink, updateQuicklink, removeQuicklink },
+  };
 }

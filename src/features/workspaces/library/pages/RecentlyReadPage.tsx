@@ -24,6 +24,7 @@ export default function RecentlyReadPage() {
     collectionMap,
     collections,
     uploadOpen,
+    uploadMode,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -33,6 +34,7 @@ export default function RecentlyReadPage() {
     setSearch,
     setSelectedPaperId,
     setUploadOpen,
+    handleOpenUpload,
     setCreateCollectionOpen,
     handleAddPaper,
     handleCreateCollection,
@@ -70,7 +72,7 @@ export default function RecentlyReadPage() {
         icon={History}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={() => setUploadOpen(true)}
+        onAddPaper={(mode) => handleOpenUpload(mode || 'file')}
         onAddCollection={() => setCreateCollectionOpen(true)}
       />
 
@@ -84,8 +86,10 @@ export default function RecentlyReadPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
+          onBatchDeletePapers={actions.handleBatchDeletePapers}
+          onBatchMovePapers={actions.handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => setUploadOpen(true)}
+          onAddPaper={() => handleOpenUpload('file')}
           showCollection={true}
         />
 
@@ -106,6 +110,7 @@ export default function RecentlyReadPage() {
           onSubmit={handleAddPaper}
           isPending={isAddingPaper}
           workspaceId={workspaceId}
+          initialMode={uploadMode}
         />
       )}
 

@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { useParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   TaskDialog,
   useProjectTasks,
@@ -24,6 +26,9 @@ export function TaskDialogModal({
   open,
   onOpenChange,
 }: TaskDialogModalProps) {
+  const queryClient = useQueryClient();
+  const { workspaceId } = useParams() as { workspaceId: string };
+
   const { data: projectTasks } = useProjectTasks(projectId);
   const { data: projectDetails } = useProjectDetails(projectId);
 
@@ -36,12 +41,27 @@ export function TaskDialogModal({
   const pDetails = projectDetails as any;
   const members = pDetails?.members || [];
 
+  const invalidateWorkspaceData = () => {
+    if (workspaceId) {
+      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['your-work'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-activity', workspaceId] });
+    }
+  };
+
   const handleSave = (data: TaskMutationInput) => {
-    updateTaskMutation.mutate({
-      taskId,
-      projectId,
-      ...data,
-    });
+    updateTaskMutation.mutate(
+      {
+        taskId,
+        projectId,
+        ...data,
+      },
+      {
+        onSuccess: () => {
+          invalidateWorkspaceData();
+        },
+      },
+    );
   };
 
   const handleDelete = () => {
@@ -49,14 +69,22 @@ export function TaskDialogModal({
       { taskId, projectId },
       {
         onSuccess: () => {
+          invalidateWorkspaceData();
           onOpenChange(false);
         },
-      }
+      },
     );
   };
 
   const handleDuplicate = () => {
-    duplicateTaskMutation.mutate({ taskId, projectId });
+    duplicateTaskMutation.mutate(
+      { taskId, projectId },
+      {
+        onSuccess: () => {
+          invalidateWorkspaceData();
+        },
+      },
+    );
   };
 
   if (!task) return null;

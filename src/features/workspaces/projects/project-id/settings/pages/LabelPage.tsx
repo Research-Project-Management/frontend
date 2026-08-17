@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectDetails } from '@/features/workspaces/projects/shell';
 import { Button, Skeleton } from '@/shared/components/ui';
-import DeleteModal from '@/features/workspaces/settings/components/DeleteModal';
+import { DeleteModal } from '@/features/workspaces/settings';
 import { ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/label/EmptyState';

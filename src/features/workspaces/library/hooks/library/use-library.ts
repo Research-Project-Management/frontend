@@ -7,7 +7,8 @@ import { useWorkspace } from '@/features/workspaces/shell';
 import { useCollections } from '../data/use-collections';
 import { usePapers } from '../data/use-papers';
 import { filterPapers } from '../../utils/filter';
-import type { Paper } from '../../types/library.types';
+import { getLibraryEntityId } from '../../utils/library.util';
+import type { Paper, CollectionInput } from '../../types/library.types';
 
 export function useLibrary() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
@@ -17,7 +18,7 @@ export function useLibrary() {
   const activeFilter = searchParams.get('filter');
 
   const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id ?? '';
+  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
 
   const paperService = usePapers({ workspaceId, collectionId: '' });
   const papersResult = paperService.state.allPapers;
@@ -30,10 +31,16 @@ export function useLibrary() {
   const [search, setSearch] = useState('');
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'file' | 'folder' | 'link'>('file');
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false);
 
+  const handleOpenUpload = (mode: 'file' | 'folder' | 'link' = 'file') => {
+    setUploadMode(mode);
+    setUploadOpen(true);
+  };
+
   const collectionMap = useMemo(
-    () => Object.fromEntries(collections.map((c) => [c._id, c])),
+    () => Object.fromEntries(collections.map((c) => [getLibraryEntityId(c), c])),
     [collections],
   );
 
@@ -44,13 +51,14 @@ export function useLibrary() {
 
     for (const p of papers) {
       if (p.deletedAt) continue;
+      const pId = getLibraryEntityId(p);
       if (p.doi && p.doi.trim()) {
         const d = p.doi.trim().toLowerCase();
-        doiMap.set(d, [...(doiMap.get(d) || []), p._id]);
+        doiMap.set(d, [...(doiMap.get(d) || []), pId]);
       }
       if (p.title && p.title.trim()) {
         const t = p.title.trim().toLowerCase();
-        titleMap.set(t, [...(titleMap.get(t) || []), p._id]);
+        titleMap.set(t, [...(titleMap.get(t) || []), pId]);
       }
     }
 
@@ -98,7 +106,7 @@ export function useLibrary() {
     } else if (activeFilter === 'unfiled') {
       result = result.filter((p) => !p.collectionId);
     } else if (activeFilter === 'duplicates') {
-      result = result.filter((p) => duplicatePaperIds.has(p._id));
+      result = result.filter((p) => duplicatePaperIds.has(getLibraryEntityId(p)));
     }
 
     // Apply tag filter
@@ -113,16 +121,15 @@ export function useLibrary() {
   }, [papers, search, activeFilter, activeTag, duplicatePaperIds]);
 
   const selectedPaper = useMemo(
-    () => papers.find((p: any) => p._id === selectedPaperId) || null,
+    () => papers.find((p: Paper) => getLibraryEntityId(p) === selectedPaperId) || null,
     [papers, selectedPaperId],
   );
 
   const handleAddPaper = async (paperData: Parameters<typeof paperService.actions.addPaper>[0]) => {
-    await paperService.actions.addPaper(paperData);
-    setUploadOpen(false);
+    return await paperService.actions.addPaper(paperData);
   };
 
-  const handleCreateCollection = (collectionData: any) => {
+  const handleCreateCollection = (collectionData: CollectionInput) => {
     collectionService.actions.create(collectionData, {
       onSuccess: () => setCreateCollectionOpen(false),
     });
@@ -132,6 +139,21 @@ export function useLibrary() {
     if (!confirm('Remove this paper?')) return;
     paperService.actions.deletePaper({ paperId });
     if (selectedPaperId === paperId) setSelectedPaperId(null);
+  };
+
+  const handleBatchDeletePapers = (paperIds: string[]) => {
+    for (const paperId of paperIds) {
+      paperService.actions.deletePaper({ paperId });
+    }
+    if (selectedPaperId && paperIds.includes(selectedPaperId)) {
+      setSelectedPaperId(null);
+    }
+  };
+
+  const handleBatchMovePapers = (paperIds: string[], targetCollectionId: string | null) => {
+    for (const paperId of paperIds) {
+      paperService.actions.updatePaper({ paperId, collectionId: targetCollectionId ?? undefined });
+    }
   };
 
   const selectedCollection = useMemo(
@@ -155,6 +177,7 @@ export function useLibrary() {
       selectedCollection,
       collectionMap,
       uploadOpen,
+      uploadMode,
       createCollectionOpen,
       isAddingPaper: paperService.state.isAdding,
       isCreatingCollection: collectionService.state.isCreating,
@@ -163,10 +186,14 @@ export function useLibrary() {
       setSearch,
       setSelectedPaperId,
       setUploadOpen,
+      setUploadMode,
+      handleOpenUpload,
       setCreateCollectionOpen,
       handleAddPaper,
       handleCreateCollection,
       handleDeletePaper,
+      handleBatchDeletePapers,
+      handleBatchMovePapers,
       navigate: router.push,
     },
   };

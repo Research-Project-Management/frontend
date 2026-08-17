@@ -47,7 +47,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDate(page.updatedAt)}
+                    {page.updatedAt ? formatDate(page.updatedAt) : '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {page.author?.name || '—'}

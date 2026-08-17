@@ -1,6 +1,6 @@
-'use client';
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -14,13 +14,11 @@ import {
   Label,
 } from "@/shared/components/ui";
 import { Check } from "lucide-react";
+import { columnFormSchema, type ColumnFormSchema } from "../../schemas/task.schema";
 
 // ── Column Form Modal (Create / Edit) ───────────────────────────────────────
 
-export type SectionData = {
-  sectionName: string;
-  selectedColor: string;
-};
+export type SectionData = ColumnFormSchema;
 
 export interface ColumnFormModalProps {
   isOpen: boolean;
@@ -49,29 +47,43 @@ export function ColumnFormModal({
   initialData,
   isLoading = false,
 }: ColumnFormModalProps) {
-  const [sectionName, setSectionName] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLUMN_PALETTE[0].value);
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<ColumnFormSchema>({
+    resolver: zodResolver(columnFormSchema),
+    defaultValues: {
+      sectionName: initialData?.sectionName || "",
+      selectedColor: initialData?.selectedColor || COLUMN_PALETTE[0].value,
+    },
+  });
+
+  const selectedColor = watch("selectedColor");
 
   useEffect(() => {
     if (isOpen) {
-      setSectionName(initialData?.sectionName || "");
-      setSelectedColor(initialData?.selectedColor || COLUMN_PALETTE[0].value);
+      reset({
+        sectionName: initialData?.sectionName || "",
+        selectedColor: initialData?.selectedColor || COLUMN_PALETTE[0].value,
+      });
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, reset]);
 
-  const handleSubmit = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!sectionName.trim()) return;
+  const onFormSubmit = (data: ColumnFormSchema) => {
     onSubmit({
-      sectionName: sectionName.trim(),
-      selectedColor,
+      sectionName: data.sectionName.trim(),
+      selectedColor: data.selectedColor,
     });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 shadow-2xl rounded-sm">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
               {mode === "create" ? "New Column" : "Edit Column"}
@@ -86,11 +98,13 @@ export function ColumnFormModal({
               <Input
                 id="column-name"
                 placeholder="Enter column title..."
-                value={sectionName}
-                onChange={(e) => setSectionName(e.target.value)}
                 autoFocus
                 className="h-10 text-[14px] font-medium text-foreground rounded-sm border-zinc-200 bg-zinc-50/50 shadow-none focus-visible:ring-0 focus-visible:border-primary focus-visible:bg-white transition-all"
+                {...register("sectionName")}
               />
+              {errors.sectionName && (
+                <p className="text-xs text-destructive">{errors.sectionName.message}</p>
+              )}
             </div>
 
             <div className="space-y-2.5">
@@ -99,11 +113,11 @@ export function ColumnFormModal({
               </Label>
               <div className="flex items-center gap-3">
                 {COLUMN_PALETTE.map((color) => {
-                  const isSelected = selectedColor.toLowerCase() === color.value.toLowerCase();
+                  const isSelected = selectedColor?.toLowerCase() === color.value.toLowerCase();
                   return (
                     <button
                       key={color.id}
-                      onClick={() => setSelectedColor(color.value)}
+                      onClick={() => setValue("selectedColor", color.value, { shouldDirty: true })}
                       type="button"
                       className={`
                         relative w-7 h-7 rounded-full transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center
@@ -136,7 +150,7 @@ export function ColumnFormModal({
             <Button
               type="submit"
               className="h-9 px-6 text-[13px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-sm transition-all duration-200 active:scale-[0.98]"
-              disabled={!sectionName.trim() || isLoading}
+              disabled={!watch("sectionName")?.trim() || isLoading}
             >
               {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create Column" : "Save Changes")}
             </Button>

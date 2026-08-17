@@ -43,7 +43,9 @@ export const usePageActions = () => {
     mutationFn: ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) =>
       PageService.updateTitle(pageId, title, oldTitle),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(data._id) });
+      if (data?._id || (data as any)?.id) {
+        queryClient.invalidateQueries({ queryKey: pageKeys.detail(data._id || (data as any).id) });
+      }
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Title updated');
     },

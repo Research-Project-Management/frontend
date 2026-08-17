@@ -1,12 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Trash2, ChevronDown } from 'lucide-react';
+import { MoreHorizontal, LogOut, Trash2, ChevronDown } from 'lucide-react';
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,6 +19,7 @@ interface MemberItemProps {
   canManage: boolean;
   onRoleChange: (userId: string, newRole: WorkspaceRole) => void;
   onRemove: (member: WorkspaceMemberItem) => void;
+  onLeave?: (member: WorkspaceMemberItem) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -42,6 +42,7 @@ export function MemberItem({
   canManage,
   onRoleChange,
   onRemove,
+  onLeave,
 }: MemberItemProps) {
   const isOwner = member.role === 'owner';
   const isSelf =
@@ -109,10 +110,10 @@ export function MemberItem({
                 Member
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => onRoleChange(member.userId, 'guest')}
+                onClick={() => onRoleChange(member.userId, 'viewer')}
                 className="cursor-pointer"
               >
-                Guest
+                Viewer
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -133,20 +134,39 @@ export function MemberItem({
         {formattedDate}
       </td>
 
-      {/* ── Actions (Remove) ── */}
-      <td className="py-3.5 px-2 text-right pr-4">
-        {canManage && !isOwner && !isSelf && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onRemove(member)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
-            title="Remove from workspace"
-            aria-label={`Remove ${member.user.name} from workspace`}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-        )}
+      {/* ── Actions (Hover 3-dots: Owner => Leave, Others => Remove) ── */}
+      <td className="py-3.5 px-2 text-right pr-4 w-10">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none"
+              title="More actions"
+              aria-label="More actions"
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32 p-1 rounded-lg text-xs">
+            {isOwner ? (
+              <DropdownMenuItem
+                onClick={() => (onLeave ? onLeave(member) : onRemove(member))}
+                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
+              >
+                <LogOut className="size-3.5 text-muted-foreground" />
+                <span>Leave</span>
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => onRemove(member)}
+                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
+              >
+                <Trash2 className="size-3.5 text-muted-foreground" />
+                <span>Remove</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </td>
     </tr>
   );

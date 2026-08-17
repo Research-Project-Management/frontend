@@ -6,7 +6,7 @@ import PaperTableHeader from './paper-table-header';
 import PaperTableRow from './paper-table-row';
 import PaperTableEmpty from './paper-table-empty';
 import PaperBatchBar from './paper-batch-bar';
-import { usePaperTable, type SortField, type SortOrder } from '../../../hooks/library/use-paper-table';
+import { usePaper, type SortField, type SortOrder } from '../../../hooks/library/use-paper';
 import type { Paper, Collection } from '../../../types/library.types';
 
 interface PaperTableProps {
@@ -54,7 +54,7 @@ export default function PaperTable({
     isAllSelected,
     isPartiallySelected,
     selectedCount,
-  } = usePaperTable({ papers, initialActiveId: selectedPaperId });
+  } = usePaper({ papers, initialActiveId: selectedPaperId });
 
   // Selected paper objects for batch actions
   const selectedPapers = React.useMemo(() => {
@@ -104,19 +104,7 @@ export default function PaperTable({
 
   return (
     <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-auto min-w-0 select-none">
-      <table className="w-full text-left border-collapse table-fixed select-none min-w-[820px]">
-        <colgroup>
-          <col style={{ width: '48px' }} />
-          <col style={{ width: '32px' }} />
-          <col />
-          <col style={{ width: '220px' }} />
-          <col style={{ width: '70px' }} />
-          <col style={{ width: '180px' }} />
-          {showCollection && <col style={{ width: '130px' }} />}
-          <col style={{ width: '110px' }} />
-          <col style={{ width: '64px' }} />
-        </colgroup>
-
+      <table className="w-full text-left border-collapse select-none">
         <PaperTableHeader
           sortField={sortField}
           sortOrder={sortOrder}

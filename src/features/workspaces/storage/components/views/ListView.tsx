@@ -3,7 +3,7 @@ import { Star, Folder, MoreVertical, Download, RotateCcw, Trash2, Pencil, Folder
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui';
-import { DeleteModal } from '@/features/workspaces/settings';
+import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from '@/shared/utils/url';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { getFileType, getFileIcon, getFileColor, formatFileSize, formatDate } from '../../utils/file';

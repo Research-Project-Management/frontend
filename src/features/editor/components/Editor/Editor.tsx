@@ -36,20 +36,19 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { usePageActions } from '@/features/editor/hooks/use-page';
-const usePageComments = (_pageId?: string | null): { data: PageComment[] } => ({ data: [] });
+import { usePageComments } from '@/features/editor/services/comment.service';
 import type { Page, PageComment } from "@/features/editor/types/document.types";
-import { useEditorActionsStore } from '@/features/editor/store/editor-actions.store';
+import { useActionsStore } from '@/features/editor/store/actions.store';
 import { useDebounce } from '@/shared/hooks/use-debounce';
-import { useEditorContext } from "@/features/editor/pages/EditorPage";
-import { usePageContext } from "@/features/editor/store/page-context";
-import { useEditorSettingsStore } from "@/features/editor/store/editor-settings.store";
+import { usePageStore } from "@/features/editor/store/page.store";
+import { useSettingsStore } from "@/features/editor/store/settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
 import { cn } from "@/shared/lib/utils";
+import { EditorEventBus } from "@/features/editor/utils/editor.util";
 const FluxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 );
-import EditorToolbar from "./Toolbar";
-
+import Format from "./Format";
 
 // Register LaTeX language and custom theme before Monaco loads
 if (typeof window !== 'undefined') {
@@ -147,15 +146,6 @@ loader.init().then((monaco) => {
   });
 } // end typeof window !== 'undefined'
 
-/** Deterministic HSL colour from an arbitrary string (e.g. user._id). */
-function stringToColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return `hsl(${Math.abs(hash) % 360},65%,42%)`;
-}
-
 interface EditorProps {
   page: Page;
 }
@@ -177,25 +167,24 @@ interface MenuAction {
   disabled?: boolean;
 }
 
+const extractStringContent = (c: any): string =>
+  typeof c === 'string' ? c : c && typeof c === 'object' ? (c.source || c.text || c.content || '') : '';
+
 export default function Editor({ page }: EditorProps) {
-  const { editorRef } = useEditorContext();
-  const { compileRef, scrollToLineRef, scrollToPdfLineRef, isAiPreviewingRef } =
-    usePageContext();
+  const { editorRef, compileRef, scrollToLineRef, scrollToPdfLineRef, isAiPreviewingRef } =
+    usePageStore();
   const { markDirty } = useCompileStore();
-  const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useEditorSettingsStore();
-  const [content, setContent] = useState(page.content || "");
+  const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useSettingsStore();
+  const [content, setContent] = useState(extractStringContent(page.content));
   const [editorMounted, setEditorMounted] = useState(false);
-  // Tracks the current page._id to detect tab switches
   const activePageIdRef = useRef(page._id);
   const debouncedContent = useDebounce(content, 1000);
-  // Ref to schedule a compile after the next successful save+sync.
   const pendingCompileRef = useRef(false);
   const { updateContent: updateMutation } = usePageActions();
   const { pageId: pageIdParam } = useParams<{ pageId: string }>();
-  const { setPendingComment, setPendingAiText, setPendingAiContext } = useEditorActionsStore();
+  const { setPendingComment, setPendingAiText, setPendingAiContext } = useActionsStore();
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
-  // Adjusted position after measuring the menu DOM (avoids pre-paint flash)
   const [ctxPos, setCtxPos] = useState<CtxPos | null>(null);
   const [ctxStartLine, setCtxStartLine] = useState<number | null>(null);
   const [ctxEndLine, setCtxEndLine] = useState<number | null>(null);
@@ -215,18 +204,24 @@ export default function Editor({ page }: EditorProps) {
     newName: string;
   } | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
+  const domCleanupRef = useRef<(() => void) | null>(null);
 
+  // Unmount cleanup for Monaco DOM listeners and disposables
+  useEffect(() => {
+    return () => {
+      domCleanupRef.current?.();
+      disposablesRef.current.forEach((d) => d.dispose());
+      disposablesRef.current = [];
+    };
+  }, []);
 
-  // Auto-save when content changes (debounced) — skip if it originated from socket.
-  // Guard against stale debounce firing after a tab switch: compare the page id
-  // captured when the debounce started with the currently-active page.
+  // Auto-save when content changes (debounced)
   useEffect(() => {
     if (activePageIdRef.current !== page._id) return;
     if (debouncedContent && debouncedContent !== page.content) {
-      // Push into global dirty map so compile can flush ALL open tabs
       markDirty(page._id, debouncedContent);
       updateMutation.mutate({ pageId: page._id, content: debouncedContent });
-      // Mark that we want to auto-compile after this save confirms the sync.
       if (autoCompile) pendingCompileRef.current = true;
     }
   }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -244,17 +239,10 @@ export default function Editor({ page }: EditorProps) {
     }
   }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
-
-
-  // Reset editor state only when switching to a different page.
-  // IMPORTANT: Do NOT include `content` or `page.content` in the deps — that would cause
-  // this to fire on every keystroke (content !== page.content while typing → reset loop).
-  // Collaborative content sync is handled by the socket "page:content" effect above.
   useEffect(() => {
-    // Update the ref FIRST so any in-flight debounce from the old page is rejected.
     activePageIdRef.current = page._id;
     pendingCompileRef.current = false;
-    setContent(page.content || "");
+    setContent(extractStringContent(page.content));
   }, [page._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close context menu when clicking outside
@@ -267,11 +255,9 @@ export default function Editor({ page }: EditorProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [ctxMenu]);
 
-  // Smart-position the context menu: measure actual DOM size then adjust
-  // so it never overflows the viewport edges.
   useLayoutEffect(() => {
     if (!ctxMenu || !ctxMenuRef.current) return;
-    if (ctxPos) return; // already positioned for this open
+    if (ctxPos) return;
     const el = ctxMenuRef.current;
     const w = el.offsetWidth;
     const h = el.offsetHeight;
@@ -279,14 +265,11 @@ export default function Editor({ page }: EditorProps) {
     const vh = window.innerHeight;
     const rawX = ctxMenu.x;
     const rawY = ctxMenu.y;
-    // Flip left if it would overflow the right edge
     const x = Math.max(4, rawX + w + 4 > vw ? rawX - w - 4 : rawX);
-    // Flip upward if it would overflow the bottom edge
     const y = Math.max(4, rawY + h + 4 > vh ? rawY - h - 8 : rawY);
     setCtxPos({ x, y });
   }, [ctxMenu, ctxPos]);
 
-  // Close selection floating bar when clicking outside
   useEffect(() => {
     if (!selFloating) return;
     const handler = (e: MouseEvent) => {
@@ -297,7 +280,6 @@ export default function Editor({ page }: EditorProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, [selFloating]);
 
-  // Auto-focus and select the rename input when the dialog opens
   useEffect(() => {
     if (renameDialog) {
       setTimeout(() => {
@@ -307,12 +289,19 @@ export default function Editor({ page }: EditorProps) {
     }
   }, [renameDialog]);
 
-  // Update comment glyph decorations when comments change
+  useEffect(() => {
+    editorRef.current?.updateOptions({
+      wordWrap: wordWrap ? "on" : "off",
+      lineNumbers: lineNumbers ? "on" : "off",
+      fontSize,
+      lineHeight: Math.round(fontSize * 1.65),
+    });
+  }, [wordWrap, lineNumbers, fontSize, editorRef]);
+
   useEffect(() => {
     const coll = decorationCollRef.current;
     if (!coll) return;
 
-    // Build map: line → comments that cover that line
     const lineComments = new Map<number, PageComment[]>();
     comments.forEach((c) => {
       if (c.line == null) return;
@@ -324,7 +313,6 @@ export default function Editor({ page }: EditorProps) {
       }
     });
 
-    // Keep ref in sync so the onMouseMove handler always sees fresh data.
     lineCommentsRef.current = lineComments;
 
     coll.set(
@@ -342,7 +330,6 @@ export default function Editor({ page }: EditorProps) {
     );
   }, [comments, editorMounted]);
 
-  // ── Context menu helpers ────────────────────────────────────────────────────
   const closeMenu = () => setCtxMenu(null);
 
   const trigger = (action: string) => {
@@ -394,7 +381,6 @@ export default function Editor({ page }: EditorProps) {
     if (!ed) return;
     const model = ed.getModel();
     if (!model) return;
-    // Whole-word case-sensitive match using Monaco's findMatches with wordSeparators
     const wordSep = "`~!@#$%^&*()-=+[{]}\\|;:'\",./<>?";
     const matches = model.findMatches(word, false, false, true, wordSep, false);
     if (matches.length > 0) {
@@ -407,7 +393,6 @@ export default function Editor({ page }: EditorProps) {
     ed.focus();
   };
 
-  // ── Menu definition ─────────────────────────────────────────────────────────
   const menuGroups: MenuAction[][] = [
     [
       {
@@ -527,9 +512,7 @@ export default function Editor({ page }: EditorProps) {
             endLine: ctxEndLine ?? ctxStartLine ?? 1,
             selectedText: ctxSelText,
           });
-          document.dispatchEvent(
-            new CustomEvent("flux:open-panel", { detail: "Review" }),
-          );
+          EditorEventBus.emit("flux:open-panel", "Review");
           closeMenu();
         },
       },
@@ -544,18 +527,13 @@ export default function Editor({ page }: EditorProps) {
               endLine: ctxEndLine ?? ctxStartLine ?? 1,
             });
           }
-          document.dispatchEvent(new CustomEvent("flux:open-ai-panel"));
+          EditorEventBus.emit("flux:open-ai-panel");
           closeMenu();
         },
       },
     ],
   ];
 
-
-
-
-  // Reactively apply editor settings whenever they change in the SettingsPanel.
-  // Theme is handled separately — it's a controlled prop on <MonacoEditor>.
   useEffect(() => {
     editorRef.current?.updateOptions({
       fontSize,
@@ -568,7 +546,6 @@ export default function Editor({ page }: EditorProps) {
     });
   }, [fontSize, wordWrap, lineNumbers]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep a stable ref so the F2 command always calls the latest openRenameDialog.
   const openRenameDialogLatestRef = useRef(openRenameDialog);
   openRenameDialogLatestRef.current = openRenameDialog;
 
@@ -576,8 +553,6 @@ export default function Editor({ page }: EditorProps) {
     editorRef.current = editor;
     setEditorMounted(true);
 
-    // Intercept right-clicks to show our custom menu.
-    // Also attach native dblclick to reliably scroll the PDF to the current line.
     const domNode = editor.getDomNode();
     if (domNode) {
       const dblClickHandler = () => {
@@ -585,290 +560,130 @@ export default function Editor({ page }: EditorProps) {
         if (pos) scrollToPdfLineRef.current?.(pos.lineNumber);
       };
       domNode.addEventListener("dblclick", dblClickHandler);
-      // Clean up when the editor is disposed
-      editor.onDidDispose(() =>
-        domNode.removeEventListener("dblclick", dblClickHandler),
-      );
-
-      domNode.addEventListener("contextmenu", (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const ed = editorRef.current;
-        const sel = ed?.getSelection();
-        const curLine = ed?.getPosition()?.lineNumber ?? null;
-        setCtxStartLine(sel?.startLineNumber ?? curLine);
-        setCtxEndLine(sel?.endLineNumber ?? curLine);
-        setCtxSelText(sel ? (ed?.getModel()?.getValueInRange(sel) ?? "") : "");
-        // Store raw click position; useLayoutEffect will adjust after measuring
-        setCtxPos(null);
-        setCtxMenu({ x: e.clientX + 2, y: e.clientY + 2 });
-      });
+      domCleanupRef.current = () => domNode.removeEventListener("dblclick", dblClickHandler);
     }
 
-    // Show floating bar on non-empty selection
-    editor.onDidChangeCursorSelection((e) => {
-      const sel = e.selection;
-      const isEmpty =
-        sel.startLineNumber === sel.endLineNumber &&
-        sel.startColumn === sel.endColumn;
-      if (isEmpty) {
-        setSelFloating(null);
-        return;
-      }
-      const text = editor.getModel()?.getValueInRange(sel) ?? "";
-      if (!text.trim()) {
-        setSelFloating(null);
-        return;
-      }
+    disposablesRef.current.push(
+      editor.onContextMenu((e) => {
+        e.event.preventDefault();
+        e.event.stopPropagation();
+        const pos = e.target.position;
+        const sel = editor.getSelection();
+        const hasSel = sel && !sel.isEmpty();
+        const sLine = hasSel ? sel.startLineNumber : (pos?.lineNumber ?? null);
+        const eLine = hasSel ? sel.endLineNumber : (pos?.lineNumber ?? null);
+        const selTxt = hasSel ? (editor.getModel()?.getValueInRange(sel) ?? "") : "";
 
-      // Position the bar just above the selection using Monaco's scroll/layout
-      const domNode = editor.getDomNode();
-      if (!domNode) return;
-      const rect = domNode.getBoundingClientRect();
-      const layoutInfo = editor.getLayoutInfo();
-      const scrollLeft = editor.getScrollLeft();
-
-      // Use Monaco's built-in API to get the exact pixel position of the selection start line
-      const visiblePos = editor.getScrolledVisiblePosition({
-        lineNumber: sel.startLineNumber,
-        column: sel.startColumn,
-      });
-
-      const TOOLBAR_H = 36;
-      const GAP = 8;
-
-      let rawY: number;
-      if (visiblePos) {
-        // visiblePos.top is relative to the editor DOM node top
-        rawY = rect.top + visiblePos.top - TOOLBAR_H - GAP;
-      } else {
-        // Fallback: approximate with lineHeight
-        const lineHeight = editor.getOption(monaco.editor.EditorOption.lineHeight);
-        const scrollTop = editor.getScrollTop();
-        const lineTop = rect.top + (sel.startLineNumber - 1) * lineHeight - scrollTop;
-        rawY = lineTop - TOOLBAR_H - GAP;
-      }
-      const clampedY = Math.max(rect.top + 4, rawY);
-
-      // x: centre over selection, clamped to viewport
-      const contentLeft = rect.left + layoutInfo.contentLeft - scrollLeft;
-      const midX = contentLeft + ((sel.startColumn + sel.endColumn) / 2) * 7.8;
-      const TOOLBAR_W = 160;
-      const clampedX = Math.min(
-        Math.max(midX - TOOLBAR_W / 2, rect.left + 4),
-        rect.right - TOOLBAR_W - 4,
-      );
-      setSelFloating({
-        x: clampedX,
-        y: clampedY,
-        startLine: sel.startLineNumber,
-        endLine: sel.endLineNumber,
-        text,
-      });
-    });
-
-
-    // Monaco Keyboard shortcuts override
-    editor.onKeyDown((e) => {
-      const isCtrl = e.ctrlKey || e.metaKey;
-      if (isCtrl) {
-        if (e.keyCode === monaco.KeyCode.KeyS) {
-          e.preventDefault();
-          e.stopPropagation();
-          compileRef.current?.();
-        } else if (e.keyCode === monaco.KeyCode.KeyA) {
-          e.preventDefault();
-          e.stopPropagation();
-          const model = editor.getModel();
-          if (model) {
-            const lineCount = model.getLineCount();
-            const lastLineLength = model.getLineMaxColumn(lineCount);
-            editor.setSelection({
-              selectionStartLineNumber: 1,
-              selectionStartColumn: 1,
-              positionLineNumber: lineCount,
-              positionColumn: lastLineLength
-            });
-          }
-        }
-      }
-    });
-
-    // Ctrl+Enter → compile
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () =>
-      compileRef.current?.(),
+        setCtxStartLine(sLine);
+        setCtxEndLine(eLine);
+        setCtxSelText(selTxt);
+        setCtxPos(null);
+        setCtxMenu({ x: e.event.posx, y: e.event.posy });
+      }),
     );
 
-    // Ctrl+Alt+A → open/focus AI chat panel
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyA,
-      () => {
-        // Dispatch custom event so EditorLayout can toggle the AI panel
-        document.dispatchEvent(new CustomEvent("flux:toggle-ai-panel"));
-      },
-    );
-
-    // Override F2 to show our custom rename confirmation dialog
-    editor.addCommand(monaco.KeyCode.F2, () =>
-      openRenameDialogLatestRef.current(),
-    );
-
-
-    // Configure editor options — use persisted store values so settings survive reloads.
-    editor.updateOptions({
-      wordWrap: wordWrap ? "on" : "off",
-      minimap: { enabled: false },
-      lineNumbers: lineNumbers ? "on" : "off",
-      fontSize,
-      lineHeight: Math.round(fontSize * 1.65),
-      letterSpacing: 0.1,
-      fontFamily:
-        "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
-      fontLigatures: true,
-      cursorBlinking: "smooth",
-      cursorSmoothCaretAnimation: "on",
-      cursorWidth: 2,
-      renderLineHighlight: "all",
-      renderWhitespace: "selection",
-      scrollBeyondLastLine: false,
-      smoothScrolling: true,
-      mouseWheelScrollSensitivity: 1.2,
-      padding: { top: 18, bottom: 24 },
-      lineNumbersMinChars: 2,
-      lineDecorationsWidth: 4,
-      glyphMargin: true,
-      folding: false,
-      foldingStrategy: "indentation",
-      showFoldingControls: "mouseover",
-      bracketPairColorization: { enabled: true, independentColorPoolPerBracketType: true },
-      guides: {
-        indentation: true,
-        bracketPairs: true,
-        bracketPairsHorizontal: false,
-        highlightActiveIndentation: true,
-      },
-      stickyScroll: { enabled: false },
-      suggest: { preview: true, showStatusBar: true },
-      quickSuggestions: { other: true, comments: false, strings: false },
-      parameterHints: { enabled: true },
-      contextmenu: false,
-      // Position overlay widgets relative to viewport to avoid overflow:hidden clipping.
-      fixedOverflowWidgets: true,
-    });
-
-    // Decoration collection for inline comment glyph indicators
-    decorationCollRef.current = editor.createDecorationsCollection([]);
-
-    const highlightDecorations = editor.createDecorationsCollection([]);
-    let highlightTimeout: any = null;
-
-    // Register line-scroll ref so ReviewTab/others can jump to a specific line
     scrollToLineRef.current = (line: number) => {
-      editor.revealLineInCenter(line, 0 /* Immediate */);
+      editor.revealLineInCenter(line);
       editor.setPosition({ lineNumber: line, column: 1 });
       editor.focus();
-
-      if (highlightTimeout) {
-        clearTimeout(highlightTimeout);
-      }
-
-      highlightDecorations.set([
-        {
-          range: new monaco.Range(line, 1, line, 1),
-          options: {
-            isWholeLine: true,
-            className: "flux-active-line-flash",
-          },
-        },
-      ]);
-
-      highlightTimeout = setTimeout(() => {
-        highlightDecorations.clear();
-      }, 2000);
     };
 
-    // Single click on glyph margin → open Review panel.
-    // Double-click anywhere in editor → scroll PDF (handled by native dblclick above).
-    editor.onMouseMove((e) => {
-      if (e.target.type === 2 /* GUTTER_GLYPH_MARGIN */) {
-        const line = e.target.position?.lineNumber;
-        if (line != null) {
-          const lineCs = lineCommentsRef.current.get(line);
-          if (lineCs?.length) {
-            const domNode = editor.getDomNode();
-            const domRect = domNode?.getBoundingClientRect();
-            const pos = editor.getScrolledVisiblePosition({
-              lineNumber: line,
-              column: 1,
-            });
-            if (domRect && pos) {
-              const lineTopViewport = domRect.top + pos.top;
-              setGlyphTooltip({
-                x: domRect.left + 4,
-                // Place tooltip bottom edge 6px above the line top
-                bottom: window.innerHeight - lineTopViewport + 6,
-                comments: lineCs,
+    decorationCollRef.current = editor.createDecorationsCollection([]);
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      compileRef.current?.();
+    });
+
+    editor.addCommand(monaco.KeyCode.F2, () => {
+      openRenameDialogLatestRef.current();
+    });
+
+    disposablesRef.current.push(
+      editor.onDidChangeCursorSelection((e) => {
+        if (isAiPreviewingRef?.current) {
+          setSelFloating(null);
+          return;
+        }
+        const sel = e.selection;
+        if (sel.isEmpty()) {
+          setSelFloating(null);
+        } else {
+          const model = editor.getModel();
+          const text = model ? model.getValueInRange(sel) : "";
+          if (text.trim().length > 0) {
+            const endPos = { lineNumber: sel.endLineNumber, column: sel.endColumn };
+            const coords = editor.getScrolledVisiblePosition(endPos);
+            const editorDom = editor.getDomNode();
+            if (coords && editorDom) {
+              const rect = editorDom.getBoundingClientRect();
+              setSelFloating({
+                x: Math.min(rect.left + coords.left + 8, window.innerWidth - 180),
+                y: Math.max(rect.top + coords.top + coords.height + 4, 8),
+                startLine: sel.startLineNumber,
+                endLine: sel.endLineNumber,
+                text,
               });
-              return;
             }
+          } else {
+            setSelFloating(null);
           }
         }
-      }
-      setGlyphTooltip(null);
-    });
+      }),
 
-    editor.onMouseLeave(() => setGlyphTooltip(null));
+      editor.onMouseMove((e) => {
+        const target = e.target;
+        const isGlyph =
+          target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+          target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS;
+
+        if (isGlyph && target.position) {
+          const line = target.position.lineNumber;
+          const matched = lineCommentsRef.current.get(line);
+          if (matched && matched.length > 0) {
+            const editorDom = editor.getDomNode();
+            if (editorDom) {
+              const rect = editorDom.getBoundingClientRect();
+              const glyphLeft = rect.left + (e.event.posx - rect.left);
+              const bottomFromViewport = window.innerHeight - e.event.posy + 8;
+              setGlyphTooltip({
+                x: glyphLeft,
+                bottom: bottomFromViewport,
+                comments: matched,
+              });
+            }
+            return;
+          }
+        }
+        setGlyphTooltip(null);
+      }),
+
+      editor.onMouseLeave(() => {
+        setGlyphTooltip(null);
+      }),
+    );
 
     editor.onMouseDown((e) => {
-      if (e.target.type === 2 /* GUTTER_GLYPH_MARGIN */) {
-        document.dispatchEvent(
-          new CustomEvent("flux:open-panel", { detail: "Review" }),
-        );
+      const target = e.target;
+      if (
+        (target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+          target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS) &&
+        target.position
+      ) {
+        const line = target.position.lineNumber;
+        const matched = lineCommentsRef.current.get(line);
+        if (matched && matched.length > 0) {
+          EditorEventBus.emit("flux:open-panel", {
+            panel: "Review",
+            commentId: matched[0]._id,
+          });
+        }
       }
     });
-
-    // NOTE: No compile-on-mount here. The initial compile is triggered by
-    // EditorLayout after syncProjectMutation succeeds, ensuring the compiler
-    // has all project files before the first compilation attempt.
   };
-
-  const defaultValue =
-    page.content ||
-    `\\documentclass{article}
-\\usepackage{amsmath}
-\\usepackage{graphicx}
-
-\\title{${page.title}}
-\\author{${page.author.name}}
-\\date{\\today}
-
-\\begin{document}
-
-\\maketitle
-
-\\section{Introduction}
-Write your introduction here.
-
-\\section{Methods}
-Describe your methods.
-
-\\subsection{Mathematical Formulas}
-Here is an example equation:
-$$
-E = mc^2
-$$
-
-And an inline formula: $a^2 + b^2 = c^2$
-
-\\section{Conclusion}
-Your conclusions here.
-
-\\end{document}
-`;
 
   return (
     <div className="h-full w-full flex flex-col">
-      <EditorToolbar />
+      <Format />
       <div className="flex-1 w-full relative min-h-0">
         <MonacoEditor
           height="100%"
@@ -882,7 +697,7 @@ Your conclusions here.
         />
       </div>
 
-      {/* Glyph comment tooltip — appears ABOVE the hovered line, never covers it */}
+      {/* Glyph comment tooltip */}
       {glyphTooltip &&
         typeof document !== "undefined" &&
         createPortal(
@@ -943,9 +758,7 @@ Your conclusions here.
                   endLine: selFloating.endLine,
                   selectedText: selFloating.text,
                 });
-                document.dispatchEvent(
-                  new CustomEvent("flux:open-panel", { detail: "Review" }),
-                );
+                EditorEventBus.emit("flux:open-panel", "Review");
                 setSelFloating(null);
               }}
               className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-primary/80 hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -964,10 +777,10 @@ Your conclusions here.
                     endLine: selFloating.endLine,
                   });
                 }
-                document.dispatchEvent(new CustomEvent("flux:open-ai-panel"));
+                EditorEventBus.emit("flux:open-ai-panel");
                 setSelFloating(null);
               }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
               title="Ask AI"
             >
               <img src="/Flux.svg" alt="Flux" className="size-3.5" />
@@ -987,7 +800,6 @@ Your conclusions here.
             style={{
               left: ctxPos?.x ?? ctxMenu.x,
               top: ctxPos?.y ?? ctxMenu.y,
-              // Hidden until useLayoutEffect measures and adjusts position
               visibility: ctxPos ? "visible" : "hidden",
             }}
           >
@@ -1031,33 +843,32 @@ Your conclusions here.
       {renameDialog &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-10000 flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/40"
-              onClick={() => setRenameDialog(null)}
-            />
-            <div className="relative z-10 w-80 rounded-lg border border-border bg-popover shadow-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">
-                  Rename Occurrences
-                </span>
-                <button
-                  onClick={() => setRenameDialog(null)}
-                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rename-dialog-title"
+            className="fixed inset-0 z-9999 flex items-center justify-center bg-background/50 backdrop-blur-xs"
+          >
+            <div className="w-full max-w-sm rounded-lg border border-border bg-card p-4 shadow-xl space-y-3">
+              <h3
+                id="rename-dialog-title"
+                className="text-sm font-semibold text-foreground"
+              >
+                Rename Occurrences
+              </h3>
+              <div className="space-y-1">
+                <label
+                  htmlFor="rename-input"
+                  className="text-xs text-muted-foreground"
                 >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs text-muted-foreground">
                   Rename{" "}
-                  <code className="font-mono bg-muted px-1 rounded text-foreground">
+                  <code className="bg-muted px-1 py-0.5 rounded font-mono text-foreground">
                     {renameDialog.word}
                   </code>{" "}
                   to:
                 </label>
                 <input
+                  id="rename-input"
                   ref={renameInputRef}
                   value={renameDialog.newName}
                   onChange={(e) =>
@@ -1076,12 +887,14 @@ Your conclusions here.
               </div>
               <div className="flex justify-end gap-2">
                 <button
+                  type="button"
                   onClick={() => setRenameDialog(null)}
                   className="px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={() =>
                     applyRename(renameDialog.word, renameDialog.newName)
                   }
@@ -1101,4 +914,3 @@ Your conclusions here.
     </div>
   );
 }
-

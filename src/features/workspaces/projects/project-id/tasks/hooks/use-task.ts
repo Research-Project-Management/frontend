@@ -74,16 +74,31 @@ export const TaskHelpers = {
       attachments: data.attachments,
     }),
 
-  normalizeChecklists: (items: Checklist[]) =>
-    items.map((c) => ({
-      title: c.title,
-      items: (c.items || []).map((i) => ({
-        title: i.title,
-        completed: Boolean(i.completed),
-        assigneeId: i.assigneeId,
-        dueDate: i.dueDate,
-      })),
-    })),
+  normalizeChecklists: (items: any[]) => {
+    if (!Array.isArray(items)) return [];
+    return items.map((c, index) => {
+      if (!c.items && (c.text || c.title !== undefined)) {
+        return {
+          title: c.name || 'Checklist',
+          items: [{
+            title: c.text || c.title || '',
+            completed: Boolean(c.completed),
+            assigneeId: c.assigneeId,
+            dueDate: c.dueDate,
+          }],
+        };
+      }
+      return {
+        title: c.title || `Checklist ${index + 1}`,
+        items: (Array.isArray(c.items) ? c.items : []).map((i: any) => ({
+          title: i.title || i.text || '',
+          completed: Boolean(i.completed),
+          assigneeId: i.assigneeId,
+          dueDate: i.dueDate,
+        })),
+      };
+    });
+  },
 };
 
 // ── 2. Query Keys ───────────────────────────────────────────────────────────
@@ -127,14 +142,25 @@ export const useTaskCycles = (projectId: string) =>
 export const useTaskComments = (taskId: string) =>
   useQuery({
     queryKey: taskKeys.comments(taskId),
-    queryFn: () => TaskService.getComments(taskId),
+    queryFn: async () => {
+      const res = await TaskService.getComments(taskId);
+      if (Array.isArray(res)) return res;
+      return (res as any)?.comments || (res as any)?.data || [];
+    },
     enabled: Boolean(taskId),
   });
 
 export const useTaskActivityLogs = (taskId: string) =>
   useQuery({
     queryKey: taskKeys.activity(taskId),
-    queryFn: () => TaskService.getActivityLogs(taskId),
+    queryFn: async () => {
+      try {
+        const res = await TaskService.getActivityLogs(taskId);
+        return (res as any)?.activities ?? (Array.isArray(res) ? res : []);
+      } catch {
+        return [];
+      }
+    },
     enabled: Boolean(taskId),
   });
 
@@ -143,7 +169,8 @@ export const useTaskWorkspaceProjects = (workspaceId: string) =>
     queryKey: ['workspace-projects', workspaceId],
     queryFn: async () => {
       const res = await TaskService.getWorkspaceProjects(workspaceId);
-      return Array.isArray(res) ? res : (res as { data?: any[] })?.data || [];
+      if (Array.isArray(res)) return res;
+      return (res as any)?.projects || (res as any)?.data || [];
     },
     enabled: Boolean(workspaceId),
   });

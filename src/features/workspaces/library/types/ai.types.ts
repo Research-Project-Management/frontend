@@ -67,6 +67,7 @@ export interface ChatSession {
   _id: string;
   title: string;
   projectId: string | null;
+  documentIds?: string[];
   messageCount: number;
   lastMessage: string;
   updatedAt: string;

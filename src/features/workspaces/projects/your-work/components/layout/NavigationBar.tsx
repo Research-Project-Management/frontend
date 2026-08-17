@@ -39,9 +39,10 @@ export default function NavigationBar({
 
   return (
     <nav
+      aria-label="Your Work Sub Navigation"
       className={cn(
         'flex items-center gap-1 border-b border-border px-6 bg-background select-none shrink-0',
-        className
+        className,
       )}
     >
       {TABS.map((tab) => {
@@ -53,21 +54,22 @@ export default function NavigationBar({
           <Link
             key={tab.key}
             href={targetHref}
+            aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'relative flex items-center gap-1.5 px-3.5 py-3 text-xs font-medium transition-colors outline-none',
+              'relative flex items-center gap-1.5 px-3.5 py-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-t-sm',
               isActive
                 ? 'text-primary font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             <span>{tab.label}</span>
             {typeof count === 'number' && count > 0 && (
               <span
                 className={cn(
-                  'text-[10px] px-1.5 py-0.2 rounded-full font-semibold',
+                  'text-[10px] px-1.5 py-0.5 rounded-full font-semibold leading-none',
                   isActive
                     ? 'bg-primary/15 text-primary'
-                    : 'bg-muted text-muted-foreground'
+                    : 'bg-muted text-muted-foreground',
                 )}
               >
                 {count}

@@ -86,7 +86,7 @@ export const uploadFile = async (
         ? (p: number) => params.onProgress!(Math.round(p * 0.9))
         : undefined;
 
-    const uploadEndpoint = `/api/files/project/${params.projectId}/upload-r2`;
+    const uploadEndpoint = `/api/files/upload-r2`;
     const { url: uploadPath } = await uploadBlobWithProgress(file, fileName, uploadEndpoint, onMainFileProgress);
     const uploadUrl = `${API_BASE_URL}${uploadPath}`;
 

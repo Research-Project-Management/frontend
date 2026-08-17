@@ -10,7 +10,7 @@ import {
   deleteWorkspaceById,
 } from '../services/workspace.service';
 import type { WorkspaceListResponse, WorkspaceDetailResponse, WorkspacePatch } from '../services/workspace.service';
-import type { Workspace } from '@/features/setup/types/workspace.types';
+import type { Workspace } from '@/features/setup';
 
 
 

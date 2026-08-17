@@ -2,326 +2,310 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { ChevronDown, Users } from 'lucide-react';
-import { Skeleton } from '@/shared/components/ui';
-import TopBar from '../components/TopBar';
-import { useMember } from '../hooks/use-member';
+import { ArrowDownAZ, ArrowUpZA, ChevronDown, Users } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import { TopBar } from '../components/layout/TopBar';
 import { MemberFilter } from '../components/member/Filter';
 import { MemberItem } from '../components/member/Item';
-import { InviteDialog } from '../components/member/Dialog';
-import { ImportModal } from '../components/member/ImportModal';
 import { PendingInvites } from '../components/member/Pending';
-import DeleteModal from '../components/DeleteModal';
+import { Sortable } from '../components/member/Sortable';
+import { InviteModal as InviteDialog } from '../components/modal/InviteModal';
+import { ImportModal } from '../components/modal/ImportModal';
+import { DeleteModal } from '../components/modal/DeleteModal';
+import { useMember } from '../hooks/use-member';
+import { Skeleton } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading skeleton (using global Skeleton component)
+// ─────────────────────────────────────────────────────────────────────────────
+function LoadingSkeleton() {
+  return (
+    <div className="flex h-full w-full flex-col bg-background">
+      <TopBar title="Members" Icon={Users} />
+      <div className="flex-1 overflow-y-auto p-6 md:p-8">
+        <div className="mx-auto max-w-5xl space-y-6">
+          {/* Title skeleton */}
+          <div className="space-y-1.5">
+            <Skeleton className="h-7 w-28 rounded-lg" />
+            <Skeleton className="h-3.5 w-52 rounded-md" />
+          </div>
+          {/* Tabs + toolbar skeleton */}
+          <Skeleton className="h-8 w-full rounded-lg" />
+          {/* Table skeleton */}
+          <div className="rounded-lg border border-border/60 overflow-hidden space-y-0">
+            <Skeleton className="h-9 w-full rounded-none" />
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-none border-t border-border/40" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────────
 export default function WorkspaceMemberPage() {
   const { workspaceId } = useParams() as { workspaceId: string };
+  const { state, actions } = useMember(workspaceId);
 
   const {
-    workspace,
     currentUser,
     isLoading,
     canManage,
     activeTab,
-    setActiveTab,
-    members,
     filteredMembers,
     search,
-    setSearch,
     roleFilter,
-    setRoleFilter,
-    authFilter,
-    setAuthFilter,
     sortField,
     sortDirection,
-    toggleSort,
     inviteModalOpen,
-    setInviteModalOpen,
     importModalOpen,
-    setImportModalOpen,
     memberToRemove,
-    setMemberToRemove,
-    handleUpdateRole,
-    handleRemoveMember,
-    handleInviteMembers,
-    handleImportCsv,
+    memberToLeave,
     isInviting,
     isRemoving,
-  } = useMember(workspaceId);
+    isLeaving,
+  } = state;
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full flex-col bg-background">
-        <TopBar title="Members" Icon={Users} />
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="mx-auto max-w-5xl space-y-6">
-            <div className="h-8 w-44 bg-muted/60 rounded-lg animate-pulse" />
-            <div className="h-10 w-full bg-muted/40 rounded-lg animate-pulse" />
-            <div className="h-64 w-full bg-muted/30 rounded-lg animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const {
+    setActiveTab,
+    setSearch,
+    setRoleFilter,
+    handleSort,
+    setInviteModalOpen,
+    setImportModalOpen,
+    setMemberToRemove,
+    setMemberToLeave,
+    handleUpdateRole,
+    handleRemoveMember,
+    handleLeaveWorkspace,
+    handleInviteMembers,
+    handleImportCsv,
+  } = actions;
+
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  const TABS = [
+    { key: 'people',  label: 'People' },
+    { key: 'pending', label: 'Pending invitations' },
+  ] as const;
 
   return (
     <div className="flex h-full w-full flex-col bg-background">
-      {/* ── Topbar (Shared with General Settings) ── */}
       <TopBar title="Members" Icon={Users} />
 
-      {/* ── Scrollable Body Content (Symmetrical Margins) ── */}
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="max-w-5xl mx-auto space-y-6 pb-12">
-          {/* ── Page Title & Subtitle ── */}
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-6 md:px-8 pb-16">
+
+          {/* ── Page title ─────────────────────────────────────────────── */}
+          <div className="pt-7 pb-6">
+            <h1 className="text-[1.35rem] font-bold text-foreground tracking-tight leading-snug">
               Members
             </h1>
-            <p className="text-xs text-muted-foreground mt-1">
-              Manage access to this workspace.
+            <p className="text-[0.72rem] text-muted-foreground mt-0.5">
+              Manage who has access to this workspace.
             </p>
           </div>
 
-          {/* ── Tabs & Toolbar Row (Matching Image) ── */}
-          <div className="flex items-center justify-between gap-4 flex-wrap border-b border-border/40 pb-0.5">
-            {/* Left Sub-Tabs: People & Pending invitations with bottom line indicator */}
-            <div className="flex items-center gap-2 text-xs">
-              <div className="relative pb-2 flex flex-col items-center">
+          {/* ── Tab bar + toolbar — border-b IS the table's top line ──── */}
+          <div className="flex items-end justify-between gap-3 flex-wrap border-b border-border/60">
+            {/* Sub-tabs */}
+            <div className="flex items-end gap-0.5">
+              {TABS.map(({ key, label }) => (
                 <button
+                  key={key}
                   type="button"
-                  onClick={() => setActiveTab('people')}
+                  onClick={() => setActiveTab(key)}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer outline-none',
-                    activeTab === 'people'
-                      ? 'bg-muted text-foreground font-semibold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    'relative px-3.5 py-2 text-[0.72rem] font-medium transition-all cursor-pointer outline-none select-none',
+                    activeTab === key
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
-                  People
-                </button>
-                {activeTab === 'people' && (
-                  <div className="absolute -bottom-[2px] inset-x-1 h-[2px] bg-foreground rounded-full" />
-                )}
-              </div>
-
-              <div className="relative pb-2 flex flex-col items-center">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('pending')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer outline-none',
-                    activeTab === 'pending'
-                      ? 'bg-muted text-foreground font-semibold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  {label}
+                  {activeTab === key && (
+                    /* translate-y[1px] makes bar sit on top of the border-b line = flush with table top */
+                    <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground rounded-full translate-y-[1px]" />
                   )}
-                >
-                  Pending invitations
                 </button>
-                {activeTab === 'pending' && (
-                  <div className="absolute -bottom-[2px] inset-x-1 h-[2px] bg-foreground rounded-full" />
-                )}
-              </div>
+              ))}
             </div>
 
-            {/* Right Toolbar: Search, Filters, Import, Add member */}
-            <div className="pb-2">
+            {/* Toolbar */}
+            <div className="pb-1.5">
               <MemberFilter
                 search={search}
                 roleFilter={roleFilter}
-                authFilter={authFilter}
                 canManage={canManage}
                 onSearchChange={setSearch}
                 onRoleFilterChange={setRoleFilter}
-                onAuthFilterChange={setAuthFilter}
                 onOpenImport={() => setImportModalOpen(true)}
                 onAddMember={() => setInviteModalOpen(true)}
               />
             </div>
           </div>
 
-      {/* ── Tab Content: People (Table List) ── */}
-      {activeTab === 'people' && (
-        <div className="rounded-lg border border-border/80 overflow-hidden bg-background">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground select-none">
-                  {/* 1. Full name */}
-                  <th className="py-2.5 px-4 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('name')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <span>Full name</span>
-                      <ChevronDown
-                        className={cn(
-                          'size-3 transition-transform',
-                          sortField === 'name' && sortDirection === 'asc' && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                  </th>
+          {/* ── People tab ─────────────────────────────────────────────── */}
+          {activeTab === 'people' && (
+            <div className="rounded-b-lg rounded-t-none border border-t-0 border-border/60 overflow-hidden bg-background">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/70 bg-muted/25 text-muted-foreground">
+                      {/* Full name — wider */}
+                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[22%]">
+                        <Sortable
+                          label="Full name"
+                          field="name"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      {/* Display name */}
+                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[16%]">
+                        <Sortable
+                          label="Display name"
+                          field="displayName"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      {/* Email — flexible */}
+                      <th className="py-2.5 px-4 text-[0.7rem] font-medium">
+                        <Sortable
+                          label="Email"
+                          field="email"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                        />
+                      </th>
+                      {/* Role */}
+                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[11%]">
+                        <Sortable
+                          label="Role"
+                          field="role"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                          ascLabel="Viewer → Admin"
+                          descLabel="Admin → Viewer"
+                        />
+                      </th>
+                      {/* Authentication — no sort */}
+                      <th className="py-2.5 px-4 text-[0.7rem] font-medium text-muted-foreground w-[13%]">
+                        Authentication
+                      </th>
+                      {/* Joining date */}
+                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[13%]">
+                        <Sortable
+                          label="Joining date"
+                          field="date"
+                          sortField={sortField}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                          ascLabel="Old → New"
+                          descLabel="New → Old"
+                        />
+                      </th>
+                      {/* Actions */}
+                      <th className="py-2.5 px-3 w-10" aria-hidden="true" />
+                    </tr>
+                  </thead>
 
-                  {/* 2. Display name */}
-                  <th className="py-2.5 px-4 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('displayName')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <span>Display name</span>
-                      <ChevronDown
-                        className={cn(
-                          'size-3 transition-transform',
-                          sortField === 'displayName' && sortDirection === 'asc' && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                  </th>
+                  <tbody className="divide-y divide-border/50">
+                    {filteredMembers.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="py-14 text-center text-[0.72rem] text-muted-foreground"
+                        >
+                          No members found matching your filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredMembers.map((m) => (
+                        <MemberItem
+                          key={m.id || m.userId}
+                          member={m}
+                          currentUserId={currentUser?.id || (currentUser as any)?._id}
+                          canManage={canManage}
+                          onRoleChange={handleUpdateRole}
+                          onRemove={(member) => setMemberToRemove(member)}
+                          onLeave={(member) => setMemberToLeave(member)}
+                        />
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* 3. Email */}
-                  <th className="py-2.5 px-4 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('email')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <span>Email</span>
-                      <ChevronDown
-                        className={cn(
-                          'size-3 transition-transform',
-                          sortField === 'email' && sortDirection === 'asc' && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                  </th>
 
-                  {/* 4. Role */}
-                  <th className="py-2.5 px-4 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('role')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <span>Role</span>
-                      <ChevronDown
-                        className={cn(
-                          'size-3 transition-transform',
-                          sortField === 'role' && sortDirection === 'asc' && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                  </th>
 
-                  {/* 5. Authentication */}
-                  <th className="py-2.5 px-4 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('auth')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <span>Authentication</span>
-                      <ChevronDown
-                        className={cn(
-                          'size-3 transition-transform',
-                          sortField === 'auth' && sortDirection === 'asc' && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                  </th>
+            </div>
+          )}
 
-                  {/* 6. Joining date */}
-                  <th className="py-2.5 px-4 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('date')}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      <span>Joining date</span>
-                      <ChevronDown
-                        className={cn(
-                          'size-3 transition-transform',
-                          sortField === 'date' && sortDirection === 'asc' && 'rotate-180'
-                        )}
-                      />
-                    </button>
-                  </th>
+          {/* ── Pending tab ────────────────────────────────────────────── */}
+          {activeTab === 'pending' && (
+            <PendingInvites invites={[]} canManage={canManage} onCancelInvite={() => {}} />
+          )}
 
-                  {/* Actions */}
-                  <th className="py-2.5 px-2 w-10 pr-4"></th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-border/60">
-                {filteredMembers.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="py-12 text-center text-xs text-muted-foreground"
-                    >
-                      No members found matching your filters.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMembers.map((m) => (
-                    <MemberItem
-                      key={m.id || m.userId}
-                      member={m}
-                      currentUserId={currentUser?.id || (currentUser as any)?._id}
-                      canManage={canManage}
-                      onRoleChange={handleUpdateRole}
-                      onRemove={(member) => setMemberToRemove(member)}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
-      )}
+      </div>
 
-      {/* ── Tab Content: Pending Invitations ── */}
-      {activeTab === 'pending' && (
-        <PendingInvites
-          invites={[]}
-          canManage={canManage}
-          onCancelInvite={() => {}}
-        />
-      )}
-
-      {/* ── Invite Members Dialog Modal ── */}
+      {/* ── Modals ─────────────────────────────────────────────────────── */}
       <InviteDialog
         open={inviteModalOpen}
         onOpenChange={setInviteModalOpen}
         onInvite={handleInviteMembers}
         isInviting={isInviting}
       />
-
-      {/* ── Import CSV Dialog Modal ── */}
       <ImportModal
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
         onImport={handleImportCsv}
       />
-
-      {/* ── Remove Member Confirmation Modal ── */}
       <DeleteModal
         isOpen={Boolean(memberToRemove)}
         onClose={() => setMemberToRemove(null)}
         onConfirm={() => {
-          if (memberToRemove) {
-            handleRemoveMember(memberToRemove.userId);
-          }
+          if (memberToRemove) handleRemoveMember(memberToRemove.userId);
         }}
-        title="Remove member from workspace"
-        description={`Are you sure you want to remove ${memberToRemove?.user.name || 'this member'} from the workspace? They will lose access to all projects and resources.`}
-        confirmText="Remove member"
+        title={`Remove ${memberToRemove?.user.name ?? 'member'}?`}
+        description={
+          <>
+            Are you sure you want to remove member-{' '}
+            <strong>{memberToRemove?.user.name}</strong>? They will no longer
+            have access to this workspace. This action cannot be undone.
+          </>
+        }
+        confirmText="Remove"
         cancelText="Cancel"
         loading={isRemoving}
       />
-        </div>
-      </div>
+      <DeleteModal
+        isOpen={Boolean(memberToLeave)}
+        onClose={() => setMemberToLeave(null)}
+        onConfirm={handleLeaveWorkspace}
+        title="Leave workspace?"
+        description="Are you sure you want to leave this workspace? You will lose access to all projects and resources."
+        confirmText="Leave"
+        cancelText="Cancel"
+        loading={isLeaving}
+      />
     </div>
   );
 }

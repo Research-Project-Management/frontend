@@ -2,7 +2,7 @@
 
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, LayoutGroup } from 'framer-motion';
 import {
   FolderOpen,
   Folder,
@@ -25,10 +25,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/shared/lib/utils';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from '@/features/workspaces/shell';
 import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';
 import { usePapers } from '@/features/workspaces/library/hooks/data/use-papers';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
+import { getLibraryEntityId } from '@/features/workspaces/library/utils/library.util';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +45,7 @@ import {
 } from '@/shared/components/ui';
 import CreateCollectionModal from '../modals/create-collection-modal';
 import TagSelector from './tag-selector';
-import type { Collection } from '@/features/workspaces/library/types/library.types';
+import type { Collection, CollectionInput } from '@/features/workspaces/library/types/library.types';
 
 // ── Tree Builder ──────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ function getValidMoveTargets(allCollections: Collection[], currentId: string): C
   return allCollections.filter((c) => !descendantIds.has(c._id));
 }
 
-// ── Collection Node Component (Zotero-style) ───────────────────────────────────
+// ── Collection Node Component (Clean storage-matching style) ──────────────────
 
 interface NodeProps {
   node: TreeNode;
@@ -95,6 +96,7 @@ interface NodeProps {
   renamingId: string | null;
   renameValue: string;
   allCollections: Collection[];
+  collectionPaperCounts: Record<string, number>;
   isSearching: boolean;
   onStartRename: (id: string, name: string) => void;
   onSubmitRename: (id: string) => void;
@@ -115,6 +117,7 @@ function CollectionNode({
   renamingId,
   renameValue,
   allCollections,
+  collectionPaperCounts,
   isSearching,
   onStartRename,
   onSubmitRename,
@@ -130,10 +133,11 @@ function CollectionNode({
   const hasChildren = node.children.length > 0;
   const [isOpen, setIsOpen] = useState(true);
 
-  // Clean compact indentation: 10px per depth + 6px base
-  const paddingLeft = depth * 10 + 6;
+  // Indentation: 12px per depth level
+  const paddingLeft = depth * 12 + 8;
   const validMoveTargets = getValidMoveTargets(allCollections, node._id);
   const effectiveIsOpen = isSearching ? true : isOpen;
+  const count = collectionPaperCounts[node._id] ?? node.paperCount ?? 0;
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -149,7 +153,7 @@ function CollectionNode({
 
         {renamingId === node._id ? (
           <div
-            className="relative z-10 flex h-8 w-full items-center pr-2"
+            className="relative z-10 flex h-8.5 w-full items-center pr-2"
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             <input
@@ -167,10 +171,10 @@ function CollectionNode({
         ) : (
           <div
             className={cn(
-              'relative z-10 flex h-8 w-full items-center gap-1 rounded-md pr-1.5 transition-colors cursor-pointer select-none',
+              'relative z-10 flex h-8.5 w-full items-center gap-1.5 rounded-md pr-1.5 transition-colors cursor-pointer select-none',
               isActive
                 ? 'text-foreground font-semibold'
-                : 'text-foreground/80 hover:text-foreground hover:bg-accent/60 font-normal'
+                : 'text-foreground hover:bg-accent font-medium'
             )}
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
@@ -181,19 +185,19 @@ function CollectionNode({
                   setIsOpen((v) => !v);
                 }}
                 aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                className="flex size-3.5 shrink-0 items-center justify-center rounded text-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                className="flex size-4 shrink-0 items-center justify-center rounded text-foreground hover:bg-muted transition-colors"
               >
                 <ChevronRight
                   className={cn('size-3 text-foreground transition-transform duration-150', effectiveIsOpen && 'rotate-90')}
                 />
               </button>
             ) : (
-              <div className="size-3.5 shrink-0" />
+              <div className="size-4 shrink-0" />
             )}
 
             <Link
               href={to}
-              className="flex flex-1 min-w-0 items-center gap-1.5 py-0.5 outline-none"
+              className="flex flex-1 min-w-0 items-center gap-2 py-0.5 outline-none"
             >
               {hasChildren && effectiveIsOpen ? (
                 <FolderOpen className="size-3.5 shrink-0 text-foreground transition-colors" />
@@ -203,18 +207,24 @@ function CollectionNode({
 
               <span
                 className={cn(
-                  'flex-1 min-w-0 truncate text-xs',
-                  isActive ? 'font-medium text-foreground' : 'text-foreground/90 group-hover/node:text-foreground'
+                  'flex-1 min-w-0 truncate text-xs text-foreground',
+                  isActive ? 'font-semibold' : 'font-medium'
                 )}
               >
                 {node.name}
               </span>
+
+              {count > 0 && (
+                <span className="text-[11px] font-mono tabular-nums text-muted-foreground mr-0.5">
+                  {count}
+                </span>
+              )}
             </Link>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted/80 hover:text-foreground transition-all cursor-pointer outline-none"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted hover:text-foreground transition-all cursor-pointer outline-none"
                   onClick={(e) => e.stopPropagation()}
                   aria-label={`Options for ${node.name}`}
                 >
@@ -227,44 +237,44 @@ function CollectionNode({
                 sideOffset={4}
                 collisionPadding={12}
                 onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-64 min-w-[250px] p-1.5 rounded-lg shadow-xl z-50"
+                className="w-56 p-1 rounded-lg shadow-xl z-50 text-xs"
               >
                 <DropdownMenuItem
                   onClick={() => onCreateSub(node._id, node.name)}
-                  className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                  className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                 >
-                  <FolderPlus className="size-4 text-muted-foreground" />
-                  New Subcollection...
+                  <FolderPlus className="size-3.5 text-foreground" />
+                  <span>New Subcollection...</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
                   onClick={() => onStartRename(node._id, node.name)}
-                  className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                  className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                 >
-                  <Pencil className="size-4 text-muted-foreground" />
-                  Rename Collection
+                  <Pencil className="size-3.5 text-foreground" />
+                  <span>Rename Collection</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap">
-                    <FolderInput className="size-4 text-muted-foreground" />
-                    Move To
+                  <DropdownMenuSubTrigger className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer">
+                    <FolderInput className="size-3.5 text-foreground" />
+                    <span>Move To</span>
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 min-w-[220px] p-1.5 rounded-lg shadow-lg">
+                  <DropdownMenuSubContent className="w-52 p-1 rounded-lg shadow-lg text-xs">
                     <DropdownMenuItem
                       onClick={() => onMove(node._id, null)}
-                      className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                      className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                     >
-                      <Library className="size-4 text-foreground" />
-                      My Library (Root)
+                      <Library className="size-3.5 text-foreground" />
+                      <span>My Library (Root)</span>
                     </DropdownMenuItem>
                     {validMoveTargets.map((target) => (
                       <DropdownMenuItem
                         key={target._id}
                         onClick={() => onMove(node._id, target._id)}
-                        className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                        className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                       >
-                        <Folder className="size-4 text-muted-foreground" />
+                        <Folder className="size-3.5 text-foreground" />
                         <span className="truncate">{target.name}</span>
                       </DropdownMenuItem>
                     ))}
@@ -272,25 +282,25 @@ function CollectionNode({
                 </DropdownMenuSub>
 
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap">
-                    <Copy className="size-4 text-muted-foreground" />
-                    Copy To
+                  <DropdownMenuSubTrigger className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer">
+                    <Copy className="size-3.5 text-foreground" />
+                    <span>Copy To</span>
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 min-w-[220px] p-1.5 rounded-lg shadow-lg">
+                  <DropdownMenuSubContent className="w-52 p-1 rounded-lg shadow-lg text-xs">
                     <DropdownMenuItem
                       onClick={() => onCopy(node._id, null)}
-                      className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                      className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                     >
-                      <Library className="size-4 text-foreground" />
-                      My Library
+                      <Library className="size-3.5 text-foreground" />
+                      <span>My Library</span>
                     </DropdownMenuItem>
                     {validMoveTargets.map((target) => (
                       <DropdownMenuItem
                         key={target._id}
                         onClick={() => onCopy(node._id, target._id)}
-                        className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                        className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                       >
-                        <Folder className="size-4 text-muted-foreground" />
+                        <Folder className="size-3.5 text-foreground" />
                         <span className="truncate">{target.name}</span>
                       </DropdownMenuItem>
                     ))}
@@ -298,19 +308,19 @@ function CollectionNode({
                 </DropdownMenuSub>
 
                 <DropdownMenuItem
-                  className="gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                  className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                   onClick={() => onDelete(node._id)}
                 >
-                  <FolderMinus className="size-4 text-muted-foreground" />
-                  Delete Collection...
+                  <FolderMinus className="size-3.5 text-foreground" />
+                  <span>Delete Collection...</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive gap-2.5 px-2.5 py-2 text-sm whitespace-nowrap"
+                  className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer text-foreground"
                   onClick={() => onDeleteWithItems(node._id)}
                 >
-                  <Trash2 className="size-4" />
-                  Delete Collection and Items...
+                  <Trash2 className="size-3.5 text-foreground" />
+                  <span>Delete Collection & Items</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -331,6 +341,7 @@ function CollectionNode({
               renamingId={renamingId}
               renameValue={renameValue}
               allCollections={allCollections}
+              collectionPaperCounts={collectionPaperCounts}
               isSearching={isSearching}
               onStartRename={onStartRename}
               onSubmitRename={onSubmitRename}
@@ -348,7 +359,7 @@ function CollectionNode({
   );
 }
 
-// ── Main Zotero-style Sidebar Component ───────────────────────────────────────
+// ── Main Library Sidebar (Directly matching Storage Sidebar specs) ────────────
 
 export default function LibrarySideBar() {
   const { workspaceId: workspaceUrl, collectionId: activeId } = useParams() as {
@@ -361,7 +372,7 @@ export default function LibrarySideBar() {
   const id = useId();
 
   const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id ?? '';
+  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
 
   const collectionService = useCollections(workspaceId);
   const paperService = usePapers({ workspaceId });
@@ -385,6 +396,8 @@ export default function LibrarySideBar() {
       setIsDragging(true);
       startXRef.current = e.clientX;
       startWidthRef.current = width;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
     },
     [width]
   );
@@ -399,6 +412,8 @@ export default function LibrarySideBar() {
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -407,6 +422,8 @@ export default function LibrarySideBar() {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
   }, [isDragging, setWidth]);
 
@@ -448,7 +465,7 @@ export default function LibrarySideBar() {
   const collections = collectionService.state.collections ?? [];
   const papers = paperService.state.allPapers ?? [];
 
-  // Computed counts for Zotero smart views
+  // Computed counts
   const {
     allTags,
     tagCounts,
@@ -458,8 +475,10 @@ export default function LibrarySideBar() {
     unfiledCount,
     duplicatesCount,
     trashCount,
+    collectionPaperCounts,
   } = useMemo(() => {
     const counts: Record<string, number> = {};
+    const colCounts: Record<string, number> = {};
     let starred = 0;
     let recentRead = 0;
     let unfiled = 0;
@@ -478,7 +497,11 @@ export default function LibrarySideBar() {
       total++;
       if (p.labels?.includes('starred') || p.labels?.includes('favorite')) starred++;
       if (p.accessedAt) recentRead++;
-      if (!p.collectionId) unfiled++;
+      if (!p.collectionId) {
+        unfiled++;
+      } else {
+        colCounts[p.collectionId] = (colCounts[p.collectionId] || 0) + 1;
+      }
 
       if (p.doi && p.doi.trim()) {
         const d = p.doi.trim().toLowerCase();
@@ -513,6 +536,7 @@ export default function LibrarySideBar() {
       unfiledCount: unfiled,
       duplicatesCount: dupIds.size,
       trashCount: trash,
+      collectionPaperCounts: colCounts,
     };
   }, [papers]);
 
@@ -539,7 +563,7 @@ export default function LibrarySideBar() {
 
   const tree = buildTree(filteredCollections);
 
-  const handleCreate = (data: any) => {
+  const handleCreate = (data: CollectionInput) => {
     collectionService.actions.create(
       { ...data, parent: data.parent ?? createParentId },
       {
@@ -616,6 +640,7 @@ export default function LibrarySideBar() {
     renamingId,
     renameValue,
     allCollections: collections,
+    collectionPaperCounts,
     isSearching: searchQuery.trim().length > 0,
     onStartRename: startRename,
     onSubmitRename: submitRename,
@@ -631,22 +656,18 @@ export default function LibrarySideBar() {
     <aside
       aria-label="Library navigation and collections"
       style={{
-        width: `${Math.min(Math.max(width, 240), 700)}px`,
-        minWidth: '240px',
-        maxWidth: '700px',
+        width: `${width}px`,
+        minWidth: '210px',
+        maxWidth: '500px',
       }}
-      className="relative h-full overflow-x-hidden border-r border-border/50 bg-background/50 flex flex-col select-none shrink-0"
+      className="relative h-full overflow-x-hidden border-r border-border/50 bg-transparent p-2 py-4 flex flex-col select-none shrink-0"
     >
-      {/* Header bar without dividing line */}
-      <div className="h-14 px-3 flex items-center justify-between shrink-0 select-none">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-semibold text-base tracking-tight text-foreground truncate pl-1">
-            Library
-          </span>
-        </div>
+      {/* Header: Exactly matching Storage Sidebar */}
+      <div className="mb-4 px-2 flex items-center justify-between font-semibold text-base tracking-tight text-foreground select-none">
+        <span>Library</span>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* Expandable Search Input */}
+          {/* Search collections input */}
           <div
             className={cn(
               "relative flex items-center transition-all duration-300 ease-in-out h-7 rounded-lg overflow-hidden group",
@@ -681,7 +702,6 @@ export default function LibrarySideBar() {
               )}
               autoFocus={isSearchExpanded}
             />
-            {/* Clear Button */}
             {searchQuery && (
               <button
                 onMouseDown={(e) => e.preventDefault()}
@@ -729,35 +749,39 @@ export default function LibrarySideBar() {
         </div>
       </div>
 
-      {/* Navigation Links & Collections Tree */}
-      <div className="flex-1 overflow-x-hidden overflow-y-auto p-2 flex flex-col gap-0.5">
-        {/* 1. Root Node: "My Library" */}
-        <div className="relative group/root flex items-center w-full">
-          {isLibraryActive && (
-            <motion.div
-              layoutId={`library-active-${id}`}
-              className="absolute inset-0 rounded-md bg-accent"
-              initial={false}
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
-          )}
-
-          <div
-            className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md px-2.5 transition-colors cursor-pointer select-none text-foreground hover:bg-accent/60',
-              isLibraryActive
-                ? 'font-semibold'
-                : 'font-medium'
-            )}
-          >
+      {/* Navigation Links: Exactly matching Storage items h-10 gap-2.5 px-2.5 text-sm */}
+      <LayoutGroup id={`library-nav-${id}`}>
+        <nav
+          aria-label="Library Navigation"
+          className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-1 pr-1"
+        >
+          {/* 1. My Library */}
+          <div className="relative group/root flex items-center w-full">
             <Link
               href={basePath}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
+              className={cn(
+                'group/item relative flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+                isLibraryActive ? 'font-semibold' : 'font-medium'
+              )}
             >
-              <Library
-                className="size-4 shrink-0 transition-colors text-foreground"
-              />
-              <span className="flex-1 truncate text-sm font-medium text-foreground">My Library</span>
+              {isLibraryActive && (
+                <motion.div
+                  layoutId={`library-nav-active-${id}`}
+                  className="absolute inset-0 rounded-md bg-accent"
+                  initial={false}
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <Library className="relative z-10 size-4 shrink-0 text-foreground" />
+              <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
+                My Library
+              </span>
+
+              {totalPapersCount > 0 && (
+                <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
+                  {totalPapersCount}
+                </span>
+              )}
             </Link>
 
             {tree.length > 0 && (
@@ -768,195 +792,175 @@ export default function LibrarySideBar() {
                   setIsLibraryExpanded((v) => !v);
                 }}
                 aria-label={isLibraryExpanded ? 'Collapse collections' : 'Expand collections'}
-                className="flex size-5 shrink-0 items-center justify-center rounded text-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                className="absolute right-2 z-20 flex size-5 shrink-0 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <ChevronRight
                   className={cn(
-                    'size-3.5 transition-transform duration-150 text-foreground',
+                    'size-3.5 text-foreground transition-transform duration-150',
                     isLibraryExpanded && 'rotate-90'
                   )}
                 />
               </button>
             )}
           </div>
-        </div>
 
-        {/* Collections Tree (Nested directly under My Library) */}
-        {tree.length > 0 && isLibraryExpanded && (
-          <div className="flex flex-col gap-0.5 my-0.5">
-            {tree.map((node) => (
-              <CollectionNode
-                key={node._id}
-                node={node}
-                depth={1}
-                {...sharedNodeProps}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Empty Search Result (only when searching collections) */}
-        {searchQuery.trim().length > 0 && tree.length === 0 && (
-          <div className="p-4 text-center text-xs text-muted-foreground">
-            No matching collections
-          </div>
-        )}
-
-        {/* 2. Recently Read */}
-        <div className="relative group/recent-read flex items-center w-full">
-          {isRecentReadActive && (
-            <motion.div
-              layoutId={`recent-read-active-${id}`}
-              className="absolute inset-0 rounded-md bg-accent"
-              initial={false}
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
+          {/* Collections Tree (Nested directly under My Library) */}
+          {tree.length > 0 && isLibraryExpanded && (
+            <div className="flex flex-col gap-0.5 my-0.5">
+              {tree.map((node) => (
+                <CollectionNode
+                  key={node._id}
+                  node={node}
+                  depth={0}
+                  {...sharedNodeProps}
+                />
+              ))}
+            </div>
           )}
 
-          <div
-            className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md px-2.5 transition-colors cursor-pointer select-none text-foreground hover:bg-accent/60',
-              isRecentReadActive
-                ? 'font-semibold'
-                : 'font-medium'
-            )}
-          >
-            <Link
-              href={`${basePath}/recently-read`}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
-            >
-              <History
-                className="size-4 shrink-0 transition-colors text-foreground"
-              />
-              <span className="flex-1 truncate text-sm font-medium text-foreground">Recently Read</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* 3. Favorites (Outline Only, No Black Fill) */}
-        <div className="relative group/starred flex items-center w-full">
-          {isStarredActive && (
-            <motion.div
-              layoutId={`starred-active-${id}`}
-              className="absolute inset-0 rounded-md bg-accent"
-              initial={false}
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
+          {/* Empty Search Result */}
+          {searchQuery.trim().length > 0 && tree.length === 0 && (
+            <div className="p-3 text-center text-xs text-muted-foreground">
+              No matching collections
+            </div>
           )}
 
-          <div
+          {/* 2. Recently Read */}
+          <Link
+            href={`${basePath}/recently-read`}
             className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md px-2.5 transition-colors cursor-pointer select-none text-foreground hover:bg-accent/60',
-              isStarredActive
-                ? 'font-semibold'
-                : 'font-medium'
+              'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              isRecentReadActive ? 'font-semibold' : 'font-medium'
             )}
           >
-            <Link
-              href={`${basePath}/favorites`}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
-            >
-              <Star
-                className="size-4 shrink-0 transition-colors fill-none text-foreground stroke-foreground"
+            {isRecentReadActive && (
+              <motion.div
+                layoutId={`library-nav-active-${id}`}
+                className="absolute inset-0 rounded-md bg-accent"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
-              <span className="flex-1 truncate text-sm font-medium text-foreground">Favorites</span>
-            </Link>
-          </div>
-        </div>
+            )}
+            <History className="relative z-10 size-4 shrink-0 text-foreground" />
+            <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
+              Recently Read
+            </span>
+            {recentReadCount > 0 && (
+              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
+                {recentReadCount}
+              </span>
+            )}
+          </Link>
 
-        {/* 4. Duplicate Items */}
-        <div className="relative group/duplicates flex items-center w-full">
-          {isDuplicatesActive && (
-            <motion.div
-              layoutId={`duplicates-active-${id}`}
-              className="absolute inset-0 rounded-md bg-accent"
-              initial={false}
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
-          )}
-
-          <div
+          {/* 3. Favorites */}
+          <Link
+            href={`${basePath}/favorites`}
             className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md px-2.5 transition-colors cursor-pointer select-none text-foreground hover:bg-accent/60',
-              isDuplicatesActive
-                ? 'font-semibold'
-                : 'font-medium'
+              'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              isStarredActive ? 'font-semibold' : 'font-medium'
             )}
           >
-            <Link
-              href={`${basePath}/duplicates`}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
-            >
-              <Files
-                className="size-4 shrink-0 transition-colors text-foreground"
+            {isStarredActive && (
+              <motion.div
+                layoutId={`library-nav-active-${id}`}
+                className="absolute inset-0 rounded-md bg-accent"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
-              <span className="flex-1 truncate text-sm font-medium text-foreground">Duplicate Items</span>
-            </Link>
-          </div>
-        </div>
+            )}
+            <Star className="relative z-10 size-4 shrink-0 text-foreground" />
+            <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
+              Favorites
+            </span>
+            {starredCount > 0 && (
+              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
+                {starredCount}
+              </span>
+            )}
+          </Link>
 
-        {/* 5. Unfiled Items */}
-        <div className="relative group/unfiled flex items-center w-full">
-          {isUnfiledActive && (
-            <motion.div
-              layoutId={`unfiled-active-${id}`}
-              className="absolute inset-0 rounded-md bg-accent"
-              initial={false}
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
-          )}
-
-          <div
+          {/* 4. Duplicate Items */}
+          <Link
+            href={`${basePath}/duplicates`}
             className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md px-2.5 transition-colors cursor-pointer select-none text-foreground hover:bg-accent/60',
-              isUnfiledActive
-                ? 'font-semibold'
-                : 'font-medium'
+              'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              isDuplicatesActive ? 'font-semibold' : 'font-medium'
             )}
           >
-            <Link
-              href={`${basePath}/unfiled`}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
-            >
-              <Inbox
-                className="size-4 shrink-0 transition-colors text-foreground"
+            {isDuplicatesActive && (
+              <motion.div
+                layoutId={`library-nav-active-${id}`}
+                className="absolute inset-0 rounded-md bg-accent"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
-              <span className="flex-1 truncate text-sm font-medium text-foreground">Unfiled Items</span>
-            </Link>
-          </div>
-        </div>
+            )}
+            <Files className="relative z-10 size-4 shrink-0 text-foreground" />
+            <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
+              Duplicate Items
+            </span>
+            {duplicatesCount > 0 && (
+              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
+                {duplicatesCount}
+              </span>
+            )}
+          </Link>
 
-        {/* 6. Trash (without dividing line) */}
-        <div className="relative group/trash flex items-center w-full">
-          {isTrashActive && (
-            <motion.div
-              layoutId={`trash-active-${id}`}
-              className="absolute inset-0 rounded-md bg-accent"
-              initial={false}
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
-          )}
-
-          <div
+          {/* 5. Unfiled Items */}
+          <Link
+            href={`${basePath}/unfiled`}
             className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md px-2.5 transition-colors cursor-pointer select-none text-foreground hover:bg-accent/60',
-              isTrashActive
-                ? 'font-semibold'
-                : 'font-medium'
+              'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              isUnfiledActive ? 'font-semibold' : 'font-medium'
             )}
           >
-            <Link
-              href={`${basePath}/trash`}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
-            >
-              <Trash2
-                className="size-4 shrink-0 transition-colors text-foreground"
+            {isUnfiledActive && (
+              <motion.div
+                layoutId={`library-nav-active-${id}`}
+                className="absolute inset-0 rounded-md bg-accent"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
-              <span className="flex-1 truncate text-sm font-medium text-foreground">Trash</span>
-            </Link>
-          </div>
-        </div>
-      </div>
+            )}
+            <Inbox className="relative z-10 size-4 shrink-0 text-foreground" />
+            <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
+              Unfiled Items
+            </span>
+            {unfiledCount > 0 && (
+              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
+                {unfiledCount}
+              </span>
+            )}
+          </Link>
+
+          {/* 6. Trash */}
+          <Link
+            href={`${basePath}/trash`}
+            className={cn(
+              'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              isTrashActive ? 'font-semibold' : 'font-medium'
+            )}
+          >
+            {isTrashActive && (
+              <motion.div
+                layoutId={`library-nav-active-${id}`}
+                className="absolute inset-0 rounded-md bg-accent"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
+            <Trash2 className="relative z-10 size-4 shrink-0 text-foreground" />
+            <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
+              Trash
+            </span>
+            {trashCount > 0 && (
+              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
+                {trashCount}
+              </span>
+            )}
+          </Link>
+        </nav>
+      </LayoutGroup>
 
       {/* Tag Selector at Bottom */}
       <TagSelector
@@ -966,12 +970,12 @@ export default function LibrarySideBar() {
         tagCounts={tagCounts}
       />
 
-      {/* Drag Handle for Resizing (Single Border) */}
+      {/* Drag Handle for Resizing */}
       <div
         onMouseDown={handleMouseDown}
         className={cn(
-          "absolute top-0 -right-1 w-2 h-full cursor-col-resize hover:bg-primary/20 transition-colors z-30 select-none",
-          isDragging && "bg-primary/30"
+          "absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 transition-colors z-30 select-none",
+          isDragging && "bg-primary/50"
         )}
       />
 

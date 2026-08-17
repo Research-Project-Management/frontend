@@ -125,7 +125,7 @@ const MessageBubble = React.memo(function MessageBubble({
           <div>
             <div
               className={cn(
-                'prose prose-xs max-w-none text-sm',
+                'prose prose-xs max-w-none text-sm dark:prose-invert',
                 'prose-headings:text-foreground prose-headings:font-semibold',
                 'prose-p:text-foreground/90 prose-p:leading-relaxed',
                 'prose-strong:text-foreground prose-strong:font-semibold',
@@ -133,8 +133,9 @@ const MessageBubble = React.memo(function MessageBubble({
                 'prose-code:text-foreground prose-code:bg-muted prose-code:rounded prose-code:px-1',
                 isStreaming && 'animate-in fade-in duration-150',
               )}
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(getVisibleAssistantContent(content)) }}
-            />
+            >
+              {renderMarkdown(getVisibleAssistantContent(content))}
+            </div>
             {sources?.length ? <SourcesList sources={sources} /> : null}
           </div>
         )}

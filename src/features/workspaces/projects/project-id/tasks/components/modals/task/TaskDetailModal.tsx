@@ -105,7 +105,12 @@ export function TaskDetailModal({
   const { workspaceId } = useParams() as { workspaceId: string };
   const { user: currentUser } = useAuth();
   const { uploadFile } = useUpload();
-  const { data: workspaceLabels = [] } = useLabelsQuery(workspaceId || '', 'task');
+  const { data: rawLabels } = useLabelsQuery(workspaceId || '', 'task');
+  const workspaceLabels = useMemo(() => {
+    if (Array.isArray(rawLabels)) return rawLabels;
+    if (Array.isArray((rawLabels as any)?.labels)) return (rawLabels as any).labels;
+    return [];
+  }, [rawLabels]);
   const firstColumnId = resolveTaskColumnId(columns[0]);
 
   const [title, setTitle] = useState("");
@@ -144,9 +149,9 @@ export function TaskDetailModal({
   const [newChecklistTitle, setNewChecklistTitle] = useState("Checklist");
   const [dragActive, setDragActive] = useState(false);
 
-  const taskId = card?._id ?? null;
-  const currentUserId = currentUser?._id ?? null;
-  const isCurrentUserAssignee = Boolean(currentUserId && assigneeId === currentUserId);
+  const taskId = card?._id || (card as any)?.id || null;
+  const currentUserId = currentUser?._id || (currentUser as any)?.id || null;
+  const isCurrentUserAssignee = Boolean(currentUserId && (assigneeId === currentUserId || (assigneeId as any)?._id === currentUserId || (assigneeId as any)?.id === currentUserId));
   const canComment = Boolean(taskId);
   const { data: taskComments = [] } = useTaskComments(open && taskId ? taskId : "");
   const { data: taskActivity = [], error: activityError, isLoading: activityLoading } = useTaskActivityLogs(open && taskId ? taskId : "");
@@ -168,7 +173,36 @@ export function TaskDetailModal({
       setStartDate(card.startDate || "");
       setRecurrence(card.recurrence || "none");
       setReminder(card.reminder || "1day");
-      setChecklists(card.checklists || []);
+
+      const rawChecklists = Array.isArray(card.checklists) ? card.checklists : [];
+      const parsedChecklists = rawChecklists.map((c: any, index: number) => {
+        if (!c.items && (c.text || c.title !== undefined || c.completed !== undefined)) {
+          return {
+            _id: c._id || c.id || `cl-${index}`,
+            title: c.name || 'Checklist',
+            items: [{
+              _id: c._id || c.id || `item-${index}`,
+              title: c.text || c.title || '',
+              completed: Boolean(c.completed),
+              assigneeId: c.assigneeId,
+              dueDate: c.dueDate,
+            }],
+          };
+        }
+        return {
+          _id: c._id || c.id || `cl-${index}`,
+          title: c.title || c.name || `Checklist ${index + 1}`,
+          items: (Array.isArray(c.items) ? c.items : []).map((i: any, itemIndex: number) => ({
+            _id: i._id || i.id || `item-${index}-${itemIndex}`,
+            title: i.title || i.text || '',
+            completed: Boolean(i.completed),
+            assigneeId: i.assigneeId,
+            dueDate: i.dueDate,
+          })),
+        };
+      });
+      setChecklists(parsedChecklists);
+
       setCompleted(card.completed || false);
       setAttachments(card.attachments || []);
 
@@ -421,11 +455,16 @@ export function TaskDetailModal({
   }, [assigneeId, members]);
 
   const selectedLabelsList = useMemo(() => {
-    return workspaceLabels.filter((l: any) => labels.includes(l._id));
+    const safeLabels = Array.isArray(workspaceLabels) ? workspaceLabels : [];
+    const safeSelected = Array.isArray(labels) ? labels : [];
+    return safeLabels.filter((l: any) => safeSelected.includes(l._id || l.id));
   }, [workspaceLabels, labels]);
 
   const visibleActivities = useMemo<ActivityEntry[]>(() => {
-    const commentEntries: ActivityEntry[] = (taskComments as any[]).map((c) => ({
+    const commentsList = Array.isArray(taskComments)
+      ? taskComments
+      : (taskComments as any)?.comments || (taskComments as any)?.data || [];
+    const commentEntries: ActivityEntry[] = commentsList.map((c: any) => ({
       id: c._id,
       kind: 'comment',
       author: c.author?.name || 'User',
@@ -441,7 +480,10 @@ export function TaskDetailModal({
       },
     }));
 
-    const logEntries: ActivityEntry[] = (taskActivity as any[]).map((a) => ({
+    const activityList = Array.isArray(taskActivity)
+      ? taskActivity
+      : (taskActivity as any)?.activity || (taskActivity as any)?.activities || (taskActivity as any)?.data || [];
+    const logEntries: ActivityEntry[] = activityList.map((a: any) => ({
       id: a._id || `log_${Math.random()}`,
       kind: 'activity',
       author: a.user?.name || a.author?.name || 'System',
@@ -946,7 +988,7 @@ export function TaskDetailModal({
               />
 
               {/* Subtasks Section */}
-              {card?.subtasks && card.subtasks.length > 0 && (
+              {Array.isArray(card?.subtasks) && card.subtasks.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">

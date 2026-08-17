@@ -29,15 +29,16 @@ export function TaskChecklist({
   return (
     <div className="mt-10 space-y-4">
       {checklists.map((list) => {
-        const completedCount = list.items.filter((item) => item.completed).length;
-        const progress = list.items.length
-          ? Math.round((completedCount / list.items.length) * 100)
+        const safeItems = Array.isArray(list.items) ? list.items : [];
+        const completedCount = safeItems.filter((item) => item.completed).length;
+        const progress = safeItems.length
+          ? Math.round((completedCount / safeItems.length) * 100)
           : 0;
 
         return (
           <ChecklistBlock
             key={list._id}
-            checklist={list}
+            checklist={{ ...list, items: safeItems }}
             progress={progress}
             onDelete={() => onDeleteChecklist(list._id)}
             onToggleItem={(itemId) => onToggleItem(list._id, itemId)}
@@ -155,8 +156,8 @@ export function ChecklistBlock({
       </div>
 
       <div className="space-y-2 pt-1">
-        {checklist.items.length > 0 ? (
-          checklist.items.map((item) =>
+        {(checklist.items || []).length > 0 ? (
+          (checklist.items || []).map((item) =>
             editingItemId === item._id ? (
               <div key={item._id} className="flex items-start gap-3 text-[14px] text-foreground">
                 <input

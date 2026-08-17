@@ -53,13 +53,69 @@ export const useProjects = (workspaceId?: string) => {
 
 export const useWorkspaceProjects = useProjects;
 
+// ── Create Project ────────────────────────────────────────────────────────────
+
+export const createProject = (
+  workspaceId: string,
+  data: {
+    name: string;
+    avatar?: string;
+    description?: string;
+    modules?: string[];
+    identifier?: string;
+    isPrivate?: boolean;
+    timezone?: string;
+  }
+) => apiPost<{ project?: Project; data?: Project } | Project>(`/api/workspace/${workspaceId}/projects`, data);
+
+export const useCreateProject = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      workspaceId,
+      ...data
+    }: {
+      workspaceId: string;
+      name: string;
+      avatar?: string;
+      description?: string;
+      modules?: string[];
+      identifier?: string;
+      isPrivate?: boolean;
+      timezone?: string;
+    }) => createProject(workspaceId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["projects", variables.workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["projects-header", variables.workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspaceId] });
+      toast.success("Project created successfully", { id: "project-create-success" });
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to create project", { id: "project-create-error" });
+    },
+  });
+};
+
 // ── Member Management ─────────────────────────────────────────────────────────
+
+export const fetchProjectMembers = (projectId: string) =>
+  apiGet<{ members: any[] }>(`/api/project/${projectId}/members`);
+
+export const useProjectMembers = (projectId: string) =>
+  useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: async () => {
+      const res = await fetchProjectMembers(projectId);
+      return res.members || [];
+    },
+    enabled: Boolean(projectId),
+  });
 
 export const useAddProjectMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, userId, role }: { projectId: string; userId: string; role?: string }) =>
-      apiPut(`/api/project/${projectId}/add-member`, { userId, role }),
+      apiPost(`/api/project/${projectId}/members`, { userId, role: role || 'contributor' }),
     onMutate: async ({ projectId, userId, role }) => {
       await queryClient.cancelQueries({ queryKey: ["project", projectId] });
       const previousProject = queryClient.getQueryData(["project", projectId]);
@@ -67,8 +123,8 @@ export const useAddProjectMember = () => {
       queryClient.setQueryData(["project", projectId], (old: any) => {
         if (!old) return old;
         const newMember = {
-          user: { _id: userId, name: "Adding...", email: "" },
-          role: role || "member",
+          user: { id: userId, _id: userId, name: "Adding...", email: "" },
+          role: role || "contributor",
           joinedAt: new Date().toISOString(),
         };
         return {
@@ -93,6 +149,7 @@ export const useAddProjectMember = () => {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-overview", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-members", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", variables.projectId] });
     },
   });
@@ -101,16 +158,33 @@ export const useAddProjectMember = () => {
 export const useUpdateProjectMemberRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, userId, newRole }: { projectId: string; userId: string; newRole: string }) =>
-      apiPut(`/api/project/${projectId}/update-member-role`, { userId, newRole }),
-    onMutate: async ({ projectId, userId, newRole }) => {
+    mutationFn: ({
+      projectId,
+      userId,
+      newRole,
+      role,
+    }: {
+      projectId: string;
+      userId: string;
+      newRole?: string;
+      role?: string;
+    }) =>
+      apiPut(`/api/project/${projectId}/members/${userId}`, {
+        role: role || newRole || 'contributor',
+      }),
+    onMutate: async ({ projectId, userId, newRole, role }) => {
+      const targetRole = role || newRole;
       await queryClient.cancelQueries({ queryKey: ["project", projectId] });
       const previousProject = queryClient.getQueryData(["project", projectId]);
 
       queryClient.setQueryData(["project", projectId], (old: any) => {
         if (!old) return old;
         const updateMembers = (members: any[]) =>
-          members.map((m) => (m.user._id === userId ? { ...m, role: newRole } : m));
+          members.map((m) =>
+            (m.user?._id === userId || m.user?.id === userId || m.userId === userId)
+              ? { ...m, role: targetRole }
+              : m
+          );
 
         return {
           ...old,
@@ -134,6 +208,7 @@ export const useUpdateProjectMemberRole = () => {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-overview", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-members", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", variables.projectId] });
     },
   });
@@ -143,7 +218,7 @@ export const useRemoveProjectMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, userId }: { projectId: string; userId: string }) =>
-      apiPut(`/api/project/${projectId}/remove-member`, { userId }),
+      apiDelete(`/api/project/${projectId}/members/${userId}`),
     onMutate: async ({ projectId, userId }) => {
       await queryClient.cancelQueries({ queryKey: ["project", projectId] });
       const previousProject = queryClient.getQueryData(["project", projectId]);
@@ -151,7 +226,7 @@ export const useRemoveProjectMember = () => {
       queryClient.setQueryData(["project", projectId], (old: any) => {
         if (!old) return old;
         const filterMembers = (members: any[]) =>
-          members.filter((m) => m.user._id !== userId);
+          members.filter((m) => m.user?._id !== userId && m.user?.id !== userId && m.userId !== userId);
 
         return {
           ...old,
@@ -175,6 +250,7 @@ export const useRemoveProjectMember = () => {
     },
     onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-overview", variables.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-members", variables.projectId] });
       queryClient.invalidateQueries({ queryKey: ["project", variables.projectId] });
     },
   });
@@ -186,7 +262,17 @@ export const useUpdateProject = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ projectId, ...data }: {
-      projectId: string; name?: string; description?: string; avatar?: string; modules?: string[];
+      projectId: string;
+      name?: string;
+      description?: string;
+      avatar?: string | null;
+      cover?: string | null;
+      identifier?: string;
+      isPrivate?: boolean;
+      timezone?: string;
+      isArchived?: boolean;
+      modules?: string[];
+      subscriberIds?: string[];
     }) => apiPut(`/api/project/${projectId}`, data),
     onMutate: async (newProject) => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)

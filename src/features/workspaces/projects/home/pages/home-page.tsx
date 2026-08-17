@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { useParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from '@/features/workspaces/shell';
 import { Skeleton } from "@/shared/components/ui";
 import ChatAi from "../components/chat-ai";
 

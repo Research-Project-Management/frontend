@@ -41,14 +41,17 @@ export const DEFAULT_LABEL_COLOR = "#4bce97";
 // ── Pure Label API Service ───────────────────────────────────────────────────
 
 export const LabelService = {
-  list: async (workspaceId: string, type?: string, projectId?: string) => {
+  list: async (workspaceId: string, type?: string, projectId?: string): Promise<Label[]> => {
     const params = new URLSearchParams();
     if (type) params.append("type", type);
     if (projectId) params.append("projectId", projectId);
 
     const queryStr = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiGet<{ labels?: Label[] }>(`/api/workspace/${workspaceId}/labels${queryStr}`);
-    return data.labels ?? [];
+    const data = await apiGet<any>(`/api/workspace/${workspaceId}/labels${queryStr}`);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.labels)) return data.labels;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
   },
 
   create: ({ workspaceId, ...payload }: CreateLabelInput) =>

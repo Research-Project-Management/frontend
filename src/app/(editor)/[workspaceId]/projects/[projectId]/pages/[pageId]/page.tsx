@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { EditorPage } from '@/features/editor';
+import EditorPage from '@/features/editor/pages/EditorPage';
 
 export const metadata: Metadata = { title: 'Page A Flux' };
 

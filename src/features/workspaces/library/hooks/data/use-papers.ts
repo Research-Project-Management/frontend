@@ -5,11 +5,14 @@ import {
   paperKeys,
   getCollectionPapers,
   getAllPapers,
+  getPaperById,
   createPaper,
   updatePaper,
   deletePaper,
 } from '../../services/paper.service';
 import { invalidateCollections } from '../../services/collection.service';
+
+import type { Paper, CreatePaperDTO, UpdatePaperDTO } from '../../types/library.types';
 
 interface UsePapersOptions {
   workspaceId: string;
@@ -26,6 +29,13 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
     select: (d) => d.papers || [],
   });
 
+  const paperByIdQuery = useQuery({
+    queryKey: paperKeys.byId(workspaceId, collectionId || ''),
+    queryFn: () => getPaperById(workspaceId, collectionId || ''),
+    enabled: !!workspaceId && !!collectionId,
+    select: (d) => d.paper || null,
+  });
+
   const collectionPapersQuery = useQuery({
     queryKey: paperKeys.byCollection(workspaceId, collectionId || ''),
     queryFn: () => getCollectionPapers(workspaceId, collectionId || ''),
@@ -34,11 +44,12 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data: Parameters<typeof createPaper>[2]) =>
-      createPaper(workspaceId, collectionId || '', data),
-    onSuccess: () => {
-      if (collectionId) {
-        qc.invalidateQueries({ queryKey: paperKeys.byCollection(workspaceId, collectionId) });
+    mutationFn: (data: CreatePaperDTO) =>
+      createPaper(workspaceId, data.collectionId || collectionId || '', data),
+    onSuccess: (_, variables) => {
+      const targetCol = variables.collectionId || collectionId;
+      if (targetCol) {
+        qc.invalidateQueries({ queryKey: paperKeys.byCollection(workspaceId, targetCol) });
       }
       qc.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
       invalidateCollections(qc, workspaceId);
@@ -46,7 +57,7 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Parameters<typeof updatePaper>[2] & { paperId: string; targetCollectionId?: string }) => {
+    mutationFn: (data: UpdatePaperDTO & { paperId: string; targetCollectionId?: string }) => {
       const { paperId, targetCollectionId, ...rest } = data;
       return updatePaper(workspaceId, paperId, rest);
     },
@@ -90,4 +101,15 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
       refetchCollection: collectionPapersQuery.refetch,
     },
   };
+}
+
+export function usePaper(workspaceId: string, paperId: string) {
+  return useQuery({
+    queryKey: paperKeys.byId(workspaceId, paperId),
+    queryFn: async () => {
+      const res = await getPaperById(workspaceId, paperId);
+      return res.paper;
+    },
+    enabled: !!workspaceId && !!paperId,
+  });
 }

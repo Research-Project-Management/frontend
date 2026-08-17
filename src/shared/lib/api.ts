@@ -193,7 +193,12 @@ export async function apiFetch<T>(
 
   // ── Auto-refresh on 401 ─────────────────────────────────────────────
   // Skip refresh for auth endpoints to prevent infinite loops
-  const isAuthEndpoint = path.includes('/auth/refresh') || path.includes('/auth/login') || path.includes('/auth/register');
+  const isAuthEndpoint =
+    path.includes('/auth/refresh') ||
+    path.includes('/auth/login') ||
+    path.includes('/auth/register') ||
+    path.includes('/auth/user') ||
+    path.includes('/auth/me');
 
   if (response.status === 401 && !isAuthEndpoint) {
     const newToken = await tryRefresh();
@@ -202,10 +207,18 @@ export async function apiFetch<T>(
       // Retry the original request with the fresh token
       response = await rawFetch<T>(path, method, body, options);
     } else {
-      // Refresh failed — clear tokens, redirect to login
+      // Refresh failed — clear invalid tokens
       removeAuthToken();
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-        window.location.href = '/login';
+
+      // Only redirect if user was on a protected page, not on public/landing pages
+      if (typeof window !== 'undefined') {
+        const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/'];
+        const isPublicPath = publicPaths.some(
+          (p) => window.location.pathname === p || window.location.pathname.startsWith(p + '/'),
+        );
+        if (!isPublicPath) {
+          window.location.href = '/login';
+        }
       }
     }
   }

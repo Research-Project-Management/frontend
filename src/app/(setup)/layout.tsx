@@ -16,21 +16,28 @@ export default function WorkspacesLayout({
 
   useEffect(() => {
     if (!isLoading) {
-      if (!user) {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('token') || localStorage.getItem('accessToken')
+          : null;
+
+      if (!user && !token) {
         router.replace('/login');
         return;
       }
 
-      // If user already has workspaces, skip setup and go directly to their workspace
-      apiGet<{ workspaces: any[] }>('/api/workspace')
-        .then((data) => {
-          if (data.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          }
-        })
-        .catch(() => {
-          // No workspaces → stay on setup screen (create-workspace)
-        });
+      if (user) {
+        // If user already has workspaces, skip setup and go directly to their workspace
+        apiGet<{ workspaces: any[] }>('/api/workspace')
+          .then((data) => {
+            if (data.workspaces && data.workspaces.length > 0) {
+              router.replace(`/${data.workspaces[0].url}`);
+            }
+          })
+          .catch(() => {
+            // No workspaces → stay on setup screen (create-workspace)
+          });
+      }
     }
   }, [isLoading, user, router]);
 

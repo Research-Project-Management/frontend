@@ -24,7 +24,7 @@ export type SelectionContext = z.infer<typeof selectionContextSchema>;
 export interface PdfOutlineItem {
   title: string;
   pageNumber: number;
-  dest?: any;
+  dest?: unknown;
   items?: PdfOutlineItem[];
 }
 

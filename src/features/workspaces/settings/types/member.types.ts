@@ -1,4 +1,6 @@
-export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer' | 'guest';
+import type { WorkspaceRole } from '../schemas/settings.schema';
+
+export type { WorkspaceRole };
 
 export interface WorkspaceMemberUser {
   id: string;
@@ -24,4 +26,20 @@ export interface WorkspacePendingInvite {
   email: string;
   role: WorkspaceRole;
   createdAt: string;
+}
+
+export interface WorkspaceMemberResponse {
+  id?: string;
+  userId: string;
+  role: WorkspaceRole | string;
+  joinedAt?: string;
+  createdAt?: string;
+  user: {
+    id?: string;
+    _id?: string;
+    name: string;
+    email: string;
+    avatar?: string;
+    displayName?: string;
+  };
 }

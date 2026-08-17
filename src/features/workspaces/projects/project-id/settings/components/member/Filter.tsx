@@ -18,7 +18,8 @@ interface FilterProps {
 const ROLES = [
   { id: null, label: 'All roles' },
   { id: 'admin', label: 'Admin' },
-  { id: 'member', label: 'Member' },
+  { id: 'contributor', label: 'Contributor' },
+  { id: 'commenter', label: 'Commenter' },
   { id: 'viewer', label: 'Viewer' },
 ];
 

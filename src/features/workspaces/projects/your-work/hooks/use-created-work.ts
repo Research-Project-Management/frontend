@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth';
 import { useProjects } from '@/features/workspaces/projects/shell';
 import { getWorkspaceTasks } from '../services/your-work.service';
+import { createProjectMap, categorizeTasks } from '../utils/your-work.util';
 
 export function useCreatedWork() {
   const { workspaceId } = useParams() as { workspaceId: string };
@@ -25,37 +26,31 @@ export function useCreatedWork() {
     staleTime: 30_000,
   });
 
-  const allTasks = (tasksData as any[]) || [];
+  const allTasks: any[] = Array.isArray(tasksData)
+    ? tasksData
+    : (tasksData as any)?.tasks || (tasksData as any)?.data || [];
 
   const createdTasks = useMemo(() => {
-    if (!currentUserId) return [];
-    return allTasks.filter((t: any) => {
-      const authorId =
-        typeof t.author === 'object'
-          ? t.author?.id || t.author?._id
-          : t.authorId || t.author;
-      return authorId === currentUserId;
-    });
+    return categorizeTasks(allTasks, currentUserId).created;
   }, [allTasks, currentUserId]);
 
-  const taskProjectMap = useMemo(() => {
-    const map: Record<string, { id: string; name: string }> = {};
-    projects.forEach((p: any) => {
-      const pid = p.id || p._id;
-      map[pid] = { id: pid, name: p.name };
-    });
-    return map;
-  }, [projects]);
+  const taskProjectMap = useMemo(() => createProjectMap(projects), [projects]);
 
   return {
-    workspaceId,
-    allTasks,
-    createdTasks,
-    count: createdTasks.length,
-    taskProjectMap,
-    isLoading: isLoadingTasks || isLoadingProjects,
-    isLoadingTasks,
-    isLoadingProjects,
-    refetch,
+    state: {
+      workspaceId,
+      allTasks,
+      createdTasks,
+      count: createdTasks.length,
+      taskProjectMap,
+      isLoading: isLoadingTasks || isLoadingProjects,
+      isLoadingTasks,
+      isLoadingProjects,
+    },
+    actions: {
+      refetch,
+    },
   };
 }
+
+export default useCreatedWork;

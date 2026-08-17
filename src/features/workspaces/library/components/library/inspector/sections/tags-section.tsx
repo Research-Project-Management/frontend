@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, X, Tag } from 'lucide-react';
-import { Input, Badge } from '@/shared/components/ui';
+import { Plus, X, Tag, Hash } from 'lucide-react';
+import { Input } from '@/shared/components/ui';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface TagsSectionProps {
@@ -39,19 +39,19 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 text-[11px] text-primary hover:underline font-medium"
+            className="flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium cursor-pointer"
           >
-            <Plus className="size-3" />
+            <Plus className="size-3 text-foreground" />
             <span>Add Tag</span>
           </button>
         )}
       </div>
 
       {isAdding && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 p-2 bg-muted/20 rounded-lg border border-border/40">
           <Input
             autoFocus
-            placeholder="Tag name (e.g. Deep Learning)..."
+            placeholder="Tag name (e.g. LLM, Survey, Benchmark)..."
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={(e) => {
@@ -63,12 +63,12 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
                 setNewTag('');
               }
             }}
-            className="h-8 text-xs"
+            className="h-7 text-xs bg-background"
           />
           <button
             onClick={handleAddTag}
             disabled={!newTag.trim()}
-            className="px-2.5 h-8 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 disabled:opacity-50"
+            className="px-2.5 h-7 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 disabled:opacity-50 cursor-pointer shrink-0"
           >
             Add
           </button>
@@ -77,7 +77,7 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
               setIsAdding(false);
               setNewTag('');
             }}
-            className="p-1.5 text-muted-foreground hover:text-foreground rounded"
+            className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
           >
             <X className="size-3.5" />
           </button>
@@ -93,16 +93,16 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground border border-border/40 group"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted/60 text-foreground border border-border/40 group hover:border-primary/40 transition-colors"
             >
-              <Tag className="size-3 text-muted-foreground" />
+              <Hash className="size-3 text-muted-foreground/60" />
               <span>{tag}</span>
               <button
                 onClick={() => handleRemoveTag(tag)}
-                className="opacity-60 group-hover:opacity-100 hover:text-destructive transition-opacity ml-0.5"
+                className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity ml-0.5 cursor-pointer"
                 title={`Remove tag "${tag}"`}
               >
-                <X className="size-3" />
+                <X className="size-3 text-foreground" />
               </button>
             </span>
           ))}

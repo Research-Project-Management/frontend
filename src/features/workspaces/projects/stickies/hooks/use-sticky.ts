@@ -1,28 +1,44 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { queryKeys } from "@/shared/constants/query-keys";
+import { useWorkspace } from "@/features/workspaces/shell/hooks/use-workspace";
 import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.service";
 import type { Sticky } from "../types/sticky.types";
 
 export const useSticky = (workspaceId: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {
+  const { workspace } = useWorkspace(workspaceId);
+  const effectiveWorkspaceId = (workspace as any)?.id || (workspace as any)?._id || workspaceId;
   const queryClient = useQueryClient();
-  const fullQueryKey = queryKeys.stickies.workspaceList(workspaceId, search, projectId);
+  const fullQueryKey = queryKeys.stickies.workspaceList(effectiveWorkspaceId, search, projectId);
   const invalidateKey = queryKeys.stickies.all;
 
   const query = useQuery({
     queryKey: fullQueryKey,
-    queryFn: () => getStickies(workspaceId, search, projectId),
-    enabled: (options?.enabled ?? true) && !!workspaceId,
+    queryFn: () => getStickies(effectiveWorkspaceId, search, projectId),
+    enabled: (options?.enabled ?? true) && !!effectiveWorkspaceId,
     staleTime: 30_000,
   });
 
   const create = useMutation({
-    mutationFn: createSticky,
+    mutationFn: (variables: {
+      workspaceId: string;
+      title?: string;
+      content: string;
+      color?: string;
+      position?: { x: number; y: number };
+    }) =>
+      createSticky({
+        ...variables,
+        workspaceId: effectiveWorkspaceId || variables.workspaceId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: invalidateKey });
       toast.success("Sticky added", { id: "sticky-action" });
     },
-    onError: () => toast.error("Failed to add sticky", { id: "sticky-action" }),
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.message || err?.message || "Failed to add sticky", {
+        id: "sticky-action",
+      }),
   });
 
   const update = useMutation({
@@ -33,13 +49,19 @@ export const useSticky = (workspaceId: string, search?: string, projectId?: stri
       const previous = queryClient.getQueryData(fullQueryKey);
       queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
         if (!old) return old;
-        return old.map((sticky) => (sticky._id === variables.stickyId ? { ...sticky, ...variables.updates } : sticky));
+        return old.map((sticky) =>
+          sticky._id === variables.stickyId || sticky.id === variables.stickyId
+            ? { ...sticky, ...variables.updates }
+            : sticky
+        );
       });
       return { previous };
     },
-    onError: (_, __, context) => {
+    onError: (err: any, _, context) => {
       queryClient.setQueryData(fullQueryKey, context?.previous);
-      toast.error("Update failed", { id: "sticky-action" });
+      toast.error(err?.response?.data?.message || err?.message || "Update failed", {
+        id: "sticky-action",
+      });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
   });
@@ -51,33 +73,39 @@ export const useSticky = (workspaceId: string, search?: string, projectId?: stri
       const previous = queryClient.getQueryData(fullQueryKey);
       queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
         if (!old) return old;
-        return old.filter((sticky) => sticky._id !== stickyId);
+        return old.filter((sticky) => sticky._id !== stickyId && sticky.id !== stickyId);
       });
-      toast.success("Sticky deleted", { id: "sticky-action" });
       return { previous };
     },
-    onError: (_, __, context) => {
+    onSuccess: () => {
+      toast.success("Sticky deleted", { id: "sticky-action" });
+    },
+    onError: (err: any, _, context) => {
       queryClient.setQueryData(fullQueryKey, context?.previous);
-      toast.error("Failed to delete", { id: "sticky-action" });
+      toast.error(err?.response?.data?.message || err?.message || "Failed to delete sticky", {
+        id: "sticky-action",
+      });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
   });
 
   const reorder = useMutation({
-    mutationFn: (stickyIds: string[]) => reorderStickies(workspaceId, stickyIds),
+    mutationFn: (stickyIds: string[]) => reorderStickies(effectiveWorkspaceId, stickyIds),
     onMutate: async (stickyIds) => {
       await queryClient.cancelQueries({ queryKey: fullQueryKey });
       const previous = queryClient.getQueryData(fullQueryKey);
       queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
         if (!old) return old;
-        const mapped = new Map(old.map((sticky) => [sticky._id, sticky]));
+        const mapped = new Map(old.map((sticky) => [sticky._id || sticky.id, sticky]));
         return stickyIds.map((id: string) => mapped.get(id)).filter(Boolean) as Sticky[];
       });
       return { previous };
     },
-    onError: (_, __, context) => {
+    onError: (err: any, _, context) => {
       queryClient.setQueryData(fullQueryKey, context?.previous);
-      toast.error("Reorder failed", { id: "sticky-action" });
+      toast.error(err?.response?.data?.message || err?.message || "Reorder failed", {
+        id: "sticky-action",
+      });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
   });

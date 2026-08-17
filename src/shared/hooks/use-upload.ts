@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { apiPost } from '@/shared/lib/api';
+import { apiPost, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/shared/constants';
 
 export type UploadStatus = 'pending' | 'uploading' | 'success' | 'error' | 'aborted';
@@ -86,15 +86,25 @@ export function useUpload() {
     }
     
     if (options.allowedTypes && options.allowedTypes.length > 0) {
-      // Basic MIME check
+      const ext = file.name.includes('.') ? `.${file.name.split('.').pop()?.toLowerCase()}` : '';
+      const mime = file.type?.toLowerCase() || '';
+
       const isValid = options.allowedTypes.some(type => {
-        if (type.endsWith('/*')) {
-          return file.type.startsWith(type.replace('/*', ''));
+        const t = type.toLowerCase();
+        if (t.endsWith('/*')) {
+          return mime.startsWith(t.replace('/*', ''));
         }
-        return file.type === type;
+        if (t.startsWith('.')) {
+          return ext === t;
+        }
+        if (t === 'application/pdf') {
+          return mime === 'application/pdf' || ext === '.pdf';
+        }
+        return mime === t || (ext && t.includes(ext.replace('.', '')));
       });
+
       if (!isValid) {
-        const error = new Error(`File type ${file.type} is not allowed`);
+        const error = new Error(`File type "${file.type || ext}" is not allowed`);
         updateUploadState(id, { status: 'error', error });
         setLegacyError(error);
         options.onError?.(id, error);
@@ -110,7 +120,18 @@ export function useUpload() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("fileName", `${prefix}/${Date.now()}-${file.name}`);
+      formData.append("fileName", file.name);
+
+      if (prefix) {
+        const [scopeType, scopeId] = prefix.split("/");
+        if (scopeType === "workspace" && scopeId) {
+          formData.append("workspaceId", scopeId);
+        } else if (scopeType === "project" && scopeId) {
+          formData.append("projectId", scopeId);
+        } else if (scopeType === "page" && scopeId) {
+          formData.append("pageId", scopeId);
+        }
+      }
 
       // 1. Upload to backend proxy with XMLHttpRequest for progress tracking
       const uploadUrl = await new Promise<string>((resolve, reject) => {
@@ -134,7 +155,9 @@ export function useUpload() {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const response = JSON.parse(xhr.responseText);
-              resolve(`${API_BASE_URL}${response.url}`);
+              const rawUrl = response.url || response.file?.url || response.path || '';
+              const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : `${API_BASE_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+              resolve(resolvedUrl);
             } catch (err) {
               reject(new Error("Failed to parse backend response"));
             }
@@ -146,15 +169,13 @@ export function useUpload() {
         xhr.onerror = () => reject(new Error("Network error during upload"));
         xhr.onabort = () => reject(new Error("Upload aborted by user"));
 
-        let uploadEndpoint = "/api/files/upload-r2";
-        if (prefix) {
-          const [scopeType, scopeId] = prefix.split("/");
-          if (["workspace", "project", "page"].includes(scopeType) && scopeId) {
-            uploadEndpoint = `/api/files/${scopeType}/${scopeId}/upload-r2`;
-          }
+        xhr.open("POST", `${API_BASE_URL}/api/files/upload-r2`, true);
+
+        const token = getAuthToken();
+        if (token) {
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
 
-        xhr.open("POST", `${API_BASE_URL}${uploadEndpoint}`, true);
         xhr.send(formData);
 
         controller.signal.addEventListener("abort", () => {

@@ -168,7 +168,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   const favoriteProjects = useMemo(() => {
     if (!projects || favoriteProjectIds.size === 0) return [];
-    return projects.filter((p) => favoriteProjectIds.has(p._id));
+    return projects.filter((p) => favoriteProjectIds.has(p._id || (p as any).id));
   }, [projects, favoriteProjectIds]);
 
   // ── Expanded projects (persisted) ──────────────────────────────────────────
@@ -187,9 +187,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // Auto-expand active project on navigation
   useEffect(() => {
-    const active = projects?.find((p) => pathname.includes(`/projects/${p._id}`));
+    const active = projects?.find((p) => pathname.includes(`/projects/${p._id || (p as any).id}`));
     if (!active) return;
-    setExpandedProjects((prev) => (prev.has(active._id) ? prev : new Set(prev).add(active._id)));
+    const activeId = active._id || (active as any).id;
+    setExpandedProjects((prev) => (prev.has(activeId) ? prev : new Set(prev).add(activeId)));
   }, [pathname, projects]);
 
   const toggleProject = (projId: string) => {
@@ -219,17 +220,18 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Project Item Renderer ──────────────────────────────────────────────────
 
   const renderProjectItem = (project: any, keyPrefix = '') => {
-    const isOpen = expandedProjects.has(project._id);
+    const projId = project._id || project.id || '';
+    const isOpen = expandedProjects.has(projId);
     const projectModules = project.modules ?? [];
-    const isProjActive = pathname.includes(`/projects/${project._id}`);
-    const isFavorited = favoriteProjectIds.has(project._id);
+    const isProjActive = pathname.includes(`/projects/${projId}`);
+    const isFavorited = favoriteProjectIds.has(projId);
 
     return (
       <Collapsible
         className="w-full group/project-row"
-        key={`${keyPrefix}${project._id}`}
+        key={`${keyPrefix}${projId}`}
         open={isOpen}
-        onOpenChange={() => toggleProject(project._id)}
+        onOpenChange={() => toggleProject(projId)}
       >
         <div
           className={cn(
@@ -238,10 +240,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           )}
         >
           <Link
-            href={`/${workspaceId}/projects/${project._id}/overview`}
+            href={`/${workspaceId}/projects/${projId}/overview`}
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm text-foreground transition-colors hover:text-foreground outline-none"
           >
-            <span className="shrink-0 text-base leading-none">{project.avatar}</span>
+            <span className="shrink-0 text-base leading-none">{project.avatar || '📁'}</span>
             <span
               className={cn(
                 "min-w-0 truncate text-sm",
@@ -277,7 +279,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               >
                 {/* 1. Add to favorites / Remove from favorites */}
                 <DropdownMenuItem
-                  onClick={(e) => toggleFavorite(project._id, e)}
+                  onClick={(e) => toggleFavorite(projId, e)}
                   className="cursor-pointer text-sm font-medium flex items-center gap-2.5 px-2.5 py-2 rounded-lg"
                 >
                   <Star
@@ -301,7 +303,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-lg"
                 >
                   <Link
-                    href={`/${workspaceId}/projects/${project._id}/settings`}
+                    href={`/${workspaceId}/projects/${projId}/settings`}
                     className="flex items-center gap-2.5 w-full"
                   >
                     <Share2 className="size-4 text-foreground/80 shrink-0" />
@@ -315,7 +317,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     e.stopPropagation();
                     if (typeof window !== 'undefined') {
                       navigator.clipboard.writeText(
-                        `${window.location.origin}/${workspaceId}/projects/${project._id}/overview`
+                        `${window.location.origin}/${workspaceId}/projects/${projId}/overview`
                       );
                     }
                   }}
@@ -345,7 +347,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-lg"
                 >
                   <Link
-                    href={`/${workspaceId}/projects/${project._id}/settings`}
+                    href={`/${workspaceId}/projects/${projId}/settings`}
                     className="flex items-center gap-2.5 w-full"
                   >
                     <Settings className="size-4 text-foreground/80 shrink-0" />
@@ -380,7 +382,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           {MODULE_ORDER.filter((k) => projectModules.includes(k)).map((moduleKey) => {
             const mod = modulesConfig[moduleKey];
             if (!mod) return null;
-            const link = `/${workspaceId}/projects/${project._id}/${moduleKey}`;
+            const link = `/${workspaceId}/projects/${projId}/${moduleKey}`;
             const modActive =
               pathname === link || pathname.startsWith(link + '/');
             return (

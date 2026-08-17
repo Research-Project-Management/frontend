@@ -1,33 +1,72 @@
-import { apiPost, apiPut, apiDelete } from '@/shared/lib/api';
-import { WorkspaceDetailResponseSchema } from '@/features/workspaces/shell/schemas/workspace.schema';
-import type { WorkspaceRole } from '../schemas/settings.schema';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import type {
+  AddMemberBody,
+  UpdateMemberRoleBody,
+  GeneralSettingsFormValues,
+} from '../types/settings.types';
+import type { WorkspaceMemberResponse } from '../types/member.types';
 
-// ── Raw fetchers — Settings management (Infrastructure layer) ───────────────────
-// Settings operations.
-// `syncWorkspaceIntoCaches` stays in shell (workspace data layer) and is
-// accessed via the public barrel @/features/workspaces.
+// ── Workspace Settings & Member Management Service ──────────────────────────
+
+export const getWorkspace = async (workspaceId: string) => {
+  return apiGet<{ workspace: any; yourRole?: string }>(`/api/workspace/${workspaceId}`);
+};
+
+export const updateWorkspace = async (
+  workspaceId: string,
+  payload: Partial<GeneralSettingsFormValues> & { companySize?: string },
+) => {
+  return apiPut<{ workspace: any }>(`/api/workspace/${workspaceId}`, payload);
+};
+
+export const deleteWorkspace = async (workspaceId: string) => {
+  return apiDelete<{ message: string }>(`/api/workspace/${workspaceId}`);
+};
+
+export const getWorkspaceMembers = async (workspaceId: string) => {
+  const res = await apiGet<{ members: WorkspaceMemberResponse[] }>(
+    `/api/workspace/${workspaceId}/members`,
+  );
+  return res.members || [];
+};
 
 export const addWorkspaceMember = async (
   workspaceId: string,
-  payload: { userId: string; role: WorkspaceRole }
+  payload: AddMemberBody,
 ) => {
-  const data = await apiPost(`/api/workspace/${workspaceId}/members`, payload);
-  return WorkspaceDetailResponseSchema.parse(data);
+  return apiPost<{ message: string; member: WorkspaceMemberResponse }>(
+    `/api/workspace/${workspaceId}/members`,
+    payload,
+  );
 };
 
 export const updateWorkspaceMemberRole = async (
   workspaceId: string,
   userId: string,
-  payload: { role: WorkspaceRole }
+  payload: UpdateMemberRoleBody,
 ) => {
-  const data = await apiPut(`/api/workspace/${workspaceId}/members/${userId}`, payload);
-  return WorkspaceDetailResponseSchema.parse(data);
+  return apiPut<{ message: string; member: WorkspaceMemberResponse }>(
+    `/api/workspace/${workspaceId}/members/${userId}`,
+    payload,
+  );
 };
 
 export const removeWorkspaceMember = async (
-  workspaceId: string, 
-  userId: string
+  workspaceId: string,
+  userId: string,
 ) => {
-  const data = await apiDelete(`/api/workspace/${workspaceId}/members/${userId}`);
-  return WorkspaceDetailResponseSchema.parse(data);
+  return apiDelete<{ message: string }>(
+    `/api/workspace/${workspaceId}/members/${userId}`,
+  );
+};
+
+export const leaveWorkspace = async (workspaceId: string) => {
+  return apiPost<{ message: string }>(`/api/workspace/${workspaceId}/leave`);
+};
+
+export const joinWorkspaceByCode = async (inviteCode: string) => {
+  return apiPost<{ workspace: any; yourRole?: string }>(
+    `/api/workspace/join/code`,
+    { inviteCode },
+  );
 };

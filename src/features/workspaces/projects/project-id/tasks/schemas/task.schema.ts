@@ -165,14 +165,19 @@ export const taskMutationInputSchema = taskSchema
     parentTaskId: z.string().nullable().optional(),
   });
 
-// ── Column Schema ────────────────────────────────────────────────────────────
-
 export const columnSchema = z.object({
   id: z.string(),
   _id: z.string().optional(),
   title: z.string(),
   accentColor: z.string().optional(),
 });
+
+export const columnFormSchema = z.object({
+  sectionName: z.string().min(1, "Column name is required"),
+  selectedColor: z.string(),
+});
+export type ColumnFormSchema = z.infer<typeof columnFormSchema>;
+
 
 // ── Backward-compatible Aliases ──────────────────────────────────────────────
 

@@ -51,8 +51,8 @@ export interface UseKanbanOptions {
 }
 
 export function useKanban({
-  tasks,
-  columns,
+  tasks = [],
+  columns = [],
   onMoveCard,
   isReadOnly = false,
 }: UseKanbanOptions) {
@@ -217,10 +217,10 @@ export function useCard({
 
   const hasDesc = Boolean(card.description?.trim() || card.content?.trim());
   const comments = card.commentCount ?? 0;
-  const attachments = card.attachments?.length ?? 0;
-  const checklists = card.checklists ?? [];
-  const checkTotal = checklists.reduce((acc, c) => acc + c.items.length, 0);
-  const checkDone = checklists.reduce((acc, c) => acc + c.items.filter((i) => i.completed).length, 0);
+  const attachments = Array.isArray(card.attachments) ? card.attachments.length : 0;
+  const checklists = Array.isArray(card.checklists) ? card.checklists : [];
+  const checkTotal = checklists.reduce((acc, c) => acc + (Array.isArray(c?.items) ? c.items.length : 0), 0);
+  const checkDone = checklists.reduce((acc, c) => acc + (Array.isArray(c?.items) ? c.items.filter((i: any) => i?.completed).length : 0), 0);
 
   const labels = useMemo(() => {
     return (card.labels || [])

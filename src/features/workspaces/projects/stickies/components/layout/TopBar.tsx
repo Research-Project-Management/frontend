@@ -45,7 +45,9 @@ export default function TopBar({
 }: TopBarProps) {
   const { workspaceId } = useParams() as { workspaceId: string };
   const { projects: allProjects = [] } = useWorkspaceProjects(workspaceId || "");
-  const projects = availableProjectIds ? allProjects.filter((p: any) => availableProjectIds.includes(p._id)) : allProjects;
+  const projects = availableProjectIds
+    ? allProjects.filter((p: any) => availableProjectIds.includes(p._id || p.id))
+    : allProjects;
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,19 +73,36 @@ export default function TopBar({
 
       <div className="flex items-center gap-3 shrink-0">
         <div
+          role="search"
+          tabIndex={isSearchExpanded || searchQuery ? -1 : 0}
+          aria-label="Search stickies by title"
           className={cn(
-            "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
-            isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
+            "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring",
+            isSearchExpanded || searchQuery
+              ? "w-64 border border-border/50 bg-background"
+              : "w-8 hover:bg-secondary/80 cursor-pointer"
           )}
-          onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
+          onClick={() => {
+            if (!isSearchExpanded) {
+              setIsSearchExpanded(true);
+              setTimeout(() => inputRef.current?.focus(), 50);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (!isSearchExpanded && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              setIsSearchExpanded(true);
+              setTimeout(() => inputRef.current?.focus(), 50);
+            }
+          }}
         >
-          <Search 
+          <Search
             className={cn(
               "absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-300 z-10 text-foreground",
-              isSearchExpanded || searchQuery 
-                ? "left-2.5 translate-x-0" 
+              isSearchExpanded || searchQuery
+                ? "left-2.5 translate-x-0"
                 : "left-1/2 -translate-x-1/2"
-            )} 
+            )}
           />
           <Input
             ref={inputRef}
@@ -99,6 +118,8 @@ export default function TopBar({
           />
           {(isSearchExpanded || searchQuery) && (
             <button
+              type="button"
+              aria-label="Clear search"
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
                 e.stopPropagation();
@@ -118,6 +139,7 @@ export default function TopBar({
               <Button
                 variant="outline"
                 size="sm"
+                aria-label="Filter stickies by project"
                 className={cn(
                   "h-8 gap-2 border-border/50 bg-background hover:bg-secondary/80 text-xs font-normal text-foreground cursor-pointer",
                   projectFilter.length > 0 && "border-primary/50 text-primary bg-primary/5"
@@ -144,11 +166,12 @@ export default function TopBar({
                   </CommandEmpty>
                   <CommandGroup>
                     {projects.map((project: any) => {
-                      const isSelected = projectFilter.includes(project._id);
+                      const pId = project._id || project.id;
+                      const isSelected = projectFilter.includes(pId);
                       return (
                         <CommandItem
-                          key={project._id}
-                          onSelect={() => toggleProject(project._id)}
+                          key={pId}
+                          onSelect={() => toggleProject(pId)}
                           className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer"
                         >
                           <Checkbox checked={isSelected} className="size-3.5 rounded-sm" />

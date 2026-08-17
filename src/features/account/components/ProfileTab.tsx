@@ -7,6 +7,7 @@ import { useUpdateProfile } from '../hooks/use-profile';
 import { toast } from 'sonner';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { Button, Input } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils/error.util';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updateProfileSchema } from '../schemas/profile.schema';
@@ -63,8 +64,8 @@ export default function ProfileTab() {
         name: currentName.trim() || user?.name || '',
         avatar: finalUrl,
       });
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to upload avatar');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || 'Failed to upload avatar');
     }
   };
 

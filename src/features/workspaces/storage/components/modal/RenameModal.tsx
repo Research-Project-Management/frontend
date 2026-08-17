@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -12,36 +14,44 @@ import {
 import { Button } from "@/shared/components/ui";
 import { Input } from "@/shared/components/ui";
 import { useRenameItem } from "@/features/workspaces/storage/hooks/use-storage";
-import { renameItemSchema } from "@/features/workspaces/storage/schemas/storage.schema";
+import { renameItemSchema, type RenameItemInput } from "@/features/workspaces/storage/schemas/storage.schema";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 
 export default function RenameModal() {
   const [open, setOpen] = useState(false);
   const [fileId, setFileId] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
   const { mutateAsync: renameFile, isPending } = useRenameItem();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<RenameItemInput>({
+    resolver: zodResolver(renameItemSchema),
+    defaultValues: {
+      name: "",
+    },
+  });
+
+  const newName = watch("name");
 
   useEffect(() => {
     const handleOpen = (e: CustomEvent<StorageItem>) => {
       setFileId(e.detail._id);
-      setNewName(e.detail.filename);
+      reset({ name: e.detail.filename });
       setOpen(true);
     };
     window.addEventListener('open-rename-modal', handleOpen as EventListener);
     return () => window.removeEventListener('open-rename-modal', handleOpen as EventListener);
-  }, []);
+  }, [reset]);
 
-  const handleRename = async () => {
+  const onFormSubmit = async (data: RenameItemInput) => {
     if (!fileId) return;
 
-    const result = renameItemSchema.safeParse({ name: newName });
-    if (!result.success) {
-      toast.error(result.error.issues[0].message);
-      return;
-    }
-
     try {
-      await renameFile({ itemId: fileId, name: result.data.name });
+      await renameFile({ itemId: fileId, name: data.name });
       toast.success("Renamed successfully");
       setOpen(false);
     } catch (error) {
@@ -56,48 +66,49 @@ export default function RenameModal() {
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-md bg-popover"
       >
-        <DialogHeader>
-          <DialogTitle className="text-foreground">
-            Rename
-          </DialogTitle>
-        </DialogHeader>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              Rename
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Input
-              id="new-name"
-              placeholder="New name"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && newName.trim()) {
-                  handleRename();
-                }
-              }}
-              disabled={isPending}
-              autoFocus
-            />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Input
+                id="new-name"
+                placeholder="New name"
+                disabled={isPending}
+                autoFocus
+                {...register("name")}
+              />
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name.message}</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => setOpen(false)}
-            disabled={isPending}
-            className="text-foreground hover:bg-muted cursor-pointer"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleRename}
-            disabled={!newName.trim() || isPending}
-            className="cursor-pointer"
-          >
-            Save
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              disabled={isPending}
+              className="text-foreground hover:bg-muted cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!newName?.trim() || isPending}
+              className="cursor-pointer"
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
 }
+

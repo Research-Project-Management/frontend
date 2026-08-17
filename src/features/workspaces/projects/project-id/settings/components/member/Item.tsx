@@ -48,14 +48,18 @@ function getDisplayName(user: { name: string; email?: string }): string {
 
 function getRoleLabel(role: string): string {
   switch (role.toLowerCase()) {
-    case 'owner':
-      return 'Owner';
     case 'admin':
       return 'Admin';
-    case 'member':
-      return 'Member';
+    case 'contributor':
+      return 'Contributor';
+    case 'commenter':
+      return 'Commenter';
     case 'viewer':
       return 'Viewer';
+    case 'owner':
+      return 'Owner';
+    case 'member':
+      return 'Member';
     default:
       return role.charAt(0).toUpperCase() + role.slice(1);
   }
@@ -128,8 +132,11 @@ export function Item({
                 <DropdownMenuRadioItem value="admin" className="text-xs cursor-pointer">
                   Admin
                 </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="member" className="text-xs cursor-pointer">
-                  Member
+                <DropdownMenuRadioItem value="contributor" className="text-xs cursor-pointer">
+                  Contributor
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="commenter" className="text-xs cursor-pointer">
+                  Commenter
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="viewer" className="text-xs cursor-pointer">
                   Viewer
@@ -159,13 +166,13 @@ export function Item({
                 <MoreHorizontal className="size-4" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 p-1 rounded-lg">
+            <DropdownMenuContent align="end" className="w-32 p-1 rounded-lg">
               <DropdownMenuItem
                 onClick={onRemove}
-                className="text-destructive focus:text-destructive focus:bg-destructive/10 text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
+                className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
               >
-                <Trash2 className="size-3.5" />
-                <span>Remove from project</span>
+                <Trash2 className="size-3.5 text-muted-foreground" />
+                <span>Remove</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

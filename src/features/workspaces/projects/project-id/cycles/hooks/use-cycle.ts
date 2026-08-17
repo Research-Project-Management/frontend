@@ -126,7 +126,14 @@ export const deriveStatus = (cycle: {
  */
 export function useCycle(projectId: string, _workspaceId?: string, options?: { skipProjectDetails?: boolean }) {
   const { data: cyclesData, isLoading: isCyclesLoading } = useProjectCycles(projectId);
-  const cycles = useMemo(() => cyclesData?.cycles || [], [cyclesData]);
+  const cycles = useMemo(() => {
+    const list = cyclesData?.cycles || [];
+    return list.map((c: any) => ({
+      ...c,
+      _id: c._id || c.id,
+      id: c.id || c._id,
+    }));
+  }, [cyclesData]);
 
   const { data: projectDetails } = useProjectDetails(projectId, {
     enabled: !options?.skipProjectDetails,

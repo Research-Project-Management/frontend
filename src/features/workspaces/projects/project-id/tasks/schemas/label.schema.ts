@@ -31,6 +31,13 @@ export const updateLabelSchema = z.object({
   color: z.string().optional(),
 });
 
+export const labelFormSchema = z.object({
+  name: z.string().min(1, "Label title is required").max(60, "Label title must be less than 60 characters"),
+  color: z.string(),
+});
+export type LabelFormSchema = z.infer<typeof labelFormSchema>;
+
+
 // ── Backward-compatible Aliases ──────────────────────────────────────────────
 
 export const TaskLabelSchema = taskLabelSchema;

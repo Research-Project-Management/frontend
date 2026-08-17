@@ -8,13 +8,7 @@ import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sti
 import Card from '@/features/workspaces/projects/stickies/components/card/Card';
 import type { Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+import { stripHtml, isStickyEmpty } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
 
 export default function Stickies() {
   const { workspaceId } = useParams() as { workspaceId: string };
@@ -39,7 +33,9 @@ export default function Stickies() {
   const hasMore = filteredNotes.length > 3;
 
   const handleAdd = () => {
-    if (!workspaceId) return;
+    if (!workspaceId || mutations.create.isPending) return;
+    if (notes.some(isStickyEmpty)) return;
+
     const lastColor = notes[0]?.color;
     const idx = STICKY_COLOR_CYCLE.indexOf(lastColor || 'yellow-1');
     const color = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];

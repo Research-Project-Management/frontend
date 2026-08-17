@@ -13,4 +13,5 @@ export * from './types/project.types';
 
 // ── Services & Hooks ──────────────────────────────────────────────────────────
 export * from './services/project.service';
+export * from './hooks/use-project';
 

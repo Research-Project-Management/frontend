@@ -16,6 +16,7 @@ import {
   createFileRecord,
   uploadFile,
 } from '@/features/workspaces/projects/project-id/storage/services/file.service';
+import type { CreateFileRecordParams } from '../types/storage.types';
 
 // --- Queries ---
 
@@ -151,7 +152,7 @@ export const usePermanentlyDeleteItem = () => {
 export const useCreateFileRecord = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: any) => createFileRecord(data),
+    mutationFn: (data: CreateFileRecordParams) => createFileRecord(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
     },

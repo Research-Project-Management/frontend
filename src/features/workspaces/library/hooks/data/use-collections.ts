@@ -10,6 +10,8 @@ import {
   deleteCollection,
 } from '../../services/collection.service';
 
+import type { CreateCollectionDTO, UpdateCollectionDTO } from '../../types/library.types';
+
 export function useCollections(workspaceId: string) {
   const qc = useQueryClient();
 
@@ -21,13 +23,13 @@ export function useCollections(workspaceId: string) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Parameters<typeof createCollection>[1]) => createCollection(workspaceId, data),
+    mutationFn: (data: CreateCollectionDTO) => createCollection(workspaceId, data),
     onSuccess: () => invalidateCollections(qc, workspaceId),
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Parameters<typeof updateCollection>[2] & { collectionId: string }) => {
-      const { collectionId, ...rest } = data as any;
+    mutationFn: (data: UpdateCollectionDTO & { collectionId: string }) => {
+      const { collectionId, ...rest } = data;
       return updateCollection(workspaceId, collectionId, rest);
     },
     onSuccess: () => invalidateCollections(qc, workspaceId),

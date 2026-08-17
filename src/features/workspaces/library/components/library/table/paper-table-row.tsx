@@ -2,29 +2,29 @@
 
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FileText, BookOpen, Trash2, Copy, Check } from 'lucide-react';
+import { FileText, Copy, Trash2, BookOpen, Folder } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import { API_BASE_URL } from '@/shared/constants';
+import { useLibraryReaderStore } from '../../../store/reader.store';
 import type { Paper, Collection } from '../../../types/library.types';
 
 interface PaperTableRowProps {
   paper: Paper;
-  collection: Collection | null;
+  collection?: Collection | null;
   isSelected: boolean;
   isActive: boolean;
-  onSelect: (paper: Paper) => void;
-  onToggleCheck: (id: string, e: React.MouseEvent) => void;
-  onDelete: (id: string) => void;
   showCollection?: boolean;
+  onSelect: (paper: Paper) => void;
+  onToggleCheck: (paperId: string, e: React.MouseEvent) => void;
+  onDelete: (paperId: string) => void;
 }
 
 function formatDateAdded(dateStr?: string): string {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -39,24 +39,28 @@ export default function PaperTableRow({
   collection,
   isSelected,
   isActive,
+  showCollection = true,
   onSelect,
   onToggleCheck,
   onDelete,
-  showCollection = true,
 }: PaperTableRowProps) {
-  const { workspaceId: workspaceUrl } = useParams();
   const router = useRouter();
-  const hasFile = Boolean(paper.fileUrl);
+  const { workspaceId: workspaceUrl } = useParams();
+  const pId = paper._id || (paper as any).id || '';
 
   const handleDoubleClick = () => {
-    if (paper._id) {
-      router.push(`/${workspaceUrl}/library/papers/${paper._id}/reader`);
+    if (pId) {
+      router.push(`/${workspaceUrl}/library/papers/${pId}`);
+    } else {
+      onSelect(paper);
     }
   };
 
+  const hasFile = Boolean(paper.fileUrl || (paper as any)?.primaryFile?.url);
+
   const handleCopyBibtex = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const citeKey = paper.citationKey || (paper.authors?.[0] ? `${paper.authors[0].toLowerCase().split(' ').pop()}${paper.year || '2024'}` : 'ref1');
+    const citeKey = paper.citationKey || (paper.authors?.[0] ? `${paper.authors[0].toLowerCase().split(' ').pop()}${paper.year || '2024'}` : 'ref');
     const bibtex = `@article{${citeKey},
   title = {${paper.title || ''}},
   author = {${paper.authors?.join(' and ') || ''}},
@@ -85,33 +89,30 @@ export default function PaperTableRow({
         }
       }}
       className={cn(
-        'group border-b border-border/40 hover:bg-accent/40 transition-colors cursor-pointer select-none text-xs h-10',
-        isActive && 'bg-accent/60 text-foreground font-medium',
-        isSelected && !isActive && 'bg-primary/5'
+        'group border-b border-border/40 hover:bg-accent/40 transition-colors cursor-pointer select-none text-xs h-9.5',
+        isActive && 'bg-accent text-foreground font-medium',
+        isSelected && !isActive && 'bg-accent/30'
       )}
     >
       {/* Checkbox column */}
-      <td className="w-12 px-3 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+      <td className="w-12 px-3 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-center">
           <Checkbox
             checked={isSelected}
-            onClick={(e) => onToggleCheck(paper._id, e)}
+            onClick={(e) => onToggleCheck(pId, e)}
             aria-label={`Select ${paper.title}`}
-            className="size-4 rounded border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+            className="size-4 rounded border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer"
           />
         </div>
       </td>
 
       {/* Attachment Icon Column */}
-      <td className="w-8 px-1 py-2 text-center align-middle">
+      <td className="w-8 px-1 py-1.5 text-center align-middle">
         <div className="flex items-center justify-center">
           {hasFile ? (
-            <div
-              className="size-5 rounded flex items-center justify-center bg-red-500/10 text-red-600 dark:text-red-400"
-              title="PDF Attached"
-            >
-              <FileText className="size-3.5" />
-            </div>
+            <span title={paper.filename ? `PDF Attached: ${paper.filename}` : "PDF Attached"}>
+              <FileText className="size-3.5 text-foreground" />
+            </span>
           ) : (
             <span className="text-muted-foreground/30 text-[11px]">—</span>
           )}
@@ -119,27 +120,20 @@ export default function PaperTableRow({
       </td>
 
       {/* Title Column */}
-      <td className="px-3 py-2 align-middle min-w-[200px] max-w-[400px]">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span
-            className={cn(
-              'truncate font-medium text-foreground hover:text-primary transition-colors',
-              isActive && 'font-semibold'
-            )}
-            title={paper.title}
-          >
-            {paper.title || 'Untitled Paper'}
-          </span>
-          {paper.itemType && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono shrink-0 hidden xl:inline-block">
-              {paper.itemType}
-            </span>
+      <td className="px-3 py-1.5 align-middle min-w-[200px] max-w-[400px]">
+        <span
+          className={cn(
+            'truncate block font-medium text-foreground transition-colors',
+            isActive && 'font-semibold'
           )}
-        </div>
+          title={paper.title}
+        >
+          {paper.title || 'Untitled Paper'}
+        </span>
       </td>
 
       {/* Authors Column */}
-      <td className="px-3 py-2 align-middle w-[220px] max-w-[220px]">
+      <td className="px-3 py-1.5 align-middle w-[220px] max-w-[220px]">
         <span
           className="truncate block text-muted-foreground font-normal"
           title={paper.authors?.join(', ')}
@@ -149,12 +143,12 @@ export default function PaperTableRow({
       </td>
 
       {/* Year Column */}
-      <td className="px-3 py-2 align-middle w-[70px] whitespace-nowrap text-muted-foreground font-mono tabular-nums">
+      <td className="px-3 py-1.5 align-middle w-[70px] whitespace-nowrap text-muted-foreground font-mono tabular-nums">
         {paper.year ? paper.year : <span className="opacity-40">—</span>}
       </td>
 
       {/* Journal / Venue Column */}
-      <td className="px-3 py-2 align-middle w-[180px] max-w-[180px]">
+      <td className="px-3 py-1.5 align-middle w-[180px] max-w-[180px]">
         <span
           className="truncate block text-muted-foreground font-normal italic"
           title={paper.journal || paper.publisher || ''}
@@ -165,17 +159,13 @@ export default function PaperTableRow({
 
       {/* Collection Badge Column (optional) */}
       {showCollection && (
-        <td className="px-3 py-2 align-middle w-[130px] max-w-[130px]">
+        <td className="px-3 py-1.5 align-middle w-[130px] max-w-[130px]">
           {collection ? (
             <span
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-medium max-w-full overflow-hidden border"
-              style={{
-                backgroundColor: `${collection.color || '#3370ff'}12`,
-                color: collection.color || '#3370ff',
-                borderColor: `${collection.color || '#3370ff'}30`,
-              }}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-medium max-w-full overflow-hidden bg-muted/60 text-foreground border border-border/40"
               title={collection.name}
             >
+              <Folder className="size-3 text-foreground shrink-0" />
               <span className="truncate">{collection.name}</span>
             </span>
           ) : (
@@ -185,41 +175,41 @@ export default function PaperTableRow({
       )}
 
       {/* Date Added Column */}
-      <td className="px-3 py-2 align-middle w-[110px] whitespace-nowrap text-muted-foreground text-[11px]">
+      <td className="px-3 py-1.5 align-middle w-[110px] whitespace-nowrap text-muted-foreground text-[11px] font-mono tabular-nums">
         {formatDateAdded(paper.createdAt)}
       </td>
 
       {/* Hover Quick Action Buttons Column */}
-      <td className="w-16 px-2 py-2 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+      <td className="w-16 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
           {/* Quick Copy BibTeX */}
           <button
             onClick={handleCopyBibtex}
-            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Copy BibTeX"
             aria-label="Copy BibTeX"
           >
-            <Copy className="size-3.5" />
+            <Copy className="size-3.5 text-foreground" />
           </button>
 
           {/* Quick Open Reader */}
           <button
             onClick={handleDoubleClick}
-            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+            className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Open in Reader"
             aria-label="Open in Reader"
           >
-            <BookOpen className="size-3.5" />
+            <BookOpen className="size-3.5 text-foreground" />
           </button>
 
           {/* Quick Delete */}
           <button
-            onClick={() => onDelete(paper._id)}
-            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={() => onDelete(pId)}
+            className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Delete paper"
             aria-label="Delete paper"
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-3.5 text-foreground" />
           </button>
         </div>
       </td>

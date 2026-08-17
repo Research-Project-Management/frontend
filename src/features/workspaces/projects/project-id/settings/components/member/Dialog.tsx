@@ -41,7 +41,7 @@ export function AddMemberDialog({
   isLoading,
 }: AddMemberDialogProps) {
   const [search, setSearch] = useState('');
-  const [selectedRole, setSelectedRole] = useState<ProjectRole>('member');
+  const [selectedRole, setSelectedRole] = useState<ProjectRole>('contributor');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   const workspaceMembers = (workspace?.members as any[]) || [];
@@ -111,8 +111,11 @@ export function AddMemberDialog({
                 <SelectItem value="admin" className="text-xs">
                   Admin
                 </SelectItem>
-                <SelectItem value="member" className="text-xs">
-                  Member
+                <SelectItem value="contributor" className="text-xs">
+                  Contributor
+                </SelectItem>
+                <SelectItem value="commenter" className="text-xs">
+                  Commenter
                 </SelectItem>
                 <SelectItem value="viewer" className="text-xs">
                   Viewer

@@ -1,23 +1,16 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys, API_BASE_URL } from '@/shared/constants';
-import { apiGet, apiPost } from '@/shared/lib/api';
-import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { getAllFiles, createFolder as createProjectFolder } from "@/features/workspaces/projects/project-id/storage/services/file.service";
-import { uploadFile, permanentlyDeleteItem, renameItem, moveItem } from "@/features/workspaces/projects/project-id/storage/services/file.service";
+import { queryKeys } from '@/shared/constants';
+import { StorageService as EditorStorageService, type EditorStorageItem } from '../services/storage.service';
 
 export function useEditorStorage(pageId: string | null | undefined, parentId?: string | null) {
   const queryClient = useQueryClient();
   const queryKey = queryKeys.storage.projectFilesEditor(pageId ?? undefined, parentId);
+
   const { data: children, isLoading, refetch } = useQuery({
     queryKey,
-    queryFn: async (): Promise<StorageItem[]> => {
-      if (!pageId) return [];
-      const endpoint = parentId
-        ? `/api/files/page/${pageId}?parentId=${parentId}`
-        : `/api/files/page/${pageId}`;
-      const data = await apiGet<{ files: StorageItem[] }>(endpoint);
-      return data.files;
-    },
+    queryFn: () => (pageId ? EditorStorageService.getPageFiles(pageId, parentId) : Promise.resolve([])),
     enabled: !!pageId,
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -27,10 +20,9 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
   const uploadFileMutation = useMutation({
     mutationFn: async ({
       file,
-      projectId,
       workspaceId,
-      pageId,
-      parentId,
+      pageId: targetPageId,
+      parentId: targetParentId,
     }: {
       file: File;
       projectId: string;
@@ -42,87 +34,116 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
       const fileName = `workspace/${workspaceId}/${timestamp}-${file.name}`;
       const fileBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1] ?? (reader.result as string));
+        reader.onload = () => resolve((reader.result as string).split(',')[1] ?? (reader.result as string));
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+
       const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", fileName);
+      formData.append('file', file);
+      formData.append('fileName', fileName);
 
-      const response = await fetch(`${API_BASE_URL}/api/files/page/${pageId}/upload-r2`, {
-          method: "POST",
-          body: formData,
-          credentials: "include"
-      });
+      const { path } = await EditorStorageService.uploadToR2(targetPageId, formData);
 
-      if (!response.ok) throw new Error("Upload to R2 proxy failed");
-      
-      const { url, path } = await response.json();
-      await apiPost(`/api/files/page/${pageId}/upload`, {
+      await EditorStorageService.createFileRecord(targetPageId, {
         filename: file.name,
         size: file.size,
-        mimeType: file.type || "application/octet-stream",
+        mimeType: file.type || 'application/octet-stream',
         url: `/api/files/r2/${path}`,
-        parentId: parentId || null,
+        parentId: targetParentId || null,
         fileBase64,
       });
     },
     onSuccess: (_, variables) => {
       if (variables.pageId || variables.projectId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId),
+        });
       }
     },
   });
 
   const createFolderMutation = useMutation({
-    mutationFn: ({ name, projectId, workspaceId, parentId, pageId }: {
+    mutationFn: ({
+      name,
+      projectId,
+      parentId: targetParentId,
+      pageId: targetPageId,
+    }: {
       name: string;
       projectId: string;
       workspaceId: string;
       parentId?: string | null;
       pageId?: string | null;
     }) => {
-      if (pageId) {
-        return apiPost(`/api/files/page/${pageId}/folder`, {
-          name,
-          parentId: parentId ?? null,
-        });
+      if (targetPageId) {
+        return EditorStorageService.createPageFolder(targetPageId, name, targetParentId);
       }
-      return createProjectFolder(name, {
-        projectId,
-        parentId: parentId ?? null,
-      });
+      return EditorStorageService.createProjectFolder(projectId, name, targetParentId);
     },
     onSuccess: (_, variables) => {
       if (variables.pageId || variables.projectId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId),
+        });
       }
     },
   });
 
-  const deleteFileMutation = useMutation({
-    mutationFn: (fileId: string) => permanentlyDeleteItem(fileId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor() }),
+  const renameMutation = useMutation({
+    mutationFn: (variables: { itemId?: string; fileId?: string; newName?: string; name?: string }) => {
+      const targetId = variables.itemId || variables.fileId || '';
+      const nextName = variables.newName || variables.name || '';
+      return EditorStorageService.renameItem(targetId, nextName);
+    },
+    onSuccess: () => {
+      if (pageId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.storage.projectFilesEditor(pageId),
+        });
+      }
+    },
   });
 
-  const renameFileMutation = useMutation({
-    mutationFn: ({ fileId, name }: { fileId: string; name: string }) => renameItem(fileId, name),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor() }),
+  const deleteMutation = useMutation({
+    mutationFn: (itemId: string) => EditorStorageService.permanentlyDeleteItem(itemId),
+    onSuccess: () => {
+      if (pageId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.storage.projectFilesEditor(pageId),
+        });
+      }
+    },
   });
 
-  const moveFileMutation = useMutation({
-    mutationFn: ({ fileId, parentId }: { fileId: string; parentId: string | null }) => moveItem(fileId, parentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.storage.projectFilesEditor() }),
+  const moveMutation = useMutation({
+    mutationFn: ({ itemId, targetFolderId }: { itemId: string; targetFolderId: string | null }) =>
+      EditorStorageService.moveItem(itemId, targetFolderId),
+    onSuccess: () => {
+      if (pageId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.storage.projectFilesEditor(pageId),
+        });
+      }
+    },
   });
 
   return {
-    files: children,
+    children: (children as EditorStorageItem[]) || [],
+    files: (children as EditorStorageItem[]) || [],
     isLoading,
+    refetch,
     uploadFile: uploadFileMutation,
     createFolder: createFolderMutation,
-    deleteFile: deleteFileMutation,
-    renameFile: renameFileMutation,
-    moveFile: moveFileMutation,
+    renameItem: renameMutation,
+    renameFile: renameMutation,
+    deleteItem: deleteMutation,
+    deleteFile: deleteMutation,
+    moveItem: moveMutation,
+    uploadFileMutation,
+    createFolderMutation,
+    renameMutation,
+    deleteMutation,
+    moveMutation,
   };
 }

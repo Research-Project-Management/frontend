@@ -199,7 +199,9 @@ export async function extractMetadata(file: File): Promise<PdfMetadata | null> {
         for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
-          const text = textContent.items.map((t: any) => t.str).join(" ");
+          const text = textContent.items
+            .map((t: unknown) => (typeof t === 'object' && t !== null && 'str' in t ? String((t as { str: unknown }).str) : ''))
+            .join(" ");
           const found = extractDoiFromText(text);
           if (found) { doi = found; break; }
         }
@@ -239,9 +241,10 @@ export async function extractMetadata(file: File): Promise<PdfMetadata | null> {
     let crossrefWork: ReferenceData | null = null;
     if (doi) {
       try {
-        const result: any = await fetchReferenceByDoi(doi);
-        if (result?.work) crossrefWork = result.work;
-        else if (result?.success) crossrefWork = result.data.work;
+        const result = await fetchReferenceByDoi(doi);
+        if (result && typeof result === 'object') {
+          crossrefWork = ((result as any).work || (result as any).data?.work || result) as ReferenceData;
+        }
       } catch (err) {
         console.warn("[PDF Metadata] Local DOI lookup failed:", err);
       }

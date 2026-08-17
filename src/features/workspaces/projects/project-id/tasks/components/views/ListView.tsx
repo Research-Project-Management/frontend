@@ -175,10 +175,10 @@ const TaskRowContent = ({
   const metadata = useMemo(() => {
     const hasDescription = Boolean(task.description?.trim() || task.content?.trim());
     const commentCount = task.commentCount ?? 0;
-    const attachmentCount = task.attachments?.length ?? 0;
-    const checklistItems = task.checklists ?? [];
-    const total = checklistItems.reduce((acc: any, cl: any) => acc + cl.items.length, 0);
-    const done = checklistItems.reduce((acc: any, cl: any) => acc + cl.items.filter((i: any) => i.completed).length, 0);
+    const attachmentCount = Array.isArray(task.attachments) ? task.attachments.length : 0;
+    const checklistItems = Array.isArray(task.checklists) ? task.checklists : [];
+    const total = checklistItems.reduce((acc: any, cl: any) => acc + (Array.isArray(cl?.items) ? cl.items.length : 0), 0);
+    const done = checklistItems.reduce((acc: any, cl: any) => acc + (Array.isArray(cl?.items) ? cl.items.filter((i: any) => i?.completed).length : 0), 0);
 
     return { hasDescription, commentCount, attachmentCount, checklistTotal: total, checklistDone: done };
   }, [task.description, task.content, task.commentCount, task.attachments, task.checklists]);

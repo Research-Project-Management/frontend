@@ -317,7 +317,9 @@ export function TaskActivities({
               if (!canComment) return;
               const nextFocused = e.relatedTarget as HTMLElement | null;
               if (nextFocused?.closest("[data-comment-actions='true']")) return;
-              setShowCommentActions(false);
+              if (!commentText.trim()) {
+                setShowCommentActions(false);
+              }
             }}
             placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
             disabled={!canComment || isReadOnly}
@@ -327,7 +329,7 @@ export function TaskActivities({
             )}
           />
 
-          {canComment && !isReadOnly && showCommentActions ? (
+          {canComment && !isReadOnly && (showCommentActions || Boolean(commentText.trim())) ? (
             <div
               className="flex items-center gap-2 transition-all duration-200"
               data-comment-actions="true"

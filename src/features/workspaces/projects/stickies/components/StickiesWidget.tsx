@@ -6,14 +6,7 @@ import Link from 'next/link';
 import { Plus, ArrowRight, Loader2 } from 'lucide-react';
 import { useSticky } from "../hooks/use-sticky";
 import { type Sticky, STICKY_COLOR_MAP, STICKY_COLOR_CYCLE } from '../types/sticky.types';
-
-// Strip HTML tags -> plain text for preview
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+import { stripHtml, isStickyEmpty } from '../utils/sticky.utils';
 
 function MiniCard({
   note,
@@ -89,7 +82,9 @@ export function StickiesWidget() {
   const isLoading = api.query.isLoading;
 
   const handleAdd = useCallback(() => {
-    if (!workspaceId) return;
+    if (!workspaceId || api.mutations.create.isPending) return;
+    if (notes.some(isStickyEmpty)) return;
+
     const lastColor = notes[0]?.color;
     const idx = STICKY_COLOR_CYCLE.indexOf(lastColor || '');
     const color = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];

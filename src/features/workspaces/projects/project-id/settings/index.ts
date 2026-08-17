@@ -19,6 +19,8 @@ export * from './hooks/use-cycle-settings';
 export * from './hooks/use-general';
 
 export * from './services/label.service';
+export * from './services/member.service';
+export * from './services/worklog.service';
 export * from './types/settings.types';
 export * from './types/label.types';
 export * from './types/module.types';

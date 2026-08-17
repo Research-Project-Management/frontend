@@ -17,6 +17,7 @@ export interface AiEditOperation {
   endLineNumber: number;
   endColumn: number;
   text: string;
+  description?: string;
 }
 
 export interface AiEditResponse {

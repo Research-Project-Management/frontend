@@ -3,19 +3,22 @@ import { z } from 'zod';
 // ── Page schema (for list / grid views in project scope) ────────────────────
 
 export const pageSchema = z.object({
-  _id: z.string(),
+  id: z.string().optional(),
+  _id: z.string().optional(),
   title: z.string(),
-  content: z.string().optional(),
+  content: z.any().optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
   pdfThumbnail: z.string().optional(),
   createdAt: z.string().optional(),
-  updatedAt: z.string(),
+  updatedAt: z.string().optional(),
   workspaceId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   projectId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   parentPage: z.string().optional(),
+  parentPageId: z.string().optional(),
   mainFile: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   author: z
     .object({
+      id: z.string().optional(),
       _id: z.string().optional(),
       name: z.string().optional(),
       email: z.string().optional(),

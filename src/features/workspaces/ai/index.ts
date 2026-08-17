@@ -1,25 +1,48 @@
-export { default as ChatPage } from './pages/ChatPage';
+// ── Pages ─────────────────────────────────────────────────────────────────────
+export { ChatPage, default as DefaultChatPage } from './pages/chat-page';
+
+// ── Hooks & Context ───────────────────────────────────────────────────────────
+export { useChat, useWorkspaceChat } from './hooks/use-chat';
 export { ChatModeProvider, useChatMode } from './hooks/use-chat-mode';
-export { default as WikiChatFeatures } from './components/layout/WikiChatFeatures';
-export { default as FluxAiSidebar } from './components/layout/Sidebar';
-export { default as ChatHistoryModal } from './components/modals/ChatHistoryModal';
-export { default as SourcePickerModal } from './components/modals/SourcePickerModal';
-export { default as ChatView } from './components/chat/ChatView';
+
+// ── Components ────────────────────────────────────────────────────────────────
+export { ChatInput, default as DefaultChatInput } from './components/chat/chat-input';
+export { ActionCard, ActionCardsGroup } from './components/chat/action-card';
+export { ResponseWidgets, buildResponseWidgetsFromActions } from './components/chat/response-widgets';
+export { Sidebar, ChatSidebar, FluxAiSidebar, default as DefaultSidebar } from './components/layout/sidebar';
+export { Panel, SourcePanel, WikiChatFeatures, default as DefaultPanel } from './components/layout/panel';
+export { ChatHistoryModal, default as DefaultChatHistoryModal } from './components/modals/chat-history-modal';
+export { SourcePickerModal, default as DefaultSourcePickerModal } from './components/modals/source-picker-modal';
+
+// ── Backward Compatibility Aliases ────────────────────────────────────────────
+export { ChatPage as ChatView, default as DefaultChatView } from './pages/chat-page';
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
 export { renderMarkdown } from './utils/render-markdown';
 
+// ── Services & Network ────────────────────────────────────────────────────────
 export {
-  getPageChat,
-  streamEditorChat,
-  clearPageChat,
-  compilePreview,
-  type PreviewCompileResult,
   streamChatResponse,
-  getChatSession,
-  appendChatMessages,
-  createChatSession,
+  streamEditorChat,
   listChatSessions,
+  getChatSession,
+  createChatSession,
+  appendChatMessages,
+  renameChatSession,
   deleteChatSession,
-} from './services/chat-ai.service';
+  clearAiMemory,
+  getPageChat,
+  clearPageChat,
+  uploadDocument,
+  fetchDocumentsBulk,
+  fetchDocumentContent,
+  type StreamChatOptions,
+  type StreamEditorChatOptions,
+} from './services/chat.service';
 
-export { useChatAiActionsStore, type AiContext } from './store/chat-ai.store';
+// ── Store ─────────────────────────────────────────────────────────────────────
+export { useChatActionsStore, useChatAiActionsStore, type AiContext } from './store/chat.store';
+
+// ── Types & Schemas ───────────────────────────────────────────────────────────
 export * from './types/chat.types';
+export * from './schemas/chat.schema';

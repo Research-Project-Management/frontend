@@ -7,44 +7,68 @@ import { toast } from 'sonner';
 import { useWorkspace } from '@/features/workspaces/shell';
 
 import { useCollections } from '../data/use-collections';
-import { usePapers } from '../data/use-papers';
+import { usePapers, usePaper } from '../data/use-papers';
 import { usePdf } from './use-pdf';
-import { reindexPaper } from '../../services/paper.service';
+import { reindexPaper, paperKeys } from '../../services/paper.service';
+import { getLibraryEntityId, getPaperFileUrl } from '../../utils/library.util';
+import { useLibraryReaderStore } from '../../store/reader.store';
 import type { ReaderPanel } from '../../types/reader.types';
+import type { Paper } from '../../types/library.types';
 
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
 const DEFAULT_PANEL_WIDTH = 400;
 
-export function useReader() {
-  const { workspaceId: workspaceUrl, paperId } = useParams() as { workspaceId: string; paperId: string };
+export function useReader(overridePaperId?: string | null, onBackOverride?: () => void) {
+  const params = useParams() as { workspaceId?: string; paperId?: string };
+  const workspaceUrl = params?.workspaceId || '';
   const router = useRouter();
   const qc = useQueryClient();
-  const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id ?? '';
+  const { workspace } = useWorkspace(workspaceUrl);
+  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
 
-  const paperService = usePapers({ workspaceId, collectionId: '' });
-  const papers = paperService.state.allPapers;
-  const isLoadingPapers = paperService.state.isLoadingAll;
+  const storeReadingId = useLibraryReaderStore((s) => s.readingPaperId);
+  const closeReader = useLibraryReaderStore((s) => s.closeReader);
+  const effectivePaperId = overridePaperId || storeReadingId || params?.paperId || '';
+
+  const paperQuery = usePaper(workspaceId, effectivePaperId);
+  const paper = paperQuery.data ?? null;
+  const isLoadingPapers = paperQuery.isLoading;
+
+  const { actions: paperActions } = usePapers({ workspaceId, collectionId: '' });
   const collectionService = useCollections(workspaceId);
-
   const collections = collectionService.state.collections;
 
-  const paper = papers?.find((p: any) => p._id === paperId) ?? null;
-
   const collectionMap = useMemo(
-    () => Object.fromEntries((collections ?? []).map((collection) => [collection._id, collection])),
+    () => Object.fromEntries((collections ?? []).map((collection) => [getLibraryEntityId(collection), collection])),
     [collections],
   );
   const paperCollection = paper?.collectionId ? collectionMap[paper.collectionId] ?? null : null;
-  const paperUrl = paper?.fileUrl || '';
-  const { blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError } = usePdf(paperUrl || null);
+  const paperUrl = getPaperFileUrl(paper);
+  const { blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError } = usePdf(
+    paperUrl || null,
+    paper
+      ? {
+          title: paper.title,
+          authors: paper.authors,
+          year: paper.year,
+          journal: paper.journal || paper.publisher,
+          doi: paper.doi,
+          abstract: paper.abstract,
+        }
+      : undefined
+  );
 
-  const [activePanel, setActivePanel] = useState<ReaderPanel | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const saved = localStorage.getItem('flux_reader_active_panel');
-    return saved === 'ai' || saved === 'details' || saved === 'notes' ? saved : null;
-  });
+  const [activePanel, setActivePanel] = useState<ReaderPanel | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('flux_reader_active_panel');
+      if (saved === 'ai' || saved === 'details' || saved === 'notes') {
+        setActivePanel(saved);
+      }
+    }
+  }, []);
 
   const [panelWidth, setPanelWidth] = useState(() => {
     if (typeof window === 'undefined') return DEFAULT_PANEL_WIDTH;
@@ -55,6 +79,7 @@ export function useReader() {
   const [isResizingPanel, setIsResizingPanel] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const [selectionContext, setSelectionContext] = useState('');
+  const [pendingNoteText, setPendingNoteText] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [bibtexOpen, setBibtexOpen] = useState(false);
@@ -65,7 +90,7 @@ export function useReader() {
   useEffect(() => {
     if (!paper || paper.ragStatus !== 'pending') return;
     const interval = setInterval(() => {
-      qc.invalidateQueries({ queryKey: ['library-all-papers', workspaceId] });
+      qc.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
     }, 5000);
     return () => clearInterval(interval);
   }, [paper, workspaceId, qc]);
@@ -114,24 +139,28 @@ export function useReader() {
   }, [isResizingPanel]);
 
   const handlePanelToggle = (panel: ReaderPanel) => {
-    setActivePanel((current: any) => (current === panel ? null : panel));
+    setActivePanel((current: ReaderPanel | null) => (current === panel ? null : panel));
   };
-
 
   const handleAskAi = (text: string) => {
     setSelectionContext(text);
     setActivePanel('ai');
   };
 
+  const handleAddToNote = (text: string) => {
+    setPendingNoteText(text);
+    setActivePanel('notes');
+  };
+
   const clearSelectionContext = () => setSelectionContext('');
 
   const handleReindex = async () => {
-    if (!workspaceId || !paperId) return;
+    if (!workspaceId || !effectivePaperId) return;
     setIsReindexing(true);
     try {
-      await reindexPaper(workspaceId, paperId);
+      await reindexPaper(workspaceId, effectivePaperId);
       toast.success('AI indexing started');
-      qc.invalidateQueries({ queryKey: ['library-all-papers', workspaceId] });
+      qc.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
       setActivePanel('ai');
     } catch (err) {
       console.error('Reindex failed:', err);
@@ -150,19 +179,18 @@ export function useReader() {
       return;
     }
 
-    paperService.actions.updatePaper(
-      { paperId: paper._id, title: nextTitle },
-      {
-        onSuccess: () => {
-          setIsEditingTitle(false);
-          toast.success('Paper title updated');
-        },
-        onError: () => {
-          setDraftTitle(paper.title);
-          toast.error('Could not update paper title');
-        },
-      },
-    );
+    const pId = getLibraryEntityId(paper);
+    if (!pId) return;
+
+    paperActions.updatePaper({ paperId: pId, title: nextTitle })
+      .then(() => {
+        setIsEditingTitle(false);
+        toast.success('Paper title updated');
+      })
+      .catch(() => {
+        setDraftTitle(paper.title);
+        toast.error('Could not update paper title');
+      });
   };
 
   const handleResizeMouseDown = (event: React.MouseEvent) => {
@@ -172,11 +200,19 @@ export function useReader() {
     setIsResizingPanel(true);
   };
 
+  const goBack = () => {
+    if (onBackOverride) {
+      onBackOverride();
+      return;
+    }
+    router.push(`/${workspaceUrl}/library`);
+  };
+
   return {
     state: {
       workspaceId,
       workspaceUrl,
-      paperId,
+      paperId: effectivePaperId,
       isLoadingPapers,
       paper,
       paperCollection,
@@ -189,6 +225,7 @@ export function useReader() {
       isResizingPanel,
       isReindexing,
       selectionContext,
+      pendingNoteText,
       isEditingTitle,
       draftTitle,
       bibtexOpen,
@@ -200,12 +237,15 @@ export function useReader() {
       setBibtexOpen,
       handlePanelToggle,
       handleAskAi,
+      handleAddToNote,
+      setPendingNoteText,
       clearSelectionContext,
       handleReindex,
       handleTitleSave,
       handleResizeMouseDown,
       navigate: router.push,
-      goBack: () => router.back(),
+      goBack,
+      closeReader,
     },
   };
 }

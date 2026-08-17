@@ -12,10 +12,10 @@ import { Label } from '@/shared/components/ui/label';
 import {
   getFileType, getFileIcon, getFileColor,
   formatFileSize, formatDate, formatMimeType,
-} from '@/features/workspaces/storage/utils/file';
+} from '../../utils/file';
 import { resolveFileUrl } from '@/shared/utils/url';
-import { usePreview } from '@/features/workspaces/storage/hooks/use-preview';
-import { usePreviewStore } from '@/features/workspaces/storage/store/use-preview-store';
+import { usePreview } from '../../hooks/use-preview';
+import { usePreviewStore } from '../../store/use-preview-store';
 import { downloadFileUrl } from '@/shared/utils/file';
 
 export default function Preview() {

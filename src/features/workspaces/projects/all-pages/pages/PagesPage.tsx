@@ -10,10 +10,13 @@ import { EmptyState } from '../components/layout/EmptyState';
 import { CreateModal } from '../components/modals/CreateModal';
 import { GridView } from '../components/views/GridView';
 import { ListView } from '../components/views/ListView';
+import { useWorkspace } from '@/features/workspaces/shell';
 import type { PagesViewMode } from '../types/page.types';
 
 export default function PagesPage() {
   const { workspaceId } = useParams() as { workspaceId: string };
+  const { workspace } = useWorkspace(workspaceId);
+  const effectiveWorkspaceId = (workspace as any)?.id || (workspace as any)?._id || workspaceId;
   const router = useRouter();
   const [viewMode, setViewMode] = useState<PagesViewMode>('grid');
 
@@ -22,10 +25,10 @@ export default function PagesPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   const { data: pages = [], isLoading } = useQuery(
-    workspacePagesQueryOptions(workspaceId),
+    workspacePagesQueryOptions(effectiveWorkspaceId),
   );
 
-  const { projects = [] } = useProjects(workspaceId);
+  const { projects = [] } = useProjects(effectiveWorkspaceId);
   const { createPage } = usePageActions();
 
   const handleCreate = async () => {

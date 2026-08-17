@@ -6,11 +6,14 @@ import type {
   AgentAction,
 } from "../types/ai.types";
 import { API_BASE_URL as API_URL } from "@/shared/constants";
+import { getErrorMessage } from "@/shared/utils/error.util";
+
+import { getAuthToken } from '@/shared/lib/api';
 
 /**
  * Stream chat responses from the AI backend via RPM-BE proxy.
  *
- * Flow: Frontend → RPM-BE (/api/ai/chat) → ai (/chat) → SSE stream
+ * Flow: Frontend → RPM-BE (/api/ai/chat/rag) → ai (/chat) → SSE stream
  */
 export async function* streamChatResponse(
   messages: ChatMessage[],
@@ -33,14 +36,20 @@ export async function* streamChatResponse(
     signal?: AbortSignal;
   },
 ): AsyncGenerator<string, void, unknown> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
-  const response = await fetch(`${API_URL}/api/ai/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    },
-    credentials: "include",
+  const response = await fetch(`${API_URL}/api/ai/chat/rag`, {
+    method: 'POST',
+    headers,
+    credentials: 'include',
     body: JSON.stringify({
       messages: aiMessages,
       project_id: options?.projectId,
@@ -133,8 +142,8 @@ export async function chatSync(
     if (!response.ok) return { success: false, error: `AI sync request failed: ${response.status}` };
     const data = await response.json();
     return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err.message || "AI sync request failed" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "AI sync request failed" };
   }
 }
 
@@ -167,8 +176,8 @@ export async function listChatSessions(
     if (!res.ok) return { success: false, error: `Failed to list chats: ${res.status}` };
     const data = await res.json();
     return { success: true, data: data.chats };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to list chats" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to list chats" };
   }
 }
 
@@ -196,8 +205,8 @@ export async function createChatSession(opts: {
     if (!res.ok) return { success: false, error: `Failed to create chat: ${res.status}` };
     const data = await res.json();
     return { success: true, data: data.chat };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to create chat" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to create chat" };
   }
 }
 
@@ -215,8 +224,8 @@ export async function getChatSession(
     if (!res.ok) return { success: false, error: `Failed to get chat: ${res.status}` };
     const data = await res.json();
     return { success: true, data: data.chat };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to get chat" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to get chat" };
   }
 }
 
@@ -238,8 +247,8 @@ export async function appendChatMessages(
     );
     if (!res.ok) return { success: false, error: `Failed to append messages: ${res.status}` };
     return { success: true, data: undefined };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to append messages" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to append messages" };
   }
 }
 
@@ -260,8 +269,8 @@ export async function renameChatSession(
     );
     if (!res.ok) return { success: false, error: `Failed to rename chat: ${res.status}` };
     return { success: true, data: undefined };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to rename chat" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to rename chat" };
   }
 }
 
@@ -274,8 +283,8 @@ export async function deleteChatSession(chatId: string): Promise<Result<void>> {
     );
     if (!res.ok) return { success: false, error: `Failed to delete chat: ${res.status}` };
     return { success: true, data: undefined };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to delete chat" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to delete chat" };
   }
 }
 
@@ -288,8 +297,8 @@ export async function clearAiMemory(workspaceId: string): Promise<Result<void>> 
     });
     if (!res.ok) return { success: false, error: `Failed to clear memory: ${res.status}` };
     return { success: true, data: undefined };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to clear memory" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to clear memory" };
   }
 }
 
@@ -313,8 +322,8 @@ export async function uploadDocument(
     if (!res.ok) return { success: false, error: `Upload failed: ${res.status}` };
     const data = await res.json();
     return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to upload document" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to upload document" };
   }
 }
 
@@ -332,8 +341,8 @@ export async function fetchDocumentsBulk(
       return { success: false, error: `Failed to fetch document metadata: ${res.status}` };
     const data = await res.json();
     return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to fetch document metadata" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to fetch document metadata" };
   }
 }
 
@@ -354,8 +363,8 @@ export async function fetchDocumentContent(docId: string): Promise<Result<{
       return { success: false, error: `Failed to fetch document content: ${res.status}` };
     const data = await res.json();
     return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to fetch document content" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to fetch document content" };
   }
 }
 
@@ -374,8 +383,8 @@ export async function getPageChat(
     if (!res.ok) return { success: false, error: `Failed to load page chat: ${res.status}` };
     const data = await res.json();
     return { success: true, data: data.chat };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to load page chat" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to load page chat" };
   }
 }
 
@@ -388,8 +397,8 @@ export async function clearPageChat(pageId: string): Promise<Result<void>> {
     );
     if (!res.ok) return { success: false, error: `Failed to clear page chat: ${res.status}` };
     return { success: true, data: undefined };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Failed to clear page chat" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Failed to clear page chat" };
   }
 }
 
@@ -550,8 +559,8 @@ export async function compilePreview(opts: {
     if (!res.ok) return { success: false, error: `Preview compile failed: ${res.status}` };
     const data = await res.json();
     return { success: true, data };
-  } catch (err: any) {
-    return { success: false, error: err.message || "Preview compile failed" };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || "Preview compile failed" };
   }
 }
 

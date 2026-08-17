@@ -13,13 +13,15 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui';
 
+import type { Workspace } from '@/features/setup';
+
 export default function Topbar() {
   const { user, isLoading } = useAuth();
   const params = useParams<{ workspaceId?: string }>();
   const rawWorkspaceId = params?.workspaceId && params.workspaceId !== 'undefined' ? params.workspaceId : null;
 
   const { workspaces = [] } = useWorkspaces();
-  const currentWorkspace: any = (workspaces as any[]).find((w: any) => w.url === rawWorkspaceId) ?? workspaces[0] ?? null;
+  const currentWorkspace: Workspace | null = workspaces.find((w: Workspace) => w.url === rawWorkspaceId) ?? workspaces[0] ?? null;
 
 
   const workspaceId = rawWorkspaceId ?? currentWorkspace?.url ?? '';

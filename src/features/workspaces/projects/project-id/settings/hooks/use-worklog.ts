@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth';
 import { useProjectDetails } from '@/features/workspaces/projects/shell';
-import type { WorklogEntry, WorklogFilterState } from '../types/worklog.types';
+import { WorklogService } from '../services/worklog.service';
+import type { WorklogEntry } from '../types/worklog.types';
 
 export function useWorklogs(projectId: string) {
   const { user } = useAuth();
-  const { data: projectData, isLoading } = useProjectDetails(projectId);
+  const queryClient = useQueryClient();
+  const { data: projectData, isLoading: isProjectLoading } = useProjectDetails(projectId);
   const project = (projectData as any)?.project || projectData;
 
   // Project members for the user filter
@@ -21,8 +24,15 @@ export function useWorklogs(projectId: string) {
     }));
   }, [project]);
 
-  // Logs state (clean empty by default per user request)
-  const [logs, setLogs] = useState<WorklogEntry[]>([]);
+  // Query worklogs from backend
+  const {
+    data: logs = [],
+    isLoading: isLogsLoading,
+  } = useQuery<WorklogEntry[]>({
+    queryKey: ['project-worklogs', projectId],
+    queryFn: () => WorklogService.getProjectWorklogs(projectId),
+    enabled: Boolean(projectId),
+  });
 
   // Filter state
   const [userIds, setUserIds] = useState<string[]>([]);
@@ -149,39 +159,56 @@ export function useWorklogs(projectId: string) {
     toast.success('Worklogs downloaded as JSON');
   }, [filteredLogs, project]);
 
-  const addLog = useCallback(
-    (data: { taskTitle: string; hours: number; date: string; description: string }) => {
-      const newLog: WorklogEntry = {
-        id: Date.now().toString(),
-        userId: user?.id || (user as any)?._id || '',
-        user: {
-          id: user?.id || (user as any)?._id || '',
-          name: user?.name || 'Current User',
-          avatar: user?.avatar || undefined,
-          email: user?.email || '',
-        },
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: (data: { taskTitle: string; hours: number; date: string; description: string }) =>
+      WorklogService.createWorklog(projectId, {
         taskTitle: data.taskTitle.trim(),
         hours: data.hours,
         date: data.date,
         description: data.description.trim(),
-      };
-
-      setLogs((prev) => [newLog, ...prev]);
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-worklogs', projectId] });
       toast.success('Worklog recorded');
     },
-    [user]
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to record worklog');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => WorklogService.deleteWorklog(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-worklogs', projectId] });
+      toast.success('Worklog removed');
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to delete worklog');
+    },
+  });
+
+  const addLog = useCallback(
+    (data: { taskTitle: string; hours: number; date: string; description: string }) => {
+      createMutation.mutate(data);
+    },
+    [createMutation]
   );
 
-  const deleteLog = useCallback((id: string) => {
-    setLogs((prev) => prev.filter((l) => l.id !== id));
-    toast.success('Worklog removed');
-  }, []);
+  const deleteLog = useCallback(
+    (id: string) => {
+      deleteMutation.mutate(id);
+    },
+    [deleteMutation]
+  );
 
   return {
     logs: filteredLogs,
     allLogs: logs,
     members,
-    isLoading,
+    isLoading: isProjectLoading || isLogsLoading,
+    isCreating: createMutation.isPending,
+    isDeleting: deleteMutation.isPending,
     // Filter controls
     userIds,
     toggleUserFilter,

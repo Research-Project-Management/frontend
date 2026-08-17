@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpen, SearchX, Plus, Sparkles } from 'lucide-react';
+import { FileStack, Search } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 
 interface PaperTableEmptyProps {
@@ -19,16 +19,14 @@ export default function PaperTableEmpty({
 }: PaperTableEmptyProps) {
   if (isSearch) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-28 text-center px-6 select-none max-w-md mx-auto">
-        <div className="size-16 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground shadow-xs border border-border/40">
-          <SearchX className="size-8" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground tracking-tight">
-            No matching papers found
+      <div className="flex flex-col items-center justify-center gap-2.5 py-24 text-center px-6 select-none max-w-sm mx-auto">
+        <Search className="size-12 stroke-[1.25] text-muted-foreground/35 mb-1" />
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-foreground tracking-tight">
+            No matching papers
           </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Try adjusting your search query, filtering by authors, or searching across all collections.
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            No documents found matching your search query or filters.
           </p>
         </div>
         {onClearSearch && (
@@ -36,9 +34,9 @@ export default function PaperTableEmpty({
             variant="outline"
             size="sm"
             onClick={onClearSearch}
-            className="h-9 px-4 text-sm font-medium mt-1"
+            className="h-8 px-3 text-xs font-medium mt-2 cursor-pointer"
           >
-            Clear Search
+            Clear search
           </Button>
         )}
       </div>
@@ -46,26 +44,22 @@ export default function PaperTableEmpty({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-5 py-28 text-center px-6 select-none max-w-md mx-auto">
-      <div className="size-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-xs border border-primary/20">
-        <BookOpen className="size-8" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold text-foreground tracking-tight">
-          {collectionName ? `No papers in "${collectionName}"` : 'Your library is empty'}
+    <div className="flex flex-col items-center justify-center gap-2.5 py-24 text-center px-6 select-none max-w-sm mx-auto">
+      <FileStack className="size-12 stroke-[1.25] text-muted-foreground/35 mb-1" />
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold text-foreground tracking-tight">
+          {collectionName ? `No papers in ${collectionName}` : 'No papers in library'}
         </h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {collectionName
-            ? 'Add research papers to this collection or drag references from My Library.'
-            : 'Start building your research reference database by adding papers, importing via DOI/arXiv, or uploading PDF files.'}
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Drop PDF files here or add documents to start researching.
         </p>
       </div>
       {onAddPaper && (
         <Button
+          size="sm"
           onClick={onAddPaper}
-          className="h-9 px-5 text-sm font-medium gap-2 shadow-sm mt-1"
+          className="h-8 px-3 text-xs font-medium mt-2 cursor-pointer"
         >
-          <Plus className="size-4" />
           Add Paper
         </Button>
       )}

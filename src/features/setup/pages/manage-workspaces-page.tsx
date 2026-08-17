@@ -16,7 +16,7 @@ import {
   
 } from '@/shared/components/ui';
 import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
-import DeleteModal from '@/features/workspaces/settings/components/DeleteModal';
+import { DeleteModal } from '@/features/workspaces/settings';
 
 import { useEditWorkspace, useDeleteWorkspace } from '../hooks/use-workspace';
 import type { Workspace } from '../types/workspace.types';

@@ -1,27 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Skeleton } from '@/shared/components/ui';
-
 import { useActivityFeed } from '../hooks/use-activity-feed';
+import { useTaskModal } from '../hooks/use-task-modal';
 import { ActivityTimeline } from '../components/activity/ActivityTimeline';
 import { TaskDialogModal } from '../components/shared/TaskDialogModal';
 
 export function ActivityPage() {
-  const { allTasks, activities, taskProjectMap, isLoading, isLoadingActivity } = useActivityFeed();
-  const [selectedTask, setSelectedTask] = useState<{ taskId: string; projectId: string } | null>(null);
-
-  const handleOpenTask = (taskId: string) => {
-    const task = allTasks.find((t) => (t.id || t._id) === taskId);
-    const pId = task
-      ? typeof task.projectId === 'object'
-        ? task.projectId?.id || task.projectId?._id
-        : task.projectId || task.project?.id || task.project?._id
-      : null;
-    if (task && pId) {
-      setSelectedTask({ taskId, projectId: pId });
-    }
-  };
+  const { state } = useActivityFeed();
+  const { allTasks, activities, taskProjectMap, isLoading, isLoadingActivity } = state;
+  const { selectedTask, handleOpenTask, handleCloseTask } = useTaskModal(allTasks);
 
   if (isLoading) {
     return (
@@ -46,7 +35,7 @@ export function ActivityPage() {
           taskId={selectedTask.taskId}
           projectId={selectedTask.projectId}
           open={!!selectedTask}
-          onOpenChange={(open) => !open && setSelectedTask(null)}
+          onOpenChange={(open) => !open && handleCloseTask()}
         />
       )}
     </div>

@@ -1,27 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
+import { Input, Button } from '@/shared/components/ui';
 import {
-  Input,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
+
+const WORKSPACE_ROLES = [
+  { value: 'owner', label: 'Owner' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'member', label: 'Member' },
+  { value: 'viewer', label: 'Viewer' },
+] as const;
 
 interface MemberFilterProps {
   search: string;
-  roleFilter: string;
-  authFilter: string;
+  roleFilter: string[];
   canManage: boolean;
   onSearchChange: (val: string) => void;
-  onRoleFilterChange: (val: string) => void;
-  onAuthFilterChange: (val: string) => void;
+  onRoleFilterChange: (val: string[]) => void;
   onOpenImport: () => void;
   onAddMember: () => void;
 }
@@ -29,15 +30,22 @@ interface MemberFilterProps {
 export function MemberFilter({
   search,
   roleFilter,
-  authFilter,
   canManage,
   onSearchChange,
   onRoleFilterChange,
-  onAuthFilterChange,
   onOpenImport,
   onAddMember,
 }: MemberFilterProps) {
-  const hasActiveFilters = roleFilter !== 'all' || authFilter !== 'all';
+  const [open, setOpen] = useState(false);
+  const hasActiveFilters = roleFilter.length > 0;
+
+  const toggleRole = (role: string) => {
+    if (roleFilter.includes(role)) {
+      onRoleFilterChange(roleFilter.filter((r) => r !== role));
+    } else {
+      onRoleFilterChange([...roleFilter, role]);
+    }
+  };
 
   return (
     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
@@ -52,71 +60,73 @@ export function MemberFilter({
         />
       </div>
 
-      {/* ── Filters Dropdown ── */}
-      <DropdownMenu>
+      {/* ── Role Filter (controlled open, checkbox multi-select) ── */}
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             className={cn(
-              'h-8 px-2.5 rounded-lg border border-border/80 bg-background hover:bg-muted/40 text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none shrink-0',
-              hasActiveFilters && 'border-primary/50 text-primary bg-primary/5'
+              'h-8 px-2.5 rounded-lg border border-border/80 bg-background',
+              'text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none shrink-0',
+              hasActiveFilters
+                ? 'border-foreground/30 text-foreground bg-muted/30'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
             )}
           >
             <span>Filters</span>
+            {/* Active badge */}
+            {hasActiveFilters && (
+              <span className="size-4 rounded-full bg-foreground text-background text-[10px] font-bold flex items-center justify-center leading-none">
+                {roleFilter.length}
+              </span>
+            )}
             <ChevronDown className="size-3 text-muted-foreground shrink-0" />
           </button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-lg text-xs">
-          <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
-            Role
-          </DropdownMenuLabel>
-          {['all', 'admin', 'member', 'guest'].map((r) => (
-            <DropdownMenuItem
-              key={r}
-              onClick={() => onRoleFilterChange(r)}
-              className="flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer capitalize text-xs"
-            >
-              <span>{r === 'all' ? 'All roles' : r}</span>
-              {roleFilter === r && <Check className="size-3 text-primary stroke-[3]" />}
-            </DropdownMenuItem>
-          ))}
+        <DropdownMenuContent
+          align="end"
+          className="w-44 p-1.5 rounded-lg text-xs"
+          onInteractOutside={() => setOpen(false)}
+          onEscapeKeyDown={() => setOpen(false)}
+        >
+          {/* Title */}
+          <p className="px-2 py-1 text-[11px] font-semibold text-muted-foreground tracking-wide">
+            Roles
+          </p>
 
-          <DropdownMenuSeparator className="my-1" />
-
-          <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
-            Authentication
-          </DropdownMenuLabel>
-          {['all', 'google', 'email'].map((a) => (
-            <DropdownMenuItem
-              key={a}
-              onClick={() => onAuthFilterChange(a)}
-              className="flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer capitalize text-xs"
-            >
-              <span>{a === 'all' ? 'All providers' : a}</span>
-              {authFilter === a && <Check className="size-3 text-primary stroke-[3]" />}
-            </DropdownMenuItem>
-          ))}
-
-          {hasActiveFilters && (
-            <>
-              <DropdownMenuSeparator className="my-1" />
+          {/* Checkboxes — plain buttons so dropdown stays open on click */}
+          {WORKSPACE_ROLES.map(({ value, label }) => {
+            const checked = roleFilter.includes(value);
+            return (
               <button
+                key={value}
                 type="button"
-                onClick={() => {
-                  onRoleFilterChange('all');
-                  onAuthFilterChange('all');
-                }}
-                className="w-full text-center py-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer font-medium"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => toggleRole(value)}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs transition-colors text-left',
+                  checked ? 'text-foreground' : 'text-muted-foreground',
+                  'hover:bg-accent hover:text-foreground cursor-pointer',
+                )}
               >
-                Reset filters
+                {/* Checkbox */}
+                <span
+                  className={cn(
+                    'size-3.5 rounded-[3px] border flex items-center justify-center shrink-0 transition-colors',
+                    checked ? 'bg-[#09090b] border-[#09090b]' : 'border-border bg-background',
+                  )}
+                >
+                  {checked && <Check className="size-2.5 text-white stroke-[3]" />}
+                </span>
+                <span>{label}</span>
               </button>
-            </>
-          )}
+            );
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ── Import CSV Button ── */}
+      {/* ── Import CSV ── */}
       {canManage && (
         <Button
           variant="outline"
@@ -128,7 +138,7 @@ export function MemberFilter({
         </Button>
       )}
 
-      {/* ── Add Member Button ── */}
+      {/* ── Add Member ── */}
       {canManage && (
         <Button
           size="sm"

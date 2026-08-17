@@ -19,8 +19,8 @@ import { Item, ListViewGroup, EmptyState } from '../components/views/ListView';
 import { DeleteModal } from '../components/modals/DeleteModal';
 import { CycleModal } from '../components/modals/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
-import type { Cycle, CycleMilestone } from "../types/cycle.types";
-import Topbar from '@/features/workspaces/settings/components/TopBar';
+import type { Cycle, CycleMilestone } from '../types/cycle.types';
+import { TopBar as Topbar } from '@/features/workspaces/settings';
 import CycleTopBarActions from '../components/layout/Topbar';
 
 const PHASE_CONFIG: Record<string, any> = {

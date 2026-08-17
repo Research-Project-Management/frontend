@@ -27,8 +27,8 @@ import type { ReaderPanel } from '../../../types/reader.types';
 // ── Helpers ──────────────────────────────────────────────────
 
 const RAG_STYLES: Record<string, string> = {
-  indexed: 'border-border bg-muted text-muted-foreground',
-  pending: 'border-[#f9ab00]/25 bg-[#f9ab00]/10 text-[#9a6700]',
+  indexed: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  pending: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
   failed: 'border-destructive/20 bg-destructive/10 text-destructive',
   idle: 'border-border bg-muted text-muted-foreground',
 };
@@ -221,7 +221,7 @@ export default function Topbar({
         <Button
           variant="ghost"
           size="icon-sm"
-          onClick={() => setActivePanel((current: any) => (current ? null : 'details'))}
+          onClick={() => setActivePanel((current: ReaderPanel | null) => (current ? null : 'details'))}
 
           aria-label={activePanel ? 'Close panel' : 'Open details'}
         >

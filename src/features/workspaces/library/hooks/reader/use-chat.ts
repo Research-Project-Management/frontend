@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import type { ChatMessage, SourceItem } from '../../types/ai.types';
+import type { ChatMessage, SourceItem, ChatSession, ChatSessionDetail } from '../../types/ai.types';
 import {
   streamChatResponse,
   getChatSession,
@@ -63,60 +63,69 @@ export function useChat({
 
     setIsLoadingHistory(true);
     listChatSessions(workspaceId)
-      .then((sessions: any) => {
-        const matching = sessions.find(
-          (s: any) => s.documentIds?.length === 1 && s.documentIds[0] === ragDocId,
-        );
-        if (matching) {
-          setChatId(matching._id);
-          return getChatSession(matching._id).then((session: any) => {
-            setMessages(
-              session.messages.map(({ role, content, sources, widgets }: any) => ({
-                role,
-                content,
-                sources,
-                widgets,
-              })),
-            );
-          });
-        } else {
-          setChatId(null);
-          setMessages([]);
+      .then((res) => {
+        if (res.success && res.data) {
+          const matching = res.data.find(
+            (s: ChatSession) => s.documentIds?.length === 1 && s.documentIds[0] === ragDocId,
+          );
+          if (matching) {
+            setChatId(matching._id);
+            return getChatSession(matching._id).then((detailRes) => {
+              if (detailRes.success && detailRes.data) {
+                const historyMsgs = detailRes.data.messages ?? [];
+                setMessages(
+                  historyMsgs.map(({ role, content, sources, widgets }: ChatMessage) => ({
+                    role,
+                    content,
+                    sources,
+                    widgets,
+                  })),
+                );
+              }
+            });
+          }
         }
+        setChatId(null);
+        setMessages([]);
       })
       .catch((err: unknown) => console.error('Failed to restore reader chat:', err))
       .finally(() => setIsLoadingHistory(false));
 
     return () => {
-      abortRef.current?.abort();
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
     };
   }, [workspaceId, ragDocId]);
 
-  // ── Send message ────────────────────────────────────────────────────────
+  // ── Send Message ────────────────────────────────────────────────────────
   const handleSend = useCallback(
     async (text: string) => {
-      if (isStreaming || !workspaceId || !ragDocId) return;
+      const userText = text.trim();
+      if (!userText || isStreaming || !workspaceId || !ragDocId) return;
 
-      const selectedText = selectionContext.trim();
-      const hasSelectedText = selectedText.length > 0;
-      const finalPrompt = text.trim() || (hasSelectedText ? 'Explain the selected passage.' : '');
-      if (!finalPrompt) return;
+      const hasSelectedText = !!selectionContext;
+      const selectedText = selectionContext;
 
-      const userMsg: ChatMessage = { role: 'user', content: finalPrompt };
-      const newMessages = [...messagesRef.current, userMsg];
-      setMessages(newMessages);
+      const userMsg: ChatMessage = {
+        role: 'user',
+        content: userText,
+      };
+
+      const nextMessages = [...messagesRef.current, userMsg];
+      setMessages(nextMessages);
       setInputMessage('');
-      streamRef.current = '';
-      setStreamContent('');
       setIsStreaming(true);
+      setStreamContent('');
+      streamRef.current = '';
       activeSourcesRef.current = [];
 
-      const controller = new AbortController();
-      abortRef.current = controller;
+      const abortController = new AbortController();
+      abortRef.current = abortController;
 
       try {
-        for await (const chunk of streamChatResponse(newMessages, {
-          signal: controller.signal,
+        for await (const chunk of streamChatResponse(nextMessages, {
+          projectId: undefined,
           workspaceId,
           chatId: chatId ?? undefined,
           documentIds: [ragDocId],
@@ -125,7 +134,8 @@ export function useChat({
           cursorContext: hasSelectedText
             ? 'The user selected this passage in the reader. Use it as the focus, but answer from the indexed paper context.'
             : undefined,
-          onMeta: (meta: any) => {
+          signal: abortController.signal,
+          onMeta: (meta: { agent: string; intent: string; sources?: SourceItem[] }) => {
             if (meta.sources?.length) {
               activeSourcesRef.current = meta.sources;
             }

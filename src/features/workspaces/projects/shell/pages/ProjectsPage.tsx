@@ -42,8 +42,9 @@ export function ProjectsPage() {
     const q = searchQuery.toLowerCase().trim();
     return rawProjects.filter(
       (p) =>
-        p.name.toLowerCase().includes(q) ||
+        p.name?.toLowerCase().includes(q) ||
         p.description?.toLowerCase().includes(q) ||
+        ((p as any).identifier && (p as any).identifier.toLowerCase().includes(q)) ||
         ((p as any).key && (p as any).key.toLowerCase().includes(q))
     );
   }, [rawProjects, searchQuery]);
@@ -73,7 +74,7 @@ export function ProjectsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProjects.map((project) => (
               <Card
-                key={project._id}
+                key={project._id || (project as any).id}
                 project={project}
                 workspaceId={workspaceId}
               />

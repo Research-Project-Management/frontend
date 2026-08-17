@@ -42,20 +42,21 @@ function getBannerGradient(id: string): string {
 }
 
 export function Card({ project, workspaceId }: CardProps) {
-  const projectKey = (project as any).key || getProjectKey(project.name);
-  const isPrivate = (project as any).settings?.isPrivate ?? false;
+  const projectId = project._id || (project as any).id || '';
+  const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
+  const isPrivate = (project as any).isPrivate ?? (project as any).settings?.isPrivate ?? false;
 
   // Find lead from members or creator
   const leadMember = project.members?.find(
-    (m: any) => m.role === "manager" || m.role === "lead" || m.role === "owner",
+    (m: any) => m.role === "manager" || m.role === "lead" || m.role === "owner" || m.role === "admin",
   );
-  const leadUser = leadMember?.user || (project.createdBy?._id ? project.createdBy : null);
+  const leadUser = leadMember?.user || (project.createdBy?._id || (project.createdBy as any)?.id ? project.createdBy : null);
 
-  const bannerClass = getBannerGradient(project._id);
+  const bannerClass = getBannerGradient(projectId || 'default');
 
   return (
     <Link
-      href={`/${workspaceId}/projects/${project._id}/overview`}
+      href={`/${workspaceId}/projects/${projectId}/overview`}
       className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {/* Banner */}

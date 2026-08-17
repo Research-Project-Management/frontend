@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/shared/lib/utils";
 import {
   BookOpen,
@@ -9,8 +9,10 @@ import {
   MoreHorizontal,
   Search,
   Plus,
-  Upload,
+  FileText,
+  FolderUp,
   FolderPlus,
+  Link2,
   PanelLeftOpen,
 } from "lucide-react";
 import { useLibrarySidebarStore } from "@/features/workspaces/library/store/sidebar.store";
@@ -41,8 +43,9 @@ export interface TopbarProps {
   searchPlaceholder?: string;
   breadcrumbs?: BreadcrumbItem[];
   onNavigateCrumb?: (id: string) => void;
-  onAddPaper?: () => void;
+  onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
   onAddCollection?: () => void;
+  onAddLink?: () => void;
   isSubcollection?: boolean;
   children?: React.ReactNode;
   className?: string;
@@ -58,6 +61,7 @@ export default function Topbar({
   onNavigateCrumb,
   onAddPaper,
   onAddCollection,
+  onAddLink,
   isSubcollection = false,
   children,
   className,
@@ -86,6 +90,45 @@ export default function Topbar({
     setIsSearchExpanded(false);
   };
 
+  // Keyboard shortcut (Cmd+K / Ctrl+K or /) to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true');
+
+      if (!isInput && onSearchChange) {
+        if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || e.key === '/') {
+          e.preventDefault();
+          setIsSearchExpanded(true);
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSearchChange]);
+
+  const handleAddFileClick = () => {
+    if (onAddPaper) onAddPaper('file');
+  };
+
+  const handleAddFolderClick = () => {
+    if (onAddPaper) onAddPaper('folder');
+  };
+
+  const handleAddLinkClick = () => {
+    if (onAddLink) {
+      onAddLink();
+    } else if (onAddPaper) {
+      onAddPaper('link');
+    }
+  };
+
   return (
     <header
       className={cn(
@@ -94,7 +137,7 @@ export default function Topbar({
       )}
     >
       {/* Left Section: Title or Breadcrumbs */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
         {!isOpen && (
           <TooltipProvider delayDuration={150}>
             <Tooltip>
@@ -113,8 +156,9 @@ export default function Topbar({
             </Tooltip>
           </TooltipProvider>
         )}
+
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-2 min-w-0 overflow-hidden">
             {breadcrumbs.map((crumb, idx) => {
               if (crumb.isEllipsis) {
                 return (
@@ -130,6 +174,7 @@ export default function Topbar({
               }
 
               const isLast = idx === breadcrumbs.length - 1;
+
               return (
                 <React.Fragment key={crumb._id || idx}>
                   {idx > 0 && (
@@ -141,7 +186,7 @@ export default function Topbar({
                     className={cn(
                       "flex items-center gap-2 min-w-0",
                       !isLast && onNavigateCrumb
-                        ? "cursor-pointer hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
+                        ? "cursor-pointer hover:underline focus-visible:outline-none focus-visible:ring-primary rounded"
                         : ""
                     )}
                     onClick={() => {
@@ -171,7 +216,7 @@ export default function Topbar({
                 </React.Fragment>
               );
             })}
-          </div>
+          </nav>
         ) : (
           <div className="flex items-center gap-2.5">
             {Icon && <Icon className="size-4.5 text-foreground shrink-0" />}
@@ -186,7 +231,7 @@ export default function Topbar({
 
       {/* Right Section: Search & Actions */}
       <div className="flex items-center gap-3 shrink-0">
-        {/* Expandable Search Input (matching Storage Topbar) */}
+        {/* Expandable Search Input */}
         {onSearchChange !== undefined && (
           <div
             className={cn(
@@ -212,6 +257,12 @@ export default function Topbar({
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               onBlur={collapseSearch}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  onSearchChange('');
+                  setIsSearchExpanded(false);
+                }
+              }}
               className={cn(
                 "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8",
                 isSearchExpanded || search ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -235,26 +286,38 @@ export default function Topbar({
         {(onAddPaper || onAddCollection) && (
           <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <PopoverTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer">
+              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer font-medium text-xs">
                 <Plus className="size-3.5 text-primary-foreground" />
-                New
+                <span>New</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent
               align="end"
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-48 p-1"
+              className="w-52 p-1 shadow-md border-border/60"
             >
               {onAddPaper && (
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
-                    onAddPaper();
+                    handleAddFileClick();
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
                 >
-                  <Upload className="size-4 text-foreground" />
-                  Add PDF Document
+                  <FileText className="size-3.5 text-foreground" />
+                  <span>Add File...</span>
+                </button>
+              )}
+              {onAddPaper && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    handleAddFolderClick();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+                >
+                  <FolderUp className="size-3.5 text-foreground" />
+                  <span>Add Folder...</span>
                 </button>
               )}
               {onAddCollection && (
@@ -263,10 +326,22 @@ export default function Topbar({
                     setIsMenuOpen(false);
                     onAddCollection();
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
                 >
-                  <FolderPlus className="size-4 text-foreground" />
-                  {isSubcollection ? "New Subcollection" : "New Collection"}
+                  <FolderPlus className="size-3.5 text-foreground" />
+                  <span>{isSubcollection ? "Add Subcollection..." : "Add Collection..."}</span>
+                </button>
+              )}
+              {onAddPaper && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    handleAddLinkClick();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+                >
+                  <Link2 className="size-3.5 text-foreground" />
+                  <span>Add Link to File...</span>
                 </button>
               )}
             </PopoverContent>

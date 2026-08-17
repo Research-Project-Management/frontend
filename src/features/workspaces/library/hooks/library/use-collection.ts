@@ -7,12 +7,14 @@ import { useWorkspace } from '@/features/workspaces/shell';
 import { useCollections } from '../data/use-collections';
 import { usePapers } from '../data/use-papers';
 import { filterPapers } from '../../utils/filter';
+import { getLibraryEntityId } from '../../utils/library.util';
+import type { Paper, Collection, CollectionInput } from '../../types/library.types';
 
 export function useCollection() {
   const { workspaceId: workspaceUrl, collectionId } = useParams() as { workspaceId: string; collectionId: string };
   const router = useRouter();
   const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id ?? '';
+  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
 
   const paperService = usePapers({ workspaceId, collectionId: collectionId ?? '' });
   const collectionResult = paperService.state.collectionPapers;
@@ -20,23 +22,28 @@ export function useCollection() {
   const collectionService = useCollections(workspaceId);
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'file' | 'folder' | 'link'>('file');
   const [subCreateOpen, setSubCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
+
+  const handleOpenUpload = (mode: 'file' | 'folder' | 'link' = 'file') => {
+    setUploadMode(mode);
+    setUploadOpen(true);
+  };
 
   const collection = collectionResult ? collectionResult.collection : undefined;
   const papers = useMemo(() => (collectionResult ? collectionResult.papers : []), [collectionResult]);
   const collections = collectionService.state.collections;
 
   const selectedPaper = useMemo(
-    () => papers.find((p: any) => p._id === selectedPaperId) || null,
+    () => papers.find((p: Paper) => getLibraryEntityId(p) === selectedPaperId) || null,
     [papers, selectedPaperId],
   );
   const filtered = useMemo(() => filterPapers(papers, search), [papers, search]);
 
   const handleAddPaper = async (paperData: Parameters<typeof paperService.actions.addPaper>[0]) => {
-    await paperService.actions.addPaper(paperData);
-    setUploadOpen(false);
+    return await paperService.actions.addPaper(paperData);
   };
 
   const handleDeletePaper = (paperId: string) => {
@@ -45,7 +52,7 @@ export function useCollection() {
     if (selectedPaperId === paperId) setSelectedPaperId(null);
   };
 
-  const handleCreateSub = (collectionData: any) => {
+  const handleCreateSub = (collectionData: CollectionInput) => {
     collectionService.actions.create(
       { ...collectionData, parent: collectionId },
       { onSuccess: () => setSubCreateOpen(false) },
@@ -53,21 +60,17 @@ export function useCollection() {
   };
 
   const visibleBreadcrumbs = useMemo(() => {
-    const crumbs = [];
+    const crumbs: Collection[] = [];
     if (collections && collection) {
-      let current: any = collection;
+      let currentId: string | null | undefined = getLibraryEntityId(collection);
       const seen = new Set<string>();
-      while (current) {
-        if (seen.has(current._id)) break;
-        seen.add(current._id);
-        crumbs.unshift(current);
-        if (current.parent) {
-          const p = collections.find((c) => c._id === current.parent);
-          if (p) current = p;
-          else break;
-        } else {
-          break;
-        }
+      while (currentId) {
+        if (seen.has(currentId)) break;
+        seen.add(currentId);
+        const item: Collection | undefined = collections.find((c) => getLibraryEntityId(c) === currentId);
+        if (!item) break;
+        crumbs.unshift(item);
+        currentId = item.parent;
       }
     }
 
@@ -81,6 +84,21 @@ export function useCollection() {
     }
     return crumbs;
   }, [collections, collection]);
+
+  const handleBatchDeletePapers = (paperIds: string[]) => {
+    for (const paperId of paperIds) {
+      paperService.actions.deletePaper({ paperId });
+    }
+    if (selectedPaperId && paperIds.includes(selectedPaperId)) {
+      setSelectedPaperId(null);
+    }
+  };
+
+  const handleBatchMovePapers = (paperIds: string[], targetCollectionId: string | null) => {
+    for (const paperId of paperIds) {
+      paperService.actions.updatePaper({ paperId, collectionId: targetCollectionId ?? undefined });
+    }
+  };
 
   return {
     state: {
@@ -96,6 +114,7 @@ export function useCollection() {
       selectedPaper,
       filtered,
       uploadOpen,
+      uploadMode,
       subCreateOpen,
       visibleBreadcrumbs,
       isAddingPaper: paperService.state.isAdding,
@@ -105,9 +124,13 @@ export function useCollection() {
       setSearch,
       setSelectedPaperId,
       setUploadOpen,
+      setUploadMode,
+      handleOpenUpload,
       setSubCreateOpen,
       handleAddPaper,
       handleDeletePaper,
+      handleBatchDeletePapers,
+      handleBatchMovePapers,
       handleCreateSub,
       navigate: router.push,
     },

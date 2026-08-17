@@ -29,7 +29,9 @@ const getDisplayTitle = (title: string, url: string) => {
 // --- Main Component ---
 export default function Quicklinks() {
   const { workspaceId } = useParams() as { workspaceId: string };
-  const { links, isLoaded, addQuicklink, updateQuicklink, removeQuicklink } = useQuicklinks(workspaceId);
+  const { state, actions } = useQuicklinks(workspaceId);
+  const { links, isLoaded } = state;
+  const { addQuicklink, updateQuicklink, removeQuicklink } = actions;
   const [modalOpen, setModalOpen] = useState(false);
   const [editLink, setEditLink] = useState<Quicklink | null>(null);
   const [deleteLinkId, setDeleteLinkId] = useState<string | null>(null);

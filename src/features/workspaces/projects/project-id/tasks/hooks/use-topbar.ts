@@ -72,67 +72,79 @@ export function useTopbar({
     const map = new Map<string, AssigneeFilterOption>();
     let hasUnassigned = false;
 
-    for (const t of tasks) {
-      if (t.assigneeId?._id) {
-        map.set(t.assigneeId._id, {
-          id: t.assigneeId._id,
-          name: t.assigneeId.name,
-          avatar: t.assigneeId.avatar,
-        });
-      } else {
-        hasUnassigned = true;
+    if (Array.isArray(tasks)) {
+      for (const t of tasks) {
+        if (!t) continue;
+        if (t.assigneeId?._id) {
+          map.set(t.assigneeId._id, {
+            id: t.assigneeId._id,
+            name: t.assigneeId.name || 'Unknown',
+            avatar: t.assigneeId.avatar,
+          });
+        } else {
+          hasUnassigned = true;
+        }
       }
     }
 
-    const list = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+    const list = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'vi'));
     if (hasUnassigned) list.push({ id: '__unassigned__', name: 'Unassigned' });
     return list;
   }, [tasks, propUsers]);
 
   const filteredTasks = useMemo(() => {
-    let result = tasks;
+    let result = Array.isArray(tasks) ? tasks : [];
 
     // Search query filter
-    if (searchQuery.trim()) {
+    if (searchQuery && searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.description?.toLowerCase().includes(q) ||
-          t.content?.toLowerCase().includes(q),
+          (t?.title || '').toLowerCase().includes(q) ||
+          (t?.description || '').toLowerCase().includes(q) ||
+          (t?.content || '').toLowerCase().includes(q),
       );
     }
 
+    const safeCols = Array.isArray(selCols) ? selCols : [];
+    const safeUsers = Array.isArray(selUsers) ? selUsers : [];
+
     // Column and assignee filters
-    if (!selCols.length && !selUsers.length) return result;
+    if (!safeCols.length && !safeUsers.length) return result;
 
     return result.filter((t: any) => {
-      if (selCols.length && !selCols.includes(t.columnId)) return false;
-      if (selUsers.length) {
-        const uId = t.assigneeId?._id ?? '__unassigned__';
-        if (!selUsers.includes(uId)) return false;
+      if (safeCols.length && !safeCols.includes(t?.columnId)) return false;
+      if (safeUsers.length) {
+        const uId = t?.assigneeId?._id ?? '__unassigned__';
+        if (!safeUsers.includes(uId)) return false;
       }
       return true;
     });
   }, [tasks, searchQuery, selCols, selUsers]);
 
   const filteredProjects = useMemo(() => {
-    return projects.filter((p: Project) => p.name.toLowerCase().includes(projSearch.toLowerCase()));
+    if (!Array.isArray(projects)) return [];
+    return projects.filter((p: Project) => (p?.name || '').toLowerCase().includes((projSearch || '').toLowerCase()));
   }, [projects, projSearch]);
 
   const filteredCycles = useMemo(() => {
-    return cycles.filter((c: Cycle) => c.name.toLowerCase().includes(cycleSearch.toLowerCase()));
+    if (!Array.isArray(cycles)) return [];
+    return cycles.filter((c: Cycle) => (c?.name || '').toLowerCase().includes((cycleSearch || '').toLowerCase()));
   }, [cycles, cycleSearch]);
 
   const activeCols = useMemo(() => {
-    return columns.filter((c) => selCols.includes(resolveTaskColumnId(c)));
+    if (!Array.isArray(columns)) return [];
+    const safeCols = Array.isArray(selCols) ? selCols : [];
+    return columns.filter((c) => safeCols.includes(resolveTaskColumnId(c)));
   }, [columns, selCols]);
 
   const activeUsers = useMemo(() => {
-    return assignees.filter((a) => selUsers.includes(a.id));
+    if (!Array.isArray(assignees)) return [];
+    const safeUsers = Array.isArray(selUsers) ? selUsers : [];
+    return assignees.filter((a) => safeUsers.includes(a.id));
   }, [assignees, selUsers]);
 
-  const totalFilters = selCols.length + selUsers.length;
+  const totalFilters = (Array.isArray(selCols) ? selCols.length : 0) + (Array.isArray(selUsers) ? selUsers.length : 0);
 
   const handleSearchChange = useCallback(
     (query: string) => {

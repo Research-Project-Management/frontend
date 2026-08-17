@@ -16,8 +16,8 @@ export const PageService = {
       { title: input.title, content: input.content, status: input.status },
     );
     const mainFile = res.mainFile || null;
-    const mainFileId = typeof mainFile === 'object' && mainFile !== null && '_id' in mainFile
-      ? (mainFile._id as string)
+    const mainFileId = typeof mainFile === 'object' && mainFile !== null
+      ? ((mainFile._id || (mainFile as any).id) as string || null)
       : typeof mainFile === 'string'
         ? mainFile
         : null;
@@ -25,7 +25,7 @@ export const PageService = {
     return {
       page: res.page,
       mainFile,
-      rootPageId: res.page._id,
+      rootPageId: res.page._id || res.page.id || '',
       mainFileId,
     } satisfies CreatePageResponse;
   },

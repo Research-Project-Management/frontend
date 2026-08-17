@@ -1,4 +1,8 @@
+'use client';
+
 import dynamic from 'next/dynamic';
+import { usePathname } from 'next/navigation';
+import React from 'react';
 
 const WorkspaceTopbar = dynamic(
   () => import('@/features/workspaces/shell/components/Topbar'),
@@ -15,6 +19,17 @@ export default function WorkspaceLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isPaperReader = pathname.includes('/library/papers/');
+
+  if (isPaperReader) {
+    return (
+      <div className='h-dvh w-full overflow-hidden bg-background'>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className='h-dvh flex flex-col overflow-clip bg-[oklch(0.9543_0.001_230.67)] dark:bg-[oklch(0.1932_0.002_230.81)]'>
       <WorkspaceTopbar />

@@ -24,6 +24,7 @@ export default memo(function Content({
   isOverlay,
 }: ContentProps) {
   const contentRef = useRef(sticky.content);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -47,14 +48,28 @@ export default memo(function Content({
       },
     },
     onUpdate: ({ editor }) => {
-      contentRef.current = editor.getHTML();
+      const html = editor.getHTML();
+      contentRef.current = html;
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        if (html !== sticky.content) {
+          onUpdate(sticky._id, { content: html });
+        }
+      }, 800);
     },
     onBlur: () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (contentRef.current !== sticky.content) {
         onUpdate(sticky._id, { content: contentRef.current });
       }
     },
   });
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (onReady && editor) {

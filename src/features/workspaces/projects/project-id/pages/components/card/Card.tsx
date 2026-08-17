@@ -37,7 +37,7 @@ export function Card({ page, workspaceId }: CardProps) {
           {page.title}
         </h3>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatDate(page.updatedAt)}</span>
+          <span>{page.updatedAt ? formatDate(page.updatedAt) : '—'}</span>
           <span className="truncate max-w-[100px] text-right">{page.author?.name || '—'}</span>
         </div>
       </div>

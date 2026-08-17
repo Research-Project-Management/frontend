@@ -4,27 +4,30 @@ import { z } from 'zod';
 
 export const memberSchema = z.object({
   user: z.object({
-    _id: z.string(),
+    id: z.string().optional(),
+    _id: z.string().optional(),
     name: z.string(),
     email: z.string().optional().default(''),
-    avatar: z.string().optional(),
+    avatar: z.string().optional().nullable(),
   }),
-  role: z.string().optional().default('member'),
+  role: z.string().optional().default('contributor'),
   joinedAt: z.string().optional(),
 });
 
 // ── Project Details Schema ───────────────────────────────────────────────────
 
 export const projectInfoSchema = z.object({
-  _id: z.string(),
+  id: z.string().optional(),
+  _id: z.string().optional(),
   name: z.string(),
   description: z.string().optional().default(''),
-  avatar: z.string().optional(),
+  avatar: z.string().optional().nullable(),
   isActive: z.boolean().optional().default(true),
   modules: z.array(z.string()).optional().default([]),
   workspace: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+  workspaceId: z.string().optional(),
   members: z.array(memberSchema).default([]),
-  createdAt: z.string(),
+  createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
 

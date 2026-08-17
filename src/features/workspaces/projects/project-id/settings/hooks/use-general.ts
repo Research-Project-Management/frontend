@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/shared/utils/error.util';
 import { useProjectDetails, useUpdateProject, useDeleteProject } from '@/features/workspaces/projects/shell';
 import { uploadGenericFile } from '@/features/workspaces/storage/services/file.service';
 
@@ -27,47 +28,55 @@ export function useGeneral(projectId: string, workspaceId: string) {
   // Sync from server
   useEffect(() => {
     if (project) {
+      const settings = (project.settings as any) || {};
       setName(project.name || '');
-      setIdentifier(project.identifier || '');
+      setIdentifier(project.identifier || settings.identifier || project.key || '');
       setDescription(project.description || '');
       setAvatar(project.avatar || null);
-      setCover(project.cover || null);
-      setIsPrivate(project.isPrivate ?? false);
-      setTimezone(project.timezone || 'Asia/Ho_Chi_Minh');
+      setCover(project.cover || settings.cover || null);
+      setIsPrivate(project.isPrivate ?? settings.isPrivate ?? false);
+      setTimezone(project.timezone || settings.timezone || 'Asia/Ho_Chi_Minh');
     }
   }, [project]);
 
   const hasChanges = useMemo(() => {
     if (!project) return false;
+    const settings = (project.settings as any) || {};
     return (
       name !== (project.name || '') ||
-      identifier !== (project.identifier || '') ||
+      identifier !== (project.identifier || settings.identifier || project.key || '') ||
       description !== (project.description || '') ||
       avatar !== (project.avatar || null) ||
-      cover !== (project.cover || null) ||
-      isPrivate !== (project.isPrivate ?? false) ||
-      timezone !== (project.timezone || 'Asia/Ho_Chi_Minh')
+      cover !== (project.cover || settings.cover || null) ||
+      isPrivate !== (project.isPrivate ?? settings.isPrivate ?? false) ||
+      timezone !== (project.timezone || settings.timezone || 'Asia/Ho_Chi_Minh')
     );
   }, [project, name, identifier, description, avatar, cover, isPrivate, timezone]);
 
   const save = useCallback(() => {
+    const existingSettings = (project?.settings as any) || {};
+    const newSettings = {
+      ...existingSettings,
+      identifier,
+      cover,
+      isPrivate,
+      timezone,
+    };
+
     updateMutation.mutate(
       {
         projectId,
         name,
         description,
         avatar: avatar || undefined,
-        cover: cover || undefined,
-        identifier,
-        isPrivate,
-        timezone,
+        settings: newSettings,
       } as any,
       {
         onSuccess: () => toast.success('Project details updated'),
         onError: (err: any) => toast.error(err?.message || 'Failed to update project'),
       },
     );
-  }, [projectId, name, description, avatar, cover, identifier, isPrivate, timezone, updateMutation]);
+  }, [projectId, project, name, description, avatar, cover, identifier, isPrivate, timezone, updateMutation]);
 
   const handleSelectAvatar = useCallback((val: string) => {
     setAvatar(val);
@@ -83,25 +92,30 @@ export function useGeneral(projectId: string, workspaceId: string) {
       const url = await uploadGenericFile(file, workspaceId);
       setCover(url);
       toast.success('Cover uploaded');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to upload cover');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || 'Failed to upload cover');
     } finally {
       setIsUploading(false);
     }
   }, [workspaceId]);
 
   const toggleArchive = useCallback(() => {
-    const nextArchived = !project?.isArchived;
+    const existingSettings = (project?.settings as any) || {};
+    const nextArchived = !existingSettings.isArchived && !project?.isArchived;
+    const newSettings = {
+      ...existingSettings,
+      isArchived: nextArchived,
+    };
     updateMutation.mutate(
-      { projectId, isArchived: nextArchived } as any,
+      { projectId, settings: newSettings } as any,
       {
         onSuccess: () => {
           toast.success(nextArchived ? 'Project archived' : 'Project restored');
         },
-        onError: (err: any) => toast.error(err?.message || 'Failed to update archive status'),
+        onError: (err: unknown) => toast.error(getErrorMessage(err) || 'Failed to update archive status'),
       },
     );
-  }, [projectId, project?.isArchived, updateMutation]);
+  }, [projectId, project, updateMutation]);
 
   const deleteProj = useCallback(() => {
     deleteMutation.mutate(
@@ -131,7 +145,7 @@ export function useGeneral(projectId: string, workspaceId: string) {
     setIsPrivate,
     timezone,
     setTimezone,
-    isArchived: Boolean(project?.isArchived),
+    isArchived: Boolean(project?.isArchived || (project?.settings as any)?.isArchived),
     createdAt: project?.createdAt,
     // Actions
     hasChanges,

@@ -1,10 +1,9 @@
 'use client';
 
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { ChatModeProvider, useChatMode, WikiChatFeatures, FluxAiSidebar } from "@/features/workspaces/ai";
-import { TooltipProvider } from "@/shared/components/ui";
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { useState } from 'react';
+import { ChatModeProvider, useChatMode, Panel, Sidebar } from '@/features/workspaces/ai';
+import { TooltipProvider } from '@/shared/components/ui';
 
 export default function ChatAiLayout({ children }: { children?: React.ReactNode }) {
   return (
@@ -18,15 +17,14 @@ export default function ChatAiLayout({ children }: { children?: React.ReactNode 
 
 function ChatAiContent({ children }: { children?: React.ReactNode }) {
   const { mode } = useChatMode();
-  const { workspaceId, chatId } = useParams();
   const [sourcesOpen, setSourcesOpen] = useState(false);
 
-  const showSources = mode === "wiki";
+  const showSources = mode === 'wiki';
 
   return (
     <div className="flex-1 bg-background h-full flex overflow-hidden">
       {/* History sidebar — left */}
-      <FluxAiSidebar />
+      <Sidebar />
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
@@ -64,7 +62,7 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
           </div>
 
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
-            <WikiChatFeatures />
+            <Panel />
           </div>
         </aside>
       )}

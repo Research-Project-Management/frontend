@@ -5,13 +5,22 @@ import { cn } from '@/shared/lib/utils';
 
 export interface WorkloadCardsProps {
   statusBreakdown?: Record<string, number>;
+  assignedTasks?: any[];
+  onTaskClick?: (taskId: string) => void;
+  taskProjectMap?: Record<string, { id: string; name: string }>;
 }
 
-export function WorkloadCards({ statusBreakdown = {} }: WorkloadCardsProps) {
+export function WorkloadCards({
+  statusBreakdown = {},
+  assignedTasks,
+  onTaskClick,
+  taskProjectMap,
+}: WorkloadCardsProps) {
   const workloadStates = [
     { label: 'Backlog', count: statusBreakdown.backlog || 0, color: 'bg-zinc-400' },
     { label: 'Not started', count: statusBreakdown.todo || 0, color: 'bg-blue-600' },
-    { label: 'Working on', count: (statusBreakdown.doing || 0) + (statusBreakdown.review || 0), color: 'bg-amber-500' },
+    { label: 'Working on', count: statusBreakdown.doing || 0, color: 'bg-amber-500' },
+    { label: 'In review', count: statusBreakdown.review || 0, color: 'bg-yellow-400' },
     { label: 'Completed', count: statusBreakdown.done || 0, color: 'bg-emerald-600' },
     { label: 'Cancelled', count: statusBreakdown.cancelled || 0, color: 'bg-red-600' },
   ];
@@ -21,7 +30,7 @@ export function WorkloadCards({ statusBreakdown = {} }: WorkloadCardsProps) {
       <h2 className="text-foreground font-semibold mb-3 text-sm tracking-tight">
         Workload
       </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
         {workloadStates.map((state) => (
           <div
             key={state.label}

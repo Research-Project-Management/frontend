@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { X, Loader2, AlertTriangle } from 'lucide-react';
+import { X, Loader2, AlertTriangle, StickyNote, Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import PdfViewerToolbar from './pdf-toolbar';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
-// Use exact versioned unpkg CDN for the worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configure worker matching exact react-pdf bundled pdfjs-dist version
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+}
 
 interface PdfViewerProps {
   blobUrl: string | null;
@@ -18,9 +21,17 @@ interface PdfViewerProps {
   isLoading: boolean;
   error: string | null;
   onAskAi: (selectedText: string) => void;
+  onAddToNote?: (selectedText: string) => void;
 }
 
-export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi }: PdfViewerProps) {
+export default function PdfViewer({
+  blobUrl,
+  filename,
+  isLoading,
+  error,
+  onAskAi,
+  onAddToNote,
+}: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
   const [zoom, setZoom] = useState<number>(1.0);
@@ -28,10 +39,13 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
   const [docLoading, setDocLoading] = useState<boolean>(true);
   const [docError, setDocError] = useState<string | null>(null);
 
+  const fileSource = useMemo(() => (blobUrl ? { url: blobUrl } : null), [blobUrl]);
+
   // Text selection floating menu
   const [selectedText, setSelectedText] = useState<string>('');
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [showFloatingMenu, setShowFloatingMenu] = useState<boolean>(false);
+  const [copiedSelection, setCopiedSelection] = useState<boolean>(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(600);
@@ -107,9 +121,9 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
-      const menuHeight = 36;
-      const menuGap = 8;
-      const menuHalfWidth = 72;
+      const menuHeight = 40;
+      const menuGap = 10;
+      const menuHalfWidth = 110;
       const selectionTop = rect.top - containerRect.top + container.scrollTop;
       const selectionBottom = rect.bottom - containerRect.top + container.scrollTop;
       const visibleTop = container.scrollTop + menuGap;
@@ -131,6 +145,7 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
       setMenuPosition({ top, left });
       setSelectedText(text);
       setShowFloatingMenu(true);
+      setCopiedSelection(false);
     } catch {
       setShowFloatingMenu(false);
     }
@@ -138,10 +153,21 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (!target.closest('.pdf-floating-ask-ai')) {
+    if (!target.closest('.pdf-floating-selection-menu')) {
       setShowFloatingMenu(false);
     }
   }, []);
+
+  const handleCopySelection = () => {
+    if (!selectedText) return;
+    navigator.clipboard.writeText(selectedText);
+    setCopiedSelection(true);
+    toast.success('Text copied to clipboard');
+    setTimeout(() => {
+      setCopiedSelection(false);
+      setShowFloatingMenu(false);
+    }, 1200);
+  };
 
   // ── Computed page width ───────────────────────────────────────────────────
   const pageWidth = fitWidth ? Math.max(320, containerWidth - 56) : undefined;
@@ -176,7 +202,7 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
           </div>
         ) : (
           <Document
-            file={blobUrl}
+            file={fileSource}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={
@@ -197,7 +223,7 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
                     if (el) pageRefs.current.set(pageNum, el);
                     else pageRefs.current.delete(pageNum);
                   }}
-                  className="bg-card border border-border"
+                  className="bg-card border border-border rounded shadow-sm"
                 >
                   <Page
                     pageNumber={pageNum}
@@ -220,10 +246,10 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
           </Document>
         )}
 
-        {/* Floating AI menu */}
+        {/* Floating AI & Action menu */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-ask-ai absolute z-50 flex items-center gap-1 bg-foreground text-background px-2.5 py-1.5 rounded-lg shadow-md border border-border/30"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-lg shadow-xl border border-border/30 backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -232,20 +258,55 @@ export default function PdfViewer({ blobUrl, filename, isLoading, error, onAskAi
             onMouseUp={(e) => e.stopPropagation()}
           >
             <button
+              type="button"
               onClick={() => {
                 onAskAi(selectedText);
                 setShowFloatingMenu(false);
                 window.getSelection()?.removeAllRanges();
               }}
-              className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition-opacity"
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold hover:bg-background/20 transition-colors"
+              title="Ask AI about selected text"
             >
               <img src="/Chat.svg" alt="AI" className="size-3.5" />
-              AI
+              Ask AI
             </button>
-            <div className="w-px h-3.5 bg-background/20 mx-1" />
+
+            {onAddToNote ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onAddToNote(selectedText);
+                  setShowFloatingMenu(false);
+                  window.getSelection()?.removeAllRanges();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 transition-colors"
+                title="Add selected text to a new note"
+              >
+                <StickyNote className="size-3.5 text-primary" />
+                Note
+              </button>
+            ) : null}
+
             <button
+              type="button"
+              onClick={handleCopySelection}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 transition-colors"
+              title="Copy selection"
+            >
+              {copiedSelection ? (
+                <Check className="size-3.5 text-emerald-400" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {copiedSelection ? 'Copied' : 'Copy'}
+            </button>
+
+            <div className="w-px h-3.5 bg-background/20 mx-0.5" />
+            <button
+              type="button"
               onClick={() => setShowFloatingMenu(false)}
-              className="hover:opacity-70 transition-opacity"
+              className="p-1 rounded hover:bg-background/20 transition-colors opacity-70 hover:opacity-100"
+              aria-label="Close menu"
             >
               <X className="size-3.5" />
             </button>

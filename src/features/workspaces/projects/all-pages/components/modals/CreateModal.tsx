@@ -71,11 +71,14 @@ export function CreateModal({
                 <SelectValue placeholder="Select a project..." />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project._id} value={project._id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
+                {projects.map((project: any) => {
+                  const projectId = project._id || project.id;
+                  return (
+                    <SelectItem key={projectId} value={projectId}>
+                      {project.name}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

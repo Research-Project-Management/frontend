@@ -4,10 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Input, Button, Textarea, Label } from "@/shared/components/ui";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useParams } from "next/navigation";
-import { apiPost } from "@/shared/lib/api";
+import { useCreateProject } from "../../services/project.service";
 import {
   FlaskConical,
   FolderKanban,
@@ -106,7 +104,6 @@ export function CreateProjectModal({
   onSuccess?: () => void;
 }) {
   const { workspaceId } = useParams();
-  const queryClient = useQueryClient();
   const emojiRef = useRef<HTMLDivElement>(null);
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>("research");
@@ -158,42 +155,33 @@ export function CreateProjectModal({
 
   // ── Mutation ────────────────────────────────────────────────────────────────
 
-  const mutation = useMutation({
-    mutationFn: (data: {
-      name: string;
-      avatar: string;
-      description: string;
-      modules: string[];
-    }) => apiPost(`/api/workspace/${workspaceId}/project`, data),
-    onSuccess() {
-      toast.success("Project created successfully");
-      queryClient.invalidateQueries({ queryKey: ["projects", workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ["projects-header", workspaceId] });
-      // Reset
-      setName("");
-      setAvatar("📁");
-      setDescription("");
-      setSelectedTemplate("research");
-      setModules(() => {
-        const selectedModules = new Set(TEMPLATES[0].modules);
-        return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
-      });
-      onSuccess?.();
-    },
-    onError(error: any) {
-      toast.error(error?.message || "Failed to create project");
-    },
-  });
+  const mutation = useCreateProject();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    mutation.mutate({
-      name: name.trim(),
-      avatar,
-      description,
-      modules: MODULE_ORDER.filter((moduleId) => modules.includes(moduleId)),
-    });
+    if (!name.trim() || !workspaceId) return;
+    mutation.mutate(
+      {
+        workspaceId: workspaceId as string,
+        name: name.trim(),
+        avatar,
+        description,
+        modules: MODULE_ORDER.filter((moduleId) => modules.includes(moduleId)),
+      },
+      {
+        onSuccess: () => {
+          setName("");
+          setAvatar("📁");
+          setDescription("");
+          setSelectedTemplate("research");
+          setModules(() => {
+            const selectedModules = new Set(TEMPLATES[0].modules);
+            return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
+          });
+          onSuccess?.();
+        },
+      }
+    );
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────

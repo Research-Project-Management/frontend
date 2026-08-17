@@ -25,7 +25,7 @@ export function Stats({
   const daysActive = Math.max(
     1,
     Math.ceil(
-      (Date.now() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24),
+      (Date.now() - new Date(project.createdAt ?? Date.now()).getTime()) / (1000 * 60 * 60 * 24),
     ),
   );
 

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Plus, Trash2, Edit2, Check, X, FileText } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { Button, Textarea } from '@/shared/components/ui';
 import type { Paper, Note } from '@/features/workspaces/library/types/library.types';
 
@@ -38,7 +38,24 @@ export default function NotesSection({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
 
-  const notes = paper.notes || [];
+  const notes: Note[] = useMemo(() => {
+    return (paper.notes || []).map((n: any, idx) => {
+      if (typeof n === 'string') {
+        return {
+          _id: `note-${idx}`,
+          content: n,
+          createdAt: paper.createdAt,
+          updatedAt: paper.updatedAt,
+        };
+      }
+      return {
+        _id: n._id || n.id || `note-${idx}`,
+        content: n.content || '',
+        createdAt: n.createdAt || paper.createdAt,
+        updatedAt: n.updatedAt || paper.updatedAt,
+      };
+    });
+  }, [paper.notes, paper.createdAt, paper.updatedAt]);
 
   const handleSaveNewNote = () => {
     if (newNoteContent.trim() && onAddNote) {
@@ -69,9 +86,9 @@ export default function NotesSection({
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 text-[11px] text-primary hover:underline font-medium"
+            className="flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium cursor-pointer"
           >
-            <Plus className="size-3" />
+            <Plus className="size-3 text-foreground" />
             <span>Add Note</span>
           </button>
         )}
@@ -82,32 +99,44 @@ export default function NotesSection({
         <div className="space-y-2 p-2.5 bg-muted/30 rounded-lg border border-border/40 text-xs">
           <Textarea
             autoFocus
-            placeholder="Write research notes, thoughts, or key findings..."
+            placeholder="Write research notes, thoughts, or key findings... (Ctrl+Enter to save)"
             value={newNoteContent}
             onChange={(e) => setNewNoteContent(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                handleSaveNewNote();
+              } else if (e.key === 'Escape') {
+                setIsAdding(false);
+                setNewNoteContent('');
+              }
+            }}
             rows={3}
             className="text-xs resize-none"
           />
-          <div className="flex justify-end gap-1.5 pt-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setIsAdding(false);
-                setNewNoteContent('');
-              }}
-              className="h-7 px-2 text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveNewNote}
-              disabled={!newNoteContent.trim()}
-              className="h-7 px-2.5 text-xs"
-            >
-              Save Note
-            </Button>
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-muted-foreground/60">Press ⌘+Enter to save</span>
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setIsAdding(false);
+                  setNewNoteContent('');
+                }}
+                className="h-7 px-2 text-xs cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveNewNote}
+                disabled={!newNoteContent.trim()}
+                className="h-7 px-2.5 text-xs cursor-pointer"
+              >
+                Save Note
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -122,7 +151,7 @@ export default function NotesSection({
           {notes.map((n) => (
             <div
               key={n._id}
-              className="group/note relative p-2.5 rounded-lg bg-card border border-border/40 hover:border-border transition-colors text-xs"
+              className="group/note relative p-2.5 rounded-lg bg-card border border-border/40 hover:border-border transition-colors text-xs shadow-xs"
             >
               {editingNoteId === n._id ? (
                 <div className="space-y-2">
@@ -130,6 +159,12 @@ export default function NotesSection({
                     autoFocus
                     value={editingContent}
                     onChange={(e) => setEditingContent(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSaveEdit(n._id);
+                      }
+                    }}
                     rows={3}
                     className="text-xs resize-none"
                   />
@@ -138,14 +173,14 @@ export default function NotesSection({
                       size="sm"
                       variant="ghost"
                       onClick={() => setEditingNoteId(null)}
-                      className="h-6 px-2 text-xs"
+                      className="h-6 px-2 text-xs cursor-pointer"
                     >
                       <X className="size-3 mr-1" /> Cancel
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => handleSaveEdit(n._id)}
-                      className="h-6 px-2 text-xs"
+                      className="h-6 px-2 text-xs cursor-pointer"
                     >
                       <Check className="size-3 mr-1" /> Save
                     </Button>
@@ -161,7 +196,7 @@ export default function NotesSection({
                     <div className="flex items-center gap-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleStartEdit(n)}
-                        className="p-1 hover:text-foreground rounded"
+                        className="p-1 hover:text-foreground rounded cursor-pointer"
                         title="Edit note"
                       >
                         <Edit2 className="size-3" />
@@ -169,7 +204,7 @@ export default function NotesSection({
                       {onDeleteNote && (
                         <button
                           onClick={() => onDeleteNote(n._id)}
-                          className="p-1 hover:text-destructive rounded"
+                          className="p-1 hover:text-foreground rounded cursor-pointer"
                           title="Delete note"
                         >
                           <Trash2 className="size-3" />

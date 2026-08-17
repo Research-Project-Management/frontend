@@ -4,7 +4,7 @@ import React from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Checkbox } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
-import type { SortField, SortOrder } from '../../../hooks/library/use-paper-table';
+import type { SortField, SortOrder } from '../../../hooks/library/use-paper';
 
 interface PaperTableHeaderProps {
   sortField: SortField;
@@ -33,12 +33,12 @@ export default function PaperTableHeader({
   showCollection = true,
 }: PaperTableHeaderProps) {
   const columns: ColumnDef[] = [
-    { field: 'title', label: 'Title', sortable: true, className: 'text-left' },
-    { field: 'authors', label: 'Creator / Authors', sortable: true, className: 'text-left w-[220px]' },
-    { field: 'year', label: 'Year', sortable: true, className: 'text-left w-[70px]' },
-    { field: 'journal', label: 'Publication / Venue', sortable: true, className: 'text-left w-[180px]' },
-    ...(showCollection ? [{ field: null, label: 'Collection', sortable: false, className: 'text-left w-[130px]' }] : []),
-    { field: 'createdAt', label: 'Date Added', sortable: true, className: 'text-left w-[110px]' },
+    { field: 'title', label: 'Title', sortable: true, className: 'text-left min-w-[200px] max-w-[400px]' },
+    { field: 'authors', label: 'Creator / Authors', sortable: true, className: 'text-left w-[220px] max-w-[220px]' },
+    { field: 'year', label: 'Year', sortable: true, className: 'text-left w-[70px] max-w-[70px]' },
+    { field: 'journal', label: 'Publication / Venue', sortable: true, className: 'text-left w-[180px] max-w-[180px]' },
+    ...(showCollection ? [{ field: null, label: 'Collection', sortable: false, className: 'text-left w-[130px] max-w-[130px]' }] : []),
+    { field: 'createdAt', label: 'Date Added', sortable: true, className: 'text-left w-[110px] max-w-[110px]' },
   ];
 
   return (

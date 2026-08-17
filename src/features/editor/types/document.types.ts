@@ -1,8 +1,23 @@
 /**
  * document.types.ts — Pure type declarations for pages, versions, events and comments.
  * These are the "full" document types used by the Editor feature.
- * The all-pages module may re-use the Page type but should NOT own version/event/comment types.
  */
+
+declare const brand: unique symbol;
+export type Brand<T, B> = T & { readonly [brand]: B };
+
+export type PageId = Brand<string, 'PageId'>;
+export type ProjectId = Brand<string, 'ProjectId'>;
+export type WorkspaceId = Brand<string, 'WorkspaceId'>;
+export type FileId = Brand<string, 'FileId'>;
+
+export type DocumentContent =
+  | string
+  | {
+      source?: string;
+      text?: string;
+      content?: string;
+    };
 
 // ── Page ────────────────────────────────────────────────────────────────────────
 
@@ -10,7 +25,7 @@ export type Page = {
   id?: string;
   _id: string;
   title: string;
-  content: any; // JSON structure for editor
+  content: DocumentContent; // LaTeX source text or JSON structure
   status: "draft" | "published" | "archived";
   projectId:
     | string

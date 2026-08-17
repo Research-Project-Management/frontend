@@ -68,6 +68,7 @@ export default function TrashPage() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
+          onBatchDeletePapers={actions.handleBatchDeletePapers}
           onClearSearch={() => setSearch('')}
           showCollection={true}
         />

@@ -10,19 +10,25 @@ export default function LibraryLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isReader = pathname.includes('/reader/');
+  const isReader = pathname.includes('/library/papers/');
   const { isOpen } = useLibrarySidebarStore();
 
+  if (isReader) {
+    return (
+      <div className="flex h-full w-full bg-background overflow-hidden relative">
+        <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full w-full bg-background overflow-hidden relative">
-      {!isReader && isOpen && (
-        <aside className="shrink-0 relative z-20">
-          <Sidebar />
-        </aside>
-      )}
+    <div className="flex h-full w-full bg-background overflow-hidden relative select-none">
+      {isOpen && <Sidebar />}
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden relative">
-        <main className={`flex-1 min-h-0 relative ${isReader ? "flex flex-col" : "overflow-y-auto"}`}>
+        <main className="flex-1 min-h-0 relative overflow-y-auto">
           {children}
         </main>
       </div>

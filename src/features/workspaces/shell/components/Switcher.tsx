@@ -16,9 +16,11 @@ import { useLogout, useAuth } from '@/features/auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { resolveFileUrl } from '@/shared/utils/url';
 
+import type { Workspace } from '@/features/setup';
+
 interface SwitcherProps {
-  currentItem: any;
-  items: any[];
+  currentItem: Workspace | null;
+  items: Workspace[];
   activeId: string;
 }
 
@@ -122,8 +124,8 @@ export default function Switcher({
         {/* Other items */}
         <div className='p-1 max-h-[240px] overflow-y-auto bg-background flex flex-col gap-0.5'>
           {items
-            .filter((item: any) => item._id !== currentItem._id)
-            .map((item: any) => (
+            .filter((item: Workspace) => item._id !== currentItem._id)
+            .map((item: Workspace) => (
               <DropdownMenuItem
                 key={item._id}
                 onClick={() => router.push(`/${item.url}`)}

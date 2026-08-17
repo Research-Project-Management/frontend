@@ -13,11 +13,12 @@ import {
 } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
-import SearchTab from "./Tabs/SearchTab";
-import FilesTab from "./Tabs/FilesTab";
-import ChatAiTab from "./Tabs/ChatAiTab";
-import ReviewTab from "./Tabs/ReviewTab";
-import HistoryTab from "./Tabs/HistoryTab";
+import SearchTab from "./search/SearchTab";
+import FilesTab from "./explorer/FilesTab";
+import AiTab from "./ai/AiTab";
+import ReviewTab from "./review/ReviewTab";
+import HistoryTab from "./history/HistoryTab";
+import { EditorEventBus } from "@/features/editor/utils/editor.util";
 
 const sideBarItems = [
   { name: "Files", icon: FileText },
@@ -27,12 +28,12 @@ const sideBarItems = [
   { name: "AI", imageSrc: "/Chat.svg" },
 ] as const;
 
-type Tab = (typeof sideBarItems)[number]["name"];
+export type SidebarTab = (typeof sideBarItems)[number]["name"];
 
-function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
+function PanelContent({ tab, onClose }: { tab: SidebarTab; onClose: () => void }) {
   if (tab === "Files") return <FilesTab onClose={onClose} />;
   if (tab === "Search") return <SearchTab onClose={onClose} />;
-  if (tab === "AI") return <ChatAiTab onClose={onClose} />;
+  if (tab === "AI") return <AiTab onClose={onClose} />;
   if (tab === "Review") return <ReviewTab onClose={onClose} />;
   if (tab === "History") return <HistoryTab onClose={onClose} />;
   return null;
@@ -41,17 +42,17 @@ function PanelContent({ tab, onClose }: { tab: Tab; onClose: () => void }) {
 const STORAGE_KEY = "flux:sidebar:active-panel";
 const validTabs = new Set(sideBarItems.map((i) => i.name));
 
-function loadPanel(): Tab | null {
+function loadPanel(): SidebarTab | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as unknown;
-      if (typeof parsed === "string" && validTabs.has(parsed as Tab)) {
-        return parsed as Tab;
+      if (typeof parsed === "string" && validTabs.has(parsed as SidebarTab)) {
+        return parsed as SidebarTab;
       }
       if (Array.isArray(parsed)) {
         const first = parsed.find(
-          (t): t is Tab => typeof t === "string" && validTabs.has(t as Tab),
+          (t): t is SidebarTab => typeof t === "string" && validTabs.has(t as SidebarTab),
         );
         if (first) return first;
       }
@@ -60,33 +61,50 @@ function loadPanel(): Tab | null {
   return "Files";
 }
 
-export default function SideBar() {
-  const [activePanel, setActivePanel] = useState<Tab | null>("Files");
+export interface SideBarProps {
+  activePanel?: SidebarTab | null;
+  onActivePanelChange?: (panel: SidebarTab | null) => void;
+}
+
+export default function SideBar({
+  activePanel: controlledActivePanel,
+  onActivePanelChange,
+}: SideBarProps = {}) {
+  const [internalActivePanel, setInternalActivePanel] = useState<SidebarTab | null>("Files");
   const [mounted, setMounted] = useState(false);
+
+  const isControlled = controlledActivePanel !== undefined;
+  const activePanel = isControlled ? controlledActivePanel : internalActivePanel;
+
+  const setActivePanel = (panel: SidebarTab | null) => {
+    if (!isControlled) setInternalActivePanel(panel);
+    onActivePanelChange?.(panel);
+  };
 
   useEffect(() => {
     setMounted(true);
     const loaded = loadPanel();
-    setActivePanel(loaded);
+    if (!isControlled) setInternalActivePanel(loaded);
+    else onActivePanelChange?.(loaded);
   }, []);
 
-  const togglePanel = (name: Tab) => {
-    setActivePanel(name);
+  const togglePanel = (name: SidebarTab) => {
+    setActivePanel(activePanel === name ? null : name);
   };
 
   useEffect(() => {
-    if (mounted) {
+    if (mounted && activePanel !== undefined) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(activePanel));
     }
   }, [activePanel, mounted]);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      const tab = (e as CustomEvent<Tab>).detail;
-      if (validTabs.has(tab)) setActivePanel(tab);
-    };
-    document.addEventListener("flux:open-panel", handler);
-    return () => document.removeEventListener("flux:open-panel", handler);
+    return EditorEventBus.on("flux:open-panel", (detail) => {
+      const tabName = typeof detail === "string" ? detail : detail?.panel;
+      if (tabName && validTabs.has(tabName as SidebarTab)) {
+        setActivePanel(tabName as SidebarTab);
+      }
+    });
   }, []);
 
   return (
@@ -102,8 +120,10 @@ export default function SideBar() {
                   <button
                     type="button"
                     onClick={() => togglePanel(item.name)}
+                    aria-label={`${item.name} panel`}
+                    aria-pressed={isOpen}
                     className={cn(
-                      "flex size-10 items-center justify-center rounded-md transition-colors",
+                      "flex size-10 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary",
                       isOpen
                         ? "bg-accent text-primary"
                         : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",

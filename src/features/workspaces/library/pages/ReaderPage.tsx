@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { AlertTriangle, Loader2, FileText } from 'lucide-react';
 import { useReader } from '../hooks/reader/use-reader';
 import dynamic from 'next/dynamic';
 const PdfViewer = dynamic(() => import('../components/reader/pdf-viewer/pdf-viewer'), { ssr: false });
@@ -9,8 +9,13 @@ import Topbar from '../components/reader/layout/topbar';
 import Sidebar from '../components/reader/layout/sidebar';
 import BibtexModal from '../components/reader/modals/bibtex-modal';
 
-export default function ReaderPage() {
-  const { state, actions } = useReader();
+interface ReaderPageProps {
+  paperId?: string | null;
+  onBack?: () => void;
+}
+
+export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
+  const { state, actions } = useReader(paperId, onBack);
   const {
     workspaceId,
     isLoadingPapers,
@@ -25,6 +30,7 @@ export default function ReaderPage() {
     isResizingPanel,
     isReindexing,
     selectionContext,
+    pendingNoteText,
     isEditingTitle,
     draftTitle,
     bibtexOpen,
@@ -37,16 +43,60 @@ export default function ReaderPage() {
     setBibtexOpen,
     handlePanelToggle,
     handleAskAi,
+    handleAddToNote,
+    setPendingNoteText,
     clearSelectionContext,
     handleReindex,
     handleTitleSave,
     handleResizeMouseDown,
-    navigate,
     goBack,
   } = actions;
 
+  // Global Keyboard Shortcuts for Reader
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('contenteditable') === 'true');
+
+      // Esc to close panel
+      if (e.key === 'Escape' && !isInput) {
+        if (activePanel) {
+          e.preventDefault();
+          setActivePanel(null);
+        }
+      }
+
+      // Panel toggles with Ctrl/Cmd + Shift
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        if (e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          handlePanelToggle('ai');
+        } else if (e.key.toLowerCase() === 'n') {
+          e.preventDefault();
+          handlePanelToggle('notes');
+        } else if (e.key.toLowerCase() === 'd') {
+          e.preventDefault();
+          handlePanelToggle('details');
+        }
+      }
+
+      // BibTeX modal with Ctrl/Cmd + B
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b' && !isInput) {
+        e.preventDefault();
+        setBibtexOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePanel, handlePanelToggle, setActivePanel, setBibtexOpen]);
+
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <div className={`flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background ${isResizingPanel ? 'select-none' : ''}`}>
       <Topbar
         paper={paper}
         paperUrl={paperUrl}
@@ -78,15 +128,39 @@ export default function ReaderPage() {
               isLoading={pdfLoading}
               error={pdfError}
               onAskAi={handleAskAi}
+              onAddToNote={handleAddToNote}
             />
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-              <AlertTriangle className="size-8 text-destructive" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">File not found</p>
-                <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-                  The PDF file could not be located. Check that the paper upload finished successfully.
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center max-w-lg mx-auto">
+              <div className="size-14 rounded-2xl bg-muted/60 border border-border/80 flex items-center justify-center text-muted-foreground shadow-xs">
+                <FileText className="size-7 text-primary/70" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-semibold text-foreground tracking-tight">
+                  {paper?.title || 'Paper Metadata & Reference'}
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+                  {paper?.abstract
+                    ? (paper.abstract.length > 200 ? `${paper.abstract.substring(0, 200)}...` : paper.abstract)
+                    : 'No PDF file attached to this paper entry. You can review metadata, crawl DOI details, and manage notes using the side panels.'}
                 </p>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handlePanelToggle('details')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer"
+                >
+                  <FileText className="size-3.5 text-foreground" />
+                  <span>View Details</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePanelToggle('notes')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                  <span>Open Notes</span>
+                </button>
               </div>
             </div>
           )}
@@ -103,7 +177,9 @@ export default function ReaderPage() {
             isLoading={isLoadingPapers}
             isReindexing={isReindexing}
             selectionContext={selectionContext}
+            pendingNoteText={pendingNoteText}
             clearSelectionContext={clearSelectionContext}
+            clearPendingNoteText={() => setPendingNoteText('')}
             setActivePanel={setActivePanel}
             onReindex={handleReindex}
             onResizeMouseDown={handleResizeMouseDown}

@@ -83,7 +83,12 @@ export type LabelView = "list" | "edit";
 
 export const useLabels = (workspaceId: string, type: string = "cycle", projectId?: string) => {
   const queryClient = useQueryClient();
-  const { data: workspaceLabels = [], isLoading } = useLabelsQuery(workspaceId, type, projectId);
+  const { data: rawLabels = [], isLoading } = useLabelsQuery(workspaceId, type, projectId);
+
+  const workspaceLabels: CycleLabel[] = useMemo(() => {
+    if (Array.isArray(rawLabels)) return rawLabels;
+    return (rawLabels as any)?.labels || (rawLabels as any)?.data || [];
+  }, [rawLabels]);
 
   const createMutation = useCreateLabel();
   const updateMutation = useUpdateLabel();
@@ -96,7 +101,7 @@ export const useLabels = (workspaceId: string, type: string = "cycle", projectId
   const [selectedColor, setSelectedColor] = useState(DEFAULT_LABEL_COLOR);
 
   const filteredLabels = useMemo(() => {
-    return (workspaceLabels as CycleLabel[]).filter((label) =>
+    return workspaceLabels.filter((label) =>
       label.name.toLowerCase().includes(labelSearch.toLowerCase()),
     );
   }, [workspaceLabels, labelSearch]);

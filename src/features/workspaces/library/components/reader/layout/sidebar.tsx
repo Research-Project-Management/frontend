@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AlertTriangle,
+  Check,
   Info,
   Loader2,
   RefreshCcw,
@@ -15,7 +16,7 @@ import { cn } from '@/shared/lib/utils';
 import type { Paper, Collection } from '../../../types/library.types';
 import type { ReaderPanel } from '../../../types/reader.types';
 import ChatPanel from '../panels/chat-panel';
-import DetailPanel from '../../library/panels/detail-panel';
+import InfoSection from '../../library/inspector/sections/info-section';
 import NotesPanel from '../panels/notes-panel';
 
 const PANEL_ICONS: Record<ReaderPanel, React.ReactNode> = {
@@ -42,7 +43,9 @@ interface SidebarProps {
   isLoading: boolean;
   isReindexing: boolean;
   selectionContext: string | null;
+  pendingNoteText?: string;
   clearSelectionContext: () => void;
+  clearPendingNoteText?: () => void;
   setActivePanel: (v: ReaderPanel | null) => void;
   onReindex: () => void;
   onResizeMouseDown: (e: React.MouseEvent) => void;
@@ -60,11 +63,14 @@ export default function Sidebar({
   isLoading,
   isReindexing,
   selectionContext,
+  pendingNoteText,
   clearSelectionContext,
+  clearPendingNoteText,
   setActivePanel,
   onReindex,
   onResizeMouseDown,
 }: SidebarProps) {
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const ragStatus = paper?.ragStatus ?? 'idle';
 
   return (
@@ -98,20 +104,40 @@ export default function Sidebar({
         </div>
         <div className="flex items-center gap-1">
           {activePanel === 'ai' && paper?.ragDocId && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => {
-                if (window.confirm('Are you sure you want to clear this conversation?')) {
-                  window.dispatchEvent(new CustomEvent('clear-reader-chat'));
-                }
-              }}
-              title="Clear conversation"
-              aria-label="Clear conversation"
-              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            showClearConfirm ? (
+              <div className="flex h-7 items-center gap-0.5 rounded-md border border-destructive/20 bg-destructive/10 px-1 animate-in fade-in zoom-in-95 duration-150">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('clear-reader-chat'));
+                    setShowClearConfirm(false);
+                  }}
+                  title="Confirm clear conversation"
+                  className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors"
+                >
+                  <Check className="size-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirm(false)}
+                  title="Cancel"
+                  className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setShowClearConfirm(true)}
+                title="Clear conversation"
+                aria-label="Clear conversation"
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )
           )}
           <Button
             variant="ghost"
@@ -175,13 +201,20 @@ export default function Sidebar({
         </div>
 
         {/* Details panel */}
-        <div className={cn('h-full', activePanel !== 'details' && 'hidden')}>
-          {paper ? <DetailPanel paper={paper} collection={collection} workspaceId={workspaceId} /> : null}
+        <div className={cn('h-full overflow-y-auto p-4', activePanel !== 'details' && 'hidden')}>
+          {paper ? <InfoSection paper={paper} /> : null}
         </div>
 
         {/* Notes panel */}
         <div className={cn('h-full', activePanel !== 'notes' && 'hidden')}>
-          {paper ? <NotesPanel paper={paper} workspaceId={workspaceId} /> : null}
+          {paper ? (
+            <NotesPanel
+              paper={paper}
+              workspaceId={workspaceId}
+              pendingText={pendingNoteText}
+              onClearPendingText={clearPendingNoteText}
+            />
+          ) : null}
         </div>
       </div>
     </aside>

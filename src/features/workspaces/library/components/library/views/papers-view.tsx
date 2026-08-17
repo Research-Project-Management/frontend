@@ -27,6 +27,7 @@ export default function PapersView() {
     collectionMap,
     collections,
     uploadOpen,
+    uploadMode,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -36,6 +37,7 @@ export default function PapersView() {
     setSearch,
     setSelectedPaperId,
     setUploadOpen,
+    handleOpenUpload,
     setCreateCollectionOpen,
     handleAddPaper,
     handleCreateCollection,
@@ -77,7 +79,7 @@ export default function PapersView() {
         icon={PageIcon}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={activeFilter !== 'trash' ? () => setUploadOpen(true) : undefined}
+        onAddPaper={activeFilter !== 'trash' ? (mode) => handleOpenUpload(mode || 'file') : undefined}
         onAddCollection={activeFilter !== 'trash' ? () => setCreateCollectionOpen(true) : undefined}
       />
 
@@ -86,17 +88,17 @@ export default function PapersView() {
         <div className="px-6 py-2 bg-accent/40 border-b border-border/40 flex items-center justify-between text-xs select-none">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Filtering by tag:</span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary text-primary-foreground font-medium text-[11px]">
-              <Tag className="size-3" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent text-foreground font-medium text-[11px] border border-border/40">
+              <Tag className="size-3 text-foreground" />
               {activeTag}
             </span>
           </div>
           <button
             onClick={() => navigate(`/${workspaceUrl}/library`)}
-            className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+            className="text-xs text-foreground hover:underline flex items-center gap-1 font-medium cursor-pointer"
           >
             <span>Clear filter</span>
-            <X className="size-3" />
+            <X className="size-3 text-foreground" />
           </button>
         </div>
       )}
@@ -112,11 +114,13 @@ export default function PapersView() {
           selectedPaperId={selectedPaperId}
           onSelectPaper={handleSelectPaper}
           onDeletePaper={handleDeletePaper}
+          onBatchDeletePapers={actions.handleBatchDeletePapers}
+          onBatchMovePapers={actions.handleBatchMovePapers}
           onClearSearch={() => {
             setSearch('');
             if (activeTag || activeFilter) navigate(`/${workspaceUrl}/library`);
           }}
-          onAddPaper={() => setUploadOpen(true)}
+          onAddPaper={() => handleOpenUpload('file')}
           showCollection={activeFilter !== 'unfiled'}
         />
 
@@ -138,6 +142,7 @@ export default function PapersView() {
           onSubmit={handleAddPaper}
           isPending={isAddingPaper}
           workspaceId={workspaceId}
+          initialMode={uploadMode}
         />
       )}
 

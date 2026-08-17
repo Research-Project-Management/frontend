@@ -16,4 +16,9 @@ export {
   usePrefersReducedMotion,
 } from './use-media-query';
 export { useUpload, type UploadOptions } from './use-upload';
-
+export {
+  useWorkspacePermission,
+  useProjectPermission,
+  type WorkspacePermissionResult,
+  type ProjectPermissionResult,
+} from './use-permission';

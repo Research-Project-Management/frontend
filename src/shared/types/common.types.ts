@@ -17,6 +17,20 @@ export type Nullable<T> = T | null;
 export type Optional<T> = T | undefined;
 export type Maybe<T> = T | null | undefined;
 
+// ─── Utility Types (Matt Pocock Pattern) ──────────────────────────────────────
+
+/**
+ * Flattens an intersection type into a single, clean object type in IDE tooltips.
+ */
+export type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
+/**
+ * Preserves IDE autocomplete for a literal union string while still allowing any custom string.
+ */
+export type LooseAutocomplete<T extends string> = T | (Omit<string, T> & {});
+
 // ─── Select / Option ─────────────────────────────────────────────────────────
 
 export type Option<T = string> = {

@@ -4,24 +4,44 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { BookOpen, Check, FolderOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiGet, apiPost } from "@/shared/lib/api";
+import { getErrorMessage } from "@/shared/utils/error.util";
 import { Button } from "@/shared/components/ui";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui";
-import { usePapers, useCollections } from '@/features/workspaces/library';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import type { PdfMetadata } from "@/features/editor";
+
+export interface StoragePdfMetadata {
+  title?: string;
+  author?: string;
+  authors?: string[];
+  year?: string | number;
+  doi?: string;
+  abstract?: string;
+  keywords?: string;
+  journal?: string;
+  publisher?: string;
+}
 
 interface AddToLibraryPopoverProps {
   item: StorageItem;
   workspaceId: string;
-  metadata?: PdfMetadata | null;
+  metadata?: StoragePdfMetadata | null;
   trigger: ReactNode;
 }
 
-const toAuthors = (metadata?: PdfMetadata | null) => {
+interface SimpleCollection {
+  _id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+const toAuthors = (metadata?: StoragePdfMetadata | null) => {
   if (metadata?.authors?.length) return metadata.authors;
   if (metadata?.author) {
     return metadata.author
@@ -43,8 +63,8 @@ const toKeywords = (keywords?: string) =>
 const toYear = (year?: string | number) => {
   if (typeof year === "number") return year;
   if (typeof year === "string") {
-    const parsed = Number.parseInt(year, 10);
-    return Number.isFinite(parsed) ? parsed : null;
+    const parsed = parseInt(year, 10);
+    return Number.isNaN(parsed) ? null : parsed;
   }
   return null;
 };
@@ -57,36 +77,51 @@ export default function LibraryPopover({
 }: AddToLibraryPopoverProps) {
   const [open, setOpen] = useState(false);
   const [collectionId, setCollectionId] = useState("");
-  const { state: { collections, isLoading }, actions: { create: createCollection } } = useCollections(workspaceId);
-  const { actions: { addPaper }, state: { isAdding } } = usePapers({ workspaceId, collectionId });
+  const qc = useQueryClient();
 
+  const { data: collectionsData, isLoading } = useQuery({
+    queryKey: ['storage', 'library-collections', workspaceId],
+    queryFn: () => apiGet<{ collections: SimpleCollection[] }>(`/api/library/${workspaceId}/collections`),
+    enabled: !!workspaceId && open,
+  });
+
+  const collections = collectionsData?.collections || [];
   const selectedCollection = collections.find((c) => c._id === collectionId);
 
-  const handleAdd = async () => {
-    if (!collectionId || !selectedCollection || !item.url) return;
-
-    try {
-      await addPaper({
-        title: metadata?.title || item.filename.replace(/\.pdf$/i, ""),
-        authors: toAuthors(metadata),
-        year: toYear(metadata?.year),
-        doi: metadata?.doi || "",
-        abstract: metadata?.abstract || "",
-        keywords: toKeywords(metadata?.keywords),
-        journal: metadata?.journal || "",
-        publisher: metadata?.publisher || "",
-        fileUrl: item.url,
-        filename: item.filename,
-        mimeType: item.mimeType || "application/pdf",
-        size: item.size || 0,
-        labels: [],
-      });
-      toast.success(`Added to ${selectedCollection.name}. Indexing in background...`);
+  const ingestMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      apiPost(`/api/library/papers/${workspaceId}/ingest`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['papers', workspaceId] });
+      toast.success(`Added to ${selectedCollection?.name || 'Library'}.`);
       setOpen(false);
       setCollectionId("");
-    } catch (err) {
-      toast.error("Failed to add PDF to Library");
-    }
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err) || "Failed to add PDF to Library");
+    },
+  });
+
+  const handleAdd = async () => {
+    if (!collectionId || !item.url) return;
+
+    ingestMutation.mutate({
+      source: "storage",
+      fileId: item._id,
+      collectionId,
+      title: metadata?.title || item.filename.replace(/\.pdf$/i, ""),
+      authors: toAuthors(metadata),
+      year: toYear(metadata?.year),
+      doi: metadata?.doi || "",
+      abstract: metadata?.abstract || "",
+      keywords: toKeywords(metadata?.keywords),
+      journal: metadata?.journal || "",
+      publisher: metadata?.publisher || "",
+      fileUrl: item.url,
+      filename: item.filename,
+      mimeType: item.mimeType || "application/pdf",
+      size: item.size || 0,
+    });
   };
 
   return (
@@ -137,10 +172,10 @@ export default function LibraryPopover({
         <Button
           size="sm"
           className="mt-3 w-full cursor-pointer"
-          disabled={!collectionId || isAdding}
+          disabled={!collectionId || ingestMutation.isPending}
           onClick={handleAdd}
         >
-          {isAdding && (
+          {ingestMutation.isPending && (
             <Loader2 className="size-3.5 mr-1.5 animate-spin" />
           )}
           Add PDF

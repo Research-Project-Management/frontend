@@ -25,6 +25,24 @@ const LoginPage = () => {
     defaultValues: { email: '', password: '' },
   });
 
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlErr = params.get('error');
+      if (urlErr) {
+        if (urlErr === 'google_token_failed') {
+          setOauthError('Failed to authenticate with Google. Please try again.');
+        } else if (urlErr === 'oauth_error') {
+          setOauthError('OAuth authentication error occurred. Please try again.');
+        } else {
+          setOauthError(`Authentication failed: ${urlErr}`);
+        }
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthLoading && user) {
       import('@/shared/lib/api').then(({ apiGet }) => {
@@ -120,9 +138,9 @@ const LoginPage = () => {
             </Link>
           </div>
 
-          {error && (
+          {(error || oauthError) && (
             <div className='p-3 text-sm text-destructive bg-destructive/10 rounded-md text-center'>
-              {error}
+              {error || oauthError}
             </div>
           )}
 

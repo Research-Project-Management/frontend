@@ -87,14 +87,16 @@ export function CardUI({
     join,
     leave,
     removeFromCycle,
+    edit,
   } = actions;
 
   const isDone = card.columnId === 'done';
 
   return (
     <div
+      onClick={() => edit()}
       className={cn(
-        "group relative min-w-0 rounded-lg border border-border/70 bg-card px-3.5 py-3 transition-colors hover:border-border cursor-grab active:cursor-grabbing",
+        "group relative min-w-0 rounded-lg border border-border/70 bg-card px-3.5 py-3 transition-colors hover:border-border cursor-pointer",
         isDragging && "opacity-40 border-primary"
       )}
     >

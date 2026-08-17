@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from '@/features/workspaces/shell';
 import { useHomeFiles, useToggleStarItem, useDeleteItem, useMoveItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { useViewStore } from '../store/use-view-store';
 import { usePreviewStore } from '../store/use-preview-store';

@@ -13,7 +13,7 @@ import {
   FolderUp,
   FolderPlus,
   Link2,
-  PanelLeftOpen,
+  PanelLeft,
 } from "lucide-react";
 import { useLibrarySidebarStore } from "@/features/workspaces/library/store/sidebar.store";
 import {
@@ -29,89 +29,51 @@ import {
 } from "@/shared/components/ui";
 
 export interface BreadcrumbItem {
-  _id: string;
+  id?: string;
   name: string;
-  color?: string;
   isEllipsis?: boolean;
 }
 
 export interface TopbarProps {
   title?: string;
   icon?: React.ComponentType<{ className?: string }>;
-  search?: string;
-  onSearchChange?: (value: string) => void;
-  searchPlaceholder?: string;
   breadcrumbs?: BreadcrumbItem[];
-  onNavigateCrumb?: (id: string) => void;
+  search?: string;
+  onSearchChange?: (search: string) => void;
+  searchPlaceholder?: string;
   onAddPaper?: (mode?: 'file' | 'folder' | 'link') => void;
   onAddCollection?: () => void;
   onAddLink?: () => void;
   isSubcollection?: boolean;
+  onNavigateCrumb?: (crumbId?: string) => void;
   children?: React.ReactNode;
   className?: string;
 }
 
 export default function Topbar({
-  title = "Library",
+  title,
   icon: Icon = BookOpen,
+  breadcrumbs,
   search = "",
   onSearchChange,
-  searchPlaceholder = "Search papers...",
-  breadcrumbs,
-  onNavigateCrumb,
+  searchPlaceholder = "Search references...",
   onAddPaper,
   onAddCollection,
   onAddLink,
   isSubcollection = false,
+  onNavigateCrumb,
   children,
   className,
 }: TopbarProps) {
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isOpen, toggle } = useLibrarySidebarStore();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const expandSearch = () => {
-    if (!isSearchExpanded) {
-      setIsSearchExpanded(true);
-      setTimeout(() => inputRef.current?.focus(), 50);
+  const handleClearSearch = () => {
+    if (onSearchChange) {
+      onSearchChange("");
     }
   };
-
-  const collapseSearch = () => {
-    if (!search) {
-      setIsSearchExpanded(false);
-    }
-  };
-
-  const handleClearSearch = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSearchChange?.("");
-    setIsSearchExpanded(false);
-  };
-
-  // Keyboard shortcut (Cmd+K / Ctrl+K or /) to focus search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInput =
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          activeEl.getAttribute('contenteditable') === 'true');
-
-      if (!isInput && onSearchChange) {
-        if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || e.key === '/') {
-          e.preventDefault();
-          setIsSearchExpanded(true);
-          setTimeout(() => inputRef.current?.focus(), 50);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSearchChange]);
 
   const handleAddFileClick = () => {
     if (onAddPaper) onAddPaper('file');
@@ -129,15 +91,29 @@ export default function Topbar({
     }
   };
 
+  // Keyboard shortcut Ctrl/Cmd+K to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        if (onSearchChange !== undefined) {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSearchChange]);
+
   return (
     <header
       className={cn(
-        "flex items-center justify-between border-b border-border/50 bg-background/80 px-6 h-14 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none",
+        "flex items-center justify-between border-b border-border/50 bg-transparent px-6 h-14 sticky top-0 z-10 shrink-0 select-none",
         className
       )}
     >
       {/* Left Section: Title or Breadcrumbs */}
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
         {!isOpen && (
           <TooltipProvider delayDuration={150}>
             <Tooltip>
@@ -145,9 +121,9 @@ export default function Topbar({
                 <button
                   onClick={toggle}
                   aria-label="Expand sidebar"
-                  className="flex size-7 items-center justify-center rounded-md text-foreground hover:text-foreground hover:bg-secondary/80 transition-colors mr-0.5 shrink-0 cursor-pointer outline-none"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none mr-0.5 shrink-0"
                 >
-                  <PanelLeftOpen className="size-4 text-foreground" />
+                  <PanelLeft className="size-4.5 text-foreground" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={6}>
@@ -158,11 +134,11 @@ export default function Topbar({
         )}
 
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <nav aria-label="Breadcrumbs" className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 sm:gap-2 min-w-0 overflow-hidden">
             {breadcrumbs.map((crumb, idx) => {
               if (crumb.isEllipsis) {
                 return (
-                  <React.Fragment key={crumb._id || idx}>
+                  <React.Fragment key={crumb.id || idx}>
                     {idx > 0 && (
                       <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
                     )}
@@ -176,7 +152,7 @@ export default function Topbar({
               const isLast = idx === breadcrumbs.length - 1;
 
               return (
-                <React.Fragment key={crumb._id || idx}>
+                <React.Fragment key={crumb.id || idx}>
                   {idx > 0 && (
                     <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
                   )}
@@ -191,7 +167,7 @@ export default function Topbar({
                     )}
                     onClick={() => {
                       if (!isLast && onNavigateCrumb) {
-                        onNavigateCrumb(crumb._id);
+                        onNavigateCrumb(crumb.id);
                       }
                     }}
                     onKeyDown={(e) => {
@@ -201,13 +177,13 @@ export default function Topbar({
                         (e.key === "Enter" || e.key === " ")
                       ) {
                         e.preventDefault();
-                        onNavigateCrumb(crumb._id);
+                        onNavigateCrumb(crumb.id);
                       }
                     }}
                   >
-                    <FolderOpen className="size-4 text-muted-foreground shrink-0" />
+                    <FolderOpen className="size-4 text-foreground shrink-0" />
                     <span
-                      className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200 truncate max-w-[200px]"
+                      className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200 truncate max-w-[120px] sm:max-w-[200px]"
                       title={crumb.name}
                     >
                       {crumb.name}
@@ -218,10 +194,10 @@ export default function Topbar({
             })}
           </nav>
         ) : (
-          <div className="flex items-center gap-2">
-            {Icon && <Icon className="size-4 text-foreground/80 shrink-0" />}
+          <div className="flex items-center gap-2 min-w-0">
+            {Icon && <Icon className="size-4.5 text-foreground shrink-0" />}
             {title && (
-              <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200 truncate">
+              <h1 className="text-base font-semibold tracking-tight text-foreground transition-colors duration-200 truncate">
                 {title}
               </h1>
             )}
@@ -231,52 +207,30 @@ export default function Topbar({
 
       {/* Right Section: Search & Actions */}
       <div className="flex items-center gap-3 shrink-0">
-        {/* Expandable Search Input */}
+        {/* Search Input */}
         {onSearchChange !== undefined && (
-          <div
-            className={cn(
-              "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
-              isSearchExpanded || search
-                ? "w-64 border border-border/50 bg-background"
-                : "w-8 hover:bg-secondary/80 cursor-pointer"
-            )}
-            onClick={expandSearch}
-          >
-            <Search
-              className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
-                isSearchExpanded || search
-                  ? "left-2.5 translate-x-0"
-                  : "left-1/2 -translate-x-1/2"
-              )}
-            />
+          <div className="relative flex items-center w-48 sm:w-60 h-8 rounded-md border border-border/50 bg-background/60 hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
             <Input
               ref={inputRef}
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              onBlur={collapseSearch}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   onSearchChange('');
-                  setIsSearchExpanded(false);
                 }
               }}
-              className={cn(
-                "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8",
-                isSearchExpanded || search ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}
-              autoFocus={isSearchExpanded}
+              className="h-full text-xs py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/60 pl-8 pr-7"
             />
-            {(isSearchExpanded || search) && (
+            {search && (
               <button
-                onMouseDown={(e) => e.preventDefault()}
                 onClick={handleClearSearch}
-                className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="absolute right-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Clear search"
               >
-                <Plus className="size-3.5 rotate-45 text-foreground" />
+                <Plus className="size-3.5 rotate-45" />
               </button>
             )}
           </div>

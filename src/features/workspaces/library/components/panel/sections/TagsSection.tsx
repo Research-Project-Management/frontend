@@ -39,7 +39,7 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium cursor-pointer"
+            className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer"
           >
             <Plus className="size-3 text-foreground" />
             <span>Add Tag</span>

@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 import { useCollections } from '../data/use-collections';
 import { usePapers } from '../data/use-papers';
-import { filterPapers, getLibraryEntityId } from '../../utils/library.util';
+import { filterPapers } from '../../utils/library.util';
 import type { Paper, CollectionInput } from '../../types/library.types';
 
 export function useLibrary() {
@@ -17,7 +17,7 @@ export function useLibrary() {
   const activeFilter = searchParams.get('filter');
 
   const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
+  const workspaceId = workspace?.id || workspaceUrl || '';
 
   const paperService = usePapers({ workspaceId, collectionId: '' });
   const papersResult = paperService.state.allPapers;
@@ -39,7 +39,7 @@ export function useLibrary() {
   };
 
   const collectionMap = useMemo(
-    () => Object.fromEntries(collections.map((c) => [getLibraryEntityId(c), c])),
+    () => Object.fromEntries(collections.map((c) => [c.id, c])),
     [collections],
   );
 
@@ -50,7 +50,7 @@ export function useLibrary() {
 
     for (const p of papers) {
       if (p.deletedAt) continue;
-      const pId = getLibraryEntityId(p);
+      const pId = p.id;
       if (p.doi && p.doi.trim()) {
         const d = p.doi.trim().toLowerCase();
         doiMap.set(d, [...(doiMap.get(d) || []), pId]);
@@ -105,7 +105,7 @@ export function useLibrary() {
     } else if (activeFilter === 'unfiled') {
       result = result.filter((p) => !p.collectionId);
     } else if (activeFilter === 'duplicates') {
-      result = result.filter((p) => duplicatePaperIds.has(getLibraryEntityId(p)));
+      result = result.filter((p) => duplicatePaperIds.has(p.id));
     }
 
     // Apply tag filter
@@ -120,7 +120,7 @@ export function useLibrary() {
   }, [papers, search, activeFilter, activeTag, duplicatePaperIds]);
 
   const selectedPaper = useMemo(
-    () => papers.find((p: Paper) => getLibraryEntityId(p) === selectedPaperId) || null,
+    () => papers.find((p: Paper) => p.id === selectedPaperId) || null,
     [papers, selectedPaperId],
   );
 

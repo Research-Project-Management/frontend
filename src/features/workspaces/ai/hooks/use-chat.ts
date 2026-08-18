@@ -13,7 +13,7 @@ import {
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
 import { getCollectionPapers as fetchCollectionPapers } from '@/features/workspaces/library/services/paper.service';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export function useChat() {
   const { chatId, workspaceId } = useParams() as { chatId?: string; workspaceId: string };
@@ -183,7 +183,7 @@ export function useChat() {
 
   // Preload collection if present
   useEffect(() => {
-    const resolvedWorkspaceId = workspace?._id;
+    const resolvedWorkspaceId = workspace?.id;
     if (!resolvedWorkspaceId) return;
 
     // Check query params if collection specified
@@ -204,7 +204,7 @@ export function useChat() {
         }
       })
       .catch(() => toast.error('Failed to load collection for AI chat'));
-  }, [addSource, searchParams, setFluxDataEnabled, workspace?._id]);
+  }, [addSource, searchParams, setFluxDataEnabled, workspace?.id]);
 
   // Send message implementation
   const sendMessage = useCallback(
@@ -296,7 +296,7 @@ export function useChat() {
                   : undefined,
             });
             setSessionTitle(title);
-            router.push(`/${workspaceId}/ai/${session._id}`);
+            router.push(`/${workspaceId}/ai/${session.id}`);
           } catch (err) {
             console.error('Failed to create session:', err);
             setSaveError(true);

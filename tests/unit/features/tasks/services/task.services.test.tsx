@@ -41,8 +41,8 @@ describe('task queries', () => {
   describe('useProjectTasks', () => {
     it('fetches project tasks successfully', async () => {
       const mockData = {
-        tasks: [{ _id: 'task-1', title: 'Test Task' }],
-        columns: [{ _id: 'col-1', name: 'To Do' }],
+        tasks: [{ id: 'task-1', title: 'Test Task' }],
+        columns: [{ id: 'col-1', name: 'To Do' }],
         projectName: 'Test Project',
         cycles: []
       };

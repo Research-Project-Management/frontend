@@ -37,7 +37,7 @@ export default function GridView({
           const fileType = getFileType(item);
           return (
             <motion.div
-              key={item._id}
+              key={item.id}
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -53,7 +53,7 @@ export default function GridView({
                 if (!isReadOnly && item.isFolder && onDropOnFolder) {
                   e.preventDefault();
                   e.stopPropagation();
-                  setDragOverFolderId(item._id);
+                  setDragOverFolderId(item.id);
                 }
               }}
               onDragLeave={(e: React.DragEvent) => {
@@ -67,8 +67,8 @@ export default function GridView({
                   onDropOnFolder(item, e);
                 }
               }}
-              className={`group bg-card border rounded-lg overflow-hidden hover:border-border hover:bg-muted/30 transition-all cursor-pointer ${selectedItemId === item._id ? "border-border bg-muted ring-1 ring-muted-foreground/20" : "border-border/50"
-                } ${dragOverFolderId === item._id ? "border-border bg-muted/80 ring-2 ring-muted-foreground/30" : ""
+              className={`group bg-card border rounded-lg overflow-hidden hover:border-border hover:bg-muted/30 transition-all cursor-pointer ${selectedItemId === item.id ? "border-border bg-muted ring-1 ring-muted-foreground/20" : "border-border/50"
+                } ${dragOverFolderId === item.id ? "border-border bg-muted/80 ring-2 ring-muted-foreground/30" : ""
                 }`}
               onClick={(e: React.MouseEvent) => {
                 if (item.isFolder) {

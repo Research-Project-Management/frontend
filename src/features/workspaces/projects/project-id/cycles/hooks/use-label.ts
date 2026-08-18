@@ -113,8 +113,8 @@ export const useLabels = (workspaceId: string, type: string = "cycle", projectId
     setView("edit");
   };
 
-  const handleEdit = (label: { _id: string; name: string; color: string }) => {
-    setEditingLabelId(label._id);
+  const handleEdit = (label: { id: string; name: string; color: string }) => {
+    setEditingLabelId(label.id);
     setEditingName(label.name);
     setSelectedColor(label.color);
     setView("edit");
@@ -152,7 +152,7 @@ export const useLabels = (workspaceId: string, type: string = "cycle", projectId
             setView("list");
             queryClient.invalidateQueries({ queryKey: ["labels"] });
             const createdLabel = data.label ?? data.tag;
-            if (createdLabel?._id) onSuccessExtra?.(createdLabel._id);
+            if (createdLabel?.id) onSuccessExtra?.(createdLabel.id);
           },
         },
       );

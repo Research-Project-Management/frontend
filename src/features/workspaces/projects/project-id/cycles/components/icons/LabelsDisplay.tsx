@@ -2,7 +2,7 @@ import React from "react";
 import { Plus } from "lucide-react";
 
 interface Tag {
-  _id: string;
+  id: string;
   name: string;
   color: string;
 }
@@ -47,7 +47,7 @@ export function LabelsDisplay({
     >
       {visibleLabels.map((label, i) => (
         <div
-          key={label._id}
+          key={label.id}
           data-chip-idx={i}
           className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-[12px] font-semibold text-white shadow-sm"
           style={{ backgroundColor: label.color }}
@@ -58,14 +58,14 @@ export function LabelsDisplay({
 
       {/* Overflow badge */}
       {hiddenCount > 0 && (
-        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-[12px] font-bold text-[#44546f] bg-[#e2e4e9]">
+        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-[12px] font-bold text-muted-foreground bg-muted">
           +{hiddenCount}
         </div>
       )}
 
       {/* Add button */}
       {showAddButton && (
-        <div className="size-7 shrink-0 rounded-full bg-[#e5e7eb] text-[#172b4d] flex items-center justify-center hover:bg-[#d9dde3] transition-colors">
+        <div className="size-7 shrink-0 rounded-full bg-muted text-foreground flex items-center justify-center hover:bg-muted/80 transition-colors">
           <Plus className="size-3" />
         </div>
       )}

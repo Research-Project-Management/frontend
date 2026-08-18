@@ -119,3 +119,32 @@ export function mergeCrossrefMetadata(base: PdfMetadata, work: CrossrefWork): Pd
     crossrefEnriched: true,
   };
 }
+
+export function toAuthors(metadata?: { author?: string; authors?: string[] } | null): string[] {
+  if (metadata?.authors?.length) return metadata.authors;
+  if (metadata?.author) {
+    return metadata.author
+      .split(/,|;|\band\b/i)
+      .map((author: string) => author.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+export function toKeywords(keywords?: string): string[] {
+  return keywords
+    ? keywords
+        .split(/,|;/)
+        .map((keyword) => keyword.trim())
+        .filter(Boolean)
+    : [];
+}
+
+export function toYear(year?: string | number): number | null {
+  if (typeof year === 'number') return year;
+  if (typeof year === 'string') {
+    const parsed = parseInt(year, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}

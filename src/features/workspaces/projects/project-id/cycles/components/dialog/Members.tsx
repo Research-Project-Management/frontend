@@ -88,12 +88,12 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
             <div className="space-y-0.5 max-h-[280px] overflow-y-auto custom-scrollbar px-1.5">
               {filteredProjectMembers?.length > 0 ? (
                 filteredProjectMembers.map((m: any) => {
-                  const user = typeof m.user === 'object' ? m.user : { _id: m.user, name: 'User' };
-                  const isSelected = formMembers.includes(user._id);
+                  const user = typeof m.user === 'object' ? m.user : { id: m.user, name: 'User' };
+                  const isSelected = formMembers.includes(user.id);
                   return (
                     <button
-                      key={user._id}
-                      onClick={() => toggleMember(user._id)}
+                      key={user.id}
+                      onClick={() => toggleMember(user.id)}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all text-left group cursor-pointer ${
                         isSelected 
                           ? 'bg-accent ring-1 ring-border mx-0.5 my-0.5 text-foreground' 

@@ -6,8 +6,6 @@ import type {
 } from '../types/settings.types';
 import type { WorkspaceMemberResponse } from '../types/member.types';
 
-// ── Workspace Settings & Member Management Service ──────────────────────────
-
 export const getWorkspace = async (workspaceId: string) => {
   return apiGet<{ workspace: any; yourRole?: string }>(`/api/workspace/${workspaceId}`);
 };

@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { queryKeys } from '@/shared/constants';
+import { authKeys } from '../constants/auth.keys';
+import type { AuthUser } from '../types/auth.types';
+import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 import { apiGet, setTokens, setAuthToken } from '@/shared/lib/api';
 import { getErrorMessage } from '@/shared/utils/error.util';
 
@@ -55,13 +57,13 @@ const OAuthCallbackPage = () => {
         }
 
         // 2. Fetch user profile and seed TanStack Query cache
-        const userData = await apiGet<{ user: import('../types/auth.types').AuthUser }>('/auth/user');
+        const userData = await apiGet<{ user: AuthUser }>('/auth/user');
         const user = userData.user;
-        queryClient.setQueryData(queryKeys.auth.session, user);
+        queryClient.setQueryData(authKeys.session(), user);
 
         // 3. Fetch workspaces to route user accurately
         try {
-          const workspaceData = await apiGet<import('@/features/workspaces/shell/services/workspace.service').WorkspaceListResponse>('/api/workspace');
+          const workspaceData = await fetchAllWorkspaces();
           if (workspaceData.workspaces && workspaceData.workspaces.length > 0) {
             router.replace(`/${workspaceData.workspaces[0].url}`);
           } else {

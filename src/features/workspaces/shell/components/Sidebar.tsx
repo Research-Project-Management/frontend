@@ -11,7 +11,7 @@ import {
   BookOpen,
   FileText,
 } from 'lucide-react';
-import { cn } from '@/shared/lib';
+import { cn } from '@/shared/lib/utils';
 
 const NAV_ITEMS = [
   { label: 'Projects', icon: Layers, to: '' },
@@ -94,7 +94,7 @@ export default function Sidebar() {
                 ) : null}
               </div>
 
-              <span className='relative z-10 max-w-full whitespace-nowrap text-[11px] font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground' data-active={isActive}>
+              <span className='relative z-10 max-w-full whitespace-nowrap text-xs font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground' data-active={isActive}>
                 {item.label}
               </span>
             </Link>

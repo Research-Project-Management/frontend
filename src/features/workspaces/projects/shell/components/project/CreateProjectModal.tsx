@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Input, Button, Textarea, Label } from "@/shared/components/ui";
+import { useClickOutside } from "@/shared/hooks/use-click-outside";
 import { useParams } from "next/navigation";
 import { useCreateProject } from "../../hooks/use-project";
 import {
@@ -104,6 +105,7 @@ export function CreateProjectModal({
   onSuccess?: () => void;
 }) {
   const { workspaceId } = useParams();
+  const mutation = useCreateProject();
   const emojiRef = useRef<HTMLDivElement>(null);
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>("research");
@@ -117,15 +119,9 @@ export function CreateProjectModal({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Close emoji picker on outside click
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
-        setShowEmojiPicker(false);
-      }
-    };
-    if (showEmojiPicker) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showEmojiPicker]);
+  useClickOutside(emojiRef, () => setShowEmojiPicker(false), {
+    enabled: showEmojiPicker,
+  });
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -152,10 +148,6 @@ export function CreateProjectModal({
     setAvatar(emojiData.emoji);
     setShowEmojiPicker(false);
   };
-
-  // ── Mutation ────────────────────────────────────────────────────────────────
-
-  const mutation = useCreateProject();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

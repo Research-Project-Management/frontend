@@ -33,31 +33,26 @@ export default function PaperTableHeader({
   showCollection = true,
 }: PaperTableHeaderProps) {
   const columns: ColumnDef[] = [
-    { field: 'title', label: 'Title', sortable: true, className: 'text-left min-w-[200px] max-w-[400px]' },
-    { field: 'authors', label: 'Creator / Authors', sortable: true, className: 'text-left w-[220px] max-w-[220px]' },
-    { field: 'year', label: 'Year', sortable: true, className: 'text-left w-[70px] max-w-[70px]' },
-    { field: 'journal', label: 'Publication / Venue', sortable: true, className: 'text-left w-[180px] max-w-[180px]' },
-    ...(showCollection ? [{ field: null, label: 'Collection', sortable: false, className: 'text-left w-[130px] max-w-[130px]' }] : []),
-    { field: 'createdAt', label: 'Date Added', sortable: true, className: 'text-left w-[110px] max-w-[110px]' },
+    { field: 'title', label: 'Title', sortable: true, className: 'text-left min-w-[240px] flex-1' },
+    { field: 'authors', label: 'Creator / Authors', sortable: true, className: 'text-left w-[200px] max-w-[240px]' },
+    { field: 'year', label: 'Year', sortable: true, className: 'text-left w-[72px]' },
+    { field: 'journal', label: 'Publication / Venue', sortable: true, className: 'text-left w-[180px] max-w-[220px]' },
   ];
 
   return (
-    <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b border-border/60 select-none">
-      <tr className="h-10 text-xs font-semibold text-muted-foreground">
-        {/* Select All Checkbox & Attachment Indicator header */}
-        <th className="w-12 px-3 py-2 text-center align-middle">
+    <thead className="sticky top-0 z-20 bg-background select-none">
+      <tr className="h-9 text-xs font-medium text-muted-foreground border-b border-border/40">
+        {/* Select All Checkbox */}
+        <th className="w-10 px-2.5 py-1.5 text-center align-middle">
           <div className="flex items-center justify-center">
             <Checkbox
               checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
               onCheckedChange={onToggleSelectAll}
               aria-label="Select all papers"
-              className="size-4 rounded border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              className="size-3.5 rounded border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
           </div>
         </th>
-
-        {/* Attachment icon column header */}
-        <th className="w-8 px-1 py-2 text-center align-middle" title="Attachment" />
 
         {/* Dynamic Column Headers */}
         {columns.map((col, idx) => {
@@ -66,7 +61,7 @@ export default function PaperTableHeader({
             <th
               key={idx}
               className={cn(
-                'px-3 py-2 text-xs font-medium text-muted-foreground tracking-tight',
+                'px-3 py-2 text-xs font-medium text-muted-foreground tracking-normal',
                 col.className,
                 col.sortable && 'cursor-pointer hover:text-foreground transition-colors'
               )}

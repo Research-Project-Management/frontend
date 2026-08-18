@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { copyToClipboard } from '@/shared/lib/clipboard';
 
-type CopyState = 'idle' | 'copied' | 'error';
+export type CopyState = 'idle' | 'copied' | 'error';
 
 /**
- * Copy text to clipboard with status feedback.
+ * Copy text to clipboard with reactive status feedback.
+ * Backed by resilient `clipboardClient` (modern API + legacy DOM fallback).
  *
  * @example
  * const { copy, isCopied } = useCopyToClipboard();
@@ -13,23 +15,31 @@ type CopyState = 'idle' | 'copied' | 'error';
  */
 export function useCopyToClipboard(resetMs = 2000) {
   const [state, setState] = useState<CopyState>('idle');
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean up pending timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const copy = useCallback(
-    async (text: string) => {
-      if (!navigator?.clipboard) {
-        setState('error');
-        return false;
+    async (text: string): Promise<boolean> => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
-      try {
-        await navigator.clipboard.writeText(text);
-        setState('copied');
-        setTimeout(() => setState('idle'), resetMs);
-        return true;
-      } catch {
-        setState('error');
-        setTimeout(() => setState('idle'), resetMs);
-        return false;
-      }
+
+      const success = await copyToClipboard(text);
+      setState(success ? 'copied' : 'error');
+
+      timeoutRef.current = setTimeout(() => {
+        setState('idle');
+      }, resetMs);
+
+      return success;
     },
     [resetMs],
   );
@@ -41,3 +51,6 @@ export function useCopyToClipboard(resetMs = 2000) {
     state,
   };
 }
+
+export { copyToClipboard };
+

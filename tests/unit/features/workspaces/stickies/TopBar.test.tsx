@@ -10,8 +10,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/features/workspaces/projects/shell/hooks/use-project', () => ({
   useWorkspaceProjects: () => ({
     projects: [
-      { _id: 'proj-1', name: 'Project Alpha' },
-      { _id: 'proj-2', name: 'Project Beta' },
+      { id: 'proj-1', name: 'Project Alpha' },
+      { id: 'proj-2', name: 'Project Beta' },
     ],
   }),
 }));

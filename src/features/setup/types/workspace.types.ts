@@ -8,7 +8,7 @@
 
 /** Populated user shape returned when a member is populated. */
 export type WorkspaceMemberUser = {
-  _id: string;
+  id: string;
   name: string;
   email: string | null;
   avatar: string | null;
@@ -29,7 +29,7 @@ export type WorkspaceMember = {
 // ─── Workspace ────────────────────────────────────────────────────────────────
 
 export type Workspace = {
-  _id: string;
+  id: string;
   name: string;
   url: string;
   avatar: string;

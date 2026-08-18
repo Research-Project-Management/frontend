@@ -269,7 +269,7 @@ export const Phase = ({
       <div className="shrink-0 flex items-center justify-between border-t border-border/50 p-4 bg-background">
         <Button
           onClick={handleSave}
-          className="h-9 rounded-sm bg-[#202222] px-6 text-xs font-semibold text-white shadow-none transition-all hover:bg-[#202222]/90 active:scale-95"
+          className="h-9 rounded-md bg-primary px-6 text-xs font-semibold text-primary-foreground shadow-none transition-all hover:bg-primary/90 active:scale-95"
         >
           Save
         </Button>
@@ -278,7 +278,7 @@ export const Phase = ({
           <Button
             onClick={() => handleDelete(editingPhaseId)}
             variant="ghost"
-            className="h-9 rounded-sm px-4 text-xs font-semibold text-[#c9372c] hover:bg-[#fff1f0] hover:text-[#c9372c]"
+            className="h-9 rounded-md px-4 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             Delete
           </Button>

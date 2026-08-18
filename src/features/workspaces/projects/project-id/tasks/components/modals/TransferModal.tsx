@@ -68,13 +68,13 @@ export function TransferModal({
 
   const targetCycles = useMemo(() => {
     return availableCycles.filter(
-      (c) => c._id !== sourceCycleId && c.status !== "completed"
+      (c) => c.id !== sourceCycleId && c.status !== "completed"
     );
   }, [availableCycles, sourceCycleId]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(filteredTasks.map((t) => t._id));
+      setSelectedIds(filteredTasks.map((t) => t.id));
     } else {
       setSelectedIds([]);
     }
@@ -145,7 +145,7 @@ export function TransferModal({
                     <span className="text-muted-foreground font-medium">Remove from Cycle (Unassign)</span>
                   </SelectItem>
                   {targetCycles.map((cycle) => (
-                    <SelectItem key={cycle._id} value={cycle._id} className="cursor-pointer">
+                    <SelectItem key={cycle.id} value={cycle.id} className="cursor-pointer">
                       <div className="flex items-center gap-2">
                         {cycle.status === "active" ? (
                           <PlayCircle className="size-3.5 text-emerald-500" />
@@ -211,11 +211,11 @@ export function TransferModal({
                   </div>
                 ) : (
                   filteredTasks.map((task) => {
-                    const isSelected = selectedIds.includes(task._id);
+                    const isSelected = selectedIds.includes(task.id);
                     return (
                       <div
-                        key={task._id}
-                        onClick={() => handleToggleSelect(task._id)}
+                        key={task.id}
+                        onClick={() => handleToggleSelect(task.id)}
                         className={cn(
                           "px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors",
                           isSelected && "bg-primary/5"
@@ -223,7 +223,7 @@ export function TransferModal({
                       >
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={() => handleToggleSelect(task._id)}
+                          onCheckedChange={() => handleToggleSelect(task.id)}
                           onClick={(e) => e.stopPropagation()}
                         />
                         <div className="min-w-0 flex-1">

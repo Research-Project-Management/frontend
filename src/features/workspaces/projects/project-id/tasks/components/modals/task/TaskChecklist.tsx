@@ -37,14 +37,14 @@ export function TaskChecklist({
 
         return (
           <ChecklistBlock
-            key={list._id}
+            key={list.id}
             checklist={{ ...list, items: safeItems }}
             progress={progress}
-            onDelete={() => onDeleteChecklist(list._id)}
-            onToggleItem={(itemId) => onToggleItem(list._id, itemId)}
-            onDeleteItem={(itemId) => onDeleteItem(list._id, itemId)}
-            onUpdateItem={(itemId, title) => onUpdateItem(list._id, itemId, title)}
-            onAddItem={(title) => onAddItem(list._id, title)}
+            onDelete={() => onDeleteChecklist(list.id)}
+            onToggleItem={(itemId) => onToggleItem(list.id, itemId)}
+            onDeleteItem={(itemId) => onDeleteItem(list.id, itemId)}
+            onUpdateItem={(itemId, title) => onUpdateItem(list.id, itemId, title)}
+            onAddItem={(title) => onAddItem(list.id, title)}
             isReadOnly={isReadOnly}
           />
         );
@@ -138,7 +138,7 @@ export function ChecklistBlock({
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-zinc-200"
+            className="rounded-md bg-muted px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-muted/80"
           >
             Delete
           </button>
@@ -146,8 +146,8 @@ export function ChecklistBlock({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold text-zinc-500 min-w-8">{progress}%</span>
-        <div className="flex-1 h-1.5 rounded-full bg-[#e9edf3] overflow-hidden">
+        <span className="text-[12px] font-semibold text-muted-foreground min-w-8">{progress}%</span>
+        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-primary transition-all"
             style={{ width: `${progress}%` }}
@@ -158,17 +158,17 @@ export function ChecklistBlock({
       <div className="space-y-2 pt-1">
         {(checklist.items || []).length > 0 ? (
           (checklist.items || []).map((item) =>
-            editingItemId === item._id ? (
-              <div key={item._id} className="flex items-start gap-3 text-[14px] text-foreground">
+            editingItemId === item.id ? (
+              <div key={item.id} className="flex items-start gap-3 text-[14px] text-foreground">
                 <input
                   type="checkbox"
                   checked={item.completed}
                   disabled={isReadOnly}
                   onChange={() => {
                     if (isReadOnly) return;
-                    onToggleItem(item._id);
+                    onToggleItem(item.id);
                   }}
-                  className={`mt-2 size-4 rounded-sm border-zinc-300 text-foreground focus:ring-0 ${
+                  className={`mt-2 size-4 rounded-sm border-border text-foreground focus:ring-0 ${
                     isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
                   }`}
                 />
@@ -190,7 +190,7 @@ export function ChecklistBlock({
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-9 px-3 text-zinc-500 hover:bg-zinc-100"
+                      className="h-9 px-3 text-muted-foreground hover:bg-muted"
                       onClick={() => {
                         setEditingItemId(null);
                         setEditingItemTitle('');
@@ -202,34 +202,34 @@ export function ChecklistBlock({
                 </div>
                 <button
                   type="button"
-                  onClick={() => onDeleteItem(item._id)}
-                  className="inline-flex size-7 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-red-600"
+                  onClick={() => onDeleteItem(item.id)}
+                  className="inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
                   aria-label={`Delete item ${item.title}`}
                 >
                   <X className="size-4" />
                 </button>
               </div>
             ) : (
-              <div key={item._id} className="group flex items-center gap-3 text-[14px] text-foreground">
+              <div key={item.id} className="group flex items-center gap-3 text-[14px] text-foreground">
                 <input
                   type="checkbox"
                   checked={item.completed}
                   disabled={isReadOnly}
                   onChange={() => {
                     if (isReadOnly) return;
-                    onToggleItem(item._id);
+                    onToggleItem(item.id);
                   }}
-                  className={`size-4 rounded-sm border-zinc-300 text-foreground focus:ring-0 ${
+                  className={`size-4 rounded-sm border-border text-foreground focus:ring-0 ${
                     isReadOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
                   }`}
                 />
                 <button
                   type="button"
                   disabled={isReadOnly}
-                  onClick={() => !isReadOnly && handleStartEditItem(item._id, item.title)}
+                  onClick={() => !isReadOnly && handleStartEditItem(item.id, item.title)}
                   className={
                     item.completed
-                      ? 'line-through text-zinc-400 flex-1 text-left'
+                      ? 'line-through text-muted-foreground flex-1 text-left'
                       : 'text-foreground flex-1 text-left'
                   }
                 >
@@ -237,8 +237,8 @@ export function ChecklistBlock({
                 </button>
                 <button
                   type="button"
-                  onClick={() => !isReadOnly && onDeleteItem(item._id)}
-                  className={`inline-flex size-7 items-center justify-center rounded-sm text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-red-600 ${
+                  onClick={() => !isReadOnly && onDeleteItem(item.id)}
+                  className={`inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-destructive ${
                     isReadOnly ? 'hidden' : 'opacity-0 group-hover:opacity-100'
                   }`}
                   aria-label={`Delete item ${item.title}`}
@@ -249,7 +249,7 @@ export function ChecklistBlock({
             ),
           )
         ) : (
-          <p className="text-[13px] text-[#6b778c]">No items yet.</p>
+          <p className="text-[13px] text-muted-foreground">No items yet.</p>
         )}
       </div>
 
@@ -259,7 +259,7 @@ export function ChecklistBlock({
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
             placeholder="Add an item..."
-            className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none hover:bg-zinc-100"
+            className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none hover:bg-muted"
             autoFocus
           />
           <div className="flex items-center gap-2">
@@ -273,7 +273,7 @@ export function ChecklistBlock({
             <Button
               type="button"
               variant="ghost"
-              className="h-9 px-3 text-zinc-500 hover:bg-zinc-100"
+              className="h-9 px-3 text-muted-foreground hover:bg-muted"
               onClick={() => {
                 setNewItemTitle('');
                 setShowNewItemInput(false);
@@ -287,15 +287,15 @@ export function ChecklistBlock({
         <button
           type="button"
           onClick={() => setShowNewItemInput(true)}
-          className="rounded-sm bg-zinc-100 px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-zinc-200"
+          className="rounded-md bg-muted px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-muted/80"
         >
           Add an item
         </button>
       ) : null}
 
       {showDeleteConfirm && (
-        <div className="mt-2 rounded-sm border border-red-200 bg-red-50/50 p-3 space-y-2">
-          <p className="text-xs text-red-700 font-medium">
+        <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 space-y-2">
+          <p className="text-xs text-destructive font-medium">
             Are you sure you want to delete this checklist?
           </p>
           <div className="flex gap-2">

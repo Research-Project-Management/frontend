@@ -36,7 +36,7 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   latex: { label: 'LaTeX', color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
   task: { label: 'Task Planning', color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
   web_search: { label: 'Web Search', color: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
-  action: { label: 'Workspace Agent', color: 'bg-[#3370ff]/12 text-[#3370ff]' },
+  action: { label: 'Workspace Agent', color: 'bg-primary/10 text-primary' },
 };
 
 function AgentBadge({ agent }: { agent: string }) {
@@ -198,7 +198,7 @@ const MessageBubble = memo(function MessageBubble({
       <div
         className={`group relative ${
           isUser
-            ? 'max-w-[85%] bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-lg rounded-br-md px-4 py-2.5 border border-zinc-200 dark:border-zinc-600'
+            ? 'max-w-[85%] bg-muted text-foreground rounded-lg rounded-br-md px-4 py-2.5 border border-border'
             : 'max-w-[90%]'
         }`}
       >
@@ -507,7 +507,7 @@ export function ChatPage() {
           <button
             type="button"
             onClick={handleScrollToBottom}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex size-9 items-center justify-center rounded-full border border-border bg-white dark:bg-zinc-900 text-muted-foreground shadow-sm hover:shadow hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95 transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-2 duration-300"
+            className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:shadow hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95 transition-all duration-200"
             title="Scroll to bottom"
           >
             <ArrowDown className="size-4" />

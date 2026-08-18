@@ -1,7 +1,7 @@
 import type { StorageItem } from './storage.types';
 
 export interface BreadcrumbSegment {
-  _id: string | null;
+  id: string | null;
   name: string;
 }
 

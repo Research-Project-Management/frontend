@@ -117,7 +117,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
             <Button
               type="submit"
               size="sm"
-              className="h-8 text-xs font-medium px-4 bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer shadow-2xs"
+              className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs"
             >
               Save worklog
             </Button>

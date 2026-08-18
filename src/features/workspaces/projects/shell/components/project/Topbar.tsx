@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -11,6 +11,7 @@ import {
   Archive,
 } from 'lucide-react';
 import { Button, Input } from '@/shared/components/ui';
+import { useHotkeys } from '@/shared/hooks/use-hotkeys';
 import { cn } from '@/shared/lib/utils';
 import { ProjectFilterPopover } from './ProjectFilterPopover';
 import type { Project } from '../../types/project.types';
@@ -47,21 +48,10 @@ export function Topbar({
   const [isSearchExpanded, setIsSearchExpanded] = useState(Boolean(searchQuery));
 
   // Shortcut key handling: '/' or 'Cmd/Ctrl+K' focuses search input
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-
-      if ((e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key === 'k')) && !e.shiftKey) {
-        e.preventDefault();
-        setIsSearchExpanded(true);
-        setTimeout(() => inputRef.current?.focus(), 50);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  useHotkeys(['/', 'mod+k'], () => {
+    setIsSearchExpanded(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  });
 
   return (
     <header

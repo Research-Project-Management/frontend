@@ -58,7 +58,7 @@ export default function PaperTable({
 
   // Selected paper objects for batch actions
   const selectedPapers = React.useMemo(() => {
-    return papers.filter((p) => selectedIds.has(p._id));
+    return papers.filter((p) => selectedIds.has(p.id));
   }, [papers, selectedIds]);
 
   const handleBatchDelete = () => {
@@ -117,11 +117,11 @@ export default function PaperTable({
         <tbody className="divide-y divide-border/30">
           {sortedPapers.map((paper: Paper) => (
             <PaperTableRow
-              key={paper._id}
+              key={paper.id}
               paper={paper}
               collection={paper.collectionId ? collectionMap[paper.collectionId] ?? null : null}
-              isSelected={selectedIds.has(paper._id)}
-              isActive={selectedPaperId === paper._id}
+              isSelected={selectedIds.has(paper.id)}
+              isActive={selectedPaperId === paper.id}
               onSelect={onSelectPaper}
               onToggleCheck={toggleSelect}
               onDelete={onDeletePaper}

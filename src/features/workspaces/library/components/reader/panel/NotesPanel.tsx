@@ -32,7 +32,7 @@ export default function NotesPanel({
     setEditingId(null);
     setEditingText("");
     setDeletingId(null);
-  }, [paper._id]);
+  }, [paper.id]);
 
   useEffect(() => {
     if (pendingText) {
@@ -55,14 +55,14 @@ export default function NotesPanel({
     return (paper.notes ?? []).map((n: any, idx) => {
       if (typeof n === 'string') {
         return {
-          _id: `note-${idx}`,
+          id: `note-${idx}`,
           content: n,
           createdAt: paper.createdAt,
           updatedAt: paper.updatedAt,
         };
       }
       return {
-        _id: n._id || n.id || `note-${idx}`,
+        id: n.id || `note-${idx}`,
         content: n.content || '',
         createdAt: n.createdAt || paper.createdAt,
         updatedAt: n.updatedAt || paper.updatedAt,
@@ -73,7 +73,7 @@ export default function NotesPanel({
   const saveNotes = useCallback(
     (
       nextNotes: Array<{
-        _id?: string;
+        id?: string;
         content: string;
         createdAt?: string;
         updatedAt?: string;
@@ -82,18 +82,18 @@ export default function NotesPanel({
     ) => {
       const stringNotes = nextNotes.map((n) => (typeof n === 'string' ? n : n.content));
       paperService.actions.updatePaper(
-        { paperId: paper._id, notes: stringNotes as any },
+        { paperId: paper.id, notes: stringNotes as any },
         { onSuccess: () => toast.success(successMessage) },
       );
     },
-    [paper._id, paperService.actions.updatePaper],
+    [paper.id, paperService.actions.updatePaper],
   );
 
   const handleAddNote = () => {
     const content = newNote.trim();
     if (!content) return;
     saveNotes(
-      [...notes.map(({ _id, content }: Note) => ({ _id, content })), { content }],
+      [...notes.map(({ id, content }: Note) => ({ id, content })), { content }],
       "Note added",
     );
     setNewNote("");
@@ -104,9 +104,9 @@ export default function NotesPanel({
     if (!editingId || !content) return;
     saveNotes(
       notes.map((note: Note) =>
-        note._id === editingId
-          ? { _id: note._id, content }
-          : { _id: note._id, content: note.content },
+        note.id === editingId
+          ? { id: note.id, content }
+          : { id: note.id, content: note.content },
       ),
       "Note updated",
     );
@@ -117,8 +117,8 @@ export default function NotesPanel({
   const handleDelete = (noteId: string) => {
     saveNotes(
       notes
-        .filter((note: Note) => note._id !== noteId)
-        .map(({ _id, content }: Note) => ({ _id, content })),
+        .filter((note: Note) => note.id !== noteId)
+        .map(({ id, content }: Note) => ({ id, content })),
       "Note deleted",
     );
     setDeletingId(null);
@@ -210,13 +210,13 @@ export default function NotesPanel({
         ) : (
           <ul className="space-y-3">
             {notes.map((note: Note) => {
-              if (!note._id) return null;
-              const isEditing = editingId === note._id;
-              const isDeleting = deletingId === note._id;
+              if (!note.id) return null;
+              const isEditing = editingId === note.id;
+              const isDeleting = deletingId === note.id;
 
               return (
                 <li
-                  key={note._id}
+                  key={note.id}
                   className="group relative rounded-xl border border-border bg-card p-3.5 shadow-sm transition-all hover:border-border/80 hover:shadow-md"
                 >
                   {isEditing ? (
@@ -269,7 +269,7 @@ export default function NotesPanel({
                             <div className="flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 p-0.5 animate-in fade-in zoom-in-95 duration-150">
                               <button
                                 type="button"
-                                onClick={() => handleDelete(note._id as string)}
+                                onClick={() => handleDelete(note.id as string)}
                                 title="Confirm delete"
                                 className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors"
                               >
@@ -291,7 +291,7 @@ export default function NotesPanel({
                                 size="icon"
                                 className="size-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                                 onClick={() => {
-                                  setEditingId(note._id as string);
+                                  setEditingId(note.id as string);
                                   setEditingText(note.content);
                                   setDeletingId(null);
                                 }}
@@ -303,7 +303,7 @@ export default function NotesPanel({
                                 variant="ghost"
                                 size="icon"
                                 className="size-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => setDeletingId(note._id as string)}
+                                onClick={() => setDeletingId(note.id as string)}
                                 title="Delete note"
                               >
                                 <Trash2 className="size-3.5" />

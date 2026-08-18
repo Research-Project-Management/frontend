@@ -10,10 +10,15 @@ import {
   useRemoveProjectMember,
   useUpdateProject,
 } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { useWorkspace } from '@/features/workspaces/shell';
-import { useAuth } from '@/features/auth';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { getErrorMessage } from '@/shared/utils/error.util';
 import type { ProjectMemberItem, ProjectRole } from '../types/member.types';
+import {
+  normalizeProjectMembers,
+  filterAndSortProjectMembers,
+  type ProjectMemberSortField,
+} from '../utils/member.util';
 
 export function useMembers(projectId: string) {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
@@ -35,29 +40,13 @@ export function useMembers(projectId: string) {
   // Search & Filter state
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<'name' | 'displayName' | 'email' | 'role' | 'date'>('name');
+  const [sortField, setSortField] = useState<ProjectMemberSortField>('name');
   const [sortAsc, setSortAsc] = useState(true);
 
   // Normalize project members
   const members: ProjectMemberItem[] = useMemo(() => {
     if (!project?.members) return [];
-    return (project.members as any[]).map((m) => {
-      const u = m.user || {};
-      const uId = u.id || u._id || m.userId || '';
-      return {
-        id: m.id || uId,
-        userId: uId,
-        user: {
-          id: uId,
-          _id: uId,
-          name: u.name || 'Unknown User',
-          email: u.email || '',
-          avatar: u.avatar || '',
-        },
-        role: m.role || 'contributor',
-        joinedAt: m.joinedAt || project.createdAt || new Date().toISOString(),
-      };
-    });
+    return normalizeProjectMembers(project.members as any[], project.createdAt);
   }, [project]);
 
   // Project settings (lead, assignee, subscribers)
@@ -170,43 +159,12 @@ export function useMembers(projectId: string) {
 
   // Filter and sort members
   const filteredMembers = useMemo(() => {
-    let list = members.filter((m) => {
-      const q = search.toLowerCase().trim();
-      const matchSearch =
-        !q ||
-        m.user.name.toLowerCase().includes(q) ||
-        (m.user.email || '').toLowerCase().includes(q);
-
-      const matchRole = !roleFilter || m.role.toLowerCase() === roleFilter.toLowerCase();
-
-      return matchSearch && matchRole;
+    return filterAndSortProjectMembers(members, {
+      search,
+      roleFilter,
+      sortField,
+      sortAsc,
     });
-
-    list.sort((a, b) => {
-      let valA = '';
-      let valB = '';
-      if (sortField === 'name') {
-        valA = a.user.name.toLowerCase();
-        valB = b.user.name.toLowerCase();
-      } else if (sortField === 'displayName') {
-        valA = (a.user.email?.split('@')[0] || a.user.name).toLowerCase();
-        valB = (b.user.email?.split('@')[0] || b.user.name).toLowerCase();
-      } else if (sortField === 'email') {
-        valA = (a.user.email || '').toLowerCase();
-        valB = (b.user.email || '').toLowerCase();
-      } else if (sortField === 'role') {
-        valA = a.role.toLowerCase();
-        valB = b.role.toLowerCase();
-      } else if (sortField === 'date') {
-        valA = a.joinedAt;
-        valB = b.joinedAt;
-      }
-      if (valA < valB) return sortAsc ? -1 : 1;
-      if (valA > valB) return sortAsc ? 1 : -1;
-      return 0;
-    });
-
-    return list;
   }, [members, search, roleFilter, sortField, sortAsc]);
 
   const toggleSort = useCallback((field: typeof sortField) => {
@@ -223,8 +181,8 @@ export function useMembers(projectId: string) {
 
   // Permissions
   const isOwnerOrAdmin = useMemo(() => {
-    const creatorId = project?.createdById || (project?.createdBy as any)?.id || (project?.createdBy as any)?._id;
-    const currentUserId = currentUser?.id || (currentUser as any)?._id;
+    const creatorId = project?.createdById || (project?.createdBy as any)?.id;
+    const currentUserId = currentUser?.id;
     if (creatorId && currentUserId && creatorId === currentUserId) return true;
     if (workspaceRole === 'owner' || workspaceRole === 'admin') return true;
     const myMember = members.find((m) => m.userId === currentUserId);

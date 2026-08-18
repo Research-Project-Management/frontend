@@ -23,12 +23,12 @@ setup('authenticate & seed data', async ({ baseURL }) => {
   for (const role of roles) {
     try {
       const data = await registerAPI(apiContext, users[role].name, users[role].email, password);
-      users[role].userId = data.user._id;
+      users[role].userId = data.user.id;
     } catch (e) {
       // User might already exist, login to get ID
       const loginResp = await loginAPI(apiContext, users[role].email, password);
       const data = await loginResp.json();
-      users[role].userId = data.user._id;
+      users[role].userId = data.user.id;
     }
   }
 
@@ -41,10 +41,10 @@ setup('authenticate & seed data', async ({ baseURL }) => {
   const workspaceName = `Test Workspace ${uniqueSuffix}`;
   const projectName = `Test Project ${uniqueSuffix}`;
   const workspaceData = await createWorkspaceAPI(apiContext, workspaceName);
-  const workspaceId = workspaceData.workspace._id;
+  const workspaceId = workspaceData.workspace.id;
   
   const projectData = await createProjectAPI(apiContext, workspaceId, projectName);
-  const projectId = projectData.project._id;
+  const projectId = projectData.project.id;
 
   // Save projectId to a file so tests can use it
   const testData = { workspaceId, projectId };

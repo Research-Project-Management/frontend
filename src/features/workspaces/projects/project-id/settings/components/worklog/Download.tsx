@@ -28,7 +28,7 @@ export function WorklogDownload({
           type="button"
           onClick={onDownloadCsv}
           disabled={disabled}
-          className="h-8 px-3.5 bg-[#0070f3] hover:bg-[#0060df] text-white text-xs font-medium transition-colors cursor-pointer outline-none flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="h-8 px-3.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium transition-colors cursor-pointer outline-none flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <span>Download</span>
         </button>
@@ -38,7 +38,7 @@ export function WorklogDownload({
           <button
             type="button"
             disabled={disabled}
-            className="h-8 px-2 bg-[#0070f3] hover:bg-[#0060df] text-white border-l border-white/20 transition-colors cursor-pointer outline-none flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+            className="h-8 px-2 bg-primary hover:bg-primary/90 text-primary-foreground border-l border-primary-foreground/20 transition-colors cursor-pointer outline-none flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
             aria-label="Download format options"
           >
             <ChevronDown className="size-3.5" />

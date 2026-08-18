@@ -15,9 +15,9 @@ export function navigateBreadcrumbPath(
  */
 export function pushBreadcrumbFolder(
   segments: BreadcrumbSegment[],
-  folder: { _id: string; name: string }
+  folder: { id: string; name: string }
 ): BreadcrumbSegment[] {
-  return [...segments, { _id: folder._id, name: folder.name }];
+  return [...segments, { id: folder.id, name: folder.name }];
 }
 
 /**
@@ -25,6 +25,6 @@ export function pushBreadcrumbFolder(
  */
 export function canDropIntoFolder(draggedItem: StorageItem | null, targetFolder: StorageItem): boolean {
   if (!draggedItem || !targetFolder.isFolder) return false;
-  if (draggedItem._id === targetFolder._id) return false;
+  if (draggedItem.id === targetFolder.id) return false;
   return true;
 }

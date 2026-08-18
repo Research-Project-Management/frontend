@@ -88,8 +88,8 @@ export default function Setting() {
   const { setMainFile: setMainFileMutation } = useFileActions();
 
   const { data: files } = useQuery({
-    ...filesQuery(currentPage?._id ?? ''),
-    enabled: !!currentPage?._id,
+    ...filesQuery(currentPage?.id ?? ''),
+    enabled: !!currentPage?.id,
   });
 
   const dbMainFile =
@@ -117,8 +117,8 @@ export default function Setting() {
       const matchedPage = files.find((f) => f.title === newTitle);
       if (matchedPage) {
         setMainFileMutation.mutate({
-          pageId: currentPage._id,
-          fileId: matchedPage._id,
+          pageId: currentPage.id,
+          fileId: matchedPage.id,
         });
         toast.success(`Main file updated to "${newTitle}"!`);
       }

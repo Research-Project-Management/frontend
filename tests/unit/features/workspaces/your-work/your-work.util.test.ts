@@ -14,7 +14,7 @@ describe('your-work.util', () => {
     it('creates a map of projects keyed by id', () => {
       const projects = [
         { id: 'proj-1', name: 'Project Alpha' },
-        { _id: 'proj-2', name: 'Project Beta' },
+        { id: 'proj-2', name: 'Project Beta' },
       ];
       const map = createProjectMap(projects);
       expect(map).toEqual({
@@ -25,7 +25,7 @@ describe('your-work.util', () => {
       expect(createTaskProjectMap(projects)).toEqual(map);
     });
 
-    it('ignores projects without id or _id', () => {
+    it('ignores projects without id', () => {
       const projects = [{ name: 'No ID' } as any];
       const map = createProjectMap(projects);
       expect(map).toEqual({});
@@ -37,9 +37,8 @@ describe('your-work.util', () => {
       expect(getTaskProjectId({ projectId: 'p-123' })).toBe('p-123');
     });
 
-    it('extracts object projectId with id or _id', () => {
+    it('extracts object projectId with id', () => {
       expect(getTaskProjectId({ projectId: { id: 'p-456' } })).toBe('p-456');
-      expect(getTaskProjectId({ projectId: { _id: 'p-789' } })).toBe('p-789');
     });
 
     it('extracts project field fallback', () => {

@@ -177,7 +177,7 @@ function EditorColumn() {
 
   return (
     <div className="h-full w-full overflow-hidden flex flex-col bg-background">
-      {pageId && <Tabs rootPageId={pageId} activeFileId={fileId ?? activePage._id ?? ''} />}
+      {pageId && <Tabs rootPageId={pageId} activeFileId={fileId ?? activePage.id ?? ''} />}
       <div className="flex-1 overflow-hidden">
         {isAssetTab ? (
           <ImagePanel asset={selectedAsset!} />

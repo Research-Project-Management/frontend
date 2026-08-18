@@ -68,7 +68,7 @@ describe('chat.service', () => {
     it('fetches sessions with workspaceId parameter', async () => {
       const mockChats = [
         {
-          _id: 'chat-1',
+          id: 'chat-1',
           title: 'Quantum Computing',
           projectId: null,
           messageCount: 2,

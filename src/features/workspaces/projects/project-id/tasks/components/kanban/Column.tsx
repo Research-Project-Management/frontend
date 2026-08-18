@@ -56,7 +56,7 @@ export function Column({
   const columnId = resolveTaskColumnId(column);
   const columnColor = resolveTaskColumnColor(columnId, column.accentColor);
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
-  const cardIds = useMemo(() => cards.map((card) => card._id), [cards]);
+  const cardIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
   useEffect(() => {
     if (isQuickAddOpen) {
@@ -232,7 +232,7 @@ export function Column({
           <div className="flex items-center gap-1.5 mt-2">
             <Button
               size="sm"
-              className="h-7 px-3 text-xs bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md cursor-pointer"
+              className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
               onClick={handleQuickAddSubmit}
             >
               Add Card
@@ -254,7 +254,7 @@ export function Column({
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {cards.map((card) => (
             <Card
-              key={card._id}
+              key={card.id}
               card={card}
               labelMap={labelMap}
               currentUserId={currentUserId}

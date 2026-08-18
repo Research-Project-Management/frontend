@@ -7,7 +7,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
-import { useAuth, useRegister, registerSchema, type RegisterSchema } from '@/features/auth';
+import { useAuth } from '../hooks/use-auth';
+import { useRegister } from '../hooks/use-register';
+import { registerSchema, type RegisterSchema } from '../schemas/auth.schema';
+import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 import { Button, Input, Label } from '@/shared/components/ui';
 
 const RegisterPage = () => {
@@ -28,19 +31,17 @@ const RegisterPage = () => {
 
   useEffect(() => {
     if (!isAuthLoading && user) {
-      import('@/shared/lib/api').then(({ apiGet }) => {
-        apiGet<{ workspaces: any[] }>('/api/workspace')
-          .then(data => {
-            if (data.workspaces && data.workspaces.length > 0) {
-              router.replace(`/${data.workspaces[0].url}`);
-            } else {
-              router.replace('/create-workspace');
-            }
-          })
-          .catch(() => {
+      fetchAllWorkspaces()
+        .then((data) => {
+          if (data.workspaces && data.workspaces.length > 0) {
+            router.replace(`/${data.workspaces[0].url}`);
+          } else {
             router.replace('/create-workspace');
-          });
-      });
+          }
+        })
+        .catch(() => {
+          router.replace('/create-workspace');
+        });
     }
   }, [isAuthLoading, user, router]);
 

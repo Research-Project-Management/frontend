@@ -90,17 +90,17 @@ export function TaskAttachments({
     <>
       <div className="mt-10">
         <div className="mb-4 flex items-center gap-2">
-          <Paperclip className="size-4 text-zinc-500" />
+          <Paperclip className="size-4 text-muted-foreground" />
           <h3 className="text-[16px] font-bold text-foreground">Attachments</h3>
         </div>
         <div className="space-y-3 pl-1">
           {attachments.map((item) => (
             <div
               key={item.id}
-              className="group flex items-center justify-between gap-4 rounded-sm px-2 py-2 transition-colors hover:bg-zinc-100"
+              className="group flex items-center justify-between gap-4 rounded-md px-2 py-2 transition-colors hover:bg-muted/70"
             >
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm bg-zinc-100 text-[15px] font-bold text-zinc-600 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-[13px] font-semibold text-muted-foreground border border-border/60">
                   {getAttachmentTypeLabel(item)}
                 </div>
 
@@ -109,12 +109,12 @@ export function TaskAttachments({
                     href={item.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="block min-w-0 max-w-full truncate text-[14px] font-semibold text-foreground hover:underline"
+                    className="block min-w-0 max-w-full truncate text-[14px] font-medium text-foreground hover:underline"
                     title={item.name}
                   >
                     {item.name}
                   </a>
-                  <p className="mt-1 text-[12px] text-zinc-500">
+                  <p className="mt-1 text-[12px] text-muted-foreground">
                     {formatAttachmentMeta(item.createdAt)}
                   </p>
                 </div>
@@ -207,7 +207,7 @@ export function TaskAttachments({
               <DialogTitle className="text-[18px] font-bold text-foreground">
                 Rename attachment
               </DialogTitle>
-              <DialogDescription className="text-[14px] leading-6 text-zinc-500">
+              <DialogDescription className="text-[14px] leading-6 text-muted-foreground">
                 Update the display name for this attachment.
               </DialogDescription>
             </DialogHeader>
@@ -216,7 +216,7 @@ export function TaskAttachments({
               <input
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
-                className="h-10 w-full rounded-sm border border-transparent px-4 text-[14px] text-foreground outline-none focus:border-primary"
+                className="h-10 w-full rounded-sm border border-border px-4 text-[14px] text-foreground outline-none focus:border-primary"
                 placeholder="Enter new file name"
                 autoFocus
               />
@@ -228,7 +228,7 @@ export function TaskAttachments({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 px-4 text-zinc-500 hover:bg-zinc-100"
+                className="h-9 px-4 text-muted-foreground hover:bg-muted"
                 onClick={() => setRenameItem(null)}
               >
                 Cancel

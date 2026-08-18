@@ -3,9 +3,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { queryKeys } from '@/shared/constants';
-import { useWorkspace } from '@/features/workspaces/shell';
-import { useAuth } from '@/features/auth';
+import { workspaceKeys } from '@/features/workspaces/constants/workspace.keys';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   AddMemberBodySchema,
   UpdateMemberRoleBodySchema,
@@ -18,17 +18,22 @@ import {
   leaveWorkspace,
 } from '@/features/workspaces/settings/services/settings.service';
 import type { WorkspaceMemberItem, WorkspaceRole } from '../types/member.types';
+import {
+  normalizeWorkspaceMembers,
+  filterAndSortMembers,
+  type SortField,
+  type SortDirection,
+} from '../utils/member.util';
 
-export type SortField = 'name' | 'displayName' | 'email' | 'role' | 'auth' | 'date';
-export type SortDirection = 'asc' | 'desc';
+export type { SortField, SortDirection };
 
 export function useMember(workspaceId: string) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const { workspace, isLoading: isWorkspaceLoading, yourRole } = useWorkspace(workspaceId);
 
-  const invalidateDetail = queryKeys.workspaces.detail(workspaceId);
-  const invalidateAll = queryKeys.workspaces.all;
+  const invalidateDetail = workspaceKeys.detail(workspaceId);
+  const invalidateAll = workspaceKeys.all;
 
   const [activeTab, setActiveTab] = useState<'people' | 'pending'>('people');
   const [search, setSearch] = useState('');
@@ -82,11 +87,11 @@ export function useMember(workspaceId: string) {
         return {
           ...old,
           workspaces: old.workspaces.map((w: any) => {
-            if (w._id !== workspaceId && w.id !== workspaceId) return w;
+            if (w.id !== workspaceId) return w;
             return {
               ...w,
               members: w.members?.map((m: any) =>
-                m.user?._id === userId || m.user?.id === userId ? { ...m, role: newRole } : m,
+                m.user?.id === userId ? { ...m, role: newRole } : m,
               ) ?? [],
             };
           }),
@@ -144,65 +149,15 @@ export function useMember(workspaceId: string) {
 
   const members: WorkspaceMemberItem[] = useMemo(() => {
     const raw = (membersQuery.data && membersQuery.data.length > 0 ? membersQuery.data : workspace?.members) ?? [];
-    return raw.map((m: any) => {
-      const u = m.user || {};
-      const auth = u.authProvider || u.provider || (u.email?.endsWith('@gmail.com') ? 'Google' : 'Email');
-      return {
-        id: m.id || m._id || u.id || u._id || '',
-        userId: u.id || u._id || m.userId || '',
-        role: (m.role || 'member').toLowerCase() as WorkspaceRole,
-        createdAt: m.createdAt || m.joinedAt || new Date().toISOString(),
-        authProvider: auth,
-        user: {
-          id: u.id || u._id || '',
-          _id: u._id || u.id || '',
-          name: u.name || u.fullName || u.email?.split('@')[0] || 'Unknown User',
-          email: u.email || '',
-          avatar: u.avatar || null,
-          displayName: u.displayName || u.name?.toLowerCase().replace(/\s+/g, '') || u.email?.split('@')[0] || '',
-          authProvider: auth,
-        },
-      };
-    });
+    return normalizeWorkspaceMembers(raw);
   }, [membersQuery.data, workspace?.members]);
 
   const filteredMembers = useMemo(() => {
-    const q = search.toLowerCase().trim();
-
-    const filtered = members.filter((m) => {
-      const matchesSearch =
-        !q ||
-        m.user.name.toLowerCase().includes(q) ||
-        (m.user.displayName || '').toLowerCase().includes(q) ||
-        m.user.email.toLowerCase().includes(q);
-
-      const matchesRole = roleFilter.length === 0 || roleFilter.includes(m.role);
-
-      return matchesSearch && matchesRole;
-    });
-
-    return [...filtered].sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'name':
-          cmp = a.user.name.localeCompare(b.user.name);
-          break;
-        case 'displayName':
-          cmp = (a.user.displayName || '').localeCompare(b.user.displayName || '');
-          break;
-        case 'email':
-          cmp = a.user.email.localeCompare(b.user.email);
-          break;
-        case 'role':
-          cmp = a.role.localeCompare(b.role);
-          break;
-        case 'auth':
-          cmp = (a.authProvider || '').localeCompare(b.authProvider || '');
-          break;
-        default:
-          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      return sortDirection === 'asc' ? cmp : -cmp;
+    return filterAndSortMembers(members, {
+      search,
+      roleFilter,
+      sortField,
+      sortDirection,
     });
   }, [members, search, roleFilter, sortField, sortDirection]);
 

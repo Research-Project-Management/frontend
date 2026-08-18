@@ -21,15 +21,14 @@ import {
   History,
   Inbox,
   Files,
-  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/shared/lib/utils';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';
 import { usePapers } from '@/features/workspaces/library/hooks/data/use-papers';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
-import { getLibraryEntityId } from '@/features/workspaces/library/utils/library.util';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,12 +55,14 @@ function buildTree(collections: Collection[]): TreeNode[] {
   const roots: TreeNode[] = [];
 
   for (const c of collections) {
-    map.set(c._id, { ...c, children: [] });
+    if (!c.id) continue;
+    map.set(c.id, { ...c, children: [] });
   }
 
   for (const node of map.values()) {
-    if (node.parent && map.has(node.parent)) {
-      map.get(node.parent)!.children.push(node);
+    const parentId = node.parentId || node.parent;
+    if (parentId && map.has(parentId)) {
+      map.get(parentId)!.children.push(node);
     } else {
       roots.push(node);
     }
@@ -76,13 +77,14 @@ function getValidMoveTargets(allCollections: Collection[], currentId: string): C
   while (added) {
     added = false;
     for (const c of allCollections) {
-      if (c.parent && descendantIds.has(c.parent) && !descendantIds.has(c._id)) {
-        descendantIds.add(c._id);
+      const parentId = c.parentId || c.parent;
+      if (parentId && descendantIds.has(parentId) && !descendantIds.has(c.id)) {
+        descendantIds.add(c.id);
         added = true;
       }
     }
   }
-  return allCollections.filter((c) => !descendantIds.has(c._id));
+  return allCollections.filter((c) => !descendantIds.has(c.id));
 }
 
 // ── Collection Node Component (Clean storage-matching style) ──────────────────
@@ -96,7 +98,6 @@ interface NodeProps {
   renamingId: string | null;
   renameValue: string;
   allCollections: Collection[];
-  collectionPaperCounts: Record<string, number>;
   isSearching: boolean;
   onStartRename: (id: string, name: string) => void;
   onSubmitRename: (id: string) => void;
@@ -117,7 +118,6 @@ function CollectionNode({
   renamingId,
   renameValue,
   allCollections,
-  collectionPaperCounts,
   isSearching,
   onStartRename,
   onSubmitRename,
@@ -128,16 +128,15 @@ function CollectionNode({
   onCopy,
   onCreateSub,
 }: NodeProps) {
-  const to = `${basePath}/${node._id}`;
-  const isActive = activeId === node._id;
+  const to = `${basePath}/${node.id}`;
+  const isActive = activeId === node.id;
   const hasChildren = node.children.length > 0;
   const [isOpen, setIsOpen] = useState(true);
 
   // Indentation: 12px per depth level
   const paddingLeft = depth * 12 + 8;
-  const validMoveTargets = getValidMoveTargets(allCollections, node._id);
+  const validMoveTargets = getValidMoveTargets(allCollections, node.id);
   const effectiveIsOpen = isSearching ? true : isOpen;
-  const count = collectionPaperCounts[node._id] ?? node.paperCount ?? 0;
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -151,21 +150,21 @@ function CollectionNode({
           />
         )}
 
-        {renamingId === node._id ? (
+        {renamingId === node.id ? (
           <div
-            className="relative z-10 flex h-8.5 w-full items-center pr-2"
+            className="relative z-10 flex h-8.5 w-full items-center pr-2 min-w-0"
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             <input
               autoFocus
               value={renameValue}
               onChange={(e) => onRenameValueChange(e.target.value)}
-              onBlur={() => onSubmitRename(node._id)}
+              onBlur={() => onSubmitRename(node.id)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') onSubmitRename(node._id);
+                if (e.key === 'Enter') onSubmitRename(node.id);
                 if (e.key === 'Escape') onSubmitRename('__cancel__');
               }}
-              className="h-7 w-full rounded border border-primary bg-background px-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
+              className="h-7 w-full min-w-0 rounded border border-primary bg-background px-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
             />
           </div>
         ) : (
@@ -213,18 +212,12 @@ function CollectionNode({
               >
                 {node.name}
               </span>
-
-              {count > 0 && (
-                <span className="text-[11px] font-mono tabular-nums text-muted-foreground mr-0.5">
-                  {count}
-                </span>
-              )}
             </Link>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted hover:text-foreground transition-all cursor-pointer outline-none"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted hover:text-foreground transition-opacity hover:transition-colors cursor-pointer outline-none"
                   onClick={(e) => e.stopPropagation()}
                   aria-label={`Options for ${node.name}`}
                 >
@@ -240,7 +233,7 @@ function CollectionNode({
                 className="w-56 p-1 rounded-lg shadow-xl z-50 text-xs"
               >
                 <DropdownMenuItem
-                  onClick={() => onCreateSub(node._id, node.name)}
+                  onClick={() => onCreateSub(node.id, node.name)}
                   className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                 >
                   <FolderPlus className="size-3.5 text-foreground" />
@@ -248,7 +241,7 @@ function CollectionNode({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onClick={() => onStartRename(node._id, node.name)}
+                  onClick={() => onStartRename(node.id, node.name)}
                   className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                 >
                   <Pencil className="size-3.5 text-foreground" />
@@ -262,7 +255,7 @@ function CollectionNode({
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-52 p-1 rounded-lg shadow-lg text-xs">
                     <DropdownMenuItem
-                      onClick={() => onMove(node._id, null)}
+                      onClick={() => onMove(node.id, null)}
                       className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                     >
                       <Library className="size-3.5 text-foreground" />
@@ -270,8 +263,8 @@ function CollectionNode({
                     </DropdownMenuItem>
                     {validMoveTargets.map((target) => (
                       <DropdownMenuItem
-                        key={target._id}
-                        onClick={() => onMove(node._id, target._id)}
+                        key={target.id}
+                        onClick={() => onMove(node.id, target.id)}
                         className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                       >
                         <Folder className="size-3.5 text-foreground" />
@@ -288,7 +281,7 @@ function CollectionNode({
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-52 p-1 rounded-lg shadow-lg text-xs">
                     <DropdownMenuItem
-                      onClick={() => onCopy(node._id, null)}
+                      onClick={() => onCopy(node.id, null)}
                       className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                     >
                       <Library className="size-3.5 text-foreground" />
@@ -296,8 +289,8 @@ function CollectionNode({
                     </DropdownMenuItem>
                     {validMoveTargets.map((target) => (
                       <DropdownMenuItem
-                        key={target._id}
-                        onClick={() => onCopy(node._id, target._id)}
+                        key={target.id}
+                        onClick={() => onCopy(node.id, target.id)}
                         className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
                       >
                         <Folder className="size-3.5 text-foreground" />
@@ -309,7 +302,7 @@ function CollectionNode({
 
                 <DropdownMenuItem
                   className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer"
-                  onClick={() => onDelete(node._id)}
+                  onClick={() => onDelete(node.id)}
                 >
                   <FolderMinus className="size-3.5 text-foreground" />
                   <span>Delete Collection...</span>
@@ -317,7 +310,7 @@ function CollectionNode({
 
                 <DropdownMenuItem
                   className="gap-2 px-2 py-1.5 text-xs whitespace-nowrap cursor-pointer text-foreground"
-                  onClick={() => onDeleteWithItems(node._id)}
+                  onClick={() => onDeleteWithItems(node.id)}
                 >
                   <Trash2 className="size-3.5 text-foreground" />
                   <span>Delete Collection & Items</span>
@@ -332,7 +325,7 @@ function CollectionNode({
         <div className="flex flex-col gap-0.5 my-0.5">
           {node.children.map((child) => (
             <CollectionNode
-              key={child._id}
+              key={child.id}
               node={child}
               depth={depth + 1}
               basePath={basePath}
@@ -341,7 +334,6 @@ function CollectionNode({
               renamingId={renamingId}
               renameValue={renameValue}
               allCollections={allCollections}
-              collectionPaperCounts={collectionPaperCounts}
               isSearching={isSearching}
               onStartRename={onStartRename}
               onSubmitRename={onSubmitRename}
@@ -372,7 +364,7 @@ export default function LibrarySideBar() {
   const id = useId();
 
   const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
+  const workspaceId = workspace?.id || workspaceUrl || '';
 
   const collectionService = useCollections(workspaceId);
   const paperService = usePapers({ workspaceId });
@@ -465,78 +457,20 @@ export default function LibrarySideBar() {
   const collections = collectionService.state.collections ?? [];
   const papers = paperService.state.allPapers ?? [];
 
-  // Computed counts
-  const {
-    allTags,
-    tagCounts,
-    totalPapersCount,
-    starredCount,
-    recentReadCount,
-    unfiledCount,
-    duplicatesCount,
-    trashCount,
-    collectionPaperCounts,
-  } = useMemo(() => {
+  // Extract tags from papers
+  const { allTags, tagCounts } = useMemo(() => {
     const counts: Record<string, number> = {};
-    const colCounts: Record<string, number> = {};
-    let starred = 0;
-    let recentRead = 0;
-    let unfiled = 0;
-    let trash = 0;
-    let total = 0;
-
-    const doiMap = new Map<string, string[]>();
-    const titleMap = new Map<string, string[]>();
-
     for (const p of papers) {
-      if (p.deletedAt) {
-        trash++;
-        continue;
-      }
-
-      total++;
-      if (p.labels?.includes('starred') || p.labels?.includes('favorite')) starred++;
-      if (p.accessedAt) recentRead++;
-      if (!p.collectionId) {
-        unfiled++;
-      } else {
-        colCounts[p.collectionId] = (colCounts[p.collectionId] || 0) + 1;
-      }
-
-      if (p.doi && p.doi.trim()) {
-        const d = p.doi.trim().toLowerCase();
-        doiMap.set(d, [...(doiMap.get(d) || []), p._id]);
-      }
-      if (p.title && p.title.trim()) {
-        const t = p.title.trim().toLowerCase();
-        titleMap.set(t, [...(titleMap.get(t) || []), p._id]);
-      }
-
+      if (p.deletedAt) continue;
       if (p.labels) {
         for (const l of p.labels) {
           counts[l] = (counts[l] || 0) + 1;
         }
       }
     }
-
-    const dupIds = new Set<string>();
-    for (const ids of doiMap.values()) {
-      if (ids.length > 1) ids.forEach((id) => dupIds.add(id));
-    }
-    for (const ids of titleMap.values()) {
-      if (ids.length > 1) ids.forEach((id) => dupIds.add(id));
-    }
-
     return {
       allTags: Object.keys(counts).sort(),
       tagCounts: counts,
-      totalPapersCount: total,
-      starredCount: starred,
-      recentReadCount: recentRead,
-      unfiledCount: unfiled,
-      duplicatesCount: dupIds.size,
-      trashCount: trash,
-      collectionPaperCounts: colCounts,
     };
   }, [papers]);
 
@@ -548,17 +482,18 @@ export default function LibrarySideBar() {
     const matchingIds = new Set<string>();
     for (const c of collections) {
       if (c.name.toLowerCase().includes(q)) {
-        matchingIds.add(c._id);
+        matchingIds.add(c.id);
         let curr = c;
-        while (curr.parent) {
-          matchingIds.add(curr.parent);
-          const parentObj = collections.find((p) => p._id === curr.parent);
+        const currParentId = curr.parentId || curr.parent;
+        while (currParentId) {
+          matchingIds.add(currParentId);
+          const parentObj = collections.find((p) => p.id === currParentId);
           if (!parentObj) break;
           curr = parentObj;
         }
       }
     }
-    return collections.filter((c) => matchingIds.has(c._id));
+    return collections.filter((c) => matchingIds.has(c.id));
   }, [collections, searchQuery]);
 
   const tree = buildTree(filteredCollections);
@@ -614,7 +549,7 @@ export default function LibrarySideBar() {
   };
 
   const handleCopy = (collectionId: string, targetParentId: string | null) => {
-    const target = collections.find((c) => c._id === collectionId);
+    const target = collections.find((c) => c.id === collectionId);
     if (!target) return;
     collectionService.actions.create({
       name: `${target.name} (Copy)`,
@@ -640,7 +575,6 @@ export default function LibrarySideBar() {
     renamingId,
     renameValue,
     allCollections: collections,
-    collectionPaperCounts,
     isSearching: searchQuery.trim().length > 0,
     onStartRename: startRename,
     onSubmitRename: submitRename,
@@ -662,91 +596,98 @@ export default function LibrarySideBar() {
       }}
       className="relative h-full overflow-x-hidden border-r border-border/50 bg-transparent p-2 py-4 flex flex-col select-none shrink-0"
     >
-      {/* Header: Exactly matching Storage Sidebar */}
-      <div className="mb-4 px-2 flex items-center justify-between font-semibold text-base tracking-tight text-foreground select-none">
-        <span>Library</span>
-
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Search collections input */}
-          <div
-            className={cn(
-              "relative flex items-center transition-all duration-300 ease-in-out h-7 rounded-lg overflow-hidden group",
-              isSearchExpanded || searchQuery
-                ? "w-32 border border-border/50 bg-background"
-                : "w-7 hover:bg-secondary/80 cursor-pointer"
-            )}
-            onClick={expandSearch}
-          >
-            <Search
-              className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
-                isSearchExpanded || searchQuery ? "left-2 translate-x-0" : "left-1/2 -translate-x-1/2"
-              )}
-            />
+      {/* Header: Matching Projects Sidebar with expandable search */}
+      <div className="mb-3 px-2 h-8 flex items-center justify-between font-semibold text-base tracking-tight text-foreground select-none">
+        {isSearchExpanded || searchQuery ? (
+          <div className="flex items-center w-full h-8 rounded-md border border-border/60 bg-background/80 focus-within:bg-background focus-within:border-primary/50 transition-colors px-2">
+            <Search className="size-3.5 text-muted-foreground shrink-0 pointer-events-none mr-2" />
             <input
               ref={searchInputRef}
-              placeholder="Search..."
+              autoFocus
+              placeholder="Search collections..."
               aria-label="Search collections"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onBlur={collapseSearch}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   setSearchQuery('');
                   setIsSearchExpanded(false);
                 }
               }}
-              className={cn(
-                "h-full text-xs py-0 leading-none border-none bg-transparent focus:outline-none focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-6 pr-6",
-                isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
-              )}
-              autoFocus={isSearchExpanded}
+              onBlur={() => {
+                if (!searchQuery) {
+                  setIsSearchExpanded(false);
+                }
+              }}
+              className="h-full flex-1 min-w-0 text-xs bg-transparent focus:outline-none placeholder:text-muted-foreground/60 border-none p-0"
             />
-            {searchQuery && (
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleClearSearch}
-                className="absolute right-1.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Clear search"
-              >
-                <Plus className="size-3 rotate-45 text-foreground" />
-              </button>
-            )}
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClearSearch}
+              className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded shrink-0 ml-1 transition-colors"
+              aria-label="Close search"
+              title="Close search"
+            >
+              <Plus className="size-3.5 rotate-45" />
+            </button>
           </div>
+        ) : (
+          <>
+            <span className="truncate min-w-0">Library</span>
 
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={openCreateRoot}
-                  className="flex size-7 items-center justify-center rounded-md text-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0 cursor-pointer outline-none"
-                  aria-label="New Collection"
-                >
-                  <FolderPlus className="size-4 text-foreground" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
-                New collection
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <TooltipProvider delayDuration={150}>
+                {/* Search collections toggle button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={expandSearch}
+                      className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none"
+                      aria-label="Search collections"
+                    >
+                      <Search className="size-4 text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6}>
+                    Search collections
+                  </TooltipContent>
+                </Tooltip>
 
-            {/* Toggle / Collapse Sidebar Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={toggle}
-                  className="flex size-7 items-center justify-center rounded-md text-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0 cursor-pointer outline-none"
-                  aria-label="Collapse sidebar"
-                >
-                  <PanelLeftClose className="size-4 text-foreground" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
-                Collapse sidebar
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+                {/* New collection button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={openCreateRoot}
+                      className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none"
+                      aria-label="New collection"
+                    >
+                      <FolderPlus className="size-4.5 text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6}>
+                    New collection
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Toggle / Collapse Sidebar Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggle}
+                      aria-label="Toggle sidebar"
+                      className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none"
+                    >
+                      <PanelLeft className="size-4.5 text-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={6}>
+                    Toggle sidebar
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Navigation Links: Exactly matching Storage items h-10 gap-2.5 px-2.5 text-sm */}
@@ -761,7 +702,8 @@ export default function LibrarySideBar() {
               href={basePath}
               className={cn(
                 'group/item relative flex h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
-                isLibraryActive ? 'font-semibold' : 'font-medium'
+                isLibraryActive ? 'font-semibold' : 'font-medium',
+                tree.length > 0 && 'pr-8'
               )}
             >
               {isLibraryActive && (
@@ -776,12 +718,6 @@ export default function LibrarySideBar() {
               <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
                 My Library
               </span>
-
-              {totalPapersCount > 0 && (
-                <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
-                  {totalPapersCount}
-                </span>
-              )}
             </Link>
 
             {tree.length > 0 && (
@@ -809,7 +745,7 @@ export default function LibrarySideBar() {
             <div className="flex flex-col gap-0.5 my-0.5">
               {tree.map((node) => (
                 <CollectionNode
-                  key={node._id}
+                  key={node.id}
                   node={node}
                   depth={0}
                   {...sharedNodeProps}
@@ -845,11 +781,6 @@ export default function LibrarySideBar() {
             <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
               Recently Read
             </span>
-            {recentReadCount > 0 && (
-              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
-                {recentReadCount}
-              </span>
-            )}
           </Link>
 
           {/* 3. Favorites */}
@@ -872,11 +803,6 @@ export default function LibrarySideBar() {
             <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
               Favorites
             </span>
-            {starredCount > 0 && (
-              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
-                {starredCount}
-              </span>
-            )}
           </Link>
 
           {/* 4. Duplicate Items */}
@@ -899,11 +825,6 @@ export default function LibrarySideBar() {
             <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
               Duplicate Items
             </span>
-            {duplicatesCount > 0 && (
-              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
-                {duplicatesCount}
-              </span>
-            )}
           </Link>
 
           {/* 5. Unfiled Items */}
@@ -926,11 +847,6 @@ export default function LibrarySideBar() {
             <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
               Unfiled Items
             </span>
-            {unfiledCount > 0 && (
-              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
-                {unfiledCount}
-              </span>
-            )}
           </Link>
 
           {/* 6. Trash */}
@@ -953,11 +869,6 @@ export default function LibrarySideBar() {
             <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
               Trash
             </span>
-            {trashCount > 0 && (
-              <span className="relative z-10 text-xs font-mono tabular-nums text-muted-foreground">
-                {trashCount}
-              </span>
-            )}
           </Link>
         </nav>
       </LayoutGroup>

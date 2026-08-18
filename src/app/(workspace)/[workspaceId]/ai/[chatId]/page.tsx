@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ChatPage } from '@/features/workspaces/ai';
+import ChatPage from '@/features/workspaces/ai/pages/chat-page';
 
 export const metadata: Metadata = { title: 'AI Chat · Flux' };
 

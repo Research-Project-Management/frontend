@@ -125,7 +125,7 @@ export function StickiesWidget() {
             {preview.map((note: any) => (
               <MiniCard
                 workspaceUrl={workspaceId || ''}
-                key={note._id}
+                key={note.id}
                 note={note}
               />
             ))}

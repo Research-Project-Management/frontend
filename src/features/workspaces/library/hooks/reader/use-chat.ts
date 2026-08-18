@@ -69,20 +69,23 @@ export function useChat({
             (s: ChatSession) => s.documentIds?.length === 1 && s.documentIds[0] === ragDocId,
           );
           if (matching) {
-            setChatId(matching._id);
-            return getChatSession(matching._id).then((detailRes) => {
-              if (detailRes.success && detailRes.data) {
-                const historyMsgs = detailRes.data.messages ?? [];
-                setMessages(
-                  historyMsgs.map(({ role, content, sources, widgets }: ChatMessage) => ({
-                    role,
-                    content,
-                    sources,
-                    widgets,
-                  })),
-                );
-              }
-            });
+            const mId = matching.id;
+            if (mId) {
+              setChatId(mId);
+              return getChatSession(mId).then((detailRes) => {
+                if (detailRes.success && detailRes.data) {
+                  const historyMsgs = detailRes.data.messages ?? [];
+                  setMessages(
+                    historyMsgs.map(({ role, content, sources, widgets }: ChatMessage) => ({
+                      role,
+                      content,
+                      sources,
+                      widgets,
+                    })),
+                  );
+                }
+              });
+            }
           }
         }
         setChatId(null);
@@ -172,8 +175,8 @@ export function useChat({
               messages: [userMsg, assistantMsg],
               documentIds: [ragDocId],
             });
-            if (session.success) {
-              setChatId(session.data._id);
+            if (session.success && session.data) {
+              setChatId(session.data.id || null);
             }
           }
         } catch (saveErr) {

@@ -75,7 +75,7 @@ export const chatMessageSchema = z.object({
 });
 
 export const chatSessionSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   title: z.string(),
   projectId: z.string().nullable(),
   messageCount: z.number(),
@@ -87,7 +87,7 @@ export const chatSessionSchema = z.object({
 export const chatSessionDetailSchema = chatSessionSchema.extend({
   messages: z.array(
     chatMessageSchema.extend({
-      _id: z.string(),
+      id: z.string(),
       createdAt: z.string(),
     }),
   ),

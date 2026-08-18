@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { Button, Textarea } from '@/shared/components/ui';
-import { normalizeNotes, getLibraryEntityId, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
+import { normalizeNotes, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface NotesSectionProps {
@@ -34,7 +34,7 @@ export default function NotesSection({
   onDeleteNote,
   onUpdateNote,
 }: NotesSectionProps) {
-  const paperId = getLibraryEntityId(paper);
+  const paperId = paper.id;
   const [isAdding, setIsAdding] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
@@ -91,7 +91,7 @@ export default function NotesSection({
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium cursor-pointer"
+            className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer"
           >
             <Plus className="size-3 text-foreground" />
             <span>Add Note</span>
@@ -120,7 +120,7 @@ export default function NotesSection({
             className="text-xs resize-none w-full max-h-48 overflow-y-auto"
           />
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[10px] text-muted-foreground/60">Press ⌘/Ctrl+Enter to save</span>
+            <span className="text-xs text-muted-foreground/60">Press ⌘/Ctrl+Enter to save</span>
             <div className="flex gap-1.5">
               <Button
                 size="sm"
@@ -200,7 +200,7 @@ export default function NotesSection({
                   <p className="text-foreground whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere] pr-8">
                     {n.content}
                   </p>
-                  <div className="flex items-center justify-between pt-2 mt-1 border-t border-border/20 text-[10px] text-muted-foreground">
+                  <div className="flex items-center justify-between pt-2 mt-1 border-t border-border/20 text-xs font-mono text-muted-foreground">
                     <span>{formatNoteDate(n.createdAt || n.updatedAt)}</span>
                     <div className="flex items-center gap-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
                       <button

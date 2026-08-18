@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
-import { API_BASE_URL } from "@/shared/constants";
+import { API_BASE_URL } from '@/config/env';
 import type { Collection, Paper, PaperAttachment } from "@/features/workspaces/library/types/library.types";
 
 export const paperKeys = {

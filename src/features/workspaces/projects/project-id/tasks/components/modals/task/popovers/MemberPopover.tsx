@@ -87,7 +87,7 @@ export function MemberPopover({
             </h4>
             <div className="space-y-1">
               {filteredMembers.map((m: any) => {
-                const uId = m.user?._id || m.userId || m._id;
+                const uId = m.user?.id || m.userId || m.id;
                 const uName = m.user?.name || m.name || 'Member';
                 const uAvatar = m.user?.avatar || m.avatar;
                 const fallback = uName.charAt(0).toUpperCase();

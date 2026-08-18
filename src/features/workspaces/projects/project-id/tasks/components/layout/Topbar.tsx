@@ -54,10 +54,10 @@ export interface TopbarProps {
   // Cycle support
   cycleId?: string;
   currentCycle?: {
-    _id: string;
+    id: string;
     name: string;
   };
-  cycles?: Array<{ _id: string; name: string }>;
+  cycles?: Array<{ id: string; name: string }>;
   // View controls
   viewMode: ViewMode;
   onViewChange: (mode: ViewMode) => void;
@@ -195,11 +195,11 @@ export function Topbar({
                 <div className="max-h-48 overflow-y-auto">
                   {filteredCycles.map((c) => (
                     <DropdownMenuItem
-                      key={c._id}
-                      onClick={() => handleCycleSelect(c._id)}
+                      key={c.id}
+                      onClick={() => handleCycleSelect(c.id)}
                       className={cn(
                         'text-xs cursor-pointer',
-                        c._id === cycleId && 'bg-primary/10 text-primary font-medium',
+                        c.id === cycleId && 'bg-primary/10 text-primary font-medium',
                       )}
                     >
                       {c.name}

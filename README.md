@@ -46,11 +46,10 @@ A comprehensive research project management platform with AI integration, helpin
 
 ### Frontend
 
-- **React 19** - Latest React with React Compiler
-- **React Router 7** - Routing and SSR
-- **TypeScript** - Type safety
-- **Vite 7** - Lightning-fast build tool
-- **TailwindCSS 4** - Styling framework
+- **Next.js 16** - App Router with Turbopack
+- **React 19** - Latest React with React Server Components support
+- **TypeScript** - Strict type safety
+- **TailwindCSS 4** - Modern utility-first CSS framework
 
 ### UI Components
 
@@ -60,17 +59,13 @@ A comprehensive research project management platform with AI integration, helpin
 
 ### State & Data Management
 
-- **TanStack Query v5** - Server state management
-- **Zustand** - Client state management
+- **TanStack Query v5** - Server state management & caching
+- **Zustand** - Lightweight client state management
 
 ### Rich Text & Code Editing
 
-- **TipTap** - Rich text editor with task lists
-- **Monaco Editor** - VS Code editor in browser
-
-### Authentication
-
-- **@react-oauth/google** - Google OAuth integration
+- **TipTap** - Rich text editor with task lists & math support
+- **Monaco Editor** - VS Code editor in browser with LaTeX support
 
 ### Additional Features
 
@@ -85,7 +80,7 @@ A comprehensive research project management platform with AI integration, helpin
 ### System Requirements
 
 - Node.js 18+ or Bun
-- pnpm (recommended) or npm
+- pnpm or npm
 
 ### Installation
 
@@ -93,7 +88,7 @@ Clone the repository:
 
 ```bash
 git clone <repository-url>
-cd Flux
+cd research-management/frontend
 ```
 
 Install dependencies:
@@ -106,7 +101,7 @@ npm install
 
 ### Development
 
-Start the development server:
+Start the development server (runs at `http://localhost:2915`):
 
 ```bash
 pnpm dev
@@ -114,7 +109,7 @@ pnpm dev
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173`
+The application will be available at `http://localhost:2915`
 
 ### Production Build
 
@@ -131,10 +126,10 @@ Run the production build:
 ```bash
 pnpm start
 # or
-npm start
+npm run start
 ```
 
-Server will run at `http://localhost:2916`
+Server will run at `http://localhost:2915`
 
 ### Type Checking
 

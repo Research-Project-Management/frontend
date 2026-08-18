@@ -43,11 +43,11 @@ function FilterCheckbox({ checked }: { checked: boolean }) {
       className={cn(
         'size-3.5 rounded-[4px] border flex items-center justify-center transition-colors shrink-0',
         checked
-          ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-600 dark:border-blue-600'
-          : 'border-muted-foreground/40 bg-background/50 hover:border-muted-foreground/70'
+          ? 'bg-primary border-primary text-primary-foreground'
+          : 'border-border bg-background hover:border-border/80'
       )}
     >
-      {checked && <Check className="size-2.5 stroke-[3] text-white" />}
+      {checked && <Check className="size-2.5 stroke-[3] text-primary-foreground" />}
     </div>
   );
 }
@@ -82,10 +82,10 @@ export function ProjectFilterPopover({
       );
       const user =
         leadMember?.user ||
-        (p.createdBy?._id || (p.createdBy as any)?.id ? p.createdBy : null);
+        (p.createdBy?.id ? p.createdBy : null);
 
       if (user) {
-        const id = String(user._id || (user as any).id || '');
+        const id = String(user.id || '');
         if (id && !leadMap.has(id)) {
           leadMap.set(id, {
             id,
@@ -116,7 +116,7 @@ export function ProjectFilterPopover({
         for (const m of p.members) {
           const user = (m as any).user;
           if (user) {
-            const id = String(user._id || user.id || '');
+            const id = String(user.id || '');
             if (id && !memberMap.has(id)) {
               memberMap.set(id, {
                 id,
@@ -127,8 +127,8 @@ export function ProjectFilterPopover({
           }
         }
       }
-      if (p.createdBy?._id || (p.createdBy as any)?.id) {
-        const id = String(p.createdBy?._id || (p.createdBy as any)?.id);
+      if (p.createdBy?.id) {
+        const id = String(p.createdBy.id);
         if (!memberMap.has(id)) {
           memberMap.set(id, {
             id,

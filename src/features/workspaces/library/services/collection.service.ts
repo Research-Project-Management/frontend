@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/shared/lib/api";
 import type {
   Collection,
   CreateCollectionDTO,
@@ -30,8 +30,22 @@ export const CollectionService = {
   update: (workspaceId: string, collectionId: string, data: UpdateCollectionDTO) =>
     apiPut<{ collection: Collection }>(`/api/library/${workspaceId}/collections/${collectionId}`, data),
 
-  delete: (workspaceId: string, collectionId: string) =>
-    apiDelete(`/api/library/${workspaceId}/collections/${collectionId}`),
+  delete: (workspaceId: string, collectionId: string, strategy?: "cascade" | "move-to-parent" | "orphan") =>
+    apiDelete(`/api/library/${workspaceId}/collections/${collectionId}${strategy ? `?strategy=${strategy}` : ""}`),
+
+  movePapers: (workspaceId: string, collectionId: string, paperIds: string[]) =>
+    apiPost<{ message: string; count: number; targetCollectionId: string | null }>(
+      `/api/library/${workspaceId}/collections/${collectionId}/move-papers`,
+      { paperIds }
+    ),
+
+  reorder: (workspaceId: string, collections: Array<{ id: string; parentId?: string | null }>) =>
+    apiPatch<{ collections: Collection[] }>(`/api/library/${workspaceId}/collections/reorder`, { collections }),
+
+  exportBibtex: (workspaceId: string, collectionId: string) =>
+    apiGet<{ bibtex: string; total: number; filename: string }>(
+      `/api/library/references/${workspaceId}/bibtex?collectionId=${collectionId}`
+    ),
 };
 
 // ── Backwards-compatible Function Aliases ─────────────────────────────────────
@@ -40,3 +54,6 @@ export const getCollections = CollectionService.getAll;
 export const createCollection = CollectionService.create;
 export const updateCollection = CollectionService.update;
 export const deleteCollection = CollectionService.delete;
+export const movePapersToCollection = CollectionService.movePapers;
+export const reorderCollections = CollectionService.reorder;
+

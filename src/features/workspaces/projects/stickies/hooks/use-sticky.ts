@@ -1,16 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { queryKeys } from "@/shared/constants/query-keys";
+import { stickyKeys } from "../constants/sticky.keys";
 import { useWorkspace } from "@/features/workspaces/shell/hooks/use-workspace";
 import { getStickies, createSticky, updateSticky, deleteSticky, reorderStickies } from "../services/sticky.service";
 import type { Sticky } from "../types/sticky.types";
 
 export const useSticky = (workspaceId: string, search?: string, projectId?: string, options?: { enabled?: boolean }) => {
   const { workspace } = useWorkspace(workspaceId);
-  const effectiveWorkspaceId = (workspace as any)?.id || (workspace as any)?._id || workspaceId;
+  const effectiveWorkspaceId = workspace?.id || workspaceId;
   const queryClient = useQueryClient();
-  const fullQueryKey = queryKeys.stickies.workspaceList(effectiveWorkspaceId, search, projectId);
-  const invalidateKey = queryKeys.stickies.all;
+  const fullQueryKey = stickyKeys.workspaceList(effectiveWorkspaceId, search, projectId);
+  const invalidateKey = stickyKeys.all;
 
   const query = useQuery({
     queryKey: fullQueryKey,
@@ -50,7 +50,7 @@ export const useSticky = (workspaceId: string, search?: string, projectId?: stri
       queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
         if (!old) return old;
         return old.map((sticky) =>
-          sticky._id === variables.stickyId || sticky.id === variables.stickyId
+          sticky.id === variables.stickyId
             ? { ...sticky, ...variables.updates }
             : sticky
         );
@@ -73,7 +73,7 @@ export const useSticky = (workspaceId: string, search?: string, projectId?: stri
       const previous = queryClient.getQueryData(fullQueryKey);
       queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
         if (!old) return old;
-        return old.filter((sticky) => sticky._id !== stickyId && sticky.id !== stickyId);
+        return old.filter((sticky) => sticky.id !== stickyId);
       });
       return { previous };
     },
@@ -96,7 +96,7 @@ export const useSticky = (workspaceId: string, search?: string, projectId?: stri
       const previous = queryClient.getQueryData(fullQueryKey);
       queryClient.setQueryData(fullQueryKey, (old: Sticky[] | undefined) => {
         if (!old) return old;
-        const mapped = new Map(old.map((sticky) => [sticky._id || sticky.id, sticky]));
+        const mapped = new Map(old.map((sticky) => [sticky.id, sticky]));
         return stickyIds.map((id: string) => mapped.get(id)).filter(Boolean) as Sticky[];
       });
       return { previous };

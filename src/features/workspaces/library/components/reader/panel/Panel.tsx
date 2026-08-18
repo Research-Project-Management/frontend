@@ -21,8 +21,8 @@ import NotesPanel from './NotesPanel';
 
 const PANEL_ICONS: Record<ReaderPanel, React.ReactNode> = {
   ai: <img src="/Chat.svg" alt="AI" className="size-4" />,
-  details: <Info className="size-4 text-primary" />,
-  notes: <StickyNote className="size-4 text-primary" />,
+  details: <Info className="size-4 text-foreground" />,
+  notes: <StickyNote className="size-4 text-foreground" />,
 };
 
 const PANEL_TITLES: Record<ReaderPanel, string> = {

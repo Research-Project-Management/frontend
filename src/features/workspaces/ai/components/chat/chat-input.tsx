@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Textarea, Switch } from '@/shared/components/ui';
+import { useClickOutside } from '@/shared/hooks/use-click-outside';
 import {
   Popover,
   PopoverContent,
@@ -10,7 +11,7 @@ import {
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from 'lucide-react';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useParams } from 'next/navigation';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { AGENT_CONFIGS } from '../../types/chat.types';
 import type { AgentId } from '../../types/chat.types';
 
@@ -146,15 +147,9 @@ export function ChatInput({
     }
   }, [initialProject]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowMentionDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  useClickOutside(dropdownRef, () => setShowMentionDropdown(false), {
+    enabled: showMentionDropdown,
+  });
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -265,7 +260,7 @@ export function ChatInput({
       )}
 
       {/* Main chat input container */}
-      <div className="relative rounded-2xl border border-border/60 bg-muted/40 dark:bg-zinc-900/50 shadow-sm focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 focus-within:bg-background transition-all">
+      <div className="relative rounded-2xl border border-border/60 bg-muted/40 shadow-2xs focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 focus-within:bg-background transition-all">
         {/* Selected agent pill */}
         {selectedAgentConfig && (
           <div className="flex items-center gap-1.5 px-4 pt-3 pb-1">
@@ -310,14 +305,14 @@ export function ChatInput({
                         selectedProject === 'workspace' || !selectedProject
                           ? '#a1a1aa'
                           : projDot(
-                              (projects || []).findIndex((p: any) => (p._id || p.id) === selectedProject),
+                              (projects || []).findIndex((p: any) => p.id === selectedProject),
                             ),
                     }}
                   />
                   <span className="max-w-[120px] truncate">
                     {selectedProject === 'workspace' || !selectedProject
                       ? workspace?.name || 'Workspace'
-                      : (projects || []).find((p: any) => (p._id || p.id) === selectedProject)?.name || 'Project'}
+                      : (projects || []).find((p: any) => p.id === selectedProject)?.name || 'Project'}
                   </span>
                   <ChevronDown className="size-3 opacity-60" />
                 </button>
@@ -335,16 +330,16 @@ export function ChatInput({
                       : 'hover:bg-accent/50 text-foreground'
                   }`}
                 >
-                  <span className="size-2 rounded-full bg-zinc-400" />
+                  <span className="size-2 rounded-full bg-muted-foreground/60" />
                   <span className="truncate">{workspace?.name || 'Whole Workspace'}</span>
                 </button>
                 {(projects || []).map((proj: any, idx: number) => (
                   <button
-                    key={proj._id || proj.id}
+                    key={proj.id}
                     type="button"
-                    onClick={() => setSelectedProject(proj._id)}
+                    onClick={() => setSelectedProject(proj.id)}
                     className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left ${
-                      selectedProject === proj._id
+                      selectedProject === proj.id
                         ? 'bg-accent text-accent-foreground font-medium'
                         : 'hover:bg-accent/50 text-foreground'
                     }`}

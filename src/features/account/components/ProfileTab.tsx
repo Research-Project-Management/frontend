@@ -1,8 +1,8 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { useAuth } from '@/features/auth';
-import { useUpload } from '@/shared/hooks';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useUpload } from '@/shared/hooks/use-upload';
 import { useUpdateProfile } from '../hooks/use-profile';
 import { toast } from 'sonner';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';

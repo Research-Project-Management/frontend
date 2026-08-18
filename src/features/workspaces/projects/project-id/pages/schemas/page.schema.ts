@@ -3,8 +3,7 @@ import { z } from 'zod';
 // ── Page schema (for list / grid views in project scope) ────────────────────
 
 export const pageSchema = z.object({
-  id: z.string().optional(),
-  _id: z.string().optional(),
+  id: z.string(),
   title: z.string(),
   content: z.any().optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
@@ -19,7 +18,6 @@ export const pageSchema = z.object({
   author: z
     .object({
       id: z.string().optional(),
-      _id: z.string().optional(),
       name: z.string().optional(),
       email: z.string().optional(),
       avatar: z.string().optional(),

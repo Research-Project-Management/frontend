@@ -78,7 +78,7 @@ export default function Status({
               </span>
             )}
             {parsedLog.errors.length === 0 && parsedLog.warnings.length === 0 && (
-              <span className="flex items-center gap-0.5 text-zinc-500">
+              <span className="flex items-center gap-0.5 text-muted-foreground">
                 <Terminal className="size-3" />
                 Log
               </span>
@@ -88,7 +88,7 @@ export default function Status({
       </div>
       <div className="flex items-center gap-2">
         {pdfUrl && compileStatus !== 'compiling' && (
-          <span className="text-green-600">PDF ready</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">PDF ready</span>
         )}
       </div>
     </div>

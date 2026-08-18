@@ -182,7 +182,7 @@ export function YourWorkTaskList({
                   )}
                 >
                   {group.items.map((task) => {
-                    const taskId = task.id || task._id;
+                    const taskId = task.id;
                     const projectInfo = getTaskProject(task, taskProjectMap);
                     const isOverdue =
                       task.dueDate &&

@@ -129,7 +129,7 @@ export function usePreview(item: StorageItem | null) {
     }
 
     return () => { signal.cancelled = true; };
-  }, [item?._id, item?.url, renderPdfPreview, processNewPdf]);
+  }, [item?.id, item?.url, renderPdfPreview, processNewPdf]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -178,7 +178,7 @@ export function usePreview(item: StorageItem | null) {
     if (!item || !metadata) return;
     try {
       const finalMetadata = { ...metadata, crossrefEnriched: crossrefStatus === 'found' };
-      await saveMetadataMutation.mutateAsync({ fileId: item._id, metaData: finalMetadata });
+      await saveMetadataMutation.mutateAsync({ fileId: item.id, metaData: finalMetadata });
       setSaved(true);
       toast.success('Metadata saved successfully');
     } catch (error) {

@@ -19,7 +19,7 @@ import FilesSection from './sections/FilesSection';
 import TagsSection from './sections/TagsSection';
 import { usePapers } from '../../hooks/data/use-papers';
 import { useLibrarySidebarStore } from '../../store/sidebar.store';
-import { getLibraryEntityId, normalizeNotes } from '../../utils/library.util';
+import { normalizeNotes } from '../../utils/library.util';
 import { cn } from '@/shared/lib/utils';
 import type { Paper, Collection } from '../../types/library.types';
 
@@ -97,7 +97,7 @@ export default function InspectorPanel({
 
   if (!paper) return null;
 
-  const paperId = getLibraryEntityId(paper);
+  const paperId = paper.id;
 
   const handleUpdatePaper = (data: Partial<Paper>) => {
     if (!paperId) return;
@@ -186,7 +186,7 @@ export default function InspectorPanel({
         minWidth: '320px',
         maxWidth: '680px',
       }}
-      className="relative h-full border-l border-border/50 bg-background flex flex-col shrink-0 select-none overflow-hidden"
+      className="relative h-full border-l border-border/50 bg-transparent flex flex-col shrink-0 select-none overflow-hidden"
     >
       {/* Resizable drag handle on left edge */}
       <div
@@ -198,10 +198,10 @@ export default function InspectorPanel({
       />
 
       {/* Header bar */}
-      <div className="h-14 px-4 border-b border-border/50 flex items-center justify-between shrink-0 bg-background/80 backdrop-blur-md">
+      <header className="h-14 px-4 border-b border-border/50 flex items-center justify-between shrink-0 bg-transparent">
         <div className="flex items-center gap-2 min-w-0 pr-2">
-          <FileText className="size-4 text-primary shrink-0" />
-          <span className="text-xs font-semibold text-foreground truncate" title={paper.title}>
+          <FileText className="size-4 text-foreground shrink-0" />
+          <span className="text-sm font-semibold text-foreground truncate" title={paper.title}>
             {paper.title || 'Untitled Reference'}
           </span>
         </div>
@@ -227,10 +227,10 @@ export default function InspectorPanel({
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Tabs navigation bar */}
-      <div className="flex items-center border-b border-border/30 bg-muted/20 px-2 py-1 gap-1 shrink-0 overflow-x-auto">
+      <nav aria-label="Inspector tabs" className="flex items-center border-b border-border/50 bg-transparent px-2.5 py-1.5 gap-1 shrink-0 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -248,10 +248,10 @@ export default function InspectorPanel({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+                'relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
                 isActive
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
-                  : 'text-foreground/70 hover:text-foreground hover:bg-muted/40'
+                  ? 'bg-secondary text-foreground font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               )}
             >
               <Icon className="size-3.5 text-foreground" />
@@ -269,7 +269,7 @@ export default function InspectorPanel({
             </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* Tab Contents Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

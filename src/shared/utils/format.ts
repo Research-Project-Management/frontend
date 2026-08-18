@@ -58,46 +58,7 @@ export const formatBytes = (bytes: number, decimals = 1): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${units[i]}`;
 };
 
-// ─── Number ───────────────────────────────────────────────────────────────────
-
-/**
- * Compact number formatting.
- * @example formatNumber(1500000) → "1.5M"
- */
-export const formatNumber = (value: number, locale = 'en-US'): string => {
-  return new Intl.NumberFormat(locale, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value);
-};
-
-// ─── String ───────────────────────────────────────────────────────────────────
-
-/**
- * Truncate a string with ellipsis.
- * @example truncate("Hello World", 8) → "Hello..."
- */
-export const truncate = (str: string, maxLength: number): string => {
-  if (str.length <= maxLength) return str;
-  return `${str.slice(0, maxLength - 3)}...`;
-};
-
-/**
- * Capitalize the first letter of a string.
- */
-export const capitalize = (str: string): string =>
-  str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-
-/**
- * Convert camelCase or snake_case to a human-readable label.
- * @example toLabel('createdAt') → "Created At"
- */
-export const toLabel = (str: string): string =>
-  str
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/_/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+// ─── User Initials ────────────────────────────────────────────────────────────
 
 /**
  * Get user initials from a full name.
@@ -108,5 +69,6 @@ export const getInitials = (name: string, max = 2): string =>
     .split(' ')
     .filter(Boolean)
     .slice(0, max)
-    .map((n) => n[0].toUpperCase())
+    .map((n) => n[0]?.toUpperCase() ?? '')
     .join('');
+

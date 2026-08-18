@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useProjectDetails, useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { cn } from '@/shared/lib/utils';
 import Switcher from './Switcher';
 
@@ -50,12 +50,10 @@ export default function Sidebar() {
   const userMember = project?.members?.find(
     (m: any) =>
       m.userId === user?.id ||
-      m.userId === (user as any)?._id ||
-      m.user?.id === user?.id ||
-      m.user?._id === (user as any)?._id,
+      m.user?.id === user?.id,
   );
   const role =
-    project?.createdById === user?.id || project?.createdById === (user as any)?._id
+    project?.createdById === user?.id
       ? 'Admin'
       : userMember?.role === 'owner'
         ? 'Owner'

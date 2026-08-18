@@ -158,10 +158,10 @@ export default function Viewer() {
     // Collect dirty file buffers
     const dirtyFiles = getDirtyFiles();
     const currentVal = getEditorContent.current?.();
-    if (activeFilePage?._id && currentVal !== undefined) {
-      const idx = dirtyFiles.findIndex((f) => f.fileId === activeFilePage._id);
+    if (activeFilePage?.id && currentVal !== undefined) {
+      const idx = dirtyFiles.findIndex((f) => f.fileId === activeFilePage.id);
       if (idx >= 0) dirtyFiles[idx].content = currentVal;
-      else dirtyFiles.push({ fileId: activeFilePage._id, content: currentVal });
+      else dirtyFiles.push({ fileId: activeFilePage.id, content: currentVal });
     }
 
     const res = await LatexCompilerEngine.compile({
@@ -288,13 +288,13 @@ export default function Viewer() {
       const filename = match ? match[1] : sourcePath;
       const matchedPage = findPageByBasename(filename);
 
-      if (matchedPage && matchedPage._id !== activeFilePage?._id) {
+      if (matchedPage && matchedPage.id !== activeFilePage?.id) {
         const rootId = parentPageIdRef.current;
         if (rootId) {
           const redirectUrl =
             workspaceId && projectId
-              ? `/${workspaceId}/projects/${projectId}/pages/${rootId}?file=${matchedPage._id}`
-              : `/editor/${rootId}?file=${matchedPage._id}`;
+              ? `/${workspaceId}/projects/${projectId}/pages/${rootId}?file=${matchedPage.id}`
+              : `/editor/${rootId}?file=${matchedPage.id}`;
 
           setActiveFilePage(matchedPage as unknown as ProjectPage);
           router.push(redirectUrl);

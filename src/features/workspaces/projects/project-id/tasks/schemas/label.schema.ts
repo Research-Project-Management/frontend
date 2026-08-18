@@ -7,7 +7,7 @@ export const taskLabelSchema = z.object({
 });
 
 export const labelSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   name: z.string(),
   color: z.string().optional(),
   type: z.string().optional(),

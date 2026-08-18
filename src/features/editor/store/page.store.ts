@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { editor } from "monaco-editor";
 
 export interface AssetInfo {
-  _id?: string;
+  id?: string;
   url?: string;
   filename: string;
   size?: number;

@@ -6,7 +6,9 @@ import { CycleService } from "../services/cycle.service";
 import { useProjectDetails } from "@/features/workspaces/projects/shell/hooks/use-project";
 import type { Cycle, CreateCycleInput, UpdateCycleInput } from "../types/cycle.types";
 
-export type DerivedStatus = "active" | "planned" | "completed";
+import { deriveStatus, groupCyclesByStatus, type DerivedStatus } from '../utils/cycles.util';
+export type { DerivedStatus };
+export { deriveStatus, groupCyclesByStatus };
 
 // ── Query Keys ───────────────────────────────────────────────────────────────
 
@@ -89,50 +91,13 @@ export const useCompleteCycle = () => {
   });
 };
 
-// ── Helpers & Business Logic ──────────────────────────────────────────────────
-
-/**
- * Derives the effective status of a cycle for grouping.
- * Strictly Manual based on the 'status' field.
- */
-export const deriveStatus = (cycle: {
-  status?: string;
-  startDate?: string | null;
-  endDate?: string | null;
-}): DerivedStatus => {
-  // 1. Priority: Explicit Manual Status
-  if (cycle.status === "completed") return "completed";
-  if (cycle.status === "active") return "active";
-
-  // 2. Fallback: Automatic Date-based Status
-  if (!cycle.startDate || !cycle.endDate) return "planned";
-
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const start = new Date(cycle.startDate);
-  const end = new Date(cycle.endDate);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  if (now > end) return "completed";
-  if (now >= start) return "active";
-
-  return "planned";
-};
-
 /**
  * Hook useCycle: Unified Management for Cycles.
  */
 export function useCycle(projectId: string, _workspaceId?: string, options?: { skipProjectDetails?: boolean }) {
   const { data: cyclesData, isLoading: isCyclesLoading } = useProjectCycles(projectId);
   const cycles = useMemo(() => {
-    const list = cyclesData?.cycles || [];
-    return list.map((c: any) => ({
-      ...c,
-      _id: c._id || c.id,
-      id: c.id || c._id,
-    }));
+    return cyclesData?.cycles || [];
   }, [cyclesData]);
 
   const { data: projectDetails } = useProjectDetails(projectId, {
@@ -187,7 +152,7 @@ export function useCycle(projectId: string, _workspaceId?: string, options?: { s
       e.setHours(0, 0, 0, 0);
 
       return cycles.some((c) => {
-        if (c._id === excludeId) return false;
+        if (c.id === excludeId) return false;
         if (deriveStatus(c) === "completed") return false; // Ignore completed cycles
         if (!c.startDate || !c.endDate) return false;
 

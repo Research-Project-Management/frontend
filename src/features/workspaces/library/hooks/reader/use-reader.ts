@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 import { useCollections } from '../data/use-collections';
 import { usePapers, usePaper } from '../data/use-papers';
 import { usePdf } from './use-pdf';
 import { reindexPaper, paperKeys } from '../../services/paper.service';
-import { getLibraryEntityId, getPaperFileUrl } from '../../utils/library.util';
+import { getPaperFileUrl } from '../../utils/library.util';
 import { useLibraryReaderStore } from '../../store/reader.store';
 import type { ReaderPanel } from '../../types/reader.types';
 import type { Paper } from '../../types/library.types';
@@ -25,7 +25,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const router = useRouter();
   const qc = useQueryClient();
   const { workspace } = useWorkspace(workspaceUrl);
-  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
+  const workspaceId = workspace?.id || workspaceUrl || '';
 
   const storeReadingId = useLibraryReaderStore((s) => s.readingPaperId);
   const closeReader = useLibraryReaderStore((s) => s.closeReader);
@@ -40,7 +40,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const collections = collectionService.state.collections;
 
   const collectionMap = useMemo(
-    () => Object.fromEntries((collections ?? []).map((collection) => [getLibraryEntityId(collection), collection])),
+    () => Object.fromEntries((collections ?? []).map((collection) => [collection.id, collection])),
     [collections],
   );
   const paperCollection = paper?.collectionId ? collectionMap[paper.collectionId] ?? null : null;
@@ -99,7 +99,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setDraftTitle(paper?.title || '');
     setIsEditingTitle(false);
     setBibtexOpen(false);
-  }, [paper?._id, paper?.title]);
+  }, [paper?.id, paper?.title]);
 
   useEffect(() => {
     if (activePanel) localStorage.setItem('flux_reader_active_panel', activePanel);
@@ -179,7 +179,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       return;
     }
 
-    const pId = getLibraryEntityId(paper);
+    const pId = paper.id;
     if (!pId) return;
 
     paperActions.updatePaper({ paperId: pId, title: nextTitle })

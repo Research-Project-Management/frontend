@@ -164,15 +164,15 @@ const LabelSelect = ({
           <div className="space-y-2">
             {filteredLabels.length > 0 ? (
               filteredLabels.map((label: any) => (
-                <div key={label._id} className="grid h-10 grid-cols-[20px_minmax(0,1fr)_32px] items-center gap-3 group">
+                <div key={label.id} className="grid h-10 grid-cols-[20px_minmax(0,1fr)_32px] items-center gap-3 group">
                   <Checkbox 
-                    checked={selectedLabelIds.includes(label._id)} 
-                    onCheckedChange={() => toggleTag(label._id)} 
+                    checked={selectedLabelIds.includes(label.id)} 
+                    onCheckedChange={() => toggleTag(label.id)} 
                     className="size-5 rounded-lg border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
                   />
                   <button 
                     type="button" 
-                    onClick={() => toggleTag(label._id)} 
+                    onClick={() => toggleTag(label.id)} 
                     className="flex h-10 min-w-0 items-center rounded-md px-3 shadow-none transition-all hover:opacity-85 active:scale-[0.98] cursor-pointer" 
                     style={{ backgroundColor: label.color }}
                   >

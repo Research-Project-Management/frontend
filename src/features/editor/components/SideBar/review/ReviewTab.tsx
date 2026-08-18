@@ -94,7 +94,7 @@ function CommentCard({
   const addReplyMutation = useAddReply();
   const deleteReplyMutation = useDeleteReply();
 
-  const isAuthor = currentUserId === comment.author._id;
+  const isAuthor = currentUserId === comment.author.id;
   const isResolved = comment.status === "resolved";
   const hasReplies = comment.replies.length > 0;
   const lineEnd = (comment as any).lineEnd;
@@ -102,26 +102,26 @@ function CommentCard({
   const handleToggleStatus = () => {
     updateMutation.mutate({
       pageId,
-      commentId: comment._id,
+      commentId: comment.id,
       status: isResolved ? "open" : "resolved",
     });
   };
 
   const handleDelete = () => {
-    deleteMutation.mutate({ pageId, commentId: comment._id });
+    deleteMutation.mutate({ pageId, commentId: comment.id });
   };
 
   const handleSendReply = () => {
     const text = replyText.trim();
     if (!text) return;
     addReplyMutation.mutate(
-      { pageId, commentId: comment._id, content: text },
+      { pageId, commentId: comment.id, content: text },
       { onSuccess: () => setReplyText("") },
     );
   };
 
   const handleDeleteReply = (replyId: string) => {
-    deleteReplyMutation.mutate({ pageId, commentId: comment._id, replyId });
+    deleteReplyMutation.mutate({ pageId, commentId: comment.id, replyId });
   };
 
   return (
@@ -233,7 +233,7 @@ function CommentCard({
         <div className="ml-5 border-l border-border/60 pl-3 pr-3 pb-2.5 bg-muted/10">
           {comment.replies.map((reply: any) => (
             <ReplyRow
-              key={reply._id}
+              key={reply.id}
               reply={reply}
               currentUserId={currentUserId}
               onDelete={handleDeleteReply}
@@ -279,7 +279,7 @@ function ReplyRow({
   onDelete: (replyId: string) => void;
   isPending: boolean;
 }) {
-  const isAuthor = currentUserId === reply.author._id;
+  const isAuthor = currentUserId === reply.author.id;
   return (
     <div className="group flex items-start gap-2 py-1.5 min-w-0">
       <Avatar author={reply.author} size={4} />
@@ -293,7 +293,7 @@ function ReplyRow({
           </span>
           {isAuthor && (
             <button
-              onClick={() => onDelete(reply._id)}
+              onClick={() => onDelete(reply.id)}
               disabled={isPending}
               className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
             >
@@ -556,10 +556,10 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
           <ul className="flex flex-col">
             {filtered.map((comment) => (
               <CommentCard
-                key={comment._id}
+                key={comment.id}
                 comment={comment}
                 pageId={pageId!}
-                currentUserId={user?._id}
+                currentUserId={user?.id}
                 onNavigate={
                   comment.line != null ? handleNavigateToLine : undefined
                 }

@@ -1,5 +1,5 @@
-import { apiGet, apiPost, apiPut, setTokens, removeAuthToken } from '@/shared/lib/api';
-import { ApiError } from '@/shared/types';
+import { apiGet, apiPost, apiPut, setTokens, removeAuthToken, getAuthToken } from '@/shared/lib/api';
+import { ApiError } from '@/shared/types/api.types';
 import type {
   AuthUser,
   LoginPayload,
@@ -18,7 +18,7 @@ export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
 };
 
 export const getUser = async (): Promise<AuthUser | null> => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') || localStorage.getItem('accessToken') : null;
+  const token = getAuthToken();
   if (!token) return null;
 
   try {

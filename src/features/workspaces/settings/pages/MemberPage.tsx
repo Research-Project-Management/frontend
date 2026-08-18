@@ -21,9 +21,6 @@ import { useMember } from '../hooks/use-member';
 import { Skeleton } from '@/shared/components/ui';
 import { cn } from '@/shared/lib/utils';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Loading skeleton (using global Skeleton component)
-// ─────────────────────────────────────────────────────────────────────────────
 function LoadingSkeleton() {
   return (
     <div className="flex h-full w-full flex-col bg-background">
@@ -50,9 +47,6 @@ function LoadingSkeleton() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
 export default function WorkspaceMemberPage() {
   const { workspaceId } = useParams() as { workspaceId: string };
   const { state, actions } = useMember(workspaceId);
@@ -241,7 +235,7 @@ export default function WorkspaceMemberPage() {
                         <MemberItem
                           key={m.id || m.userId}
                           member={m}
-                          currentUserId={currentUser?.id || (currentUser as any)?._id}
+                          currentUserId={currentUser?.id}
                           canManage={canManage}
                           onRoleChange={handleUpdateRole}
                           onRemove={(member) => setMemberToRemove(member)}

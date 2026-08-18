@@ -17,7 +17,6 @@ import {
 import { toast } from 'sonner';
 import { useLibrary } from '../hooks/library/use-library';
 import { usePapers } from '../hooks/data/use-papers';
-import { getLibraryEntityId } from '../utils/library.util';
 import type { Paper } from '../types/library.types';
 
 export default function TrashPage() {
@@ -59,7 +58,7 @@ export default function TrashPage() {
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
-    const paperId = getLibraryEntityId(paper);
+    const paperId = paper.id;
     if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {
@@ -80,7 +79,7 @@ export default function TrashPage() {
   const handleRestoreAll = async () => {
     try {
       for (const p of trashPapers) {
-        const id = getLibraryEntityId(p);
+        const id = p.id;
         await paperDataService.actions.updatePaper({ paperId: id, deletedAt: null });
       }
       toast.success(`Restored ${trashPapers.length} papers to library`, { id: 'restore-all' });
@@ -94,7 +93,7 @@ export default function TrashPage() {
     try {
       setIsPurging(true);
       for (const p of trashPapers) {
-        const id = getLibraryEntityId(p);
+        const id = p.id;
         await paperDataService.actions.deletePaper({ paperId: id });
       }
       toast.success('Trash emptied successfully', { id: 'trash-empty' });

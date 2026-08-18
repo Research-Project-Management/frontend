@@ -13,7 +13,7 @@ import type {
   ChatSessionDetail,
   SourceItem,
 } from '../types/editor-ai.types';
-import { API_BASE_URL as API_URL } from '@/shared/constants';
+import { API_BASE_URL as API_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/api';
 
 function getHeaders(extra?: Record<string, string>): Record<string, string> {
@@ -147,7 +147,7 @@ export async function getPageChat(pageId: string, workspaceId?: string): Promise
     headers: getHeaders(),
     credentials: 'include',
   });
-  if (!res.ok) return { _id: null, id: null, messages: [] };
+  if (!res.ok) return { id: null, messages: [] };
   const data = await res.json();
   if (data?.chat) return data.chat;
   return data;

@@ -36,9 +36,6 @@ export default function TagSelector({
         >
           <Tag className="size-3.5 text-foreground" />
           <span>Tags</span>
-          <span className="text-[10px] text-muted-foreground font-mono">
-            ({tags.length})
-          </span>
           <ChevronDown
             className={cn(
               'size-3 text-foreground transition-transform duration-200 ml-0.5',
@@ -50,11 +47,11 @@ export default function TagSelector({
         {selectedTag && (
           <button
             onClick={() => onSelectTag(null)}
-            className="flex items-center gap-1 text-[10px] text-foreground hover:underline font-medium cursor-pointer"
+            className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer"
             title="Clear tag filter"
           >
             <span>Clear</span>
-            <X className="size-2.5 text-foreground" />
+            <X className="size-3 text-foreground" />
           </button>
         )}
       </div>
@@ -68,7 +65,7 @@ export default function TagSelector({
                 placeholder="Filter tags..."
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                className="w-full h-6 px-2 text-[11px] rounded bg-muted/40 border border-border/40 placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring transition-colors"
+                className="w-full h-6 px-2 text-xs rounded bg-muted/40 border border-border/40 placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring transition-colors"
               />
               {filterQuery && (
                 <button
@@ -85,25 +82,20 @@ export default function TagSelector({
           <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pt-0.5 custom-scrollbar">
             {filteredTags.map((tag) => {
               const isSelected = selectedTag === tag;
-              const count = tagCounts[tag];
               return (
                 <button
                   key={tag}
                   onClick={() => onSelectTag(isSelected ? null : tag)}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer',
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer max-w-full',
                     isSelected
                       ? 'bg-accent text-foreground font-semibold shadow-xs'
                       : 'bg-muted/40 text-foreground hover:bg-muted border border-border/30'
                   )}
+                  title={tag}
                 >
-                  <Hash className="size-2.5 text-foreground/60" />
+                  <Hash className="size-2.5 text-foreground/60 shrink-0" />
                   <span className="truncate max-w-[120px]">{tag}</span>
-                  {count != null && count > 0 && (
-                    <span className="text-[9px] font-mono tabular-nums text-muted-foreground ml-0.5">
-                      {count}
-                    </span>
-                  )}
                 </button>
               );
             })}

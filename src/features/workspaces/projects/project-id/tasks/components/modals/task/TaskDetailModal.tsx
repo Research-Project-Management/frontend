@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -37,8 +37,8 @@ import {
   GitBranch,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useUpload } from "@/shared/hooks";
-import { useAuth } from '@/features/auth';
+import { useUpload } from "@/shared/hooks/use-upload";
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { cn } from "@/shared/lib/utils";
 
 import type {
@@ -71,7 +71,7 @@ import { PriorityPopover, PRIORITY_CONFIG } from "./popovers/PriorityPopover";
 function resolveTaskAssigneeId(assignee?: Task["assigneeId"] | string | null): string | null {
   if (!assignee) return null;
   if (typeof assignee === "string") return assignee;
-  return assignee._id ?? null;
+  return assignee.id ?? null;
 }
 
 const EMPTY_ATTACHMENTS: TaskAttachment[] = [];
@@ -149,9 +149,9 @@ export function TaskDetailModal({
   const [newChecklistTitle, setNewChecklistTitle] = useState("Checklist");
   const [dragActive, setDragActive] = useState(false);
 
-  const taskId = card?._id || (card as any)?.id || null;
-  const currentUserId = currentUser?._id || (currentUser as any)?.id || null;
-  const isCurrentUserAssignee = Boolean(currentUserId && (assigneeId === currentUserId || (assigneeId as any)?._id === currentUserId || (assigneeId as any)?.id === currentUserId));
+  const taskId = card?.id || null;
+  const currentUserId = currentUser?.id || null;
+  const isCurrentUserAssignee = Boolean(currentUserId && assigneeId === currentUserId);
   const canComment = Boolean(taskId);
   const { data: taskComments = [] } = useTaskComments(open && taskId ? taskId : "");
   const { data: taskActivity = [], error: activityError, isLoading: activityLoading } = useTaskActivityLogs(open && taskId ? taskId : "");
@@ -178,10 +178,10 @@ export function TaskDetailModal({
       const parsedChecklists = rawChecklists.map((c: any, index: number) => {
         if (!c.items && (c.text || c.title !== undefined || c.completed !== undefined)) {
           return {
-            _id: c._id || c.id || `cl-${index}`,
+            id: c.id || `cl-${index}`,
             title: c.name || 'Checklist',
             items: [{
-              _id: c._id || c.id || `item-${index}`,
+              id: c.id || `item-${index}`,
               title: c.text || c.title || '',
               completed: Boolean(c.completed),
               assigneeId: c.assigneeId,
@@ -190,10 +190,10 @@ export function TaskDetailModal({
           };
         }
         return {
-          _id: c._id || c.id || `cl-${index}`,
+          id: c.id || `cl-${index}`,
           title: c.title || c.name || `Checklist ${index + 1}`,
           items: (Array.isArray(c.items) ? c.items : []).map((i: any, itemIndex: number) => ({
-            _id: i._id || i.id || `item-${index}-${itemIndex}`,
+            id: i.id || `item-${index}-${itemIndex}`,
             title: i.title || i.text || '',
             completed: Boolean(i.completed),
             assigneeId: i.assigneeId,
@@ -273,6 +273,12 @@ export function TaskDetailModal({
     return TaskHelpers.createSnapshot(currentPayload) !== initialSnapshotRef.current;
   }, [open, currentPayload]);
 
+  const safeSave = useCallback((payload: TaskMutationInput) => {
+    if (isReadOnly) return;
+    if (!taskId && !payload.title?.trim()) return;
+    onSave(payload);
+  }, [isReadOnly, taskId, onSave]);
+
   useEffect(() => {
     if (!open || isReadOnly) return;
 
@@ -282,17 +288,18 @@ export function TaskDetailModal({
     }
 
     if (!hasUnsavedChanges) return;
+    if (!taskId && !currentPayload.title?.trim()) return;
 
     const payloadSnapshot = TaskHelpers.createSnapshot(currentPayload);
     if (payloadSnapshot === autosaveSignatureRef.current) return;
 
     const timer = setTimeout(() => {
       autosaveSignatureRef.current = payloadSnapshot;
-      onSave(currentPayload);
+      safeSave(currentPayload);
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [open, hasUnsavedChanges, currentPayload, isReadOnly, onSave]);
+  }, [open, hasUnsavedChanges, currentPayload, isReadOnly, safeSave, taskId]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -308,89 +315,87 @@ export function TaskDetailModal({
 
   const handleColumnChange = (newColId: string) => {
     setColumnId(newColId);
-    if (!isReadOnly) {
-      onSave({ ...currentPayload, columnId: newColId });
-    }
+    safeSave({ ...currentPayload, columnId: newColId });
   };
 
   const handleJoinTask = () => {
     if (!currentUserId || isReadOnly) return;
     setAssigneeId(currentUserId);
-    onSave({ ...currentPayload, assigneeId: currentUserId });
+    safeSave({ ...currentPayload, assigneeId: currentUserId });
   };
 
   const handleLeaveTask = () => {
     if (!isCurrentUserAssignee || isReadOnly) return;
     setAssigneeId(null);
-    onSave({ ...currentPayload, assigneeId: null });
+    safeSave({ ...currentPayload, assigneeId: null });
   };
 
   // Checklist Actions
   const handleAddChecklist = (checklistTitle: string) => {
     const newChecklist: Checklist = {
-      _id: `temp_${Date.now()}`,
+      id: `temp_${Date.now()}`,
       title: checklistTitle,
       items: [],
     };
     const updated = [...checklists, newChecklist];
     setChecklists(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleDeleteChecklist = (checklistId: string) => {
-    const updated = checklists.filter((c) => c._id !== checklistId);
+    const updated = checklists.filter((c) => c.id !== checklistId);
     setChecklists(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleToggleChecklistItem = (checklistId: string, itemId: string) => {
     const updated = checklists.map((c) => {
-      if (c._id !== checklistId) return c;
+      if (c.id !== checklistId) return c;
       return {
         ...c,
-        items: c.items.map((i) => (i._id === itemId ? { ...i, completed: !i.completed } : i)),
+        items: c.items.map((i) => (i.id === itemId ? { ...i, completed: !i.completed } : i)),
       };
     });
     setChecklists(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleDeleteChecklistItem = (checklistId: string, itemId: string) => {
     const updated = checklists.map((c) => {
-      if (c._id !== checklistId) return c;
+      if (c.id !== checklistId) return c;
       return {
         ...c,
-        items: c.items.filter((i) => i._id !== itemId),
+        items: c.items.filter((i) => i.id !== itemId),
       };
     });
     setChecklists(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleUpdateChecklistItem = (checklistId: string, itemId: string, newTitle: string) => {
     const updated = checklists.map((c) => {
-      if (c._id !== checklistId) return c;
+      if (c.id !== checklistId) return c;
       return {
         ...c,
-        items: c.items.map((i) => (i._id === itemId ? { ...i, title: newTitle } : i)),
+        items: c.items.map((i) => (i.id === itemId ? { ...i, title: newTitle } : i)),
       };
     });
     setChecklists(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleAddChecklistItem = (checklistId: string, itemTitle: string) => {
     const newItem = {
-      _id: `temp_item_${Date.now()}`,
+      id: `temp_item_${Date.now()}`,
       title: itemTitle,
       completed: false,
     };
     const updated = checklists.map((c) => {
-      if (c._id !== checklistId) return c;
+      if (c.id !== checklistId) return c;
       return { ...c, items: [...c.items, newItem] };
     });
     setChecklists(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   // Attachment Actions
@@ -450,14 +455,14 @@ export function TaskDetailModal({
   // Selected Member & Labels for display
   const selectedMember = useMemo(() => {
     if (!assigneeId) return null;
-    const m = (members as any[]).find((mem: any) => (mem.user?._id || mem.userId || mem._id) === assigneeId);
+    const m = (members as any[]).find((mem: any) => (mem.user?.id || mem.userId || mem.id) === assigneeId);
     return m ? { name: m.user?.name || m.name || 'Member', avatar: m.user?.avatar || m.avatar } : null;
   }, [assigneeId, members]);
 
   const selectedLabelsList = useMemo(() => {
     const safeLabels = Array.isArray(workspaceLabels) ? workspaceLabels : [];
     const safeSelected = Array.isArray(labels) ? labels : [];
-    return safeLabels.filter((l: any) => safeSelected.includes(l._id || l.id));
+    return safeLabels.filter((l: any) => safeSelected.includes(l.id));
   }, [workspaceLabels, labels]);
 
   const visibleActivities = useMemo<ActivityEntry[]>(() => {
@@ -465,7 +470,7 @@ export function TaskDetailModal({
       ? taskComments
       : (taskComments as any)?.comments || (taskComments as any)?.data || [];
     const commentEntries: ActivityEntry[] = commentsList.map((c: any) => ({
-      id: c._id,
+      id: c.id,
       kind: 'comment',
       author: c.author?.name || 'User',
       avatarUrl: c.author?.avatar,
@@ -484,7 +489,7 @@ export function TaskDetailModal({
       ? taskActivity
       : (taskActivity as any)?.activity || (taskActivity as any)?.activities || (taskActivity as any)?.data || [];
     const logEntries: ActivityEntry[] = activityList.map((a: any) => ({
-      id: a._id || `log_${Math.random()}`,
+      id: a.id || `log_${Math.random()}`,
       kind: 'activity',
       author: a.user?.name || a.author?.name || 'System',
       avatarUrl: a.user?.avatar || a.author?.avatar,
@@ -500,7 +505,7 @@ export function TaskDetailModal({
   }, [taskComments, taskActivity]);
 
   const actionBtnClass =
-    'h-8 px-2.5 text-xs font-semibold rounded-sm bg-zinc-100 hover:bg-zinc-200/80 text-zinc-700 border-none shadow-none flex items-center gap-1.5 transition-colors cursor-pointer';
+    'h-8 px-2.5 text-xs font-medium rounded-md bg-muted hover:bg-muted/80 text-foreground border-none shadow-none flex items-center gap-1.5 transition-colors cursor-pointer';
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -656,7 +661,7 @@ export function TaskDetailModal({
                     })()}
 
                     {selectedMember && (
-                      <div className="flex items-center gap-1.5 bg-zinc-100 rounded-sm px-2 py-1 text-xs font-medium text-foreground">
+                      <div className="flex items-center gap-1.5 bg-muted rounded-md px-2 py-1 text-xs font-medium text-foreground">
                         <Avatar className="size-4">
                           <AvatarImage src={selectedMember.avatar} />
                           <AvatarFallback className="text-[9px]">
@@ -681,7 +686,7 @@ export function TaskDetailModal({
 
                     {selectedLabelsList.map((l: any) => (
                       <span
-                        key={l._id}
+                        key={l.id}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[11px] font-bold text-white shadow-xs"
                         style={{ backgroundColor: l.color }}
                       >
@@ -690,7 +695,7 @@ export function TaskDetailModal({
                           <button
                             type="button"
                             onClick={() => {
-                              const updated = labels.filter((id) => id !== l._id);
+                              const updated = labels.filter((id) => id !== l.id);
                               setLabels(updated);
                               onSave({ ...currentPayload, labels: updated });
                             }}
@@ -703,7 +708,7 @@ export function TaskDetailModal({
                     ))}
 
                     {(startDate || dueDate) && (
-                      <div className="flex items-center gap-1.5 bg-zinc-100 rounded-sm px-2 py-1 text-xs font-medium text-foreground">
+                      <div className="flex items-center gap-1.5 bg-muted rounded-md px-2 py-1 text-xs font-medium text-foreground">
                         <Clock className="size-3 text-muted-foreground" />
                         <span>
                           {startDate && new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
@@ -997,7 +1002,7 @@ export function TaskDetailModal({
                   </div>
                   <div className="divide-y divide-border/60 rounded-sm border border-border/80 bg-background overflow-hidden">
                     {card.subtasks.map((sub: any) => (
-                      <div key={sub.id || sub._id} className="flex items-center justify-between px-3.5 py-2.5 text-xs hover:bg-muted/40 transition-colors">
+                      <div key={sub.id} className="flex items-center justify-between px-3.5 py-2.5 text-xs hover:bg-muted/40 transition-colors">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           {sub.identifier && (
                             <span className="font-semibold text-muted-foreground">{sub.identifier}</span>

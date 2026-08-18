@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/shared/components/ui';
-import { DeleteModal } from '@/features/workspaces/settings';
+import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 
 interface GeneralDangerProps {
   projectName: string;

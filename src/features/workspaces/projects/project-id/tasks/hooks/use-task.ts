@@ -18,88 +18,9 @@ import type {
 import { FIXED_TASK_COLUMNS } from '../types/task.types';
 import type { Label, CreateLabelInput, UpdateLabelInput } from '../types/label.types';
 
-export { AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR };
+import { TaskHelpers } from '../utils/tasks.util';
 
-// ── 1. Consolidated Task Domain Helpers ─────────────────────────────────────
-
-export const TaskHelpers = {
-  getInitials: (name?: string): string => {
-    if (!name?.trim()) return 'U';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-  },
-
-  formatActivityTime: (dateStr?: string): string => {
-    if (!dateStr) return 'Just now';
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return 'Just now';
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 60) return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return d.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' });
-  },
-
-  formatDate: (val?: string | null): string => {
-    if (!val) return '';
-    const d = new Date(val);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-  },
-
-  checkOverdue: (val?: string | null): boolean => {
-    if (!val) return false;
-    const d = new Date(val);
-    if (Number.isNaN(d.getTime())) return false;
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return d.getTime() < now.getTime();
-  },
-
-  uniqueLabels: (list?: string[]): string[] => Array.from(new Set(list || [])),
-
-  createSnapshot: (data: Partial<TaskMutationInput>): string =>
-    JSON.stringify({
-      title: data.title,
-      content: data.content,
-      description: data.description,
-      priority: data.priority,
-      labels: data.labels,
-      startDate: data.startDate,
-      dueDate: data.dueDate,
-      assigneeId: data.assigneeId,
-      columnId: data.columnId,
-      checklists: data.checklists,
-      attachments: data.attachments,
-    }),
-
-  normalizeChecklists: (items: any[]) => {
-    if (!Array.isArray(items)) return [];
-    return items.map((c, index) => {
-      if (!c.items && (c.text || c.title !== undefined)) {
-        return {
-          title: c.name || 'Checklist',
-          items: [{
-            title: c.text || c.title || '',
-            completed: Boolean(c.completed),
-            assigneeId: c.assigneeId,
-            dueDate: c.dueDate,
-          }],
-        };
-      }
-      return {
-        title: c.title || `Checklist ${index + 1}`,
-        items: (Array.isArray(c.items) ? c.items : []).map((i: any) => ({
-          title: i.title || i.text || '',
-          completed: Boolean(i.completed),
-          assigneeId: i.assigneeId,
-          dueDate: i.dueDate,
-        })),
-      };
-    });
-  },
-};
+export { AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR, TaskHelpers };
 
 // ── 2. Query Keys ───────────────────────────────────────────────────────────
 
@@ -326,13 +247,13 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
   const members = useMemo(() => (project?.members ?? []) as ProjectMember[], [project?.members]);
   const cycles = useMemo(() => (cyclesQ.data?.cycles ?? []) as Cycle[], [cyclesQ.data?.cycles]);
   const currentCycle = useMemo(
-    () => (cycleId ? cycles.find((c) => c._id === cycleId) : undefined),
+    () => (cycleId ? cycles.find((c) => c.id === cycleId) : undefined),
     [cycles, cycleId],
   );
   const labels = useMemo(() => labelsQ.data ?? [], [labelsQ.data]);
 
   const labelMap = useMemo(() => {
-    return new Map(labels.map((l: any) => [l._id, { _id: l._id, name: l.name, color: l.color }]));
+    return new Map(labels.map((l: any) => [l.id, { id: l.id, name: l.name, color: l.color }]));
   }, [labels]);
 
   const state = {
@@ -414,8 +335,8 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
     setView('create');
   }, []);
 
-  const edit = useCallback((label: { _id: string; name: string; color: string }) => {
-    setEditId(label._id);
+  const edit = useCallback((label: { id: string; name: string; color: string }) => {
+    setEditId(label.id);
     setName(label.name);
     setColor(label.color);
     setView('edit');

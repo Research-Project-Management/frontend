@@ -17,7 +17,7 @@ export const Sortable = React.memo(({
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({
-      id: sticky._id || sticky.id || '',
+      id: sticky.id,
     });
 
   const style = {

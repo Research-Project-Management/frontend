@@ -4,13 +4,13 @@ import { fetchReferenceByDoi, searchReferences } from '../services/reference.ser
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
 
 /**
- * Extracts a normalized ID from any entity that might carry MongoDB `_id` or PostgreSQL `id`.
+ * Extracts the standardized ID from any entity.
  */
 export function getLibraryEntityId(
-  entity?: { id?: string; _id?: string } | null | undefined
+  entity?: { id?: string } | null | undefined
 ): string {
   if (!entity) return '';
-  return entity.id || entity._id || '';
+  return entity.id || '';
 }
 
 /**
@@ -59,7 +59,7 @@ export interface NormalizedNote {
 /**
  * Normalizes raw notes array into strongly-typed NormalizedNote objects.
  */
-export function normalizeNotes(notes?: Array<string | Note | { _id?: string; id?: string; content?: string }> | null): NormalizedNote[] {
+export function normalizeNotes(notes?: Array<string | Note | { id?: string; content?: string }> | null): NormalizedNote[] {
   if (!Array.isArray(notes)) return [];
 
   return notes.map((note, index) => {
@@ -72,7 +72,7 @@ export function normalizeNotes(notes?: Array<string | Note | { _id?: string; id?
     }
 
     return {
-      id: getLibraryEntityId(note) || `note-${index}`,
+      id: note.id || `note-${index}`,
       content: note.content || '',
       createdAt: (note as Note).createdAt || new Date().toISOString(),
       updatedAt: (note as Note).updatedAt,
@@ -232,7 +232,7 @@ export class LibraryFilterEngine {
   }
 
   static isDuplicate(paperA: Paper, paperB: Paper): boolean {
-    if (getLibraryEntityId(paperA) === getLibraryEntityId(paperB)) return false;
+    if (paperA.id && paperB.id && paperA.id === paperB.id) return false;
 
     // Exact DOI match
     if (paperA.doi && paperB.doi) {
@@ -257,13 +257,13 @@ export class LibraryFilterEngine {
 
     for (let i = 0; i < papers.length; i++) {
       const current = papers[i];
-      const currentId = getLibraryEntityId(current);
+      const currentId = current.id;
       if (visited.has(currentId)) continue;
 
       const dupes: Paper[] = [];
       for (let j = i + 1; j < papers.length; j++) {
         const other = papers[j];
-        const otherId = getLibraryEntityId(other);
+        const otherId = other.id;
         if (visited.has(otherId)) continue;
 
         if (this.isDuplicate(current, other)) {
@@ -307,7 +307,7 @@ export function isPaperInCollection(paper: Paper, collectionId: string): boolean
   if (Array.isArray(p.collections)) {
     return p.collections.some((c: any) => {
       if (typeof c === 'string') return c === collectionId;
-      return c.id === collectionId || c._id === collectionId;
+      return c.id === collectionId;
     });
   }
 
@@ -367,7 +367,7 @@ export function generateCitationKey(paper: Paper): string {
     }
   }
 
-  return `${authorPart}${yearPart}${titlePart}` || `item${getLibraryEntityId(paper) || 'ref'}`;
+  return `${authorPart}${yearPart}${titlePart}` || `item${paper.id || 'ref'}`;
 }
 
 export function getBibTeXEntryType(paper: Partial<Paper>): string {
@@ -694,3 +694,72 @@ export async function enrichPaperWithCrossref(doi: string): Promise<Partial<PdfM
     return {};
   }
 }
+
+// ── 7. Formatted Citations (APA, IEEE, LaTeX \cite) ───────────────────────────
+
+/**
+ * Returns LaTeX cite command (e.g. \cite{vaswani2017attention})
+ */
+export function formatCiteCommand(paper: Partial<Paper>): string {
+  const key = getPaperCitationKey(paper);
+  return `\\cite{${key}}`;
+}
+
+/**
+ * Formats a paper reference in APA 7th style
+ * e.g. "Vaswani, A., Shazeer, N., et al. (2017). Attention is all you need. Journal Name, 30, 45-60. https://doi.org/..."
+ */
+export function formatApaCitation(paper: Partial<Paper>): string {
+  const authors = paper.authors || [];
+  let authorStr = 'Unknown Author';
+  if (authors.length === 1) {
+    authorStr = authors[0];
+  } else if (authors.length === 2) {
+    authorStr = `${authors[0]} & ${authors[1]}`;
+  } else if (authors.length > 2) {
+    authorStr = `${authors[0]} et al.`;
+  }
+
+  const yearStr = paper.year ? `(${paper.year})` : '(n.d.)';
+  const titleStr = paper.title ? `${paper.title.replace(/\.$/, '')}.` : 'Untitled.';
+  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
+  let venueStr = venue ? `_${venue}_` : '';
+  if (paper.volume) venueStr += `, _${paper.volume}_`;
+  if (paper.issue) venueStr += `(${paper.issue})`;
+  if (paper.pages) venueStr += `, ${paper.pages}`;
+  if (venueStr) venueStr += '.';
+
+  const doiOrUrl = paper.doi
+    ? `https://doi.org/${cleanDoi(paper.doi)}`
+    : paper.url || '';
+
+  return [authorStr, yearStr, titleStr, venueStr, doiOrUrl]
+    .filter(Boolean)
+    .join(' ');
+}
+
+/**
+ * Formats a paper reference in IEEE style
+ * e.g. 'A. Vaswani et al., "Attention is all you need," in Adv. Neural Inf. Process. Syst., vol. 30, 2017.'
+ */
+export function formatIeeeCitation(paper: Partial<Paper>): string {
+  const authors = paper.authors || [];
+  let authorStr = 'Unknown Author';
+  if (authors.length === 1) {
+    authorStr = authors[0];
+  } else if (authors.length > 1) {
+    authorStr = `${authors[0]} et al.`;
+  }
+
+  const titleStr = paper.title ? `"${paper.title.replace(/\.$/, '')},"` : '"Untitled,"';
+  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
+  const venueStr = venue ? `in _${venue}_` : '';
+  const volStr = paper.volume ? `vol. ${paper.volume}` : '';
+  const yearStr = paper.year ? `${paper.year}` : '';
+
+  const parts = [authorStr, titleStr, venueStr, volStr, yearStr].filter(Boolean);
+  let res = parts.join(', ');
+  if (!res.endsWith('.')) res += '.';
+  return res;
+}
+

@@ -10,13 +10,13 @@ import { EmptyState } from '../components/layout/EmptyState';
 import { CreateModal } from '../components/modals/CreateModal';
 import { GridView } from '../components/views/GridView';
 import { ListView } from '../components/views/ListView';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import type { PagesViewMode } from '../types/page.types';
 
 export default function PagesPage() {
   const { workspaceId } = useParams() as { workspaceId: string };
   const { workspace } = useWorkspace(workspaceId);
-  const effectiveWorkspaceId = (workspace as any)?.id || (workspace as any)?._id || workspaceId;
+  const effectiveWorkspaceId = workspace?.id || workspaceId;
   const router = useRouter();
   const [viewMode, setViewMode] = useState<PagesViewMode>('grid');
 
@@ -43,13 +43,13 @@ export default function PagesPage() {
       setIsCreateModalOpen(false);
       setTitle('');
       const mainFileStr = data.mainFile
-        ? typeof data.mainFile === 'object' && data.mainFile !== null && '_id' in data.mainFile
-          ? (data.mainFile._id as string)
+        ? typeof data.mainFile === 'object' && data.mainFile !== null && 'id' in data.mainFile
+          ? (data.mainFile.id as string)
           : (data.mainFile as string)
         : null;
       const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
       router.push(
-        `/${workspaceId}/projects/${selectedProjectId}/pages/${data.page._id}${fileQuery}`,
+        `/${workspaceId}/projects/${selectedProjectId}/pages/${data.page.id}${fileQuery}`,
       );
     } catch (error) {
       console.error(error);

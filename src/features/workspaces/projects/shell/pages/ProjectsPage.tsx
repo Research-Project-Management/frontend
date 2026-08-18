@@ -38,7 +38,7 @@ import { CreateProjectModal } from '../components/project/CreateProjectModal';
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
 import { useProjects, useArchiveProject } from '../hooks/use-project';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   filterActiveProjects,
   filterProjectsByVisibility,
@@ -125,7 +125,7 @@ export function ProjectsPage() {
     const byCriteria = filterProjectsByCriteria(
       byVisibility,
       popoverFilter,
-      user?._id || (user as any)?.id
+      user?.id
     );
     const searched = searchProjects(byCriteria, searchQuery);
     return sortProjects(searched, sortBy);
@@ -157,7 +157,7 @@ export function ProjectsPage() {
         projects={activeProjects}
         filter={popoverFilter}
         onFilterChange={setPopoverFilter}
-        currentUserId={user?._id || (user as any)?.id}
+        currentUserId={user?.id}
         currentUserName={user?.name || 'You'}
       />
 
@@ -335,7 +335,7 @@ export function ProjectsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-w-0">
             {filteredProjects.map((project) => (
               <Card
-                key={project._id || (project as any).id}
+                key={project.id}
                 project={project}
                 workspaceId={workspaceId}
                 onArchive={handleArchiveProject}
@@ -348,7 +348,7 @@ export function ProjectsPage() {
         {!isLoading && !isError && viewMode === 'list' && filteredProjects.length > 0 && (
           <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-xs divide-y divide-border/40">
             {filteredProjects.map((project) => {
-              const projectId = project._id || (project as any).id || '';
+              const projectId = project.id || '';
               const projectKey = (project as any).key || project.identifier || 'PROJ';
               const isPrivate = isProjectPrivate(project);
 
@@ -357,7 +357,7 @@ export function ProjectsPage() {
               );
               const leadUser =
                 leadMember?.user ||
-                (project.createdBy?._id || (project.createdBy as any)?.id ? project.createdBy : null);
+                (project.createdBy?.id ? project.createdBy : null);
 
               return (
                 <div

@@ -8,10 +8,10 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
-import { API_BASE_URL } from '@/shared/constants';
+import { API_BASE_URL } from '@/config/env';
 
 export interface EditorStorageItem {
-  _id: string;
+  id: string;
   filename: string;
   size?: number;
   mimeType?: string;

@@ -41,14 +41,14 @@ export type Column = z.infer<typeof columnSchema>;
 // ── Local Domain Entities (Self-contained, no cross-module imports) ──────────
 
 export type CycleMilestone = {
-  _id: string;
+  id: string;
   title: string;
   dueDate?: string;
   completed: boolean;
 };
 
 export type Cycle = {
-  _id: string;
+  id: string;
   name: string;
   description?: string;
   startDate?: string;
@@ -69,7 +69,7 @@ export type ProjectMember = {
 };
 
 export type Project = {
-  _id: string;
+  id: string;
   name: string;
   description?: string;
   avatar?: string;
@@ -80,13 +80,12 @@ export type Project = {
 };
 
 export type TaskActivityLog = {
-  _id?: string;
-  id?: string;
+  id: string;
   taskId?: string;
   action?: string;
   type?: string;
   user?: {
-    _id?: string;
+    id?: string;
     name?: string;
     avatar?: string;
   } | null;
@@ -126,8 +125,8 @@ export type TaskModalState =
 
 // ── Column Helpers ───────────────────────────────────────────────────────────
 
-export function resolveTaskColumnId(column?: Pick<Column, "id" | "_id"> | null): string {
-  return column?.id ?? column?._id ?? "";
+export function resolveTaskColumnId(column?: Pick<Column, "id"> | null): string {
+  return column?.id ?? "";
 }
 
 export const PRIORITY_CONFIG = {

@@ -27,7 +27,7 @@ import type { AgentAction, ToolCategory } from '../../types/chat.types';
 import { TOOL_LABELS } from '../../types/chat.types';
 
 const CATEGORY_ACCENT: Record<ToolCategory, string> = {
-  read: 'bg-[#3370ff]',
+  read: 'bg-primary',
   create: 'bg-emerald-500',
   update: 'bg-amber-500',
   delete: 'bg-red-500',
@@ -35,7 +35,7 @@ const CATEGORY_ACCENT: Record<ToolCategory, string> = {
 };
 
 const CATEGORY_TEXT: Record<ToolCategory, string> = {
-  read: 'text-[#3370ff]',
+  read: 'text-primary',
   create: 'text-emerald-600 dark:text-emerald-400',
   update: 'text-amber-600 dark:text-amber-400',
   delete: 'text-red-500',
@@ -43,7 +43,7 @@ const CATEGORY_TEXT: Record<ToolCategory, string> = {
 };
 
 const CATEGORY_SURFACE: Record<ToolCategory, string> = {
-  read: 'bg-[#3370ff]/10 text-[#3370ff]',
+  read: 'bg-primary/10 text-primary',
   create: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   update: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   delete: 'bg-red-500/10 text-red-500',

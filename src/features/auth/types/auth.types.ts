@@ -7,8 +7,7 @@ import type {
 } from '../schemas/auth.schema';
 
 export type AuthUser = {
-  id?: string;
-  _id: string;
+  id: string;
   name: string;
   email: string;
   avatar?: string;

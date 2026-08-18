@@ -2,7 +2,7 @@
  * editor.util.ts — Monaco Editor utilities & LaTeX context builder
  */
 
-import { API_BASE_URL } from '@/shared/constants';
+import { API_BASE_URL } from '@/config/env';
 
 // ── Document Structure ────────────────────────────────────────────────────────
 

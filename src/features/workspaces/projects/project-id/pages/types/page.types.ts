@@ -14,7 +14,7 @@ export type GetPagesParams = {
 
 export type CreatePageResponse = {
   page: Page;
-  mainFile?: { _id: string; [key: string]: unknown } | string | null;
+  mainFile?: { id: string; [key: string]: unknown } | string | null;
   rootPageId: string;
   mainFileId: string | null;
 };

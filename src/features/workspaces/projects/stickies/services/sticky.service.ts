@@ -3,10 +3,9 @@ import type { Sticky } from "@/features/workspaces/projects/stickies/types/stick
 
 export const normalizeSticky = (s: any): Sticky => {
   if (!s) return s;
-  const id = s._id || s.id || '';
+  const id = s.id || '';
   return {
     ...s,
-    _id: id,
     id: id,
   };
 };

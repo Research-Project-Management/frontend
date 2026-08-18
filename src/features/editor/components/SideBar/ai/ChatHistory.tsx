@@ -122,7 +122,7 @@ export function ChatHistory({
 
   const handleStartRename = (e: React.MouseEvent, chat: ChatSession) => {
     e.stopPropagation();
-    setEditingId(chat._id);
+    setEditingId(chat.id);
     setEditTitle(chat.title);
   };
 
@@ -132,7 +132,7 @@ export function ChatHistory({
     try {
       await renameChatSession(chatId, editTitle.trim());
       setChats((prev) =>
-        prev.map((c) => (c._id === chatId ? { ...c, title: editTitle.trim() } : c))
+        prev.map((c) => (c.id === chatId ? { ...c, title: editTitle.trim() } : c))
       );
     } catch (err) {
       console.error('Failed to rename chat:', err);
@@ -151,7 +151,7 @@ export function ChatHistory({
     if (!confirm('Are you sure you want to delete this chat?')) return;
     try {
       await deleteChatSession(chatId);
-      setChats((prev) => prev.filter((c) => c._id !== chatId));
+      setChats((prev) => prev.filter((c) => c.id !== chatId));
     } catch (err) {
       console.error('Failed to delete chat:', err);
     }
@@ -210,12 +210,12 @@ export function ChatHistory({
                   </h4>
                   <div className="space-y-0.5">
                     {groupChatsList.map((chat) => {
-                      const isActive = chat._id === activeChatId;
-                      const isEditing = chat._id === editingId;
+                      const isActive = chat.id === activeChatId;
+                      const isEditing = chat.id === editingId;
 
                       return (
                         <div
-                          key={chat._id}
+                          key={chat.id}
                           onClick={() => !isEditing && handleSelect(chat)}
                           className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors text-sm ${
                             isActive
@@ -235,7 +235,7 @@ export function ChatHistory({
                                   value={editTitle}
                                   onChange={(e) => setEditTitle(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveRename(e as any, chat._id);
+                                    if (e.key === 'Enter') handleSaveRename(e as any, chat.id);
                                     if (e.key === 'Escape') handleCancelRename(e as any);
                                   }}
                                   className="h-7 text-xs py-1"
@@ -244,7 +244,7 @@ export function ChatHistory({
                                   size="icon"
                                   variant="ghost"
                                   className="size-7"
-                                  onClick={(e) => handleSaveRename(e, chat._id)}
+                                  onClick={(e) => handleSaveRename(e, chat.id)}
                                 >
                                   <Check className="size-3.5 text-emerald-500" />
                                 </Button>
@@ -276,7 +276,7 @@ export function ChatHistory({
                                 size="icon"
                                 variant="ghost"
                                 className="size-7 text-muted-foreground hover:text-destructive"
-                                onClick={(e) => handleDelete(e, chat._id)}
+                                onClick={(e) => handleDelete(e, chat.id)}
                               >
                                 <Trash2 className="size-3.5" />
                               </Button>

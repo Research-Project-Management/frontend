@@ -65,7 +65,7 @@ function PanelButton({
             onClick={() => onToggle(panel)}
             className={cn(
               'relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
-              active && 'bg-accent text-primary',
+              active && 'bg-accent text-foreground font-medium',
             )}
             aria-pressed={active}
           >

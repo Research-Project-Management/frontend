@@ -12,7 +12,6 @@ import {
 } from '@/shared/components/ui';
 import { GitMerge, Check, FileText, Bookmark, Tag } from 'lucide-react';
 import { toast } from 'sonner';
-import { getLibraryEntityId } from '../../utils/library.util';
 import type { Paper } from '../../types/library.types';
 
 interface MergeDialogProps {
@@ -43,9 +42,9 @@ export default function MergeDialog({
   const handleConfirmMerge = async () => {
     try {
       setIsMerging(true);
-      const masterId = getLibraryEntityId(masterPaper);
+      const masterId = masterPaper.id;
       const duplicateIdsToDelete = duplicates
-        .map((p) => getLibraryEntityId(p))
+        .map((p) => p.id)
         .filter((id) => id !== masterId);
 
       // Collect best metadata from all versions
@@ -90,7 +89,7 @@ export default function MergeDialog({
               const isSelected = idx === masterIndex;
               return (
                 <div
-                  key={getLibraryEntityId(p) || idx}
+                  key={p.id || idx}
                   onClick={() => setMasterIndex(idx)}
                   className={`p-3.5 rounded-lg border text-left cursor-pointer transition-all ${
                     isSelected

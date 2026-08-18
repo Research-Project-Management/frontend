@@ -54,10 +54,10 @@ describe("parseLatexOutline", () => {
 
     const outline = parseLatexOutline(doc);
     expect(outline).toHaveLength(3);
-    expect(outline[0].title).toBe("Methods");
-    expect(outline[1].title).toBe("🖼️ Model Architecture");
-    expect(outline[1].line).toBe(2);
-    expect(outline[2].title).toBe("📊 Accuracy Benchmark");
-    expect(outline[2].line).toBe(6);
+    expect(outline[0]!.title).toBe("Methods");
+    expect(outline[1]!.title).toBe("🖼️ Model Architecture");
+    expect(outline[1]!.line).toBe(2);
+    expect(outline[2]!.title).toBe("📊 Accuracy Benchmark");
+    expect(outline[2]!.line).toBe(6);
   });
 });

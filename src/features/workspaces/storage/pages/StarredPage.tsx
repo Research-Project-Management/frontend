@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useStarredFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 
 
@@ -24,7 +24,7 @@ export default function WorkspaceStarredPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
-  const workspaceId = workspace?._id || workspaceUrl;
+  const workspaceId = workspace?.id || workspaceUrl;
 
   const { data, isLoading: isFilesLoading } = useStarredFiles(workspaceId);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();

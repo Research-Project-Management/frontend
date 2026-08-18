@@ -1,36 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { defaultQueryOptions } from '@/shared/lib/get-query-client';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { getQueryClient } from '@/shared/lib/get-query-client';
+
+import { ErrorBoundary } from '@/shared/components/error-boundary/ErrorBoundary';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  /**
-   * Singleton QueryClient for the client-side React tree.
-   * useState ensures a single instance is created per component mount,
-   * avoiding re-creation on every render.
-   */
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          ...defaultQueryOptions,
-          mutations: {
-            // Global mutation error handler – surface errors via Sonner toast
-            onError: (error: unknown) => {
-              const message =
-                (error as { message?: string })?.message ?? 'Đã xảy ra lỗi';
-              toast.error(message);
-            },
-          },
-        },
-      })
-  );
+  const queryClient = getQueryClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        )}
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
+

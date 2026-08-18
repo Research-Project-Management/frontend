@@ -33,7 +33,6 @@ describe('sticky.schema', () => {
   describe('StickySchema', () => {
     it('validates a complete sticky note object', () => {
       const validSticky = {
-        _id: 'sticky-1',
         id: 'sticky-1',
         title: 'Project Ideas',
         content: '<p>Some research notes</p>',
@@ -49,7 +48,7 @@ describe('sticky.schema', () => {
 
     it('fails when content or color is missing', () => {
       const invalidSticky = {
-        _id: 'sticky-1',
+        id: 'sticky-1',
         title: 'Title only',
       };
       expect(StickySchema.safeParse(invalidSticky).success).toBe(false);
@@ -61,7 +60,7 @@ describe('sticky.schema', () => {
       const response = {
         stickies: [
           {
-            _id: 's-1',
+            id: 's-1',
             content: '<p>First</p>',
             color: 'cyan-1',
             createdAt: '2026-08-17T00:00:00.000Z',

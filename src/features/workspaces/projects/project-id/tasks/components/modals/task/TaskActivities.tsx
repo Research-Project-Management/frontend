@@ -270,11 +270,11 @@ export function TaskActivities({
   }, []);
 
   return (
-    <div className="flex w-[40%] min-w-105 flex-col border-l border-border bg-zinc-50">
-      <div className="flex h-17 items-center justify-between bg-zinc-50 px-5 py-4">
+    <div className="flex w-[40%] min-w-105 flex-col border-l border-border bg-muted/30">
+      <div className="flex h-17 items-center justify-between bg-muted/30 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="size-5 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
@@ -285,7 +285,7 @@ export function TaskActivities({
 
         <Button
           variant="secondary"
-          className="h-8 rounded-sm bg-zinc-100 px-3 text-[13px] font-bold text-foreground shadow-none hover:bg-zinc-200 transition-colors border-none"
+          className="h-8 rounded-md bg-muted px-3 text-[13px] font-medium text-foreground shadow-none hover:bg-muted/80 transition-colors border-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -348,7 +348,7 @@ export function TaskActivities({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 px-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-60"
+                className="h-9 px-3 text-muted-foreground transition-all duration-200 hover:bg-muted active:scale-[0.98] disabled:opacity-60"
                 onClick={handleCancelComment}
                 disabled={isSavingComment}
               >
@@ -361,13 +361,13 @@ export function TaskActivities({
 
       <div className="px-5 pb-5 pt-4">
         {activityLoading ? (
-          <div className="mb-3 rounded-sm bg-zinc-100 px-3 py-2 text-[13px] text-zinc-500">
+          <div className="mb-3 rounded-md bg-muted px-3 py-2 text-[13px] text-muted-foreground">
             Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
-          <div className="mb-3 rounded-lg bg-[#fff1f0] px-3 py-2 text-[13px] text-[#c9372c]">
+          <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
             Could not load activity. Please try again.
           </div>
         ) : null}
@@ -386,7 +386,7 @@ export function TaskActivities({
                 <div key={item.id} className="flex items-start gap-2.5">
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-zinc-200 text-[14px] font-bold text-foreground">
+                    <AvatarFallback className="bg-muted text-[14px] font-bold text-foreground">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -396,7 +396,7 @@ export function TaskActivities({
                       <>
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-foreground">{item.author}</span>
-                          <span className="ml-0.5 text-[14px] text-zinc-500">{item.timestamp}</span>
+                          <span className="ml-0.5 text-[14px] text-muted-foreground">{item.timestamp}</span>
                         </div>
 
                         {isEditing ? (
@@ -404,26 +404,26 @@ export function TaskActivities({
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-0"
+                              className="min-h-11.5 rounded-sm border border-border bg-card px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-0"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
                             <div className="flex items-center gap-2">
                               <Button
                                 type="button"
-                                className="h-9 min-w-16 bg-primary px-4 text-white shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
+                                className="h-9 min-w-16 bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
                                 {isSubmittingEdit ? (
-                                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/80 border-t-transparent" />
+                                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground/80 border-t-transparent" />
                                 ) : null}
                                 Save
                               </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
-                                className="h-9 px-3 text-zinc-500 transition-all duration-200 hover:bg-zinc-100 active:scale-[0.98] disabled:opacity-60"
+                                className="h-9 px-3 text-muted-foreground transition-all duration-200 hover:bg-muted active:scale-[0.98] disabled:opacity-60"
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
@@ -544,7 +544,7 @@ export function TaskActivities({
               <DialogTitle className="text-[18px] font-bold text-foreground">
                 Delete comment?
               </DialogTitle>
-              <DialogDescription className="text-[14px] leading-6 text-zinc-500">
+              <DialogDescription className="text-[14px] leading-6 text-muted-foreground">
                 This comment will be removed and cannot be recovered.
               </DialogDescription>
             </DialogHeader>
@@ -555,7 +555,7 @@ export function TaskActivities({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 px-4 text-zinc-500 hover:bg-zinc-100"
+                className="h-9 px-4 text-muted-foreground hover:bg-muted"
                 onClick={() => setDeleteCommentId(null)}
               >
                 Cancel

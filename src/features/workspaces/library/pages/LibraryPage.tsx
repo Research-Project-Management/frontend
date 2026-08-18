@@ -8,7 +8,6 @@ import InspectorPanel from '../components/panel/Panel';
 import UploadModal from '../components/system/UploadModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { getLibraryEntityId } from '../utils/library.util';
 import type { Paper } from '../types/library.types';
 
 export default function LibraryPage() {
@@ -48,7 +47,7 @@ export default function LibraryPage() {
   } = actions;
 
   const handleSelectPaper = (paper: Paper) => {
-    const paperId = getLibraryEntityId(paper);
+    const paperId = paper.id;
     if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {
@@ -91,7 +90,7 @@ export default function LibraryPage() {
         <div className="px-6 py-2 bg-accent/40 border-b border-border/40 flex items-center justify-between text-xs select-none">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Filtering by tag:</span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent text-foreground font-medium text-[11px] border border-border/40">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent text-foreground font-medium text-xs border border-border/40">
               <Tag className="size-3 text-foreground" />
               {activeTag}
             </span>

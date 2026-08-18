@@ -39,7 +39,7 @@ export type CardProps = {
 };
 
 export function Card({ project, workspaceId, onArchive }: CardProps) {
-  const projectId = project._id || (project as any).id || '';
+  const projectId = project.id || '';
   const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
 
@@ -54,7 +54,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
   );
   const leadUser =
     leadMember?.user ||
-    (project.createdBy?._id || (project.createdBy as any)?.id ? project.createdBy : null);
+    (project.createdBy?.id ? project.createdBy : null);
 
   const membersList = project.members || [];
   const extraMembersCount = Math.max(0, membersList.length - 3);
@@ -219,7 +219,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
                 {membersList.slice(0, 3).map((m: any, idx: number) => {
                   const u = m.user || {};
                   return (
-                    <Avatar key={u._id || idx} className="size-4.5 border border-background">
+                    <Avatar key={u.id || idx} className="size-4.5 border border-background">
                       <AvatarImage src={u.avatar} alt={u.name} />
                       <AvatarFallback className="text-[9px] bg-muted font-medium">
                         {u.name ? u.name.charAt(0).toUpperCase() : 'U'}

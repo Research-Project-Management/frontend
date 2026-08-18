@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import { BookOpen, Check, FolderOpen, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost } from "@/shared/lib/api";
+import { previewServices } from "../../services/preview.service";
+import { toAuthors, toKeywords, toYear } from "../../utils/preview.util";
 import { getErrorMessage } from "@/shared/utils/error.util";
 import { Button } from "@/shared/components/ui";
 import {
@@ -35,39 +36,11 @@ interface AddToLibraryPopoverProps {
 }
 
 interface SimpleCollection {
-  _id: string;
+  id: string;
   name: string;
   icon?: string;
   color?: string;
 }
-
-const toAuthors = (metadata?: StoragePdfMetadata | null) => {
-  if (metadata?.authors?.length) return metadata.authors;
-  if (metadata?.author) {
-    return metadata.author
-      .split(/,|;|\band\b/i)
-      .map((author: string) => author.trim())
-      .filter(Boolean);
-  }
-  return [];
-};
-
-const toKeywords = (keywords?: string) =>
-  keywords
-    ? keywords
-        .split(/,|;/)
-        .map((keyword) => keyword.trim())
-        .filter(Boolean)
-    : [];
-
-const toYear = (year?: string | number) => {
-  if (typeof year === "number") return year;
-  if (typeof year === "string") {
-    const parsed = parseInt(year, 10);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-  return null;
-};
 
 export default function LibraryPopover({
   item,
@@ -81,16 +54,16 @@ export default function LibraryPopover({
 
   const { data: collectionsData, isLoading } = useQuery({
     queryKey: ['storage', 'library-collections', workspaceId],
-    queryFn: () => apiGet<{ collections: SimpleCollection[] }>(`/api/library/${workspaceId}/collections`),
+    queryFn: () => previewServices.getCollections(workspaceId),
     enabled: !!workspaceId && open,
   });
 
   const collections = collectionsData?.collections || [];
-  const selectedCollection = collections.find((c) => c._id === collectionId);
+  const selectedCollection = collections.find((c) => c.id === collectionId);
 
   const ingestMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
-      apiPost(`/api/library/papers/${workspaceId}/ingest`, data),
+      previewServices.ingestPaper(workspaceId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['papers', workspaceId] });
       toast.success(`Added to ${selectedCollection?.name || 'Library'}.`);
@@ -107,7 +80,7 @@ export default function LibraryPopover({
 
     ingestMutation.mutate({
       source: "storage",
-      fileId: item._id,
+      fileId: item.id,
       collectionId,
       title: metadata?.title || item.filename.replace(/\.pdf$/i, ""),
       authors: toAuthors(metadata),
@@ -148,24 +121,27 @@ export default function LibraryPopover({
               No library collections yet.
             </p>
           ) : (
-            collections.map((collection) => (
-              <button
-                key={collection._id}
-                onClick={() => setCollectionId(collection._id)}
-                className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent cursor-pointer"
-              >
-                <FolderOpen
-                  className="size-4 shrink-0"
-                  style={{ color: collection.color || "var(--primary)" }}
-                />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                  {collection.name}
-                </span>
-                {collectionId === collection._id && (
-                  <Check className="size-3.5 text-foreground" />
-                )}
-              </button>
-            ))
+            collections.map((collection) => {
+              const cId = collection.id;
+              return (
+                <button
+                  key={cId}
+                  onClick={() => setCollectionId(cId || '')}
+                  className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent cursor-pointer"
+                >
+                  <FolderOpen
+                    className="size-4 shrink-0"
+                    style={{ color: collection.color || "var(--primary)" }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                    {collection.name}
+                  </span>
+                  {collectionId === cId && (
+                    <Check className="size-3.5 text-foreground" />
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
 

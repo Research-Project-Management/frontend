@@ -97,7 +97,7 @@ export function WorklogDateRange({
           <Button
             size="sm"
             onClick={handleSave}
-            className="h-7 text-xs px-3 bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer rounded-md shadow-2xs"
+            className="h-7 text-xs px-3 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-2xs"
           >
             Apply
           </Button>

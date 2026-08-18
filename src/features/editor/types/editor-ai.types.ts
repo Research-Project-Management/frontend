@@ -21,7 +21,7 @@ export interface ChatMessage {
 }
 
 export interface ChatSession {
-  _id: string;
+  id: string;
   title: string;
   projectId?: string | null;
   messageCount?: number;
@@ -31,6 +31,6 @@ export interface ChatSession {
 }
 
 export interface ChatSessionDetail extends ChatSession {
-  messages: (ChatMessage & { _id?: string; createdAt?: string })[];
+  messages: (ChatMessage & { id?: string; createdAt?: string })[];
   documentIds?: string[];
 }

@@ -1,4 +1,3 @@
-// ── Your Work API Service (Matching Backend Method Names & Endpoints) ─────────
 import { apiGet } from '@/shared/lib/api';
 
 /**

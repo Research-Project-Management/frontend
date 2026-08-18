@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { Skeleton, Button, Input } from '@/shared/components/ui';
-import { DeleteModal } from '@/features/workspaces/settings';
+import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 import { toast } from 'sonner';
 import { Lead } from '../components/member/Lead';
 import { Assignee } from '../components/member/Assignee';
@@ -224,7 +224,7 @@ export default function MemberPage() {
               <Button
                 size="sm"
                 onClick={() => setAddDialogOpen(true)}
-                className="h-8 px-3.5 text-xs font-medium bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer rounded-md shadow-2xs shrink-0"
+                className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-2xs shrink-0"
               >
                 Add member
               </Button>
@@ -284,9 +284,7 @@ export default function MemberPage() {
                   </tr>
                 ) : (
                   filteredMembers.map((member: any) => {
-                    const isCurrentUser =
-                      currentUser?.id === member.userId ||
-                      (currentUser as any)?._id === member.userId;
+                    const isCurrentUser = currentUser?.id === member.userId;
                     return (
                       <Item
                         key={member.userId}

@@ -12,7 +12,6 @@ import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 describe('BibtexEngine Deep Module', () => {
   const samplePaper: Paper = {
-    _id: 'paper-1',
     id: 'paper-1',
     title: 'Deep Residual Learning for Image Recognition',
     authors: ['Kaiming He', 'Xiangyu Zhang', 'Shaoqing Ren', 'Jian Sun'],
@@ -104,18 +103,18 @@ describe('BibtexEngine Deep Module', () => {
     expect(parsed).toHaveLength(2);
 
     // Entry 1
-    expect(parsed[0].citationKey).toBe('vaswani2017attention');
-    expect(parsed[0].title).toBe('Attention Is All You Need');
-    expect(parsed[0].authors).toEqual(['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar']);
-    expect(parsed[0].year).toBe(2017);
-    expect(parsed[0].journal).toBe('Advances in Neural Information Processing Systems');
-    expect(parsed[0].doi).toBe('10.5555/3295222.3295349');
+    expect(parsed[0]!.citationKey).toBe('vaswani2017attention');
+    expect(parsed[0]!.title).toBe('Attention Is All You Need');
+    expect(parsed[0]!.authors).toEqual(['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar']);
+    expect(parsed[0]!.year).toBe(2017);
+    expect(parsed[0]!.journal).toBe('Advances in Neural Information Processing Systems');
+    expect(parsed[0]!.doi).toBe('10.5555/3295222.3295349');
 
     // Entry 2
-    expect(parsed[1].citationKey).toBe('goodfellow2016deep');
-    expect(parsed[1].title).toBe('Deep Learning');
-    expect(parsed[1].publisher).toBe('MIT Press');
-    expect(parsed[1].year).toBe(2016);
+    expect(parsed[1]!.citationKey).toBe('goodfellow2016deep');
+    expect(parsed[1]!.title).toBe('Deep Learning');
+    expect(parsed[1]!.publisher).toBe('MIT Press');
+    expect(parsed[1]!.year).toBe(2016);
   });
 
   it('escapes and unescapes LaTeX special characters properly', () => {

@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getUser } from '../services/auth.service';
-import { queryKeys } from '@/shared/constants';
+import { authKeys } from '../constants/auth.keys';
 
 /**
  * Fetch and cache the current authenticated user session.
@@ -15,7 +15,7 @@ import { queryKeys } from '@/shared/constants';
  */
 export const useAuth = () => {
   const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.auth.session,
+    queryKey: authKeys.session(),
     queryFn: getUser,
     staleTime: 5 * 60 * 1_000, // 5 minutes
     refetchOnWindowFocus: false,

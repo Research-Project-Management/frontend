@@ -1,7 +1,7 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 
 export interface CycleLabel {
-  _id: string;
+  id: string;
   name: string;
   color: string;
   type?: string;

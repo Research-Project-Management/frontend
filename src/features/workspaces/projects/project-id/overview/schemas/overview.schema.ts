@@ -5,7 +5,6 @@ import { z } from 'zod';
 export const memberSchema = z.object({
   user: z.object({
     id: z.string().optional(),
-    _id: z.string().optional(),
     name: z.string(),
     email: z.string().optional().default(''),
     avatar: z.string().optional().nullable(),
@@ -18,7 +17,6 @@ export const memberSchema = z.object({
 
 export const projectInfoSchema = z.object({
   id: z.string().optional(),
-  _id: z.string().optional(),
   name: z.string(),
   description: z.string().optional().default(''),
   avatar: z.string().optional().nullable(),

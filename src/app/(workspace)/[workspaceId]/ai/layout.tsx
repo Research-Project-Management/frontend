@@ -2,7 +2,9 @@
 
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useState } from 'react';
-import { ChatModeProvider, useChatMode, Panel, Sidebar } from '@/features/workspaces/ai';
+import { ChatModeProvider, useChatMode } from '@/features/workspaces/ai/hooks/use-chat-mode';
+import { Panel } from '@/features/workspaces/ai/components/layout/panel';
+import { Sidebar } from '@/features/workspaces/ai/components/layout/sidebar';
 import { TooltipProvider } from '@/shared/components/ui';
 
 export default function ChatAiLayout({ children }: { children?: React.ReactNode }) {

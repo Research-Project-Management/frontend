@@ -29,7 +29,7 @@ import { resolveTaskColumnId } from '../types/task.types';
 import { TaskHelpers } from './use-task';
 
 export type TaskCardLabel = {
-  _id: string;
+  id: string;
   name: string;
   color: string;
 };
@@ -90,7 +90,7 @@ export function useKanban({
 
   const activeTask = useMemo(() => {
     if (!activeId) return null;
-    return tasks.find((t) => t._id === activeId) ?? null;
+    return tasks.find((t) => t.id === activeId) ?? null;
   }, [activeId, tasks]);
 
   const dragStart = useCallback((event: DragStartEvent) => {
@@ -110,7 +110,7 @@ export function useKanban({
       if (validColIds.has(overId)) {
         targetColId = overId;
       } else {
-        const overTask = tasks.find((t) => t._id === overId);
+        const overTask = tasks.find((t) => t.id === overId);
         if (overTask?.columnId && validColIds.has(overTask.columnId)) {
           targetColId = overTask.columnId;
         }
@@ -118,7 +118,7 @@ export function useKanban({
 
       if (!targetColId) return;
 
-      const currentTask = tasks.find((t) => t._id === activeTaskId);
+      const currentTask = tasks.find((t) => t.id === activeTaskId);
       if (currentTask && currentTask.columnId !== targetColId) {
         onMoveCard?.(activeTaskId, targetColId);
       }
@@ -226,13 +226,13 @@ export function useCard({
     return (card.labels || [])
       .map((id: string) => labelMap?.get(id))
       .filter(Boolean)
-      .map((t) => ({ id: t!._id, color: t!.color, title: t!.name }))
+      .map((t) => ({ id: t!.id, color: t!.color, title: t!.name }))
       .filter((l) => Boolean(l.color));
   }, [card.labels, labelMap]);
 
   const user = card.assigneeId;
   const initials = useMemo(() => (user ? TaskHelpers.getInitials(user.name) : ''), [user]);
-  const isCurrentUser = Boolean(currentUserId && user?._id === currentUserId);
+  const isCurrentUser = Boolean(currentUserId && user?.id === currentUserId);
   const avatar = user?.avatar || (isCurrentUser ? currentUserAvatar : undefined);
 
   const metadataItems = useMemo<CardMetadataItem[]>(() => {

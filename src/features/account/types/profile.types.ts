@@ -7,7 +7,7 @@ export interface UpdateProfilePayload {
 }
 
 export interface TypeUser {
-  _id: string;
+  id: string;
   name: string;
   email: string;
   avatar?: string;

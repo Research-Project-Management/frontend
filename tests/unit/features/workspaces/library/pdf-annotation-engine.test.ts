@@ -39,19 +39,19 @@ describe('PdfAnnotationEngine Deep Module', () => {
 
   it('sorts annotations in natural top-to-bottom reading order across pages', () => {
     const sorted = PdfAnnotationEngine.sortAnnotations(annotations);
-    expect(sorted[0].id).toBe('a3'); // Page 1, y1: 0.2
-    expect(sorted[1].id).toBe('a2'); // Page 1, y1: 0.8
-    expect(sorted[2].id).toBe('a1'); // Page 2, y1: 0.5
+    expect(sorted[0]!.id).toBe('a3'); // Page 1, y1: 0.2
+    expect(sorted[1]!.id).toBe('a2'); // Page 1, y1: 0.8
+    expect(sorted[2]!.id).toBe('a1'); // Page 2, y1: 0.5
   });
 
   it('filters annotations by search text and comments', () => {
     const res1 = PdfAnnotationEngine.filterAnnotations(annotations, 'methodology');
     expect(res1).toHaveLength(1);
-    expect(res1[0].id).toBe('a3');
+    expect(res1[0]!.id).toBe('a3');
 
     const res2 = PdfAnnotationEngine.filterAnnotations(annotations, 'bottom');
     expect(res2).toHaveLength(1);
-    expect(res2[0].id).toBe('a2');
+    expect(res2[0]!.id).toBe('a2');
   });
 
   it('normalizes bounding rectangles within relative [0, 1] viewport bounds', () => {

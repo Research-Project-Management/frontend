@@ -3,7 +3,7 @@ import { z } from 'zod';
 // ── Page schema ─────────────────────────────────────────────────────────────
 
 export const pageSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   title: z.string(),
   content: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']).optional(),
@@ -16,7 +16,7 @@ export const pageSchema = z.object({
   mainFile: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   author: z
     .object({
-      _id: z.string().optional(),
+      id: z.string().optional(),
       name: z.string().optional(),
       email: z.string().optional(),
       avatar: z.string().optional(),

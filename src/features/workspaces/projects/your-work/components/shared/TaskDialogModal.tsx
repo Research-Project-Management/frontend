@@ -36,7 +36,7 @@ export function TaskDialogModal({
   const deleteTaskMutation = useDeleteTask();
   const duplicateTaskMutation = useDuplicateTask();
 
-  const task = projectTasks?.tasks.find((t: any) => (t.id || t._id) === taskId);
+  const task = projectTasks?.tasks.find((t: any) => t.id === taskId);
   const columns = projectTasks?.columns || [];
   const pDetails = projectDetails as any;
   const members = pDetails?.members || [];

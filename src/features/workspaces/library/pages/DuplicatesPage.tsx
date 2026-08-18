@@ -10,7 +10,6 @@ import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import MergeDialog from '../components/duplicates/MergeDialog';
 import { useLibrary } from '../hooks/library/use-library';
 import { usePapers } from '../hooks/data/use-papers';
-import { getLibraryEntityId } from '../utils/library.util';
 import { findDuplicateClusters } from '../utils/duplicates.util';
 import { Button } from '@/shared/components/ui';
 import type { Paper } from '../types/library.types';
@@ -70,9 +69,9 @@ export default function DuplicatesPage() {
 
     for (const group of doiMap.values()) {
       if (group.length > 1) {
-        const unseen = group.filter((p) => !seenIds.has(getLibraryEntityId(p)));
+        const unseen = group.filter((p) => !seenIds.has(p.id));
         if (unseen.length > 1) {
-          unseen.forEach((p) => seenIds.add(getLibraryEntityId(p)));
+          unseen.forEach((p) => seenIds.add(p.id));
           clusters.push(unseen);
         }
       }
@@ -80,9 +79,9 @@ export default function DuplicatesPage() {
 
     for (const group of titleMap.values()) {
       if (group.length > 1) {
-        const unseen = group.filter((p) => !seenIds.has(getLibraryEntityId(p)));
+        const unseen = group.filter((p) => !seenIds.has(p.id));
         if (unseen.length > 1) {
-          unseen.forEach((p) => seenIds.add(getLibraryEntityId(p)));
+          unseen.forEach((p) => seenIds.add(p.id));
           clusters.push(unseen);
         }
       }
@@ -103,7 +102,7 @@ export default function DuplicatesPage() {
   }, [duplicateClusters, search]);
 
   const handleSelectPaper = (paper: Paper) => {
-    const paperId = getLibraryEntityId(paper);
+    const paperId = paper.id;
     if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {
@@ -116,7 +115,7 @@ export default function DuplicatesPage() {
     mergedFields: Partial<Paper>,
     duplicateIdsToDelete: string[]
   ) => {
-    const masterId = getLibraryEntityId(masterPaper);
+    const masterId = masterPaper.id;
     // 1. Update master record with consolidated data
     await paperDataService.actions.updatePaper({ paperId: masterId, ...mergedFields });
     // 2. Delete duplicate records

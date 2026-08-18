@@ -189,7 +189,7 @@ export default function CalendarView({
 
     const selectedSet = new Set(selectedExistingTaskIds);
     return filteredExistingTaskCandidates.every((task) =>
-      selectedSet.has(task._id),
+      selectedSet.has(task.id),
     );
   }, [filteredExistingTaskCandidates, selectedExistingTaskIds]);
 
@@ -302,7 +302,7 @@ export default function CalendarView({
     const taskId = String(active.id);
     const dateKey = String(over.id);
 
-    const task = tasks.find((t) => t._id === taskId);
+    const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
     const currentDueDateKey = getCalendarDateKey(task.dueDate);
@@ -425,10 +425,10 @@ export default function CalendarView({
               const isThisToday = isToday(day);
               const isWeekendDay = isWeekend(day);
               const dayTextClass = !isCurrentMonth
-                ? "text-gray-400"
+                ? "text-muted-foreground/50"
                 : isWeekendDay
-                    ? "text-gray-600"
-                    : "text-slate-700";
+                    ? "text-muted-foreground"
+                    : "text-foreground";
 
               return (
                 <CalendarDayCell
@@ -469,18 +469,18 @@ export default function CalendarView({
             if (!open) handleCloseExistingDialog();
           }}
         >
-          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-sm border border-zinc-200 p-0 shadow-2xl" showCloseButton={false}>
+          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0 shadow-2xl" showCloseButton={false}>
             {/* Search bar */}
             <div className="px-2 pt-6 pb-2">
               <div className="relative flex items-center">
-                <Search className="absolute left-4 size-5 text-zinc-700" strokeWidth={2.25} />
+                <Search className="absolute left-4 size-5 text-muted-foreground" strokeWidth={2.25} />
                 <input
                   type="text"
                   value={existingSearch}
                   onChange={(event) => setExistingSearch(event.target.value)}
                   placeholder="Type to search"
                   autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-zinc-300"
+                  className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground/60 focus:border-border"
                 />
               </div>
             </div>
@@ -490,7 +490,7 @@ export default function CalendarView({
               <div className="mt-1.5 flex min-h-9 flex-wrap items-center gap-2 px-5 py-2">
                 {selectedExistingTaskIds.map((taskId) => {
                   const selectedTask = existingTaskCandidates.find(
-                    (task) => task._id === taskId,
+                    (task) => task.id === taskId,
                   );
                   if (!selectedTask) return null;
                   return (
@@ -498,13 +498,13 @@ export default function CalendarView({
                       key={taskId}
                       type="button"
                       onClick={() => handleToggleExistingTask(taskId)}
-                      className="group inline-flex items-center gap-1.5 rounded-sm border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-50"
+                      className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/70"
                       title={selectedTask.title || "Untitled task"}
                     >
                       <span className="max-w-45 truncate">
                         {selectedTask.title || "Untitled task"}
                       </span>
-                      <X className="size-3 text-zinc-400 group-hover:text-zinc-600" />
+                      <X className="size-3 text-muted-foreground group-hover:text-foreground" />
                     </button>
                   );
                 })}
@@ -514,20 +514,20 @@ export default function CalendarView({
             {/* Task list */}
             <div className="max-h-80 overflow-y-auto px-1 py-2">
               {filteredExistingTaskCandidates.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-300">
-                  <Search className="size-8 mb-2 opacity-10" strokeWidth={1.5} />
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                  <Search className="size-8 mb-2 opacity-20" strokeWidth={1.5} />
                   <p className="text-[13px] font-medium">No tasks found</p>
                 </div>
               ) : (
                 filteredExistingTaskCandidates.map((task) => {
-                  const checked = selectedExistingTaskIds.includes(task._id);
+                  const checked = selectedExistingTaskIds.includes(task.id);
 
                   return (
-                    <div key={task._id} className="px-2">
+                    <div key={task.id} className="px-2">
                       <button
                         type="button"
-                        onClick={() => handleToggleExistingTask(task._id)}
-                        className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-[#091e420f]"
+                        onClick={() => handleToggleExistingTask(task.id)}
+                        className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-muted/70"
                       >
                         <Checkbox
                           checked={checked}
@@ -535,15 +535,15 @@ export default function CalendarView({
                         />
                         <div className="flex flex-1 items-center gap-2.5 min-w-0">
                           {(() => {
-                            const col = columns.find(c => c.id === task.columnId || c._id?.toString() === task.columnId);
+                            const col = columns.find(c => c.id === task.columnId);
                             if (!col) return null;
                             return (
-                              <span className="shrink-0 text-[11px] font-medium text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded-[2px] truncate max-w-[80px]">
+                              <span className="shrink-0 text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-[2px] truncate max-w-[80px]">
                                 {col.title}
                               </span>
                             );
                           })()}
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-zinc-700 group-hover:text-foreground transition-colors">
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground group-hover:text-foreground transition-colors">
                             {task.title}
                           </span>
                         </div>
@@ -553,7 +553,7 @@ export default function CalendarView({
                             event.stopPropagation();
                             onOpenCardDetail(task);
                           }}
-                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-zinc-300 transition-colors hover:bg-[#091e420f] hover:text-zinc-500"
+                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                           aria-label="Open task detail"
                         >
                           <ChevronRight className="size-3.5" />
@@ -572,14 +572,14 @@ export default function CalendarView({
                 onClick={() => {
                   if (allFilteredTasksSelected) {
                     const visibleIds = new Set(
-                      filteredExistingTaskCandidates.map((task) => task._id),
+                      filteredExistingTaskCandidates.map((task) => task.id),
                     );
                     setSelectedExistingTaskIds((prev) =>
                       prev.filter((id) => !visibleIds.has(id)),
                     );
                   } else {
                     const visibleIds = filteredExistingTaskCandidates.map(
-                      (task) => task._id,
+                      (task) => task.id,
                     );
                     setSelectedExistingTaskIds((prev) =>
                       Array.from(new Set([...prev, ...visibleIds])),
@@ -587,7 +587,7 @@ export default function CalendarView({
                   }
                 }}
                 disabled={filteredExistingTaskCandidates.length === 0}
-                className="h-8 rounded-sm px-2 text-[12px] font-semibold text-[#44546f] transition-colors hover:bg-[#091e420f] disabled:opacity-30"
+                className="h-8 rounded-sm px-2 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
               >
                 {allFilteredTasksSelected ? "Deselect all" : "Select all"}
               </button>
@@ -597,7 +597,7 @@ export default function CalendarView({
                   type="button"
                   variant="ghost"
                   onClick={handleCloseExistingDialog}
-                  className="h-9 px-3 text-[#44546f] hover:bg-[#091e420f]"
+                  className="h-9 px-3 text-muted-foreground hover:bg-muted"
                 >
                   Cancel
                 </Button>
@@ -700,7 +700,7 @@ const CalendarDayCell = memo(({
       >
         {dayTasks.map((task: any) => (
             <CalendarTaskItem
-              key={task._id}
+              key={task.id}
               task={task}
               onOpenCardDetail={onOpenCardDetail}
               onRemoveFromCycle={onRemoveFromCycle}
@@ -784,7 +784,7 @@ const CalendarDayCell = memo(({
             <Button
               type="button"
               size="sm"
-              className="h-6.5 px-2.5 text-xs bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md cursor-pointer"
+              className="h-6.5 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
               onClick={onQuickAddSubmit}
               disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
             >
@@ -822,7 +822,7 @@ const CalendarTaskItem = memo(({
   const columnColor = resolveTaskColumnColor(task.columnId);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task._id,
+    id: task.id,
     disabled: isReadOnly,
     data: {
       type: "Task",

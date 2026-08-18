@@ -8,7 +8,6 @@ import InspectorPanel from '../components/panel/Panel';
 import UploadModal from '../components/system/UploadModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { getLibraryEntityId } from '../utils/library.util';
 import { filterFavoritePapers } from '../utils/favorites.util';
 import type { Paper } from '../types/library.types';
 
@@ -57,7 +56,7 @@ export default function FavoritesPage() {
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
-    const paperId = getLibraryEntityId(paper);
+    const paperId = paper.id;
     if (selectedPaperId === paperId) {
       setSelectedPaperId(null);
     } else {

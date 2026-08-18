@@ -21,18 +21,18 @@ export type DocumentContent =
 
 // ── Page ────────────────────────────────────────────────────────────────────────
 
+// ── Page ────────────────────────────────────────────────────────────────────────
+
 export type Page = {
-  id?: string;
-  _id: string;
+  id: string;
   title: string;
   content: DocumentContent; // LaTeX source text or JSON structure
   status: "draft" | "published" | "archived";
   projectId:
     | string
-    | { id?: string; _id: string; name: string; workspaceId?: string | { id?: string; _id: string; url: string } };
+    | { id: string; name: string; workspaceId?: string | { id: string; url: string } };
   author: {
-    id?: string;
-    _id: string;
+    id: string;
     name: string;
     avatar?: string;
   };
@@ -51,8 +51,7 @@ export type Page = {
 // ── Page File (sub-file inside a page-project) ─────────────────────────────────
 
 export type PageFile = {
-  id?: string;
-  _id: string;
+  id: string;
   title: string;
   content?: string;
   pageId: string;
@@ -63,12 +62,11 @@ export type PageFile = {
 // ── Version history ─────────────────────────────────────────────────────────────
 
 export type PageVersion = {
-  id?: string;
-  _id: string;
+  id: string;
   title: string;
   label: string;
   fileName: string;
-  savedBy: { id?: string; _id: string; name: string; avatar?: string };
+  savedBy: { id: string; name: string; avatar?: string };
   createdAt: string;
 };
 
@@ -77,8 +75,7 @@ export type PageVersionWithContent = PageVersion & { content: string };
 // ── Project events (history timeline) ───────────────────────────────────────────
 
 export type PageEvent = {
-  id?: string;
-  _id: string;
+  id: string;
   eventType:
     | "manual_save"
     | "auto_save"
@@ -89,7 +86,7 @@ export type PageEvent = {
   title: string;
   label: string;
   fileName: string;
-  savedBy: { id?: string; _id: string; name: string; avatar?: string };
+  savedBy: { id: string; name: string; avatar?: string };
   createdAt: string;
   /** The specific page that was modified (for content events). */
   page: string;
@@ -101,19 +98,17 @@ export type ProjectEvent = PageEvent;
 // ── Comments & Replies ──────────────────────────────────────────────────────────
 
 export type CommentReply = {
-  id?: string;
-  _id: string;
-  author: { id?: string; _id: string; name: string; avatar?: string };
+  id: string;
+  author: { id: string; name: string; avatar?: string };
   content: string;
   createdAt: string;
 };
 
 export type PageComment = {
-  id?: string;
-  _id: string;
+  id: string;
   page: string;
   projectPageId: string;
-  author: { id?: string; _id: string; name: string; avatar?: string };
+  author: { id: string; name: string; avatar?: string };
   content: string;
   line: number | null;
   lineEnd?: number | null;

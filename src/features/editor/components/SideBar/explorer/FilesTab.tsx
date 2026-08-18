@@ -278,7 +278,7 @@ function StorageFolderNode({
 
   const { files: children, isLoading } = useEditorStorage(
     projectId,
-    expanded ? folder._id : undefined,
+    expanded ? folder.id : undefined,
   );
 
   const { deleteFile, renameFile } = useEditorStorage(projectId, undefined);
@@ -310,7 +310,7 @@ function StorageFolderNode({
           setDragOver(false);
           const dropped = Array.from(e.dataTransfer.files);
           if (dropped.length > 0 && onUploadToFolder)
-            onUploadToFolder(dropped, folder._id);
+            onUploadToFolder(dropped, folder.id);
         }}
         className={cn(
           "group/row flex h-8 cursor-pointer items-center border-l-2 border-l-transparent pr-2 transition-colors",
@@ -332,7 +332,7 @@ function StorageFolderNode({
           <Folder className="size-3.5 shrink-0 text-amber-500 mr-1.5" />
         )}
 
-        {renamingId === folder._id ? (
+        {renamingId === folder.id ? (
           <RenameInput
             value={renameValue}
             onChange={setRenameValue}
@@ -343,7 +343,7 @@ function StorageFolderNode({
                 return;
               }
               renameFile.mutate(
-                { fileId: folder._id, name: n },
+                { fileId: folder.id, name: n },
                 { onSuccess: () => setRenamingId(null) },
               );
             }}
@@ -360,7 +360,7 @@ function StorageFolderNode({
                 className="text-[12px]!"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setRenamingId(folder._id);
+                  setRenamingId(folder.id);
                   setRenameValue(folder.filename);
                 }}
               >
@@ -371,7 +371,7 @@ function StorageFolderNode({
                 className="text-[12px]!"
                 onClick={(e) => {
                   e.stopPropagation();
-                  deleteFile.mutate(folder._id);
+                  deleteFile.mutate(folder.id);
                 }}
               >
                 <Trash2 className="size-3.5 mr-2" />
@@ -396,7 +396,7 @@ function StorageFolderNode({
           {children?.map((child: any) =>
             child.isFolder ? (
               <StorageFolderNode
-                key={child._id}
+                key={child.id}
                 folder={child}
                 projectId={projectId}
                 depth={depth + 1}
@@ -406,7 +406,7 @@ function StorageFolderNode({
               />
             ) : (
               <StorageFileRow
-                key={child._id}
+                key={child.id}
                 item={child}
                 depth={depth + 1}
                 onInsertAsset={onInsertAsset}
@@ -449,7 +449,7 @@ function StorageFileRow({
     <div
       draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData("application/x-asset-id", item._id);
+        e.dataTransfer.setData("application/x-asset-id", item.id);
         e.dataTransfer.effectAllowed = "move";
       }}
       onClick={() => (isImage ? onPreview(item) : onInsertAsset(item.filename))}
@@ -464,7 +464,7 @@ function StorageFileRow({
       <span className="w-4 shrink-0" />
       <Icon className={cn("size-3.5 shrink-0 mr-1.5", color)} />
 
-      {renamingId === item._id ? (
+      {renamingId === item.id ? (
         <RenameInput
           value={renameValue}
           onChange={setRenameValue}
@@ -475,7 +475,7 @@ function StorageFileRow({
               return;
             }
             renameFile.mutate(
-              { fileId: item._id, name: n },
+              { fileId: item.id, name: n },
               { onSuccess: () => setRenamingId(null) },
             );
           }}
@@ -502,7 +502,7 @@ function StorageFileRow({
               className="text-[12px]!"
               onClick={(e) => {
                 e.stopPropagation();
-                setRenamingId(item._id);
+                setRenamingId(item.id);
                 setRenameValue(item.filename);
               }}
             >
@@ -513,7 +513,7 @@ function StorageFileRow({
               className="text-[12px]!"
               onClick={(e) => {
                 e.stopPropagation();
-                deleteFile.mutate(item._id);
+                deleteFile.mutate(item.id);
               }}
             >
               <Trash2 className="size-3.5 mr-2" />
@@ -690,17 +690,17 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   // IMPORTANT: Use parentPageId (root page) as the key for fetching files
   // Each root page has its own independent file system
   // projectId is derived from parentPage for tab management
-  const projectId = (parentPage?.projectId as any)?._id ?? "";
+  const projectId = (parentPage?.projectId as any)?.id ?? "";
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === "object"
-      ? parentPage.mainFile._id
+      ? parentPage.mainFile.id
       : ((parentPage?.mainFile as string | null | undefined) ?? null);
 
 
 
   // Derive workspaceId from parentPage.project.workspace for uploads
   const workspaceId: string =
-    (parentPage?.projectId as any)?.workspaceId?._id ?? "";
+    (parentPage?.projectId as any)?.workspaceId?.id ?? "";
 
   const { data: files, isLoading } = useQuery({
     ...filesQuery(parentPageId ?? ""),
@@ -757,7 +757,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       if (retryTimer) clearInterval(retryTimer);
     };
   }, [
-    activeFilePage?._id,
+    activeFilePage?.id,
     activeFilePage?.content,
     currentPage?.content,
     editorRef,
@@ -787,7 +787,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleOpenPreview = useCallback(
     (item: StorageItem) => {
       const asset: AssetInfo = {
-        _id: item._id,
+        id: item.id,
         filename: item.filename,
         url: item.url,
         mimeType: item.mimeType,
@@ -796,8 +796,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       setSelectedAsset(asset);
       // Register the image as a tab and navigate to it via ?file=
       if (parentPageId)
-        openTab(parentPageId, { id: item._id, title: item.filename, fileUrl: item.url });
-      setSearchParams({ file: item._id });
+        openTab(parentPageId, { id: item.id, title: item.filename, fileUrl: item.url });
+      setSearchParams({ file: item.id });
     },
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
   );
@@ -935,7 +935,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
         onSuccess: (file: any) => {
           setIsCreatingFile(false);
           setNewFileName("");
-          setSearchParams({ file: file._id });
+          setSearchParams({ file: file.id });
         },
       },
     );
@@ -956,8 +956,8 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     );
   };
 
-  const handleStartRename = (file: { _id: string; title: string }) => {
-    setRenamingId(file._id);
+  const handleStartRename = (file: { id: string; title: string }) => {
+    setRenamingId(file.id);
     setRenameValue(file.title);
   };
 
@@ -968,7 +968,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
       return;
     }
     // Look up the current title so backend can rename the file in the compiler.
-    const oldTitle = files?.find((f: any) => f._id === fileId)?.title ?? "";
+    const oldTitle = files?.find((f: any) => f.id === fileId)?.title ?? "";
     updateTitleMutation.mutate(
       { pageId: fileId, title, oldTitle },
       { onSuccess: () => setRenamingId(null) },
@@ -1057,10 +1057,10 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             );
             if (existingPage) {
               await updateContentMutation.mutateAsync({
-                pageId: existingPage._id,
+                pageId: existingPage.id,
                 content,
               });
-              lastTexId = existingPage._id;
+              lastTexId = existingPage.id;
               continue;
             }
           }
@@ -1070,7 +1070,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             title: name.trim() || file.name,
             content,
           });
-          lastTexId = created._id;
+          lastTexId = created.id;
         } catch (err) {
           console.error("Failed to upload tex:", err);
         } finally {
@@ -1129,7 +1129,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
               parentId: parentId ?? undefined,
               pageId: parentPageId,
             });
-            const folderId = (created as any).folder?._id ?? (created as any)._id;
+            const folderId = (created as any).folder?.id ?? (created as any).id;
             folderIdMap[folderPath] = folderId;
           }
 
@@ -1163,7 +1163,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   );
                   if (existingPage) {
                     await updateContentMutation.mutateAsync({
-                      pageId: existingPage._id,
+                      pageId: existingPage.id,
                       content,
                     });
                     continue;
@@ -1364,7 +1364,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
   const handleUploadToFolder = useCallback(
     (files: File[], folderId: string) => {
       if (!parentPageId) return;
-      const tabProjectId = (parentPage?.projectId as any)?._id ?? "";
+      const tabProjectId = (parentPage?.projectId as any)?.id ?? "";
       setUploadingCount((prev) => prev + files.length);
 
       const settle = () =>
@@ -1538,7 +1538,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 | { kind: "asset"; data: StorageItem }
                 | {
                   kind: "tex";
-                  data: { _id: string; title: string; updatedAt: string };
+                  data: { id: string; title: string; updatedAt: string };
                 };
 
               const items: UnifiedItem[] = [];
@@ -1590,7 +1590,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 if (item.kind === "folder") {
                   return (
                     <StorageFolderNode
-                      key={item.data._id}
+                      key={item.data.id}
                       folder={item.data}
                       projectId={parentPageId || ""}
                       depth={0}
@@ -1604,7 +1604,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 if (item.kind === "asset") {
                   return (
                     <StorageFileRow
-                      key={item.data._id}
+                      key={item.data.id}
                       item={item.data}
                       depth={0}
                       onInsertAsset={handleInsertAsset}
@@ -1615,15 +1615,15 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
                 // kind === "tex"
                 const file = item.data;
-                const isActive = file._id === pageId;
-                const isMain = file._id === mainFileId;
+                const isActive = file.id === pageId;
+                const isMain = file.id === mainFileId;
                 const { icon: FileIcon, color: fileColor } = getFileIcon(
                   file.title,
                 );
                 return (
                   <div
-                    key={file._id}
-                    onClick={() => handleFileClick(file._id, file.title)}
+                    key={file.id}
+                    onClick={() => handleFileClick(file.id, file.title)}
                     className={cn(
                       "group/row flex h-8 cursor-pointer items-center border-l-2 pr-2 transition-colors",
                       isActive
@@ -1639,11 +1639,11 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                       )}
                     />
 
-                    {renamingId === file._id ? (
+                    {renamingId === file.id ? (
                       <RenameInput
                         value={renameValue}
                         onChange={setRenameValue}
-                        onCommit={() => handleCommitRename(file._id)}
+                        onCommit={() => handleCommitRename(file.id)}
                         onCancel={() => setRenamingId(null)}
                         isPending={updateTitleMutation.isPending}
                       />
@@ -1664,14 +1664,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                             main
                           </span>
                         )}
-                        {renamingId !== file._id && (
+                        {renamingId !== file.id && (
                           <RowActions>
                             {!isMain && (
                               <DropdownMenuItem
                                 className="text-[12px]!"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleSetMain(file._id);
+                                  handleSetMain(file.id);
                                 }}
                               >
                                 <Star className="size-3.5 mr-2" />
@@ -1692,7 +1692,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                               className="text-[12px]!"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDelete(file._id);
+                                handleDelete(file.id);
                               }}
                             >
                               <Trash2 className="size-3.5 mr-2" />

@@ -11,11 +11,11 @@ export type ProjectMap = Record<string, ProjectInfo>;
  * Creates a lookup map from project ID to project metadata.
  */
 export function createProjectMap(
-  projects: Array<{ id?: string; _id?: string; name: string }>,
+  projects: Array<{ id: string; name: string }>,
 ): ProjectMap {
   const map: ProjectMap = {};
   projects.forEach((p) => {
-    const pid = p.id || p._id;
+    const pid = p.id;
     if (pid) {
       map[pid] = { id: pid, name: p.name };
     }
@@ -35,12 +35,12 @@ export function getTaskProjectId(task: any): string | null {
     return task.projectId;
   }
   if (typeof task.projectId === 'object' && task.projectId !== null) {
-    const pId = task.projectId.id || task.projectId._id;
+    const pId = task.projectId.id;
     if (pId) return pId;
   }
   if (task.project) {
     if (typeof task.project === 'string') return task.project;
-    const pId = task.project.id || task.project._id;
+    const pId = task.project.id;
     if (pId) return pId;
   }
   return null;
@@ -55,7 +55,7 @@ export function getTaskProject(task: any, projectMap: ProjectMap = {}): ProjectI
   // 1. Direct embedded project object with name
   if (task.project && typeof task.project === 'object' && task.project.name) {
     return {
-      id: task.project.id || task.project._id || '',
+      id: task.project.id || '',
       name: task.project.name,
     };
   }
@@ -63,7 +63,7 @@ export function getTaskProject(task: any, projectMap: ProjectMap = {}): ProjectI
   // 2. Embedded projectId object with name
   if (task.projectId && typeof task.projectId === 'object' && task.projectId.name) {
     return {
-      id: task.projectId.id || task.projectId._id || '',
+      id: task.projectId.id || '',
       name: task.projectId.name,
     };
   }
@@ -134,12 +134,12 @@ export function categorizeTasks(
   tasks.forEach((t) => {
     const assigneeId =
       typeof t.assignee === 'object' && t.assignee !== null
-        ? t.assignee?.id || t.assignee?._id
+        ? t.assignee?.id
         : t.assigneeId || t.assignee;
 
     const authorId =
       typeof t.author === 'object' && t.author !== null
-        ? t.author?.id || t.author?._id
+        ? t.author?.id
         : t.authorId || t.author;
 
     const isAssignee = assigneeId === currentUserId;

@@ -54,7 +54,7 @@ export function ItemActions({
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
     try {
-      await Promise.resolve(onDelete(item._id));
+      await Promise.resolve(onDelete(item.id));
       toast.success(isTrash ? "Deleted permanently" : "Moved to trash");
       setIsDeleteDone(true);
       window.setTimeout(() => {
@@ -74,7 +74,7 @@ export function ItemActions({
     if (isRestoring) return;
     setIsRestoring(true);
     try {
-      await Promise.resolve(onToggleStar(item._id));
+      await Promise.resolve(onToggleStar(item.id));
       toast.success(`Restored "${item.filename}"`);
     } catch {
       toast.error("Failed to restore file");
@@ -159,7 +159,7 @@ export function ItemActions({
               <DropdownMenuItem
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  onToggleStar(item._id);
+                  onToggleStar(item.id);
                 }}
               >
                 <Star className="size-4 mr-2" />
@@ -235,7 +235,7 @@ export default function ListView({
               const fileType = getFileType(item);
               return (
                 <motion.div
-                  key={item._id}
+                  key={item.id}
                   layout
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -251,7 +251,7 @@ export default function ListView({
                     if (!isReadOnly && item.isFolder && onDropOnFolder) {
                       e.preventDefault();
                       e.stopPropagation();
-                      setDragOverFolderId(item._id);
+                      setDragOverFolderId(item.id);
                     }
                   }}
                   onDragLeave={(e: React.DragEvent) => {
@@ -265,8 +265,8 @@ export default function ListView({
                       onDropOnFolder(item, e);
                     }
                   }}
-                  className={`grid grid-cols-12 gap-4 items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer group transition-colors ${selectedItemId === item._id ? "bg-accent/80" : ""
-                    } ${dragOverFolderId === item._id ? "bg-muted ring-1 ring-muted-foreground/30" : ""
+                  className={`grid grid-cols-12 gap-4 items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer group transition-colors ${selectedItemId === item.id ? "bg-accent/80" : ""
+                    } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""
                     }`}
                   onClick={(e: React.MouseEvent) => {
                     if (item.isFolder) {

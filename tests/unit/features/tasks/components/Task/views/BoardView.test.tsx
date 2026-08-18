@@ -5,18 +5,18 @@ import type { Task, Column } from '@/features/workspaces/projects/project-id/tas
 import React from 'react';
 
 const mockTasks: Task[] = [
-  { _id: 'task-1', title: 'Test Task 1', columnId: 'col-1', author: 'user-1', rank: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as unknown as Task,
-  { _id: 'task-2', title: 'Test Task 2', columnId: 'col-2', author: 'user-1', rank: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as unknown as Task,
+  { id: 'task-1', title: 'Test Task 1', columnId: 'col-1', author: 'user-1', rank: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as unknown as Task,
+  { id: 'task-2', title: 'Test Task 2', columnId: 'col-2', author: 'user-1', rank: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as unknown as Task,
 ];
 
 const mockColumns: Column[] = [
-  { _id: 'col-1', id: 'col-1', title: 'To Do', accentColor: 'gray' },
-  { _id: 'col-2', id: 'col-2', title: 'In Progress', accentColor: 'blue' },
+  { id: 'col-1', title: 'To Do', accentColor: 'gray' },
+  { id: 'col-2', title: 'In Progress', accentColor: 'blue' },
 ];
 
 const mockTasksByColumnId = new Map<string, Task[]>([
-  ['col-1', [mockTasks[0]]],
-  ['col-2', [mockTasks[1]]],
+  ['col-1', [mockTasks[0]!]],
+  ['col-2', [mockTasks[1]!]],
 ]);
 
 describe('BoardView Component', () => {
@@ -60,7 +60,7 @@ describe('BoardView Component', () => {
     expect(addButtons.length).toBeGreaterThan(0);
 
     // Click the first add button (should be for first column)
-    fireEvent.click(addButtons[0]);
+    fireEvent.click(addButtons[0]!);
 
     // This should trigger the new card input logic, which we can mock or check
     // Since the actual implementation might show an input field, we just verify the interaction

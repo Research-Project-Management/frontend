@@ -4,7 +4,6 @@ export type { WorkspaceRole };
 
 export interface WorkspaceMemberUser {
   id: string;
-  _id?: string;
   name: string;
   email: string;
   avatar?: string | null;
@@ -29,14 +28,13 @@ export interface WorkspacePendingInvite {
 }
 
 export interface WorkspaceMemberResponse {
-  id?: string;
+  id: string;
   userId: string;
   role: WorkspaceRole | string;
   joinedAt?: string;
   createdAt?: string;
   user: {
-    id?: string;
-    _id?: string;
+    id: string;
     name: string;
     email: string;
     avatar?: string;

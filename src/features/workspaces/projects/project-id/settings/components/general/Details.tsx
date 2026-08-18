@@ -208,7 +208,7 @@ export function GeneralDetails({
         <Button
           onClick={onSubmit}
           disabled={!hasChanges || isSaving || !name.trim()}
-          className="h-9 px-4 text-xs font-medium bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer rounded-md shadow-2xs shrink-0"
+          className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-2xs shrink-0"
         >
           {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
           Update project

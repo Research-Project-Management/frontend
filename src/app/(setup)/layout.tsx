@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/shared/components/ui';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { apiGet } from '@/shared/lib/api';
 
 export default function WorkspacesLayout({

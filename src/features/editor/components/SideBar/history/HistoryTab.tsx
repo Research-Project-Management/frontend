@@ -283,7 +283,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
             ) : (
               versions.map((v) => (
                 <div
-                  key={v._id}
+                  key={v.id}
                   className="group flex items-start gap-2 border-b border-border px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/70"
                 >
                   <Clock className="size-3.5 shrink-0 mt-0.5 text-muted-foreground" />
@@ -296,10 +296,10 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                     </p>
                   </div>
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    {confirmId === v._id ? (
+                    {confirmId === v.id ? (
                       <>
                         <button
-                          onClick={() => handleRestoreFile(v._id)}
+                          onClick={() => handleRestoreFile(v.id)}
                           disabled={restoreFileMutation.isPending}
                           className="text-[10px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                         >
@@ -319,7 +319,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                     ) : (
                       <>
                         <button
-                          onClick={() => setConfirmId(v._id)}
+                          onClick={() => setConfirmId(v.id)}
                           title="Restore this file to this snapshot"
                           className="p-0.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                         >
@@ -329,7 +329,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                           onClick={() =>
                             deleteMutation.mutate({
                               pageId: activeFileId!,
-                              versionId: v._id,
+                              versionId: v.id,
                             })
                           }
                           disabled={deleteMutation.isPending}
@@ -380,7 +380,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
 
                   return (
                     <div
-                      key={evt._id}
+                      key={evt.id}
                       className="group flex items-start gap-2 border-b border-border px-3 py-2.5 transition-colors last:border-b-0 hover:bg-accent/70"
                     >
                       <Icon
@@ -398,10 +398,10 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
 
                       {canRestore && (
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                          {confirmId === evt._id ? (
+                          {confirmId === evt.id ? (
                             <>
                               <button
-                                onClick={() => handleRestoreProject(evt._id)}
+                                onClick={() => handleRestoreProject(evt.id)}
                                 disabled={restoreProjectMutation.isPending}
                                 title="Restore all project files to this snapshot"
                                 className="text-[10px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
@@ -421,7 +421,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                             </>
                           ) : (
                             <button
-                              onClick={() => setConfirmId(evt._id)}
+                              onClick={() => setConfirmId(evt.id)}
                               title="Restore all project files to their state at this snapshot"
                               className="p-0.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                             >

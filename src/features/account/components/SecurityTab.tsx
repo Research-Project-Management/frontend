@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChangePassword } from '../hooks/use-security';
 import { Button, Input } from '@/shared/components/ui';
 import { Eye, EyeOff } from 'lucide-react';

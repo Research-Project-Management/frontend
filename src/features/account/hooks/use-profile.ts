@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { queryKeys } from '@/shared/constants';
+import { authKeys } from '@/features/auth/constants/auth.keys';
 import { updateProfile } from '../services/profile.service';
 import type { UpdateProfilePayload } from '../types/profile.types';
 
@@ -15,7 +15,7 @@ export const useUpdateProfile = () => {
     onSuccess: (_, variables) => {
       toast.success('Profile updated', { id: 'profile-update' });
       // Optimistically update the user cache or invalidate
-      queryClient.setQueryData(queryKeys.auth.session, (old: any) => {
+      queryClient.setQueryData(authKeys.session(), (old: any) => {
         if (!old) return old;
         return {
           ...old,
@@ -23,7 +23,7 @@ export const useUpdateProfile = () => {
           ...(variables.avatar !== undefined ? { avatar: variables.avatar } : {}),
         };
       });
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.session });
+      queryClient.invalidateQueries({ queryKey: authKeys.session() });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update profile', { id: 'profile-update' });

@@ -39,13 +39,13 @@ export default function PagesPage({ projectId: propProjectId }: { projectId?: st
       setIsCreateModalOpen(false);
       setTitle('');
       const mainFileStr = data.mainFile
-        ? typeof data.mainFile === 'object' && data.mainFile !== null && '_id' in data.mainFile
-          ? (data.mainFile._id as string)
+        ? typeof data.mainFile === 'object' && data.mainFile !== null && 'id' in data.mainFile
+          ? (data.mainFile.id as string)
           : (data.mainFile as string)
         : null;
       const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
       router.push(
-        `/${workspaceId}/projects/${projectId}/pages/${data.page._id}${fileQuery}`,
+        `/${workspaceId}/projects/${projectId}/pages/${data.page.id}${fileQuery}`,
       );
     } catch (error) {
       console.error(error);

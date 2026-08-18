@@ -1,39 +1,37 @@
 import { z } from 'zod';
 
 export const userSchema = z.object({
-  _id: z.string().optional(),
-  id: z.string().optional(),
+  id: z.string().optional().default(''),
   name: z.string().optional().default(''),
   email: z.string().optional().default(''),
   avatar: z.string().optional().default(''),
 });
 
 export const collectionSchema = z.object({
-  _id: z.string().optional().default(''),
-  id: z.string().optional(),
+  id: z.string().optional().default(''),
   name: z.string().optional().default(''),
   description: z.string().optional().default(''),
   color: z.string().optional().default('#3b82f6'),
   icon: z.string().optional().default('📁'),
   workspaceId: z.string().optional().default(''),
+  parentId: z.string().nullable().optional(),
   parent: z.string().nullable().optional(),
   createdBy: userSchema.optional(),
   paperCount: z.number().optional().default(0),
+  papersCount: z.number().optional().default(0),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
 });
 
 export const noteSchema = z.object({
-  _id: z.string().optional().default(''),
-  id: z.string().optional(),
+  id: z.string().optional().default(''),
   content: z.string().optional().default(''),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
 });
 
 export const paperAttachmentSchema = z.object({
-  _id: z.string().optional(),
-  id: z.string().optional(),
+  id: z.string().optional().default(''),
   fileId: z.string().nullable().optional(),
   filename: z.string().optional().default(''),
   url: z.string().optional().default(''),
@@ -52,8 +50,7 @@ export const primaryFileSchema = z.object({
 });
 
 export const paperSchema = z.object({
-  _id: z.string().optional().default(''),
-  id: z.string().optional(),
+  id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Paper'),
   authors: z.array(z.string()).optional().default([]),
   year: z.union([z.number(), z.string()]).nullish(),
@@ -123,14 +120,14 @@ export const projectPaperRefSchema = z.object({
 });
 
 export const projectCollectionSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   name: z.string(),
   description: z.string(),
   projectId: z.string(),
   workspaceId: z.string(),
   createdBy: userSchema,
   sourceCollection: z.object({
-    _id: z.string(),
+    id: z.string(),
     name: z.string(),
     color: z.string(),
     icon: z.string(),

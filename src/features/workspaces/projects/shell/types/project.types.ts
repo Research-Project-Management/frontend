@@ -1,6 +1,5 @@
 export interface ProjectMemberUser {
-  id?: string;
-  _id?: string;
+  id: string;
   name: string;
   email?: string;
   avatar?: string;
@@ -8,7 +7,6 @@ export interface ProjectMemberUser {
 
 export interface ProjectMember {
   id?: string;
-  _id?: string;
   user?: ProjectMemberUser;
   userId?: string | ProjectMemberUser;
   role: string;
@@ -16,8 +14,7 @@ export interface ProjectMember {
 }
 
 export interface Workspace {
-  id?: string;
-  _id?: string;
+  id: string;
   name: string;
   slug?: string;
 }
@@ -29,8 +26,7 @@ export interface ProjectSettings {
 }
 
 export interface Project {
-  id?: string;
-  _id: string;
+  id: string;
   name: string;
   description: string;
   identifier?: string;
@@ -48,8 +44,7 @@ export interface Project {
   workspaceId?: string | Workspace;
   members: ProjectMember[];
   createdBy?: {
-    id?: string;
-    _id?: string;
+    id: string;
     name: string;
     email?: string;
     avatar?: string;
@@ -85,4 +80,4 @@ export interface UpdateProjectInput {
   subscriberIds?: string[];
 }
 
-export type { ProjectRole } from '@/shared/types/iam.types';
+export type { ProjectRole } from '@/features/workspaces/shell/types/iam.types';

@@ -16,7 +16,7 @@ import {
   
 } from '@/shared/components/ui';
 import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
-import { DeleteModal } from '@/features/workspaces/settings';
+import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 
 import { useEditWorkspace, useDeleteWorkspace } from '../hooks/use-workspace';
 import type { Workspace } from '../types/workspace.types';
@@ -61,7 +61,7 @@ export default function ManageWorkspacesPage() {
           {(workspaces as any[])?.map((workspace: any) => (
 
             <div
-              key={workspace._id}
+              key={workspace.id}
               className='flex items-center gap-4 px-4 py-3 bg-background hover:bg-secondary/40 transition-colors group'
             >
               {/* Avatar */}

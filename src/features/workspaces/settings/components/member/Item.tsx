@@ -47,7 +47,7 @@ export function MemberItem({
   const isOwner = member.role === 'owner';
   const isSelf =
     Boolean(currentUserId) &&
-    (member.userId === currentUserId || member.user.id === currentUserId || (member.user as any)._id === currentUserId);
+    (member.userId === currentUserId || member.user.id === currentUserId);
 
   const initial = member.user.name.charAt(0).toUpperCase() || 'U';
   const formattedDate = formatDate(member.createdAt);

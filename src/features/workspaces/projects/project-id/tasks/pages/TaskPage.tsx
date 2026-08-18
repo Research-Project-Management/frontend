@@ -17,7 +17,7 @@ import type {
 import { resolveTaskColumnId } from "../types/task.types";
 import { Skeleton, Button } from "@/shared/components/ui";
 import { toast } from "sonner";
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   KanbanSquare,
   Plus,
@@ -156,12 +156,16 @@ export default function TaskPage({
   };
 
   const handleSaveCard = (cardData: TaskMutationInput) => {
-    if (modal.type === 'detail' && modal.card._id) {
+    if (modal.type === 'detail' && modal.card.id) {
       projectActions.updateTask({
-        taskId: modal.card._id,
+        taskId: modal.card.id,
         projectId,
         ...cardData,
       });
+      return;
+    }
+
+    if (!cardData.title?.trim()) {
       return;
     }
 
@@ -171,7 +175,7 @@ export default function TaskPage({
       ...cardData,
     }).then((result: any) => {
       toast.success(cycleId ? "Task added to cycle" : "Task created");
-      if (result?.task?._id) {
+      if (result?.task?.id) {
         setModal({ type: 'detail', card: result.task });
       } else {
         closeModal();
@@ -180,14 +184,14 @@ export default function TaskPage({
   };
 
   const handleDeleteCard = () => {
-    if (modal.type === 'detail' && modal.card._id) {
+    if (modal.type === 'detail' && modal.card.id) {
       setModal({ type: 'delete-task', task: modal.card as TaskType });
     }
   };
 
   const handleTaskDeleteConfirm = () => {
-    if (modal.type === 'delete-task' && modal.task._id) {
-      projectActions.deleteTask({ taskId: modal.task._id, projectId }).then(() => {
+    if (modal.type === 'delete-task' && modal.task.id) {
+      projectActions.deleteTask({ taskId: modal.task.id, projectId }).then(() => {
         closeModal();
         toast.success("Task deleted");
       });
@@ -195,28 +199,28 @@ export default function TaskPage({
   };
 
   const handleDuplicateCard = (card: TaskType) => {
-    projectActions.duplicateTask({ projectId, taskId: card._id }).then(() => {
+    projectActions.duplicateTask({ projectId, taskId: card.id }).then(() => {
       toast.success("Task duplicated");
     });
   };
 
   const handleJoinCard = (card: TaskType) => {
-    if (!currentUser?._id) return;
-    if (card.assigneeId?._id === currentUser._id) return;
+    if (!currentUser?.id) return;
+    if (card.assigneeId?.id === currentUser.id) return;
 
     projectActions.updateTask({
-      taskId: card._id,
+      taskId: card.id,
       projectId,
-      assigneeId: currentUser._id,
+      assigneeId: currentUser.id,
     });
   };
 
   const handleLeaveCard = (card: TaskType) => {
-    if (!currentUser?._id) return;
-    if (card.assigneeId?._id !== currentUser._id) return;
+    if (!currentUser?.id) return;
+    if (card.assigneeId?.id !== currentUser.id) return;
 
     projectActions.updateTask({
-      taskId: card._id,
+      taskId: card.id,
       projectId,
       assigneeId: null,
     });
@@ -224,7 +228,7 @@ export default function TaskPage({
 
   const handleRemoveFromCycle = (card: TaskType, callback?: () => void) => {
     projectActions.updateTask({
-      taskId: card._id,
+      taskId: card.id,
       projectId,
       cycleId: null,
     });
@@ -356,7 +360,7 @@ export default function TaskPage({
             tasksByColumnId={tasksByColumnId}
             tasks={filteredTasks}
             labelMap={labelMap}
-            currentUserId={currentUser?._id}
+            currentUserId={currentUser?.id}
             currentUserAvatar={currentUser?.avatar}
             onAddCard={handleOpenAddDialog}
             onEditCard={handleOpenEditDialog}
@@ -386,10 +390,10 @@ export default function TaskPage({
           onSave={handleSaveCard}
           onDelete={handleDeleteCard}
           onDuplicate={
-            modal.card._id ? () => handleDuplicateCard(modal.card as TaskType) : undefined
+            modal.card.id ? () => handleDuplicateCard(modal.card as TaskType) : undefined
           }
           onRemoveFromCycle={
-            cycleId && modal.card._id
+            cycleId && modal.card.id
               ? () => {
                   handleRemoveFromCycle(modal.card as TaskType, closeModal);
                 }

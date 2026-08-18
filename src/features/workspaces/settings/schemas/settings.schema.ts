@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { WORKSPACE_ROLES, type WorkspaceRole } from '@/shared/types/iam.types';
+import { WORKSPACE_ROLES, type WorkspaceRole } from '@/features/workspaces/shell/types/iam.types';
 
 export { WORKSPACE_ROLES, type WorkspaceRole };
 

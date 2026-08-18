@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import type { Paper } from '../../types/library.types';
-import { getLibraryEntityId } from '../../utils/library.util';
 
 export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt';
 export type SortOrder = 'asc' | 'desc';
@@ -47,7 +46,7 @@ export function usePaper({ papers, initialActiveId = null }: UsePaperOptions) {
       if (prev.size === papers.length) {
         return new Set();
       }
-      return new Set(papers.map((p) => getLibraryEntityId(p)));
+      return new Set(papers.map((p) => p.id));
     });
   }, [papers]);
 

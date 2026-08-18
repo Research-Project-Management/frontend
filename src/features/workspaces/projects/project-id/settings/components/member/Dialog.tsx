@@ -48,7 +48,7 @@ export function AddMemberDialog({
 
   const available = workspaceMembers.filter((m) => {
     const u = m.user || {};
-    const uId = u.id || u._id || m.userId;
+    const uId = u.id || m.userId;
     if (!uId || existingMemberIds.has(uId)) return false;
 
     const q = search.toLowerCase().trim();
@@ -134,7 +134,7 @@ export function AddMemberDialog({
             ) : (
               available.map((m) => {
                 const u = m.user || {};
-                const uId = u.id || u._id || m.userId;
+                const uId = u.id || m.userId;
                 const isSelected = selectedUserIds.includes(uId);
 
                 return (
@@ -197,7 +197,7 @@ export function AddMemberDialog({
             size="sm"
             onClick={handleConfirm}
             disabled={selectedUserIds.length === 0 || isLoading}
-            className="h-8 text-xs font-medium px-4 bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer shadow-2xs"
+            className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs"
           >
             {isLoading && <Loader2 className="mr-1.5 size-3 animate-spin" />}
             <span>Add {selectedUserIds.length > 0 ? `(${selectedUserIds.length})` : ''}</span>

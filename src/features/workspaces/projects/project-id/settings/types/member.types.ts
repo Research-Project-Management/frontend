@@ -4,7 +4,6 @@ export type { ProjectRole };
 
 export interface MemberUser {
   id: string;
-  _id?: string;
   name: string;
   email?: string;
   avatar?: string;

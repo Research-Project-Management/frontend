@@ -24,9 +24,9 @@ And another block:
 
     const blocks = extractCodeBlocks(md);
     expect(blocks).toHaveLength(2);
-    expect(blocks[0].language).toBe("latex");
-    expect(blocks[0].code).toContain("\\section{Test}");
-    expect(blocks[1].language).toBe("bib");
+    expect(blocks[0]!.language).toBe("latex");
+    expect(blocks[0]!.code).toContain("\\section{Test}");
+    expect(blocks[1]!.language).toBe("bib");
   });
 
   it("should resolve slash command prompts with context", () => {

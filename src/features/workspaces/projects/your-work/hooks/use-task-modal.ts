@@ -13,7 +13,7 @@ export function useTaskModal(tasks: any[] = []) {
 
   const handleOpenTask = useCallback(
     (taskId: string, fallbackProjectId?: string) => {
-      const task = tasks.find((t) => (t.id || t._id) === taskId);
+      const task = tasks.find((t) => t.id === taskId);
       const projectId = task ? getTaskProjectId(task) : fallbackProjectId || null;
 
       if (projectId) {

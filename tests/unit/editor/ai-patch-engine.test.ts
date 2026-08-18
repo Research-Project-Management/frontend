@@ -143,9 +143,7 @@ This is the original introductory text.
     const conflictRes = AiPatchEngine.detectConflict(baseContent, modifiedMain, edits);
     expect(conflictRes.hasConflict).toBe(true);
     expect(conflictRes.conflicts).toHaveLength(1);
-    expect(conflictRes.conflicts[0].currentText).toBe('Teammate Edited Text');
-    expect(conflictRes.conflicts[0].expectedText).toBe('Original Text');
+    expect(conflictRes.conflicts[0]!.currentText).toBe('Teammate Edited Text');
+    expect(conflictRes.conflicts[0]!.expectedText).toBe('Original Text');
   });
 });
-
-

@@ -12,8 +12,8 @@ import {
   useWorkspaces,
   useUpdateWorkspace,
   useDeleteWorkspace,
-} from '@/features/workspaces/shell';
-import { useUpload } from '@/shared/hooks';
+} from '@/features/workspaces/shell/hooks/use-workspace';
+import { useUpload } from '@/shared/hooks/use-upload';
 
 export function useGeneral(workspaceId: string) {
   const router = useRouter();
@@ -107,7 +107,7 @@ export function useGeneral(workspaceId: string) {
     deleteMutation.mutate(workspaceId, {
       onSuccess: () => {
         toast.success('Workspace deleted');
-        const nextWs: any = (workspaces as any[])?.find((w: any) => w._id !== workspaceId);
+        const nextWs: any = (workspaces as any[])?.find((w: any) => w.id !== workspaceId);
         if (nextWs?.url) {
           router.push(`/${nextWs.url}`);
         } else {

@@ -1,4 +1,3 @@
-// ── Home schemas ──────────────────────────────────────────────────────────────
 import { z } from 'zod';
 
 export const sectionIdSchema = z.enum(['quicklinks', 'stickies', 'recent']);

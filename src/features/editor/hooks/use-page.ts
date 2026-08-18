@@ -123,7 +123,7 @@ export function useActiveDocument() {
   } = usePageStore();
   const { autoCompile } = useSettingsStore();
 
-  const isAssetTab = !!fileId && !!selectedAsset && selectedAsset._id === fileId;
+  const isAssetTab = !!fileId && !!selectedAsset && selectedAsset.id === fileId;
   const displayPage = activePage ?? null;
 
   const editorTitle = parentPage
@@ -143,11 +143,11 @@ export function useActiveDocument() {
 
   // Restore selectedAsset if active fileId is an asset tab
   useEffect(() => {
-    if (fileId && (!selectedAsset || selectedAsset._id !== fileId)) {
+    if (fileId && (!selectedAsset || selectedAsset.id !== fileId)) {
       const tab = tabs.find((t: { id: string; fileUrl?: string; title: string }) => t.id === fileId);
       if (tab && tab.fileUrl) {
         setSelectedAsset({
-          _id: tab.id,
+          id: tab.id,
           filename: tab.title,
           url: tab.fileUrl,
         });
@@ -164,7 +164,7 @@ export function useActiveDocument() {
       if (!pageId || !parentPage || parentLoading) return;
 
       const proj = parentPage.projectId;
-      const projId = proj && typeof proj === "object" ? proj._id : null;
+      const projId = proj && typeof proj === "object" ? proj.id : null;
       const ws = proj && typeof proj === "object" ? proj.workspaceId : null;
       const wsUrl = ws && typeof ws === "object" ? ws.url : null;
 
@@ -191,7 +191,7 @@ export function useActiveDocument() {
       if (!fileId && parentPage.mainFile) {
         const mainFileId =
           typeof parentPage.mainFile === "object" && parentPage.mainFile
-            ? parentPage.mainFile._id
+            ? parentPage.mainFile.id
             : typeof parentPage.mainFile === "string"
               ? parentPage.mainFile
               : null;
@@ -240,13 +240,13 @@ export function useActiveDocument() {
   useEffect(() => {
     if (!autoCompile) return;
     if (!pageId || autoCompileFiredRef.current === pageId) return;
-    if (!activePage || !activePage._id) return;
+    if (!activePage || !activePage.id) return;
     autoCompileFiredRef.current = pageId;
     const timer = setTimeout(() => {
       compileRef.current?.();
     }, 2000);
     return () => clearTimeout(timer);
-  }, [pageId, activePage?._id, autoCompile]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pageId, activePage?.id, autoCompile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync root page into store
   useEffect(() => {
@@ -255,7 +255,7 @@ export function useActiveDocument() {
       const proj = parentPage.projectId;
       if (typeof proj === "object") {
         const ws = (proj as any).workspaceId;
-        const wid = typeof ws === "object" ? ws?._id : typeof ws === "string" ? ws : null;
+        const wid = typeof ws === "object" ? ws?.id : typeof ws === "string" ? ws : null;
         if (wid) setWorkspaceId(wid);
       }
     }
@@ -263,15 +263,15 @@ export function useActiveDocument() {
       setCurrentPage("");
       setWorkspaceId("");
     };
-  }, [parentPage?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [parentPage?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Register active file as open tab
   useEffect(() => {
     if (!activePage || !pageId) return;
-    if (activePage._id === pageId) return;
-    openTab(pageId, { id: activePage._id, title: activePage.title });
+    if (activePage.id === pageId) return;
+    openTab(pageId, { id: activePage.id, title: activePage.title });
     setActiveFilePage(activePage);
-  }, [activePage?._id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activePage?.id, activePage?.title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     isLoading,
@@ -324,7 +324,7 @@ export const usePageActions = () => {
     mutationFn: ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) =>
       documentService.updateTitle(pageId, title, oldTitle),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(data._id) });
+      queryClient.invalidateQueries({ queryKey: pageKeys.detail(data.id) });
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success("Title updated");
     },

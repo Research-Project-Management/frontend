@@ -270,7 +270,7 @@ export const useAddProjectMember = () => {
       queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
         if (!old) return old;
         const newMember = {
-          user: { id: userId, _id: userId, name: 'Adding...', email: '' },
+          user: { id: userId, name: 'Adding...', email: '' },
           role: role || 'contributor',
           joinedAt: new Date().toISOString(),
         };
@@ -319,7 +319,7 @@ export const useUpdateProjectMemberRole = () => {
         if (!old) return old;
         const updateMembers = (members: any[]) =>
           members.map((m) =>
-            m.user?._id === userId || m.user?.id === userId || m.userId === userId
+            m.user?.id === userId || m.userId === userId
               ? { ...m, role: targetRole }
               : m
           );
@@ -362,7 +362,7 @@ export const useRemoveProjectMember = () => {
       queryClient.setQueryData(projectKeys.byId(projectId), (old: any) => {
         if (!old) return old;
         const filterMembers = (members: any[]) =>
-          members.filter((m) => m.user?._id !== userId && m.user?.id !== userId && m.userId !== userId);
+          members.filter((m) => m.user?.id !== userId && m.userId !== userId);
 
         return {
           ...old,

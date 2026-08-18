@@ -39,7 +39,7 @@ function Breadcrumbs({
               <ChevronRight className="size-3 text-muted-foreground/40 shrink-0 mx-0.5" />
             )}
             <button
-              onClick={() => onNavigate(idx, seg._id)}
+              onClick={() => onNavigate(idx, seg.id)}
               disabled={isLast}
               className={`truncate max-w-[140px] transition-colors ${
                 isLast
@@ -65,7 +65,7 @@ export default function MyFilesPage() {
 
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbSegment[]>([
-    { _id: null, name: 'My Drive' },
+    { id: null, name: 'My Drive' },
   ]);
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
 
@@ -80,8 +80,8 @@ export default function MyFilesPage() {
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const handleFolderClick = useCallback((folder: StorageItem) => {
-    setCurrentFolder(folder._id);
-    setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { _id: folder._id, name: folder.filename }));
+    setCurrentFolder(folder.id);
+    setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { id: folder.id, name: folder.filename }));
   }, []);
 
   const handleBreadcrumbNavigate = useCallback((index: number, id: string | null) => {
@@ -109,7 +109,7 @@ export default function MyFilesPage() {
       if (!canDropIntoFolder(draggingItem, folder)) return;
       const itemName = draggingItem!.filename;
       try {
-        await moveItem({ itemId: draggingItem!._id, parentId: folder._id });
+        await moveItem({ itemId: draggingItem!.id, parentId: folder.id });
         toast.success(`Moved "${itemName}" into "${folder.filename}"`);
       } catch {
         toast.error(`Failed to move "${itemName}"`);
@@ -123,9 +123,9 @@ export default function MyFilesPage() {
   const handleMoveToParent = useCallback(
     async (item: StorageItem) => {
       const parentId =
-        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2]._id : null;
+        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
       try {
-        await moveItem({ itemId: item._id, parentId });
+        await moveItem({ itemId: item.id, parentId });
         toast.success(
           `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : 'My Drive'}`,
         );

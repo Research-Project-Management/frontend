@@ -85,21 +85,21 @@ export function ColumnFormModal({
       <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 shadow-2xl rounded-sm">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-[18px] font-bold text-[#172b4d]">
+            <DialogTitle className="text-[18px] font-bold text-foreground">
               {mode === "create" ? "New Column" : "Edit Column"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="p-6 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="column-name" className="text-[13px] font-semibold text-zinc-500">
+              <Label htmlFor="column-name" className="text-[13px] font-medium text-muted-foreground">
                 Column Name
               </Label>
               <Input
                 id="column-name"
                 placeholder="Enter column title..."
                 autoFocus
-                className="h-10 text-[14px] font-medium text-foreground rounded-sm border-zinc-200 bg-zinc-50/50 shadow-none focus-visible:ring-0 focus-visible:border-primary focus-visible:bg-white transition-all"
+                className="h-10 text-[14px] font-medium text-foreground rounded-md border-border bg-background shadow-none focus-visible:ring-0 focus-visible:border-primary transition-all"
                 {...register("sectionName")}
               />
               {errors.sectionName && (
@@ -108,7 +108,7 @@ export function ColumnFormModal({
             </div>
 
             <div className="space-y-2.5">
-              <Label className="text-[13px] font-semibold text-zinc-500">
+              <Label className="text-[13px] font-medium text-muted-foreground">
                 Accent Color
               </Label>
               <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export function ColumnFormModal({
                       type="button"
                       className={`
                         relative w-7 h-7 rounded-full transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center
-                        ${color.border ? "border border-zinc-200" : "border border-transparent"}
+                        ${color.border ? "border border-border" : "border border-transparent"}
                         ${isSelected ? "ring-2 ring-offset-2 ring-primary scale-100" : "hover:scale-110 opacity-80 hover:opacity-100"}
                       `}
                       style={{ backgroundColor: color.value }}
@@ -137,19 +137,19 @@ export function ColumnFormModal({
             </div>
           </div>
 
-          <div className="px-6 py-4 bg-zinc-50/50 flex flex-row items-center justify-end gap-3 border-t border-zinc-100">
+          <div className="px-6 py-4 bg-muted/30 flex flex-row items-center justify-end gap-3 border-t border-border">
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
               disabled={isLoading}
-              className="h-9 px-4 text-[13px] font-semibold text-zinc-500 hover:bg-zinc-200/50 shadow-none rounded-sm"
+              className="h-9 px-4 text-[13px] font-medium text-muted-foreground hover:bg-muted shadow-none rounded-md"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="h-9 px-6 text-[13px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-sm transition-all duration-200 active:scale-[0.98]"
+              className="h-9 px-6 text-[13px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-md transition-all duration-200 active:scale-[0.98]"
               disabled={!watch("sectionName")?.trim() || isLoading}
             >
               {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create Column" : "Save Changes")}

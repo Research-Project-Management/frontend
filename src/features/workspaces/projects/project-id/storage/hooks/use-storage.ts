@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/shared/constants';
+import { storageKeys } from '@/features/workspaces/storage/constants/storage.keys';
 import {
   getAllFiles,
   getMyFiles,
@@ -22,7 +22,7 @@ import type { CreateFileRecordParams } from '../types/storage.types';
 
 export function useHomeFiles(projectId: string, parentId?: string | null) {
   return useQuery({
-    queryKey: queryKeys.storage.workspaceHomeFiles(projectId, parentId),
+    queryKey: storageKeys.projectHomeFiles(projectId, parentId),
     queryFn: () => getAllFiles(projectId, parentId),
     enabled: !!projectId,
   });
@@ -30,7 +30,7 @@ export function useHomeFiles(projectId: string, parentId?: string | null) {
 
 export function useMyFiles(projectId: string) {
   return useQuery({
-    queryKey: queryKeys.storage.projectMyFiles(projectId),
+    queryKey: storageKeys.projectMyFiles(projectId),
     queryFn: () => getMyFiles(projectId),
     enabled: !!projectId,
   });
@@ -38,7 +38,7 @@ export function useMyFiles(projectId: string) {
 
 export function useSharedFiles(projectId: string) {
   return useQuery({
-    queryKey: queryKeys.storage.projectShared(projectId),
+    queryKey: storageKeys.projectShared(projectId),
     queryFn: () => getSharedFiles(projectId),
     enabled: !!projectId,
   });
@@ -46,7 +46,7 @@ export function useSharedFiles(projectId: string) {
 
 export function useStarredFiles(projectId: string) {
   return useQuery({
-    queryKey: queryKeys.storage.projectStarred(projectId),
+    queryKey: storageKeys.projectStarred(projectId),
     queryFn: () => getStarredFiles(projectId),
     enabled: !!projectId,
   });
@@ -54,7 +54,7 @@ export function useStarredFiles(projectId: string) {
 
 export function useTrash(projectId: string) {
   return useQuery({
-    queryKey: queryKeys.storage.projectTrashed(projectId),
+    queryKey: storageKeys.projectTrashed(projectId),
     queryFn: () => getTrashedFiles(projectId),
     enabled: !!projectId,
   });
@@ -73,7 +73,7 @@ export const useUploadFile = () => {
       onProgress?: (p: number) => void 
     }) => uploadFile(file, { projectId, parentId, onProgress }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -84,7 +84,7 @@ export const useCreateFolder = () => {
     mutationFn: ({ name, projectId, parentId }: { name: string; projectId: string; parentId?: string | null }) =>
       createFolder(name, { projectId, parentId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -94,7 +94,7 @@ export const useToggleStarItem = () => {
   return useMutation({
     mutationFn: (itemId: string) => toggleStarItem(itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -104,7 +104,7 @@ export const useDeleteItem = () => {
   return useMutation({
     mutationFn: (itemId: string) => deleteItem(itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -114,7 +114,7 @@ export const useRenameItem = () => {
   return useMutation({
     mutationFn: ({ itemId, name }: { itemId: string; name: string }) => renameItem(itemId, name),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -124,7 +124,7 @@ export const useMoveItem = () => {
   return useMutation({
     mutationFn: ({ itemId, parentId }: { itemId: string; parentId: string | null }) => moveItem(itemId, parentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -134,7 +134,7 @@ export const useRestoreItem = () => {
   return useMutation({
     mutationFn: (itemId: string) => restoreItem(itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -144,7 +144,7 @@ export const usePermanentlyDeleteItem = () => {
   return useMutation({
     mutationFn: (itemId: string) => permanentlyDeleteItem(itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };
@@ -154,7 +154,7 @@ export const useCreateFileRecord = () => {
   return useMutation({
     mutationFn: (data: CreateFileRecordParams) => createFileRecord(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.storage.all });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     },
   });
 };

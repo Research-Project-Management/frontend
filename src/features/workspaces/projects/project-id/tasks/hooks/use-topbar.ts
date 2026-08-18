@@ -75,9 +75,9 @@ export function useTopbar({
     if (Array.isArray(tasks)) {
       for (const t of tasks) {
         if (!t) continue;
-        if (t.assigneeId?._id) {
-          map.set(t.assigneeId._id, {
-            id: t.assigneeId._id,
+        if (t.assigneeId?.id) {
+          map.set(t.assigneeId.id, {
+            id: t.assigneeId.id,
             name: t.assigneeId.name || 'Unknown',
             avatar: t.assigneeId.avatar,
           });
@@ -115,7 +115,7 @@ export function useTopbar({
     return result.filter((t: any) => {
       if (safeCols.length && !safeCols.includes(t?.columnId)) return false;
       if (safeUsers.length) {
-        const uId = t?.assigneeId?._id ?? '__unassigned__';
+        const uId = t?.assigneeId?.id ?? '__unassigned__';
         if (!safeUsers.includes(uId)) return false;
       }
       return true;
@@ -215,8 +215,8 @@ export function useTopbar({
 
   const selectProject = useCallback(
     (p: Project) => {
-      if (p._id === projectId) return;
-      router.push(`/${workspaceId}/projects/${p._id}/${moduleName || 'tasks'}`);
+      if (p.id === projectId) return;
+      router.push(`/${workspaceId}/projects/${p.id}/${moduleName || 'tasks'}`);
     },
     [projectId, router, workspaceId, moduleName],
   );

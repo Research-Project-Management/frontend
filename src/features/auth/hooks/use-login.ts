@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { loginUser } from '../services/auth.service';
-import { queryKeys } from '@/shared/constants';
-import { API_BASE_URL } from '@/shared/constants';
+import { authKeys } from '../constants/auth.keys';
+import { env } from '@/config/env';
 
 import { apiGet } from '@/shared/lib/api';
 
@@ -17,7 +17,7 @@ export const useLogin = () => {
   const { mutate, isPending, error } = useMutation({
     mutationFn: loginUser,
     onSuccess: (user) => {
-      queryClient.setQueryData(queryKeys.auth.session, user);
+      queryClient.setQueryData(authKeys.session(), user);
       
       // Fetch workspaces to determine routing
       apiGet<{ workspaces: any[] }>('/api/workspace')
@@ -40,7 +40,7 @@ export const useLogin = () => {
   });
 
   const handleOAuthLogin = (provider: 'google' | 'github') => {
-    window.location.href = `${API_BASE_URL}/auth/${provider}`;
+    window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;
   };
 
   return {

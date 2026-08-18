@@ -5,11 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 
-import {
-  useForgotPassword,
-  forgotPasswordSchema,
-  type ForgotPasswordSchema,
-} from '@/features/auth';
+import { useForgotPassword } from '../hooks/use-forgot-password';
+import { forgotPasswordSchema, type ForgotPasswordSchema } from '../schemas/auth.schema';
 import { Button, Input, Label } from '@/shared/components/ui';
 
 const ForgotPasswordPage = () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';

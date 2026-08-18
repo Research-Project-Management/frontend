@@ -133,7 +133,7 @@ export default function Stickies() {
         <div className="relative">
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${hasMore ? 'max-h-[800px] overflow-hidden' : ''}`}>
             {preview.map((note) => (
-              <div key={note._id} className="min-h-[220px] flex flex-col">
+              <div key={note.id} className="min-h-[220px] flex flex-col">
                 <Card
                   sticky={note}
                   onUpdate={(id, updates) => mutations.update.mutate({ stickyId: id, updates })}

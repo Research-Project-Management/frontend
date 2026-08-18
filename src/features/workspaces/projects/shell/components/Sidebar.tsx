@@ -135,7 +135,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   const favoriteProjects = useMemo(() => {
     if (!projects || favoriteProjectIds.size === 0) return [];
-    return projects.filter((p) => favoriteProjectIds.has(p._id || (p as any).id));
+    return projects.filter((p) => favoriteProjectIds.has(p.id));
   }, [projects, favoriteProjectIds]);
 
   // ── Expanded projects (persisted) ──────────────────────────────────────────
@@ -154,9 +154,9 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // Auto-expand active project on navigation
   useEffect(() => {
-    const active = projects?.find((p) => pathname.includes(`/projects/${p._id || (p as any).id}`));
+    const active = projects?.find((p) => pathname.includes(`/projects/${p.id}`));
     if (!active) return;
-    const activeId = active._id || (active as any).id;
+    const activeId = active.id;
     setExpandedProjects((prev) => (prev.has(activeId) ? prev : new Set(prev).add(activeId)));
   }, [pathname, projects]);
 
@@ -189,7 +189,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Project Item Renderer ──────────────────────────────────────────────────
 
   const renderProjectItem = (project: any, keyPrefix = '') => {
-    const projId = project._id || project.id || '';
+    const projId = project.id || '';
     const isOpen = expandedProjects.has(projId);
     const projectModules = project.modules ?? [];
     const isProjActive = pathname.includes(`/projects/${projId}`);

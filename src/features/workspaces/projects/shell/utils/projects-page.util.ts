@@ -1,14 +1,14 @@
 import type { Project } from '../types/project.types';
 
 export const BANNER_GRADIENTS = [
-  'from-blue-600/90 via-sky-600/80 to-indigo-800',
-  'from-teal-600/90 via-emerald-600/80 to-cyan-800',
-  'from-amber-600/90 via-orange-600/80 to-stone-800',
+  'from-blue-600/90 via-sky-600/80 to-slate-800',
+  'from-teal-600/90 via-emerald-600/80 to-slate-800',
+  'from-amber-600/90 via-stone-600/80 to-zinc-900',
   'from-slate-700 via-zinc-800 to-neutral-900',
-  'from-cyan-600/90 via-blue-600/80 to-slate-800',
-  'from-sky-700 via-slate-800 to-stone-900',
-  'from-violet-600/90 via-purple-600/80 to-indigo-900',
-  'from-rose-600/90 via-pink-600/80 to-stone-900',
+  'from-sky-700 via-blue-700/80 to-slate-900',
+  'from-slate-800 via-stone-800 to-neutral-950',
+  'from-blue-700/90 via-slate-700/80 to-zinc-900',
+  'from-zinc-700 via-neutral-800 to-slate-900',
 ] as const;
 
 export type ProjectVisibilityFilter = 'all' | 'public' | 'private';
@@ -184,12 +184,10 @@ export function filterProjectsByCriteria(
     // 1. My projects filter
     if (criteria.myProjects && currentUserId) {
       const isOwner =
-        p.createdBy?._id === currentUserId ||
-        (p.createdBy as any)?.id === currentUserId ||
+        p.createdBy?.id === currentUserId ||
         (p as any).owner === currentUserId;
       const isMember = p.members?.some(
         (m: any) =>
-          m.user?._id === currentUserId ||
           m.user?.id === currentUserId ||
           m.userId === currentUserId ||
           m.user === currentUserId
@@ -217,11 +215,9 @@ export function filterProjectsByCriteria(
           m.role === 'admin'
       );
       const leadId =
-        leadMember?.user?._id ||
         leadMember?.user?.id ||
         leadMember?.userId ||
-        p.createdBy?._id ||
-        (p.createdBy as any)?.id ||
+        p.createdBy?.id ||
         (p as any).owner;
       if (!leadId || !criteria.leads.includes(String(leadId))) return false;
     }
@@ -230,13 +226,12 @@ export function filterProjectsByCriteria(
     if (criteria.members && criteria.members.length > 0) {
       const projectMemberIds = (p.members || []).map(
         (m: any) =>
-          m.user?._id ||
           m.user?.id ||
           m.userId ||
           (typeof m.user === 'string' ? m.user : '')
       );
-      if (p.createdBy?._id || (p.createdBy as any)?.id) {
-        projectMemberIds.push(p.createdBy?._id || (p.createdBy as any)?.id);
+      if (p.createdBy?.id) {
+        projectMemberIds.push(p.createdBy.id);
       }
       const hasMember = criteria.members.some((id) => projectMemberIds.includes(id));
       if (!hasMember) return false;

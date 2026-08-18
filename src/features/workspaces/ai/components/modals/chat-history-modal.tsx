@@ -107,14 +107,14 @@ export function ChatHistoryModal({
     if (onSelectChat) {
       onSelectChat(chat);
     } else if (workspaceId) {
-      router.push(`/${workspaceId}/ai/${chat._id}`);
+      router.push(`/${workspaceId}/ai/${chat.id}`);
     }
     onOpenChange(false);
   };
 
   const handleStartRename = (e: React.MouseEvent, chat: ChatSession) => {
     e.stopPropagation();
-    setEditingId(chat._id);
+    setEditingId(chat.id);
     setEditTitle(chat.title);
   };
 
@@ -127,7 +127,7 @@ export function ChatHistoryModal({
     try {
       await renameChatSession(id, trimmed);
       setChats((prev) =>
-        prev.map((c) => (c._id === id ? { ...c, title: trimmed } : c)),
+        prev.map((c) => (c.id === id ? { ...c, title: trimmed } : c)),
       );
     } catch {
       // rollback
@@ -140,7 +140,7 @@ export function ChatHistoryModal({
     e.stopPropagation();
     try {
       await deleteChatSession(id);
-      setChats((prev) => prev.filter((c) => c._id !== id));
+      setChats((prev) => prev.filter((c) => c.id !== id));
       if (activeChatId === id && workspaceId) {
         router.push(`/${workspaceId}/ai`);
       }
@@ -202,12 +202,12 @@ export function ChatHistoryModal({
                   </div>
                   <div className="space-y-1">
                     {items.map((chat) => {
-                      const isActive = activeChatId === chat._id;
-                      const isEditing = editingId === chat._id;
+                      const isActive = activeChatId === chat.id;
+                      const isEditing = editingId === chat.id;
 
                       return (
                         <div
-                          key={chat._id}
+                          key={chat.id}
                           onClick={() => handleSelect(chat)}
                           className={cn(
                             'group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border text-xs cursor-pointer transition-colors',
@@ -225,10 +225,10 @@ export function ChatHistoryModal({
                                 value={editTitle}
                                 onChange={(e) => setEditTitle(e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveRename(chat._id);
+                                  if (e.key === 'Enter') handleSaveRename(chat.id);
                                   if (e.key === 'Escape') setEditingId(null);
                                 }}
-                                onBlur={() => handleSaveRename(chat._id)}
+                                onBlur={() => handleSaveRename(chat.id)}
                                 onClick={(e) => e.stopPropagation()}
                                 className="w-full bg-background px-1.5 py-0.5 rounded border border-primary text-xs focus:outline-none"
                               />
@@ -256,7 +256,7 @@ export function ChatHistoryModal({
                               </button>
                               <button
                                 type="button"
-                                onClick={(e) => handleDelete(e, chat._id)}
+                                onClick={(e) => handleDelete(e, chat.id)}
                                 className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"
                                 title="Delete"
                               >

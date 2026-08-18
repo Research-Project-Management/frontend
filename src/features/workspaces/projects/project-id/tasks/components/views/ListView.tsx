@@ -57,30 +57,6 @@ import { useLabelsQuery } from '../../hooks/use-task';
 import { cn } from "@/shared/lib/utils";
 import { createPortal } from "react-dom";
 
-/* Helper Functions */
-function isValidDate(value?: string | null) {
-  if (!value) return false;
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime());
-}
-
-function isOverdue(value?: string | null) {
-  if (!isValidDate(value)) return false;
-  const date = new Date(value!);
-  return date.getTime() < Date.now();
-}
-
-function formatDueDate(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-/* Sub-components */
 const PriorityBadge = memo(({
   priority,
   showLabel = false,
@@ -148,9 +124,9 @@ const TaskRowContent = ({
 }) => {
   const visibleLabels = useMemo(() => 
     (task.labels || [])
-      .map((id: any) => workspaceLabels.find((t: any) => t._id === id || t.id === id))
+      .map((id: any) => workspaceLabels.find((t: any) => t.id === id))
       .filter(Boolean)
-      .map((t: any) => ({ id: t._id || t.id, color: t.color, title: t.name }))
+      .map((t: any) => ({ id: t.id, color: t.color, title: t.name }))
       .filter((l: any) => l.color),
   [task.labels, workspaceLabels]);
 
@@ -183,7 +159,7 @@ const TaskRowContent = ({
     return { hasDescription, commentCount, attachmentCount, checklistTotal: total, checklistDone: done };
   }, [task.description, task.content, task.commentCount, task.attachments, task.checklists]);
 
-  const isCurrentUserAssignee = task.assigneeId?._id === currentUserId || (task.assigneeId as any)?.id === currentUserId;
+  const isCurrentUserAssignee = task.assigneeId?.id === currentUserId;
 
   return (
     <div
@@ -207,7 +183,7 @@ const TaskRowContent = ({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onToggleLabelDetails(task._id);
+            onToggleLabelDetails(task.id);
           }}
           className="flex items-center gap-1.5 shrink-0 text-left cursor-pointer"
           aria-label="Toggle label details"
@@ -360,7 +336,7 @@ const SortableTaskRow = memo(({
     transition,
     isDragging,
   } = useSortable({
-    id: task._id,
+    id: task.id,
     data: {
       type: "Task",
       task,
@@ -504,17 +480,17 @@ const ListViewColumn = ({
             </div>
           ) : (
             <SortableContext
-              items={group.items.map((t: any) => t._id)}
+              items={group.items.map((t: any) => t.id)}
               strategy={verticalListSortingStrategy}
             >
               <div className="flex flex-col divide-y divide-border/30">
                 {group.items.map((task: any) => (
                   <SortableTaskRow
-                    key={task._id}
+                    key={task.id}
                     task={task}
                     currentUserId={currentUserId}
                     currentUserAvatar={currentUserAvatar}
-                    showLabelDetails={labelDetailsTaskIds.has(task._id)}
+                    showLabelDetails={labelDetailsTaskIds.has(task.id)}
                     onEditCard={onEditCard}
                     onDuplicateCard={onDuplicateCard}
                     onJoinCard={onJoinCard}
@@ -557,7 +533,7 @@ const ListViewColumn = ({
               <div className="flex items-center gap-1.5">
                 <Button
                   size="sm"
-                  className="h-7 px-3 text-xs bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md cursor-pointer"
+                  className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
                   onClick={() => handleQuickAddSubmit(group.key)}
                   disabled={!quickAddTitle.trim() || isAddingCard}
                 >
@@ -696,7 +672,7 @@ export default function ListView({
       return overId;
     }
     for (const [colId, tasks] of tasksByColumnId.entries()) {
-      if (tasks.some(t => t._id === overId)) return colId;
+      if (tasks.some(t => t.id === overId)) return colId;
     }
     return null;
   }, [columns, tasksByColumnId]);
@@ -782,7 +758,7 @@ export default function ListView({
                 task={activeTask}
                 currentUserId={currentUserId}
                 currentUserAvatar={currentUserAvatar}
-                showLabelDetails={labelDetailsTaskIds.has(activeTask._id)}
+                showLabelDetails={labelDetailsTaskIds.has(activeTask.id)}
                 onEditCard={() => {}}
                 onDuplicateCard={() => {}}
                 onJoinCard={() => {}}

@@ -37,7 +37,7 @@ export default function TopBar({
   const { workspaceId } = useParams() as { workspaceId: string };
   const { projects: allProjects = [] } = useWorkspaceProjects(workspaceId || "");
   const projects = availableProjectIds
-    ? allProjects.filter((p: any) => availableProjectIds.includes(p._id || p.id))
+    ? allProjects.filter((p: any) => availableProjectIds.includes(p.id))
     : allProjects;
 
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -206,7 +206,7 @@ export default function TopBar({
                   </div>
                 ) : (
                   filteredProjects.map((project: any) => {
-                    const pId = project._id || project.id;
+                    const pId = project.id;
                     const isSelected = projectFilter.includes(pId);
                     return (
                       <button

@@ -6,7 +6,6 @@ import type { Sticky } from '@/features/workspaces/projects/stickies/types/stick
 
 describe('Card', () => {
   const mockSticky: Sticky = {
-    _id: 's-123',
     id: 's-123',
     title: 'Initial Title',
     content: '<p>Sticky body content</p>',

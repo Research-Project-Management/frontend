@@ -11,6 +11,7 @@ import {
   Search,
   FolderKanban,
   X,
+  Plus,
 } from "lucide-react";
 import { useProjectTasks, useBulkUpdateTasks } from "../../hooks/use-task";
 import { TaskDetailModal as TaskDialog } from "./task/TaskDetailModal";
@@ -23,6 +24,7 @@ export interface AddExistingTaskModalProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   currentCycleId: string;
+  currentCycleName?: string;
   columns?: Column[];
   members?: any[];
   onSuccess?: () => void;
@@ -33,6 +35,7 @@ export function AddExistingTaskModal({
   onOpenChange,
   projectId,
   currentCycleId,
+  currentCycleName = "this cycle",
   columns = [],
   members = [],
   onSuccess,
@@ -54,7 +57,7 @@ export function AddExistingTaskModal({
       const notInCurrentCycle =
         typeof task.cycleId === "string"
           ? task.cycleId !== currentCycleId
-          : task.cycleId?._id !== currentCycleId;
+          : task.cycleId?.id !== currentCycleId;
       return matchesSearch && notInCurrentCycle;
     });
 
@@ -69,7 +72,7 @@ export function AddExistingTaskModal({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(filteredTasks.map((t) => t._id));
+      setSelectedIds(filteredTasks.map((t) => t.id));
     } else {
       setSelectedIds([]);
     }
@@ -85,7 +88,7 @@ export function AddExistingTaskModal({
 
   const handleAddTasks = async () => {
     if (selectedIds.length === 0) {
-      toast.error("Please select at least one task to add");
+      toast.error("Please select at least one task");
       return;
     }
 
@@ -105,6 +108,9 @@ export function AddExistingTaskModal({
     }
   };
 
+  const isAllSelected =
+    filteredTasks.length > 0 && selectedIds.length === filteredTasks.length;
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,11 +118,12 @@ export function AddExistingTaskModal({
           {/* Header */}
           <div className="px-6 py-5 border-b border-border/80 bg-muted/20">
             <div className="flex items-center gap-2 text-foreground font-semibold text-base">
-              <FolderKanban className="size-4.5 text-primary" />
+              <Plus className="size-4.5 text-primary" />
               <span>Add Existing Tasks to Cycle</span>
             </div>
             <p className="text-[13px] text-muted-foreground mt-1">
-              Select tasks from this project to include in the current cycle.
+              Select tasks from the project to include in{" "}
+              <span className="font-semibold text-foreground">{currentCycleName}</span>.
             </p>
           </div>
 
@@ -177,11 +184,11 @@ export function AddExistingTaskModal({
                   </div>
                 ) : (
                   filteredTasks.map((task) => {
-                    const isSelected = selectedIds.includes(task._id);
+                    const isSelected = selectedIds.includes(task.id);
                     return (
                       <div
-                        key={task._id}
-                        onClick={() => handleToggleSelect(task._id)}
+                        key={task.id}
+                        onClick={() => handleToggleSelect(task.id)}
                         className={cn(
                           "px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors",
                           isSelected && "bg-primary/5"
@@ -189,7 +196,7 @@ export function AddExistingTaskModal({
                       >
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={() => handleToggleSelect(task._id)}
+                          onCheckedChange={() => handleToggleSelect(task.id)}
                           onClick={(e) => e.stopPropagation()}
                         />
                         <div className="min-w-0 flex-1">

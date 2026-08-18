@@ -14,7 +14,7 @@ import { Input } from "@/shared/components/ui";
 import { Label } from "@/shared/components/ui";
 import { Textarea } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
-import { useUpload } from '@/shared/hooks';
+import { useUpload } from '@/shared/hooks/use-upload';
 import { extractMetadata, extractDoiFromText } from '@/features/workspaces/library/utils/library.util';
 import { fetchReferenceByDoi } from '@/features/workspaces/library/services/reference.service';
 import { toast } from 'sonner';
@@ -490,7 +490,7 @@ export default function PaperUploadDialog({
             type="button"
             onClick={() => setMode("file")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-all cursor-pointer",
+              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer",
               mode === "file"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
@@ -503,7 +503,7 @@ export default function PaperUploadDialog({
             type="button"
             onClick={() => setMode("folder")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-all cursor-pointer",
+              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer",
               mode === "folder"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
@@ -516,7 +516,7 @@ export default function PaperUploadDialog({
             type="button"
             onClick={() => setMode("link")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-all cursor-pointer",
+              "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer",
               mode === "link"
                 ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
@@ -797,7 +797,7 @@ export default function PaperUploadDialog({
                       <Folder className="size-5 text-foreground shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold truncate">{folderName}</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {folderFiles.length} PDF files ready to import
                         </p>
                       </div>
@@ -820,7 +820,7 @@ export default function PaperUploadDialog({
                           <FileText className="size-3.5 text-foreground shrink-0" />
                           <span className="truncate">{f.name}</span>
                         </div>
-                        <span className="text-[11px] text-muted-foreground shrink-0">{formatBytes(f.size)}</span>
+                        <span className="text-xs font-mono text-muted-foreground shrink-0">{formatBytes(f.size)}</span>
                       </div>
                     ))}
                   </div>
@@ -880,7 +880,7 @@ export default function PaperUploadDialog({
                     <span>Fetch Info</span>
                   </Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Paste a web link to a PDF, ArXiv paper, or DOI to automatically populate metadata.
                 </p>
               </div>

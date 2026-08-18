@@ -40,7 +40,7 @@ export function RecentActivityFeed({
         ) : (
           displayItems.map((activity, idx) => (
             <ActivityFeedItem
-              key={activity.id || activity._id || idx}
+              key={activity.id || idx}
               activity={activity}
               onTaskClick={onTaskClick}
               taskProjectMap={taskProjectMap}

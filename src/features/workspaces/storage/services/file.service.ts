@@ -4,7 +4,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { API_BASE_URL } from "@/shared/constants";
+import { API_BASE_URL } from '@/config/env';
 import { generateThumbnail } from '@/shared/utils/file';
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/storage/types/storage.types';
 
@@ -99,9 +99,9 @@ const uploadBlobWithProgress = (
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                    const response = JSON.parse(xhr.responseText);
+                    const response = JSON.parse(xhr.responseText) as Record<string, any>;
                     resolve({ url: response.url, path: response.path || response.url });
-                } catch (error) {
+                } catch {
                     reject(new Error("Failed to parse upload response"));
                 }
             } else {
@@ -200,7 +200,7 @@ export const checkDuplicateFile = (
         return {
             exists: !!existingFile,
             existingFile: existingFile
-                ? { _id: existingFile._id, filename: existingFile.filename }
+                ? { id: existingFile.id, filename: existingFile.filename }
                 : null,
         };
     });

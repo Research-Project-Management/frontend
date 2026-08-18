@@ -6,7 +6,7 @@ import type {
   SourceItem,
   AgentAction,
 } from '../types/chat.types';
-import { API_BASE_URL as API_URL } from '@/shared/constants';
+import { API_BASE_URL as API_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/api';
 
 function getHeaders(extra?: Record<string, string>): Record<string, string> {

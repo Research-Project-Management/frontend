@@ -64,7 +64,7 @@ export interface ChatMessage {
 
 /** A persisted chat session (from RPM-BE ChatHistory) */
 export interface ChatSession {
-  _id: string;
+  id: string;
   title: string;
   projectId: string | null;
   documentIds?: string[];
@@ -76,7 +76,7 @@ export interface ChatSession {
 
 /** Full session including messages (returned by GET /api/ai/chats/:id) */
 export interface ChatSessionDetail extends ChatSession {
-  messages: (ChatMessage & { _id: string; createdAt: string })[];
+  messages: (ChatMessage & { id?: string; createdAt: string })[];
   documentIds: string[];
 }
 
@@ -217,7 +217,7 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
 
 /** Color scheme per tool category */
 export const TOOL_CATEGORY_COLORS: Record<ToolCategory, string> = {
-  read:    "text-[#3370ff]",
+  read:    "text-primary",
   create:  "text-emerald-600 dark:text-emerald-400",
   update:  "text-amber-600 dark:text-amber-400",
   delete:  "text-red-500",
@@ -246,9 +246,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: "Action",
     description: "Manage tasks, projects, and pages in your workspace",
     icon: "",
-    color: "text-[#3370ff]",
-    bg: "bg-[#3370ff]/8 hover:bg-[#3370ff]/14",
-    border: "border-[#3370ff]/25",
+    color: "text-primary",
+    bg: "bg-primary/10 hover:bg-primary/15",
+    border: "border-primary/20",
     quickPrompts: [
       "Show my tasks",
       "Show project overview",

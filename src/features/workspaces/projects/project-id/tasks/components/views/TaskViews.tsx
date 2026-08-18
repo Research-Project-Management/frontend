@@ -56,7 +56,7 @@ export function TaskViews({
     if (tasksByColumnId) return tasksByColumnId;
     const map = new Map<string, Task[]>();
     for (const column of columns) {
-      const colId = column.id ?? column._id ?? "";
+      const colId = column.id ?? "";
       map.set(colId, []);
     }
     for (const task of tasks) {

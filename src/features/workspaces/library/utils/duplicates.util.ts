@@ -1,5 +1,5 @@
 import type { Paper, DuplicateCluster } from '../types/library.types';
-import { getLibraryEntityId, cleanDoi } from './library.util';
+import { cleanDoi } from './library.util';
 
 export type { DuplicateCluster };
 
@@ -22,7 +22,7 @@ export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
 
   doiMap.forEach((group, doi) => {
     if (group.length > 1) {
-      const ids = group.map(getLibraryEntityId);
+      const ids = group.map((p) => p.id);
       ids.forEach((id) => visited.add(id));
       clusters.push({
         id: `doi-${doi}`,
@@ -33,7 +33,7 @@ export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
   });
 
   // 2. Group unclustered papers by normalized title
-  const remainingPapers = papers.filter((p) => !visited.has(getLibraryEntityId(p)));
+  const remainingPapers = papers.filter((p) => !visited.has(p.id));
   const titleMap = new Map<string, Paper[]>();
 
   for (const paper of remainingPapers) {
@@ -46,7 +46,7 @@ export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
 
   titleMap.forEach((group, norm) => {
     if (group.length > 1) {
-      const ids = group.map(getLibraryEntityId);
+      const ids = group.map((p) => p.id);
       ids.forEach((id) => visited.add(id));
       clusters.push({
         id: `title-${norm.slice(0, 16)}`,

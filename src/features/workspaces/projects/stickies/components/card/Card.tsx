@@ -44,11 +44,11 @@ const Card = memo(
       if (!titleFocusedRef.current) return;
       const timer = setTimeout(() => {
         if (localTitle !== sticky.title) {
-          onUpdate(sticky._id || sticky.id || '', { title: localTitle });
+          onUpdate(sticky.id, { title: localTitle });
         }
       }, 800);
       return () => clearTimeout(timer);
-    }, [localTitle, sticky._id, sticky.id, sticky.title, onUpdate]);
+    }, [localTitle, sticky.id, sticky.title, onUpdate]);
 
     const topAccentStyle = {
       backgroundColor: colorConfig.bg,
@@ -92,7 +92,7 @@ const Card = memo(
             }}
             onBlur={() => {
               titleFocusedRef.current = false;
-              if (localTitle !== sticky.title) onUpdate(sticky._id || sticky.id || '', { title: localTitle });
+              if (localTitle !== sticky.title) onUpdate(sticky.id, { title: localTitle });
             }}
             placeholder="Title…"
             aria-label="Sticky title"

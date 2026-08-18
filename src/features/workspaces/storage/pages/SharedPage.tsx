@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 
 
@@ -24,7 +24,7 @@ export default function WorkspaceSharedPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
-  const workspaceId = workspace?._id || workspaceUrl;
+  const workspaceId = workspace?.id || workspaceUrl;
 
   const { data, isLoading: isFilesLoading } = useSharedFiles(workspaceId);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();

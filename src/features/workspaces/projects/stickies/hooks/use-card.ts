@@ -34,7 +34,7 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const getStickyId = (s: Sticky) => s._id || s.id || '';
+  const getStickyId = (s: Sticky) => s.id || '';
   const hasEmptySticky = stickies.some(isStickyEmpty);
 
   return {

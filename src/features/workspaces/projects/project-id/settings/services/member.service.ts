@@ -10,7 +10,6 @@ export interface ProjectMemberResponse {
   joinedAt?: string;
   user: {
     id?: string;
-    _id?: string;
     name: string;
     email: string;
     avatar?: string;

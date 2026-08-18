@@ -11,13 +11,13 @@ export const PageService = {
   },
 
   create: async (input: CreatePageInput) => {
-    const res = await apiPost<{ page: Page; mainFile?: { _id: string; [key: string]: unknown } | string | null }>(
+    const res = await apiPost<{ page: Page; mainFile?: { id: string; [key: string]: unknown } | string | null }>(
       `/api/project/${input.projectId}/pages`,
       { title: input.title, content: input.content, status: input.status },
     );
     const mainFile = res.mainFile || null;
     const mainFileId = typeof mainFile === 'object' && mainFile !== null
-      ? ((mainFile._id || (mainFile as any).id) as string || null)
+      ? (mainFile.id || null)
       : typeof mainFile === 'string'
         ? mainFile
         : null;
@@ -25,7 +25,7 @@ export const PageService = {
     return {
       page: res.page,
       mainFile,
-      rootPageId: res.page._id || res.page.id || '',
+      rootPageId: res.page.id || '',
       mainFileId,
     } satisfies CreatePageResponse;
   },

@@ -56,9 +56,9 @@ export default function Recent() {
               item.type === 'project'
                 ? `/${workspaceId}/projects/${item.id}/overview`
                 : item.type === 'page' && item.project
-                  ? `/${workspaceId}/projects/${item.project._id}/pages/${item.id}`
+                  ? `/${workspaceId}/projects/${item.project.id}/pages/${item.id}`
                   : item.type === 'file' && item.project
-                    ? `/${workspaceId}/projects/${item.project._id}/storage`
+                    ? `/${workspaceId}/projects/${item.project.id}/storage`
                     : `/${workspaceId}/storage`;
 
             const Icon =

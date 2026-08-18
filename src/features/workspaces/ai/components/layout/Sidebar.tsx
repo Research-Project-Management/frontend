@@ -89,7 +89,7 @@ export function Sidebar() {
 
   const projectNameMap = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of projects ?? []) m.set(p._id, p.name);
+    for (const p of projects ?? []) m.set(p.id, p.name);
     return m;
   }, [projects]);
 
@@ -130,7 +130,7 @@ export function Sidebar() {
 
   const handleStartRename = (e: React.MouseEvent, chat: ChatSession) => {
     e.stopPropagation();
-    setEditingId(chat._id);
+    setEditingId(chat.id);
     setEditTitle(chat.title);
   };
 
@@ -143,7 +143,7 @@ export function Sidebar() {
     try {
       await renameChatSession(chatIdToRename, trimmed);
       setChats((prev) =>
-        prev.map((c) => (c._id === chatIdToRename ? { ...c, title: trimmed } : c)),
+        prev.map((c) => (c.id === chatIdToRename ? { ...c, title: trimmed } : c)),
       );
       toast.success('Chat renamed');
     } catch (err) {
@@ -157,7 +157,7 @@ export function Sidebar() {
     e.stopPropagation();
     try {
       await deleteChatSession(targetChatId);
-      setChats((prev) => prev.filter((c) => c._id !== targetChatId));
+      setChats((prev) => prev.filter((c) => c.id !== targetChatId));
       toast.success('Chat deleted');
       if (activeChatId === targetChatId && workspaceId) {
         router.push(`/${workspaceId}/ai`);
@@ -273,14 +273,14 @@ export function Sidebar() {
                   {!isCollapsed && (
                     <div className="space-y-0.5">
                       {grp.chats.map((chat) => {
-                        const isActive = activeChatId === chat._id;
-                        const isEditing = editingId === chat._id;
+                        const isActive = activeChatId === chat.id;
+                        const isEditing = editingId === chat.id;
 
                         return (
                           <div
-                            key={chat._id}
+                            key={chat.id}
                             onClick={() =>
-                              workspaceId && router.push(`/${workspaceId}/ai/${chat._id}`)
+                              workspaceId && router.push(`/${workspaceId}/ai/${chat.id}`)
                             }
                             className={cn(
                               'group relative flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors',
@@ -298,10 +298,10 @@ export function Sidebar() {
                                   value={editTitle}
                                   onChange={(e) => setEditTitle(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveRename(chat._id);
+                                    if (e.key === 'Enter') handleSaveRename(chat.id);
                                     if (e.key === 'Escape') setEditingId(null);
                                   }}
-                                  onBlur={() => handleSaveRename(chat._id)}
+                                  onBlur={() => handleSaveRename(chat.id)}
                                   className="w-full bg-background px-1 py-0.5 text-xs rounded border border-primary focus:outline-none"
                                 />
                               ) : (
@@ -320,7 +320,7 @@ export function Sidebar() {
                                   <Pencil className="size-3" />
                                 </button>
                                 <button
-                                  onClick={(e) => handleDelete(e, chat._id)}
+                                  onClick={(e) => handleDelete(e, chat.id)}
                                   className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"
                                   title="Delete"
                                 >

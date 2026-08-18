@@ -1,16 +1,17 @@
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';
 import { extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata } from '../utils/preview.utils';
-import { apiGet } from '@/shared/lib/api';
+import { apiGet, apiPost } from '@/shared/lib/api';
 import { getFileArrayBuffer } from './file.service';
 
 let pdfjsLibPromise: Promise<any> | null = null;
 
 const getPdfjsLib = () => {
   if (!pdfjsLibPromise) {
-    pdfjsLibPromise = import('pdfjs-dist').then((pdfjsLib) => {
-      // Serve worker from /public to avoid CDN dependency in prod
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-      return pdfjsLib;
+    pdfjsLibPromise = import('react-pdf').then(({ pdfjs }) => {
+      if (typeof window !== 'undefined') {
+        pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+      }
+      return pdfjs;
     });
   }
   return pdfjsLibPromise;
@@ -19,7 +20,7 @@ const getPdfjsLib = () => {
 export const previewServices = {
   async extractMetadata(arrayBuffer: ArrayBuffer): Promise<{ metadata: PdfMetadata; doi?: string }> {
     const pdfjsLib = await getPdfjsLib();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
     const meta = await pdf.getMetadata();
     
     const info = (meta?.info || {}) as Record<string, any>;
@@ -102,7 +103,7 @@ export const previewServices = {
       // Fetch a fresh buffer — cannot reuse the one passed to extractMetadata
       const arrayBuffer = await getFileArrayBuffer(url);
       const pdfjsLib = await getPdfjsLib();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
       const page = await pdf.getPage(1);
       
       const viewport = page.getViewport({ scale: 1 });
@@ -162,6 +163,19 @@ export const previewServices = {
   async getCrossrefSearch(query: string, rows = 1) {
     return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
       `/api/library/references/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
+    );
+  },
+
+  async getCollections(workspaceId: string) {
+    return apiGet<{ collections: Array<{ id: string; name: string; color?: string; icon?: string }> }>(
+      `/api/library/${workspaceId}/collections`
+    );
+  },
+
+  async ingestPaper(workspaceId: string, data: Record<string, unknown>) {
+    return apiPost<{ message?: string; paper?: unknown }>(
+      `/api/library/papers/${workspaceId}/ingest`,
+      data
     );
   },
 };

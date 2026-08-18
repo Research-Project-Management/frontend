@@ -253,7 +253,7 @@ export function CardUI({
                 return (
                   <div
                     key={item.key}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-[#c9372c] px-2 py-1 text-[12px] font-semibold text-white"
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-destructive px-2 py-1 text-[12px] font-semibold text-destructive-foreground"
                     title={hoverText}
                     aria-label={hoverText}
                   >
@@ -320,7 +320,7 @@ export function Card({
     transition,
     isDragging,
   } = useSortable({
-    id: card._id,
+    id: card.id,
     disabled: isReadOnly,
   });
 

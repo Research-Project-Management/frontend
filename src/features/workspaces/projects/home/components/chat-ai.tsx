@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
-import { ArrowUp, Globe, ChevronDown, X, Plus } from "lucide-react";
+import { ArrowUp, Globe, ChevronDown, X, Plus, Check } from "lucide-react";
 
 import { Textarea } from "@/shared/components/ui";
 import { Switch } from "@/shared/components/ui";
@@ -17,7 +17,7 @@ import {
 } from "@/shared/components/ui";
 
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 // We use standard semantic tokens instead of hardcoded colors to adhere to DESIGN.md
 
@@ -97,8 +97,8 @@ export default function ChatAi({ onSend }: ChatAiProps) {
   if (isLoading || !projects) return null;
 
   const isWorkspace = selectedProject === "workspace" || !selectedProject;
-  const activeProject = isWorkspace ? null : projects.find((p: any) => p._id === selectedProject);
-  const projectIndex = activeProject ? projects.findIndex((p: any) => p._id === selectedProject) : -1;
+  const activeProject = isWorkspace ? null : projects.find((p: any) => p.id === selectedProject);
+  const projectIndex = activeProject ? projects.findIndex((p: any) => p.id === selectedProject) : -1;
   const scopeDotClass = activeProject ? "bg-primary" : "bg-muted-foreground";
 
   return (
@@ -114,61 +114,45 @@ export default function ChatAi({ onSend }: ChatAiProps) {
                 aria-label="Select scope"
                 className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-xs font-medium text-foreground min-w-0 max-w-[160px]"
               >
-                {activeProject ? (
-                  activeProject.avatar ? (
-                    <span className="text-xs leading-none shrink-0">{activeProject.avatar}</span>
-                  ) : (
-                    <span className={`size-1.5 rounded-full shrink-0 ${scopeDotClass}`} />
-                  )
-                ) : (
-                  <Avatar className="size-4 rounded-full">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px] font-medium leading-none">
-                      {(workspace?.name || "W").substring(0, 1).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                <span className={`size-2 rounded-full shrink-0 ${scopeDotClass}`} />
                 <span className="truncate">
-                  {activeProject ? activeProject.name : (workspace?.name || "Workspace")}
+                  {activeProject ? activeProject.name : "Whole Workspace"}
                 </span>
-                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                <ChevronDown className="size-3 text-muted-foreground shrink-0 opacity-60 ml-0.5" />
               </button>
             </PopoverTrigger>
 
-            <PopoverContent
-              side="bottom"
-              align="start"
-              onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-56 p-2 rounded-lg bg-popover"
-            >
-              <div className="px-2 pb-1.5 pt-1 text-xs font-medium text-muted-foreground">
-                Ask AI to use data from:
-              </div>
+            <PopoverContent align="start" className="w-56 p-1.5">
+              {/* Workspace item */}
               <button
                 type="button"
                 onClick={() => setSelectedProject("workspace")}
                 className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${isWorkspace ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
                   }`}
               >
-                <Avatar className="size-5 rounded-full">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
-                    {(workspace?.name || "W").substring(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="truncate">{workspace?.name || "Workspace"}</span>
+                <div className="size-5 flex items-center justify-center shrink-0">
+                  <span className={`size-2 rounded-full shrink-0 ${isWorkspace ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-xs leading-none">Whole Workspace</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Search all workspace projects</div>
+                </div>
+                {isWorkspace && <Check className="size-3.5 text-primary shrink-0 ml-auto" />}
               </button>
 
+              {/* Projects */}
               {projects.length > 0 && (
                 <>
                   <div className="px-2 pb-1.5 pt-3 text-xs font-medium text-muted-foreground">
                     Projects
                   </div>
                   {projects.map((project: any, i: number) => {
-                    const isActive = selectedProject === project._id;
+                    const isActive = selectedProject === project.id;
                     return (
                       <button
-                        key={project._id}
+                        key={project.id}
                         type="button"
-                        onClick={() => setSelectedProject(project._id)}
+                        onClick={() => setSelectedProject(project.id)}
                         className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${isActive ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
                           }`}
                       >

@@ -44,11 +44,12 @@ function buildTree(collections: Collection[]): TreeNode[] {
   const map = new Map<string, TreeNode>();
   const roots: TreeNode[] = [];
 
-  for (const c of collections) map.set(c._id, { ...c, children: [] });
+  for (const c of collections) map.set(c.id, { ...c, children: [] });
 
   for (const node of map.values()) {
-    if (node.parent && map.has(node.parent)) {
-      map.get(node.parent)!.children.push(node);
+    const parentId = node.parentId || node.parent;
+    if (parentId && map.has(parentId)) {
+      map.get(parentId)!.children.push(node);
     } else {
       roots.push(node);
     }
@@ -69,7 +70,7 @@ const isIndexedPaper = (paper: Paper): paper is Paper & { ragDocId: string } =>
 
 const toSelectedPaper = (paper: Paper): SelectedPaper | null => {
   if (!isIndexedPaper(paper)) return null;
-  return { id: paper._id, name: paper.title, ragDocId: paper.ragDocId };
+  return { id: paper.id, name: paper.title, ragDocId: paper.ragDocId };
 };
 
 const compactAuthors = (paper: Paper) => {
@@ -164,8 +165,8 @@ export function SourcePickerModal({
 
   const renderTree = (nodes: TreeNode[]) => {
     return nodes.map((node) => {
-      const isExp = expanded.has(node._id);
-      const isSel = selectedCollectionId === node._id;
+      const isExp = expanded.has(node.id);
+      const isSel = selectedCollectionId === node.id;
       const hasChildren = node.children.length > 0;
 
       if (search && !branchNameMatches(node, search.toLowerCase())) {
@@ -173,10 +174,10 @@ export function SourcePickerModal({
       }
 
       return (
-        <div key={node._id} className="space-y-0.5">
+        <div key={node.id} className="space-y-0.5">
           <button
             type="button"
-            onClick={() => handleSelectCollection(node._id)}
+            onClick={() => handleSelectCollection(node.id)}
             className={cn(
               'w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors text-left',
               isSel ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground/80',
@@ -184,7 +185,7 @@ export function SourcePickerModal({
           >
             {hasChildren ? (
               <span
-                onClick={(e) => handleToggleExpand(node._id, e)}
+                onClick={(e) => handleToggleExpand(node.id, e)}
                 className="p-0.5 hover:bg-muted rounded"
               >
                 <ChevronRight
@@ -273,7 +274,7 @@ export function SourcePickerModal({
 
                   return (
                     <div
-                      key={paper._id}
+                      key={paper.id}
                       onClick={() => !alreadyAdded && togglePaper(paper)}
                       className={cn(
                         'flex items-start gap-2.5 p-2.5 rounded-lg border text-xs transition-colors cursor-pointer',

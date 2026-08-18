@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { useUpload } from "@/shared/hooks";
+import { useUpload } from '@/shared/hooks/use-upload';
 import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
 import { checkDuplicateFile, deleteItem } from '../services/file.service';
@@ -109,7 +109,7 @@ export function useTopbar({
             continue; // Skip this file
           } else if (mode === "replace") {
             // Delete old record
-            await deleteItem(check.existingFile._id);
+            await deleteItem(check.existingFile.id);
             await performSingleFileUpload(file, targetFolder);
           } else if (mode === "keep-both") {
             // Rename file and upload

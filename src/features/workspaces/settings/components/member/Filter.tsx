@@ -114,10 +114,10 @@ export function MemberFilter({
                 <span
                   className={cn(
                     'size-3.5 rounded-[3px] border flex items-center justify-center shrink-0 transition-colors',
-                    checked ? 'bg-[#09090b] border-[#09090b]' : 'border-border bg-background',
+                    checked ? 'bg-primary border-primary' : 'border-border bg-background',
                   )}
                 >
-                  {checked && <Check className="size-2.5 text-white stroke-[3]" />}
+                  {checked && <Check className="size-2.5 text-primary-foreground stroke-[3]" />}
                 </span>
                 <span>{label}</span>
               </button>
@@ -143,7 +143,7 @@ export function MemberFilter({
         <Button
           size="sm"
           onClick={onAddMember}
-          className="h-8 px-3.5 text-xs font-medium bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md cursor-pointer shadow-2xs shrink-0"
+          className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs shrink-0"
         >
           Add member
         </Button>

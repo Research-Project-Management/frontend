@@ -38,7 +38,7 @@ export function ArchiveCard({
   onDeletePermanent,
   isRestoring,
 }: ArchiveCardProps) {
-  const projectId = project._id || (project as any).id || '';
+  const projectId = project.id || '';
   const projectKey = (project as any).key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
 
@@ -47,7 +47,7 @@ export function ArchiveCard({
   );
   const leadUser =
     leadMember?.user ||
-    (project.createdBy?._id || (project.createdBy as any)?.id ? project.createdBy : null);
+    (project.createdBy?.id ? project.createdBy : null);
   const bannerClass = getArchiveBannerGradient(projectId || 'default');
 
   return (

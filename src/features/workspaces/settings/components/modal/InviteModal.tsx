@@ -190,7 +190,7 @@ export function InviteModal({
               <Button
                 type="submit"
                 disabled={isInviting}
-                className="h-8 px-4 text-xs font-medium bg-[#0070f3] hover:bg-[#0060df] text-white rounded-lg cursor-pointer shadow-2xs shrink-0"
+                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs shrink-0"
               >
                 {isInviting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
                 Send invite

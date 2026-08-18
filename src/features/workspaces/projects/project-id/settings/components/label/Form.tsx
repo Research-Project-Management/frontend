@@ -95,7 +95,7 @@ export function Form({
         <button
           type="submit"
           disabled={!name?.trim() || isLoading}
-          className="h-8.5 px-3.5 rounded-md bg-[#0070f3] hover:bg-[#0060df] text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-8.5 px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? `${submitText}...` : submitText}
         </button>

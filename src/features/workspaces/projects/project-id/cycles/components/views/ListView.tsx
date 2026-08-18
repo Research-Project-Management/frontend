@@ -39,7 +39,7 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <h3 className="text-[14px] font-semibold text-foreground mb-1">No cycles found</h3>
         <p className="text-[12px] text-muted-foreground">
-          No cycles in <span className="font-medium text-zinc-600">{status}</span> section match "{searchTerm}"
+          No cycles in <span className="font-medium text-foreground">{status}</span> section match "{searchTerm}"
         </p>
       </div>
     );
@@ -127,7 +127,7 @@ function CycleStatusIndicator({ status, hasDates }: { status: string; hasDates: 
     return <CircleDashed className="size-4.5 text-blue-500/60 shrink-0" strokeWidth={2.5} />;
   }
   
-  return <Circle className="size-4.5 text-zinc-300 shrink-0" strokeWidth={2} />;
+  return <Circle className="size-4.5 text-muted-foreground/40 shrink-0" strokeWidth={2} />;
 }
 
 export function Item({
@@ -157,7 +157,7 @@ export function Item({
   }, [phases, cycle.phase]);
 
   const cycleLabels = useMemo(() => {
-    return allLabels.filter(l => cycle.labels?.includes(l._id));
+    return allLabels.filter(l => cycle.labels?.includes(l.id));
   }, [allLabels, cycle.labels]);
 
   const hasDescription = useMemo(() => {
@@ -200,7 +200,7 @@ export function Item({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleLabelDetails?.(cycle._id);
+              onToggleLabelDetails?.(cycle.id);
             }}
             className="flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
@@ -208,7 +208,7 @@ export function Item({
               if (showLabelDetails) {
                 return (
                   <span
-                    key={label._id}
+                    key={label.id}
                     className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-white animate-in fade-in zoom-in-95 duration-200"
                     style={{ backgroundColor: label.color }}
                   >
@@ -218,7 +218,7 @@ export function Item({
               }
               return (
                 <span
-                  key={label._id}
+                  key={label.id}
                   className="inline-flex h-2.5 w-11 rounded-sm transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm"
                   style={{ backgroundColor: label.color }}
                 />

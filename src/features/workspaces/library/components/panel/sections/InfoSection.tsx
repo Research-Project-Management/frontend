@@ -19,9 +19,10 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/utils/error.util';
 import { Button, Input, Textarea } from '@/shared/components/ui';
+import { cn } from '@/shared/lib/utils';
 import { useReferences } from '@/features/workspaces/library/hooks/data/use-references';
-import { API_BASE_URL } from '@/shared/constants';
-import { getLibraryEntityId, getPaperFileUrl } from '@/features/workspaces/library/utils/library.util';
+import { API_BASE_URL } from '@/config/env';
+import { getPaperFileUrl } from '@/features/workspaces/library/utils/library.util';
 import type { Paper, ReferenceData } from '@/features/workspaces/library/types/library.types';
 
 interface InfoSectionProps {
@@ -34,21 +35,23 @@ function DetailRow({
   label,
   value,
   href,
+  mono,
   children,
 }: {
   label: string;
   value?: string | number | null;
   href?: string;
+  mono?: boolean;
   children?: React.ReactNode;
 }) {
   if (!value && !children) return null;
 
   return (
-    <div className="flex items-start py-1.5 text-xs border-b border-border/20 last:border-0">
-      <span className="w-24 shrink-0 font-medium text-muted-foreground select-none pr-2 pt-0.5">
+    <div className="flex items-start py-2 text-sm border-b border-border/20 last:border-0">
+      <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground select-none pr-2 pt-0.5">
         {label}
       </span>
-      <div className="flex-1 min-w-0 font-normal text-foreground">
+      <div className={cn("flex-1 min-w-0 font-normal text-foreground leading-relaxed", mono && "font-mono text-xs")}>
         {children ? (
           children
         ) : href ? (
@@ -72,7 +75,7 @@ function DetailRow({
 export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: InfoSectionProps) {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams();
-  const paperId = getLibraryEntityId(paper);
+  const paperId = paper.id;
   const fileUrl = getPaperFileUrl(paper);
   const hasFile = Boolean(fileUrl);
 
@@ -226,59 +229,59 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
 
         <div className="space-y-2">
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Title</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 text-xs mt-0.5" />
+            <label className="text-xs font-medium text-muted-foreground">Title</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 text-sm mt-0.5" />
           </div>
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Authors (comma separated)</label>
-            <Input value={authors} onChange={(e) => setAuthors(e.target.value)} className="h-8 text-xs mt-0.5" />
+            <label className="text-xs font-medium text-muted-foreground">Authors (comma separated)</label>
+            <Input value={authors} onChange={(e) => setAuthors(e.target.value)} className="h-8 text-sm mt-0.5" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Year</label>
-              <Input value={year} onChange={(e) => setYear(e.target.value)} className="h-8 text-xs mt-0.5" />
+              <label className="text-xs font-medium text-muted-foreground">Year</label>
+              <Input value={year} onChange={(e) => setYear(e.target.value)} className="h-8 text-sm font-mono mt-0.5" />
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-medium text-muted-foreground">DOI</label>
+                <label className="text-xs font-medium text-muted-foreground">DOI</label>
                 <button
                   type="button"
                   onClick={handleCrawlDoi}
                   disabled={refState.isLookingUp}
-                  className="text-[10px] text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                  className="text-xs text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
                 >
                   {refState.isLookingUp ? <Loader2 className="size-2.5 animate-spin" /> : <Sparkles className="size-2.5" />}
                   <span>Auto-fill</span>
                 </button>
               </div>
-              <Input value={doi} onChange={(e) => setDoi(e.target.value)} className="h-8 text-xs mt-0.5" />
+              <Input value={doi} onChange={(e) => setDoi(e.target.value)} className="h-8 text-xs font-mono mt-0.5" />
             </div>
           </div>
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Journal / Publisher</label>
-            <Input value={journal} onChange={(e) => setJournal(e.target.value)} className="h-8 text-xs mt-0.5" />
+            <label className="text-xs font-medium text-muted-foreground">Journal / Publisher</label>
+            <Input value={journal} onChange={(e) => setJournal(e.target.value)} className="h-8 text-sm mt-0.5" />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Volume</label>
-              <Input value={volume} onChange={(e) => setVolume(e.target.value)} className="h-8 text-xs mt-0.5" />
+              <label className="text-xs font-medium text-muted-foreground">Volume</label>
+              <Input value={volume} onChange={(e) => setVolume(e.target.value)} className="h-8 text-xs font-mono mt-0.5" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Issue</label>
-              <Input value={issue} onChange={(e) => setIssue(e.target.value)} className="h-8 text-xs mt-0.5" />
+              <label className="text-xs font-medium text-muted-foreground">Issue</label>
+              <Input value={issue} onChange={(e) => setIssue(e.target.value)} className="h-8 text-xs font-mono mt-0.5" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground">Pages</label>
-              <Input value={pages} onChange={(e) => setPages(e.target.value)} className="h-8 text-xs mt-0.5" />
+              <label className="text-xs font-medium text-muted-foreground">Pages</label>
+              <Input value={pages} onChange={(e) => setPages(e.target.value)} className="h-8 text-xs font-mono mt-0.5" />
             </div>
           </div>
           <div>
-            <label className="text-[11px] font-medium text-muted-foreground">Abstract</label>
+            <label className="text-xs font-medium text-muted-foreground">Abstract</label>
             <Textarea
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
               rows={4}
-              className="text-xs mt-0.5 resize-none"
+              className="text-xs mt-0.5 resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -288,18 +291,18 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
 
   return (
     <div className="space-y-4 min-w-0">
-      {/* File Attachment & Quick Read Card */}
+      {/* File Attachment & Quick Read Row */}
       {hasFile && (
-        <div className="p-3 bg-muted/20 rounded-lg border border-border/40 flex items-center justify-between gap-3">
+        <div className="pb-3 border-b border-border/40 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-8 rounded-md bg-muted/60 flex items-center justify-center shrink-0 border border-border/30">
+            <div className="size-8 rounded-md bg-secondary/80 flex items-center justify-center shrink-0 border border-border/40">
               <FileText className="size-4 text-foreground" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground truncate" title={paper.filename || 'PDF Document'}>
+              <p className="text-[13px] font-medium text-foreground truncate" title={paper.filename || 'PDF Document'}>
                 {paper.filename || `${paper.title || 'Paper'}.pdf`}
               </p>
-              <span className="text-[10px] text-muted-foreground font-mono uppercase">
+              <span className="text-[10.5px] text-muted-foreground font-mono uppercase tracking-wide">
                 {paper.mimeType?.split('/')[1] || 'PDF'} Attached
               </span>
             </div>
@@ -307,7 +310,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => paperId && router.push(`/${workspaceUrl}/library/papers/${paperId}`)}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground text-[11px] font-medium rounded-md hover:bg-primary/90 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 transition-colors cursor-pointer"
             >
               <BookOpen className="size-3" />
               <span>Read</span>
@@ -318,7 +321,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
                 download
                 target="_blank"
                 rel="noreferrer"
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="Download PDF"
               >
                 <Download className="size-3.5" />
@@ -337,7 +340,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
               <button
                 onClick={handleCrawlDoi}
                 disabled={refState.isLookingUp}
-                className="flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1 text-xs text-primary hover:underline font-medium disabled:opacity-50 cursor-pointer"
                 title="Re-fetch metadata from CrossRef via DOI"
               >
                 {refState.isLookingUp ? <Loader2 className="size-3 animate-spin text-foreground" /> : <RefreshCw className="size-3 text-foreground" />}
@@ -346,7 +349,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
             )}
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-1 text-[11px] text-foreground hover:underline transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs text-foreground hover:underline transition-colors cursor-pointer"
             >
               <Edit3 className="size-3 text-foreground" />
               <span>Edit</span>
@@ -360,25 +363,40 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
           <DetailRow label="Title" value={paper.title} />
           <DetailRow label="Author(s)" value={paper.authors?.join('; ')} />
           <DetailRow label="Publication" value={paper.journal || paper.publisher} />
-          <DetailRow label="Date / Year" value={paper.year} />
+          <DetailRow label="Date / Year" value={paper.year} mono />
+          {paper.createdAt && (
+            <DetailRow
+              label="Date Added"
+              value={new Date(paper.createdAt).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+              mono
+            />
+          )}
+          {paper.citationKey && (
+            <DetailRow label="Citation Key" value={paper.citationKey} mono />
+          )}
           <DetailRow
             label="DOI"
             value={paper.doi}
             href={paper.doi ? (paper.doi.startsWith('http') ? paper.doi : `https://doi.org/${paper.doi}`) : undefined}
+            mono
           />
           {paper.url && <DetailRow label="URL" value={paper.url} href={paper.url} />}
-          {paper.volume && <DetailRow label="Volume" value={paper.volume} />}
-          {paper.issue && <DetailRow label="Issue" value={paper.issue} />}
-          {paper.pages && <DetailRow label="Pages" value={paper.pages} />}
-          {paper.issn && <DetailRow label="ISSN" value={paper.issn} />}
-          {paper.isbn && <DetailRow label="ISBN" value={paper.isbn} />}
+          {paper.volume && <DetailRow label="Volume" value={paper.volume} mono />}
+          {paper.issue && <DetailRow label="Issue" value={paper.issue} mono />}
+          {paper.pages && <DetailRow label="Pages" value={paper.pages} mono />}
+          {paper.issn && <DetailRow label="ISSN" value={paper.issn} mono />}
+          {paper.isbn && <DetailRow label="ISBN" value={paper.isbn} mono />}
         </div>
       </div>
 
       {/* Abstract */}
       {paper.abstract && (
         <div className="pt-2 border-t border-border/20">
-          <span className="block text-[11px] font-medium text-muted-foreground mb-1">Abstract</span>
+          <span className="block text-xs font-medium text-muted-foreground mb-1">Abstract</span>
           <p className="text-xs text-foreground/80 leading-relaxed max-h-40 overflow-y-auto bg-muted/10 p-2.5 rounded-md border border-border/30 break-words [overflow-wrap:anywhere]">
             {paper.abstract}
           </p>
@@ -388,13 +406,13 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
       {/* Tags Section */}
       <div className="pt-2 border-t border-border/20 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Tags ({tags.length})
           </span>
           {!isAddingTag && (
             <button
               onClick={() => setIsAddingTag(true)}
-              className="flex items-center gap-1 text-[11px] text-foreground hover:underline font-medium cursor-pointer"
+              className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer"
             >
               <Plus className="size-3 text-foreground" />
               <span>Add Tag</span>
@@ -423,7 +441,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
             <button
               onClick={handleAddTag}
               disabled={!newTag.trim()}
-              className="px-2 h-6 bg-primary text-primary-foreground text-[11px] font-medium rounded hover:bg-primary/90 disabled:opacity-50 cursor-pointer shrink-0"
+              className="px-2 h-6 bg-primary text-primary-foreground text-xs font-medium rounded hover:bg-primary/90 disabled:opacity-50 cursor-pointer shrink-0"
             >
               Add
             </button>
@@ -443,7 +461,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-muted/50 text-foreground border border-border/40 group hover:border-primary/40 transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-muted/50 text-foreground border border-border/40 group hover:border-primary/40 transition-colors"
             >
               <Hash className="size-2.5 text-muted-foreground/60" />
               <span>{tag}</span>
@@ -456,7 +474,7 @@ export default function InfoSection({ paper, onUpdatePaper, onUpdateTags }: Info
             </span>
           ))}
           {tags.length === 0 && !isAddingTag && (
-            <span className="text-[11px] text-muted-foreground/60 italic">No tags assigned</span>
+            <span className="text-xs text-muted-foreground/60 italic">No tags assigned</span>
           )}
         </div>
       </div>

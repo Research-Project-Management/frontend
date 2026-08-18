@@ -24,19 +24,19 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
           </thead>
           <tbody className="divide-y divide-border">
             {pages.map((page) => {
-              const projId = typeof page.projectId === 'object' && page.projectId !== null && '_id' in page.projectId
-                ? (page.projectId._id as string)
+              const projId = typeof page.projectId === 'object' && page.projectId !== null && 'id' in page.projectId
+                ? (page.projectId.id as string)
                 : (page.projectId as string);
               const mainFileStr = page.mainFile
-                ? typeof page.mainFile === 'object' && page.mainFile !== null && '_id' in page.mainFile
-                  ? (page.mainFile._id as string)
+                ? typeof page.mainFile === 'object' && page.mainFile !== null && 'id' in page.mainFile
+                  ? (page.mainFile.id as string)
                   : (page.mainFile as string)
                 : null;
               const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
-              const linkHref = `/${workspaceId}/projects/${projId}/pages/${page._id}${fileQuery}`;
+              const linkHref = `/${workspaceId}/projects/${projId}/pages/${page.id}${fileQuery}`;
 
               return (
-                <tr key={page._id} className="hover:bg-muted/30 transition-colors group">
+                <tr key={page.id} className="hover:bg-muted/30 transition-colors group">
                   <td className="px-4 py-3">
                     <Link
                       href={linkHref}

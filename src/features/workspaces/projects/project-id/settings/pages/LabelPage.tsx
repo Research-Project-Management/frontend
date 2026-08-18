@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectDetails } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { Button, Skeleton } from '@/shared/components/ui';
-import { DeleteModal } from '@/features/workspaces/settings';
+import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 import { ArrowUpRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/label/EmptyState';
@@ -110,7 +110,7 @@ export default function LabelPage() {
             setIsAdding(true);
             setEditingId(null);
           }}
-          className="h-8 text-xs font-medium px-3.5 rounded-md bg-[#0070f3] hover:bg-[#0060df] text-white cursor-pointer shadow-2xs shrink-0"
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs shrink-0"
         >
           Add label
         </Button>

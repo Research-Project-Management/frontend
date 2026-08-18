@@ -136,7 +136,7 @@ export default function CreateCollectionModal({
 
                     {/* Existing Collections */}
                     {collections.map((col) => (
-                      <SelectItem key={col._id} value={col._id}>
+                      <SelectItem key={col.id} value={col.id}>
                         <div className="flex items-center gap-2 pl-2">
                           <Folder className="size-4 shrink-0 text-foreground" />
                           <span className="truncate">{col.name}</span>

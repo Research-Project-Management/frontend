@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { registerUser } from '../services/auth.service';
-import { queryKeys, API_BASE_URL } from '@/shared/constants';
+import { env } from '@/config/env';
 import type { RegisterPayload } from '../types/auth.types';
 
 
@@ -26,7 +26,7 @@ export const useRegister = () => {
   });
 
   const handleOAuthLogin = (provider: 'google' | 'github') => {
-    window.location.href = `${API_BASE_URL}/auth/${provider}`;
+    window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;
   };
 
   return {

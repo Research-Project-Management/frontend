@@ -5,18 +5,18 @@ export const cyclePhaseSchema = z.string();
 export const cycleStatusSchema = z.enum(["planned", "active", "completed", "cancelled"]);
 
 export const cycleMilestoneSchema = z.object({
-  _id: z.string().optional(),
+  id: z.string().optional(),
   title: z.string(),
   dueDate: z.string().nullable().optional(),
   completed: z.boolean(),
 });
 
 export const cycleDeliverableSchema = z.object({
-  _id: z.string().optional(),
+  id: z.string().optional(),
   title: z.string(),
   fileId: z
     .object({
-      _id: z.string(),
+      id: z.string(),
       filename: z.string(),
       url: z.string(),
     })
@@ -26,7 +26,7 @@ export const cycleDeliverableSchema = z.object({
 });
 
 export const cycleSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   name: z.string(),
   description: z.string(),
   project: z.string(),
@@ -39,7 +39,7 @@ export const cycleSchema = z.object({
   labels: z.array(z.string()).optional(),
   author: z
     .object({
-      _id: z.string(),
+      id: z.string(),
       name: z.string(),
       avatar: z.string().optional(),
     })
@@ -52,7 +52,7 @@ export const cycleSchema = z.object({
 });
 
 export const createCycleInputSchema = cycleSchema.omit({
-  _id: true,
+  id: true,
   createdAt: true,
   updatedAt: true,
 }).partial({

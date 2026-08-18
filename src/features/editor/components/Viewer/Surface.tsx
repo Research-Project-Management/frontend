@@ -4,13 +4,16 @@ import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
+import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
 import { toast } from 'sonner';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+}
 
 // ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
 
@@ -29,34 +32,17 @@ function OptimizedPDFPage({
   approxHeightRef,
   onDoubleClickPage,
 }: OptimizedPDFPageProps) {
-  const [isVisible, setIsVisible] = React.useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  React.useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          setIsVisible(entry.isIntersecting);
-          if (entry.isIntersecting && entry.boundingClientRect.height > 0) {
-            approxHeightRef.current = entry.boundingClientRect.height;
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: '450px 0px 450px 0px',
-        threshold: 0.01,
-      },
-    );
-
-    observer.observe(el);
-    return () => {
-      observer.unobserve(el);
-    };
-  }, [approxHeightRef]);
+  const { isIntersecting: isVisible } = useIntersectionObserver(containerRef, {
+    rootMargin: '450px 0px 450px 0px',
+    threshold: 0.01,
+    onChange: (entry) => {
+      if (entry.isIntersecting && entry.boundingClientRect.height > 0) {
+        approxHeightRef.current = entry.boundingClientRect.height;
+      }
+    },
+  });
 
   const pageNum = pageIndex + 1;
   const estimatedHeight = approxHeightRef.current > 0 ? approxHeightRef.current : 840 * scale;
@@ -75,7 +61,7 @@ function OptimizedPDFPage({
       }}
       onDoubleClickCapture={handleDoubleClick}
       title="Double-click anywhere to jump to LaTeX source"
-      className="shadow-lg bg-background rounded-sm transition-shadow relative overflow-hidden flex items-center justify-center border border-border/10 cursor-text"
+      className="bg-card rounded-sm border border-border/60 shadow-2xs relative overflow-hidden flex items-center justify-center cursor-text"
       style={{
         width: 595 * scale,
         minHeight: isVisible ? undefined : estimatedHeight,

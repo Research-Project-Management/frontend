@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LandingPage } from '@/features/marketing';
+import LandingPage from '@/features/marketing/pages/landing-page';
 
 
 export const metadata: Metadata = {

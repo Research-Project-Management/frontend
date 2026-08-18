@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Menu, X, LayoutDashboard } from 'lucide-react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export default function Navbar() {

@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjectDetails } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { WorklogService } from '../services/worklog.service';
 import type { WorklogEntry } from '../types/worklog.types';
@@ -17,7 +17,7 @@ export function useWorklogs(projectId: string) {
   // Project members for the user filter
   const members = useMemo(() => {
     return (project?.members || []).map((m: any) => ({
-      id: m.user?._id || m.user?.id || m.userId || '',
+      id: m.user?.id || m.userId || '',
       name: m.user?.name || 'Unknown User',
       email: m.user?.email || '',
       avatar: m.user?.avatar || '',

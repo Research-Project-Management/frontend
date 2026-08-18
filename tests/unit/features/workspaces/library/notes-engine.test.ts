@@ -13,24 +13,24 @@ describe('normalizeNotes Engine', () => {
     const result = normalizeNotes(raw);
 
     expect(result).toHaveLength(2);
-    expect(result[0].id).toBe('note-0');
-    expect(result[0].content).toBe('Note 1');
-    expect(result[1].id).toBe('note-1');
-    expect(result[1].content).toBe('Note 2');
+    expect(result[0]!.id).toBe('note-0');
+    expect(result[0]!.content).toBe('Note 1');
+    expect(result[1]!.id).toBe('note-1');
+    expect(result[1]!.content).toBe('Note 2');
   });
 
-  it('should normalize object notes carrying MongoDB _id or PostgreSQL id', () => {
+  it('should normalize object notes carrying id', () => {
     const raw = [
-      { _id: 'mongo-id-1', content: 'Detailed note from MongoDB' },
-      { id: 'pg-id-2', content: 'Detailed note from Postgres' },
+      { id: 'note-id-1', content: 'Detailed note 1' },
+      { id: 'note-id-2', content: 'Detailed note 2' },
     ];
     const result = normalizeNotes(raw);
 
     expect(result).toHaveLength(2);
-    expect(result[0].id).toBe('mongo-id-1');
-    expect(result[0].content).toBe('Detailed note from MongoDB');
-    expect(result[1].id).toBe('pg-id-2');
-    expect(result[1].content).toBe('Detailed note from Postgres');
+    expect(result[0]!.id).toBe('note-id-1');
+    expect(result[0]!.content).toBe('Detailed note 1');
+    expect(result[1]!.id).toBe('note-id-2');
+    expect(result[1]!.content).toBe('Detailed note 2');
   });
 
   it('should preserve createdAt and updatedAt timestamps when provided', () => {
@@ -39,7 +39,7 @@ describe('normalizeNotes Engine', () => {
     const raw = [{ id: 'n-1', content: 'Timestamped', createdAt, updatedAt }];
 
     const result = normalizeNotes(raw);
-    expect(result[0].createdAt).toBe(createdAt);
-    expect(result[0].updatedAt).toBe(updatedAt);
+    expect(result[0]!.createdAt).toBe(createdAt);
+    expect(result[0]!.updatedAt).toBe(updatedAt);
   });
 });

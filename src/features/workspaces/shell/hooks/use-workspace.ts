@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import { queryKeys } from '@/shared/constants';
+import { workspaceKeys } from '../../constants/workspace.keys';
 import {
   fetchWorkspaceById,
   fetchAllWorkspaces,
@@ -10,7 +10,7 @@ import {
   deleteWorkspaceById,
 } from '../services/workspace.service';
 import type { WorkspaceListResponse, WorkspaceDetailResponse, WorkspacePatch } from '../services/workspace.service';
-import type { Workspace } from '@/features/setup';
+import type { Workspace } from '@/features/setup/types/workspace.types';
 
 
 
@@ -21,13 +21,13 @@ export const useWorkspace = (explicitWorkspaceId?: string) => {
   const params = useParams<{ workspaceId?: string }>();
   const workspaceId = explicitWorkspaceId || params?.workspaceId;
   const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.workspaces.detail(workspaceId!),
+    queryKey: workspaceKeys.detail(workspaceId!),
     queryFn: ({ signal }) => fetchWorkspaceById(workspaceId!, signal),
     enabled: !!workspaceId,
   });
 
   const pData = data as any;
-  const workspace = pData?.workspace ?? pData?.data?.workspace ?? (pData?._id ? pData : undefined);
+  const workspace = pData?.workspace ?? pData?.data?.workspace ?? (pData?.id ? pData : undefined);
 
   return {
     workspace: workspace as Workspace | undefined,
@@ -41,13 +41,13 @@ export const useWorkspace = (explicitWorkspaceId?: string) => {
 
 export const useWorkspaces = () => {
   const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.workspaces.all,
+    queryKey: workspaceKeys.all,
     queryFn: ({ signal }) => fetchAllWorkspaces(signal),
     staleTime: 1000 * 60 * 5,
     select: (data: WorkspaceListResponse) => {
       const workspaces = data?.workspaces ?? [];
       const unique = Array.from(
-        new Map(workspaces.map((w: Workspace) => [w._id || (w as any).id, w])).values(),
+        new Map(workspaces.map((w: Workspace) => [w.id, w])).values(),
       );
       return { workspaces: unique };
 
@@ -66,7 +66,7 @@ export const useWorkspaces = () => {
 
 export const useWorkspaceById = (workspaceUrl: string) => {
   const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.workspaces.detail(workspaceUrl),
+    queryKey: workspaceKeys.detail(workspaceUrl),
     queryFn: ({ signal }) => fetchWorkspaceById(workspaceUrl, signal),
     enabled: !!workspaceUrl,
   });
@@ -92,15 +92,15 @@ export const useUpdateWorkspace = () => {
       data: WorkspacePatch;
     }) => updateWorkspaceById(id, data),
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all });
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
       
-      const previousWorkspaces = queryClient.getQueryData<WorkspaceListResponse>(queryKeys.workspaces.all);
+      const previousWorkspaces = queryClient.getQueryData<WorkspaceListResponse>(workspaceKeys.all);
       
       if (previousWorkspaces) {
-        queryClient.setQueryData<WorkspaceListResponse>(queryKeys.workspaces.all, {
+        queryClient.setQueryData<WorkspaceListResponse>(workspaceKeys.all, {
           ...previousWorkspaces,
           workspaces: previousWorkspaces.workspaces.map((w: Workspace) =>
-            (w._id === id || (w as any).id === id) ? { ...w, ...(data as any) } : w
+            w.id === id ? { ...w, ...(data as any) } : w
           ),
 
         });
@@ -110,13 +110,15 @@ export const useUpdateWorkspace = () => {
     },
     onSuccess: (data) => {
       if (data.workspace) {
-        queryClient.setQueryData<WorkspaceDetailResponse>(
-          queryKeys.workspaces.detail(data.workspace._id),
-          data
-        );
+        if (data.workspace.id) {
+          queryClient.setQueryData<WorkspaceDetailResponse>(
+            workspaceKeys.detail(data.workspace.id),
+            data
+          );
+        }
         if (data.workspace.url) {
           queryClient.setQueryData<WorkspaceDetailResponse>(
-            queryKeys.workspaces.detail(data.workspace.url),
+            workspaceKeys.detail(data.workspace.url),
             data
           );
         }
@@ -124,11 +126,11 @@ export const useUpdateWorkspace = () => {
     },
     onError: (error, variables, context) => {
       if (context?.previousWorkspaces) {
-        queryClient.setQueryData(queryKeys.workspaces.all, context.previousWorkspaces);
+        queryClient.setQueryData(workspaceKeys.all, context.previousWorkspaces);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });
 };
@@ -138,13 +140,13 @@ export const useDeleteWorkspace = () => {
   return useMutation({
     mutationFn: deleteWorkspaceById,
     onMutate: async (workspaceId: string) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.workspaces.all });
-      const previousWorkspaces = queryClient.getQueryData<WorkspaceListResponse>(queryKeys.workspaces.all);
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
+      const previousWorkspaces = queryClient.getQueryData<WorkspaceListResponse>(workspaceKeys.all);
 
       if (previousWorkspaces) {
-        queryClient.setQueryData<WorkspaceListResponse>(queryKeys.workspaces.all, {
+        queryClient.setQueryData<WorkspaceListResponse>(workspaceKeys.all, {
           ...previousWorkspaces,
-          workspaces: previousWorkspaces.workspaces.filter((w: Workspace) => w._id !== workspaceId),
+          workspaces: previousWorkspaces.workspaces.filter((w: Workspace) => w.id !== workspaceId),
         });
       }
 
@@ -152,11 +154,11 @@ export const useDeleteWorkspace = () => {
     },
     onError: (error, workspaceId, context) => {
       if (context?.previousWorkspaces) {
-        queryClient.setQueryData(queryKeys.workspaces.all, context.previousWorkspaces);
+        queryClient.setQueryData(workspaceKeys.all, context.previousWorkspaces);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });
 };

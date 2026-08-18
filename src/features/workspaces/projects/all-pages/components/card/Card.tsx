@@ -10,19 +10,19 @@ interface CardProps {
 }
 
 export function Card({ page, workspaceId }: CardProps) {
-  const projId = typeof page.projectId === 'object' && page.projectId !== null && '_id' in page.projectId
-    ? (page.projectId._id as string)
+  const projId = typeof page.projectId === 'object' && page.projectId !== null && 'id' in page.projectId
+    ? (page.projectId.id as string)
     : (page.projectId as string);
   const mainFileStr = page.mainFile
-    ? typeof page.mainFile === 'object' && page.mainFile !== null && '_id' in page.mainFile
-      ? (page.mainFile._id as string)
+    ? typeof page.mainFile === 'object' && page.mainFile !== null && 'id' in page.mainFile
+      ? (page.mainFile.id as string)
       : (page.mainFile as string)
     : null;
   const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
 
   return (
     <Link
-      href={`/${workspaceId}/projects/${projId}/pages/${page._id}${fileQuery}`}
+      href={`/${workspaceId}/projects/${projId}/pages/${page.id}${fileQuery}`}
       className="group flex flex-col rounded-lg border border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:border-primary transition-all overflow-hidden"
     >
       <div className="aspect-[4/3] bg-muted/30 border-b border-border flex items-center justify-center overflow-hidden">

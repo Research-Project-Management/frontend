@@ -4,7 +4,7 @@ import { type UnifiedTreeNode } from "./file-tree.types";
  * Builds a hierarchical tree from a list of project pages.
  */
 export function buildPageTree(
-  pages: Array<{ _id: string; title: string; isFolder?: boolean; parentId?: string | null; isMain?: boolean }>,
+  pages: Array<{ id: string; title: string; isFolder?: boolean; parentId?: string | null; isMain?: boolean }>,
   mainFileId?: string | null
 ): UnifiedTreeNode[] {
   const nodeMap = new Map<string, UnifiedTreeNode>();
@@ -12,9 +12,9 @@ export function buildPageTree(
 
   // Pass 1: Initialize nodes
   for (const page of pages) {
-    const isMain = page.isMain || page._id === mainFileId;
-    nodeMap.set(page._id, {
-      id: page._id,
+    const isMain = page.isMain || page.id === mainFileId;
+    nodeMap.set(page.id, {
+      id: page.id,
       name: page.title,
       isFolder: Boolean(page.isFolder),
       itemType: "page",
@@ -27,7 +27,7 @@ export function buildPageTree(
 
   // Pass 2: Connect parent-child or path hierarchy
   for (const page of pages) {
-    const node = nodeMap.get(page._id)!;
+    const node = nodeMap.get(page.id)!;
     if (page.parentId && nodeMap.has(page.parentId)) {
       nodeMap.get(page.parentId)!.children.push(node);
     } else {

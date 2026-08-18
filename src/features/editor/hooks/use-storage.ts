@@ -1,12 +1,12 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/shared/constants';
+import { storageKeys } from '@/features/workspaces/storage/constants/storage.keys';
 import { StorageService as EditorStorageService, type EditorStorageItem } from '../services/storage.service';
 
 export function useEditorStorage(pageId: string | null | undefined, parentId?: string | null) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.storage.projectFilesEditor(pageId ?? undefined, parentId);
+  const queryKey = storageKeys.projectFilesEditor(pageId ?? undefined, parentId);
 
   const { data: children, isLoading, refetch } = useQuery({
     queryKey,
@@ -57,7 +57,7 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
     onSuccess: (_, variables) => {
       if (variables.pageId || variables.projectId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId),
+          queryKey: storageKeys.projectFilesEditor(variables.pageId || variables.projectId),
         });
       }
     },
@@ -84,7 +84,7 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
     onSuccess: (_, variables) => {
       if (variables.pageId || variables.projectId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.storage.projectFilesEditor(variables.pageId || variables.projectId),
+          queryKey: storageKeys.projectFilesEditor(variables.pageId || variables.projectId),
         });
       }
     },
@@ -99,7 +99,7 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
     onSuccess: () => {
       if (pageId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.storage.projectFilesEditor(pageId),
+          queryKey: storageKeys.projectFilesEditor(pageId),
         });
       }
     },
@@ -110,7 +110,7 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
     onSuccess: () => {
       if (pageId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.storage.projectFilesEditor(pageId),
+          queryKey: storageKeys.projectFilesEditor(pageId),
         });
       }
     },
@@ -122,7 +122,7 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
     onSuccess: () => {
       if (pageId) {
         queryClient.invalidateQueries({
-          queryKey: queryKeys.storage.projectFilesEditor(pageId),
+          queryKey: storageKeys.projectFilesEditor(pageId),
         });
       }
     },

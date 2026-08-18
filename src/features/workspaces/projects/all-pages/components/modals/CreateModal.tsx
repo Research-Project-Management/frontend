@@ -72,7 +72,7 @@ export function CreateModal({
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project: any) => {
-                  const projectId = project._id || project.id;
+                  const projectId = project.id;
                   return (
                     <SelectItem key={projectId} value={projectId}>
                       {project.name}

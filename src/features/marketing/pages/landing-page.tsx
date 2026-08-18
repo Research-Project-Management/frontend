@@ -3,7 +3,7 @@
 import { useRef, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { motion, useInView } from 'framer-motion';
 import {
   MessageSquare,
@@ -18,6 +18,7 @@ import {
 
 import Navbar from '../components/navbar';
 import Footer from '../components/footer';
+import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 
 // ─── Animation variants ────────────────────────────────────────────────────────
 
@@ -99,18 +100,17 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      import('@/shared/lib/api').then(async ({ apiGet }) => {
-        try {
-          const data = await apiGet<import('@/features/workspaces/shell/services/workspace.service').WorkspaceListResponse>('/api/workspace');
+      fetchAllWorkspaces()
+        .then((data) => {
           if (data.workspaces && data.workspaces.length > 0) {
             router.replace(`/${data.workspaces[0].url}`);
           } else {
             router.replace('/create-workspace');
           }
-        } catch {
+        })
+        .catch(() => {
           router.replace('/create-workspace');
-        }
-      });
+        });
     }
   }, [isLoading, user, router]);
 

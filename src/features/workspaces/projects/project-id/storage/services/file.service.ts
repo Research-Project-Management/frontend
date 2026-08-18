@@ -4,7 +4,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { API_BASE_URL } from "@/shared/constants";
+import { API_BASE_URL } from '@/config/env';
 import { generateThumbnail } from '@/shared/utils/file';
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 
@@ -158,7 +158,7 @@ export const checkDuplicateFile = (
         return {
             exists: !!existingFile,
             existingFile: existingFile
-                ? { _id: existingFile._id, filename: existingFile.filename }
+                ? { id: existingFile.id, filename: existingFile.filename }
                 : null,
         };
     });

@@ -4,9 +4,8 @@ import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FileText, BookOpen, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
-import { API_BASE_URL } from '@/shared/constants';
+import { API_BASE_URL } from '@/config/env';
 import { useLibraryReaderStore } from '@/features/workspaces/library/store/reader.store';
-import { getLibraryEntityId } from '@/features/workspaces/library/utils/library.util';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface FilesSectionProps {
@@ -23,7 +22,7 @@ function formatSize(bytes?: number): string {
 export default function FilesSection({ paper }: FilesSectionProps) {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams();
-  const paperId = getLibraryEntityId(paper);
+  const paperId = paper.id;
   const hasFile = Boolean(paper.fileUrl);
 
   const resolvedUrl = paper.fileUrl?.startsWith('/api/files/')
@@ -54,10 +53,10 @@ export default function FilesSection({ paper }: FilesSectionProps) {
               <h4 className="text-xs font-medium text-foreground truncate" title={paper.filename || 'Paper PDF'}>
                 {paper.filename || `${paper.title || 'Paper'}.pdf`}
               </h4>
-              <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 mt-1 text-xs font-mono text-muted-foreground">
                 <span>{formatSize(paper.size)}</span>
                 <span>•</span>
-                <span className="uppercase font-mono text-[10px]">{paper.mimeType?.split('/')[1] || 'PDF'}</span>
+                <span className="uppercase font-mono text-xs">{paper.mimeType?.split('/')[1] || 'PDF'}</span>
               </div>
             </div>
           </div>

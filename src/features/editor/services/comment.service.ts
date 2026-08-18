@@ -73,7 +73,7 @@ export const useUpdateComment = () => {
       const snapshot = queryClient.getQueryData<PageComment[]>(['page-comments', pageId]);
       queryClient.setQueryData<PageComment[]>(['page-comments', pageId], (old = []) =>
         old.map((c) =>
-          c._id === commentId
+          c.id === commentId
             ? { ...c, ...(status !== undefined && { status }), ...(content !== undefined && { content }) }
             : c,
         ),
@@ -100,7 +100,7 @@ export const useDeleteComment = () => {
       await queryClient.cancelQueries({ queryKey: ['page-comments', pageId] });
       const snapshot = queryClient.getQueryData<PageComment[]>(['page-comments', pageId]);
       queryClient.setQueryData<PageComment[]>(['page-comments', pageId], (old = []) =>
-        old.filter((c) => c._id !== commentId),
+        old.filter((c) => c.id !== commentId),
       );
       return { snapshot };
     },
@@ -135,7 +135,7 @@ export const useAddReply = () => {
     },
     onSuccess: (updatedComment, { pageId }) => {
       queryClient.setQueryData<PageComment[]>(['page-comments', pageId], (old = []) =>
-        old.map((c) => (c._id === updatedComment._id ? updatedComment : c)),
+        old.map((c) => (c.id === updatedComment.id ? updatedComment : c)),
       );
     },
     onSettled: (_, _err, { pageId }) => {
@@ -168,8 +168,8 @@ export const useDeleteReply = () => {
       const snapshot = queryClient.getQueryData<PageComment[]>(['page-comments', pageId]);
       queryClient.setQueryData<PageComment[]>(['page-comments', pageId], (old = []) =>
         old.map((c) =>
-          c._id === commentId
-            ? { ...c, replies: c.replies.filter((r: CommentReply) => r._id !== replyId) }
+          c.id === commentId
+            ? { ...c, replies: c.replies.filter((r: CommentReply) => r.id !== replyId) }
             : c,
         ),
       );

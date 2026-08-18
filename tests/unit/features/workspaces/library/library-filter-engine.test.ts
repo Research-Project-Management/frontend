@@ -5,7 +5,6 @@ import type { Paper } from '@/features/workspaces/library/types/library.types';
 describe('LibraryFilterEngine Deep Module', () => {
   const papers: Paper[] = [
     {
-      _id: 'p1',
       id: 'p1',
       title: 'Attention Is All You Need',
       authors: ['Ashish Vaswani', 'Noam Shazeer'],
@@ -17,7 +16,6 @@ describe('LibraryFilterEngine Deep Module', () => {
       fileUrl: 'https://storage.local/attention.pdf',
     },
     {
-      _id: 'p2',
       id: 'p2',
       title: 'Deep Residual Learning for Image Recognition',
       authors: ['Kaiming He', 'Jian Sun'],
@@ -28,7 +26,6 @@ describe('LibraryFilterEngine Deep Module', () => {
       doi: '10.1109/CVPR.2016.90',
     },
     {
-      _id: 'p3',
       id: 'p3',
       title: 'Language Models are Few-Shot Learners',
       authors: ['Tom Brown', 'Benjamin Mann'],
@@ -45,12 +42,12 @@ describe('LibraryFilterEngine Deep Module', () => {
     // Search by title
     const res1 = LibraryFilterEngine.filterBySearch(papers, 'attention');
     expect(res1).toHaveLength(1);
-    expect(res1[0].id).toBe('p1');
+    expect(res1[0]!.id).toBe('p1');
 
     // Search by author
     const res2 = LibraryFilterEngine.filterBySearch(papers, 'Kaiming');
     expect(res2).toHaveLength(1);
-    expect(res2[0].id).toBe('p2');
+    expect(res2[0]!.id).toBe('p2');
 
     // Search by journal
     const res3 = LibraryFilterEngine.filterBySearch(papers, 'NeurIPS');
@@ -59,7 +56,7 @@ describe('LibraryFilterEngine Deep Module', () => {
     // Search by tag
     const res4 = LibraryFilterEngine.filterBySearch(papers, 'LLM');
     expect(res4).toHaveLength(1);
-    expect(res4[0].id).toBe('p3');
+    expect(res4[0]!.id).toBe('p3');
   });
 
   it('filters papers with multi-criteria options', () => {
@@ -69,7 +66,7 @@ describe('LibraryFilterEngine Deep Module', () => {
       fromYear: 2018,
     });
     expect(res).toHaveLength(1);
-    expect(res[0].id).toBe('p3');
+    expect(res[0]!.id).toBe('p3');
 
     // Filter by attachment presence
     const withPdf = LibraryFilterEngine.filter(papers, {
@@ -81,20 +78,19 @@ describe('LibraryFilterEngine Deep Module', () => {
   it('sorts papers by title, year, and authors', () => {
     // Sort by year desc
     const sortedYear = LibraryFilterEngine.sort(papers, { field: 'year', direction: 'desc' });
-    expect(sortedYear[0].id).toBe('p3'); // 2020
-    expect(sortedYear[1].id).toBe('p1'); // 2017
-    expect(sortedYear[2].id).toBe('p2'); // 2016
+    expect(sortedYear[0]!.id).toBe('p3'); // 2020
+    expect(sortedYear[1]!.id).toBe('p1'); // 2017
+    expect(sortedYear[2]!.id).toBe('p2'); // 2016
 
     // Sort by title asc
     const sortedTitle = LibraryFilterEngine.sort(papers, { field: 'title', direction: 'asc' });
-    expect(sortedTitle[0].title).toBe('Attention Is All You Need');
+    expect(sortedTitle[0]!.title).toBe('Attention Is All You Need');
   });
 
   it('detects duplicate papers by matching DOI or title', () => {
     const listWithDupes: Paper[] = [
       ...papers,
       {
-        _id: 'p4',
         id: 'p4',
         title: 'Attention Is All You Need (Preprint)',
         authors: ['Ashish Vaswani'],
@@ -105,8 +101,8 @@ describe('LibraryFilterEngine Deep Module', () => {
 
     const duplicates = LibraryFilterEngine.findDuplicates(listWithDupes);
     expect(duplicates).toHaveLength(1);
-    expect(duplicates[0].original.id).toBe('p1');
-    expect(duplicates[0].duplicates).toHaveLength(1);
-    expect(duplicates[0].duplicates[0].id).toBe('p4');
+    expect(duplicates[0]!.original.id).toBe('p1');
+    expect(duplicates[0]!.duplicates).toHaveLength(1);
+    expect(duplicates[0]!.duplicates[0]!.id).toBe('p4');
   });
 });

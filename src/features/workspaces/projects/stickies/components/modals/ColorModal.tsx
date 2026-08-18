@@ -69,7 +69,7 @@ export default function ColorModal({
                       backgroundColor: STICKY_COLOR_MAP[color].bg,
                     }}
                     onClick={() => {
-                      const sId = sticky._id || (sticky as any).id;
+                      const sId = sticky.id;
                       if (sId) onUpdate(sId, { color });
                       onActiveChange(false);
                     }}

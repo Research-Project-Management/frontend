@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Archive } from 'lucide-react';
 import { Button, Skeleton } from '@/shared/components/ui';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects, useRestoreProject, useDeleteProject } from '../hooks/use-project';
 import {
   filterArchivedProjects,
@@ -60,7 +60,7 @@ export function ArchivePage() {
     const byCriteria = filterProjectsByCriteria(
       archivedProjects,
       popoverFilter,
-      user?._id || (user as any)?.id
+      user?.id
     );
     return searchArchivedProjects(byCriteria, searchQuery);
   }, [archivedProjects, popoverFilter, searchQuery, user]);
@@ -73,7 +73,7 @@ export function ArchivePage() {
 
   const handleDeletePermanent = () => {
     if (!deleteConfirmProject) return;
-    const projId = deleteConfirmProject._id || (deleteConfirmProject as any).id;
+    const projId = deleteConfirmProject.id;
     if (!projId) return;
 
     deleteProjectMutation.mutate(
@@ -96,7 +96,7 @@ export function ArchivePage() {
         projects={archivedProjects}
         filter={popoverFilter}
         onFilterChange={setPopoverFilter}
-        currentUserId={user?._id || (user as any)?.id}
+        currentUserId={user?.id}
         currentUserName={user?.name || 'You'}
       />
 
@@ -115,7 +115,7 @@ export function ArchivePage() {
         {!isLoading && filteredProjects.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProjects.map((project) => {
-              const projectId = project._id || (project as any).id || '';
+              const projectId = project.id || '';
               return (
                 <ArchiveCard
                   key={projectId}

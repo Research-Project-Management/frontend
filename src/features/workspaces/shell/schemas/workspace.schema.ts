@@ -6,18 +6,16 @@ export const DeleteWorkspaceResultSchema = z.object({
 });
 
 export const WorkspacePatchSchema = z.object({
-  _id: z.string(),
+  id: z.string().optional(),
   name: z.string().optional(),
   avatar: z.string().nullable().optional(),
   companySize: z.string().optional(),
   timezone: z.string().optional(),
   url: z.string().optional(),
-}).partial().extend({
-  _id: z.string(), // _id is required for patching in the UI
 });
 
 export const WorkspaceBaseSchema = z.object({
-  _id: z.string(),
+  id: z.string().optional(),
   url: z.string().optional(),
 }).passthrough();
 

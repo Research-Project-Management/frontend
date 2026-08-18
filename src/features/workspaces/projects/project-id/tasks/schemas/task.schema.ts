@@ -28,7 +28,7 @@ export const taskReminderSchema = z.enum([
 // ── Checklist Schemas ────────────────────────────────────────────────────────
 
 export const checklistItemSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   title: z.string(),
   completed: z.boolean(),
   assigneeId: z.string().optional(),
@@ -36,7 +36,7 @@ export const checklistItemSchema = z.object({
 });
 
 export const checklistSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   title: z.string(),
   items: z.array(checklistItemSchema),
 });
@@ -67,7 +67,7 @@ export const taskAttachmentSchema = z.object({
 // ── Main Task Schema ─────────────────────────────────────────────────────────
 
 export const taskSchema = z.object({
-  _id: z.string(),
+  id: z.string(),
   title: z.string(),
   content: z.string(),
   description: z.string(),
@@ -75,7 +75,7 @@ export const taskSchema = z.object({
   columnId: z.string(),
   assigneeId: z
     .object({
-      _id: z.string(),
+      id: z.string(),
       name: z.string(),
       avatar: z.string().optional(),
     })
@@ -92,7 +92,6 @@ export const taskSchema = z.object({
     .union([
       z.string(),
       z.object({
-        _id: z.string().optional(),
         id: z.string().optional(),
         name: z.string().optional(),
         phase: z.string().optional(),
@@ -107,7 +106,6 @@ export const taskSchema = z.object({
   parentTask: z
     .object({
       id: z.string().optional(),
-      _id: z.string().optional(),
       title: z.string().optional(),
       identifier: z.string().optional(),
     })
@@ -167,7 +165,6 @@ export const taskMutationInputSchema = taskSchema
 
 export const columnSchema = z.object({
   id: z.string(),
-  _id: z.string().optional(),
   title: z.string(),
   accentColor: z.string().optional(),
 });

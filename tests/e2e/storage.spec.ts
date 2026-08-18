@@ -5,7 +5,7 @@ let testData: { workspaceId: string; projectId: string };
 let storageUrl: string;
 
 test.beforeAll(() => {
-  testData = JSON.parse(fs.readFileSync('tests/.auth/testData.json', 'utf-8'));
+  testData = JSON.parse(fs.readFileSync('tests/.auth/testData.json', 'utf-8')) as { workspaceId: string; projectId: string };
   storageUrl = `/${testData.workspaceId}/storage`;
 });
 

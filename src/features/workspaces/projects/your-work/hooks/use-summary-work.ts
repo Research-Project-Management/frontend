@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { getYourWork, getWorkspaceTasks } from '../services/your-work.service';
 import { yourWorkSummaryResponseSchema, type YourWorkSummaryResponse } from '../schemas/your-work.schema';
@@ -13,8 +13,7 @@ export function useSummaryWork() {
   const { workspaceId } = useParams() as { workspaceId: string };
   const { user } = useAuth();
   const { projects = [], isLoading: isLoadingProjects } = useProjects();
-
-  const currentUserId = user?.id || user?._id;
+  const currentUserId = user?.id;
 
   const {
     data: rawYourWork,

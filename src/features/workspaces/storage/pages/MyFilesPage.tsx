@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useHomeFiles, useToggleStarItem, useDeleteItem, useMoveItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { useViewStore } from '../store/use-view-store';
 import { usePreviewStore } from '../store/use-preview-store';
@@ -39,7 +39,7 @@ function Breadcrumbs({
               <ChevronRight className="size-3 text-muted-foreground/40 shrink-0 mx-0.5" />
             )}
             <button
-              onClick={() => onNavigate(idx, seg._id)}
+              onClick={() => onNavigate(idx, seg.id)}
               disabled={isLast}
               className={`truncate max-w-[140px] transition-colors ${
                 isLast
@@ -57,7 +57,6 @@ function Breadcrumbs({
   );
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
 export default function WorkspaceMyFilesPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
   const { view } = useViewStore();
@@ -65,12 +64,12 @@ export default function WorkspaceMyFilesPage() {
 
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbSegment[]>([
-    { _id: null, name: 'My Drive' },
+    { id: null, name: 'My Drive' },
   ]);
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
 
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id || workspaceUrl;
+  const workspaceId = workspace?.id || workspaceUrl;
 
   const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
@@ -79,10 +78,10 @@ export default function WorkspaceMyFilesPage() {
 
   const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
 
-  // ── Navigation ─────────────────────────────────────────────────────────
+  // Navigation
   const handleFolderClick = useCallback((folder: StorageItem) => {
-    setCurrentFolder(folder._id);
-    setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { _id: folder._id, name: folder.filename }));
+    setCurrentFolder(folder.id);
+    setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { id: folder.id, name: folder.filename }));
   }, []);
 
   const handleBreadcrumbNavigate = useCallback((index: number, id: string | null) => {
@@ -90,7 +89,7 @@ export default function WorkspaceMyFilesPage() {
     setBreadcrumbs((prev) => navigateBreadcrumbPath(prev, index));
   }, []);
 
-  // ── Download ───────────────────────────────────────────────────────────
+  // Download
   const handleDownload = useCallback(async (item: StorageItem) => {
     if (!item.url) return;
     try {
@@ -100,7 +99,7 @@ export default function WorkspaceMyFilesPage() {
     }
   }, []);
 
-  // ── Drag-and-drop move ─────────────────────────────────────────────────
+  // Drag-and-drop move
   const handleDragStart = useCallback((item: StorageItem) => {
     setDraggingItem(item);
   }, []);
@@ -110,7 +109,7 @@ export default function WorkspaceMyFilesPage() {
       if (!canDropIntoFolder(draggingItem, folder)) return;
       const itemName = draggingItem!.filename;
       try {
-        await moveItem({ itemId: draggingItem!._id, parentId: folder._id });
+        await moveItem({ itemId: draggingItem!.id, parentId: folder.id });
         toast.success(`Moved "${itemName}" into "${folder.filename}"`);
       } catch {
         toast.error(`Failed to move "${itemName}"`);
@@ -124,9 +123,9 @@ export default function WorkspaceMyFilesPage() {
   const handleMoveToParent = useCallback(
     async (item: StorageItem) => {
       const parentId =
-        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2]._id : null;
+        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
       try {
-        await moveItem({ itemId: item._id, parentId });
+        await moveItem({ itemId: item.id, parentId });
         toast.success(
           `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : 'My Drive'}`,
         );
@@ -137,7 +136,7 @@ export default function WorkspaceMyFilesPage() {
     [breadcrumbs, moveItem],
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // Render
   if (isWorkspaceLoading || isFilesLoading) {
     return (
       <div className="flex-1 p-6 space-y-4">

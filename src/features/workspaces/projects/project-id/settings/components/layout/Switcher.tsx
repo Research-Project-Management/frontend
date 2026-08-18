@@ -2,8 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Check, Search, FolderOpen } from 'lucide-react';
+import { ChevronDown, Check, Search, FolderOpen, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { useClickOutside } from '@/shared/hooks/use-click-outside';
+import { useHotkeys } from '@/shared/hooks/use-hotkeys';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,24 +52,13 @@ export default function Switcher({
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  useClickOutside(ref, () => setOpen(false), { enabled: open });
 
   // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, []);
+  useHotkeys('escape', () => setOpen(false), {
+    enabled: open,
+    enableOnFormTags: true,
+  });
 
   // Focus search when dropdown opens
   useEffect(() => {
@@ -80,8 +71,8 @@ export default function Switcher({
 
   // Always include the current project — even if the projects list hasn't loaded yet
   const allProjects = React.useMemo(() => {
-    if (!currentProject?._id) return projects;
-    const exists = projects.some((p) => p._id === currentProject._id);
+    if (!currentProject?.id) return projects;
+    const exists = projects.some((p) => p.id === currentProject.id);
     return exists ? projects : [currentProject, ...projects];
   }, [projects, currentProject]);
 
@@ -91,7 +82,7 @@ export default function Switcher({
 
   const handleSelect = (project: any) => {
     setOpen(false);
-    router.push(`/${workspaceId}/projects/${project._id}/settings`);
+    router.push(`/${workspaceId}/projects/${project.id}/settings`);
   };
 
   return (
@@ -105,63 +96,60 @@ export default function Switcher({
           open ? 'bg-accent' : 'hover:bg-accent/70',
         )}
       >
-        {/* Big avatar */}
-        <ProjectAvatar project={currentProject} size="md" />
-
-        {/* Name + role */}
-        <div className="flex flex-col min-w-0 flex-1 text-left">
-          <span className="text-sm font-semibold text-foreground truncate leading-tight">
-            {currentProject?.name || 'Project'}
-          </span>
-          {role && (
-            <span className="text-xs text-muted-foreground leading-tight">{role}</span>
-          )}
-        </div>
-
-        {/* Chevron — hidden by default, visible on hover or when open */}
-        <ChevronDown
-          className={cn(
-            'size-4 shrink-0 text-muted-foreground transition-all duration-150',
-            open
-              ? 'opacity-100 rotate-180'
-              : 'opacity-0 group-hover:opacity-100 rotate-0',
-          )}
-        />
+        <ProjectAvatar project={currentProject} size="sm" />
+        <span className="flex-1 min-w-0 text-left font-medium text-xs text-foreground truncate">
+          {currentProject?.name ?? 'Select project…'}
+        </span>
+        <ChevronsUpDown className="size-3.5 text-muted-foreground shrink-0" />
       </button>
 
-      {/* ── Dropdown ── */}
+      {/* ── Dropdown Panel ── */}
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 rounded-lg border border-border bg-popover shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          {/* Search */}
-          <div className="p-1.5 border-b border-border/40">
-            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 h-8">
-              <Search className="size-3.5 shrink-0 text-muted-foreground" />
-              <input
-                ref={searchRef}
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 text-xs bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
+        <div
+          className={cn(
+            'absolute left-2 right-2 top-full z-50 mt-1.5',
+            'rounded-xl border border-border bg-popover text-popover-foreground shadow-xl',
+            'animate-in fade-in-0 zoom-in-95 duration-100',
+            'flex flex-col overflow-hidden',
+          )}
+          style={{ maxHeight: '340px' }}
+        >
+          {/* Search box */}
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <Search className="size-3.5 text-muted-foreground shrink-0" />
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search projects…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="size-3" />
+              </button>
+            )}
           </div>
 
-          {/* List */}
-          <div className="max-h-52 overflow-y-auto p-1.5">
+          {/* Project List */}
+          <div className="overflow-y-auto p-1.5 space-y-0.5 max-h-56">
             {filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 gap-1.5">
-                <FolderOpen className="size-5 text-muted-foreground/40" />
+              <div className="flex items-center justify-center py-6 text-center">
                 <span className="text-xs text-muted-foreground">
                   {search ? 'No projects found' : 'No projects yet'}
                 </span>
               </div>
             ) : (
               filtered.map((proj) => {
-                const isCurrent = proj._id === currentProjectId;
+                const isCurrent = proj.id === currentProjectId;
                 return (
                   <button
-                    key={proj._id}
+                    key={proj.id}
                     type="button"
                     onClick={() => handleSelect(proj)}
                     className={cn(

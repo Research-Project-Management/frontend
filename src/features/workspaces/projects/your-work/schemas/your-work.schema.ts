@@ -11,7 +11,6 @@ export const yourWorkItemSchema = z.object({
 
 export const yourWorkSubtaskSchema = z.object({
   id: z.string().optional(),
-  _id: z.string().optional(),
   title: z.string().optional(),
   completed: z.boolean().optional(),
   columnId: z.string().optional(),
@@ -20,7 +19,6 @@ export const yourWorkSubtaskSchema = z.object({
 
 export const yourWorkUserRefSchema = z.object({
   id: z.string().optional(),
-  _id: z.string().optional(),
   name: z.string().optional(),
   email: z.string().optional(),
   avatar: z.string().nullable().optional(),
@@ -28,7 +26,6 @@ export const yourWorkUserRefSchema = z.object({
 
 export const yourWorkTaskSchema = z.object({
   id: z.string().optional(),
-  _id: z.string().optional(),
   identifier: z.string().optional(),
   title: z.string(),
   columnId: z.string().optional().default('todo'),
@@ -38,8 +35,8 @@ export const yourWorkTaskSchema = z.object({
   assignee: z.union([z.string(), yourWorkUserRefSchema]).nullable().optional(),
   authorId: z.string().nullable().optional(),
   author: z.union([z.string(), yourWorkUserRefSchema]).nullable().optional(),
-  projectId: z.union([z.string(), z.object({ id: z.string().optional(), _id: z.string().optional(), name: z.string().optional() })]).optional(),
-  project: z.object({ id: z.string().optional(), _id: z.string().optional(), name: z.string().optional() }).optional(),
+  projectId: z.union([z.string(), z.object({ id: z.string().optional(), name: z.string().optional() })]).optional(),
+  project: z.object({ id: z.string().optional(), name: z.string().optional() }).optional(),
   commentCount: z.number().optional().default(0),
   subtasks: z.array(yourWorkSubtaskSchema).optional().default([]),
   subtaskCount: z.number().optional(),
@@ -51,7 +48,6 @@ export const yourWorkTaskSchema = z.object({
 
 export const yourWorkActivityEventSchema = z.object({
   id: z.string().optional(),
-  _id: z.string().optional(),
   type: z.string(),
   actorName: z.string().optional(),
   actionVerb: z.string().optional(),
@@ -65,7 +61,6 @@ export const yourWorkActivityEventSchema = z.object({
       z.string(),
       z.object({
         id: z.string().optional(),
-        _id: z.string().optional(),
         name: z.string().optional(),
       }),
     ])

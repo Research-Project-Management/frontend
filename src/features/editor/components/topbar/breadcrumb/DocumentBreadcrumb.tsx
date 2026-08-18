@@ -21,7 +21,7 @@ export default function DocumentBreadcrumb() {
       return;
     }
     updateTitleMutation.mutate(
-      { pageId: currentPage!._id, title: trimmed },
+      { pageId: currentPage!.id, title: trimmed },
       {
         onSuccess: () => {
           setIsEditing(false);
@@ -63,7 +63,7 @@ export default function DocumentBreadcrumb() {
                 const ws = (proj as any).workspaceId;
                 const wsUrl = ws && typeof ws === 'object' ? ws.url : null;
                 if (wsUrl) {
-                  router.push(`/${wsUrl}/projects/${(proj as any)._id}/pages`);
+                  router.push(`/${wsUrl}/projects/${(proj as any).id}/pages`);
                   return;
                 }
               }

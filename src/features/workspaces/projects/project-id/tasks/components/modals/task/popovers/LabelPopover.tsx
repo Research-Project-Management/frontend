@@ -112,12 +112,12 @@ export function LabelPopover({
             />
             <div className="max-h-56 overflow-y-auto space-y-1">
               {filteredLabels.map((l) => {
-                const isSelected = labels.includes(l._id);
+                const isSelected = labels.includes(l.id);
                 return (
-                  <div key={l._id} className="flex items-center gap-2">
-                    <Checkbox checked={isSelected} onCheckedChange={() => toggleLabel(l._id)} />
+                  <div key={l.id} className="flex items-center gap-2">
+                    <Checkbox checked={isSelected} onCheckedChange={() => toggleLabel(l.id)} />
                     <button
-                      onClick={() => toggleLabel(l._id)}
+                      onClick={() => toggleLabel(l.id)}
                       className="flex-1 flex items-center px-3 py-1.5 rounded-sm text-xs font-semibold text-white truncate cursor-pointer"
                       style={{ backgroundColor: l.color }}
                     >
@@ -129,7 +129,7 @@ export function LabelPopover({
                       className="size-7"
                       onClick={() =>
                         handleEdit({
-                          _id: l._id,
+                          id: l.id,
                           name: l.name,
                           color: l.color || '#3B82F6',
                         })

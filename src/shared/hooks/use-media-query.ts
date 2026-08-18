@@ -1,30 +1,41 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 
 /**
- * Generic media query hook.
+ * Generic media query hook powered by React 18 `useSyncExternalStore`.
+ * Eliminates Next.js SSR hydration mismatches and redundant post-mount re-renders.
  *
  * @example
  * const isTablet = useMediaQuery('(min-width: 768px)');
  */
-export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
+export function useMediaQuery(query: string, ssrDefault = false): boolean {
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      if (typeof window === 'undefined' || !window.matchMedia) {
+        return () => {};
+      }
+
+      const mediaQueryList = window.matchMedia(query);
+      mediaQueryList.addEventListener('change', callback);
+
+      return () => {
+        mediaQueryList.removeEventListener('change', callback);
+      };
+    },
+    [query],
+  );
+
+  const getSnapshot = useCallback(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return ssrDefault;
+    }
     return window.matchMedia(query).matches;
-  });
+  }, [query, ssrDefault]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const media = window.matchMedia(query);
-    setMatches(media.matches);
+  const getServerSnapshot = useCallback(() => ssrDefault, [ssrDefault]);
 
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-    media.addEventListener('change', handler);
-    return () => media.removeEventListener('change', handler);
-  }, [query]);
-
-  return matches;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 // ─── Tailwind Breakpoint Shortcuts ────────────────────────────────────────────
@@ -47,3 +58,4 @@ export const useIsXl = () => useMediaQuery('(min-width: 1280px)');
 /** Prefers reduced motion */
 export const usePrefersReducedMotion = () =>
   useMediaQuery('(prefers-reduced-motion: reduce)');
+

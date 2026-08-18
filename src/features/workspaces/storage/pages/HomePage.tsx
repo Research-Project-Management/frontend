@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { usePreviewStore } from '../store/use-preview-store';
 import { useViewStore } from '../store/use-view-store';
@@ -21,7 +21,7 @@ export default function WorkspaceHomePage() {
   const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?._id || workspaceUrl;
+  const workspaceId = workspace?.id || workspaceUrl;
 
   // Home view always fetches root items
   const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId);

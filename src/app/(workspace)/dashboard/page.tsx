@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/shared/components/ui';
 import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 
 export default function DashboardPage() {
   const router = useRouter();

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderInput, Copy, Trash2, X, Folder, Library } from 'lucide-react';
+import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
@@ -10,7 +10,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/shared/components/ui';
+import { convertToBibTeX, generateCitationKey } from '../../utils/library.util';
 import type { Collection, Paper } from '../../types/library.types';
 
 interface PaperBatchBarProps {
@@ -32,20 +34,31 @@ export default function PaperBatchBar({
 }: PaperBatchBarProps) {
   if (selectedCount === 0) return null;
 
-  const handleExportAllBibtex = () => {
-    const bibtexEntries = selectedPapers.map((p, i) => {
-      const citeKey = p.citationKey || (p.authors?.[0] ? `${p.authors[0].toLowerCase().split(' ').pop()}${p.year || '2024'}` : `ref${i + 1}`);
-      return `@article{${citeKey},
-  title = {${p.title || ''}},
-  author = {${p.authors?.join(' and ') || ''}},
-  journal = {${p.journal || p.publisher || ''}},
-  year = {${p.year || ''}},
-  doi = {${p.doi || ''}}
-}`;
-    }).join('\n\n');
+  const handleCopyMultiCite = () => {
+    const keys = selectedPapers.map((p) => generateCitationKey(p)).filter(Boolean);
+    const citeCmd = `\\cite{${keys.join(', ')}}`;
+    navigator.clipboard.writeText(citeCmd);
+    toast.success(`Copied ${citeCmd} to clipboard`);
+  };
 
+  const handleExportAllBibtex = () => {
+    const bibtexEntries = selectedPapers.map((p) => convertToBibTeX(p)).join('\n\n');
     navigator.clipboard.writeText(bibtexEntries);
     toast.success(`Copied BibTeX for ${selectedCount} papers to clipboard`);
+  };
+
+  const handleDownloadBibFile = () => {
+    const bibtexEntries = selectedPapers.map((p) => convertToBibTeX(p)).join('\n\n');
+    const blob = new Blob([bibtexEntries], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `references-selected-${selectedCount}.bib`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded references.bib file`);
   };
 
   return (
@@ -85,7 +98,7 @@ export default function PaperBatchBar({
               <span>My Library (Root)</span>
             </DropdownMenuItem>
             {collections.map((c) => (
-              <DropdownMenuItem key={c._id} onClick={() => onBatchMove(c._id)} className="gap-2 text-xs cursor-pointer">
+              <DropdownMenuItem key={c.id} onClick={() => onBatchMove(c.id)} className="gap-2 text-xs cursor-pointer">
                 <Folder className="size-4 text-foreground shrink-0" />
                 <span className="truncate">{c.name}</span>
               </DropdownMenuItem>
@@ -93,16 +106,40 @@ export default function PaperBatchBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
+        {/* Copy Multi \cite */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopyMultiCite}
+          className="h-7.5 gap-1.5 text-xs text-foreground hover:bg-muted rounded-full cursor-pointer"
+          title="Copy LaTeX \cite{...} for all selected"
+        >
+          <Quote className="size-3.5 text-primary" />
+          <span>Copy \cite</span>
+        </Button>
+
         {/* Copy All BibTeX */}
         <Button
           variant="ghost"
           size="sm"
           onClick={handleExportAllBibtex}
           className="h-7.5 gap-1.5 text-xs text-foreground hover:bg-muted rounded-full cursor-pointer"
-          title="Export BibTeX for all selected papers"
+          title="Copy BibTeX for all selected papers"
         >
-          <Copy className="size-3.5 text-foreground" />
-          <span>Export BibTeX</span>
+          <Copy className="size-3.5 text-amber-500" />
+          <span>Copy BibTeX</span>
+        </Button>
+
+        {/* Download .bib */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDownloadBibFile}
+          className="h-7.5 gap-1.5 text-xs text-foreground hover:bg-muted rounded-full cursor-pointer"
+          title="Download .bib file"
+        >
+          <Download className="size-3.5 text-foreground" />
+          <span>Download .bib</span>
         </Button>
 
         {/* Batch Delete */}
@@ -110,9 +147,9 @@ export default function PaperBatchBar({
           variant="ghost"
           size="sm"
           onClick={onBatchDelete}
-          className="h-7.5 gap-1.5 text-xs text-foreground hover:bg-muted rounded-full cursor-pointer"
+          className="h-7.5 gap-1.5 text-xs text-destructive hover:bg-destructive/10 rounded-full cursor-pointer"
         >
-          <Trash2 className="size-3.5 text-foreground" />
+          <Trash2 className="size-3.5 text-destructive" />
           <span>Delete</span>
         </Button>
 

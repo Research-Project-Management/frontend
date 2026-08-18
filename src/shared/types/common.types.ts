@@ -1,26 +1,16 @@
 /**
- * common.types.ts
- * Generic utility types shared across features.
+ * Common TypeScript utility types and primitives.
  */
 
-// ─── Primitive Aliases ────────────────────────────────────────────────────────
-
-/** MongoDB ObjectId as string */
-export type ID = string;
-
-/** ISO 8601 date string */
-export type ISODateString = string;
-
-// ─── Nullable / Optional ──────────────────────────────────────────────────────
-
-export type Nullable<T> = T | null;
-export type Optional<T> = T | undefined;
-export type Maybe<T> = T | null | undefined;
-
-// ─── Utility Types (Matt Pocock Pattern) ──────────────────────────────────────
+declare const __brand: unique symbol;
 
 /**
- * Flattens an intersection type into a single, clean object type in IDE tooltips.
+ * Creates a nominal (branded) type from a primitive.
+ */
+export type Brand<T, B> = T & { readonly [__brand]: B };
+
+/**
+ * Flattens an intersection type into a clean, single object type in IDE tooltips.
  */
 export type Prettify<T> = {
   [K in keyof T]: T[K];
@@ -29,47 +19,7 @@ export type Prettify<T> = {
 /**
  * Preserves IDE autocomplete for a literal union string while still allowing any custom string.
  */
-export type LooseAutocomplete<T extends string> = T | (Omit<string, T> & {});
-
-// ─── Select / Option ─────────────────────────────────────────────────────────
-
-export type Option<T = string> = {
-  label: string;
-  value: T;
-  disabled?: boolean;
-};
-
-export type SelectOption = Option<string>;
-
-// ─── Sorting & Filtering ─────────────────────────────────────────────────────
-
-export type SortOrder = 'asc' | 'desc';
-
-export type SortConfig<T extends string = string> = {
-  field: T;
-  order: SortOrder;
-};
-
-export type PaginationParams = {
-  page?: number;
-  limit?: number;
-};
-
-export type FilterParams = Record<string, string | number | boolean | undefined>;
-
-// ─── Component Helpers ────────────────────────────────────────────────────────
-
-/** Props for any component that accepts children */
-export type WithChildren<T = object> = T & {
-  children?: React.ReactNode;
-};
-
-/** Props for components with optional className */
-export type WithClassName<T = object> = T & {
-  className?: string;
-};
-
-// ─── Discriminated Unions (Matt Pocock Pattern) ───────────────────────────────
+export type LooseAutocomplete<T extends string> = T | (string & {});
 
 /**
  * Type-safe state representing an async query or data-fetching operation.
@@ -89,3 +39,20 @@ export type ActionState<T = void, E = string> =
   | { status: 'submitting' }
   | { status: 'success'; data: T }
   | { status: 'error'; error: E };
+
+/**
+ * Standard paginated API response structure.
+ */
+export type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  meta: PaginationMeta;
+};

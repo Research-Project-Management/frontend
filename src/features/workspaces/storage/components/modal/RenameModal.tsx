@@ -39,7 +39,7 @@ export default function RenameModal() {
 
   useEffect(() => {
     const handleOpen = (e: CustomEvent<StorageItem>) => {
-      setFileId(e.detail._id);
+      setFileId(e.detail.id);
       reset({ name: e.detail.filename });
       setOpen(true);
     };

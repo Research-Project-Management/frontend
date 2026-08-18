@@ -177,7 +177,7 @@ export const CycleModal = ({
               <div className="flex shrink-0 flex-col gap-1.5">
                 <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">Labels</span>
                 <LabelsDisplay
-                  labels={(data || []).filter((t: any) => formLabels.includes(t._id || t.id))}
+                  labels={(data || []).filter((t: any) => formLabels.includes(t.id))}
                   onOpen={() => labelsTriggerRef.current?.click()}
                   disabled={isReadOnly}
                   showAddButton={!isReadOnly}

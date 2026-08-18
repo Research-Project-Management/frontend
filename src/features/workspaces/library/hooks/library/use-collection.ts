@@ -2,18 +2,18 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useWorkspace } from '@/features/workspaces/shell';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 import { useCollections } from '../data/use-collections';
 import { usePapers } from '../data/use-papers';
-import { filterPapers, getLibraryEntityId } from '../../utils/library.util';
+import { filterPapers } from '../../utils/library.util';
 import type { Paper, Collection, CollectionInput } from '../../types/library.types';
 
 export function useCollection() {
   const { workspaceId: workspaceUrl, collectionId } = useParams() as { workspaceId: string; collectionId: string };
   const router = useRouter();
   const { workspace } = useWorkspace(workspaceUrl!);
-  const workspaceId = getLibraryEntityId(workspace) || workspaceUrl || '';
+  const workspaceId = workspace?.id || workspaceUrl || '';
 
   const paperService = usePapers({ workspaceId, collectionId: collectionId ?? '' });
   const collectionResult = paperService.state.collectionPapers;
@@ -36,7 +36,7 @@ export function useCollection() {
   const collections = collectionService.state.collections;
 
   const selectedPaper = useMemo(
-    () => papers.find((p: Paper) => getLibraryEntityId(p) === selectedPaperId) || null,
+    () => papers.find((p: Paper) => p.id === selectedPaperId) || null,
     [papers, selectedPaperId],
   );
   const filtered = useMemo(() => filterPapers(papers, search), [papers, search]);
@@ -61,22 +61,22 @@ export function useCollection() {
   const visibleBreadcrumbs = useMemo(() => {
     const crumbs: Collection[] = [];
     if (collections && collection) {
-      let currentId: string | null | undefined = getLibraryEntityId(collection);
+      let currentId: string | null | undefined = collection.id;
       const seen = new Set<string>();
       while (currentId) {
         if (seen.has(currentId)) break;
         seen.add(currentId);
-        const item: Collection | undefined = collections.find((c) => getLibraryEntityId(c) === currentId);
+        const item: Collection | undefined = collections.find((c) => c.id === currentId);
         if (!item) break;
         crumbs.unshift(item);
-        currentId = item.parent;
+        currentId = item.parentId || item.parent;
       }
     }
 
     if (crumbs.length > 4) {
       return [
         crumbs[0],
-        { isEllipsis: true, _id: 'ellipsis' },
+        { isEllipsis: true, id: 'ellipsis' } as any,
         crumbs[crumbs.length - 2],
         crumbs[crumbs.length - 1],
       ];

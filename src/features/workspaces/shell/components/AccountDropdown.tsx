@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui';
-import { useLogout, useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useLogout } from '@/features/auth/hooks/use-logout';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { resolveFileUrl } from '@/shared/utils/url';
 import AccountModal from '@/features/account/pages/AccountModal';

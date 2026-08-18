@@ -48,6 +48,8 @@ import { EditorEventBus } from "@/features/editor/utils/editor.util";
 const FluxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 );
+import { PaperService } from '@/features/workspaces/library/services/paper.service';
+import { generateCitationKey } from '@/features/workspaces/library/utils/library.util';
 import Format from "./Format";
 
 // Register LaTeX language and custom theme before Monaco loads
@@ -177,11 +179,13 @@ export default function Editor({ page }: EditorProps) {
   const { editorTheme, autoCompile, fontSize, wordWrap, lineNumbers } = useSettingsStore();
   const [content, setContent] = useState(extractStringContent(page.content));
   const [editorMounted, setEditorMounted] = useState(false);
-  const activePageIdRef = useRef(page._id);
+  const activePageIdRef = useRef(page.id);
   const debouncedContent = useDebounce(content, 1000);
   const pendingCompileRef = useRef(false);
   const { updateContent: updateMutation } = usePageActions();
-  const { pageId: pageIdParam } = useParams<{ pageId: string }>();
+  const { pageId: pageIdParam, workspaceId: workspaceIdParam } = useParams<{ pageId?: string; workspaceId?: string }>();
+  const workspaceIdRef = useRef(workspaceIdParam || '');
+  workspaceIdRef.current = workspaceIdParam || '';
   const { setPendingComment, setPendingAiText, setPendingAiContext } = useActionsStore();
   const { data: comments = [] } = usePageComments(pageIdParam ?? null);
   const [ctxMenu, setCtxMenu] = useState<CtxPos | null>(null);
@@ -218,10 +222,10 @@ export default function Editor({ page }: EditorProps) {
 
   // Auto-save when content changes (debounced)
   useEffect(() => {
-    if (activePageIdRef.current !== page._id) return;
+    if (activePageIdRef.current !== page.id) return;
     if (debouncedContent && debouncedContent !== page.content) {
-      markDirty(page._id, debouncedContent);
-      updateMutation.mutate({ pageId: page._id, content: debouncedContent });
+      markDirty(page.id, debouncedContent);
+      updateMutation.mutate({ pageId: page.id, content: debouncedContent });
       if (autoCompile) pendingCompileRef.current = true;
     }
   }, [debouncedContent]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -240,10 +244,10 @@ export default function Editor({ page }: EditorProps) {
   }, [updateMutation.isSuccess, updateMutation.isPending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    activePageIdRef.current = page._id;
+    activePageIdRef.current = page.id;
     pendingCompileRef.current = false;
     setContent(extractStringContent(page.content));
-  }, [page._id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -590,6 +594,69 @@ export default function Editor({ page }: EditorProps) {
 
     decorationCollRef.current = editor.createDecorationsCollection([]);
 
+    // ── LaTeX Citation Auto-Completion (\cite{...}) from Library ─────────
+    const citationCompletionProvider = monaco.languages.registerCompletionItemProvider("latex", {
+      triggerCharacters: ["{", ","],
+      provideCompletionItems: async (model: any, position: any) => {
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
+        // Match \cite{..., \citep{..., \citet{..., \parencite{..., \textcite{...
+        const citeMatch = textUntilPosition.match(
+          /\\(cite|citep|citet|parencite|textcite|nocite)(?:\[[^\]]*\])*\{([^}]*)$/,
+        );
+        if (!citeMatch) {
+          return { suggestions: [] };
+        }
+
+        const wsId = workspaceIdRef.current;
+        if (!wsId) return { suggestions: [] };
+
+        try {
+          const res = await PaperService.getAll(wsId, { limit: 100 });
+          const papers = res?.papers || [];
+
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+
+          const suggestions = papers.map((p) => {
+            const citeKey = p.citationKey || generateCitationKey(p);
+            const authors = p.authors?.join(', ') || 'Unknown Author';
+            const yearStr = p.year ? ` (${p.year})` : '';
+            const venue = p.journal || p.publicationTitle || p.publisher || '';
+            const title = p.title || 'Untitled Paper';
+
+            return {
+              label: citeKey,
+              kind: monaco.languages.CompletionItemKind.Reference,
+              detail: `${authors}${yearStr} — ${title}`,
+              documentation: {
+                value: `### ${title}\n\n**Authors:** ${authors}\n\n**Year:** ${p.year || 'N/A'}${venue ? `\n\n**Venue:** *${venue}*` : ''}${p.doi ? `\n\n**DOI:** [${p.doi}](https://doi.org/${p.doi})` : ''}${p.abstract ? `\n\n---\n*Abstract:*\n${p.abstract.slice(0, 300)}...` : ''}`,
+              },
+              insertText: citeKey,
+              range,
+            };
+          });
+
+          return { suggestions };
+        } catch (err) {
+          console.warn('[Editor] Citation autocomplete error:', err);
+          return { suggestions: [] };
+        }
+      },
+    });
+
+    disposablesRef.current.push(citationCompletionProvider);
+
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       compileRef.current?.();
     });
@@ -674,7 +741,7 @@ export default function Editor({ page }: EditorProps) {
         if (matched && matched.length > 0) {
           EditorEventBus.emit("flux:open-panel", {
             panel: "Review",
-            commentId: matched[0]._id,
+            commentId: matched[0].id,
           });
         }
       }
@@ -706,7 +773,7 @@ export default function Editor({ page }: EditorProps) {
             style={{ left: glyphTooltip.x, bottom: glyphTooltip.bottom }}
           >
             {glyphTooltip.comments.map((c, idx) => (
-              <div key={c._id}>
+              <div key={c.id}>
                 {idx > 0 && <div className="my-1.5 h-px bg-border" />}
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className="text-[11px] font-semibold text-foreground leading-tight">

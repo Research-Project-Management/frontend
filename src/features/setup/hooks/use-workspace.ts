@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useUpload } from '@/shared/hooks';
+import { useUpload } from '@/shared/hooks/use-upload';
 import { useUpdateWorkspace as useWorkspaceUpdateMutation } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useDeleteWorkspace as useWorkspaceDeleteMutation } from '@/features/workspaces/shell/hooks/use-workspace';
 import { createWorkspace } from '@/features/workspaces/shell/services/workspace.service';
-import { queryKeys } from '@/shared/constants';
+import { workspaceKeys } from '@/features/workspaces/constants/workspace.keys';
 import type { CreateWorkspaceSchema } from '../schemas/workspace.schema';
 import type { Workspace } from '../types/workspace.types';
 
@@ -31,14 +31,15 @@ export function useCreateWorkspace() {
     },
     onSuccess: (response: any) => {
       const workspace = response.workspace || response;
-      queryClient.setQueriesData({ queryKey: queryKeys.workspaces.all }, (current: unknown) => {
+      const wsId = workspace.id;
+      queryClient.setQueriesData({ queryKey: workspaceKeys.all }, (current: unknown) => {
         if (Array.isArray(current)) {
-          const exists = current.some((w: { _id: string }) => w._id === workspace._id);
+          const exists = current.some((w: { id?: string }) => w.id === wsId);
           return exists ? current : [workspace, ...current];
         }
         return current;
       });
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all });
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
       router.replace(`/${workspace.url}`);
     },
     onError: (error: Error) => {
@@ -116,7 +117,7 @@ export function useEditWorkspace() {
     const finalAvatar = editAvatarFile ? await uploadFile(editAvatarFile) : editAvatar;
 
     updateMutation.mutate(
-      { id: editingWorkspace._id, data: { name: normalizedName, ...(finalAvatar ? { avatar: finalAvatar } : {}) } },
+      { id: editingWorkspace.id || '', data: { name: normalizedName, ...(finalAvatar ? { avatar: finalAvatar } : {}) } },
       {
         onSuccess: () => { toast.success('Workspace updated'); close(); },
         onError: (error: Error) => { toast.error(error.message || 'Failed to update workspace'); },
@@ -143,7 +144,7 @@ export function useDeleteWorkspace() {
 
   function confirm() {
     if (!deletingWorkspace) return;
-    deleteMutation.mutate(deletingWorkspace._id, {
+    deleteMutation.mutate(deletingWorkspace.id || '', {
       onSuccess: () => { setDeletingWorkspace(null); toast.success('Workspace deleted'); },
       onError: (error: Error) => { toast.error(error.message || 'Failed to delete workspace'); },
     });

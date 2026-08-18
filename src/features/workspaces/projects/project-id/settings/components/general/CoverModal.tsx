@@ -172,7 +172,7 @@ export function CoverModal({
               />
               <Button
                 type="button"
-                className="h-9 px-4 text-xs font-medium bg-[#0070f3] hover:bg-[#0060df] text-white rounded-lg cursor-pointer shrink-0 shadow-2xs"
+                className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shrink-0 shadow-2xs"
               >
                 Search
               </Button>
@@ -281,7 +281,7 @@ export function CoverModal({
                 type="button"
                 onClick={handleUploadAndSave}
                 disabled={!selectedFile || isUploading}
-                className="h-8 px-4 text-xs font-medium bg-[#0070f3] hover:bg-[#0060df] text-white rounded-lg cursor-pointer shadow-2xs disabled:opacity-50"
+                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 {isUploading && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
                 Upload & Save

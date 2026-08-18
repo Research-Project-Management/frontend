@@ -10,13 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Button,
-  Badge
+  Badge,
 } from '@/shared/components/ui';
-import { useLogout, useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useLogout } from '@/features/auth/hooks/use-logout';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { resolveFileUrl } from '@/shared/utils/url';
 
-import type { Workspace } from '@/features/setup';
+import type { Workspace } from '@/features/setup/types/workspace.types';
 
 interface SwitcherProps {
   currentItem: Workspace | null;
@@ -124,10 +125,10 @@ export default function Switcher({
         {/* Other items */}
         <div className='p-1 max-h-[240px] overflow-y-auto bg-background flex flex-col gap-0.5'>
           {items
-            .filter((item: Workspace) => item._id !== currentItem._id)
+            .filter((item: Workspace) => item.id !== currentItem.id)
             .map((item: Workspace) => (
               <DropdownMenuItem
-                key={item._id}
+                key={item.id}
                 onClick={() => router.push(`/${item.url}`)}
                 className='px-2 py-1.5 cursor-pointer flex items-center justify-between rounded-md'
               >

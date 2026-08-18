@@ -71,7 +71,7 @@ export default function CiteSection({ paper }: CiteSectionProps) {
             key={style}
             onClick={() => setActiveStyle(style)}
             className={cn(
-              'flex-1 py-1 px-1.5 text-[10px] font-medium rounded-md uppercase transition-all cursor-pointer truncate text-center',
+              'flex-1 py-1 px-1.5 text-xs font-mono font-medium rounded-md uppercase transition-colors cursor-pointer truncate text-center',
               activeStyle === style
                 ? 'bg-background text-foreground shadow-xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
@@ -85,11 +85,11 @@ export default function CiteSection({ paper }: CiteSectionProps) {
       {/* Citation preview card */}
       <div className="p-3 bg-muted/20 rounded-lg border border-border/30 text-xs min-w-0">
         {activeStyle === 'bibtex' ? (
-          <pre className="font-mono text-[11px] text-foreground/90 whitespace-pre-wrap break-all leading-relaxed overflow-x-auto bg-background/50 p-2.5 rounded border border-border/30">
+          <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap break-all leading-relaxed overflow-x-auto bg-background/50 p-2.5 rounded border border-border/30">
             {citations.bibtex}
           </pre>
         ) : (
-          <p className="text-foreground/90 leading-relaxed font-serif text-[12.5px] break-words [overflow-wrap:anywhere]">
+          <p className="text-foreground/90 leading-relaxed font-serif text-sm break-words [overflow-wrap:anywhere]">
             {citations[activeStyle]}
           </p>
         )}

@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { Mail, Search } from 'lucide-react';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaces } from '../hooks/use-workspace';
 import AccountDropdown from './AccountDropdown';
 import Switcher from './Switcher';
@@ -13,7 +13,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui';
 
-import type { Workspace } from '@/features/setup';
+import type { Workspace } from '@/features/setup/types/workspace.types';
 
 export default function Topbar() {
   const { user, isLoading } = useAuth();

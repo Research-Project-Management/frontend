@@ -20,7 +20,7 @@ import { DeleteModal } from '../components/modals/DeleteModal';
 import { CycleModal } from '../components/modals/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
 import type { Cycle, CycleMilestone } from '../types/cycle.types';
-import { TopBar as Topbar } from '@/features/workspaces/settings';
+import { TopBar as Topbar } from '@/features/workspaces/settings/components/layout/TopBar';
 import CycleTopBarActions from '../components/layout/Topbar';
 
 const PHASE_CONFIG: Record<string, any> = {
@@ -191,7 +191,7 @@ export function CyclePage() {
     if (!parallelEnabled) {
       // Check for overlap with ANY other cycle (including upcoming)
       if (formStart && formEnd) {
-        const hasOverlap = checkParallelConflict(formStart, formEnd, editingCycle?._id);
+        const hasOverlap = checkParallelConflict(formStart, formEnd, editingCycle?.id);
         if (hasOverlap) {
           toast.error("Dates overlap with an existing cycle");
           return;
@@ -206,7 +206,7 @@ export function CyclePage() {
       const isNewActive = now >= newStart && now <= newEnd;
 
       if (isNewActive) {
-        const otherActive = cycles.find(c => c._id !== editingCycle?._id && deriveStatus(c) === "active");
+        const otherActive = cycles.find(c => c.id !== editingCycle?.id && deriveStatus(c) === "active");
         if (otherActive) {
           toast.error(`"${otherActive.name}" is already active`);
           return;
@@ -224,7 +224,7 @@ export function CyclePage() {
     };
 
     if (editingCycle) {
-      updateMutation.mutate({ cycleId: editingCycle._id, projectId: projectId!, ...payload }, {
+      updateMutation.mutate({ cycleId: editingCycle.id, projectId: projectId!, ...payload }, {
         onSuccess: () => { setDialogOpen(false); toast.success("Cycle updated"); },
         onError: (err: any) => toast.error(err?.response?.data?.message || "Something went wrong"),
       });
@@ -249,7 +249,7 @@ export function CyclePage() {
         setIsDeleteModalOpen(false);
         setCycleToDelete(null);
       },
-      onError: () => toast.error("Failed to delete cycle"),
+      onError: (err: any) => toast.error(err?.response?.data?.message || "Failed to delete cycle"),
     });
   };
 
@@ -277,7 +277,7 @@ export function CyclePage() {
         return;
       }
       updateMutation.mutate({
-        cycleId: targetCycle._id,
+        cycleId: targetCycle.id,
         projectId: projectId!,
         status: "active",
       }, {
@@ -296,7 +296,7 @@ export function CyclePage() {
 
     if (statusModalType === "complete") {
       completeMutation.mutate({
-        cycleId: targetCycle._id,
+        cycleId: targetCycle.id,
         projectId: projectId!,
         action: payload?.action || 'backlog',
         targetCycleId: payload?.targetCycleId,
@@ -346,7 +346,7 @@ export function CyclePage() {
                   <p className="text-xs text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
-                  <Button onClick={openCreate} className="h-8 px-4 bg-[#0070f3] hover:bg-[#0060df] text-white rounded-md gap-2 cursor-pointer text-xs">
+                  <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
                     <Plus className="size-4" />
                     <span>Create your first cycle</span>
                   </Button>
@@ -366,23 +366,23 @@ export function CyclePage() {
                   ) : (
                     groupedCycles[status].map((cycle) => (
                       <Item
-                        key={cycle._id}
+                        key={cycle.id}
                         cycle={cycle}
                         status={status}
                         phases={phases}
                         isReadOnly={status === "completed"}
-                        isExpanded={expandedCycleId === cycle._id}
+                        isExpanded={expandedCycleId === cycle.id}
                         onToggleExpand={() =>
-                          setExpandedCycleId(expandedCycleId === cycle._id ? null : cycle._id)
+                          setExpandedCycleId(expandedCycleId === cycle.id ? null : cycle.id)
                         }
                         onNavigate={() => {
-                          router.push(`/${workspaceId}/projects/${projectId}/cycles/${cycle._id}`);
+                          router.push(`/${workspaceId}/projects/${projectId}/cycles/${cycle.id}`);
                         }}
                         allLabels={allLabels}
-                        showLabelDetails={labelDetailsCycleIds.has(cycle._id)}
+                        showLabelDetails={labelDetailsCycleIds.has(cycle.id)}
                         onToggleLabelDetails={toggleLabelDetails}
                         onEdit={() => openEdit(cycle)}
-                        onDelete={() => handleDeleteRequest(cycle._id)}
+                        onDelete={() => handleDeleteRequest(cycle.id)}
                         onStart={() => handleStartCycle(cycle)}
                         onComplete={() => handleEndCycle(cycle)}
                       />
@@ -427,7 +427,7 @@ export function CyclePage() {
         open={isDeleteModalOpen} 
         onOpenChange={setIsDeleteModalOpen} 
         onConfirm={confirmDelete}
-        title={cycles.find(c => c._id === cycleToDelete)?.name || "this cycle"}
+        title={cycles.find(c => c.id === cycleToDelete)?.name || "this cycle"}
         isDeleting={deleteMutation.isPending}
       />
 
@@ -436,7 +436,7 @@ export function CyclePage() {
         onOpenChange={setStatusModalOpen}
         type={statusModalType}
         title={targetCycle?.name}
-        availableCycles={cycles.filter(c => c._id !== targetCycle?._id)}
+        availableCycles={cycles.filter(c => c.id !== targetCycle?.id)}
         onConfirm={confirmStatusAction}
         isSubmitting={updateMutation.isPending || completeMutation.isPending}
       />

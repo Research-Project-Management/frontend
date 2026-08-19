@@ -7,7 +7,7 @@ import { useStarredFiles, useToggleStarItem, useDeleteItem } from '@/features/wo
 
 
 import { Star } from "lucide-react";
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import { useViewStore } from '../store/use-view-store';

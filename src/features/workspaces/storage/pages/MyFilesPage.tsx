@@ -10,7 +10,7 @@ import { useHomeFiles, useToggleStarItem, useDeleteItem, useMoveItem } from '@/f
 import { useViewStore } from '../store/use-view-store';
 import { usePreviewStore } from '../store/use-preview-store';
 
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/storage/types/storage.types';

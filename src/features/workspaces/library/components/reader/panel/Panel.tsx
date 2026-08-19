@@ -11,10 +11,11 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import type { Paper, Collection } from '../../../types/library.types';
 import type { ReaderPanel } from '../../../types/reader.types';
+import { CopilotDrawer } from '../../copilot/CopilotDrawer';
 import ChatPanel from './ChatPanel';
 import InfoSection from '../../panel/sections/InfoSection';
 import NotesPanel from './NotesPanel';
@@ -158,44 +159,14 @@ export default function Sidebar({
             <div className="flex h-full items-center justify-center">
               <Loader2 className="size-6 animate-spin text-primary/60" />
             </div>
-          ) : paper?.ragDocId ? (
-            <ChatPanel
-              ragDocId={paper.ragDocId}
-              paperTitle={paper.title}
-              selectionContext={selectionContext ?? ''}
-              onClearSelectionContext={clearSelectionContext}
-              showHeader={false}
-              autoFocus={activePanel === 'ai'}
+          ) : paper ? (
+            <CopilotDrawer
+              paperId={paper.id}
+              paperTitle={paper.title || 'Paper'}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <div className="flex size-12 items-center justify-center rounded-lg border border-border bg-card">
-                {ragStatus === 'pending' ? (
-                  <Loader2 className="size-6 animate-spin text-primary" />
-                ) : ragStatus === 'failed' ? (
-                  <AlertTriangle className="size-6 text-destructive" />
-                ) : (
-                  <img src="/Chat.svg" alt="AI" className="size-7" />
-                )}
-              </div>
-              <h3 className="mt-4 text-sm font-semibold text-foreground">
-                {ragStatus === 'pending'
-                  ? 'Indexing this paper'
-                  : ragStatus === 'failed'
-                    ? 'Indexing failed'
-                    : 'Index to chat with AI'}
-              </h3>
-              <p className="mt-2 max-w-64 text-xs leading-relaxed text-muted-foreground">
-                {ragStatus === 'pending'
-                  ? 'AI is preparing the document. This panel will unlock when indexing finishes.'
-                  : 'AI needs an indexed copy of the PDF before it can answer with paper context.'}
-              </p>
-              {ragStatus !== 'pending' ? (
-                <Button className="mt-4" size="sm" onClick={onReindex} disabled={isReindexing}>
-                  {isReindexing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCcw className="size-3.5" />}
-                  {ragStatus === 'failed' ? 'Retry index' : 'Index paper'}
-                </Button>
-              ) : null}
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground text-xs">
+              No paper selected
             </div>
           )}
         </div>

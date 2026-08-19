@@ -17,7 +17,8 @@ export function loadSectionConfig(): SectionConfig[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultSectionConfig();
-    const parsed: SectionConfig[] = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as SectionConfig[];
+    if (!Array.isArray(parsed)) return defaultSectionConfig();
     const ids = parsed.map((c) => c.id);
     const merged = [...parsed];
     for (const defId of DEFAULT_SECTION_IDS) {

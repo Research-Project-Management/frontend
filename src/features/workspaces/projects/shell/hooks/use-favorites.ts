@@ -48,7 +48,10 @@ export function useFavorites(workspaceId?: string): UseFavoritesReturn {
         localStorage.getItem('sidebar_favorites') ||
         localStorage.getItem('sidebar_favorite_projects');
       if (saved) {
-        return new Set(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return new Set<string>(parsed.filter((item): item is string => typeof item === 'string'));
+        }
       }
     } catch {
       // Fallback

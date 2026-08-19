@@ -14,13 +14,8 @@ import {
   Pencil,
   AlignLeft
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import type { Cycle } from "../../types/cycle.types";
 const STATIC_PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },

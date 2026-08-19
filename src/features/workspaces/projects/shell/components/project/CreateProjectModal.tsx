@@ -3,7 +3,10 @@
 import React, { useState, useRef } from "react";
 import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
 import type { EmojiClickData } from "emoji-picker-react";
-import { Input, Button, Textarea, Label } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { useClickOutside } from "@/shared/hooks/use-click-outside";
 import { useParams } from "next/navigation";
 import { useCreateProject } from "../../hooks/use-project";
@@ -24,12 +27,14 @@ type ProjectModuleKey =
   | "tasks"
   | "cycles"
   | "pages"
+  | "collection"
   | "storage"
   | "stickies";
 
 const MODULE_ORDER: ProjectModuleKey[] = [
   "overview",
   "pages",
+  "collection",
   "tasks",
   "cycles",
   "storage",
@@ -45,6 +50,7 @@ const ALL_MODULES: {
 }[] = [
   { id: "overview", label: "Overview", locked: true },
   { id: "pages", label: "Pages" },
+  { id: "collection", label: "Collection" },
   { id: "tasks", label: "Tasks" },
   { id: "cycles", label: "Cycles" },
   { id: "storage", label: "Storage" },
@@ -66,9 +72,9 @@ const TEMPLATES: Template[] = [
   {
     id: "research",
     name: "Research Paper",
-    description: "Full research workflow with cycles & task tracking",
+    description: "Full research workflow with citations, cycles & task tracking",
     icon: FlaskConical,
-    modules: ["overview", "pages", "tasks", "cycles", "storage"],
+    modules: ["overview", "pages", "collection", "tasks", "cycles", "storage"],
     accent: "ring-foreground/80",
   },
   {

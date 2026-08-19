@@ -6,7 +6,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { Input } from '@/shared/components/ui';
+import { Input } from '@/shared/components/ui/input';
 import { useHotkeys } from '@/shared/hooks/use-hotkeys';
 import { cn } from '@/shared/lib/utils';
 import { ArchiveFilterPopover } from './ArchiveFilterPopover';

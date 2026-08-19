@@ -2,14 +2,10 @@
 
 import React, { useState } from 'react';
 import { ArrowRight, X } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Input,
-  Label,
-  Button,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 
 interface DateRangeProps {

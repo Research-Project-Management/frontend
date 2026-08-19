@@ -29,19 +29,8 @@ import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';
 import { usePapers } from '@/features/workspaces/library/hooks/data/use-papers';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/shared/components/ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import CreateCollectionModal from '../system/CreateCollectionModal';
 import TagSelector from '../topbar/TagSelector';
 import type { Collection, CollectionInput } from '@/features/workspaces/library/types/library.types';

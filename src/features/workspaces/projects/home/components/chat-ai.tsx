@@ -5,16 +5,10 @@ import type { KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
 import { ArrowUp, Globe, ChevronDown, X, Plus, Check } from "lucide-react";
 
-import { Textarea } from "@/shared/components/ui";
-import { Switch } from "@/shared/components/ui";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/shared/components/ui";
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Switch } from '@/shared/components/ui/switch';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';

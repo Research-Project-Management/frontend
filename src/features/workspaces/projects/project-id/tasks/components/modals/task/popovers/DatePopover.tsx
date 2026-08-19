@@ -2,20 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Clock, X } from 'lucide-react';
-import {
-  Button,
-  Calendar,
-  Checkbox,
-  Input,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Calendar } from '@/shared/components/ui/calendar';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
 import type { TaskRecurrence, TaskReminder } from '../../../../types/task.types';
 
 export interface DatePopoverProps {

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
-import { TooltipProvider } from '@/shared/components/ui';
-import { Skeleton } from '@/shared/components/ui';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { FileImage, AlertCircle, FileCode2, LayoutGrid } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';

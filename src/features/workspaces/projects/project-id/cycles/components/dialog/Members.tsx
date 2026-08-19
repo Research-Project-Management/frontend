@@ -1,14 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from "react";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { UserPlus, Search, Check, X } from "lucide-react";
 
 export interface MembersProps {

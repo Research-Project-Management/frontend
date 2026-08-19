@@ -1,8 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Button, Skeleton } from '@/shared/components/ui';
-import { Loader2, LayoutDashboard, FileText, CheckSquare, HardDrive, StickyNote, RefreshCcw } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Loader2, LayoutDashboard, FileText, CheckSquare, HardDrive, StickyNote, RefreshCcw, BookOpen } from 'lucide-react';
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';
 import type { ModuleDef } from '../types/module.types';
@@ -10,12 +11,13 @@ import type { ModuleDef } from '../types/module.types';
 // ── Module Registry ───────────────────────────────────────────────────────────
 
 const MODULES: ModuleDef[] = [
-  { id: 'overview', label: 'Overview', desc: 'Project dashboard and summary', icon: LayoutDashboard, locked: true },
-  { id: 'pages',    label: 'Pages',    desc: 'Collaborative documents and notes', icon: FileText },
-  { id: 'tasks',    label: 'Tasks',    desc: 'Issue tracking and work items', icon: CheckSquare },
-  { id: 'cycles',   label: 'Cycles',   desc: 'Sprint-based iteration planning', icon: RefreshCcw },
-  { id: 'storage',  label: 'Storage',  desc: 'File storage and attachments', icon: HardDrive },
-  { id: 'stickies', label: 'Stickies', desc: 'Quick sticky notes', icon: StickyNote },
+  { id: 'overview',   label: 'Overview',   desc: 'Project dashboard and summary', icon: LayoutDashboard, locked: true },
+  { id: 'pages',      label: 'Pages',      desc: 'Collaborative documents and notes', icon: FileText },
+  { id: 'collection', label: 'Collection', desc: 'Project papers and bibliography collection', icon: BookOpen },
+  { id: 'tasks',      label: 'Tasks',      desc: 'Issue tracking and work items', icon: CheckSquare },
+  { id: 'cycles',     label: 'Cycles',     desc: 'Sprint-based iteration planning', icon: RefreshCcw },
+  { id: 'storage',    label: 'Storage',    desc: 'File storage and attachments', icon: HardDrive },
+  { id: 'stickies',   label: 'Stickies',   desc: 'Quick sticky notes', icon: StickyNote },
 ];
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -26,7 +28,7 @@ export default function ModulesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
         <Skeleton className="h-8 w-44 rounded-lg" />
         <Skeleton className="h-64 w-full rounded-lg" />
       </div>
@@ -34,11 +36,11 @@ export default function ModulesPage() {
   }
 
   if (isError || !project) {
-    return <div className="p-8 text-sm text-muted-foreground">Error loading project.</div>;
+    return <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">Error loading project.</div>;
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

@@ -18,17 +18,8 @@ import {
   type DragEvent,
 } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import {
   uploadDocument,

@@ -1,12 +1,21 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { AlertTriangle, Loader2, FileText } from 'lucide-react';
 import { useReader } from '../hooks/reader/use-reader';
-import Viewer from '../components/reader/viewer/Viewer';
 import Topbar from '../components/reader/topbar/Topbar';
 import Panel from '../components/reader/panel/Panel';
 import BibtexModal from '../components/reader/system/BibtexModal';
+
+const Viewer = dynamic(() => import('../components/reader/viewer/Viewer'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center bg-muted/20">
+      <Loader2 className="size-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
+});
 
 interface ReaderPageProps {
   paperId?: string | null;

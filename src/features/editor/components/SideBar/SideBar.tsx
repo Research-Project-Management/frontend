@@ -6,11 +6,7 @@ import {
   Search,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 
 import SearchTab from "./search/SearchTab";

@@ -17,17 +17,9 @@ import {
   ZoomOut,
   Check,
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  Separator,
-} from '@/shared/components/ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
+import { Separator } from '@/shared/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import type { CompileStatus } from '@/features/editor/store/compile.store';
 import type { LaTeXEngine } from '@/features/editor/store/settings.store';

@@ -15,7 +15,8 @@ import type {
   TaskMutationInput,
 } from "../types/task.types";
 import { resolveTaskColumnId } from "../types/task.types";
-import { Skeleton, Button } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { toast } from "sonner";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
@@ -361,7 +362,7 @@ export default function TaskPage({
             tasks={filteredTasks}
             labelMap={labelMap}
             currentUserId={currentUser?.id}
-            currentUserAvatar={currentUser?.avatar}
+            currentUserAvatar={currentUser?.avatar ?? undefined}
             onAddCard={handleOpenAddDialog}
             onEditCard={handleOpenEditDialog}
             onMoveCard={handleMoveCard}

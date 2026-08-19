@@ -8,14 +8,9 @@ import {
   ZoomOut,
   Maximize2,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 interface PdfViewerToolbarProps {
   pageNumber: number;

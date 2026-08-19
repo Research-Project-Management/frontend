@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 

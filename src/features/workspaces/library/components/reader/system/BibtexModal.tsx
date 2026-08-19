@@ -3,14 +3,8 @@
 import { useState } from "react";
 import { Check, Copy, Download, FileJson } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { convertToBibTeX, downloadBibTeXFile } from "@/features/workspaces/library/utils/library.util";
 import type { Paper } from "@/features/workspaces/library/types/library.types";
 

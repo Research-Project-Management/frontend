@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Archive } from 'lucide-react';
-import { Button, Skeleton } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useProjects, useRestoreProject, useDeleteProject } from '../hooks/use-project';
 import {

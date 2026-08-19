@@ -1,17 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-  Checkbox,
-  Button,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
 import {
   Search,
   ArrowRightLeft,

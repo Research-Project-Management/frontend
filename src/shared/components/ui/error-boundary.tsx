@@ -22,7 +22,7 @@ interface State {
 }
 
 /**
- * Global Error Boundary component.
+ * Global Error Boundary UI component.
  * Catches unhandled React render crashes, logs telemetry,
  * and presents an accessible recovery fallback UI.
  */
@@ -100,7 +100,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
           <button
             type="button"
             onClick={this.reset}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors shadow-sm cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Thử lại
@@ -110,3 +110,5 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     );
   }
 }
+
+export default ErrorBoundary;

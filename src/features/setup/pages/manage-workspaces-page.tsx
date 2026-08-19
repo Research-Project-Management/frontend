@@ -3,18 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { Plus, ArrowRight, Pencil, Trash2, Users } from 'lucide-react';
 
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 import { useWorkspaces } from '@/features/workspaces/shell/hooks/use-workspace';
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 

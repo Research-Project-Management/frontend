@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, memo, useRef, useCallback } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import {
   AlignLeft,
   CheckSquare,
@@ -18,13 +18,8 @@ import {
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import {
   PRIORITY_CONFIG,
   resolveTaskColumnColor,
@@ -56,6 +51,23 @@ import { useParams } from "next/navigation";
 import { useLabelsQuery } from '../../hooks/use-task';
 import { cn } from "@/shared/lib/utils";
 import { createPortal } from "react-dom";
+import { format, isValid } from "date-fns";
+
+const isValidDate = (d: any) => {
+  if (!d) return false;
+  const parsed = new Date(d);
+  return isValid(parsed);
+};
+
+const isOverdue = (d: any) => {
+  if (!isValidDate(d)) return false;
+  return new Date(d).getTime() < Date.now();
+};
+
+const formatDueDate = (d: any) => {
+  if (!isValidDate(d)) return '';
+  return format(new Date(d), 'MMM d');
+};
 
 const PriorityBadge = memo(({
   priority,
@@ -608,7 +620,13 @@ export default function ListView({
     if (typeof window === "undefined") return defaultExpanded;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? new Set(JSON.parse(saved)) : defaultExpanded;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return new Set<string>(parsed.filter((item): item is string => typeof item === "string"));
+        }
+      }
+      return defaultExpanded;
     } catch {
       return defaultExpanded;
     }

@@ -16,17 +16,10 @@ import {
   PanelLeft,
 } from "lucide-react";
 import { useLibrarySidebarStore } from "@/features/workspaces/library/store/sidebar.store";
-import {
-  Input,
-  Button,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 export interface BreadcrumbItem {
   id?: string;

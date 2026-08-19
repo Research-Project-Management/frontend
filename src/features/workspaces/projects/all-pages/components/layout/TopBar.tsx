@@ -2,7 +2,9 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
 import { PenLine, Search, Columns3, AlignJustify, Plus } from 'lucide-react';
-import { Button, Input, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 interface TopBarProps {
   viewMode: 'grid' | 'list';

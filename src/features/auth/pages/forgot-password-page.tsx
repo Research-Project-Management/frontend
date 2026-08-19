@@ -1,33 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
-
 import { useForgotPassword } from '../hooks/use-forgot-password';
-import { forgotPasswordSchema, type ForgotPasswordSchema } from '../schemas/auth.schema';
-import { Button, Input, Label } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 
 const ForgotPasswordPage = () => {
-  const { sendResetLink, isPending, isSubmitted, error, handleTryAgain } =
-    useForgotPassword();
-
   const {
-    register,
+    form: {
+      register,
+      formState: { errors },
+    },
+    email,
+    isPending,
+    isSubmitted,
+    error,
+    handleTryAgain,
     handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<ForgotPasswordSchema>({
-    resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: { email: '' },
-  });
-
-  const email = watch('email');
-
-  const onSubmit = (data: ForgotPasswordSchema) => {
-    sendResetLink(data.email.trim());
-  };
+  } = useForgotPassword();
 
   if (isSubmitted) {
     return (
@@ -75,7 +67,7 @@ const ForgotPasswordPage = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-4'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
           <div className='flex flex-col gap-1.5'>
             <Label htmlFor='email'>Email address</Label>
             <Input
@@ -107,7 +99,10 @@ const ForgotPasswordPage = () => {
         </form>
 
         <div className='text-center'>
-          <Link href='/login' className='text-primary font-semibold transition-opacity hover:opacity-80'>
+          <Link
+            href='/login'
+            className='text-primary font-semibold transition-opacity hover:opacity-80'
+          >
             Back to sign in
           </Link>
         </div>

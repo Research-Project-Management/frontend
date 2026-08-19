@@ -10,7 +10,8 @@ import {
   X,
   Archive,
 } from 'lucide-react';
-import { Button, Input } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { useHotkeys } from '@/shared/hooks/use-hotkeys';
 import { cn } from '@/shared/lib/utils';
 import { ProjectFilterPopover } from './ProjectFilterPopover';

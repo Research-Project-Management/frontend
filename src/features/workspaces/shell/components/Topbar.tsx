@@ -6,12 +6,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaces } from '../hooks/use-workspace';
 import AccountDropdown from './AccountDropdown';
 import Switcher from './Switcher';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 import type { Workspace } from '@/features/setup/types/workspace.types';
 

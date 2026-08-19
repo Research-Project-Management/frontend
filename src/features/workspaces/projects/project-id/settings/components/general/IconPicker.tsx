@@ -63,12 +63,8 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Input,
-} from '@/shared/components/ui';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 
 interface IconPickerProps {

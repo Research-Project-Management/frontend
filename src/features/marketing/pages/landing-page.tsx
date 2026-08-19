@@ -99,19 +99,26 @@ export default function LandingPage() {
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
     if (!isLoading && user) {
       fetchAllWorkspaces()
         .then((data) => {
-          if (data.workspaces && data.workspaces.length > 0) {
+          if (!isMounted) return;
+          if (data?.workspaces && data.workspaces.length > 0) {
             router.replace(`/${data.workspaces[0].url}`);
           } else {
             router.replace('/create-workspace');
           }
         })
         .catch(() => {
-          router.replace('/create-workspace');
+          if (isMounted) {
+            router.replace('/create-workspace');
+          }
         });
     }
+    return () => {
+      isMounted = false;
+    };
   }, [isLoading, user, router]);
 
   return (
@@ -165,7 +172,7 @@ export default function LandingPage() {
               className='flex flex-col sm:flex-row gap-3 justify-center pt-2'
             >
               <Link
-                href='/create-workspace'
+                href='/login'
                 className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Start for free
@@ -356,10 +363,10 @@ export default function LandingPage() {
             </p>
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
-                href='/create-workspace'
+                href='/login'
                 className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
-                Create workspace
+                Get started
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
               </Link>
               <a

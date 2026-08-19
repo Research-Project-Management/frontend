@@ -4,14 +4,8 @@ import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FileText, Copy, Trash2, BookOpen, Folder, Quote, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { convertToBibTeX, formatCiteCommand, formatApaCitation, formatIeeeCitation } from '../../utils/library.util';
 import type { Paper, Collection } from '../../types/library.types';
@@ -79,6 +73,16 @@ export default function PaperTableRow({
     toast.success('IEEE citation copied to clipboard');
   };
 
+  const isRawArxiv = /^\d{4}\.\d{4,5}(v\d+)?$/i.test(paper.title || '');
+  const authorDisplay =
+    paper.authors && paper.authors.length > 0
+      ? paper.authors.length === 1
+        ? paper.authors[0]
+        : paper.authors.length === 2
+        ? `${paper.authors[0]} & ${paper.authors[1]}`
+        : `${paper.authors[0]} et al.`
+      : null;
+
   return (
     <tr
       role="row"
@@ -124,10 +128,19 @@ export default function PaperTableRow({
               PDF
             </span>
           )}
+          {isRawArxiv && !hasFile && (
+            <span
+              title="arXiv Preprint"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border/60 shrink-0 select-none"
+            >
+              arXiv
+            </span>
+          )}
           <span
             className={cn(
               'truncate font-medium text-foreground transition-colors text-sm',
-              isActive && 'font-semibold'
+              isActive && 'font-semibold',
+              isRawArxiv && 'font-mono text-xs'
             )}
             title={paper.title}
           >
@@ -151,7 +164,13 @@ export default function PaperTableRow({
           className="truncate block text-muted-foreground font-normal text-xs"
           title={paper.authors?.join(', ')}
         >
-          {paper.authors?.length ? paper.authors.join(', ') : <span className="opacity-40">—</span>}
+          {authorDisplay ? (
+            authorDisplay
+          ) : isRawArxiv ? (
+            <span className="text-[11px] text-muted-foreground/60 italic font-mono">arXiv preprint</span>
+          ) : (
+            <span className="opacity-40">—</span>
+          )}
         </span>
       </td>
 
@@ -166,7 +185,7 @@ export default function PaperTableRow({
           className="truncate block text-muted-foreground font-normal italic text-xs"
           title={paper.journal || paper.publisher || ''}
         >
-          {paper.journal || paper.publisher || <span className="opacity-40 not-italic">—</span>}
+          {paper.journal || paper.publisher || (isRawArxiv ? <span className="not-italic text-[11px] text-muted-foreground/70 font-mono">arXiv.org</span> : <span className="opacity-40 not-italic">—</span>)}
         </span>
       </td>
 

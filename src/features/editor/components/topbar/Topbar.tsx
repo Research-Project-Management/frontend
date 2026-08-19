@@ -5,11 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowUpLeft } from 'lucide-react';
 
-import {
-  Menubar,
-  MenubarMenu,
-  MenubarTrigger,
-} from '@/shared/components/ui';
+import { Menubar, MenubarMenu, MenubarTrigger } from '@/shared/components/ui/menubar';
 
 import FileMenu from './file/FileMenu';
 import EditMenu from './edit/EditMenu';

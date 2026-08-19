@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useActivityFeed } from '../hooks/use-activity-feed';
 import { useTaskModal } from '../hooks/use-task-modal';
 import { ActivityTimeline } from '../components/activity/ActivityTimeline';

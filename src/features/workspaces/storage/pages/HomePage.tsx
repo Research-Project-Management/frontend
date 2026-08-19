@@ -6,7 +6,7 @@ import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { usePreviewStore } from '../store/use-preview-store';
 import { useViewStore } from '../store/use-view-store';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';

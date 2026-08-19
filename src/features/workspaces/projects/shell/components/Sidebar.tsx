@@ -28,37 +28,23 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/shared/components/ui';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useProjects } from '../hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
 import { CreateProjectModal } from './project/CreateProjectModal';
+import { BookOpen } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ProjectModuleKey =
   | 'overview'
   | 'pages'
+  | 'collection'
   | 'tasks'
   | 'cycles'
   | 'storage'
@@ -67,6 +53,7 @@ type ProjectModuleKey =
 const MODULE_ORDER: ProjectModuleKey[] = [
   'overview',
   'pages',
+  'collection',
   'tasks',
   'cycles',
   'storage',
@@ -76,6 +63,7 @@ const MODULE_ORDER: ProjectModuleKey[] = [
 const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon }> = {
   overview: { label: 'Overview', icon: ChartBarBig },
   pages: { label: 'Pages', icon: PenLine },
+  collection: { label: 'Collection', icon: BookOpen },
   tasks: { label: 'Tasks', icon: KanbanSquare },
   cycles: { label: 'Cycles', icon: RotateCcw },
   storage: { label: 'Storage', icon: Cloud },
@@ -143,7 +131,14 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sidebar_expanded_projects');
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return new Set<string>(parsed.filter((item): item is string => typeof item === 'string'));
+          }
+        } catch {}
+      }
     }
     return new Set();
   });
@@ -348,7 +343,9 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         </div>
 
         <CollapsibleContent className="overflow-hidden">
-          {MODULE_ORDER.filter((k) => projectModules.includes(k)).map((moduleKey) => {
+          {MODULE_ORDER.filter((k) =>
+            projectModules.includes(k) || (k === 'collection' && projectModules.includes('references'))
+          ).map((moduleKey) => {
             const mod = modulesConfig[moduleKey];
             if (!mod) return null;
             const link = `/${workspaceId}/projects/${projId}/${moduleKey}`;

@@ -2,14 +2,8 @@
 
 import React, { useState } from 'react';
 import { Upload, FileSpreadsheet, Loader2, Download } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  Button,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 import type { WorkspaceRole } from '../../types/member.types';
 
 interface ImportModalProps {

@@ -2,12 +2,7 @@
 
 import React from 'react';
 import { GripVertical, Tag, MoreHorizontal, X, Pencil } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 
 interface ItemProps {
   item: {

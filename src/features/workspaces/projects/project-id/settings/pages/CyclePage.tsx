@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Button, Skeleton } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Loader2, ChevronRight } from 'lucide-react';
 import { Duration } from '../components/cycle/Duration';
 import { Automation } from '../components/cycle/Automation';
@@ -25,7 +26,7 @@ export default function CyclePage() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
         <Skeleton className="h-8 w-44 rounded-lg" />
         <Skeleton className="h-32 w-full rounded-lg" />
         <Skeleton className="h-32 w-full rounded-lg" />
@@ -35,14 +36,14 @@ export default function CyclePage() {
 
   if (isError || !project) {
     return (
-      <div className="p-8 text-sm text-muted-foreground">
+      <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">
         Error loading cycle settings.
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
       {/* Page Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

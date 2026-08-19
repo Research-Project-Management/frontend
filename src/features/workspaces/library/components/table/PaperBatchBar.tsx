@@ -4,14 +4,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { convertToBibTeX, generateCitationKey } from '../../utils/library.util';
 import type { Collection, Paper } from '../../types/library.types';
 

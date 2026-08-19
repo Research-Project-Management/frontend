@@ -56,9 +56,9 @@ const uploadBlobWithProgress = (
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                    const response = JSON.parse(xhr.responseText);
-                    resolve({ url: response.url });
-                } catch (error) {
+                    const response = JSON.parse(xhr.responseText) as { url?: string };
+                    resolve({ url: response.url || "" });
+                } catch {
                     reject(new Error("Failed to parse upload response"));
                 }
             } else {

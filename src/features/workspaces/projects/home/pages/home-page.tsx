@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { Skeleton } from "@/shared/components/ui";
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ChatAi from "../components/chat-ai";
 
 import Recent from "../components/recent";

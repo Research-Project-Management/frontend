@@ -156,17 +156,25 @@ export async function apiFetch<T>(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<T> {
-  // Deduplicate concurrent in-flight GET requests
+  // Deduplicate concurrent in-flight GET requests ONLY when no component-specific signal is attached
   const normalizedMethod = method.toUpperCase();
   const isGet = normalizedMethod === 'GET';
-  const requestKey = isGet ? `${normalizedMethod}:${buildUrl(path, options.params)}` : null;
+  const requestKey = isGet && !options.signal ? `${normalizedMethod}:${buildUrl(path, options.params)}` : null;
 
   if (requestKey && inFlightRequests.has(requestKey)) {
     return inFlightRequests.get(requestKey) as Promise<T>;
   }
 
   const executionPromise = (async () => {
-    let response = await rawFetch(path, normalizedMethod, body, options);
+    let response: Response;
+    try {
+      response = await rawFetch(path, normalizedMethod, body, options);
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') {
+        throw err;
+      }
+      throw err;
+    }
 
     // Auto-refresh on 401
     const isAuthEndpoint =

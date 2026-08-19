@@ -3,7 +3,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckSquare, Users, HardDrive, CalendarDays } from 'lucide-react';
-import { Progress, Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Progress } from '@/shared/components/ui/progress';
 import { formatBytes } from '@/shared/utils/format';
 import type { ProjectInfo, Stats as StatsType } from '../types/overview.types';
 

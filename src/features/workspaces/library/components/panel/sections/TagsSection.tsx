@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Plus, X, Tag, Hash } from 'lucide-react';
-import { Input } from '@/shared/components/ui';
+import { Input } from '@/shared/components/ui/input';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface TagsSectionProps {

@@ -1,19 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Button,
-  Textarea,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { SmilePlus } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 

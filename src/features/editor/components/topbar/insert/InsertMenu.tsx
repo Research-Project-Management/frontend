@@ -1,16 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-  MenubarSeparator,
-  MenubarSub,
-  MenubarSubTrigger,
-  MenubarSubContent,
-} from '@/shared/components/ui';
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarSub, MenubarSubTrigger, MenubarSubContent } from '@/shared/components/ui/menubar';
 import { usePageStore } from '@/features/editor/store/page.store';
 
 export default function InsertMenu() {

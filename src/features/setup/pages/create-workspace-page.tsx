@@ -1,21 +1,44 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { cn } from '@/shared/lib/utils';
-import { Button, Input, Label } from '@/shared/components/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useCreateWorkspace } from '../hooks/use-workspace';
 import { createWorkspaceSchema, type CreateWorkspaceSchema } from '../schemas/workspace.schema';
 import { useAuth } from '@/features/auth/hooks/use-auth';
+import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 
 export default function CreateWorkspacePage() {
+  const router = useRouter();
   const { createWorkspace, isPending } = useCreateWorkspace();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+
+  // If user already has existing workspaces, route them directly inside
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const isExplicitNew = params.get('new') === 'true';
+
+    if (!isAuthLoading && user && !isExplicitNew) {
+      fetchAllWorkspaces()
+        .then((data) => {
+          if (data.workspaces && data.workspaces.length > 0) {
+            router.replace(`/${data.workspaces[0].url}`);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthLoading, user, router]);
 
   const {
     register,

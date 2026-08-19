@@ -9,15 +9,11 @@ import {
   Tag, 
   X
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import { Input } from "@/shared/components/ui";
-import { Label } from "@/shared/components/ui";
-import { Checkbox } from "@/shared/components/ui";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { useParams } from "next/navigation";
 import { useLabels, AVAILABLE_LABEL_COLORS } from '../../hooks/use-label';
 

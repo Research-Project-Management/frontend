@@ -2,15 +2,8 @@
 
 import React from 'react';
 import { MoreHorizontal, LogOut, Trash2, ChevronDown } from 'lucide-react';
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import type { WorkspaceMemberItem, WorkspaceRole } from '../../types/member.types';
 
 interface MemberItemProps {

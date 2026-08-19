@@ -7,7 +7,7 @@ import { isWithinInterval, parseISO } from "date-fns";
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useCycle, useCompleteCycle, type DerivedStatus } from '../hooks/use-cycle';
 import { useLabels } from '../hooks/use-label';
-import { Skeleton } from "@/shared/components/ui";
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { 
   Plus,
   RotateCcw
@@ -28,7 +28,7 @@ const PHASE_CONFIG: Record<string, any> = {
   in_progress: { label: "In Progress", color: "#3b82f6" },
   done: { label: "Done", color: "#22c55e" },
 };
-import { Button } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
 
 const PHASES = Object.entries(PHASE_CONFIG).map(([id, config]) => ({
   id,
@@ -62,7 +62,14 @@ export function CyclePage() {
   const [labelDetailsCycleIds, setLabelDetailsCycleIds] = useState<Set<string>>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`cycle-labels-expanded-${projectId}`);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return new Set<string>(parsed.filter((item): item is string => typeof item === "string"));
+          }
+        } catch {}
+      }
     }
     return new Set();
   });

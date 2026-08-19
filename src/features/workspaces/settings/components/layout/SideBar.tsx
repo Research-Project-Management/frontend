@@ -1,7 +1,8 @@
 'use client';
 
 import { useParams, usePathname } from 'next/navigation';
-import { Settings, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
+import { BuildingOfficeIcon } from '../icons/BuildingOfficeIcon';
 import React, { useId } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import Link from 'next/link';
@@ -17,7 +18,7 @@ export function SideBar() {
   const basePath = `/${workspaceId}/settings`;
 
   const sidebarItems = [
-    { label: 'General', icon: Settings, to: basePath },
+    { label: 'General', icon: BuildingOfficeIcon, to: basePath },
     { label: 'Members', icon: Users, to: `${basePath}/members` },
   ];
 

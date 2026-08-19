@@ -3,7 +3,7 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useOverview } from '../hooks/use-overview';
 import { Topbar } from '../components/Topbar';
 import { Stats } from '../components/Stats';

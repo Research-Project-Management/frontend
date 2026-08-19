@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { cn } from '@/shared/lib/utils';
 import { getTaskProject, type ProjectMap } from '../../utils/your-work.util';
 import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';

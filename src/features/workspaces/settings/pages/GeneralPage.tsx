@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Settings } from 'lucide-react';
-import { Skeleton } from '@/shared/components/ui';
+import { BuildingOfficeIcon } from '../components/icons/BuildingOfficeIcon';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useGeneral } from '@/features/workspaces/settings/hooks/use-general';
 import { TopBar } from '../components/layout/TopBar';
 import { AvatarSection } from '../components/general/AvatarSection';
@@ -41,7 +41,7 @@ export default function GeneralPage() {
   if (isLoading) {
     return (
       <div className="flex h-full w-full flex-col bg-background">
-        <TopBar title="General Settings" Icon={Settings} />
+        <TopBar title="General" Icon={BuildingOfficeIcon} />
         <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl">
           <Skeleton className="h-64 w-full rounded-lg" />
         </div>
@@ -52,7 +52,7 @@ export default function GeneralPage() {
   if (isError || !workspace) {
     return (
       <div className="flex h-full w-full flex-col bg-background">
-        <TopBar title="General Settings" Icon={Settings} />
+        <TopBar title="General" Icon={BuildingOfficeIcon} />
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           Error loading workspace settings.
         </div>
@@ -64,10 +64,10 @@ export default function GeneralPage() {
 
   return (
     <div className="flex h-full w-full flex-col bg-background">
-      <TopBar title="General Settings" Icon={Settings} />
+      <TopBar title="General" Icon={BuildingOfficeIcon} />
 
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 flex flex-col">
+        <div className="w-full max-w-6xl mx-auto space-y-8 py-10 my-auto">
           {/* Profile / Avatar Section */}
           <AvatarSection
             name={workspace.name}

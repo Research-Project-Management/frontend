@@ -4,13 +4,8 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Plus, Minimize2, Maximize2 } from 'lucide-react';
-import {
-  Button,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Card, type TaskCardLabel } from './Card';
 import type { Task, Column as ColumnType } from '../../types/task.types';
 import { resolveTaskColumnColor, resolveTaskColumnId } from '../../types/task.types';

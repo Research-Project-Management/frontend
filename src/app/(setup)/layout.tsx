@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { apiGet } from '@/shared/lib/api';
 

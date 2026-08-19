@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import PaperTableHeader from './PaperTableHeader';
 import PaperTableRow from './PaperTableRow';
 import PaperTableEmpty from './PaperTableEmpty';

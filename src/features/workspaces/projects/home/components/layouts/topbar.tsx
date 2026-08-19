@@ -1,6 +1,6 @@
 import React from "react";
 import { Home, Shapes } from "lucide-react";
-import { Button } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
 
 interface TopbarProps {
   onManageWidgetsClick: () => void;

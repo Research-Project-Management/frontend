@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
-import { Button, Textarea } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { normalizeNotes, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 

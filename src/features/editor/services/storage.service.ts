@@ -48,7 +48,7 @@ export const StorageService = {
       headers,
     });
     if (!response.ok) throw new Error('Upload to R2 proxy failed');
-    return response.json();
+    return (await response.json()) as { url: string; path: string };
   },
 
   createFileRecord: async (

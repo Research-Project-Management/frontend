@@ -7,7 +7,7 @@ import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/wor
 
 
 import { Share2 } from "lucide-react";
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import { useViewStore } from '../store/use-view-store';

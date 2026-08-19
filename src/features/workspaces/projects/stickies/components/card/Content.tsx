@@ -24,7 +24,7 @@ export default memo(function Content({
   isOverlay,
 }: ContentProps) {
   const contentRef = useRef(sticky.content);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -39,6 +39,7 @@ export default memo(function Content({
         nested: true,
       }),
     ],
+    immediatelyRender: false,
     content: sticky.content || "<p></p>",
     editorProps: {
       attributes: {

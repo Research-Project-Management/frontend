@@ -1,80 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-
-import { useAuth } from '../hooks/use-auth';
 import { useLogin } from '../hooks/use-login';
-import { loginSchema, type LoginSchema } from '../schemas/auth.schema';
-import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
-import { Button, Input, Label } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 
 const LoginPage = () => {
-  const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const { user, isLoading: isAuthLoading } = useAuth();
-  const { login, isPending, error, handleOAuthLogin } = useLogin();
-
   const {
-    register,
+    form: {
+      register,
+      formState: { errors },
+    },
+    user,
+    isAuthLoading,
+    showPassword,
+    setShowPassword,
+    isPending,
+    error,
+    handleOAuthLogin,
     handleSubmit,
-    formState: { errors },
-  } = useForm<LoginSchema>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-  });
-
-  const [oauthError, setOauthError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlErr = params.get('error');
-      if (urlErr) {
-        if (urlErr === 'google_token_failed') {
-          setOauthError('Failed to authenticate with Google. Please try again.');
-        } else if (urlErr === 'oauth_error') {
-          setOauthError('OAuth authentication error occurred. Please try again.');
-        } else {
-          setOauthError(`Authentication failed: ${urlErr}`);
-        }
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthLoading && user) {
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (data.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          router.replace('/create-workspace');
-        });
-    }
-  }, [isAuthLoading, user, router]);
-
+  } = useLogin();
 
   if (isAuthLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className='flex min-h-screen items-center justify-center bg-background'>
+        <Loader2 className='h-8 w-8 animate-spin text-primary' />
       </div>
     );
   }
-  if (user) return null;
 
-  const onSubmit = (data: LoginSchema) => {
-    login({ email: data.email.trim(), password: data.password });
-  };
+  if (user) return null;
 
   return (
     <div className='flex min-h-screen items-start justify-center bg-background px-4 py-12 sm:py-24'>
@@ -91,7 +48,7 @@ const LoginPage = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-4'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
           <div className='flex flex-col gap-1.5'>
             <Label htmlFor='email'>Email address</Label>
             <Input
@@ -139,9 +96,9 @@ const LoginPage = () => {
             </Link>
           </div>
 
-          {(error || oauthError) && (
+          {error && (
             <div className='p-3 text-sm text-destructive bg-destructive/10 rounded-md text-center'>
-              {error || oauthError}
+              {error}
             </div>
           )}
 
@@ -157,7 +114,10 @@ const LoginPage = () => {
 
         <div className='text-center text-muted-foreground'>
           Don&apos;t have an account?{' '}
-          <Link href='/register' className='text-primary font-semibold transition-opacity hover:opacity-80'>
+          <Link
+            href='/register'
+            className='text-primary font-semibold transition-opacity hover:opacity-80'
+          >
             Sign up
           </Link>
         </div>
@@ -167,9 +127,7 @@ const LoginPage = () => {
             <span className='w-full border-t border-border' />
           </div>
           <div className='relative flex justify-center text-[11px] uppercase tracking-wider font-semibold text-muted-foreground'>
-            <span className='bg-background px-2'>
-              Or continue with
-            </span>
+            <span className='bg-background px-2'>Or continue with</span>
           </div>
         </div>
 

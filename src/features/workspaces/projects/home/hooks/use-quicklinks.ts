@@ -14,7 +14,10 @@ export function useQuicklinks(workspaceId: string) {
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
-        setLinks(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setLinks(parsed as Quicklink[]);
+        }
       }
     } catch (e) {
       console.error('Failed to load quicklinks', e);

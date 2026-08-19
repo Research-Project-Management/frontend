@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FileText, BookOpen, Download, ExternalLink } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import { API_BASE_URL } from '@/config/env';
 import { useLibraryReaderStore } from '@/features/workspaces/library/store/reader.store';
 import type { Paper } from '@/features/workspaces/library/types/library.types';

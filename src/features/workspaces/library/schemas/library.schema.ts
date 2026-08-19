@@ -112,33 +112,165 @@ export const paperSchema = z.object({
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
 });
 
-export const projectPaperRefSchema = z.object({
-  paper: paperSchema.nullable(),
-  addedBy: z.string(),
-  note: z.string(),
-  addedAt: z.string(),
+// ── CSL Citation Formatter Schemas ──────────────────────────────────────────
+export const cslStyleSchema = z.enum([
+  'apa',
+  'ieee',
+  'nature',
+  'harvard',
+  'chicago',
+  'mla',
+  'vancouver',
+]);
+
+export const formattedCitationSchema = z.object({
+  style: cslStyleSchema,
+  inText: z.string(),
+  bibliography: z.string(),
+  html: z.string(),
 });
 
-export const projectCollectionSchema = z.object({
+// ── PDF Annotation Schemas ──────────────────────────────────────────────────
+export const annotationTypeSchema = z.enum([
+  'highlight',
+  'underline',
+  'note',
+  'box',
+]);
+
+export const pdfAnnotationSchema = z.object({
   id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  projectId: z.string(),
-  workspaceId: z.string(),
-  createdBy: userSchema,
-  sourceCollection: z.object({
-    id: z.string(),
-    name: z.string(),
-    color: z.string(),
-    icon: z.string(),
-  }).nullable(),
-  papers: z.array(projectPaperRefSchema),
+  paperId: z.string(),
+  userId: z.string().optional(),
+  type: annotationTypeSchema,
+  color: z.string().default('#facc15'),
+  pageNumber: z.number().int().min(1),
+  quote: z.string().optional(),
+  text: z.string().optional(),
+  comment: z.string().optional(),
+  rect: z
+    .object({
+      x1: z.number(),
+      y1: z.number(),
+      x2: z.number(),
+      y2: z.number(),
+    })
+    .optional(),
   createdAt: z.string(),
-  updatedAt: z.string(),
+  updatedAt: z.string().optional(),
+});
+
+// ── Related Paper & Knowledge Graph Schemas ─────────────────────────────────
+export const relationTypeSchema = z.enum([
+  'related',
+  'extends',
+  'rebuts',
+  'uses_dataset',
+  'survey_of',
+]);
+
+export const relatedPaperItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  authors: z.array(z.string()),
+  year: z.number().nullable(),
+  doi: z.string().optional(),
+  citationKey: z.string().optional(),
+  relationType: relationTypeSchema,
+  symmetric: z.boolean().default(true),
+  linkedAt: z.string(),
+});
+
+export const graphNodeSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  authors: z.array(z.string()),
+  year: z.number().nullable(),
+  citationKey: z.string().optional(),
+  collectionId: z.string().nullable().optional(),
+});
+
+export const graphEdgeSchema = z.object({
+  source: z.string(),
+  target: z.string(),
+  relationType: relationTypeSchema,
+});
+
+export const workspaceKnowledgeGraphSchema = z.object({
+  nodes: z.array(graphNodeSchema),
+  edges: z.array(graphEdgeSchema),
+  totalNodes: z.number(),
+  totalEdges: z.number(),
+});
+
+// ── Unified Academic Bundle Schema ──────────────────────────────────────────
+export const paperAcademicBundleSchema = z.object({
+  paper: paperSchema,
+  citationApa: formattedCitationSchema,
+  citationIeee: formattedCitationSchema,
+  annotations: z.array(pdfAnnotationSchema),
+  totalAnnotations: z.number(),
+  relatedPapers: z.array(relatedPaperItemSchema),
+  totalRelatedPapers: z.number(),
+});
+
+// ── Quality & Duplicate Detection Schemas ───────────────────────────────────
+export const duplicateGroupSchema = z.object({
+  matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR']),
+  confidence: z.enum(['high', 'medium']),
+  key: z.string(),
+  papers: z.array(paperSchema),
+});
+
+export const libraryIntegrityReportSchema = z.object({
+  totalPapers: z.number(),
+  healthyPapers: z.number(),
+  healthScorePercentage: z.number(),
+  missingDoiCount: z.number(),
+  missingYearCount: z.number(),
+  missingAuthorsCount: z.number(),
+  missingPdfCount: z.number(),
+  flaggedItems: z.array(
+    z.object({
+      paperId: z.string(),
+      title: z.string(),
+      issues: z.array(z.string()),
+    }),
+  ),
+});
+
+// ── Async Ingestion Job Schema ──────────────────────────────────────────────
+export const asyncIngestionJobSchema = z.object({
+  jobId: z.string(),
+  status: z.enum(['queued', 'processing', 'completed', 'failed']),
+  total: z.number(),
+  processed: z.number(),
+  successCount: z.number(),
+  failedCount: z.number(),
+  progressPercentage: z.number(),
+  successful: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      citationKey: z.string(),
+      sourceType: z.string(),
+      doi: z.string().optional(),
+      year: z.number().nullable().optional(),
+      authors: z.array(z.string()),
+      ragStatus: z.string(),
+    }),
+  ),
+  failed: z.array(
+    z.object({
+      item: z.any(),
+      error: z.string(),
+    }),
+  ),
+  createdAt: z.string(),
+  completedAt: z.string().optional(),
 });
 
 // ── Form Schemas ─────────────────────────────────────────────────────────────
-
 export const paperFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   authors: z.string(),

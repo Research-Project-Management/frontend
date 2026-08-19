@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Textarea, Switch } from '@/shared/components/ui';
+import { Switch } from '@/shared/components/ui/switch';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { useClickOutside } from '@/shared/hooks/use-click-outside';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/shared/components/ui';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from 'lucide-react';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useParams } from 'next/navigation';

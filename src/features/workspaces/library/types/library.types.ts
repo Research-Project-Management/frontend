@@ -4,10 +4,17 @@ import {
   paperSchema,
   paperAttachmentSchema,
   primaryFileSchema,
-  projectPaperRefSchema,
-  projectCollectionSchema,
   userSchema,
   noteSchema,
+  cslStyleSchema,
+  formattedCitationSchema,
+  pdfAnnotationSchema,
+  relatedPaperItemSchema,
+  workspaceKnowledgeGraphSchema,
+  paperAcademicBundleSchema,
+  duplicateGroupSchema,
+  libraryIntegrityReportSchema,
+  asyncIngestionJobSchema,
 } from '../schemas/library.schema';
 import type { ReferenceData } from './reference.types';
 
@@ -29,8 +36,16 @@ export type Collection = z.infer<typeof collectionSchema>;
 export type PaperAttachment = z.infer<typeof paperAttachmentSchema>;
 export type PrimaryFile = z.infer<typeof primaryFileSchema>;
 export type Paper = z.infer<typeof paperSchema>;
-export type ProjectPaperRef = z.infer<typeof projectPaperRefSchema>;
-export type ProjectCollection = z.infer<typeof projectCollectionSchema>;
+
+export type CslStyle = z.infer<typeof cslStyleSchema>;
+export type FormattedCitation = z.infer<typeof formattedCitationSchema>;
+export type PdfAnnotation = z.infer<typeof pdfAnnotationSchema>;
+export type RelatedPaperItem = z.infer<typeof relatedPaperItemSchema>;
+export type WorkspaceKnowledgeGraph = z.infer<typeof workspaceKnowledgeGraphSchema>;
+export type PaperAcademicBundle = z.infer<typeof paperAcademicBundleSchema>;
+export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
+export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
+export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
 
 export type { ReferenceData };
 
@@ -72,6 +87,7 @@ export interface IngestPaperDTO {
 export interface PaperQueryParams {
   collectionId?: string;
   search?: string;
+  smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
   limit?: number;
   skip?: number;
 }

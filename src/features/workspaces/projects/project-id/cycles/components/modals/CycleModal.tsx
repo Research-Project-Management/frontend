@@ -2,20 +2,10 @@
 
 import React, { useMemo, useRef } from "react";
 import { LabelsDisplay } from "../icons/LabelsDisplay";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/components/ui";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 

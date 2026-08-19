@@ -2,15 +2,8 @@
 
 import { useState } from 'react';
 import { Settings, SlidersHorizontal, LogOut } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useLogout } from '@/features/auth/hooks/use-logout';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { resolveFileUrl } from '@/shared/utils/url';
 import AccountModal from '@/features/account/pages/AccountModal';
@@ -20,8 +13,7 @@ interface AccountDropdownProps {
 }
 
 export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
-  const { user, isLoading } = useAuth();
-  const { logout } = useLogout();
+  const { user, isLoading, logout } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialTab, setInitialTab] = useState('profile');
 

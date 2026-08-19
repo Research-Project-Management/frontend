@@ -2,14 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  MenubarMenu,
-  MenubarTrigger,
-  MenubarContent,
-  MenubarItem,
-  MenubarSeparator,
-  MenubarShortcut,
-} from '@/shared/components/ui';
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
 import { usePageStore } from '@/features/editor/store/page.store';
 import { useCompileStore } from '@/features/editor/store/compile.store';
 import { getExportFilename } from '@/features/editor/utils/topbar.util';

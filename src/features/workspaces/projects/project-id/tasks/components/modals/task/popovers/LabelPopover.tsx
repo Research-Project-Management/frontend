@@ -2,15 +2,11 @@
 
 import React, { useState, type Dispatch, type SetStateAction } from 'react';
 import { Tag, ChevronLeft, X, SquarePen } from 'lucide-react';
-import {
-  Button,
-  Input,
-  Label,
-  Checkbox,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { useParams } from 'next/navigation';
 import { useLabels, AVAILABLE_LABEL_COLORS } from '../../../../hooks/use-task';
 import { cn } from '@/shared/lib/utils';

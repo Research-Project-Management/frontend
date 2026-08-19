@@ -3,17 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, PlusCircle, LogOut, Check, Settings, UserPlus, Mails } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Button,
-  Badge,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useLogout } from '@/features/auth/hooks/use-logout';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { resolveFileUrl } from '@/shared/utils/url';
 
@@ -30,8 +22,7 @@ export default function Switcher({
   items,
   activeId,
 }: SwitcherProps) {
-  const { user } = useAuth();
-  const { logout } = useLogout();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -115,7 +106,7 @@ export default function Switcher({
               variant='outline'
               size='sm'
               className='h-7 px-2 bg-background font-medium shadow-none text-xs cursor-pointer'
-              onClick={() => router.push(`/${activeId}/members`)}
+              onClick={() => router.push(`/${activeId}/settings/members`)}
             >
               <UserPlus className='mr-1.5 size-3.5 text-foreground' /> Invite members
             </Button>

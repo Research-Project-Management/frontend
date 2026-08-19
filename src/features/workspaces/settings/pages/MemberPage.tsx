@@ -18,15 +18,15 @@ import { InviteModal as InviteDialog } from '../components/modal/InviteModal';
 import { ImportModal } from '../components/modal/ImportModal';
 import { DeleteModal } from '../components/modal/DeleteModal';
 import { useMember } from '../hooks/use-member';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 
 function LoadingSkeleton() {
   return (
     <div className="flex h-full w-full flex-col bg-background">
       <TopBar title="Members" Icon={Users} />
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-8 md:py-10">
+        <div className="w-full max-w-6xl mx-auto space-y-6">
           {/* Title skeleton */}
           <div className="space-y-1.5">
             <Skeleton className="h-7 w-28 rounded-lg" />
@@ -98,8 +98,8 @@ export default function WorkspaceMemberPage() {
     <div className="flex h-full w-full flex-col bg-background">
       <TopBar title="Members" Icon={Users} />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 md:px-8 pb-16">
+      <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-8 md:py-10">
+        <div className="w-full max-w-6xl mx-auto space-y-6 pb-16">
 
           {/* ── Page title ─────────────────────────────────────────────── */}
           <div className="pt-7 pb-6">

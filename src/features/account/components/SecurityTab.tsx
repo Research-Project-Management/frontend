@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChangePassword } from '../hooks/use-security';
-import { Button, Input } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';

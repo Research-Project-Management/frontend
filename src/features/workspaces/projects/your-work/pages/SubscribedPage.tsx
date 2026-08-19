@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useSubscribedWork } from '../hooks/use-subscribed-work';
 import { useTaskModal } from '../hooks/use-task-modal';
 import { SubscribedTaskList } from '../components/subscribed/SubscribedTaskList';

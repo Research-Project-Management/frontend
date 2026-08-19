@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { RefreshCcw } from 'lucide-react';
-import { Switch } from '@/shared/components/ui';
+import { Switch } from '@/shared/components/ui/switch';
 
 interface AutomationProps {
   autoAdvance: boolean;

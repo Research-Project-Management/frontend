@@ -6,8 +6,8 @@ import {
   CheckCircle2, ChevronDown, ChevronUp,
   BookMarked, Building2, FileDigit, ScrollText, CircleDot
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
-import { Input } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import {
   getFileType, getFileIcon, getFileColor,

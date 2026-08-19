@@ -16,13 +16,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Switch,
-} from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Switch } from '@/shared/components/ui/switch';
 
 import type { SectionConfig, SectionId } from "../../schemas/home.schema";
 

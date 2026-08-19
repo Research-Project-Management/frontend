@@ -12,7 +12,7 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import type { ChatMessage, SourceItem } from '@/features/workspaces/library/types/ai.types';
 import { useChat } from '@/features/workspaces/library/hooks/reader/use-chat';
 import { renderMarkdown } from '../viewer/Markdown';

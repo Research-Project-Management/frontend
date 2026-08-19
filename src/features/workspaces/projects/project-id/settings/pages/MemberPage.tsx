@@ -9,7 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { Skeleton, Button, Input } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 import { toast } from 'sonner';
 import { Lead } from '../components/member/Lead';
@@ -154,7 +156,7 @@ export default function MemberPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
         <Skeleton className="h-8 w-44 rounded-lg" />
         <div className="space-y-4">
           <Skeleton className="h-10 w-full rounded-lg" />
@@ -168,14 +170,14 @@ export default function MemberPage() {
 
   if (isError || !project) {
     return (
-      <div className="p-8 text-sm text-muted-foreground">
+      <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">
         Error loading project members.
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Members</h1>

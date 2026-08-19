@@ -21,11 +21,7 @@ import { LayoutGroup } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { getErrorMessage } from '@/shared/utils/error.util';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { ChatSession } from '../../types/chat.types';
 import {
   listChatSessions,
@@ -59,8 +55,11 @@ function groupByProject(chats: ChatSession[]): ProjectGroup[] {
 }
 
 function loadSet(k: string): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(k) ?? '[]')); }
-  catch { return new Set(); }
+  try {
+    const parsed = JSON.parse(localStorage.getItem(k) ?? '[]');
+    if (Array.isArray(parsed)) return new Set(parsed.filter((x): x is string => typeof x === 'string'));
+    return new Set();
+  } catch { return new Set(); }
 }
 function saveSet(k: string, s: Set<string>) {
   localStorage.setItem(k, JSON.stringify(Array.from(s)));

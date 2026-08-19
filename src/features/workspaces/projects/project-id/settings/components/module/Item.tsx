@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Switch } from '@/shared/components/ui';
+import { Switch } from '@/shared/components/ui/switch';
 import { cn } from '@/shared/lib/utils';
 import type { ModuleDef } from '../../types/module.types';
 

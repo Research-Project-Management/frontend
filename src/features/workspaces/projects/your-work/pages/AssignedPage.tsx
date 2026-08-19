@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAssignedWork } from '../hooks/use-assigned-work';
 import { useTaskModal } from '../hooks/use-task-modal';
 import { AssignedTaskList } from '../components/assigned/AssignedTaskList';

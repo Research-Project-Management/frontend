@@ -62,7 +62,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { IconPicker } from './IconPicker';
 import { CoverModal } from './CoverModal';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useCreatedWork } from '../hooks/use-created-work';
 import { useTaskModal } from '../hooks/use-task-modal';
 import { CreatedTaskList } from '../components/created/CreatedTaskList';

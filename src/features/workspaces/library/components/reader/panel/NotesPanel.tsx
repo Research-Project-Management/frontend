@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Loader2, Plus, Edit3, Trash2, Calendar, FileText, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
 import { usePapers } from "@/features/workspaces/library/hooks/data/use-papers";
 import type { Paper, Note } from "@/features/workspaces/library/types/library.types";
 

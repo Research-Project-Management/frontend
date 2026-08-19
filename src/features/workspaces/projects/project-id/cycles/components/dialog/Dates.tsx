@@ -1,12 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Button } from '@/shared/components/ui/button';
 import { 
   CalendarDays, 
   ChevronLeft, 

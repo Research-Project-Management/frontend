@@ -44,7 +44,18 @@ export const CollectionService = {
 
   exportBibtex: (workspaceId: string, collectionId: string) =>
     apiGet<{ bibtex: string; total: number; filename: string }>(
-      `/api/library/references/${workspaceId}/bibtex?collectionId=${collectionId}`
+      `/api/library/references/${workspaceId}/bibtex?collectionId=${collectionId}`,
+    ),
+
+  exportBundle: (workspaceId: string, collectionId: string) =>
+    apiGet<{
+      collection: { id: string; name: string };
+      totalPapers: number;
+      totalFiles: number;
+      bibtex: string;
+      files: Array<{ paperId: string; title: string; filename: string; fileUrl: string }>;
+    }>(
+      `/api/library/collections/${encodeURIComponent(workspaceId)}/${encodeURIComponent(collectionId)}/export-bundle`,
     ),
 };
 

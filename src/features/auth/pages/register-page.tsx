@@ -1,67 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-
-import { useAuth } from '../hooks/use-auth';
 import { useRegister } from '../hooks/use-register';
-import { registerSchema, type RegisterSchema } from '../schemas/auth.schema';
-import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
-import { Button, Input, Label } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 
 const RegisterPage = () => {
-  const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { user, isLoading: isAuthLoading } = useAuth();
-  const { register: registerUser, isPending, error, handleOAuthLogin } = useRegister();
-
   const {
-    register,
+    form: {
+      register,
+      formState: { errors },
+    },
+    user,
+    isAuthLoading,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    isPending,
+    error,
+    handleOAuthLogin,
     handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterSchema>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
-  });
-
-  useEffect(() => {
-    if (!isAuthLoading && user) {
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (data.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          router.replace('/create-workspace');
-        });
-    }
-  }, [isAuthLoading, user, router]);
-
+  } = useRegister();
 
   if (isAuthLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className='flex min-h-screen items-center justify-center bg-background'>
+        <Loader2 className='h-8 w-8 animate-spin text-primary' />
       </div>
     );
   }
-  if (user) return null;
 
-  const onSubmit = (data: RegisterSchema) => {
-    registerUser({
-      name: data.name.trim(),
-      email: data.email.trim(),
-      password: data.password,
-    });
-  };
+  if (user) return null;
 
   return (
     <div className='flex min-h-screen items-start justify-center bg-background px-4 py-12 sm:py-24'>
@@ -78,7 +50,7 @@ const RegisterPage = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col gap-4'>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
           <div className='flex flex-col gap-1.5'>
             <Label htmlFor='name'>Full name</Label>
             <Input
@@ -173,7 +145,10 @@ const RegisterPage = () => {
 
         <div className='text-center text-muted-foreground'>
           Already have an account?{' '}
-          <Link href='/login' className='text-primary font-semibold transition-opacity hover:opacity-80'>
+          <Link
+            href='/login'
+            className='text-primary font-semibold transition-opacity hover:opacity-80'
+          >
             Sign in
           </Link>
         </div>
@@ -183,9 +158,7 @@ const RegisterPage = () => {
             <span className='w-full border-t border-border' />
           </div>
           <div className='relative flex justify-center text-[11px] uppercase tracking-wider font-semibold text-muted-foreground'>
-            <span className='bg-background px-2'>
-              Or continue with
-            </span>
+            <span className='bg-background px-2'>Or continue with</span>
           </div>
         </div>
 

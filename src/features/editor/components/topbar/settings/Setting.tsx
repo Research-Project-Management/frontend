@@ -27,7 +27,8 @@ import {
 } from '@/features/editor/store/settings.store';
 import { usePageStore } from '@/features/editor/store/page.store';
 import { filesQuery, useFileActions } from '@/features/editor/hooks/use-page';
-import { Separator, Tabs, TabsList, TabsTrigger } from '@/shared/components/ui';
+import { Separator } from '@/shared/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
 
 // ── Setting Row Helper ───────────────────────────────────────────────────────

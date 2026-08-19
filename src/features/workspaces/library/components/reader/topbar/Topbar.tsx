@@ -13,13 +13,10 @@ import {
   RefreshCcw,
   StickyNote,
 } from 'lucide-react';
-import { Badge, Button, Separator } from '@/shared/components/ui';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/shared/components/ui';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
+import { Separator } from '@/shared/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import type { Paper } from '../../../types/library.types';
 import type { ReaderPanel } from '../../../types/reader.types';

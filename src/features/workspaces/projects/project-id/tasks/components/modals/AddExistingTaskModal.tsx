@@ -1,12 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  Checkbox,
-  Button,
-} from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
 import {
   Search,
   FolderKanban,

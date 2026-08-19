@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Replace,
 } from "lucide-react";
-import { Input } from "@/shared/components/ui";
+import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import { usePageStore } from "@/features/editor/store/page.store";
 import { useDebounce } from '@/shared/hooks/use-debounce';

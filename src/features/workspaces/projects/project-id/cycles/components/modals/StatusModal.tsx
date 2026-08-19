@@ -1,14 +1,7 @@
 'use client'
 import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/components/ui";
-import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 import { PlayCircle, CheckCircle2, ArrowRight, CornerDownLeft, CircleSlash } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 

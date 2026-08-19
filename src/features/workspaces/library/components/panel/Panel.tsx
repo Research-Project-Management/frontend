@@ -17,6 +17,7 @@ import NotesSection from './sections/NotesSection';
 import CiteSection from './sections/CiteSection';
 import FilesSection from './sections/FilesSection';
 import TagsSection from './sections/TagsSection';
+import RelatedSection from './sections/RelatedSection';
 import { usePapers } from '../../hooks/data/use-papers';
 import { useLibrarySidebarStore } from '../../store/sidebar.store';
 import { normalizeNotes } from '../../utils/library.util';
@@ -30,14 +31,15 @@ interface InspectorPanelProps {
   onClose?: () => void;
 }
 
-type TabType = 'info' | 'notes' | 'tags' | 'files' | 'cite';
+type TabType = 'info' | 'notes' | 'tags' | 'files' | 'relations' | 'cite';
 
 const TABS: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'info', label: 'Details', icon: FileText },
   { id: 'notes', label: 'Notes', icon: Bookmark },
   { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'files', label: 'Files', icon: Paperclip },
-  { id: 'cite', label: 'Cite', icon: Share2 },
+  { id: 'relations', label: 'Related', icon: Share2 },
+  { id: 'cite', label: 'Cite', icon: BookOpen },
 ];
 
 export default function InspectorPanel({
@@ -230,7 +232,10 @@ export default function InspectorPanel({
       </header>
 
       {/* Tabs navigation bar */}
-      <nav aria-label="Inspector tabs" className="flex items-center border-b border-border/50 bg-transparent px-2.5 py-1.5 gap-1 shrink-0 overflow-x-auto">
+      <nav
+        aria-label="Inspector tabs"
+        className="flex items-center border-b border-border/50 bg-transparent px-2 py-1 gap-0.5 shrink-0 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -248,9 +253,9 @@ export default function InspectorPanel({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
+                'relative flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0',
                 isActive
-                  ? 'bg-secondary text-foreground font-semibold'
+                  ? 'bg-secondary text-foreground font-semibold shadow-2xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               )}
             >
@@ -278,7 +283,6 @@ export default function InspectorPanel({
             key={paperId}
             paper={paper}
             onUpdatePaper={handleUpdatePaper}
-            onUpdateTags={handleUpdateTags}
           />
         )}
 
@@ -307,8 +311,12 @@ export default function InspectorPanel({
           />
         )}
 
+        {activeTab === 'relations' && (
+          <RelatedSection key={paperId} paper={paper} workspaceId={workspaceId} />
+        )}
+
         {activeTab === 'cite' && (
-          <CiteSection key={paperId} paper={paper} />
+          <CiteSection key={paperId} paper={paper} workspaceId={workspaceId} />
         )}
       </div>
     </aside>

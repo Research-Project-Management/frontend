@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useSummaryWork } from '../hooks/use-summary-work';
 import { useTaskModal } from '../hooks/use-task-modal';
 import { OverviewCards } from '../components/summary/OverviewCards';

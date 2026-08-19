@@ -10,16 +10,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui';
-import { Button } from '@/shared/components/ui';
-import { Checkbox } from '@/shared/components/ui';
-import { Input } from '@/shared/components/ui';
-import { Skeleton } from '@/shared/components/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { cn } from '@/shared/lib/utils';
 import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';

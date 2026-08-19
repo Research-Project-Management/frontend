@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { getQueryClient } from '@/shared/lib/get-query-client';
 
-import { ErrorBoundary } from '@/shared/components/error-boundary/ErrorBoundary';
+import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();

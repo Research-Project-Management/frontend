@@ -2,11 +2,7 @@ import React from "react";
 import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { type StickyColor } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { STICKY_COLOR_MAP } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Palette } from "lucide-react";
 import { ToolbarBtn } from "../ui/ToolbarBtn";
 import { motion, AnimatePresence } from "framer-motion";

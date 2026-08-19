@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckSquare, X } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import type { Checklist } from '../../../types/task.types';
 
 export type TaskChecklistProps = {

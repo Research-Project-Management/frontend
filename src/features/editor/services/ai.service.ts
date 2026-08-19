@@ -118,14 +118,14 @@ export async function* streamEditorChat(
           if (data === '[DONE]') return;
           if (data.startsWith('[META]')) {
             try {
-              const meta = JSON.parse(data.slice(6));
+              const meta = JSON.parse(data.slice(6)) as any;
               options?.onMeta?.(meta);
             } catch {}
             continue;
           }
           if (data.startsWith('[ACTION]')) {
             try {
-              const action = JSON.parse(data.slice(8));
+              const action = JSON.parse(data.slice(8)) as any;
               options?.onAction?.(action);
             } catch {}
             continue;
@@ -148,7 +148,7 @@ export async function getPageChat(pageId: string, workspaceId?: string): Promise
     credentials: 'include',
   });
   if (!res.ok) return { id: null, messages: [] };
-  const data = await res.json();
+  const data = (await res.json()) as any;
   if (data?.chat) return data.chat;
   return data;
 }
@@ -170,7 +170,7 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to get chat session');
-  return res.json();
+  return (await res.json()) as ChatSessionDetail;
 }
 
 export async function createChatSession(input: {
@@ -193,7 +193,7 @@ export async function createChatSession(input: {
     }),
   });
   if (!res.ok) throw new Error('Failed to create chat session');
-  return res.json();
+  return (await res.json()) as ChatSessionDetail;
 }
 
 export async function appendChatMessages(
@@ -208,7 +208,7 @@ export async function appendChatMessages(
     body: JSON.stringify({ messages, documentIds }),
   });
   if (!res.ok) throw new Error('Failed to append messages');
-  return res.json();
+  return (await res.json()) as ChatSessionDetail;
 }
 
 export async function listChatSessions(
@@ -224,7 +224,7 @@ export async function listChatSessions(
     credentials: 'include',
   });
   if (!res.ok) return [];
-  const data = await res.json();
+  const data = (await res.json()) as any;
   return data.chats || [];
 }
 
@@ -239,7 +239,7 @@ export async function renameChatSession(
     body: JSON.stringify({ title }),
   });
   if (!res.ok) throw new Error('Failed to rename chat session');
-  return res.json();
+  return (await res.json()) as ChatSession;
 }
 
 export async function deleteChatSession(chatId: string): Promise<void> {

@@ -2,15 +2,9 @@
 
 import React, { useState } from 'react';
 import { Users as UsersIcon, ChevronDown, Check } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-  Input,
-} from '@/shared/components/ui';
+import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectMemberItem } from '../../types/member.types';
 

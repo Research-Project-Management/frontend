@@ -31,7 +31,7 @@ import {
 import type { PageEvent } from "@/features/editor/types/document.types";
 import { usePageStore } from "@/features/editor/store/page.store";
 import { cn } from "@/shared/lib/utils";
-import { Input } from "@/shared/components/ui";
+import { Input } from '@/shared/components/ui/input';
 
 type View = "file" | "project";
 

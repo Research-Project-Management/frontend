@@ -2,16 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { UserPlus, X, Check } from 'lucide-react';
-import {
-  Button,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Input,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
 
 export interface MemberPopoverProps {

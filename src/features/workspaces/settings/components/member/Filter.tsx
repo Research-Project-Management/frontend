@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
-import { Input, Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,

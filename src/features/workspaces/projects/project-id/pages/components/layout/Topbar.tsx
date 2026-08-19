@@ -1,6 +1,6 @@
 import React from 'react';
 import { PenLine, Search, LayoutGrid, List, Plus } from 'lucide-react';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 
 export interface TopbarProps {
   viewMode: 'grid' | 'list';

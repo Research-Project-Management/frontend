@@ -2,13 +2,9 @@
 
 import React from 'react';
 import { Trash2 } from 'lucide-react';
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Badge,
-  Button,
-} from '@/shared/components/ui';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
 import type { WorklogEntry } from '../../types/worklog.types';
 
 interface WorklogTableProps {

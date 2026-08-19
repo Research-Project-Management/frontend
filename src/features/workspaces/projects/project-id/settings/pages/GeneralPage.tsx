@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';
@@ -48,7 +48,7 @@ export default function GeneralPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8 max-w-4xl mx-auto space-y-6">
+      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
         <Skeleton className="h-48 w-full rounded-lg" />
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-28 w-full rounded-lg" />
@@ -59,14 +59,14 @@ export default function GeneralPage() {
 
   if (isError || !project) {
     return (
-      <div className="p-8 text-sm text-muted-foreground">
+      <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">
         Error loading project details.
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
       {/* ── Visual Banner & Icon (Image 1) ── */}
       <GeneralBanner
         name={name}

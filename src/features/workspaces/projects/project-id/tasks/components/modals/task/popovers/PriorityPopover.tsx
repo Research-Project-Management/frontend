@@ -1,12 +1,8 @@
 'use client';
 
 import React from 'react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Button,
-} from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import {
   AlertCircle,
   ArrowUp,

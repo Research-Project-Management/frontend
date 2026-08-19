@@ -50,8 +50,8 @@ export function usePdf(url: string | null, fallbackOptions?: PdfFallbackOptions)
           if (blob.type.includes('application/json') || blob.size < 100) {
             const text = await blob.text();
             if (text.trim().startsWith('{')) {
-              const parsed = JSON.parse(text);
-              throw new Error(parsed.message || parsed.error || 'Invalid response payload');
+              const parsed = JSON.parse(text) as Record<string, any>;
+              throw new Error(parsed?.message || parsed?.error || 'Invalid response payload');
             }
           }
         } catch (fetchErr) {

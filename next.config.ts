@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   output: 'standalone',
+  serverExternalPackages: ['pdfjs-dist', 'canvas'],
 
   turbopack: {
     rules: {

@@ -6,7 +6,7 @@ import { useProject } from '@/features/workspaces/projects/shell/hooks/use-proje
 import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 
 import { Share2 } from "lucide-react";
-import { Skeleton } from '@/shared/components/ui';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '@/features/workspaces/projects/project-id/storage/components/views/ListView';
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';

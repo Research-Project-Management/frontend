@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Mail, Clock, Trash2 } from 'lucide-react';
-import { Badge, Button } from '@/shared/components/ui';
+import { Badge } from '@/shared/components/ui/badge';
+import { Button } from '@/shared/components/ui/button';
 import type { WorkspacePendingInvite } from '../../types/member.types';
 
 interface PendingInvitesProps {

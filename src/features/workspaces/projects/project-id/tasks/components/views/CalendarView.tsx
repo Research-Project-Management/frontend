@@ -28,21 +28,12 @@ import {
   subMonths,
   subDays,
 } from "date-fns";
-import { Button } from "@/shared/components/ui";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
+import { Button } from '@/shared/components/ui/button';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { CardUI } from '../kanban/Card';
-import {
-  Dialog,
-  DialogContent,
-} from "@/shared/components/ui";
-import { Checkbox } from "@/shared/components/ui";
+import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import type { Column, Task } from "../../types/task.types";
 import { resolveTaskColumnId, resolveTaskColumnColor } from "../../types/task.types";
 import {

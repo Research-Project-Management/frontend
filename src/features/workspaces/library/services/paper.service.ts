@@ -143,7 +143,7 @@ export const fetchPdfBlob = async (url: string): Promise<Blob> => {
   if (contentType && contentType.includes('application/json')) {
     const text = await response.text();
     try {
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(text) as Record<string, any>;
       throw new Error(parsed.message || 'Failed to load PDF (Server returned JSON)');
     } catch {
       throw new Error(`Server returned JSON instead of PDF: ${text.substring(0, 50)}...`);

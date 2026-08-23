@@ -98,14 +98,14 @@ export async function* streamChatResponse(
           if (data === '[DONE]') return;
           if (data.startsWith('[META]')) {
             try {
-              const meta = JSON.parse(data.slice(6));
+              const meta = JSON.parse(data.slice(6)) as any;
               options?.onMeta?.(meta);
             } catch {}
             continue;
           }
           if (data.startsWith('[ACTION]')) {
             try {
-              const action = JSON.parse(data.slice(8));
+              const action = JSON.parse(data.slice(8)) as any;
               options?.onAction?.(action);
             } catch {}
             continue;
@@ -211,14 +211,14 @@ export async function* streamEditorChat(
           if (data === '[DONE]') return;
           if (data.startsWith('[META]')) {
             try {
-              const meta = JSON.parse(data.slice(6));
+              const meta = JSON.parse(data.slice(6)) as any;
               options?.onMeta?.(meta);
             } catch {}
             continue;
           }
           if (data.startsWith('[ACTION]')) {
             try {
-              const action = JSON.parse(data.slice(8));
+              const action = JSON.parse(data.slice(8)) as any;
               options?.onAction?.(action);
             } catch {}
             continue;
@@ -247,7 +247,7 @@ export async function listChatSessions(
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to list chat sessions');
-  const data = await res.json();
+  const data = (await res.json()) as { chats?: ChatSession[] };
   return data.chats || [];
 }
 
@@ -257,7 +257,7 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to get chat session');
-  return res.json();
+  return (await res.json()) as ChatSessionDetail;
 }
 
 export async function createChatSession(
@@ -282,7 +282,7 @@ export async function createChatSession(
     }),
   });
   if (!res.ok) throw new Error('Failed to create chat session');
-  return res.json();
+  return (await res.json()) as ChatSessionDetail;
 }
 
 export async function appendChatMessages(
@@ -297,7 +297,7 @@ export async function appendChatMessages(
     body: JSON.stringify({ messages, documentIds }),
   });
   if (!res.ok) throw new Error('Failed to append messages');
-  return res.json();
+  return (await res.json()) as ChatSessionDetail;
 }
 
 export async function renameChatSession(
@@ -311,7 +311,7 @@ export async function renameChatSession(
     body: JSON.stringify({ title }),
   });
   if (!res.ok) throw new Error('Failed to rename chat session');
-  return res.json();
+  return (await res.json()) as ChatSession;
 }
 
 export async function deleteChatSession(chatId: string): Promise<void> {
@@ -340,7 +340,7 @@ export async function getPageChat(pageId: string, _options?: unknown): Promise<C
     credentials: 'include',
   });
   if (!res.ok) return [];
-  const data = await res.json();
+  const data = (await res.json()) as { messages?: ChatMessage[] };
   return data.messages || [];
 }
 
@@ -370,7 +370,7 @@ export async function uploadDocument(
     body: formData,
   });
   if (!res.ok) throw new Error('Failed to upload document');
-  return res.json();
+  return (await res.json()) as { id: string; name: string; size: number };
 }
 
 export async function fetchDocumentsBulk(
@@ -383,7 +383,7 @@ export async function fetchDocumentsBulk(
     body: JSON.stringify({ ids }),
   });
   if (!res.ok) throw new Error('Failed to fetch documents');
-  const data = await res.json();
+  const data = (await res.json()) as { documents?: Array<{ id: string; name: string; size: number }> };
   return data.documents || [];
 }
 
@@ -395,5 +395,5 @@ export async function fetchDocumentContent(
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to fetch document content');
-  return res.json();
+  return (await res.json()) as { text: string };
 }

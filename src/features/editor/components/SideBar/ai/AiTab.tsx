@@ -233,7 +233,7 @@ const AssistantMessage = memo(function AssistantMessage({
 
         if (isApply && onApply) {
           try {
-            const op: EditOp = JSON.parse(code);
+            const op = JSON.parse(code) as EditOp;
             elements.push(
               <DiffApplyBlock key={key} op={op} fileContent={fileContent} onApply={onApply} />
             );
@@ -786,7 +786,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     for (const line of lines) {
       if (line.trim() === "```apply") { inApply = true; applyLines = []; continue; }
       if (inApply && line.trim() === "```") {
-        try { ops.push(JSON.parse(applyLines.join("\n"))); } catch { /* ignore malformed */ }
+        try { ops.push(JSON.parse(applyLines.join("\n")) as EditOp); } catch { /* ignore malformed */ }
         inApply = false; applyLines = [];
         continue;
       }

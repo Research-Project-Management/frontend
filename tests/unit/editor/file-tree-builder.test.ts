@@ -3,7 +3,7 @@ import {
   buildPageTree,
   buildAssetTree,
   filterTree,
-} from "@/features/editor/components/sidebar/explorer/file-tree-builder";
+} from "@/features/editor/components/SideBar/explorer/file-tree-builder";
 
 describe("file-tree-builder", () => {
   it("should construct parent-child hierarchy and place main file first", () => {

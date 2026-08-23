@@ -33,10 +33,27 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Ignore benign abort/cancellation events caused by React Query, navigation or unmounting
+    if (
+      error.name === 'AbortError' ||
+      error.name === 'TimeoutError' ||
+      error.message?.toLowerCase().includes('aborted') ||
+      error.message?.toLowerCase().includes('canceled')
+    ) {
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    if (
+      error.name === 'AbortError' ||
+      error.name === 'TimeoutError' ||
+      error.message?.toLowerCase().includes('aborted') ||
+      error.message?.toLowerCase().includes('canceled')
+    ) {
+      return;
+    }
     logger.error('React component crashed in tree', error, {
       componentStack: errorInfo.componentStack,
     });

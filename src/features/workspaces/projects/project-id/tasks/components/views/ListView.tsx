@@ -54,6 +54,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useParams } from "next/navigation";
 import { useLabelsQuery } from '../../hooks/use-task';
+import { TaskHelpers } from '../../utils/tasks.util';
 import { cn } from "@/shared/lib/utils";
 import { createPortal } from "react-dom";
 
@@ -131,20 +132,20 @@ const TaskRowContent = ({
   [task.labels, workspaceLabels]);
 
   const dueDateInfo = useMemo(() => {
-    const hasDueDate = task.dueDate && isValidDate(task.dueDate);
-    let overdueAt = hasDueDate ? isOverdue(task.dueDate) : false;
+    const hasDueDate = Boolean(task.dueDate && !Number.isNaN(new Date(task.dueDate).getTime()));
+    let overdueAt = hasDueDate ? TaskHelpers.checkOverdue(task.dueDate) : false;
     if (task.dueState === "overdue") overdueAt = true;
     if (typeof task.isOverdue === "boolean") overdueAt = task.isOverdue;
 
-    const startDateText = formatDueDate(task.startDate);
-    const dueDateText = formatDueDate(task.dueDate);
+    const startDateText = TaskHelpers.formatDate(task.startDate);
+    const dueDateText = TaskHelpers.formatDate(task.dueDate);
     
     return {
       isOverdueAlert: overdueAt && !task.completed,
       displayText: startDateText && dueDateText
         ? `${startDateText} - ${dueDateText}`
-        : dueDateText || startDateText,
-      hasAnyDate: Boolean(dueDateText || startDateText)
+        : dueDateText || startDateText || null,
+      hasAnyDate: Boolean(dueDateText || startDateText),
     };
   }, [task.dueDate, task.startDate, task.dueState, task.isOverdue, task.completed]);
 
@@ -608,7 +609,7 @@ export default function ListView({
     if (typeof window === "undefined") return defaultExpanded;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? new Set(JSON.parse(saved)) : defaultExpanded;
+      return saved ? new Set<string>(JSON.parse(saved) as string[]) : defaultExpanded;
     } catch {
       return defaultExpanded;
     }

@@ -62,9 +62,9 @@ export function CyclePage() {
   const [labelDetailsCycleIds, setLabelDetailsCycleIds] = useState<Set<string>>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`cycle-labels-expanded-${projectId}`);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
+      return saved ? new Set<string>(JSON.parse(saved) as string[]) : new Set<string>();
     }
-    return new Set();
+    return new Set<string>();
   });
 
   useEffect(() => {

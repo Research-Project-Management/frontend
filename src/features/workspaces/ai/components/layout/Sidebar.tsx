@@ -59,8 +59,8 @@ function groupByProject(chats: ChatSession[]): ProjectGroup[] {
 }
 
 function loadSet(k: string): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(k) ?? '[]')); }
-  catch { return new Set(); }
+  try { return new Set<string>(JSON.parse(localStorage.getItem(k) ?? '[]') as string[]); }
+  catch { return new Set<string>(); }
 }
 function saveSet(k: string, s: Set<string>) {
   localStorage.setItem(k, JSON.stringify(Array.from(s)));

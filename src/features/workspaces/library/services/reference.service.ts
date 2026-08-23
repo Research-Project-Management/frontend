@@ -44,7 +44,7 @@ export async function searchReferences(query: string, rows = 1): Promise<{ works
       headers: { Accept: 'application/json' },
     });
     if (!response.ok) return { works: [], totalResults: 0 };
-    const json = await response.json();
+    const json = (await response.json()) as any;
     const items = json?.message?.items || [];
     const totalResults = json?.message?.['total-results'] || items.length;
 

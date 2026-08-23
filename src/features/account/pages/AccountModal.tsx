@@ -11,7 +11,6 @@ import ProfileTab from '@/features/account/components/ProfileTab';
 import PreferencesTab from '@/features/account/components/PreferencesTab';
 import NotificationsTab from '@/features/account/components/NotificationsTab';
 import SecurityTab from '@/features/account/components/SecurityTab';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -49,9 +48,7 @@ export default function AccountModal({ isOpen, onClose, initialTab = 'profile' }
       <DialogContent 
         className='max-w-[1100px] sm:max-w-[1100px] w-[90vw] h-[85vh] max-h-[800px] p-0 flex flex-row overflow-hidden gap-0 bg-background'
       >
-        <VisuallyHidden>
-          <DialogTitle>Account Settings</DialogTitle>
-        </VisuallyHidden>
+        <DialogTitle className="sr-only">Account Settings</DialogTitle>
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <main className='flex-1 overflow-y-auto bg-background/50'>
           {renderContent()}

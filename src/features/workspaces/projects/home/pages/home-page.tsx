@@ -9,9 +9,9 @@ import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Skeleton } from "@/shared/components/ui";
 import ChatAi from "../components/chat-ai";
 
-import Recent from "../components/recent";
+import Recent from "../components/Recent";
 import Quicklinks from "../components/quicklinks";
-import Stickies from "../components/stickies";
+import Stickies from "../components/Stickies";
 import { Section } from "../components/layouts/section";
 import { ManageWidgetsModal } from "../components/modals/manage-widgets-modal";
 import { Topbar } from "../components/layouts/topbar";

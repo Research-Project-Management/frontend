@@ -48,7 +48,7 @@ export function useFavorites(workspaceId?: string): UseFavoritesReturn {
         localStorage.getItem('sidebar_favorites') ||
         localStorage.getItem('sidebar_favorite_projects');
       if (saved) {
-        return new Set(JSON.parse(saved));
+        return new Set<string>(JSON.parse(saved) as string[]);
       }
     } catch {
       // Fallback

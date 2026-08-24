@@ -4,6 +4,7 @@ import {
   paperSchema,
   paperAttachmentSchema,
   primaryFileSchema,
+  provenanceSchema,
   userSchema,
   noteSchema,
   cslStyleSchema,
@@ -35,6 +36,7 @@ export type Note = z.infer<typeof noteSchema>;
 export type Collection = z.infer<typeof collectionSchema>;
 export type PaperAttachment = z.infer<typeof paperAttachmentSchema>;
 export type PrimaryFile = z.infer<typeof primaryFileSchema>;
+export type Provenance = z.infer<typeof provenanceSchema>;
 export type Paper = z.infer<typeof paperSchema>;
 
 export type CslStyle = z.infer<typeof cslStyleSchema>;

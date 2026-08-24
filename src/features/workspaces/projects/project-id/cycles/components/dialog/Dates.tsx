@@ -44,7 +44,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
         console.error("Invalid start date", e);
       }
     }
-  }, []);
+  }, [selectedStart]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });

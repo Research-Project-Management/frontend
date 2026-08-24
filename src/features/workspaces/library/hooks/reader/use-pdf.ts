@@ -88,7 +88,15 @@ export function usePdf(url: string | null, fallbackOptions?: PdfFallbackOptions)
       active = false;
       if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
     };
-  }, [url, fallbackOptions?.title, fallbackOptions?.abstract, fallbackOptions?.doi]);
+  }, [
+    url,
+    fallbackOptions?.title,
+    fallbackOptions?.authors,
+    fallbackOptions?.year,
+    fallbackOptions?.journal,
+    fallbackOptions?.abstract,
+    fallbackOptions?.doi,
+  ]);
 
   return { blobUrl, isLoading, error };
 }

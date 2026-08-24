@@ -221,13 +221,13 @@
   --sidebar-border: oklch(22% 0 0);
   --sidebar-ring: var(--blue-500);
 
-  --shadow-2xs: 0px 1px 2px 0px oklch(0% 0 0 / 0.40);
-  --shadow-xs: 0px 1px 3px 0px oklch(0% 0 0 / 0.55), 0px 1px 2px -1px oklch(0% 0 0 / 0.40);
-  --shadow-sm: 0px 1px 4px 0px oklch(0% 0 0 / 0.50), 0px 2px 8px -1px oklch(0% 0 0 / 0.40);
-  --shadow-md: 0px 2px 8px 0px oklch(0% 0 0 / 0.55), 0px 4px 12px -2px oklch(0% 0 0 / 0.45);
-  --shadow-lg: 0px 4px 12px 0px oklch(0% 0 0 / 0.60), 0px 8px 20px -4px oklch(0% 0 0 / 0.50);
-  --shadow-xl: 0px 8px 24px 0px oklch(0% 0 0 / 0.65), 0px 16px 32px -8px oklch(0% 0 0 / 0.55);
-  --shadow-2xl: 0px 16px 40px -8px oklch(0% 0 0 / 0.70);
+  --shadow-2xs: none;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
 }
 
 /* --------------------------------------------------------------------------

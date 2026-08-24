@@ -140,7 +140,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center max-w-lg mx-auto">
-              <div className="size-14 rounded-2xl bg-muted/60 border border-border/80 flex items-center justify-center text-muted-foreground shadow-xs">
+              <div className="size-14 rounded-2xl bg-muted/60 border border-border/80 flex items-center justify-center text-muted-foreground">
                 <FileText className="size-7 text-foreground/70" />
               </div>
               <div className="space-y-1.5">

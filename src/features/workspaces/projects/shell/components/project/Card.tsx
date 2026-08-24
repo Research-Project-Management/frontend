@@ -209,7 +209,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
               </div>
             ) : membersList.length > 0 ? (
               <div className="flex -space-x-1.5 overflow-hidden">
-                {membersList.slice(0, 3).map((m: any, idx: number) => {
+                {(Array.isArray(membersList) ? membersList : []).slice(0, 3).map((m: any, idx: number) => {
                   const u = m.user || {};
                   return (
                     <Avatar key={u.id || idx} className="size-4.5 border border-background">

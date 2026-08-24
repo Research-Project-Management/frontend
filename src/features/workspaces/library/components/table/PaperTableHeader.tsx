@@ -4,7 +4,7 @@ import React from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import type { SortField, SortOrder } from '../../hooks/library/use-paper';
+import type { SortField, SortOrder } from '../../hooks/library/use-papers';
 
 interface PaperTableHeaderProps {
   sortField: SortField;

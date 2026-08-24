@@ -6,7 +6,7 @@ import PaperTableHeader from './PaperTableHeader';
 import PaperTableRow from './PaperTableRow';
 import PaperTableEmpty from './PaperTableEmpty';
 import PaperBatchBar from './PaperBatchBar';
-import { usePaper, type SortField, type SortOrder } from '../../hooks/library/use-paper';
+import { usePaperTable, type SortField, type SortOrder } from '../../hooks/library/use-papers';
 import type { Paper, Collection } from '../../types/library.types';
 
 interface PaperTableProps {
@@ -54,7 +54,7 @@ export default function PaperTable({
     isAllSelected,
     isPartiallySelected,
     selectedCount,
-  } = usePaper({ papers, initialActiveId: selectedPaperId });
+  } = usePaperTable({ papers, initialActiveId: selectedPaperId });
 
   // Selected paper objects for batch actions
   const selectedPapers = React.useMemo(() => {

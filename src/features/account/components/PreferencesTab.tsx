@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { preferencesSchema } from '../schemas/preferences.schema';
@@ -37,17 +37,15 @@ export default function PreferencesTab() {
     },
   });
 
+  const onSubmit = useCallback((values: z.infer<typeof preferencesSchema>) => {
+    toast.success('Preferences updated successfully');
+    form.reset(values); // Reset to new values to clear isDirty state
+  }, [form]);
+
   useEffect(() => {
     const subscription = form.watch(() => form.handleSubmit(onSubmit)());
     return () => subscription.unsubscribe();
-  }, [form.watch, form.handleSubmit]);
-
-  const onSubmit = (values: z.infer<typeof preferencesSchema>) => {
-    // Mock save, later connect to backend hook
-    console.log('Saved preferences:', values);
-    toast.success('Preferences updated successfully');
-    form.reset(values); // Reset to new values to clear isDirty state
-  };
+  }, [form, onSubmit]);
 
   return (
     <div className='p-6 md:px-8 w-full max-w-4xl mx-auto'>

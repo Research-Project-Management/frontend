@@ -33,8 +33,9 @@ export function LabelsDisplay({
   showAddButton = true,
 }: LabelsDisplayProps) {
   const LIMIT = 4;
-  const visibleLabels = labels.slice(0, LIMIT);
-  const hiddenCount = labels.length > LIMIT ? labels.length - LIMIT : 0;
+  const safeLabels = Array.isArray(labels) ? labels : [];
+  const visibleLabels = safeLabels.slice(0, LIMIT);
+  const hiddenCount = safeLabels.length > LIMIT ? safeLabels.length - LIMIT : 0;
 
   return (
     <button

@@ -76,7 +76,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className="absolute inset-y-0 right-0 z-30 flex w-[min(100%,420px)] flex-col border-l border-border bg-background shadow-lg lg:relative lg:w-auto lg:shadow-none"
+      className="absolute inset-y-0 right-0 z-30 flex w-[min(100%,420px)] flex-col border-l border-border bg-background lg:relative lg:w-auto"
       style={{ width: `min(100%, ${panelWidth}px)` }}
     >
       {/* Resize handle */}

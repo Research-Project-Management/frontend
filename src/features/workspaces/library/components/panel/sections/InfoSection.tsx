@@ -1,263 +1,300 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ExternalLink,
-  Edit3,
-  Check,
-  X,
+  Copy,
+  Plus,
+  Minus,
+  CheckCircle2,
   RefreshCw,
   Loader2,
-  Copy,
-  Sparkles,
-  BookOpen,
-  Quote,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Textarea } from '@/shared/components/ui/textarea';
+import { resolveAcademicQuery } from '../../../services/reference.service';
 import { cn } from '@/shared/lib/utils';
-import { resolveAcademicQuery } from '@/features/workspaces/library/services/reference.service';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
-import { Badge } from '@/shared/components/ui/badge';
 
 interface InfoSectionProps {
   paper: Paper;
   onUpdatePaper?: (data: Partial<Paper>) => void;
 }
 
-function DetailRow({
-  label,
+/** Filter out empty, null, undefined, or junk placeholder string values */
+function isValidValue(val?: string | number | null): boolean {
+  if (val === null || val === undefined) return false;
+  const str = String(val).trim();
+  if (!str) return false;
+  const lower = str.toLowerCase();
+  return lower !== 'null' && lower !== 'undefined' && lower !== 'n/a' && lower !== 'none' && lower !== '{}' && lower !== '[object object]';
+}
+
+/** Sanitize authors array into clean string array */
+function sanitizeAuthors(rawAuthors?: string[] | null): string[] {
+  if (!rawAuthors || !Array.isArray(rawAuthors)) return [];
+  const result: string[] = [];
+  for (const item of rawAuthors) {
+    if (!item) continue;
+    if (typeof item === 'string' && item.includes(';') && !item.includes(',')) {
+      result.push(...item.split(';').map((s) => s.trim()).filter(isValidValue));
+    } else {
+      const trimmed = item.trim();
+      if (isValidValue(trimmed)) {
+        result.push(trimmed);
+      }
+    }
+  }
+  return result;
+}
+
+/** Clean Inline Editable Text Input (Saves on Enter / Blur, Cancels on Escape) */
+function InlineField({
   value,
-  href,
+  placeholder,
+  onSave,
+  className,
   mono,
-  children,
 }: {
-  label: string;
-  value?: string | number | null;
-  href?: string;
+  value: string;
+  placeholder?: string;
+  onSave: (val: string) => void;
+  className?: string;
   mono?: boolean;
-  children?: React.ReactNode;
 }) {
-  if (!value && !children) return null;
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== value) {
+      onSave(trimmed);
+    }
+  };
 
   return (
-    <div className="flex items-start py-2 text-xs border-b border-border/20 last:border-0">
-      <span className="w-24 shrink-0 font-medium text-muted-foreground select-none pr-2 pt-0.5">
-        {label}
-      </span>
-      <div
-        className={cn(
-          'flex-1 min-w-0 font-normal text-foreground leading-relaxed select-text',
-          mono && 'font-mono text-xs',
-        )}
-      >
-        {children ? (
-          children
-        ) : href ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-1 break-all"
-          >
-            <span className="truncate">{value}</span>
-            <ExternalLink className="size-3 shrink-0" />
-          </a>
-        ) : (
-          <span className="break-words">{value}</span>
-        )}
-      </div>
-    </div>
+    <input
+      type="text"
+      value={draft}
+      placeholder={placeholder || '—'}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit();
+          (e.target as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+          setDraft(value);
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className={cn(
+        'w-full bg-transparent text-foreground hover:bg-muted/40 focus:bg-background px-1.5 py-0.5 rounded border border-transparent focus:border-border transition-colors outline-none text-xs leading-normal font-normal truncate placeholder:text-muted-foreground/30',
+        mono && 'font-mono text-[11px]',
+        className,
+      )}
+    />
+  );
+}
+
+/** Clean Inline Editable Auto-Expanding Textarea for Title */
+function InlineTextarea({
+  value,
+  placeholder,
+  onSave,
+  className,
+  rows = 2,
+}: {
+  value: string;
+  placeholder?: string;
+  onSave: (val: string) => void;
+  className?: string;
+  rows?: number;
+}) {
+  const [draft, setDraft] = useState(value);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== value) {
+      onSave(trimmed);
+    }
+  };
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={draft}
+      rows={rows}
+      placeholder={placeholder || '—'}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          commit();
+          textareaRef.current?.blur();
+        } else if (e.key === 'Escape') {
+          setDraft(value);
+          textareaRef.current?.blur();
+        }
+      }}
+      className={cn(
+        'w-full bg-transparent text-foreground hover:bg-muted/40 focus:bg-background px-1.5 py-0.5 rounded border border-transparent focus:border-border transition-colors outline-none text-xs leading-relaxed resize-none placeholder:text-muted-foreground/30',
+        className,
+      )}
+    />
   );
 }
 
 export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) {
   const paperId = paper.id;
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isEnriching, setIsEnriching] = useState(false);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
+  const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false);
+  const MAX_COLLAPSED_AUTHORS = 3;
 
-  const [title, setTitle] = useState(paper.title || '');
-  const [authors, setAuthors] = useState(paper.authors?.join(', ') || '');
-  const [journal, setJournal] = useState(paper.journal || '');
-  const [publisher, setPublisher] = useState(paper.publisher || '');
-  const [year, setYear] = useState(paper.year ? String(paper.year) : '');
-  const [doi, setDoi] = useState(paper.doi || '');
-  const [abstract, setAbstract] = useState(paper.abstract || '');
-  const [volume, setVolume] = useState(paper.volume || '');
-  const [issue, setIssue] = useState(paper.issue || '');
-  const [pages, setPages] = useState(paper.pages || '');
-  const [itemType, setItemType] = useState(paper.itemType || 'journalArticle');
+  const authorList = useMemo(() => sanitizeAuthors(paper.authors), [paper.authors]);
 
-  // Synchronize internal state when paper changes
-  useEffect(() => {
-    setTitle(paper.title || '');
-    setAuthors(paper.authors?.join(', ') || '');
-    setJournal(paper.journal || '');
-    setPublisher(paper.publisher || '');
-    setYear(paper.year ? String(paper.year) : '');
-    setDoi(paper.doi || '');
-    setAbstract(paper.abstract || '');
-    setVolume(paper.volume || '');
-    setIssue(paper.issue || '');
-    setPages(paper.pages || '');
-    setItemType(paper.itemType || 'journalArticle');
-    setIsEditing(false);
-  }, [paperId]);
+  const visibleAuthors = useMemo(() => {
+    if (isAuthorsExpanded || authorList.length <= 4) {
+      return authorList;
+    }
+    return authorList.slice(0, MAX_COLLAPSED_AUTHORS);
+  }, [authorList, isAuthorsExpanded]);
 
-  // Determine if title is a raw arXiv ID (e.g. 1706.03762 or 1810.04805v2)
-  const isRawArxivTitle = /^\d{4}\.\d{4,5}(v\d+)?$/i.test(paper.title || '');
-  const isMissingMetadata = !paper.authors?.length || !paper.year || isRawArxivTitle;
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(label);
+    toast.success(`Copied ${label}`);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
 
-  const handleAutoResolveMetadata = async () => {
-    const query = (paper.doi || paper.title || paper.filename || '').trim();
-    if (!query) {
-      toast.error('No DOI, arXiv ID, or title available to resolve metadata');
+  const handleFieldChange = (field: keyof Paper, value: any) => {
+    if (onUpdatePaper) {
+      onUpdatePaper({ [field]: value });
+      toast.success('Saved', { duration: 800 });
+    }
+  };
+
+  const handleAutoEnrich = async () => {
+    const queryCandidate =
+      paper.doi ||
+      (paper as any).arxivId ||
+      (paper.title && paper.title.length > 3 ? paper.title : '');
+
+    if (!queryCandidate) {
+      toast.error('Enter DOI or Title first to fetch metadata');
       return;
     }
 
-    setIsResolving(true);
+    setIsEnriching(true);
+    const toastId = toast.loading(`Resolving metadata from CrossRef / Semantic Scholar / OpenAlex...`);
+
     try {
-      const res = await resolveAcademicQuery(query);
-      if (res && res.metadata && res.metadata.title) {
-        const meta = res.metadata;
-        const nextTitle = meta.title || title;
-        const nextAuthors = meta.authors || (authors ? authors.split(',').map((a) => a.trim()).filter(Boolean) : []);
-        const nextJournal = meta.journal || journal;
-        const nextPublisher = meta.publisher || publisher;
-        const nextYear = meta.year ? String(meta.year) : year;
-        const nextDoi = meta.doi || doi;
-        const nextAbstract = meta.abstract || abstract;
-        const nextVolume = meta.volume || volume;
-        const nextIssue = meta.issue || issue;
-        const nextPages = meta.pages || pages;
-        const nextItemType = meta.itemType || itemType;
-
-        setTitle(nextTitle);
-        setAuthors(nextAuthors.join(', '));
-        setJournal(nextJournal);
-        setPublisher(nextPublisher);
-        setYear(nextYear);
-        setDoi(nextDoi);
-        setAbstract(nextAbstract);
-        setVolume(nextVolume);
-        setIssue(nextIssue);
-        setPages(nextPages);
-        setItemType(nextItemType);
-
-        if (onUpdatePaper) {
-          onUpdatePaper({
-            title: nextTitle.trim() || undefined,
-            authors: nextAuthors.length ? nextAuthors : undefined,
-            journal: nextJournal.trim() || undefined,
-            publisher: nextPublisher.trim() || undefined,
-            year: nextYear ? parseInt(nextYear, 10) || undefined : undefined,
-            doi: nextDoi.trim() || undefined,
-            abstract: nextAbstract.trim() || undefined,
-            volume: nextVolume.trim() || undefined,
-            issue: nextIssue.trim() || undefined,
-            pages: nextPages.trim() || undefined,
-            type: nextItemType || undefined,
-          });
+      const res = await resolveAcademicQuery(queryCandidate);
+      if (res && res.metadata) {
+        const m = res.metadata;
+        const updates: Partial<Paper> = {};
+        if (m.title && m.title !== 'Untitled') updates.title = m.title;
+        if (m.authors && m.authors.length > 0) updates.authors = m.authors;
+        if (m.year) updates.year = Number(m.year);
+        if (m.doi) updates.doi = m.doi;
+        if (m.journal || m.publicationTitle) updates.journal = m.journal || m.publicationTitle;
+        if (m.publisher) updates.publisher = m.publisher;
+        if (m.volume) updates.volume = m.volume;
+        if (m.issue) updates.issue = m.issue;
+        if (m.pages) updates.pages = m.pages;
+        if (m.abstract) updates.abstract = m.abstract;
+        if (m.url) updates.url = m.url;
+        if (m.itemType) updates.itemType = m.itemType;
+        if (m.keywords && m.keywords.length > 0 && (!paper.labels || paper.labels.length === 0)) {
+          updates.labels = m.keywords;
+        }
+        if (m.tldr && (!paper.notes || paper.notes.length === 0)) {
+          const now = new Date().toISOString();
+          updates.notes = [
+            {
+              id: `note-${Date.now()}`,
+              content: `💡 **TL;DR Summary**:\n${m.tldr}`,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ];
+        }
+        if (m.openAccessPdfUrl && !paper.fileUrl) {
+          updates.fileUrl = m.openAccessPdfUrl;
         }
 
-        toast.success(`Metadata resolved via ${res.provider} (${res.queryType})!`);
+        if (onUpdatePaper) {
+          onUpdatePaper(updates);
+        }
+        toast.dismiss(toastId);
+        toast.success(`✨ Enriched metadata via ${res.provider || 'Academic Registry'}!`);
       } else {
-        toast.error('Could not find metadata for this identifier.');
+        toast.dismiss(toastId);
+        toast.error('No matching academic record found');
       }
-    } catch (err) {
-      console.warn('Auto resolve error:', err);
-      toast.error(getErrorMessage(err) || 'Failed to auto-resolve metadata');
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || 'Failed to enrich metadata');
     } finally {
-      setIsResolving(false);
+      setIsEnriching(false);
     }
   };
 
-  const handleCopyCitationKey = () => {
-    if (paper.citationKey) {
-      navigator.clipboard.writeText(`\\cite{${paper.citationKey}}`);
-      toast.success(`Copied \\cite{${paper.citationKey}}`);
+  // Author Management (Zotero-style add/remove/edit)
+  const handleUpdateAuthorAtIndex = (index: number, newName: string) => {
+    const updated = [...authorList];
+    if (newName.trim()) {
+      updated[index] = newName.trim();
+    } else {
+      updated.splice(index, 1);
     }
+    handleFieldChange('authors', updated.length ? updated : undefined);
   };
 
-  const handleSave = () => {
-    if (onUpdatePaper) {
-      onUpdatePaper({
-        title: title.trim() || undefined,
-        authors: authors
-          ? authors
-              .split(',')
-              .map((a) => a.trim())
-              .filter(Boolean)
-          : undefined,
-        journal: journal.trim() || undefined,
-        publisher: publisher.trim() || undefined,
-        year: year ? parseInt(year, 10) || undefined : undefined,
-        doi: doi.trim() || undefined,
-        abstract: abstract.trim() || undefined,
-        volume: volume.trim() || undefined,
-        issue: issue.trim() || undefined,
-        pages: pages.trim() || undefined,
-        type: itemType.trim() || undefined,
-      });
-    }
-    setIsEditing(false);
-    toast.success('Metadata updated successfully');
+  const handleAddAuthorAfter = (index: number) => {
+    const updated = [...authorList];
+    updated.splice(index + 1, 0, 'New Author');
+    setIsAuthorsExpanded(true);
+    handleFieldChange('authors', updated);
   };
 
-  const handleCancel = () => {
-    setTitle(paper.title || '');
-    setAuthors(paper.authors?.join(', ') || '');
-    setJournal(paper.journal || '');
-    setPublisher(paper.publisher || '');
-    setYear(paper.year ? String(paper.year) : '');
-    setDoi(paper.doi || '');
-    setAbstract(paper.abstract || '');
-    setVolume(paper.volume || '');
-    setIssue(paper.issue || '');
-    setPages(paper.pages || '');
-    setItemType(paper.itemType || 'journalArticle');
-    setIsEditing(false);
+  const handleRemoveAuthorAtIndex = (index: number) => {
+    const updated = authorList.filter((_, idx) => idx !== index);
+    handleFieldChange('authors', updated.length ? updated : undefined);
   };
 
-  if (isEditing) {
-    return (
-      <div className="space-y-3.5 text-xs">
-        <div className="flex items-center justify-between pb-2 border-b border-border/40">
-          <span className="font-semibold text-foreground uppercase tracking-wider">
-            Edit Item Metadata
-          </span>
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCancel}
-              className="h-7 px-2.5 text-xs cursor-pointer"
-            >
-              <X className="size-3 mr-1" />
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              className="h-7 px-2.5 text-xs cursor-pointer"
-            >
-              <Check className="size-3 mr-1" />
-              Save
-            </Button>
-          </div>
-        </div>
+  const handleAddFirstAuthor = () => {
+    setIsAuthorsExpanded(true);
+    handleFieldChange('authors', ['New Author']);
+  };
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-muted-foreground">Item Type</label>
+  const isPublicUrl = paper.url && paper.url.startsWith('http') && !paper.url.includes('/api/files/');
+
+  return (
+    <div className="space-y-1 select-text">
+      {/* Zotero 7 Authentic 2-Column Fields Grid (Strictly Aligned) */}
+      <div className="space-y-0.5 divide-y divide-border/10">
+        {/* 1. Item Type */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-center text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none">Item Type</span>
+          <div className="flex items-center gap-2 min-w-0">
             <select
-              value={itemType}
-              onChange={(e) => setItemType(e.target.value)}
-              className="w-full p-1.5 rounded-md border border-border bg-background text-foreground text-xs outline-none focus:border-primary font-mono"
+              value={paper.itemType || 'journalArticle'}
+              onChange={(e) => handleFieldChange('itemType', e.target.value)}
+              className="w-full bg-transparent hover:bg-muted/40 focus:bg-background px-1.5 py-0.5 rounded border border-transparent focus:border-border text-foreground text-xs font-medium outline-none cursor-pointer transition-colors"
             >
               <option value="journalArticle">Journal Article</option>
               <option value="conferencePaper">Conference Paper</option>
@@ -266,250 +303,280 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
               <option value="bookSection">Book Section</option>
               <option value="thesis">Thesis</option>
               <option value="report">Report</option>
-              <option value="webpage">Webpage</option>
+              <option value="patent">Patent</option>
+              <option value="webpage">Web Page</option>
             </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-muted-foreground">Title *</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Paper title"
-              className="h-8 text-xs font-medium"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-muted-foreground">
-              Authors (comma separated)
-            </label>
-            <Input
-              value={authors}
-              onChange={(e) => setAuthors(e.target.value)}
-              placeholder="e.g. Ashish Vaswani, Noam Shazeer, Niki Parmar"
-              className="h-8 text-xs"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Publication / Venue</label>
-              <Input
-                value={journal}
-                onChange={(e) => setJournal(e.target.value)}
-                placeholder="e.g. NeurIPS / Nature"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Year</label>
-              <Input
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                placeholder="e.g. 2017"
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Publisher</label>
-              <Input
-                value={publisher}
-                onChange={(e) => setPublisher(e.target.value)}
-                placeholder="e.g. IEEE / Springer / arXiv"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">DOI</label>
-              <Input
-                value={doi}
-                onChange={(e) => setDoi(e.target.value)}
-                placeholder="10.xxxx/..."
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Volume</label>
-              <Input
-                value={volume}
-                onChange={(e) => setVolume(e.target.value)}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Issue</label>
-              <Input
-                value={issue}
-                onChange={(e) => setIssue(e.target.value)}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Pages</label>
-              <Input
-                value={pages}
-                onChange={(e) => setPages(e.target.value)}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-muted-foreground">Abstract</label>
-            <Textarea
-              value={abstract}
-              onChange={(e) => setAbstract(e.target.value)}
-              rows={4}
-              placeholder="Abstract text..."
-              className="text-xs leading-relaxed"
-            />
+            {paper.provenance?.isOpenAccess && (
+              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 shrink-0 font-medium select-none px-1.5 py-0.2 rounded bg-emerald-500/10 border border-emerald-500/20">
+                Open Access
+              </span>
+            )}
           </div>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="space-y-4 min-w-0 text-xs">
-      {/* 1. CLASSIFICATION & TOPBAR */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-border/30">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-[10px] font-mono capitalize">
-            {paper.itemType === 'preprint' ? 'Preprint' : paper.itemType || 'Journal Article'}
-          </Badge>
-          {paper.citationKey && (
-            <button
-              onClick={handleCopyCitationKey}
-              className="font-mono text-[10px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1 bg-muted/40 hover:bg-muted px-1.5 py-0.5 rounded transition-colors cursor-pointer"
-              title="Click to copy \cite{key}"
-            >
-              <Quote className="size-2.5 text-primary" />
-              <span>@{paper.citationKey}</span>
-            </button>
+        {/* 2. Title */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Title</span>
+          <InlineTextarea
+            value={paper.title || ''}
+            placeholder="Click to enter title..."
+            onSave={(val) => handleFieldChange('title', val || undefined)}
+            className="font-semibold text-foreground text-xs leading-snug"
+            rows={2}
+          />
+        </div>
+
+        {/* 3. Authors (Scalable multi-row with collapse/expand + Zotero-style add/remove) */}
+        <div className="py-1 space-y-1">
+          {authorList.length === 0 ? (
+            <div className="grid grid-cols-[80px_1fr] gap-2 items-center text-xs">
+              <span className="text-muted-foreground font-medium select-none">Author</span>
+              <button
+                onClick={handleAddFirstAuthor}
+                className="text-[11px] text-primary hover:underline text-left cursor-pointer flex items-center gap-1 font-medium"
+              >
+                <Plus className="size-3" />
+                <span>Add Author</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {visibleAuthors.map((authorName, idx) => (
+                <div key={idx} className="grid grid-cols-[80px_1fr] gap-2 items-center text-xs group">
+                  <span className="text-muted-foreground font-medium select-none truncate">
+                    {idx === 0 ? (authorList.length > 1 ? `Authors (${authorList.length})` : 'Author') : ''}
+                  </span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <InlineField
+                      value={authorName}
+                      placeholder="Author name..."
+                      onSave={(val) => handleUpdateAuthorAtIndex(idx, val)}
+                      className="text-foreground flex-1"
+                    />
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        onClick={() => handleAddAuthorAfter(idx)}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Add author below"
+                      >
+                        <Plus className="size-3" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveAuthorAtIndex(idx)}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Remove author"
+                      >
+                        <Minus className="size-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Expand / Collapse Toggle for Long Author Lists (>4 authors) */}
+              {authorList.length > 4 && (
+                <div className="grid grid-cols-[80px_1fr] gap-2 items-center text-xs pt-0.5">
+                  <span />
+                  <button
+                    onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
+                    className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer py-0.5 transition-colors hover:underline"
+                  >
+                    {isAuthorsExpanded ? (
+                      <>
+                        <ChevronUp className="size-3" />
+                        <span>Show less ({MAX_COLLAPSED_AUTHORS} of {authorList.length})</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="size-3" />
+                        <span>+ {authorList.length - MAX_COLLAPSED_AUTHORS} more authors (Show all {authorList.length})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={handleAutoResolveMetadata}
-            disabled={isResolving}
-            className="flex items-center gap-1 text-xs text-primary hover:underline font-medium disabled:opacity-50 cursor-pointer"
-            title="Auto-fetch full title, authors, year from CrossRef/arXiv"
-          >
-            {isResolving ? (
-              <Loader2 className="size-3 animate-spin text-primary" />
-            ) : (
-              <Sparkles className="size-3 text-primary" />
-            )}
-            <span>Sync Info</span>
-          </button>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer ml-2"
-          >
-            <Edit3 className="size-3" />
-            <span>Edit</span>
-          </button>
+        {/* 4. Publication / Journal */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Publication</span>
+          <InlineField
+            value={paper.journal || paper.publicationTitle || ''}
+            placeholder="Journal / Conference venue..."
+            onSave={(val) => {
+              handleFieldChange('journal', val || undefined);
+              handleFieldChange('publicationTitle', val || undefined);
+            }}
+            className="text-foreground font-medium"
+          />
         </div>
-      </div>
 
-      {/* Suggestion Banner when metadata is incomplete (e.g. arXiv ID filename) */}
-      {isMissingMetadata && (
-        <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-foreground">
-              {isRawArxivTitle ? 'Raw arXiv ID detected' : 'Incomplete metadata'}
-            </p>
-            <p className="text-[10px] text-muted-foreground truncate">
-              Click Sync to automatically pull title, authors & abstract.
-            </p>
-          </div>
-          <Button
-            size="sm"
-            onClick={handleAutoResolveMetadata}
-            disabled={isResolving}
-            className="h-6 px-2 text-[10px] gap-1 cursor-pointer shrink-0"
-          >
-            {isResolving ? <Loader2 className="size-2.5 animate-spin" /> : <Sparkles className="size-2.5" />}
-            Auto-Retrieve
-          </Button>
+        {/* 5. Publisher */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Publisher</span>
+          <InlineField
+            value={paper.publisher || ''}
+            placeholder="e.g. IEEE / Springer / Nature"
+            onSave={(val) => handleFieldChange('publisher', val || undefined)}
+            className="text-foreground"
+          />
         </div>
-      )}
 
-      {/* 2. TITLE & AUTHORSHIP (Typography) */}
-      <div className="space-y-1.5">
-        <h3 className="text-sm font-semibold text-foreground leading-snug select-text">
-          {paper.title || 'Untitled Document'}
-        </h3>
-        <p className="text-xs text-muted-foreground font-medium select-text">
-          {paper.authors?.length ? paper.authors.join('; ') : <span className="italic opacity-60">No authors listed</span>}
-        </p>
-      </div>
-
-      {/* 3. PUBLICATION DETAILS */}
-      <div className="pt-2 border-t border-border/20 space-y-1">
-        <span className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-          Publication Details
-        </span>
-        <DetailRow label="Venue / Journal" value={paper.journal || paper.publisher} />
-        <DetailRow label="Year" value={paper.year} mono />
-        {paper.volume && <DetailRow label="Volume" value={paper.volume} mono />}
-        {paper.issue && <DetailRow label="Issue" value={paper.issue} mono />}
-        {paper.pages && <DetailRow label="Pages" value={paper.pages} mono />}
-        {paper.publisher && <DetailRow label="Publisher" value={paper.publisher} />}
-        {paper.createdAt && (
-          <DetailRow
-            label="Date Added"
-            value={new Date(paper.createdAt).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+        {/* 6. Volume */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Volume</span>
+          <InlineField
+            value={paper.volume || ''}
+            placeholder="e.g. 30"
+            onSave={(val) => handleFieldChange('volume', val || undefined)}
+            className="text-foreground font-mono"
             mono
           />
+        </div>
+
+        {/* 7. Issue */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Issue</span>
+          <InlineField
+            value={paper.issue || ''}
+            placeholder="e.g. 2"
+            onSave={(val) => handleFieldChange('issue', val || undefined)}
+            className="text-foreground font-mono"
+            mono
+          />
+        </div>
+
+        {/* 8. Pages */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Pages</span>
+          <InlineField
+            value={paper.pages || ''}
+            placeholder="e.g. 5998–6008"
+            onSave={(val) => handleFieldChange('pages', val || undefined)}
+            className="text-foreground font-mono"
+            mono
+          />
+        </div>
+
+        {/* 9. Date / Year */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1">
+          <span className="text-muted-foreground font-medium select-none pt-1">Date</span>
+          <InlineField
+            value={paper.year ? String(paper.year) : ''}
+            placeholder="e.g. 2024"
+            onSave={(val) => {
+              const parsed = parseInt(val, 10);
+              handleFieldChange('year', isNaN(parsed) ? undefined : parsed);
+            }}
+            className="text-foreground font-mono"
+            mono
+          />
+        </div>
+
+        {/* 10. DOI */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1 group">
+          <span className="text-muted-foreground font-medium select-none pt-1">DOI</span>
+          <div className="flex items-center gap-1 min-w-0">
+            <InlineField
+              value={paper.doi || ''}
+              placeholder="10.xxxx/..."
+              onSave={(val) => handleFieldChange('doi', val || undefined)}
+              className="text-foreground font-mono text-[11px] flex-1"
+              mono
+            />
+            {isValidValue(paper.doi) && (
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a
+                  href={paper.doi!.startsWith('http') ? paper.doi : `https://doi.org/${paper.doi}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Open DOI Link"
+                >
+                  <ExternalLink className="size-3" />
+                </a>
+                <button
+                  onClick={() => copyToClipboard(paper.doi!, 'DOI')}
+                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Copy DOI"
+                >
+                  {copiedKey === 'DOI' ? <CheckCircle2 className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 11. Public URL */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-start text-xs py-1 group">
+          <span className="text-muted-foreground font-medium select-none pt-1">URL</span>
+          <div className="flex items-center gap-1 min-w-0">
+            <InlineField
+              value={paper.url || ''}
+              placeholder="https://..."
+              onSave={(val) => handleFieldChange('url', val || undefined)}
+              className="text-foreground flex-1"
+            />
+            {isPublicUrl && (
+              <a
+                href={paper.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Open URL"
+              >
+                <ExternalLink className="size-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* 12. Cite Key */}
+        <div className="grid grid-cols-[80px_1fr] gap-2 items-center text-xs py-1 group">
+          <span className="text-muted-foreground font-medium select-none">Cite Key</span>
+          <div className="flex items-center gap-1 min-w-0">
+            <InlineField
+              value={paper.citationKey || ''}
+              placeholder="e.g. zhao2023large"
+              onSave={(val) => handleFieldChange('citationKey', val || undefined)}
+              className="text-foreground font-mono text-[11px] flex-1"
+              mono
+            />
+            {isValidValue(paper.citationKey) && (
+              <button
+                onClick={() => copyToClipboard(`\\cite{${paper.citationKey}}`, 'Citation Key')}
+                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 shrink-0 transition-opacity"
+                title="Copy \cite{key}"
+              >
+                {copiedKey === 'Citation Key' ? <CheckCircle2 className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Subtle Source Footer + Auto Enrich Button */}
+      <div className="pt-2.5 border-t border-border/20 flex items-center justify-between text-[11px] text-muted-foreground select-none">
+        <div className="flex items-center gap-1.5">
+          <span>
+            Catalog: <strong className="font-medium text-foreground">{paper.provenance?.originProvider || (paper.doi ? 'CrossRef' : 'Manual')}</strong>
+          </span>
+          <button
+            onClick={handleAutoEnrich}
+            disabled={isEnriching}
+            className="inline-flex items-center gap-1 text-[11px] text-foreground hover:text-primary font-medium hover:underline cursor-pointer ml-1.5 transition-colors disabled:opacity-50"
+            title="Fetch full metadata from CrossRef, Semantic Scholar, OpenAlex & arXiv"
+          >
+            {isEnriching ? <Loader2 className="size-3 animate-spin text-muted-foreground" /> : <RefreshCw className="size-3 text-muted-foreground" />}
+            <span>{isEnriching ? 'Enriching...' : 'Auto-enrich'}</span>
+          </button>
+        </div>
+        {paper.createdAt && (
+          <span>Added {new Date(paper.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
         )}
       </div>
-
-      {/* 4. ACADEMIC IDENTIFIERS */}
-      <div className="pt-2 border-t border-border/20 space-y-1">
-        <span className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-          Identifiers
-        </span>
-        <DetailRow
-          label="DOI"
-          value={paper.doi}
-          href={
-            paper.doi
-              ? paper.doi.startsWith('http')
-                ? paper.doi
-                : `https://doi.org/${paper.doi}`
-              : undefined
-          }
-          mono
-        />
-        {paper.url && <DetailRow label="URL" value={paper.url} href={paper.url} />}
-        {paper.issn && <DetailRow label="ISSN" value={paper.issn} mono />}
-        {paper.isbn && <DetailRow label="ISBN" value={paper.isbn} mono />}
-      </div>
-
-      {/* 5. ABSTRACT */}
-      {paper.abstract && (
-        <div className="pt-2 border-t border-border/20 space-y-1">
-          <span className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Abstract
-          </span>
-          <p className="text-xs text-foreground/90 leading-relaxed max-h-48 overflow-y-auto bg-muted/20 p-2.5 rounded-lg border border-border/30 select-text whitespace-pre-wrap">
-            {paper.abstract}
-          </p>
-        </div>
-      )}
     </div>
   );
 }

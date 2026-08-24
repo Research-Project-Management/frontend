@@ -60,15 +60,15 @@ export const formatBytes = (bytes: number, decimals = 1): string => {
 
 // ─── User Initials ────────────────────────────────────────────────────────────
 
-/**
- * Get user initials from a full name.
- * @example getInitials("Nguyen Van A") → "NV"
- */
-export const getInitials = (name: string, max = 2): string =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, max)
-    .map((n) => n[0]?.toUpperCase() ?? '')
-    .join('');
+export const getInitials = (name?: string | null, max = 2): string => {
+  if (!name || typeof name !== 'string') return 'U';
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, max)
+      .map((n) => n[0]?.toUpperCase() ?? '')
+      .join('') || 'U'
+  );
+};
 

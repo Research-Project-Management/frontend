@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, SlidersHorizontal, LogOut } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -16,13 +16,24 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
   const { user, isLoading, logout } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialTab, setInitialTab] = useState('profile');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const openModal = (tab: string) => {
     setInitialTab(tab);
     setIsModalOpen(true);
   };
 
-  if (isLoading || !user) return null;
+  if (!mounted || isLoading || !user) {
+    return (
+      <div className="size-8 flex items-center justify-center">
+        <div className="size-7 rounded-full bg-muted/60" />
+      </div>
+    );
+  }
 
   return (
     <>

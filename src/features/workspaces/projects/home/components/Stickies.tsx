@@ -16,7 +16,7 @@ export default function Stickies() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { query, mutations } = useSticky(workspaceId, "", undefined);
-  const notes = (query.data || []) as Sticky[];
+  const notes = useMemo(() => (query.data || []) as Sticky[], [query.data]);
   const isLoading = query.isLoading;
   const isCreating = mutations.create.isPending;
 
@@ -29,7 +29,7 @@ export default function Stickies() {
     );
   }, [notes, searchQuery]);
 
-  const preview = useMemo(() => filteredNotes.slice(0, 7), [filteredNotes]);
+  const preview = useMemo(() => Array.isArray(filteredNotes) ? filteredNotes.slice(0, 7) : [], [filteredNotes]);
   const hasMore = filteredNotes.length > 3;
 
   const handleAdd = () => {

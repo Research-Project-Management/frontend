@@ -177,14 +177,12 @@ export async function apiFetch<T>(
     }
 
     // Auto-refresh on 401
-    const isAuthEndpoint =
+    const isAuthBypass =
       path.includes('/auth/refresh') ||
       path.includes('/auth/login') ||
-      path.includes('/auth/register') ||
-      path.includes('/auth/user') ||
-      path.includes('/auth/me');
+      path.includes('/auth/register');
 
-    if (response.status === 401 && !isAuthEndpoint) {
+    if (response.status === 401 && !isAuthBypass) {
       const newToken = await tryRefresh();
 
       if (newToken) {

@@ -58,6 +58,8 @@ function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   );
 }
 
+const EXPLANATION_ONLY_COMMANDS = ["/explain", "/cite", "/translate"];
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 function normalizeSelectionContext(ctx?: ChatMessage["selectionContext"] | null): ChatMessage["selectionContext"] | undefined {
@@ -795,9 +797,6 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
     return ops;
   }, []);
 
-  // Slash commands that are explanation-only (no JSON edit response expected)
-  const EXPLANATION_ONLY_COMMANDS = ["/explain", "/cite", "/translate"];
-
   const recordEditStatus = useCallback((status: AiEditStatus) => {
     const lastAssistant = [...messagesRef.current]
       .reverse()
@@ -1100,7 +1099,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
       streamRef.current = "";
       abortRef.current = null;
     }
-  }, [input, isStreaming, chatId, workspaceId, pendingEditResponse, getRichContext, activeFilePage, currentPage, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent, clearPendingEdit]);
+  }, [input, isStreaming, chatId, workspaceId, pendingEditResponse, getRichContext, activeFilePage, currentPage, activeCommand, compileErrors, pinnedContext, autoApply, parseApplyBlocks, handleApplyOp, editorRef, currentFileContent, clearPendingEdit, liveSelection]);
 
   // ΓöÇΓöÇ Auto-preview: whenever a pending edit is set, show it in the editor immediately ΓöÇΓöÇ
   useEffect(() => {

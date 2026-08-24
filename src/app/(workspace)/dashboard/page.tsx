@@ -11,15 +11,14 @@ export default function DashboardPage() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const { data, isLoading: isWorkspacesLoading } = useWorkspaces();
 
-  const workspaces: any[] = data?.workspaces ?? [];
-
   const isLoading = isAuthLoading || isWorkspacesLoading;
 
   const redirectTarget = useMemo(() => {
     if (isLoading) return null;
     if (!user) return '/login';
+    const workspaces = data?.workspaces ?? [];
     return workspaces.length > 0 ? `/${workspaces[0].url}` : '/create-workspace';
-  }, [isLoading, user, workspaces]);
+  }, [isLoading, user, data?.workspaces]);
 
   useEffect(() => {
     if (!redirectTarget) return;

@@ -455,28 +455,36 @@ export function useProjects(workspaceId?: string): UseProjectsReturn {
     [projectsList, query.isLoading, query.isError]
   );
 
+  const createMutAsync = createMutation.mutateAsync;
+  const updateMutAsync = updateMutation.mutateAsync;
+  const archiveMutAsync = archiveMutation.mutateAsync;
+  const restoreMutAsync = restoreMutation.mutateAsync;
+  const toggleFavMutAsync = toggleFavMutation.mutateAsync;
+  const deleteMutAsync = deleteMutation.mutateAsync;
+  const queryRefetch = query.refetch;
+
   const actions: UseProjectsActions = useMemo(
     () => ({
-      refetch: query.refetch,
+      refetch: queryRefetch,
       createProject: (data: CreateProjectInput) =>
-        createMutation.mutateAsync({ workspaceId: id!, ...data }),
+        createMutAsync({ workspaceId: id!, ...data }),
       updateProject: (data: Partial<UpdateProjectInput> & { projectId: string }) =>
-        updateMutation.mutateAsync(data),
-      archiveProject: (projectId: string) => archiveMutation.mutateAsync({ projectId }),
-      restoreProject: (projectId: string) => restoreMutation.mutateAsync({ projectId }),
+        updateMutAsync(data),
+      archiveProject: (projectId: string) => archiveMutAsync({ projectId }),
+      restoreProject: (projectId: string) => restoreMutAsync({ projectId }),
       toggleFavorite: (projectId: string, isFavorite: boolean) =>
-        toggleFavMutation.mutateAsync({ projectId, isFavorite }),
-      deleteProject: (projectId: string) => deleteMutation.mutateAsync({ projectId }),
+        toggleFavMutAsync({ projectId, isFavorite }),
+      deleteProject: (projectId: string) => deleteMutAsync({ projectId }),
     }),
     [
       id,
-      query.refetch,
-      createMutation,
-      updateMutation,
-      archiveMutation,
-      restoreMutation,
-      toggleFavMutation,
-      deleteMutation,
+      queryRefetch,
+      createMutAsync,
+      updateMutAsync,
+      archiveMutAsync,
+      restoreMutAsync,
+      toggleFavMutAsync,
+      deleteMutAsync,
     ]
   );
 
@@ -557,34 +565,44 @@ export function useProject(
     [project, query.data, query.isLoading, query.isError]
   );
 
+  const updateMutAsync = updateMutation.mutateAsync;
+  const archiveMutAsync = archiveMutation.mutateAsync;
+  const restoreMutAsync = restoreMutation.mutateAsync;
+  const toggleFavMutAsync = toggleFavMutation.mutateAsync;
+  const deleteMutAsync = deleteMutation.mutateAsync;
+  const addMemberMutAsync = addMemberMutation.mutateAsync;
+  const updateRoleMutAsync = updateRoleMutation.mutateAsync;
+  const removeMemberMutAsync = removeMemberMutation.mutateAsync;
+  const projectQueryRefetch = query.refetch;
+
   const actions: UseProjectActions = useMemo(
     () => ({
-      refetch: query.refetch,
+      refetch: projectQueryRefetch,
       update: (data: Partial<UpdateProjectInput>) =>
-        updateMutation.mutateAsync({ projectId, ...data }),
-      archive: () => archiveMutation.mutateAsync({ projectId }),
-      restore: () => restoreMutation.mutateAsync({ projectId }),
+        updateMutAsync({ projectId, ...data }),
+      archive: () => archiveMutAsync({ projectId }),
+      restore: () => restoreMutAsync({ projectId }),
       toggleFavorite: (isFavorite: boolean) =>
-        toggleFavMutation.mutateAsync({ projectId, isFavorite }),
-      delete: () => deleteMutation.mutateAsync({ projectId }),
+        toggleFavMutAsync({ projectId, isFavorite }),
+      delete: () => deleteMutAsync({ projectId }),
       addMember: (userId: string, role?: string) =>
-        addMemberMutation.mutateAsync({ projectId, userId, role }),
+        addMemberMutAsync({ projectId, userId, role }),
       updateMemberRole: (userId: string, role: string) =>
-        updateRoleMutation.mutateAsync({ projectId, userId, role }),
+        updateRoleMutAsync({ projectId, userId, role }),
       removeMember: (userId: string) =>
-        removeMemberMutation.mutateAsync({ projectId, userId }),
+        removeMemberMutAsync({ projectId, userId }),
     }),
     [
       projectId,
-      query.refetch,
-      updateMutation,
-      archiveMutation,
-      restoreMutation,
-      toggleFavMutation,
-      deleteMutation,
-      addMemberMutation,
-      updateRoleMutation,
-      removeMemberMutation,
+      projectQueryRefetch,
+      updateMutAsync,
+      archiveMutAsync,
+      restoreMutAsync,
+      toggleFavMutAsync,
+      deleteMutAsync,
+      addMemberMutAsync,
+      updateRoleMutAsync,
+      removeMemberMutAsync,
     ]
   );
 
@@ -650,17 +668,22 @@ export function useProjectMembers(projectId: string): UseProjectMembersReturn {
     [members, query.isLoading, query.isError]
   );
 
+  const memberAddMutAsync = addMemberMutation.mutateAsync;
+  const memberRoleMutAsync = updateRoleMutation.mutateAsync;
+  const memberRemoveMutAsync = removeMemberMutation.mutateAsync;
+  const memberQueryRefetch = query.refetch;
+
   const actions: UseProjectMembersActions = useMemo(
     () => ({
-      refetch: query.refetch,
+      refetch: memberQueryRefetch,
       addMember: (userId: string, role?: string) =>
-        addMemberMutation.mutateAsync({ projectId, userId, role }),
+        memberAddMutAsync({ projectId, userId, role }),
       updateMemberRole: (userId: string, role: string) =>
-        updateRoleMutation.mutateAsync({ projectId, userId, role }),
+        memberRoleMutAsync({ projectId, userId, role }),
       removeMember: (userId: string) =>
-        removeMemberMutation.mutateAsync({ projectId, userId }),
+        memberRemoveMutAsync({ projectId, userId }),
     }),
-    [projectId, query.refetch, addMemberMutation, updateRoleMutation, removeMemberMutation]
+    [projectId, memberQueryRefetch, memberAddMutAsync, memberRoleMutAsync, memberRemoveMutAsync]
   );
 
   return {

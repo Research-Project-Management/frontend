@@ -5,7 +5,7 @@ import { Copy, Check, FileCode, BookOpen, Quote } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { useCslCitation } from '@/features/workspaces/library/hooks/use-library';
+import { useCslCitation } from '@/features/workspaces/library/hooks/library/use-library';
 import type { Paper, CslStyle } from '@/features/workspaces/library/types/library.types';
 import { getPaperCitationKey } from '@/features/workspaces/library/utils/library.util';
 

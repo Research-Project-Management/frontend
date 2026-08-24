@@ -78,26 +78,29 @@ function AddCard({
 export function StickiesWidget() {
   const { workspaceId } = useParams() as { workspaceId: string };
   const api = useSticky(workspaceId || '', undefined, undefined, { enabled: !!workspaceId });
-  const notes = api.query.data || [];
+  const notes = useMemo(() => api.query.data || [], [api.query.data]);
   const isLoading = api.query.isLoading;
 
+  const createStickyMutate = api.mutations.create.mutate;
+  const isCreatePending = api.mutations.create.isPending;
+
   const handleAdd = useCallback(() => {
-    if (!workspaceId || api.mutations.create.isPending) return;
+    if (!workspaceId || isCreatePending) return;
     if (notes.some(isStickyEmpty)) return;
 
     const lastColor = notes[0]?.color;
     const idx = STICKY_COLOR_CYCLE.indexOf(lastColor || '');
     const color = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];
-    api.mutations.create.mutate({
+    createStickyMutate({
       workspaceId,
       content: '<p></p>',
       color,
       title: '',
       position: { x: 0, y: 0 },
     });
-  }, [workspaceId, notes, api.mutations.create]);
+  }, [workspaceId, notes, createStickyMutate, isCreatePending]);
 
-  const preview = useMemo(() => notes.slice(0, 5), [notes]);
+  const preview = useMemo(() => Array.isArray(notes) ? notes.slice(0, 5) : [], [notes]);
 
   const viewAllAction = notes.length > 0 && (
     <Link

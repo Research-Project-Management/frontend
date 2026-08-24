@@ -129,7 +129,7 @@ export function usePreview(item: StorageItem | null) {
     }
 
     return () => { signal.cancelled = true; };
-  }, [item?.id, item?.url, renderPdfPreview, processNewPdf]);
+  }, [item, renderPdfPreview, processNewPdf]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;

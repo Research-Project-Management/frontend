@@ -696,7 +696,6 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
     if (!files) return;
     const names = files.map((f: any) => f.title);
     setTexFiles(names);
-    console.log("[FilesTab] Page files updated:", names);
   }, [files, setTexFiles]);
 
   useEffect(() => {

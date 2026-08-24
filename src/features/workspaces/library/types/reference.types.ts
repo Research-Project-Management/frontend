@@ -34,5 +34,7 @@ export type ReferenceData = {
   keywords?: string[];
   pmid?: string;
   pmcid?: string;
+  tldr?: string;
+  openAccessPdfUrl?: string;
   extra?: string;
 };

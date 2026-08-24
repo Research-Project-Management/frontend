@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { Share2, ZoomIn, ZoomOut, RotateCcw, Search, Sparkles } from 'lucide-react';
-import { useWorkspaceKnowledgeGraph } from '../../hooks/use-library';
+import { useWorkspaceKnowledgeGraph } from '../../hooks/library/use-library';
 import { cn } from '@/shared/lib/utils';
 import { Badge } from '@/shared/components/ui/badge';
 
@@ -31,8 +31,8 @@ export const KnowledgeGraphModal: React.FC<KnowledgeGraphModalProps> = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
 
-  const nodes = graphData?.nodes || [];
-  const edges = graphData?.edges || [];
+  const nodes = useMemo(() => graphData?.nodes || [], [graphData?.nodes]);
+  const edges = useMemo(() => graphData?.edges || [], [graphData?.edges]);
 
   // Calculate circular layout coordinates for nodes
   const nodePositions = useMemo(() => {
@@ -58,11 +58,13 @@ export const KnowledgeGraphModal: React.FC<KnowledgeGraphModalProps> = ({
   const filteredNodes = useMemo(() => {
     if (!search.trim()) return nodes;
     const q = search.toLowerCase();
-    return nodes.filter(
-      (n) =>
-        n.title.toLowerCase().includes(q) ||
-        (Array.isArray(n.authors) && n.authors.some((a) => a.toLowerCase().includes(q))),
-    );
+    return nodes.filter((n) => {
+      const title = n.title || '';
+      return (
+        title.toLowerCase().includes(q) ||
+        (Array.isArray(n.authors) && n.authors.some((a) => a.toLowerCase().includes(q)))
+      );
+    });
   }, [nodes, search]);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
@@ -182,9 +184,10 @@ export const KnowledgeGraphModal: React.FC<KnowledgeGraphModalProps> = ({
                   if (!pos) return null;
 
                   const isSelected = selectedNodeId === node.id;
+                  const nodeTitle = node.title || 'Untitled';
                   const isMatching =
                     search &&
-                    (node.title.toLowerCase().includes(search.toLowerCase()) ||
+                    (nodeTitle.toLowerCase().includes(search.toLowerCase()) ||
                       node.authors?.some((a) => a.toLowerCase().includes(search.toLowerCase())));
 
                   return (
@@ -211,7 +214,7 @@ export const KnowledgeGraphModal: React.FC<KnowledgeGraphModalProps> = ({
                           isSelected && 'fill-primary font-bold text-[11px]',
                         )}
                       >
-                        {node.title.slice(0, 20)}...
+                        {nodeTitle.slice(0, 20)}...
                       </text>
                     </g>
                   );
@@ -224,7 +227,7 @@ export const KnowledgeGraphModal: React.FC<KnowledgeGraphModalProps> = ({
           {selectedNode && (
             <div className="w-64 border-l border-border/70 p-3.5 bg-card/60 space-y-2.5 text-xs overflow-y-auto">
               <h4 className="font-semibold text-foreground text-xs leading-snug">
-                {selectedNode.title}
+                {selectedNode.title || 'Untitled'}
               </h4>
               <p className="text-[11px] text-muted-foreground">
                 {selectedNode.authors?.join(', ') || 'Unknown Authors'}

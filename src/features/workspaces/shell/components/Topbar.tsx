@@ -62,9 +62,7 @@ export default function Topbar() {
           </Tooltip>
         </TooltipProvider>
 
-        {!isLoading && user && workspaceId && (
-          <AccountDropdown workspaceId={workspaceId} />
-        )}
+        <AccountDropdown workspaceId={workspaceId} />
       </div>
     </nav>
   );

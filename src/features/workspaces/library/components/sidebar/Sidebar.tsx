@@ -26,8 +26,8 @@ import {
 import Link from 'next/link';
 import { cn } from '@/shared/lib/utils';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';
-import { usePapers } from '@/features/workspaces/library/hooks/data/use-papers';
+import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
+import { usePapers } from '@/features/workspaces/library/hooks/library/use-papers';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
@@ -443,8 +443,14 @@ export default function LibrarySideBar() {
   const isDuplicatesActive = pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates');
   const isTrashActive = pathname === `${basePath}/trash` || (pathname === basePath && currentFilter === 'trash');
 
-  const collections = collectionService.state.collections ?? [];
-  const papers = paperService.state.allPapers ?? [];
+  const collections = useMemo(
+    () => collectionService.state.collections ?? [],
+    [collectionService.state.collections],
+  );
+  const papers = useMemo(
+    () => paperService.state.allPapers ?? [],
+    [paperService.state.allPapers],
+  );
 
   // Extract tags from papers
   const { allTags, tagCounts } = useMemo(() => {

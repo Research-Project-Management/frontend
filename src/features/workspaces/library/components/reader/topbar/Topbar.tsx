@@ -156,7 +156,7 @@ export default function Topbar({
               {paper?.title || 'Loading paper...'}
             </h1>
           )}
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
             {paper?.authors?.length
               ? paper.authors.join(', ')
               : paper?.year

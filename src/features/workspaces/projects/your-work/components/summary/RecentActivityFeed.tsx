@@ -20,7 +20,7 @@ export function RecentActivityFeed({
   onTaskClick,
   taskProjectMap = {},
 }: RecentActivityFeedProps) {
-  const displayItems = limit > 0 ? activities.slice(0, limit) : activities;
+  const displayItems = Array.isArray(activities) && limit > 0 ? activities.slice(0, limit) : (Array.isArray(activities) ? activities : []);
 
   return (
     <div>

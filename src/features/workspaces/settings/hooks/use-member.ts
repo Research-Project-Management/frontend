@@ -170,37 +170,42 @@ export function useMember(workspaceId: string) {
     }
   }, [sortField]);
 
+  const updateRoleMutate = updateRoleMutation.mutate;
+  const removeMutate = removeMutation.mutate;
+  const leaveMutate = leaveMutation.mutate;
+  const addMutateAsync = addMutation.mutateAsync;
+
   const handleUpdateRole = useCallback(
     (userId: string, newRole: WorkspaceRole) => {
-      updateRoleMutation.mutate({ userId, newRole });
+      updateRoleMutate({ userId, newRole });
     },
-    [updateRoleMutation],
+    [updateRoleMutate],
   );
 
   const handleRemoveMember = useCallback(
     (userId: string) => {
-      removeMutation.mutate(userId, {
+      removeMutate(userId, {
         onSuccess: () => setMemberToRemove(null),
       });
     },
-    [removeMutation],
+    [removeMutate],
   );
 
   const handleLeave = useCallback(() => {
-    leaveMutation.mutate();
-  }, [leaveMutation]);
+    leaveMutate();
+  }, [leaveMutate]);
 
   const handleInviteMembers = useCallback(
     async (emails: string[], role: WorkspaceRole) => {
       for (const email of emails) {
         const trimmed = email.trim();
         if (trimmed) {
-          await addMutation.mutateAsync({ userId: trimmed, role });
+          await addMutateAsync({ userId: trimmed, role });
         }
       }
       setInviteModalOpen(false);
     },
-    [addMutation],
+    [addMutateAsync],
   );
 
   const handleImportCsv = useCallback(
@@ -209,7 +214,7 @@ export function useMember(workspaceId: string) {
       for (const { email, role } of rows) {
         if (email?.includes('@')) {
           try {
-            await addMutation.mutateAsync({ userId: email.trim(), role: role || 'member' });
+            await addMutateAsync({ userId: email.trim(), role: role || 'member' });
             count++;
           } catch {}
         }
@@ -217,7 +222,7 @@ export function useMember(workspaceId: string) {
       toast.success(`Imported ${count} members successfully`);
       setImportModalOpen(false);
     },
-    [addMutation],
+    [addMutateAsync],
   );
 
   return {

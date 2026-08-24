@@ -188,18 +188,20 @@ export function useWorklogs(projectId: string) {
     },
   });
 
+  const createLogMutate = createMutation.mutate;
   const addLog = useCallback(
     (data: { taskTitle: string; hours: number; date: string; description: string }) => {
-      createMutation.mutate(data);
+      createLogMutate(data);
     },
-    [createMutation]
+    [createLogMutate]
   );
 
+  const deleteLogMutate = deleteMutation.mutate;
   const deleteLog = useCallback(
     (id: string) => {
-      deleteMutation.mutate(id);
+      deleteLogMutate(id);
     },
-    [deleteMutation]
+    [deleteLogMutate]
   );
 
   return {

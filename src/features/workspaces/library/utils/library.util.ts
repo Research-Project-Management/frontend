@@ -1,5 +1,5 @@
 import type { Paper, Collection, Note, ReferenceData } from '../types/library.types';
-import { fetchReferenceByDoi, searchReferences } from '../services/reference.service';
+import { fetchReferenceByDoi, searchReferences, resolveAcademicQuery } from '../services/reference.service';
 
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
 
@@ -24,19 +24,21 @@ export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): stri
 /**
  * Generates or extracts a standardized citation key for BibTeX/LaTeX (e.g. "vaswani2017attention").
  */
-export function getPaperCitationKey(paper: Partial<Paper>): string {
-  if (paper.citationKey && paper.citationKey.trim().length > 0) {
+export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
+  if (!paper) return 'ref2024paper';
+  if (paper.citationKey && typeof paper.citationKey === 'string' && paper.citationKey.trim().length > 0) {
     return paper.citationKey.trim();
   }
 
-  const firstAuthor = paper.authors?.[0];
+  const rawFirstAuthor = paper.authors?.[0];
+  const firstAuthor = typeof rawFirstAuthor === 'string' ? rawFirstAuthor : (rawFirstAuthor as any)?.name || '';
   const authorKey = firstAuthor
     ? firstAuthor.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
     : 'ref';
 
   const yearKey = paper.year ? String(paper.year).slice(-4) : '2024';
 
-  const titleWord = paper.title
+  const titleWord = paper.title && typeof paper.title === 'string'
     ? paper.title
         .toLowerCase()
         .replace(/[^a-z0-9\s]/g, '')
@@ -44,7 +46,7 @@ export function getPaperCitationKey(paper: Partial<Paper>): string {
         .find((w: string) => !['a', 'an', 'the', 'on', 'in', 'for', 'of', 'and', 'with', 'via'].includes(w)) || 'paper'
     : 'paper';
 
-  return `${authorKey}${yearKey}${titleWord}`;
+  return `${authorKey || 'ref'}${yearKey || '2024'}${titleWord || 'paper'}`;
 }
 
 // ── 2. Notes Normalization ───────────────────────────────────────────────────
@@ -83,7 +85,7 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
 // ── 3. DOI & Citation Helpers ────────────────────────────────────────────────
 
 export function cleanDoi(doi?: string | null): string {
-  if (!doi) return '';
+  if (!doi || typeof doi !== 'string') return '';
   return doi
     .trim()
     .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
@@ -648,19 +650,67 @@ export class DoiMetadataEngine {
 }
 
 export async function extractMetadata(file: File): Promise<PdfMetadata> {
+  const cleanTitle = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim();
   const metadata: PdfMetadata = {
-    title: file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '),
+    title: cleanTitle,
     extraFields: {},
   };
 
-  const filenameDoi = extractDoiFromText(file.name);
-  if (filenameDoi) {
-    metadata.doi = filenameDoi;
+  let detectedDoi = extractDoiFromText(file.name);
+  let detectedArxiv = extractArxivId(file.name);
+
+  // If no identifier in filename, inspect first 128KB of PDF buffer to find embedded DOI or arXiv ID
+  if (!detectedDoi && !detectedArxiv && file.size > 0) {
     try {
-      const enriched = await enrichPaperWithCrossref(filenameDoi);
-      return { ...metadata, ...enriched };
+      const slice = file.slice(0, Math.min(file.size, 128 * 1024));
+      const text = await slice.text();
+      detectedDoi = extractDoiFromText(text);
+      detectedArxiv = extractArxivId(text);
     } catch {
-      return metadata;
+      // ignore
+    }
+  }
+
+  const queryCandidate = detectedDoi || detectedArxiv || (cleanTitle.length > 5 ? cleanTitle : '');
+
+  if (queryCandidate) {
+    try {
+      const res = await resolveAcademicQuery(queryCandidate);
+      if (res && res.metadata && res.metadata.title) {
+        const ref = res.metadata;
+        return {
+          title: ref.title || cleanTitle,
+          authors: ref.authors?.length ? ref.authors : undefined,
+          author: ref.authors?.[0],
+          journal: ref.journal || ref.publisher,
+          publicationTitle: ref.journal || ref.publisher,
+          publisher: ref.publisher,
+          year: ref.year ? Number(ref.year) : undefined,
+          volume: ref.volume,
+          issue: ref.issue,
+          pages: ref.pages,
+          doi: ref.doi || (detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined),
+          url: ref.url || (ref.doi ? `https://doi.org/${ref.doi}` : undefined),
+          abstract: ref.abstract,
+          type: ref.itemType || ref.type || 'journalArticle',
+          itemType: ref.itemType || ref.type || 'journalArticle',
+          crossrefEnriched: true,
+          extraFields: {
+            provider: res.provider,
+            queryType: res.queryType,
+          },
+        };
+      }
+    } catch {
+      // Fallback to direct DOI lookup if DOI was detected
+      if (detectedDoi) {
+        try {
+          const enriched = await enrichPaperWithCrossref(detectedDoi);
+          return { ...metadata, ...enriched };
+        } catch {
+          // ignore
+        }
+      }
     }
   }
 

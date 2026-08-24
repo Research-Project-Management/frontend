@@ -64,7 +64,7 @@ export function useTopbar({
     window.dispatchEvent(event);
   };
 
-  const performSingleFileUpload = async (file: File, targetFolder: string | null) => {
+  const performSingleFileUpload = useCallback(async (file: File, targetFolder: string | null) => {
     if (!projectId) return;
     const uploadPromise = async () => {
       const url = await uploadFile(file, {
@@ -89,7 +89,7 @@ export function useTopbar({
     
     // Await the toast promise execution so the loop waits for this to finish
     await uploadPromise().catch((err) => console.error(err));
-  };
+  }, [projectId, uploadFile, createFileRecord]);
 
   const handleUploadFiles = useCallback(async (filesToUpload: File[], targetFolder: string | null) => {
     if (!projectId) return;
@@ -128,7 +128,7 @@ export function useTopbar({
         console.error(err);
       }
     }
-  }, [uploadFile, projectId, createFileRecord]);
+  }, [projectId, performSingleFileUpload]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

@@ -7,7 +7,7 @@ import {
   getAuthToken,
   getRefreshToken,
 } from '@/shared/lib/api';
-import { ApiError } from '@/shared/types/api.types';
+import { ApiError, isApiError } from '@/shared/types/api.types';
 import type {
   AuthUser,
   LoginPayload,
@@ -45,11 +45,11 @@ export const getUser = async (): Promise<AuthUser | null> => {
     const data = await apiGet<{ user: AuthUser }>('/auth/user');
     return data.user;
   } catch (err: unknown) {
-    if (err instanceof ApiError && err.status === 401) {
+    if (isApiError(err) && (err.statusCode === 401 || err.status === 401)) {
       removeAuthToken();
       return null;
     }
-    throw err;
+    return null;
   }
 };
 

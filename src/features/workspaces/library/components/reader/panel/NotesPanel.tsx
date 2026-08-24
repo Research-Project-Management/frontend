@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { Loader2, Plus, Edit3, Trash2, Calendar, FileText, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from '@/shared/components/ui/button';
-import { usePapers } from "@/features/workspaces/library/hooks/data/use-papers";
+import { usePapers } from "@/features/workspaces/library/hooks/library/use-papers";
 import type { Paper, Note } from "@/features/workspaces/library/types/library.types";
 
 interface NotesPanelProps {
@@ -70,6 +70,8 @@ export default function NotesPanel({
     });
   }, [paper.notes, paper.createdAt, paper.updatedAt]);
 
+  const updatePaper = paperService.actions.updatePaper;
+
   const saveNotes = useCallback(
     (
       nextNotes: Array<{
@@ -81,12 +83,12 @@ export default function NotesPanel({
       successMessage: string,
     ) => {
       const stringNotes = nextNotes.map((n) => (typeof n === 'string' ? n : n.content));
-      paperService.actions.updatePaper(
+      updatePaper(
         { paperId: paper.id, notes: stringNotes as any },
         { onSuccess: () => toast.success(successMessage) },
       );
     },
-    [paper.id, paperService.actions.updatePaper],
+    [paper.id, updatePaper],
   );
 
   const handleAddNote = () => {
@@ -160,13 +162,13 @@ export default function NotesPanel({
   return (
     <div className="flex h-full flex-col bg-background">
       {/* Add note box */}
-      <div className="border-b border-border bg-background/80 p-3.5">
-        <div className="rounded-xl border border-border bg-card p-3 shadow-sm transition-all focus-within:border-primary/40 focus-within:shadow-md">
+      <div className="border-b border-border bg-background p-3.5">
+        <div className="rounded-xl border border-border bg-card p-3 transition-colors focus-within:border-primary/40">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               New Note
             </label>
-            <span className="text-[10px] text-muted-foreground/50">Ctrl+Enter to save</span>
+            <span className="text-xs text-muted-foreground/60">Ctrl+Enter to save</span>
           </div>
           <textarea
             ref={textareaRef}
@@ -182,7 +184,7 @@ export default function NotesPanel({
               size="sm"
               onClick={handleAddNote}
               disabled={!newNote.trim() || paperService.state.isUpdating}
-              className="gap-1.5 h-8 text-xs font-semibold"
+              className="gap-1.5 h-8 text-xs font-semibold shadow-none"
             >
               {paperService.state.isUpdating ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -217,7 +219,7 @@ export default function NotesPanel({
               return (
                 <li
                   key={note.id}
-                  className="group relative rounded-xl border border-border bg-card p-3.5 shadow-sm transition-all hover:border-border/80 hover:shadow-md"
+                  className="group relative rounded-xl border border-border bg-card p-3.5 transition-colors hover:border-border/80"
                 >
                   {isEditing ? (
                     <div className="space-y-2.5">

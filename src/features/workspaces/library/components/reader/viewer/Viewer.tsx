@@ -249,7 +249,7 @@ export default function Viewer({
         {/* Floating AI & Action menu */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-lg shadow-xl border border-border/30 backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-lg border border-border/40 backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -267,7 +267,7 @@ export default function Viewer({
               className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold hover:bg-background/20 transition-colors"
               title="Ask AI about selected text"
             >
-              <img src="/Chat.svg" alt="AI" className="size-3.5" />
+              <img src="/Chat.svg" alt="AI" className="size-3.5 invert dark:invert-0" />
               Ask AI
             </button>
 
@@ -282,7 +282,7 @@ export default function Viewer({
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 transition-colors"
                 title="Add selected text to a new note"
               >
-                <StickyNote className="size-3.5 text-primary" />
+                <StickyNote className="size-3.5 text-background" />
                 Note
               </button>
             ) : null}

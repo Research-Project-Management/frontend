@@ -139,11 +139,11 @@ export function useActiveDocument() {
   }, [editorTitle]);
 
   const { openTab, closeAllForProject, getTabs } = useTabsStore();
-  const tabs = pageId ? getTabs(pageId) : [];
 
   // Restore selectedAsset if active fileId is an asset tab
   useEffect(() => {
     if (fileId && (!selectedAsset || selectedAsset.id !== fileId)) {
+      const tabs = pageId ? getTabs(pageId) : [];
       const tab = tabs.find((t: { id: string; fileUrl?: string; title: string }) => t.id === fileId);
       if (tab && tab.fileUrl) {
         setSelectedAsset({
@@ -153,7 +153,7 @@ export function useActiveDocument() {
         });
       }
     }
-  }, [fileId, selectedAsset, tabs, setSelectedAsset]);
+  }, [fileId, selectedAsset, pageId, getTabs, setSelectedAsset]);
 
   const autoCompileFiredRef = useRef<string | null>(null);
   const prevPageIdRef = useRef<string | null>(null);

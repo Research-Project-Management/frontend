@@ -251,7 +251,7 @@ export function TaskDetailModal({
       completed,
       attachments,
     };
-  }, [title, description, columnId, dueDate, startDate, recurrence, reminder, labels, assigneeId, checklists, completed, attachments]);
+  }, [title, description, columnId, priority, dueDate, startDate, recurrence, reminder, labels, assigneeId, checklists, completed, attachments]);
 
   const hasUnsavedChanges = useMemo(() => {
     if (!open) return false;

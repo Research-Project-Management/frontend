@@ -386,12 +386,12 @@ export function Topbar({
                               <Avatar className="size-4.5 shrink-0">
                                 <AvatarImage src={user.avatar} />
                                 <AvatarFallback className="text-[9px]">
-                                  {user.name.slice(0, 2).toUpperCase()}
+                                  {(user.name || 'U').slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                             ) : (
                               <div className="size-4.5 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold shrink-0">
-                                {user.name.slice(0, 1)}
+                                {(user.name || 'U').slice(0, 1)}
                               </div>
                             )}
                             <span className="truncate">{user.name}</span>

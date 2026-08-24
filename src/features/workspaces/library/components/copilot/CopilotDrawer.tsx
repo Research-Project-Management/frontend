@@ -10,7 +10,7 @@ import {
   Bot,
   User,
 } from 'lucide-react';
-import { useCopilotChat } from '../../hooks/use-copilot-chat';
+import { useCopilotChat } from '../../hooks/reader/use-copilot-chat';
 import { CopilotQuickPrompts } from './CopilotQuickPrompts';
 import { CopilotCitationPill } from './CopilotCitationPill';
 import { cn } from '@/shared/lib/utils';
@@ -85,10 +85,10 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
             <Sparkles className="size-3.5 text-primary animate-pulse" />
           </div>
           <div className="flex flex-col overflow-hidden">
-            <span className="text-[12px] font-semibold truncate leading-tight">
+            <span className="text-xs font-semibold truncate leading-tight">
               AI Copilot
             </span>
-            <span className="text-[10px] text-muted-foreground truncate">
+            <span className="text-xs text-muted-foreground truncate">
               {paperTitle || 'Active Paper'}
             </span>
           </div>
@@ -113,13 +113,13 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
         {messages.length === 0 ? (
           <div className="h-full flex flex-col justify-center gap-6 py-4">
             <div className="text-center space-y-1.5 px-2">
-              <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-2 text-foreground">
                 <Bot className="size-5" />
               </div>
-              <h4 className="text-[13px] font-semibold text-foreground">
+              <h3 className="text-sm font-semibold text-foreground">
                 Ask anything about this paper
-              </h4>
-              <p className="text-[11px] text-muted-foreground leading-relaxed max-w-xs mx-auto">
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
                 Grounded academic dialogue with strict page citations, formula explanations, and tabular summaries.
               </p>
             </div>
@@ -138,20 +138,20 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
               >
                 <div
                   className={cn(
-                    'size-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-semibold mt-0.5',
+                    'size-6 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold mt-0.5',
                     isUser
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground border border-border',
                   )}
                 >
-                  {isUser ? <User className="size-3.5" /> : <Bot className="size-3.5 text-primary" />}
+                  {isUser ? <User className="size-3.5" /> : <Bot className="size-3.5 text-muted-foreground" />}
                 </div>
                 <div
                   className={cn(
-                    'p-3 rounded-xl leading-relaxed text-[12px] space-y-2',
+                    'p-3 rounded-xl leading-relaxed text-xs space-y-2',
                     isUser
                       ? 'bg-primary text-primary-foreground rounded-tr-none'
-                      : 'bg-card border border-border/80 rounded-tl-none text-foreground/90 shadow-xs',
+                      : 'bg-card border border-border/80 rounded-tl-none text-foreground/90',
                   )}
                 >
                   <div className="whitespace-pre-wrap select-text">

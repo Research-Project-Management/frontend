@@ -9,7 +9,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { toast } from 'sonner';
 import { useLibrary } from '../hooks/library/use-library';
-import { usePapers } from '../hooks/data/use-papers';
+import { usePapers } from '../hooks/library/use-papers';
 import type { Paper } from '../types/library.types';
 
 export default function TrashPage() {
@@ -38,14 +38,14 @@ export default function TrashPage() {
   const [isPurging, setIsPurging] = useState(false);
 
   const trashPapers = useMemo(() => {
-    return papers
-      .filter((p) => Boolean(p.deletedAt))
-      .filter((p) => {
+    return (Array.isArray(papers) ? papers : [])
+      .filter((p: Paper) => Boolean(p.deletedAt))
+      .filter((p: Paper) => {
         if (!search.trim()) return true;
         const q = search.toLowerCase();
         return (
-          p.title.toLowerCase().includes(q) ||
-          p.authors.some((a) => a.toLowerCase().includes(q))
+          (p.title || '').toLowerCase().includes(q) ||
+          (Array.isArray(p.authors) && p.authors.some((a: string) => a.toLowerCase().includes(q)))
         );
       });
   }, [papers, search]);

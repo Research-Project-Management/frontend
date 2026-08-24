@@ -280,31 +280,39 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
     isDeletingTask: deleteMut.isPending,
   };
 
+  const createMutAsync = createMut.mutateAsync;
+  const updateMutMutate = updateMut.mutate;
+  const deleteMutAsync = deleteMut.mutateAsync;
+  const duplicateMutAsync = duplicateMut.mutateAsync;
+  const bulkMutAsync = bulkMut.mutateAsync;
+  const refetchTasks = tasksQ.refetch;
+  const refetchDetails = detailsQ.refetch;
+
   const actions = {
-    create: useCallback((d: Parameters<typeof createMut.mutateAsync>[0]) => createMut.mutateAsync(d), [createMut]),
-    update: useCallback((d: Parameters<typeof updateMut.mutate>[0]) => updateMut.mutate(d), [updateMut]),
-    delete: useCallback((d: { taskId: string; projectId?: string }) => deleteMut.mutateAsync(d), [deleteMut]),
+    create: useCallback((d: Parameters<typeof createMutAsync>[0]) => createMutAsync(d), [createMutAsync]),
+    update: useCallback((d: Parameters<typeof updateMutMutate>[0]) => updateMutMutate(d), [updateMutMutate]),
+    delete: useCallback((d: { taskId: string; projectId?: string }) => deleteMutAsync(d), [deleteMutAsync]),
     duplicate: useCallback(
       (d: { taskId: string; projectId?: string }) =>
-        duplicateMut.mutateAsync({ projectId: d.projectId || projectId, taskId: d.taskId }),
-      [duplicateMut, projectId],
+        duplicateMutAsync({ projectId: d.projectId || projectId, taskId: d.taskId }),
+      [duplicateMutAsync, projectId],
     ),
-    bulk: useCallback((d: Parameters<typeof bulkMut.mutateAsync>[0]) => bulkMut.mutateAsync(d), [bulkMut]),
+    bulk: useCallback((d: Parameters<typeof bulkMutAsync>[0]) => bulkMutAsync(d), [bulkMutAsync]),
     refetch: useCallback(() => {
-      tasksQ.refetch();
-      detailsQ.refetch();
-    }, [tasksQ, detailsQ]),
+      refetchTasks();
+      refetchDetails();
+    }, [refetchTasks, refetchDetails]),
 
     // Aliases
-    createTask: useCallback((d: Parameters<typeof createMut.mutateAsync>[0]) => createMut.mutateAsync(d), [createMut]),
-    updateTask: useCallback((d: Parameters<typeof updateMut.mutate>[0]) => updateMut.mutate(d), [updateMut]),
-    deleteTask: useCallback((d: { taskId: string; projectId?: string }) => deleteMut.mutateAsync(d), [deleteMut]),
+    createTask: useCallback((d: Parameters<typeof createMutAsync>[0]) => createMutAsync(d), [createMutAsync]),
+    updateTask: useCallback((d: Parameters<typeof updateMutMutate>[0]) => updateMutMutate(d), [updateMutMutate]),
+    deleteTask: useCallback((d: { taskId: string; projectId?: string }) => deleteMutAsync(d), [deleteMutAsync]),
     duplicateTask: useCallback(
       (d: { taskId: string; projectId?: string }) =>
-        duplicateMut.mutateAsync({ projectId: d.projectId || projectId, taskId: d.taskId }),
-      [duplicateMut, projectId],
+        duplicateMutAsync({ projectId: d.projectId || projectId, taskId: d.taskId }),
+      [duplicateMutAsync, projectId],
     ),
-    bulkUpdateTasks: useCallback((d: Parameters<typeof bulkMut.mutateAsync>[0]) => bulkMut.mutateAsync(d), [bulkMut]),
+    bulkUpdateTasks: useCallback((d: Parameters<typeof bulkMutAsync>[0]) => bulkMutAsync(d), [bulkMutAsync]),
   };
 
   return { state, actions };
@@ -317,6 +325,10 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
   const createMut = useCreateLabel();
   const updateMut = useUpdateLabel();
   const deleteMut = useDeleteLabel();
+
+  const createLabelMutateAsync = createMut.mutateAsync;
+  const updateLabelMutateAsync = updateMut.mutateAsync;
+  const deleteLabelMutateAsync = deleteMut.mutateAsync;
 
   const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
   const [search, setSearch] = useState('');
@@ -345,7 +357,7 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
   const save = useCallback(async () => {
     if (!name.trim()) return;
     if (view === 'create') {
-      await createMut.mutateAsync({
+      await createLabelMutateAsync({
         workspaceId,
         name: name.trim(),
         color,
@@ -353,7 +365,7 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
         projectId,
       });
     } else if (view === 'edit' && editId) {
-      await updateMut.mutateAsync({
+      await updateLabelMutateAsync({
         labelId: editId,
         name: name.trim(),
         color,
@@ -362,20 +374,20 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
     setView('list');
     setName('');
     setEditId(null);
-  }, [createMut, updateMut, view, name, color, workspaceId, type, projectId, editId]);
+  }, [createLabelMutateAsync, updateLabelMutateAsync, view, name, color, workspaceId, type, projectId, editId]);
 
   const remove = useCallback(
     async (labelId?: string) => {
       const targetId = labelId || editId;
       if (!targetId) return;
-      await deleteMut.mutateAsync(targetId);
+      await deleteLabelMutateAsync(targetId);
       if (editId === targetId) {
         setView('list');
         setName('');
         setEditId(null);
       }
     },
-    [deleteMut, editId],
+    [deleteLabelMutateAsync, editId],
   );
 
   const state = {

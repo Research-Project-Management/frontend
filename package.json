@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "codebase:sync": "node ../.agents/scripts/sync-codebase.mjs frontend"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

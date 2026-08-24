@@ -6,8 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
-import { useCollections } from '../data/use-collections';
-import { usePapers, usePaper } from '../data/use-papers';
+import { useCollections } from '../library/use-library';
+import { usePapers, usePaper } from '../library/use-papers';
 import { usePdf } from './use-pdf';
 import { reindexPaper, paperKeys } from '../../services/paper.service';
 import { getPaperFileUrl } from '../../utils/library.util';
@@ -40,7 +40,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const collections = collectionService.state.collections;
 
   const collectionMap = useMemo(
-    () => Object.fromEntries((collections ?? []).map((collection) => [collection.id, collection])),
+    () => Object.fromEntries((collections ?? []).map((collection: any) => [collection.id, collection])),
     [collections],
   );
   const paperCollection = paper?.collectionId ? collectionMap[paper.collectionId] ?? null : null;

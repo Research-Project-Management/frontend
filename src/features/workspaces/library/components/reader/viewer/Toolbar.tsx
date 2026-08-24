@@ -72,7 +72,7 @@ export default function PdfViewerToolbar({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="pointer-events-auto flex select-none items-center gap-2 rounded-xl border border-border/80 bg-background/90 px-3 py-1.5 shadow-xl backdrop-blur-xl transition-all">
+      <div className="pointer-events-auto flex select-none items-center gap-2 rounded-xl border border-border bg-background/95 px-3 py-1.5 backdrop-blur-md transition-colors">
         {/* Page navigation */}
         <div className="flex items-center gap-1">
           <Tooltip>

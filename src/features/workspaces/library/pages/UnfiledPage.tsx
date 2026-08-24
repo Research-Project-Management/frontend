@@ -5,10 +5,10 @@ import { Inbox } from 'lucide-react';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
-import UploadModal from '../components/system/UploadModal';
+import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { isUnfiledPaper } from '../utils/unfiled.util';
+import { filterAndSortLibraryPapers } from '../utils/filter.util';
 import type { Paper } from '../types/library.types';
 
 export default function UnfiledPage() {
@@ -23,7 +23,7 @@ export default function UnfiledPage() {
     selectedCollection,
     collectionMap,
     collections,
-    uploadOpen,
+    addLinkOpen,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -32,10 +32,11 @@ export default function UnfiledPage() {
   const {
     setSearch,
     setSelectedPaperId,
-    setUploadOpen,
-    handleOpenUpload,
+    setAddLinkOpen,
+    handleDirectFilesUpload,
+    handleDirectFolderUpload,
+    handleAddLinkSubmit,
     setCreateCollectionOpen,
-    handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
     handleBatchDeletePapers,
@@ -43,16 +44,11 @@ export default function UnfiledPage() {
   } = actions;
 
   const unfiledPapers = useMemo(() => {
-    return papers
-      .filter((p) => !p.deletedAt && !p.collectionId)
-      .filter((p) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          p.title.toLowerCase().includes(q) ||
-          p.authors.some((a) => a.toLowerCase().includes(q))
-        );
-      });
+    return filterAndSortLibraryPapers({
+      papers,
+      searchQuery: search,
+      activeFilter: 'unfiled',
+    });
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
@@ -71,8 +67,10 @@ export default function UnfiledPage() {
         icon={Inbox}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={(mode) => handleOpenUpload(mode || 'file')}
+        onDirectFilesUpload={handleDirectFilesUpload}
+        onDirectFolderUpload={handleDirectFolderUpload}
         onAddCollection={() => setCreateCollectionOpen(true)}
+        onAddLink={() => setAddLinkOpen(true)}
       />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -89,7 +87,7 @@ export default function UnfiledPage() {
           onBatchDeletePapers={handleBatchDeletePapers}
           onBatchMovePapers={handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => handleOpenUpload('file')}
+          onAddPaper={() => setAddLinkOpen(true)}
           showCollection={false}
         />
 
@@ -104,15 +102,12 @@ export default function UnfiledPage() {
         )}
       </div>
 
-      {workspaceId && (
-        <UploadModal
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          onSubmit={handleAddPaper}
-          isPending={isAddingPaper}
-          workspaceId={workspaceId}
-        />
-      )}
+      <AddLinkModal
+        open={addLinkOpen}
+        onOpenChange={setAddLinkOpen}
+        onSubmit={handleAddLinkSubmit}
+        isPending={isAddingPaper}
+      />
 
       <CreateCollectionModal
         open={createCollectionOpen}

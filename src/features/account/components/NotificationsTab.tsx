@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { notificationsSchema } from '../schemas/notifications.schema';
@@ -28,17 +28,15 @@ export default function NotificationsTab() {
     },
   });
 
+  const onSubmit = useCallback((values: z.infer<typeof notificationsSchema>) => {
+    toast.success('Notification preferences updated');
+    form.reset(values);
+  }, [form]);
+
   useEffect(() => {
     const subscription = form.watch(() => form.handleSubmit(onSubmit)());
     return () => subscription.unsubscribe();
-  }, [form.watch, form.handleSubmit]);
-
-  const onSubmit = (values: z.infer<typeof notificationsSchema>) => {
-    // Mock save, later connect to backend hook
-    console.log('Saved notifications:', values);
-    toast.success('Notification preferences updated');
-    form.reset(values);
-  };
+  }, [form, onSubmit]);
 
   return (
     <div className='p-6 md:px-8 w-full max-w-4xl mx-auto'>

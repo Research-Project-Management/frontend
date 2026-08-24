@@ -49,6 +49,25 @@ export const primaryFileSchema = z.object({
   mimeType: z.string().optional(),
 });
 
+export const provenanceSchema = z.object({
+  originProvider: z.enum([
+    'CrossRef',
+    'arXiv',
+    'PubMed',
+    'OpenLibrary',
+    'SemanticScholar',
+    'Unpaywall',
+    'LocalPDFExtraction',
+  ]),
+  resolvedAt: z.string(),
+  canonicalId: z.string(),
+  canonicalUrl: z.string().optional(),
+  confidenceScore: z.number().optional().default(1.0),
+  rawSnapshotHash: z.string().optional(),
+  isOpenAccess: z.boolean().optional().default(false),
+  openAccessPdfUrl: z.string().optional(),
+});
+
 export const paperSchema = z.object({
   id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Paper'),
@@ -110,6 +129,7 @@ export const paperSchema = z.object({
   updatedAt: z.string().optional().default(''),
   isFavorite: z.boolean().optional().default(false),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
+  provenance: provenanceSchema.nullish(),
 });
 
 // ── CSL Citation Formatter Schemas ──────────────────────────────────────────
@@ -184,6 +204,7 @@ export const relatedPaperItemSchema = z.object({
 export const graphNodeSchema = z.object({
   id: z.string(),
   title: z.string(),
+  label: z.string().optional(),
   authors: z.array(z.string()),
   year: z.number().nullable(),
   citationKey: z.string().optional(),

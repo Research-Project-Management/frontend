@@ -259,7 +259,7 @@ export default function Viewer() {
     return () => {
       gotoPageRef.current = null;
     };
-  }, [numPages]);
+  }, [numPages, gotoPageRef]);
 
   // SyncTeX forward sync (Code cursor -> PDF highlight)
   useEffect(() => {
@@ -279,7 +279,7 @@ export default function Viewer() {
     return () => {
       scrollToPdfLineRef.current = null;
     };
-  }, [numPages, activeFilePage]);
+  }, [numPages, activeFilePage, scrollToPdfLineRef]);
 
   // SyncTeX reverse search (PDF double-click -> Code jump)
   const handleJumpToSource = (sourcePath: string | null, line: number) => {

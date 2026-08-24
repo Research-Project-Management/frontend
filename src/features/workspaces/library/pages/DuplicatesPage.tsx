@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Files, GitMerge, ShieldCheck } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Files } from 'lucide-react';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
-import UploadModal from '../components/system/UploadModal';
+import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
-import MergeDialog from '../components/duplicates/MergeDialog';
-import { useLibrary } from '../hooks/library/use-library';
-import { useDuplicateGroups, useMergePapers, useLibraryIntegrity } from '../hooks/use-library';
-import { Button } from '@/shared/components/ui/button';
+import MergeDialog from '../components/system/MergeDialog';
+import { useLibrary, useDuplicateGroups, useMergePapers, useLibraryIntegrity } from '../hooks/library/use-library';
+import type { Paper } from '../types/library.types';
 import { Badge } from '@/shared/components/ui/badge';
-import type { Paper, DuplicateGroup } from '../types/library.types';
+import { Button } from '@/shared/components/ui/button';
 
 export default function DuplicatesPage() {
   const { state, actions } = useLibrary();
@@ -24,36 +23,53 @@ export default function DuplicatesPage() {
     selectedCollection,
     collectionMap,
     collections,
-    uploadOpen,
+    addLinkOpen,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
-    uploadMode,
   } = state;
 
   const {
     setSearch,
     setSelectedPaperId,
-    setUploadOpen,
+    setAddLinkOpen,
+    handleDirectFilesUpload,
+    handleDirectFolderUpload,
+    handleAddLinkSubmit,
     setCreateCollectionOpen,
-    handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
     handleBatchDeletePapers,
     handleBatchMovePapers,
-    handleOpenUpload,
   } = actions;
 
   const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(workspaceId);
   const { data: integrityData } = useLibraryIntegrity(workspaceId);
   const mergeMutation = useMergePapers(workspaceId);
 
-  const [mergingCluster, setMergingCluster] = useState<Paper[] | null>(null);
+  const duplicateGroups = useMemo(
+    () =>
+      (duplicateData as any)?.duplicateGroups ||
+      (duplicateData as any)?.groups ||
+      [],
+    [duplicateData],
+  );
 
-  const duplicateGroups: DuplicateGroup[] = duplicateData?.duplicateGroups || [];
-  const allDuplicatePapers: Paper[] = duplicateGroups.flatMap((g) => g.papers);
+  const allDuplicatePapers = useMemo(() => {
+    const list: Paper[] = [];
+    const seen = new Set<string>();
+    for (const group of duplicateGroups) {
+      for (const p of group.papers) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          list.push(p);
+        }
+      }
+    }
+    return list;
+  }, [duplicateGroups]);
 
-  const filteredPapers = React.useMemo(() => {
+  const filteredPapers = useMemo(() => {
     if (!search.trim()) return allDuplicatePapers;
     const q = search.toLowerCase();
     return allDuplicatePapers.filter(
@@ -73,6 +89,15 @@ export default function DuplicatesPage() {
     }
   };
 
+  const [mergeCluster, setMergeCluster] = React.useState<Paper[] | null>(null);
+  const [mergeDialogOpen, setMergeDialogOpen] = React.useState(false);
+
+  const handleOpenMergeDialog = (clusterPapers: Paper[]) => {
+    if (!clusterPapers || clusterPapers.length < 2) return;
+    setMergeCluster(clusterPapers);
+    setMergeDialogOpen(true);
+  };
+
   const handleExecuteMerge = async (
     masterPaper: Paper,
     _mergedFields: Partial<Paper>,
@@ -87,8 +112,14 @@ export default function DuplicatesPage() {
   return (
     <div className="flex-1 flex flex-col h-full min-w-0 bg-background overflow-hidden relative">
       <Topbar
+        title="Duplicate Items"
+        icon={Files}
         search={search}
         onSearchChange={setSearch}
+        onDirectFilesUpload={handleDirectFilesUpload}
+        onDirectFolderUpload={handleDirectFolderUpload}
+        onAddCollection={() => setCreateCollectionOpen(true)}
+        onAddLink={() => setAddLinkOpen(true)}
       />
 
       {/* Duplicate detection summary bar */}
@@ -107,36 +138,29 @@ export default function DuplicatesPage() {
 
         {duplicateGroups.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-x-auto max-w-md">
-            {duplicateGroups.map((grp, idx) => (
+            {duplicateGroups.map((grp: any, idx: number) => (
               <Button
                 key={idx}
                 size="sm"
                 variant="outline"
-                onClick={() => setMergingCluster(grp.papers)}
-                className="h-7 text-xs gap-1.5 bg-background shadow-xs hover:bg-amber-500/20 border-amber-500/30 cursor-pointer"
+                onClick={() => handleOpenMergeDialog(grp.papers)}
+                className="h-6 text-[11px] px-2 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
               >
-                <GitMerge className="size-3 text-amber-500" />
-                <span className="truncate max-w-28">{grp.papers[0]?.title || `Group #${idx + 1}`}</span>
-                <Badge variant="secondary" className="px-1 py-0 text-[9px] h-4">
-                  {grp.papers.length}
-                </Badge>
+                Merge Cluster #{idx + 1} ({grp.papers.length})
               </Button>
             ))}
           </div>
         )}
       </div>
 
-      <div className="flex-1 flex min-w-0 min-h-0 overflow-hidden relative">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Central Duplicate Table */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {duplicateGroups.length === 0 && !isDupLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3">
-                <ShieldCheck className="size-6" />
-              </div>
-              <h3 className="text-sm font-semibold text-foreground mb-1">
-                Library is 100% Clean!
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-sm">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+              <Files className="size-12 mb-3 opacity-20" />
+              <p className="text-sm font-medium text-foreground">No duplicates detected</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 No duplicate papers found by DOI or Title/Author/Year.
               </p>
             </div>
@@ -151,7 +175,7 @@ export default function DuplicatesPage() {
               onBatchDeletePapers={handleBatchDeletePapers}
               onBatchMovePapers={handleBatchMovePapers}
               onClearSearch={() => setSearch('')}
-              onAddPaper={() => setUploadOpen(true)}
+              onAddPaper={() => setAddLinkOpen(true)}
               collectionMap={collectionMap}
               collections={collections}
             />
@@ -168,15 +192,12 @@ export default function DuplicatesPage() {
         )}
       </div>
 
-      {workspaceId && (
-        <UploadModal
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          onSubmit={handleAddPaper}
-          isPending={isAddingPaper}
-          workspaceId={workspaceId}
-        />
-      )}
+      <AddLinkModal
+        open={addLinkOpen}
+        onOpenChange={setAddLinkOpen}
+        onSubmit={handleAddLinkSubmit}
+        isPending={isAddingPaper}
+      />
 
       <CreateCollectionModal
         open={createCollectionOpen}
@@ -186,11 +207,11 @@ export default function DuplicatesPage() {
         collections={collections}
       />
 
-      {mergingCluster && (
+      {mergeCluster && (
         <MergeDialog
-          open={Boolean(mergingCluster)}
-          onOpenChange={(open) => !open && setMergingCluster(null)}
-          duplicates={mergingCluster}
+          open={mergeDialogOpen}
+          onOpenChange={setMergeDialogOpen}
+          duplicates={mergeCluster}
           onMerge={handleExecuteMerge}
         />
       )}

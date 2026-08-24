@@ -12,7 +12,11 @@ export function useModules(projectId: string) {
   const updateMutation = useUpdateProject();
 
   const project = (projectData as any)?.project || projectData;
-  const serverModules: string[] = project?.modules ?? [];
+  const serverModules: string[] = useMemo(
+    () => project?.modules ?? [],
+    [project?.modules],
+  );
+  const serverModulesKey = serverModules.join(',');
 
   const [active, setActive] = useState<string[]>([]);
 
@@ -21,7 +25,7 @@ export function useModules(projectId: string) {
     if (serverModules.length > 0) {
       setActive(serverModules);
     }
-  }, [serverModules.join(',')]);
+  }, [serverModulesKey, serverModules]);
 
   const toggle = useCallback((id: string) => {
     setActive((prev) =>
@@ -35,12 +39,14 @@ export function useModules(projectId: string) {
     return a !== b;
   }, [active, serverModules]);
 
+  const updateProject = updateMutation.mutate;
+
   const save = useCallback(() => {
-    updateMutation.mutate(
+    updateProject(
       { projectId, modules: active },
       { onSuccess: () => toast.success('Modules updated') },
     );
-  }, [projectId, active, updateMutation]);
+  }, [projectId, active, updateProject]);
 
   return {
     active,

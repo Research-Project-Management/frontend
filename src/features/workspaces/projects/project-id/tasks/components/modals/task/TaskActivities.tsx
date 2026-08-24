@@ -223,7 +223,7 @@ export function TaskActivities({
     commentTextareaRef.current.focus();
     const clamped = Math.max(0, Math.min(commentCaretPosition, commentTextareaRef.current.value.length));
     commentTextareaRef.current.setSelectionRange(clamped, clamped);
-  }, [commentFocusToken, canComment, commentCaretPosition]);
+  }, [commentFocusToken, canComment, commentCaretPosition, commentTextareaRef]);
 
   useEffect(() => {
     if (!isCommentSubmitRequested || isSavingComment) return;

@@ -41,11 +41,18 @@ export function useSummaryWork() {
     staleTime: 30_000,
   });
 
-  const tasks: any[] = Array.isArray(tasksData)
-    ? tasksData
-    : (tasksData as any)?.tasks || (tasksData as any)?.data || [];
+  const tasks: any[] = useMemo(
+    () =>
+      Array.isArray(tasksData)
+        ? tasksData
+        : (tasksData as any)?.tasks || (tasksData as any)?.data || [],
+    [tasksData],
+  );
 
-  const activities = (rawYourWork as any)?.activity || [];
+  const activities = useMemo(
+    () => (rawYourWork as any)?.activity || [],
+    [rawYourWork],
+  );
 
   const categorizedTasks = useMemo(() => {
     return categorizeTasks(tasks, currentUserId);

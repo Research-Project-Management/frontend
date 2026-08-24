@@ -26,9 +26,13 @@ export function useAssignedWork() {
     staleTime: 30_000,
   });
 
-  const allTasks: any[] = Array.isArray(tasksData)
-    ? tasksData
-    : (tasksData as any)?.tasks || (tasksData as any)?.data || [];
+  const allTasks: any[] = useMemo(
+    () =>
+      Array.isArray(tasksData)
+        ? tasksData
+        : (tasksData as any)?.tasks || (tasksData as any)?.data || [],
+    [tasksData],
+  );
 
   const assignedTasks = useMemo(() => {
     return categorizeTasks(allTasks, currentUserId).assigned;

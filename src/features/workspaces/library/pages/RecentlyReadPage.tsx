@@ -5,9 +5,10 @@ import { History } from 'lucide-react';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
-import UploadModal from '../components/system/UploadModal';
+import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
+import { filterAndSortLibraryPapers } from '../utils/filter.util';
 import type { Paper } from '../types/library.types';
 
 export default function RecentlyReadPage() {
@@ -22,7 +23,7 @@ export default function RecentlyReadPage() {
     selectedCollection,
     collectionMap,
     collections,
-    uploadOpen,
+    addLinkOpen,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -31,10 +32,11 @@ export default function RecentlyReadPage() {
   const {
     setSearch,
     setSelectedPaperId,
-    setUploadOpen,
-    handleOpenUpload,
+    setAddLinkOpen,
+    handleDirectFilesUpload,
+    handleDirectFolderUpload,
+    handleAddLinkSubmit,
     setCreateCollectionOpen,
-    handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
     handleBatchDeletePapers,
@@ -42,28 +44,11 @@ export default function RecentlyReadPage() {
   } = actions;
 
   const recentlyReadPapers = useMemo(() => {
-    const nonDeleted = papers.filter((p) => !p.deletedAt);
-    const read = nonDeleted.filter((p) => Boolean(p.accessedAt));
-    const list =
-      read.length > 0
-        ? read.sort(
-            (a, b) =>
-              new Date(b.accessedAt || 0).getTime() -
-              new Date(a.accessedAt || 0).getTime()
-          )
-        : [...nonDeleted].sort(
-            (a, b) =>
-              new Date(b.createdAt || 0).getTime() -
-              new Date(a.createdAt || 0).getTime()
-          );
-
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.authors.some((a) => a.toLowerCase().includes(q))
-    );
+    return filterAndSortLibraryPapers({
+      papers,
+      searchQuery: search,
+      activeFilter: 'recent-read',
+    });
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
@@ -82,8 +67,10 @@ export default function RecentlyReadPage() {
         icon={History}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={(mode) => handleOpenUpload(mode || 'file')}
+        onDirectFilesUpload={handleDirectFilesUpload}
+        onDirectFolderUpload={handleDirectFolderUpload}
         onAddCollection={() => setCreateCollectionOpen(true)}
+        onAddLink={() => setAddLinkOpen(true)}
       />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -100,7 +87,7 @@ export default function RecentlyReadPage() {
           onBatchDeletePapers={handleBatchDeletePapers}
           onBatchMovePapers={handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => handleOpenUpload('file')}
+          onAddPaper={() => setAddLinkOpen(true)}
           showCollection={true}
         />
 
@@ -115,15 +102,12 @@ export default function RecentlyReadPage() {
         )}
       </div>
 
-      {workspaceId && (
-        <UploadModal
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          onSubmit={handleAddPaper}
-          isPending={isAddingPaper}
-          workspaceId={workspaceId}
-        />
-      )}
+      <AddLinkModal
+        open={addLinkOpen}
+        onOpenChange={setAddLinkOpen}
+        onSubmit={handleAddLinkSubmit}
+        isPending={isAddingPaper}
+      />
 
       <CreateCollectionModal
         open={createCollectionOpen}

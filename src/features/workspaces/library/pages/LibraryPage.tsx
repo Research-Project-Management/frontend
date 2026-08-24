@@ -5,7 +5,7 @@ import { BookOpen, FolderOpen, X, Tag, Star, History, Inbox, Files, Trash2 } fro
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
-import UploadModal from '../components/system/UploadModal';
+import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
 import type { Paper } from '../types/library.types';
@@ -25,8 +25,7 @@ export default function LibraryPage() {
     selectedCollection,
     collectionMap,
     collections,
-    uploadOpen,
-    uploadMode,
+    addLinkOpen,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -35,10 +34,11 @@ export default function LibraryPage() {
   const {
     setSearch,
     setSelectedPaperId,
-    setUploadOpen,
-    handleOpenUpload,
+    setAddLinkOpen,
+    handleDirectFilesUpload,
+    handleDirectFolderUpload,
+    handleAddLinkSubmit,
     setCreateCollectionOpen,
-    handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
     handleBatchDeletePapers,
@@ -84,8 +84,10 @@ export default function LibraryPage() {
         icon={PageIcon}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={activeFilter !== 'trash' ? (mode) => handleOpenUpload(mode || 'file') : undefined}
+        onDirectFilesUpload={activeFilter !== 'trash' ? handleDirectFilesUpload : undefined}
+        onDirectFolderUpload={activeFilter !== 'trash' ? handleDirectFolderUpload : undefined}
         onAddCollection={activeFilter !== 'trash' ? () => setCreateCollectionOpen(true) : undefined}
+        onAddLink={activeFilter !== 'trash' ? () => setAddLinkOpen(true) : undefined}
       />
 
       {/* Active Tag Filter Indicator */}
@@ -125,7 +127,7 @@ export default function LibraryPage() {
             setSearch('');
             if (activeTag || activeFilter) navigate(`/${workspaceUrl}/library`);
           }}
-          onAddPaper={() => handleOpenUpload('file')}
+          onAddPaper={() => setAddLinkOpen(true)}
           showCollection={activeFilter !== 'unfiled'}
         />
 
@@ -140,17 +142,15 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {workspaceId && (
-        <UploadModal
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          onSubmit={handleAddPaper}
-          isPending={isAddingPaper}
-          workspaceId={workspaceId}
-          initialMode={uploadMode}
-        />
-      )}
+      {/* Dedicated Add Link to File / Identifier Modal */}
+      <AddLinkModal
+        open={addLinkOpen}
+        onOpenChange={setAddLinkOpen}
+        onSubmit={handleAddLinkSubmit}
+        isPending={isAddingPaper}
+      />
 
+      {/* Create Collection Modal */}
       <CreateCollectionModal
         open={createCollectionOpen}
         onOpenChange={setCreateCollectionOpen}

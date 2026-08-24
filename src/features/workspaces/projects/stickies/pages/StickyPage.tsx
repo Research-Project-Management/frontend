@@ -56,11 +56,11 @@ export default function StickyPage() {
   });
 
   const availableProjectIds = useMemo(() => {
-    const dataSource = hasFilter
+    const dataSource: Sticky[] = hasFilter
       ? ((allStickiesQuery.query.data || []) as Sticky[])
-      : state.items;
+      : (state.items as Sticky[]);
     return Array.from(
-      new Set(dataSource.map((s) => s.projectId).filter(Boolean) as string[]),
+      new Set(dataSource.map((s: Sticky) => s.projectId).filter((id): id is string => Boolean(id))),
     );
   }, [hasFilter, allStickiesQuery.query.data, state.items]);
 

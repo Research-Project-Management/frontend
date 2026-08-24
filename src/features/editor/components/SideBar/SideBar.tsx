@@ -5,7 +5,7 @@ import {
   MessageSquareQuote,
   Search,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 
@@ -72,16 +72,17 @@ export default function SideBar({
   const isControlled = controlledActivePanel !== undefined;
   const activePanel = isControlled ? controlledActivePanel : internalActivePanel;
 
-  const setActivePanel = (panel: SidebarTab | null) => {
+  const setActivePanel = useCallback((panel: SidebarTab | null) => {
     if (!isControlled) setInternalActivePanel(panel);
     onActivePanelChange?.(panel);
-  };
+  }, [isControlled, onActivePanelChange]);
 
   useEffect(() => {
     setMounted(true);
     const loaded = loadPanel();
     if (!isControlled) setInternalActivePanel(loaded);
     else onActivePanelChange?.(loaded);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const togglePanel = (name: SidebarTab) => {
@@ -101,7 +102,7 @@ export default function SideBar({
         setActivePanel(tabName as SidebarTab);
       }
     });
-  }, []);
+  }, [setActivePanel]);
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-card">

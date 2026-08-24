@@ -82,11 +82,11 @@ export function Stats({
           </div>
         </div>
         <div className="flex -space-x-1.5 mt-4 overflow-hidden">
-          {project.members.slice(0, 5).map((m, i) => (
+          {(Array.isArray(project?.members) ? project.members : []).slice(0, 5).map((m, i) => (
             <Avatar key={i} className="size-6 border-2 border-background">
-              {m.user.avatar && <AvatarImage src={m.user.avatar} alt={m.user.name} />}
+              {m?.user?.avatar && <AvatarImage src={m.user.avatar} alt={m?.user?.name || 'User'} />}
               <AvatarFallback className="text-[9px]">
-                {m.user.name.slice(0, 2).toUpperCase()}
+                {(m?.user?.name || 'U').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
           ))}

@@ -5,10 +5,10 @@ import { Star } from 'lucide-react';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
-import UploadModal from '../components/system/UploadModal';
+import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { filterFavoritePapers } from '../utils/favorites.util';
+import { filterAndSortLibraryPapers } from '../utils/filter.util';
 import type { Paper } from '../types/library.types';
 
 export default function FavoritesPage() {
@@ -23,7 +23,7 @@ export default function FavoritesPage() {
     selectedCollection,
     collectionMap,
     collections,
-    uploadOpen,
+    addLinkOpen,
     createCollectionOpen,
     isAddingPaper,
     isCreatingCollection,
@@ -32,27 +32,23 @@ export default function FavoritesPage() {
   const {
     setSearch,
     setSelectedPaperId,
-    setUploadOpen,
-    handleOpenUpload,
+    setAddLinkOpen,
+    handleDirectFilesUpload,
+    handleDirectFolderUpload,
+    handleAddLinkSubmit,
     setCreateCollectionOpen,
-    handleAddPaper,
     handleCreateCollection,
     handleDeletePaper,
     handleBatchDeletePapers,
     handleBatchMovePapers,
   } = actions;
 
-  const starredPapers = useMemo(() => {
-    return papers
-      .filter((p) => !p.deletedAt && (Boolean(p.isFavorite) || p.labels?.includes('starred') || Boolean((p as any).isStarred)))
-      .filter((p) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          p.title.toLowerCase().includes(q) ||
-          p.authors.some((a) => a.toLowerCase().includes(q))
-        );
-      });
+  const favoritePapers = useMemo(() => {
+    return filterAndSortLibraryPapers({
+      papers,
+      searchQuery: search,
+      activeFilter: 'starred',
+    });
   }, [papers, search]);
 
   const handleSelectPaper = (paper: Paper) => {
@@ -71,14 +67,16 @@ export default function FavoritesPage() {
         icon={Star}
         search={search}
         onSearchChange={setSearch}
-        onAddPaper={(mode) => handleOpenUpload(mode || 'file')}
+        onDirectFilesUpload={handleDirectFilesUpload}
+        onDirectFolderUpload={handleDirectFolderUpload}
         onAddCollection={() => setCreateCollectionOpen(true)}
+        onAddLink={() => setAddLinkOpen(true)}
       />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Central Papers Table */}
         <PaperTable
-          papers={starredPapers}
+          papers={favoritePapers}
           collectionMap={collectionMap}
           collections={collections}
           isLoading={isLoading}
@@ -89,7 +87,7 @@ export default function FavoritesPage() {
           onBatchDeletePapers={handleBatchDeletePapers}
           onBatchMovePapers={handleBatchMovePapers}
           onClearSearch={() => setSearch('')}
-          onAddPaper={() => handleOpenUpload('file')}
+          onAddPaper={() => setAddLinkOpen(true)}
           showCollection={true}
         />
 
@@ -104,15 +102,12 @@ export default function FavoritesPage() {
         )}
       </div>
 
-      {workspaceId && (
-        <UploadModal
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          onSubmit={handleAddPaper}
-          isPending={isAddingPaper}
-          workspaceId={workspaceId}
-        />
-      )}
+      <AddLinkModal
+        open={addLinkOpen}
+        onOpenChange={setAddLinkOpen}
+        onSubmit={handleAddLinkSubmit}
+        isPending={isAddingPaper}
+      />
 
       <CreateCollectionModal
         open={createCollectionOpen}

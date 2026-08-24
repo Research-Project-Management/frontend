@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { streamPaperCopilotChat } from '../services/copilot.service';
-import type { CopilotMessage, CopilotCitation } from '../types/copilot.types';
+import { streamPaperCopilotChat } from '../../services/copilot.service';
+import type { CopilotMessage, CopilotCitation } from '../../types/copilot.types';
 
 export interface UseCopilotChatProps {
   paperId: string;
@@ -58,7 +58,7 @@ export function useCopilotChat({
 
       const newHistory = [...messages, userMsg];
       setMessages([...newHistory, assistantMsg]);
-      setInput('');
+      if (!overrideText) setInput('');
       setIsStreaming(true);
 
       const controller = new AbortController();
@@ -67,74 +67,80 @@ export function useCopilotChat({
       try {
         const stream = streamPaperCopilotChat(
           paperId,
-          newHistory.map((m) => ({ role: m.role, content: m.content })),
+          newHistory.map((msg) => ({ role: msg.role, content: msg.content })),
           {
             selection: selectionContext,
             signal: controller.signal,
             onCitation: (citations: CopilotCitation[]) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, citations: [...(msg.citations || []), ...citations] }
-                    : msg,
-                ),
-              );
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (!last || last.role !== 'assistant') return prev;
+                return [
+                  ...prev.slice(0, -1),
+                  {
+                    ...last,
+                    citations,
+                  },
+                ];
+              });
             },
           },
         );
 
-        let accumulated = '';
         for await (const chunk of stream) {
-          accumulated += chunk;
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: accumulated }
-                : msg,
-            ),
-          );
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (!last || last.role !== 'assistant') return prev;
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...last,
+                content: last.content + chunk,
+              },
+            ];
+          });
         }
       } catch (err: any) {
-        if (err.name !== 'AbortError') {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? {
-                    ...msg,
-                    content:
-                      msg.content ||
-                      `⚠️ Error streaming AI response: ${err.message || 'Network error'}`,
-                  }
-                : msg,
-            ),
-          );
+        if (err?.name === 'AbortError') {
+          // User aborted stream
+        } else {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (!last || last.role !== 'assistant') return prev;
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...last,
+                content:
+                  last.content +
+                  '\n\n*[Error: Could not retrieve response from Paper Copilot. Please try again.]*',
+                isStreaming: false,
+              },
+            ];
+          });
         }
       } finally {
         setIsStreaming(false);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, isStreaming: false }
-              : msg,
-          ),
-        );
         abortControllerRef.current = null;
+        setMessages((prev) => {
+          const last = prev[prev.length - 1];
+          if (!last || last.role !== 'assistant') return prev;
+          return [
+            ...prev.slice(0, -1),
+            {
+              ...last,
+              isStreaming: false,
+            },
+          ];
+        });
       }
     },
     [input, isStreaming, messages, paperId],
   );
 
-  const askSelection = useCallback(
-    async (selectedText: string, pageNumber: number) => {
-      const prompt = `Please explain this excerpt from Page ${pageNumber}:\n\n> "${selectedText}"`;
-      await sendMessage(prompt, { text: selectedText, pageNumber });
-    },
-    [sendMessage],
-  );
-
   const handleCitationClick = useCallback(
     (pageNumber: number) => {
-      if (onNavigateToPage) {
+      if (pageNumber && onNavigateToPage) {
         onNavigateToPage(pageNumber);
       }
     },
@@ -147,7 +153,6 @@ export function useCopilotChat({
     setInput,
     isStreaming,
     sendMessage,
-    askSelection,
     stopStreaming,
     clearMessages,
     handleCitationClick,

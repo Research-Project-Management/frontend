@@ -50,21 +50,21 @@ export const CopilotQuickPrompts: React.FC<CopilotQuickPromptsProps> = ({
   const getIcon = (iconName: string) => {
     switch (iconName) {
       case 'Sparkles':
-        return <Sparkles className="size-3.5 text-amber-500" />;
+        return <Sparkles className="size-3.5 text-muted-foreground group-hover:text-foreground" />;
       case 'FunctionSquare':
-        return <FunctionSquare className="size-3.5 text-sky-500" />;
+        return <FunctionSquare className="size-3.5 text-muted-foreground group-hover:text-foreground" />;
       case 'Table2':
-        return <Table2 className="size-3.5 text-emerald-500" />;
+        return <Table2 className="size-3.5 text-muted-foreground group-hover:text-foreground" />;
       case 'AlertCircle':
-        return <AlertCircle className="size-3.5 text-rose-500" />;
+        return <AlertCircle className="size-3.5 text-muted-foreground group-hover:text-foreground" />;
       default:
-        return <Lightbulb className="size-3.5 text-primary" />;
+        return <Lightbulb className="size-3.5 text-muted-foreground group-hover:text-foreground" />;
     }
   };
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
         Quick Academic Starters
       </p>
       <div className="grid grid-cols-2 gap-1.5">
@@ -75,16 +75,16 @@ export const CopilotQuickPrompts: React.FC<CopilotQuickPromptsProps> = ({
             disabled={disabled}
             onClick={() => onSelectPrompt(item.prompt)}
             className={cn(
-              'flex flex-col items-start p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-accent/70 hover:border-border transition-all text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+              'flex flex-col items-start p-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/50 transition-colors text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             <div className="flex items-center gap-1.5 mb-1">
               {getIcon(item.icon)}
-              <span className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors">
+              <span className="text-xs font-medium text-foreground group-hover:text-foreground transition-colors">
                 {item.title}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground line-clamp-1">
+            <p className="text-xs text-muted-foreground line-clamp-1">
               {item.description}
             </p>
           </button>

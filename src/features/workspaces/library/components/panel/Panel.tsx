@@ -4,21 +4,27 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X,
   FileText,
-  Bookmark,
-  Share2,
-  BookOpen,
-  Tag,
+  AlignLeft,
   Paperclip,
+  Bookmark,
+  Tag,
+  Share2,
+  Quote,
+  Copy,
+  Check,
+  BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useParams } from 'next/navigation';
 import InfoSection from './sections/InfoSection';
+import AbstractSection from './sections/AbstractSection';
 import NotesSection from './sections/NotesSection';
+import TagsSection from './sections/TagsSection';
 import CiteSection from './sections/CiteSection';
 import FilesSection from './sections/FilesSection';
-import TagsSection from './sections/TagsSection';
 import RelatedSection from './sections/RelatedSection';
-import { usePapers } from '../../hooks/data/use-papers';
+import { usePapers } from '../../hooks/library/use-papers';
+import { useCollections } from '../../hooks/library/use-library';
 import { useLibrarySidebarStore } from '../../store/sidebar.store';
 import { normalizeNotes } from '../../utils/library.util';
 import { cn } from '@/shared/lib/utils';
@@ -31,15 +37,20 @@ interface InspectorPanelProps {
   onClose?: () => void;
 }
 
-type TabType = 'info' | 'notes' | 'tags' | 'files' | 'relations' | 'cite';
+type TabType = 'info' | 'abstract' | 'notes' | 'tags' | 'files' | 'relations' | 'cite';
 
-const TABS: { id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'info', label: 'Details', icon: FileText },
+const TABS: {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: 'info', label: 'Info', icon: FileText },
+  { id: 'abstract', label: 'Abstract', icon: AlignLeft },
   { id: 'notes', label: 'Notes', icon: Bookmark },
   { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'files', label: 'Files', icon: Paperclip },
   { id: 'relations', label: 'Related', icon: Share2 },
-  { id: 'cite', label: 'Cite', icon: BookOpen },
+  { id: 'cite', label: 'Cite', icon: Quote },
 ];
 
 export default function InspectorPanel({
@@ -49,6 +60,7 @@ export default function InspectorPanel({
   onClose,
 }: InspectorPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('info');
+  const [copied, setCopied] = useState(false);
   const paperService = usePapers({ workspaceId });
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams();
@@ -176,9 +188,23 @@ export default function InspectorPanel({
     );
   };
 
+  const handleCopyCitationKey = () => {
+    if (paper.citationKey) {
+      navigator.clipboard.writeText(`\\cite{${paper.citationKey}}`);
+      setCopied(true);
+      toast.success(`Copied \\cite{${paper.citationKey}}`);
+      setTimeout(() => setCopied(false), 2000);
+    } else if (paper.title) {
+      navigator.clipboard.writeText(paper.title);
+      setCopied(true);
+      toast.success('Copied title');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const notesCount = paper.notes?.length || 0;
   const tagsCount = (paper.labels?.length || 0) + (paper.keywords?.length || 0);
-  const filesCount = paper.fileUrl ? 1 : 0;
+  const filesCount = paper.fileUrl ? 1 + (paper.attachments?.length || 0) : (paper.attachments?.length || 0);
 
   return (
     <aside
@@ -186,9 +212,9 @@ export default function InspectorPanel({
       style={{
         width: `${inspectorWidth}px`,
         minWidth: '320px',
-        maxWidth: '680px',
+        maxWidth: '720px',
       }}
-      className="relative h-full border-l border-border/50 bg-transparent flex flex-col shrink-0 select-none overflow-hidden"
+      className="relative h-full border-l border-border/50 bg-card/40 backdrop-blur-md flex flex-col shrink-0 select-none overflow-hidden"
     >
       {/* Resizable drag handle on left edge */}
       <div
@@ -200,41 +226,52 @@ export default function InspectorPanel({
       />
 
       {/* Header bar */}
-      <header className="h-14 px-4 border-b border-border/50 flex items-center justify-between shrink-0 bg-transparent">
-        <div className="flex items-center gap-2 min-w-0 pr-2">
-          <FileText className="size-4 text-foreground shrink-0" />
-          <span className="text-sm font-semibold text-foreground truncate" title={paper.title}>
+      <header className="h-12 px-3.5 border-b border-border/50 flex items-center justify-between shrink-0 bg-muted/10 gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <FileText className="size-4 text-muted-foreground shrink-0" />
+          <h2
+            className="text-xs font-semibold text-foreground tracking-tight truncate select-text leading-tight"
+            title={paper.title}
+          >
             {paper.title || 'Untitled Reference'}
-          </span>
+          </h2>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={handleCopyCitationKey}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title={paper.citationKey ? `Copy \\cite{${paper.citationKey}}` : 'Copy title'}
+          >
+            {copied ? <Check className="size-3.5 text-foreground" /> : <Copy className="size-3.5" />}
+          </button>
+
           <button
             onClick={() => paperId && router.push(`/${workspaceUrl}/library/papers/${paperId}`)}
-            className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             title="Open in Reader"
             aria-label="Open in Reader"
           >
-            <BookOpen className="size-4 text-foreground" />
+            <BookOpen className="size-3.5" />
           </button>
 
           {onClose && (
             <button
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               title="Close inspector"
               aria-label="Close inspector"
             >
-              <X className="size-4 text-foreground" />
+              <X className="size-3.5" />
             </button>
           )}
         </div>
       </header>
 
-      {/* Tabs navigation bar */}
+      {/* Modern Segment Tabs (Info, Notes, Tags, Files, Related, Cite) */}
       <nav
         aria-label="Inspector tabs"
-        className="flex items-center border-b border-border/50 bg-transparent px-2 py-1 gap-0.5 shrink-0 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        className="flex items-center border-b border-border/40 bg-muted/20 px-3 py-1 gap-1 shrink-0 overflow-x-auto scrollbar-none"
       >
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -253,19 +290,19 @@ export default function InspectorPanel({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'relative flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0',
+                'relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0',
                 isActive
-                  ? 'bg-secondary text-foreground font-semibold shadow-2xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  ? 'bg-background text-foreground font-semibold border border-border/40 shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               )}
             >
-              <Icon className="size-3.5 text-foreground" />
+              <Icon className="size-3.5 text-muted-foreground" />
               <span>{tab.label}</span>
               {count > 0 && (
                 <span
                   className={cn(
-                    'text-[10px] font-mono tabular-nums px-1 rounded-full',
-                    isActive ? 'bg-accent text-foreground font-semibold' : 'text-muted-foreground'
+                    'text-[10px] font-mono tabular-nums px-1.5 py-0.2 rounded-full',
+                    isActive ? 'bg-muted text-foreground font-semibold' : 'bg-muted/60 text-muted-foreground'
                   )}
                 >
                   {count}
@@ -276,47 +313,33 @@ export default function InspectorPanel({
         })}
       </nav>
 
-      {/* Tab Contents Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Main Tab Content Body */}
+      <div className="flex-1 overflow-y-auto min-w-0 p-3">
         {activeTab === 'info' && (
-          <InfoSection
-            key={paperId}
-            paper={paper}
-            onUpdatePaper={handleUpdatePaper}
-          />
+          <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
         )}
-
+        {activeTab === 'abstract' && (
+          <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} />
+        )}
         {activeTab === 'notes' && (
           <NotesSection
-            key={paperId}
             paper={paper}
             onAddNote={handleAddNote}
             onDeleteNote={handleDeleteNote}
             onUpdateNote={handleUpdateNote}
           />
         )}
-
         {activeTab === 'tags' && (
-          <TagsSection
-            key={paperId}
-            paper={paper}
-            onUpdateTags={handleUpdateTags}
-          />
+          <TagsSection paper={paper} onUpdateTags={handleUpdateTags} />
         )}
-
         {activeTab === 'files' && (
-          <FilesSection
-            key={paperId}
-            paper={paper}
-          />
+          <FilesSection paper={paper} />
         )}
-
         {activeTab === 'relations' && (
-          <RelatedSection key={paperId} paper={paper} workspaceId={workspaceId} />
+          <RelatedSection paper={paper} workspaceId={workspaceId} />
         )}
-
         {activeTab === 'cite' && (
-          <CiteSection key={paperId} paper={paper} workspaceId={workspaceId} />
+          <CiteSection paper={paper} workspaceId={workspaceId} />
         )}
       </div>
     </aside>

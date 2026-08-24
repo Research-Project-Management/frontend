@@ -16,6 +16,49 @@ import type {
   UpdateCollectionDTO,
 } from '../types/library.types';
 
+// ── 0. TanStack Query Cache Keys ─────────────────────────────────────────────
+
+export const libraryKeys = {
+  all: ['library'] as const,
+
+  // Papers
+  papers: (wsId: string) => [...libraryKeys.all, 'papers', wsId] as const,
+  paperList: (wsId: string, filter?: PaperQueryParams) =>
+    [...libraryKeys.papers(wsId), 'list', filter] as const,
+  paperDetail: (wsId: string, paperId: string) =>
+    [...libraryKeys.papers(wsId), 'detail', paperId] as const,
+  paperBundle: (wsId: string, paperId: string) =>
+    [...libraryKeys.papers(wsId), 'bundle', paperId] as const,
+
+  // Collections
+  collections: (wsId: string) =>
+    [...libraryKeys.all, 'collections', wsId] as const,
+
+  // Citations & Formats
+  citations: (wsId: string) =>
+    [...libraryKeys.all, 'citations', wsId] as const,
+  citationItem: (wsId: string, paperId: string, style: CslStyle, index: number = 1) =>
+    [...libraryKeys.citations(wsId), paperId, style, index] as const,
+
+  // Annotations
+  annotations: (wsId: string, paperId: string) =>
+    [...libraryKeys.all, 'annotations', wsId, paperId] as const,
+
+  // Relations & Graph
+  relations: (wsId: string, paperId: string) =>
+    [...libraryKeys.all, 'relations', wsId, paperId] as const,
+  graph: (wsId: string) => [...libraryKeys.all, 'graph', wsId] as const,
+
+  // Quality & Diagnostics
+  duplicates: (wsId: string) =>
+    [...libraryKeys.all, 'duplicates', wsId] as const,
+  integrity: (wsId: string) =>
+    [...libraryKeys.all, 'integrity', wsId] as const,
+
+  // Ingestion Jobs
+  job: (jobId: string) => [...libraryKeys.all, 'job', jobId] as const,
+};
+
 // ── 1. Unified Academic Facade ───────────────────────────────────────────────
 
 export const getPaperAcademicBundle = async (
@@ -73,19 +116,22 @@ export const deletePaper = async (
 export const getCollections = async (
   workspaceId: string,
 ): Promise<Collection[]> => {
-  return apiGet<Collection[]>(
+  const res = await apiGet<{ collections: Collection[] } | Collection[]>(
     `/api/library/collections/${encodeURIComponent(workspaceId)}`,
   );
+  if (Array.isArray(res)) return res;
+  return res?.collections || [];
 };
 
 export const createCollection = async (
   workspaceId: string,
   dto: CreateCollectionDTO,
 ): Promise<Collection> => {
-  return apiPost<Collection>(
+  const res = await apiPost<{ collection: Collection } | Collection>(
     `/api/library/collections/${encodeURIComponent(workspaceId)}`,
     dto,
   );
+  return (res as any)?.collection || res;
 };
 
 export const updateCollection = async (
@@ -93,10 +139,11 @@ export const updateCollection = async (
   collectionId: string,
   dto: UpdateCollectionDTO,
 ): Promise<Collection> => {
-  return apiPut<Collection>(
+  const res = await apiPut<{ collection: Collection } | Collection>(
     `/api/library/collections/${encodeURIComponent(workspaceId)}/${encodeURIComponent(collectionId)}`,
     dto,
   );
+  return (res as any)?.collection || res;
 };
 
 export const deleteCollection = async (
@@ -157,7 +204,7 @@ export const batchFormatCslCitations = async (
 export const resolveAcademicQuery = async (
   query: string,
 ): Promise<any> => {
-  return apiGet('/api/library/references/resolve', { params: { query } });
+  return apiPost('/api/library/references/resolve', { query });
 };
 
 // ── 5. PDF Annotations & Markdown Synthesis ─────────────────────────────────
@@ -195,7 +242,16 @@ export const deleteAnnotation = async (
 export const extractNotesFromAnnotations = async (
   workspaceId: string,
   paperId: string,
-): Promise<{ message: string; markdownNote: string; totalExtracted: number }> => {
+): Promise<{
+  literatureNote?: {
+    title: string;
+    content: string;
+    annotationCount: number;
+    createdAt: string;
+  };
+  markdownNote?: string;
+  totalExtracted?: number;
+}> => {
   return apiPost(
     `/api/library/annotations/${encodeURIComponent(workspaceId)}/${encodeURIComponent(paperId)}/extract-notes`,
   );

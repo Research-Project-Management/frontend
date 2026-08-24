@@ -223,34 +223,47 @@ export default function PaperTableRow({
                 <MoreHorizontal className="size-3.5 text-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 text-xs">
-              <DropdownMenuItem onClick={handleCopyCite} className="gap-2 cursor-pointer">
-                <Quote className="size-3.5 text-primary" />
-                <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyBibtex} className="gap-2 cursor-pointer">
-                <Copy className="size-3.5 text-amber-500" />
-                <span>Copy BibTeX Entry</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyApa} className="gap-2 cursor-pointer">
-                <FileText className="size-3.5 text-blue-500" />
-                <span>Copy APA 7th Citation</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyIeee} className="gap-2 cursor-pointer">
-                <FileText className="size-3.5 text-emerald-500" />
-                <span>Copy IEEE Citation</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDoubleClick} className="gap-2 cursor-pointer">
-                <BookOpen className="size-3.5 text-foreground" />
+            <DropdownMenuContent align="end" className="w-52 p-1 text-xs rounded-xl shadow-lg border border-border">
+              <DropdownMenuItem
+                onClick={handleDoubleClick}
+                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+              >
+                <BookOpen className="size-3.5 text-muted-foreground" />
                 <span>Open in Reader</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleCopyCite}
+                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+              >
+                <Quote className="size-3.5 text-muted-foreground" />
+                <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleCopyBibtex}
+                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+              >
+                <Copy className="size-3.5 text-muted-foreground" />
+                <span>Copy BibTeX Entry</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleCopyApa}
+                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+              >
+                <FileText className="size-3.5 text-muted-foreground" />
+                <span>Copy APA 7th Citation</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleCopyIeee}
+                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+              >
+                <FileText className="size-3.5 text-muted-foreground" />
+                <span>Copy IEEE Citation</span>
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onDelete(pId)}
-                className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
               >
-                <Trash2 className="size-3.5" />
+                <Trash2 className="size-3.5 text-muted-foreground" />
                 <span>Move to Trash</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

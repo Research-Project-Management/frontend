@@ -8,8 +8,8 @@ interface TeamProps {
   members: Member[];
 }
 
-function formatRole(role: string): string {
-  if (!role) return 'Member';
+function formatRole(role?: string): string {
+  if (!role || typeof role !== 'string') return 'Member';
   return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 }
 
@@ -32,9 +32,9 @@ export function Team({ members }: TeamProps) {
             className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors"
           >
             <Avatar className="size-8 border border-border">
-              {member.user.avatar && <AvatarImage src={member.user.avatar} alt={member.user.name} />}
+              {member.user?.avatar && <AvatarImage src={member.user.avatar} alt={member.user?.name || 'User'} />}
               <AvatarFallback className="text-xs">
-                {member.user.name.slice(0, 2).toUpperCase()}
+                {(member.user?.name || 'U').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">

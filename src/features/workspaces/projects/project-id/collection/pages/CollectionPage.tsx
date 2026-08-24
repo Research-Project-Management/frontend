@@ -7,8 +7,8 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { usePapers } from '@/features/workspaces/library/hooks/data/use-papers';
-import { useCollections } from '@/features/workspaces/library/hooks/data/use-collections';
+import { usePapers } from '@/features/workspaces/library/hooks/library/use-papers';
+import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
 import PaperTable from '@/features/workspaces/library/components/table/PaperTable';
 import Panel from '@/features/workspaces/library/components/panel/Panel';
 import UploadModal from '@/features/workspaces/library/components/system/UploadModal';
@@ -33,8 +33,14 @@ export default function CollectionPage() {
   const [uploadMode, setUploadMode] = useState<'file' | 'folder' | 'link'>('file');
   const [createColOpen, setCreateColOpen] = useState(false);
 
-  const allPapers = paperService.state.allPapers ?? [];
-  const collections = collectionService.state.collections ?? [];
+  const allPapers = useMemo(
+    () => paperService.state.allPapers ?? [],
+    [paperService.state.allPapers],
+  );
+  const collections = useMemo(
+    () => collectionService.state.collections ?? [],
+    [collectionService.state.collections],
+  );
   const isLoading = paperService.state.isLoadingAll || projectQuery.isLoading;
 
   // Filter papers for search query
@@ -44,7 +50,7 @@ export default function CollectionPage() {
 
   const selectedPaper = useMemo(() => {
     if (!selectedPaperId) return null;
-    return allPapers.find((p) => p.id === selectedPaperId) ?? null;
+    return allPapers.find((p: Paper) => p.id === selectedPaperId) ?? null;
   }, [allPapers, selectedPaperId]);
 
   const handleSelectPaper = (paper: Paper) => {
@@ -76,7 +82,7 @@ export default function CollectionPage() {
       toast.error('No references to export');
       return;
     }
-    const bibtex = allPapers.map((p) => convertToBibTeX(p)).join('\n\n');
+    const bibtex = allPapers.map((p: Paper) => convertToBibTeX(p)).join('\n\n');
     const blob = new Blob([bibtex], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

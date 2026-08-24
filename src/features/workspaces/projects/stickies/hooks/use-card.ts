@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
 import { type Sticky, STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
@@ -17,6 +17,8 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
+const getStickyId = (sticky: Sticky): string => String(sticky.id || (sticky as any)._id || '');
+
 export const useCard = (options?: { search?: string; projectId?: string }) => {
   const params = useParams() as { workspaceId?: string; id?: string };
   const workspaceId = params?.workspaceId || params?.id || '';
@@ -26,7 +28,13 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const api = useSticky(workspaceId, search, projectId);
-  const stickies = (api.query.data || []) as Sticky[];
+  const stickies = useMemo(() => (api.query.data || []) as Sticky[], [api.query.data]);
+
+  const createStickyMutate = api.mutations.create.mutate;
+  const isCreatePending = api.mutations.create.isPending;
+  const updateStickyMutate = api.mutations.update.mutate;
+  const removeStickyMutate = api.mutations.remove.mutate;
+  const reorderStickyMutate = api.mutations.reorder.mutate;
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -44,14 +52,14 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
       sensors,
       status: {
         isLoading: api.query.isLoading,
-        isAdding: api.mutations.create.isPending,
+        isAdding: isCreatePending,
         hasEmptySticky,
         error: api.query.error,
       },
     },
     actions: {
       add: useCallback(() => {
-        if (!workspaceId || api.mutations.create.isPending) return;
+        if (!workspaceId || isCreatePending) return;
 
         if (stickies.some(isStickyEmpty)) {
           toast.info("Please add content to your empty sticky before creating a new one", {
@@ -64,26 +72,26 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
         const idx = lastColor ? STICKY_COLOR_CYCLE.indexOf(lastColor) : -1;
         const nextColor = STICKY_COLOR_CYCLE[idx === -1 ? 0 : (idx + 1) % STICKY_COLOR_CYCLE.length];
 
-        api.mutations.create.mutate({
+        createStickyMutate({
           workspaceId,
           content: "<p></p>",
           color: nextColor,
           title: "",
           position: { x: 0, y: 0 },
         });
-      }, [workspaceId, stickies, api.mutations.create]),
+      }, [workspaceId, stickies, createStickyMutate, isCreatePending]),
 
       update: useCallback(
         (id: string, updates: any) =>
-          api.mutations.update.mutate({ stickyId: id, updates }),
-        [api.mutations.update],
+          updateStickyMutate({ stickyId: id, updates }),
+        [updateStickyMutate],
       ),
       delete: useCallback(
         (id: string) => {
           if (!id) return;
-          api.mutations.remove.mutate(id);
+          removeStickyMutate(id);
         },
-        [api.mutations.remove],
+        [removeStickyMutate],
       ),
 
       dragStart: useCallback((event: DragStartEvent) => {
@@ -97,22 +105,22 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
           if (!over || active.id === over.id) return;
 
           const oldIdx = stickies.findIndex(
-            (sticky) => getStickyId(sticky) === String(active.id),
+            (sticky: Sticky) => getStickyId(sticky) === String(active.id),
           );
           const newIdx = stickies.findIndex(
-            (sticky) => getStickyId(sticky) === String(over.id),
+            (sticky: Sticky) => getStickyId(sticky) === String(over.id),
           );
 
           if (oldIdx !== -1 && newIdx !== -1) {
-            const newOrderIds = arrayMove(
-              stickies.map(getStickyId).filter(Boolean),
+            const newOrderIds: string[] = arrayMove<string>(
+              stickies.map(getStickyId).filter((id): id is string => Boolean(id)),
               oldIdx,
               newIdx,
             );
-            api.mutations.reorder.mutate(newOrderIds);
+            reorderStickyMutate(newOrderIds);
           }
         },
-        [stickies, api.mutations.reorder],
+        [stickies, reorderStickyMutate],
       ),
     },
   };

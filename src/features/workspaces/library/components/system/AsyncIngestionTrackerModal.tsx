@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { CheckCircle2, XCircle, Loader2, Sparkles, FileText, ArrowRight } from 'lucide-react';
-import { useAsyncJobStatus } from '../../hooks/use-library';
+import { useAsyncJobStatus } from '../../hooks/library/use-library';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';

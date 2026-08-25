@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const skipBuildStrictChecks = process.env.SKIP_BUILD_STRICT === 'true';
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false,
   poweredByHeader: false,
   compress: true,
   output: 'standalone',

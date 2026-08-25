@@ -1,140 +1,161 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useHomeFiles, useToggleStarItem, useDeleteItem, useMoveItem } from '@/features/workspaces/storage/hooks/use-storage';
+import {
+  useHomeFiles,
+  useToggleStarItem,
+  useDeleteItem,
+  useMoveItem,
+  useFolderPath,
+} from '@/features/workspaces/storage/hooks/use-storage';
 import { useViewStore } from '../store/use-view-store';
 import { usePreviewStore } from '../store/use-preview-store';
+import { useStorageFilterStore } from '../store/use-filter-store';
+import { useStorageSelectionStore } from '../store/use-selection-store';
 
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/storage/types/storage.types';
-import { pushBreadcrumbFolder, navigateBreadcrumbPath, canDropIntoFolder } from '../utils/my-files.util';
+import {
+  pushBreadcrumbFolder,
+  navigateBreadcrumbPath,
+  canDropIntoFolder,
+} from '../utils/my-files.util';
+import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
-
-function Breadcrumbs({
-  segments,
-  onNavigate,
-}: {
-  segments: BreadcrumbSegment[];
-  onNavigate: (index: number, id: string | null) => void;
-}) {
-  if (segments.length <= 1) return null;
-  return (
-    <nav
-      aria-label="Folder navigation"
-      className="flex items-center gap-0.5 px-6 py-2 text-[12px] border-b border-border/40 bg-background/60 overflow-x-auto shrink-0 min-w-0"
-    >
-      {segments.map((seg, idx) => {
-        const isLast = idx === segments.length - 1;
-        return (
-          <span key={idx} className="flex items-center gap-0.5 min-w-0 shrink-0">
-            {idx > 0 && (
-              <ChevronRight className="size-3 text-muted-foreground/40 shrink-0 mx-0.5" />
-            )}
-            <button
-              onClick={() => onNavigate(idx, seg.id)}
-              disabled={isLast}
-              className={`truncate max-w-[140px] transition-colors ${
-                isLast
-                  ? 'text-foreground font-medium cursor-default'
-                  : 'text-muted-foreground hover:text-foreground cursor-pointer'
-              }`}
-              title={seg.name}
-            >
-              {idx === 0 ? <Home className="size-3 inline -mt-0.5" /> : seg.name}
-            </button>
-          </span>
-        );
-      })}
-    </nav>
-  );
-}
+import { BulkActionBar } from '../components/layout/BulkActionBar';
 
 export default function WorkspaceMyFilesPage() {
-  const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
+  const router = useRouter();
+  const { workspaceId: workspaceUrl, folderId: routeFolderId } = useParams() as {
+    workspaceId: string;
+    folderId?: string;
+  };
+  const searchParams = useSearchParams();
+  const folderParam = routeFolderId || searchParams.get('folder');
+  const highlightParam = searchParams.get('highlight');
+
   const { view } = useViewStore();
+  const { typeFilter, projectFilter, sortBy } = useStorageFilterStore();
+  const { clearSelection } = useStorageSelectionStore();
+  const [searchQuery, setSearchQuery] = useState('');
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(folderParam || null);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(highlightParam || null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbSegment[]>([
     { id: null, name: 'My Drive' },
   ]);
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
-
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?.id || workspaceUrl;
 
   const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder);
+  const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
+  const rawFiles = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
+
+  const files = useMemo(
+    () => applyStorageFilters(rawFiles, { typeFilter, projectFilter, sortBy, searchQuery }),
+    [rawFiles, typeFilter, projectFilter, sortBy, searchQuery],
+  );
+
+  useEffect(() => {
+    const nextFolder = routeFolderId || searchParams.get('folder') || null;
+    if (nextFolder !== currentFolder) {
+      setCurrentFolder(nextFolder);
+      clearSelection();
+    }
+    if (highlightParam !== highlightedItemId) {
+      setHighlightedItemId(highlightParam || null);
+    }
+  }, [routeFolderId, searchParams, currentFolder, highlightedItemId, clearSelection]);
+
+  useEffect(() => {
+    if (currentFolder && folderPathData?.path && folderPathData.path.length > 0) {
+      setBreadcrumbs([
+        { id: null, name: 'My Drive' },
+        ...folderPathData.path,
+      ]);
+    } else if (!currentFolder) {
+      setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+    }
+  }, [currentFolder, folderPathData?.path]);
 
   // Navigation
   const handleFolderClick = useCallback((folder: StorageItem) => {
+    clearSelection();
     setCurrentFolder(folder.id);
     setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { id: folder.id, name: folder.filename }));
-  }, []);
+    router.push(`/${workspaceUrl}/storage/my-files/${folder.id}`);
+  }, [clearSelection, router, workspaceUrl]);
 
-  const handleBreadcrumbNavigate = useCallback((index: number, id: string | null) => {
-    setCurrentFolder(id);
+  const handleBreadcrumbNavigate = useCallback((index: number, folderId: string | null) => {
+    clearSelection();
+    setCurrentFolder(folderId);
     setBreadcrumbs((prev) => navigateBreadcrumbPath(prev, index));
-  }, []);
+    if (folderId) {
+      router.push(`/${workspaceUrl}/storage/my-files/${folderId}`);
+    } else {
+      router.push(`/${workspaceUrl}/storage/my-files`);
+    }
+  }, [clearSelection, router, workspaceUrl]);
+
+  const handleTopBreadcrumbNavigate = useCallback((folderId: string | null) => {
+    const idx = breadcrumbs.findIndex((s) => s.id === folderId);
+    handleBreadcrumbNavigate(idx >= 0 ? idx : 0, folderId);
+  }, [breadcrumbs, handleBreadcrumbNavigate]);
 
   // Download
-  const handleDownload = useCallback(async (item: StorageItem) => {
+  const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
       await downloadFileUrl(item.url, item.filename);
     } catch {
       window.open(item.url, '_blank');
     }
-  }, []);
+  };
 
   // Drag-and-drop move
-  const handleDragStart = useCallback((item: StorageItem) => {
+  const handleDragStart = (item: StorageItem, e: React.DragEvent) => {
     setDraggingItem(item);
-  }, []);
+    e.dataTransfer.setData('text/plain', item.id);
+  };
 
-  const handleDropOnFolder = useCallback(
-    async (folder: StorageItem) => {
-      if (!canDropIntoFolder(draggingItem, folder)) return;
-      const itemName = draggingItem!.filename;
-      try {
-        await moveItem({ itemId: draggingItem!.id, parentId: folder.id });
-        toast.success(`Moved "${itemName}" into "${folder.filename}"`);
-      } catch {
-        toast.error(`Failed to move "${itemName}"`);
-      } finally {
-        setDraggingItem(null);
-      }
-    },
-    [draggingItem, moveItem],
-  );
+  const handleDropOnFolder = async (targetFolder: StorageItem, e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingItem || !canDropIntoFolder(draggingItem, targetFolder)) return;
 
-  const handleMoveToParent = useCallback(
-    async (item: StorageItem) => {
-      const parentId =
-        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
-      try {
-        await moveItem({ itemId: item.id, parentId });
-        toast.success(
-          `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : 'My Drive'}`,
-        );
-      } catch {
-        toast.error(`Failed to move "${item.filename}"`);
-      }
-    },
-    [breadcrumbs, moveItem],
-  );
+    try {
+      await moveItem({ itemId: draggingItem.id, parentId: targetFolder.id });
+      toast.success(`Moved "${draggingItem.filename}" into "${targetFolder.filename}"`);
+    } catch {
+      toast.error('Failed to move item');
+    } finally {
+      setDraggingItem(null);
+    }
+  };
+
+  const handleMoveToParent = async (item: StorageItem) => {
+    const parentFolderId =
+      breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
+    try {
+      await moveItem({ itemId: item.id, parentId: parentFolderId });
+      toast.success(`Moved "${item.filename}" to parent folder`);
+    } catch {
+      toast.error('Failed to move item to parent folder');
+    }
+  };
 
   // Render
   if (isWorkspaceLoading || isFilesLoading) {
@@ -156,6 +177,7 @@ export default function WorkspaceMyFilesPage() {
 
   const viewProps = {
     items: files,
+    highlightedItemId,
     onFolderClick: handleFolderClick,
     onToggleStar: (id: string) => { void handleToggleStar(id); },
     onDelete: (id: string) => { void handleDelete(id); },
@@ -167,12 +189,21 @@ export default function WorkspaceMyFilesPage() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
-      <Topbar title="My Drive" icon={HardDrive} workspaceId={workspaceId} parentId={currentFolder} />
-      <Breadcrumbs segments={breadcrumbs} onNavigate={handleBreadcrumbNavigate} />
+    <div className="flex h-full w-full flex-col overflow-hidden relative">
+      <Topbar
+        title="My Drive"
+        icon={HardDrive}
+        breadcrumbs={breadcrumbs}
+        onBreadcrumbNavigate={handleTopBreadcrumbNavigate}
+        workspaceId={workspaceId}
+        parentId={currentFolder}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
         {view === 'list' ? <ListView {...viewProps} /> : <GridView {...viewProps} />}
       </div>
+      <BulkActionBar items={files} />
     </div>
   );
 }

@@ -132,7 +132,13 @@ async function rawFetch(
 
   if (!signal && timeout > 0) {
     const controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), timeout);
+    timeoutId = setTimeout(() => {
+      try {
+        controller.abort(new DOMException(`Request timeout after ${timeout}ms`, 'TimeoutError'));
+      } catch {
+        controller.abort();
+      }
+    }, timeout);
     finalSignal = controller.signal;
   }
 
@@ -145,6 +151,24 @@ async function rawFetch(
       signal: finalSignal,
       ...rest,
     });
+  } catch (err: unknown) {
+    if (err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError' || err.message?.includes('aborted'))) {
+      if (!signal && timeoutId) {
+        throw new ApiError({
+          message: `Request timed out after ${timeout}ms. Please ensure backend server is running.`,
+          statusCode: 408,
+          code: 'TIMEOUT',
+        });
+      }
+    }
+    if (err instanceof TypeError && err.message?.includes('Failed to fetch')) {
+      throw new ApiError({
+        message: 'Cannot connect to backend server. Please ensure backend is running.',
+        statusCode: 503,
+        code: 'NETWORK_ERROR',
+      });
+    }
+    throw err;
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
@@ -181,13 +205,15 @@ export async function apiFetch<T>(
       throw apiError;
     }
 
-    // Auto-refresh on 401
-    const isAuthBypass =
+    // Auto-refresh on 401 for all protected endpoints
+    const isUnauthenticatedAuthEndpoint =
       path.includes('/auth/refresh') ||
       path.includes('/auth/login') ||
-      path.includes('/auth/register');
+      path.includes('/auth/register') ||
+      path.includes('/auth/forgot-password') ||
+      path.includes('/auth/oauth/exchange');
 
-    if (response.status === 401 && !isAuthBypass) {
+    if (response.status === 401 && !isUnauthenticatedAuthEndpoint) {
       const newToken = await tryRefresh();
 
       if (newToken) {
@@ -235,10 +261,17 @@ export async function apiFetch<T>(
         code: payload.code,
       });
 
-      logger.error(`API Error: [${normalizedMethod}] ${path}`, error, {
-        statusCode: response.status,
-        errors: payload.errors,
-      });
+      if (response.status === 401) {
+        logger.warn(`Authentication required: [${normalizedMethod}] ${path}`, {
+          statusCode: response.status,
+          message: payload.message,
+        });
+      } else {
+        logger.error(`API Error: [${normalizedMethod}] ${path}`, error, {
+          statusCode: response.status,
+          errors: payload.errors,
+        });
+      }
 
       throw error;
     }

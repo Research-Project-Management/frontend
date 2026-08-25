@@ -1,69 +1,55 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
 import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { useHomeFiles, useToggleStarItem, useDeleteItem, useMoveItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
+import {
+  useHomeFiles,
+  useToggleStarItem,
+  useDeleteItem,
+  useMoveItem,
+  useFolderPath,
+} from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
+import { useStorageFilterStore } from '@/features/workspaces/projects/project-id/storage/store/use-filter-store';
 
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import ListView from '@/features/workspaces/projects/project-id/storage/components/views/ListView';
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
 import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 import { pushBreadcrumbFolder, navigateBreadcrumbPath, canDropIntoFolder } from '../utils/my-files.util';
+import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
 
-function Breadcrumbs({
-  segments,
-  onNavigate,
-}: {
-  segments: BreadcrumbSegment[];
-  onNavigate: (index: number, id: string | null) => void;
-}) {
-  if (segments.length <= 1) return null;
-  return (
-    <nav
-      aria-label="Folder navigation"
-      className="flex items-center gap-0.5 px-6 py-2 text-[12px] border-b border-border/40 bg-background/60 overflow-x-auto shrink-0 min-w-0"
-    >
-      {segments.map((seg, idx) => {
-        const isLast = idx === segments.length - 1;
-        return (
-          <span key={idx} className="flex items-center gap-0.5 min-w-0 shrink-0">
-            {idx > 0 && (
-              <ChevronRight className="size-3 text-muted-foreground/40 shrink-0 mx-0.5" />
-            )}
-            <button
-              onClick={() => onNavigate(idx, seg.id)}
-              disabled={isLast}
-              className={`truncate max-w-[140px] transition-colors ${
-                isLast
-                  ? 'text-foreground font-medium cursor-default'
-                  : 'text-muted-foreground hover:text-foreground cursor-pointer'
-              }`}
-              title={seg.name}
-            >
-              {idx === 0 ? <Home className="size-3 inline -mt-0.5" /> : seg.name}
-            </button>
-          </span>
-        );
-      })}
-    </nav>
-  );
-}
+import { useRouter } from 'next/navigation';
+import { useStorageSelectionStore } from '@/features/workspaces/storage/store/use-selection-store';
+import { BulkActionBar } from '../components/layout/BulkActionBar';
 
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function MyFilesPage() {
-  const { projectId } = useParams() as { projectId: string };
+  const router = useRouter();
+  const { workspaceId: workspaceUrl, projectId, folderId: routeFolderId } = useParams() as {
+    workspaceId: string;
+    projectId: string;
+    folderId?: string;
+  };
+  const searchParams = useSearchParams();
+  const folderParam = routeFolderId || searchParams.get('folder');
+  const highlightParam = searchParams.get('highlight');
+
   const { view } = useViewStore();
+  const { typeFilter, sortBy } = useStorageFilterStore();
+  const { clearSelection } = useStorageSelectionStore();
+  const [searchQuery, setSearchQuery] = useState('');
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
-  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(folderParam || null);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(highlightParam || null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbSegment[]>([
     { id: null, name: 'My Drive' },
   ]);
@@ -72,22 +58,63 @@ export default function MyFilesPage() {
   const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
 
   const { data, isLoading: isFilesLoading } = useHomeFiles(projectId!, currentFolder);
+  const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
+  const rawFiles = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
+
+  const files = useMemo(
+    () => applyStorageFilters(rawFiles, { typeFilter, sortBy, searchQuery }),
+    [rawFiles, typeFilter, sortBy, searchQuery],
+  );
+
+  useEffect(() => {
+    const nextFolder = routeFolderId || searchParams.get('folder') || null;
+    if (nextFolder !== currentFolder) {
+      setCurrentFolder(nextFolder);
+      clearSelection();
+    }
+    if (highlightParam !== highlightedItemId) {
+      setHighlightedItemId(highlightParam || null);
+    }
+  }, [routeFolderId, searchParams, currentFolder, highlightedItemId, clearSelection]);
+
+  useEffect(() => {
+    if (currentFolder && folderPathData?.path && folderPathData.path.length > 0) {
+      setBreadcrumbs([
+        { id: null, name: 'My Drive' },
+        ...folderPathData.path,
+      ]);
+    } else if (!currentFolder) {
+      setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+    }
+  }, [currentFolder, folderPathData?.path]);
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const handleFolderClick = useCallback((folder: StorageItem) => {
+    clearSelection();
     setCurrentFolder(folder.id);
     setBreadcrumbs((prev) => pushBreadcrumbFolder(prev, { id: folder.id, name: folder.filename }));
-  }, []);
+    router.push(`/${workspaceUrl}/projects/${projectId}/storage/my-files/${folder.id}`);
+  }, [clearSelection, router, workspaceUrl, projectId]);
 
-  const handleBreadcrumbNavigate = useCallback((index: number, id: string | null) => {
-    setCurrentFolder(id);
+  const handleBreadcrumbNavigate = useCallback((index: number, folderId: string | null) => {
+    clearSelection();
+    setCurrentFolder(folderId);
     setBreadcrumbs((prev) => navigateBreadcrumbPath(prev, index));
-  }, []);
+    if (folderId) {
+      router.push(`/${workspaceUrl}/projects/${projectId}/storage/my-files/${folderId}`);
+    } else {
+      router.push(`/${workspaceUrl}/projects/${projectId}/storage/my-files`);
+    }
+  }, [clearSelection, router, workspaceUrl, projectId]);
+
+  const handleTopBreadcrumbNavigate = useCallback((folderId: string | null) => {
+    const idx = breadcrumbs.findIndex((s) => s.id === folderId);
+    handleBreadcrumbNavigate(idx >= 0 ? idx : 0, folderId);
+  }, [breadcrumbs, handleBreadcrumbNavigate]);
 
   // ── Download ───────────────────────────────────────────────────────────
   const handleDownload = useCallback(async (item: StorageItem) => {
@@ -156,6 +183,7 @@ export default function MyFilesPage() {
 
   const viewProps = {
     items: files,
+    highlightedItemId,
     onFolderClick: handleFolderClick,
     onToggleStar: (id: string) => { void handleToggleStar(id); },
     onDelete: (id: string) => { void handleDelete(id); },
@@ -167,12 +195,21 @@ export default function MyFilesPage() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
-      <Topbar title="My Drive" icon={HardDrive} projectId={projectId} parentId={currentFolder} />
-      <Breadcrumbs segments={breadcrumbs} onNavigate={handleBreadcrumbNavigate} />
+    <div className="flex h-full w-full flex-col overflow-hidden relative">
+      <Topbar
+        title="My Drive"
+        icon={HardDrive}
+        breadcrumbs={breadcrumbs}
+        onBreadcrumbNavigate={handleTopBreadcrumbNavigate}
+        projectId={projectId}
+        parentId={currentFolder}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
         {view === 'list' ? <ListView {...viewProps} /> : <GridView {...viewProps} />}
       </div>
+      <BulkActionBar items={files} />
     </div>
   );
 }

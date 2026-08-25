@@ -140,7 +140,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         } catch {}
       }
     }
-    return new Set();
+    return new Set<string>();
   });
 
   useEffect(() => {

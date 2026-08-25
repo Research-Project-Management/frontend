@@ -224,7 +224,7 @@ export async function listChatSessions(
     credentials: 'include',
   });
   if (!res.ok) return [];
-  const data = (await res.json()) as any;
+  const data = (await res.json()) as { chats?: ChatSession[] };
   return data.chats || [];
 }
 

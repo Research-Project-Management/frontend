@@ -11,6 +11,8 @@ export type StorageItem = {
     url?: string;
     thumbnail?: string;
     starred: boolean;
+    parentId?: string | null;
+    parent?: string | null;
     metaData?: Record<string, any>;
     sharedWith?: Array<{
         user: string;

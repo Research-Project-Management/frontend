@@ -247,7 +247,7 @@ export async function listChatSessions(
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to list chat sessions');
-  const data = (await res.json()) as any;
+  const data = (await res.json()) as { chats?: ChatSession[] };
   return data.chats || [];
 }
 
@@ -340,7 +340,7 @@ export async function getPageChat(pageId: string, _options?: unknown): Promise<C
     credentials: 'include',
   });
   if (!res.ok) return [];
-  const data = (await res.json()) as any;
+  const data = (await res.json()) as { messages?: ChatMessage[] };
   return data.messages || [];
 }
 
@@ -383,7 +383,7 @@ export async function fetchDocumentsBulk(
     body: JSON.stringify({ ids }),
   });
   if (!res.ok) throw new Error('Failed to fetch documents');
-  const data = (await res.json()) as any;
+  const data = (await res.json()) as { documents?: Array<{ id: string; name: string; size: number }> };
   return data.documents || [];
 }
 

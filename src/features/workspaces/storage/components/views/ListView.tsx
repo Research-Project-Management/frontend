@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { Star, Folder, MoreVertical, Download, RotateCcw, Trash2, Pencil, FolderUp } from 'lucide-react';
+import {
+  Star,
+  Folder,
+  MoreVertical,
+  Download,
+  RotateCcw,
+  Trash2,
+  Pencil,
+  FolderUp,
+  FolderSymlink,
+  CheckSquare,
+  Square,
+  MinusSquare,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
@@ -7,7 +20,39 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from '@/shared/utils/url';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { getFileType, getFileIcon, getFileColor, formatFileSize, formatDate } from '../../utils/file';
+import {
+  getFileType,
+  getFileIcon,
+  getFileColor,
+  formatFileSize,
+  formatDate,
+} from '../../utils/file';
+import { useStorageSelectionStore } from '../../store/use-selection-store';
+
+function FileIconItem({ item }: { item: StorageItem }) {
+  const [hasError, setHasError] = useState(false);
+  const fileType = getFileType(item);
+  const imageUrl = !hasError
+    ? resolveFileUrl(item.thumbnail || (fileType === 'image' ? item.url : undefined))
+    : null;
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={item.filename}
+        className="size-5 rounded object-cover shrink-0"
+        onError={() => setHasError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className={`flex items-center justify-center shrink-0 ${getFileColor(fileType)}`}>
+      {getFileIcon(fileType, 5)}
+    </div>
+  );
+}
 
 export type StorageViewProps = {
   items: StorageItem[];
@@ -18,10 +63,12 @@ export type StorageViewProps = {
   onFileClick?: (file: StorageItem) => void;
   isTrash?: boolean;
   selectedItemId?: string | null;
+  highlightedItemId?: string | null;
   onDropOnFolder?: (folder: StorageItem, e: React.DragEvent) => void;
   onDragStartFile?: (item: StorageItem, e: React.DragEvent) => void;
   /** Called when user wants to move an item one level up (out of current folder) */
   onMoveToParent?: (item: StorageItem) => void;
+  onOpenLocation?: (item: StorageItem) => void;
   isReadOnly?: boolean;
 };
 
@@ -32,6 +79,7 @@ type ItemActionsProps = {
   onDownload: (item: StorageItem) => void;
   isTrash?: boolean;
   onMoveToParent?: (item: StorageItem) => void;
+  onOpenLocation?: (item: StorageItem) => void;
 };
 
 export function ItemActions({
@@ -41,6 +89,7 @@ export function ItemActions({
   onDownload,
   isTrash,
   onMoveToParent,
+  onOpenLocation,
 }: ItemActionsProps) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -62,7 +111,7 @@ export function ItemActions({
         setIsDeleteModalOpen(false);
         setIsDeleteDone(false);
       }, 180);
-    } catch (err) {
+    } catch {
       toast.error(isTrash ? "Failed to delete" : "Failed to move to trash");
     } finally {
       window.setTimeout(() => {
@@ -72,122 +121,118 @@ export function ItemActions({
   };
 
   const handleRestore = async () => {
-    if (isRestoring) return;
     setIsRestoring(true);
     try {
-      await Promise.resolve(onToggleStar(item.id));
-      toast.success(`Restored "${item.filename}"`);
+      const event = new CustomEvent('restore-storage-item', { detail: item.id });
+      window.dispatchEvent(event);
+      await Promise.resolve(onDelete(item.id));
+      toast.success("Restored successfully");
     } catch {
-      toast.error("Failed to restore file");
+      toast.error("Failed to restore");
     } finally {
       setIsRestoring(false);
     }
   };
 
   return (
-    <div
-      onPointerDown={(e: React.MouseEvent) => e.stopPropagation()}
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-    >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {!isTrash && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 text-muted-foreground hover:text-foreground"
+          onClick={() => onToggleStar(item.id)}
+          title={item.starred ? "Unstar" : "Star"}
+        >
+          <Star className={`size-3.5 ${item.starred ? "fill-amber-400 text-amber-400" : ""}`} />
+        </Button>
+      )}
+
+      {!isTrash && !item.isFolder && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 text-muted-foreground hover:text-foreground"
+          onClick={() => onDownload(item)}
+          title="Download"
+        >
+          <Download className="size-3.5" />
+        </Button>
+      )}
+
+      {isTrash ? (
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-foreground hover:bg-muted cursor-pointer outline-none"
-            onPointerDown={(e: React.MouseEvent) => e.stopPropagation()}
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            size="icon"
+            className="size-7 text-muted-foreground hover:text-foreground"
+            onClick={handleRestore}
+            disabled={isRestoring}
+            title="Restore"
           >
-            <MoreVertical className="size-4 text-foreground" />
+            <RotateCcw className="size-3.5" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          onCloseAutoFocus={(e) => e.preventDefault()}
-          onPointerDown={(e: React.MouseEvent) => e.stopPropagation()}
-          onClick={(e: React.MouseEvent) => e.stopPropagation()}
-        >
-          {!item.isFolder && (
-            <DropdownMenuItem
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                onDownload(item);
-              }}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => setIsDeleteModalOpen(true)}
+            title="Delete Permanently"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground hover:text-foreground"
             >
-              <Download className="size-4 mr-2" />
-              Download
+              <MoreVertical className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 text-xs">
+            <DropdownMenuItem onClick={handleRenameClick} className="gap-2">
+              <Pencil className="size-3.5" />
+              <span>Rename</span>
             </DropdownMenuItem>
-          )}
-          {isTrash ? (
-            <>
-              <DropdownMenuItem
-                disabled={isRestoring}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  void handleRestore();
-                }}
-              >
-                <RotateCcw className="size-4 mr-2" />
-                {isRestoring ? 'Restoring...' : 'Restore'}
+
+            {onMoveToParent && item.parentId && (
+              <DropdownMenuItem onClick={() => onMoveToParent(item)} className="gap-2">
+                <FolderUp className="size-3.5" />
+                <span>Move to parent folder</span>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  setIsDeleteModalOpen(true);
-                }}
-              >
-                <Trash2 className="size-4 mr-2" />
-                Delete Permanently
+            )}
+
+            {onOpenLocation && (
+              <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2">
+                <FolderSymlink className="size-3.5" />
+                <span>Go to location</span>
               </DropdownMenuItem>
-            </>
-          ) : (
-            <>
-              <DropdownMenuItem onClick={handleRenameClick}>
-                <Pencil className="size-4 mr-2" />
-                Rename
-              </DropdownMenuItem>
-              {onMoveToParent && (
-                <DropdownMenuItem
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    onMoveToParent(item);
-                  }}
-                >
-                  <FolderUp className="size-4 mr-2" />
-                  Move up
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  onToggleStar(item.id);
-                }}
-              >
-                <Star className="size-4 mr-2" />
-                {item.starred ? 'Unstar' : 'Star'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  setIsDeleteModalOpen(true);
-                }}
-              >
-                <Trash2 className="size-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            )}
+
+            <DropdownMenuItem
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="gap-2 text-destructive focus:text-destructive"
+            >
+              <Trash2 className="size-3.5" />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <DeleteModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title={isTrash ? "Delete file permanently?" : "Move file to trash?"}
+        title={isTrash ? "Delete Permanently?" : "Move to Trash?"}
         description={
           isTrash
-            ? `Are you sure you want to permanently delete "${item.filename}"? This action cannot be undone.`
+            ? `Are you sure you want to delete "${item.filename}" permanently? This action cannot be undone.`
             : `Are you sure you want to move "${item.filename}" to trash?`
         }
         confirmText={isDeleteDone ? "Deleted" : isTrash ? "Delete Permanently" : "Delete"}
@@ -207,19 +252,60 @@ export default function ListView({
   onFileClick,
   isTrash,
   selectedItemId,
+  highlightedItemId,
   onDropOnFolder,
   onDragStartFile,
   onMoveToParent,
+  onOpenLocation,
   isReadOnly,
 }: StorageViewProps) {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const {
+    selectedIds,
+    toggleSelect,
+    selectRange,
+    selectAll,
+    clearSelection,
+    isAllSelected,
+  } = useStorageSelectionStore();
+
+  const allItemIds = items.map((i) => i.id);
+  const allSelected = isAllSelected(allItemIds);
+  const hasSomeSelected = selectedIds.length > 0 && !allSelected;
+
+  const handleHeaderCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (allSelected) {
+      clearSelection();
+    } else {
+      selectAll(allItemIds);
+    }
+  };
+
   return (
     <div className="rounded-lg overflow-hidden">
       {/* Header - Google Drive style */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/50">
-        <div className="col-span-4">Name</div>
+      <div className="grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 select-none">
+        <div className="col-span-5 flex items-center gap-3">
+          {!isReadOnly && (
+            <button
+              onClick={handleHeaderCheckboxClick}
+              className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title={allSelected ? "Deselect all" : "Select all"}
+            >
+              {allSelected ? (
+                <CheckSquare className="size-4 text-primary" />
+              ) : hasSomeSelected ? (
+                <MinusSquare className="size-4 text-primary" />
+              ) : (
+                <Square className="size-4 opacity-50 hover:opacity-100" />
+              )}
+            </button>
+          )}
+          <span>Name</span>
+        </div>
         <div className="col-span-2">Owner</div>
-        <div className="col-span-3">Last modified</div>
+        <div className="col-span-2">Last modified</div>
         <div className="col-span-1">Size</div>
         <div className="col-span-2"></div>
       </div>
@@ -233,10 +319,14 @@ export default function ListView({
         <div className="divide-y divide-border/30">
           <AnimatePresence initial={false}>
             {items.map((item) => {
-              const fileType = getFileType(item);
+              const isMultiSelected = selectedIds.includes(item.id);
+              const isSingleSelected = selectedItemId === item.id || highlightedItemId === item.id;
+              const isSelected = isMultiSelected || isSingleSelected;
+
               return (
                 <motion.div
                   key={item.id}
+                  id={`storage-item-${item.id}`}
                   layout
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -266,10 +356,20 @@ export default function ListView({
                       onDropOnFolder(item, e);
                     }
                   }}
-                  className={`grid grid-cols-12 gap-4 items-center px-4 py-2.5 hover:bg-muted/50 cursor-pointer group transition-colors ${selectedItemId === item.id ? "bg-accent/80" : ""
-                    } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""
-                    }`}
+                  className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted/50 cursor-pointer group transition-colors select-none ${
+                    isSelected ? "bg-accent/80 font-medium" : ""
+                  } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
                   onClick={(e: React.MouseEvent) => {
+                    if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      if (e.shiftKey) {
+                        selectRange(allItemIds, item.id);
+                      } else {
+                        toggleSelect(item.id);
+                      }
+                      return;
+                    }
+
                     if (item.isFolder) {
                       onFolderClick?.(item);
                     } else {
@@ -277,21 +377,36 @@ export default function ListView({
                     }
                   }}
                 >
-                  <div className="col-span-4 flex items-center gap-3 min-w-0 overflow-hidden">
-                    <div
-                      className={`flex items-center justify-center shrink-0 ${!(item.thumbnail || (fileType === "image" && item.url)) ? getFileColor(fileType) : ""}`}
-                    >
-                      {item.thumbnail || (fileType === "image" && item.url) ? (
-                        <img
-                          src={resolveFileUrl(item.thumbnail || item.url) || ""}
-                          alt={item.filename}
-                          className="size-5 rounded object-cover"
-                        />
-                      ) : (
-                        getFileIcon(fileType, 5)
-                      )}
-                    </div>
-                    <span className="text-sm truncate" title={item.filename}>{item.filename}</span>
+                  <div className="col-span-5 flex items-center gap-3 min-w-0 overflow-hidden">
+                    {!isReadOnly && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (e.shiftKey) {
+                            selectRange(allItemIds, item.id);
+                          } else {
+                            toggleSelect(item.id);
+                          }
+                        }}
+                        className={`size-4 flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
+                          isMultiSelected
+                            ? "opacity-100 text-primary"
+                            : "opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground"
+                        }`}
+                        title={isMultiSelected ? "Deselect" : "Select"}
+                      >
+                        {isMultiSelected ? (
+                          <CheckSquare className="size-4 text-primary" />
+                        ) : (
+                          <Square className="size-4" />
+                        )}
+                      </button>
+                    )}
+
+                    <FileIconItem item={item} />
+                    <span className="text-sm truncate" title={item.filename}>
+                      {item.filename}
+                    </span>
                     {item.starred && (
                       <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
                     )}
@@ -303,7 +418,11 @@ export default function ListView({
                     ) : (
                       <>
                         {item.author?.avatar ? (
-                          <img src={resolveFileUrl(item.author.avatar) || ""} alt="" className="size-5 rounded-full shrink-0" />
+                          <img
+                            src={resolveFileUrl(item.author.avatar) || ""}
+                            alt=""
+                            className="size-5 rounded-full shrink-0"
+                          />
                         ) : (
                           <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
                             <span className="text-[11px] font-medium text-muted-foreground">
@@ -311,12 +430,14 @@ export default function ListView({
                             </span>
                           </div>
                         )}
-                        <span className="text-xs text-muted-foreground truncate">{item.author?.name || "—"}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {item.author?.name || "—"}
+                        </span>
                       </>
                     )}
                   </div>
 
-                  <div className="col-span-3 text-xs text-muted-foreground">
+                  <div className="col-span-2 text-xs text-muted-foreground">
                     {formatDate(item.updatedAt)}
                   </div>
 
@@ -333,6 +454,7 @@ export default function ListView({
                         onDownload={onDownload}
                         isTrash={isTrash}
                         onMoveToParent={onMoveToParent}
+                        onOpenLocation={onOpenLocation}
                       />
                     )}
                   </div>

@@ -92,7 +92,7 @@ export async function* streamChatResponse(
           if (data === "[DONE]") return;
           if (data.startsWith("[META]")) {
             try {
-              const meta = JSON.parse(data.slice(6)) as any;
+              const meta = JSON.parse(data.slice(6)) as { agent: string; intent: string; sources?: SourceItem[] };
               options?.onMeta?.(meta);
             } catch {}
             continue;
@@ -513,7 +513,7 @@ export async function* streamEditorChat(
         const data = line.slice(6);
         if (data === "[DONE]") return;
         if (data.startsWith("[META]")) {
-          try { opts.onMeta?.(JSON.parse(data.slice(6)) as any); } catch {}
+          try { opts.onMeta?.(JSON.parse(data.slice(6)) as { agent: string; intent: string; sources?: SourceItem[] }); } catch {}
           continue;
         }
         if (data.startsWith("[ACTION]")) continue;

@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/shared/lib/utils';
-import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter } from 'lucide-react';
+import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter, ChevronRight } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
@@ -12,10 +12,18 @@ import CreateFolderModal from '../modals/CreateFolderModal';
 import RenameModal from '../modals/RenameModal';
 import DuplicateModal from '../modals/DuplicateModal';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
+import { StorageFilterPopover } from '@/features/workspaces/storage/components/layout/StorageFilterPopover';
+
+export interface BreadcrumbItem {
+  id: string | null;
+  name: string;
+}
 
 interface TopbarProps {
-  title: string;
+  title?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  breadcrumbs?: BreadcrumbItem[];
+  onBreadcrumbNavigate?: (folderId: string | null) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   projectId?: string;
@@ -27,6 +35,8 @@ interface TopbarProps {
 export default function Topbar({
   title,
   icon: Icon = HardDrive,
+  breadcrumbs,
+  onBreadcrumbNavigate,
   searchQuery = "",
   onSearchChange,
   projectId,
@@ -61,9 +71,42 @@ export default function Topbar({
       )}
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
-      <div className="flex items-center gap-2 overflow-hidden">
-        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
-        <span className="truncate font-semibold tracking-tight">{title}</span>
+      <div className="flex items-center gap-1.5 min-w-0 max-w-[55vw]">
+        {breadcrumbs && breadcrumbs.length > 1 ? (
+          <div className="flex items-center gap-1 min-w-0 overflow-x-auto py-1">
+            {Icon && <Icon className="size-4 text-foreground/80 shrink-0 mr-1" />}
+            {breadcrumbs.map((segment, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              return (
+                <div key={segment.id || `root-${index}`} className="flex items-center gap-1 min-w-0 shrink-0">
+                  {index > 0 && (
+                    <ChevronRight className="size-3.5 text-muted-foreground/60 shrink-0" />
+                  )}
+                  <button
+                    onClick={() => onBreadcrumbNavigate?.(segment.id)}
+                    disabled={isLast}
+                    className={cn(
+                      "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded px-1 py-0.5",
+                      isLast
+                        ? "font-semibold text-foreground cursor-default"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
+                    )}
+                    title={segment.name}
+                  >
+                    {segment.name}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            {Icon && <Icon className="size-4 text-foreground/80" />}
+            <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
+              {title || 'My Drive'}
+            </h1>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -134,9 +177,7 @@ export default function Topbar({
               </button>
             ))}
           </div>
-          <Button variant="outline" size="icon" className="size-8 rounded-lg bg-transparent border-border/60">
-            <ListFilter className="size-4 text-muted-foreground" strokeWidth={2.5} />
-          </Button>
+          <StorageFilterPopover />
         </div>
 
         <Popover>

@@ -56,8 +56,8 @@ const uploadBlobWithProgress = (
         xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                    const response = JSON.parse(xhr.responseText) as { url?: string };
-                    resolve({ url: response.url || "" });
+                    const response = JSON.parse(xhr.responseText) as Record<string, any>;
+                    resolve({ url: response.url || response.file?.url || response.path || '' });
                 } catch {
                     reject(new Error("Failed to parse upload response"));
                 }
@@ -92,7 +92,7 @@ export const uploadFile = async (
 
     const uploadEndpoint = `/api/files/upload-r2`;
     const { url: uploadPath } = await uploadBlobWithProgress(file, fileName, uploadEndpoint, onMainFileProgress);
-    const uploadUrl = `${API_BASE_URL}${uploadPath}`;
+    const uploadUrl = uploadPath.startsWith("http") ? uploadPath : `${API_BASE_URL}${uploadPath.startsWith('/') ? '' : '/'}${uploadPath}`;
 
     let thumbnailUrl;
     if (file.type.startsWith("image/")) {
@@ -100,7 +100,7 @@ export const uploadFile = async (
         if (thumbnailBlob) {
             const thumbName = `project/${params.projectId}/${Date.now()}-thumb.jpg`;
             const { url: thumbPath } = await uploadBlobWithProgress(thumbnailBlob, thumbName, uploadEndpoint);
-            thumbnailUrl = `${API_BASE_URL}${thumbPath}`;
+            thumbnailUrl = thumbPath.startsWith("http") ? thumbPath : `${API_BASE_URL}${thumbPath.startsWith('/') ? '' : '/'}${thumbPath}`;
         }
     }
 
@@ -121,7 +121,7 @@ export const uploadFile = async (
 export const uploadGenericFile = async (file: File, projectId: string): Promise<string> => {
     const fileName = `avatars/${projectId}-${Date.now()}`;
     const { url: uploadPath } = await uploadBlobWithProgress(file, fileName, "/api/files/upload-r2");
-    return `${API_BASE_URL}${uploadPath}`;
+    return uploadPath.startsWith("http") ? uploadPath : `${API_BASE_URL}${uploadPath.startsWith('/') ? '' : '/'}${uploadPath}`;
 };
 
 export const createFileRecord = (params: CreateFileRecordParams) => {
@@ -207,3 +207,7 @@ export const getFileBlob = async (url: string): Promise<Blob> => {
     }
     return response.blob();
 };
+
+export const getFolderPath = (folderId: string) =>
+    apiGet<{ path: { id: string; name: string }[] }>(`/api/files/folder/${folderId}/path`);
+

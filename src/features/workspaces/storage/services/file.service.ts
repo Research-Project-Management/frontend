@@ -249,3 +249,21 @@ export const getFileBlob = async (url: string): Promise<Blob> => {
     }
     return response.blob();
 };
+
+// ── Batch Operations ──────────────────────────────────────────────────────────
+
+export const batchDeleteItems = (ids: string[]) =>
+    apiPost<{ message: string; count: number }>('/api/files/batch/delete', { ids });
+
+export const batchRestoreItems = (ids: string[]) =>
+    apiPost<{ message: string; count: number }>('/api/files/batch/restore', { ids });
+
+export const batchPermanentlyDeleteItems = (ids: string[]) =>
+    apiPost<{ message: string; count: number }>('/api/files/batch/permanent-delete', { ids });
+
+export const batchStarItems = (ids: string[], starred: boolean) =>
+    apiPost<{ message: string; count: number }>('/api/files/batch/star', { ids, starred });
+
+export const getFolderPath = (folderId: string) =>
+    apiGet<{ path: { id: string; name: string }[] }>(`/api/files/folder/${folderId}/path`);
+

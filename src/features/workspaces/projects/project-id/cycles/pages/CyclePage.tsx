@@ -71,7 +71,7 @@ export function CyclePage() {
         } catch {}
       }
     }
-    return new Set();
+    return new Set<string>();
   });
 
   useEffect(() => {

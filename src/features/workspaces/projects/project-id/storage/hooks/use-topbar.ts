@@ -66,12 +66,12 @@ export function useTopbar({
 
   const performSingleFileUpload = useCallback(async (file: File, targetFolder: string | null) => {
     if (!projectId) return;
-    const uploadPromise = async () => {
+    const doUpload = async () => {
       const url = await uploadFile(file, {
         prefix: `project/${projectId}`,
       });
       
-      await createFileRecord({
+      return await createFileRecord({
         projectId: projectId,
         filename: file.name,
         size: file.size,
@@ -81,14 +81,16 @@ export function useTopbar({
       });
     };
 
-    toast.promise(uploadPromise(), {
+    const task = doUpload();
+
+    toast.promise(task, {
       loading: `Uploading ${file.name}...`,
       success: `${file.name} uploaded successfully`,
       error: `Failed to upload ${file.name}`,
     });
     
-    // Await the toast promise execution so the loop waits for this to finish
-    await uploadPromise().catch((err) => console.error(err));
+    // Await the single promise task so sequential uploads in loop wait for completion
+    await task.catch((err) => console.error(err));
   }, [projectId, uploadFile, createFileRecord]);
 
   const handleUploadFiles = useCallback(async (filesToUpload: File[], targetFolder: string | null) => {

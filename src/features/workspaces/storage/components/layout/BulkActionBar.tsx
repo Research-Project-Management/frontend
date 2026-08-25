@@ -7,13 +7,13 @@ import {
   Star,
   Trash2,
   RotateCcw,
+  Loader2,
   X,
   CheckSquare,
   Square,
-  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui/button';
 import { DeleteModal } from '../modal/DeleteModal';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
 import {

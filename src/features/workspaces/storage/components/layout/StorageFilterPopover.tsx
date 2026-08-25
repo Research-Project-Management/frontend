@@ -3,17 +3,19 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { ListFilter, RotateCcw, Folder, FileText, Table2, Image as ImageIcon, Video, Music, Archive, Files, Briefcase } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 import {
-  Button,
   Popover,
   PopoverContent,
   PopoverTrigger,
+} from '@/shared/components/ui/popover';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
 import {
   useStorageFilterStore,

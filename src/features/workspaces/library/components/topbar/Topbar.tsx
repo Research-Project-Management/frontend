@@ -230,7 +230,7 @@ export default function Topbar({
         {onSearchChange !== undefined && (
           <div
             className={cn(
-              "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
+              "relative flex items-center transition-[width,background-color,border-color] duration-200 ease-out h-8 rounded-lg overflow-hidden group",
               isSearchExpanded || search
                 ? "w-48 sm:w-64 border border-border/50 bg-background"
                 : "w-8 hover:bg-muted/80 cursor-pointer"
@@ -239,7 +239,7 @@ export default function Topbar({
           >
             <Search
               className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
+                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-[left,transform] duration-200 ease-out z-10 text-foreground",
                 isSearchExpanded || search
                   ? "left-2.5 translate-x-0"
                   : "left-1/2 -translate-x-1/2"

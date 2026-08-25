@@ -1,21 +1,17 @@
 'use client';
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { useParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import ChatAi from "../components/chat-ai";
-
-import Recent from "../components/recent";
-import Quicklinks from "../components/quicklinks";
-import Stickies from "../components/stickies";
+import { ChatAi, Recent, Quicklinks, Stickies } from "../components";
 import { Section } from "../components/layouts/section";
 import { ManageWidgetsModal } from "../components/modals/manage-widgets-modal";
 import { Topbar } from "../components/layouts/topbar";
-import { Shapes, Home } from "lucide-react";
+import { Shapes } from "lucide-react";
 
 // ─── Section registry ───────────────────────────────────────────────────────
 
@@ -46,34 +42,31 @@ import {
   defaultSectionConfig,
   getGreeting,
   type SectionConfig,
-  type SectionId,
 } from '../utils/home-page.util';
 
 // ─── Main dashboard ──────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const { workspaceId } = useParams() as { workspaceId: string };
-  const { workspace } = useWorkspace(workspaceId);
+  useWorkspace(workspaceId);
   const router = useRouter();
 
   const { user, isLoading: isUserLoading } = useAuth();
-  const [config, setConfig] = useState<SectionConfig[]>(loadSectionConfig);
+  const [mounted, setMounted] = useState(false);
+  const [config, setConfig] = useState<SectionConfig[]>(defaultSectionConfig);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const handleChatSend = useCallback((text: string, projectId?: string, webSearchSites?: string[]) => {
+  useEffect(() => {
+    setMounted(true);
+    setConfig(loadSectionConfig());
+  }, []);
+
+  const handleChatSend = useCallback((text: string, projectId?: string) => {
     const params = new URLSearchParams();
     params.set("q", text);
     if (projectId) params.set("project", projectId);
-    // Since we don't handle webSearchSites explicitly in query params on ai page yet, we just pass the query.
-    // If we wanted, we could encode them, but for now we follow the old behavior or ignore.
     router.push(`/${workspaceId}/ai/chat?${params.toString()}`);
   }, [router, workspaceId]);
-
-  const resetConfig = useCallback(() => {
-    const d = defaultSectionConfig();
-    saveSectionConfig(d);
-    setConfig(d);
-  }, []);
 
   const visibleSections = useMemo(
     () =>
@@ -124,11 +117,11 @@ export default function HomePage() {
                 <h2 className="text-3xl font-serif font-bold tracking-tight text-foreground leading-tight">
                   {greeting.text}{fullName ? `, ${fullName}` : ""}
                 </h2>
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-muted-foreground mt-1">
+                <div className="flex items-center gap-2.5 text-sm font-semibold text-muted-foreground mt-1" suppressHydrationWarning>
                   <span className="text-lg">
                     {greeting.icon}
                   </span>
-                  <span>{format(now, "EEEE, MMMM do, h:mm a")}</span>
+                  <span suppressHydrationWarning>{mounted ? format(now, "EEEE, MMMM do, h:mm a") : ""}</span>
                 </div>
               </>
             )}
@@ -143,7 +136,7 @@ export default function HomePage() {
             visibleSections.map(({ id, component: Comp }) => (
               <Comp key={id} />
             ))
-          ) : (
+          ) : mounted ? (
             <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border-2 border-dashed border-border/60 bg-muted/10 mx-6 mb-6">
               <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-5">
                 <Shapes className="size-6" />
@@ -161,7 +154,7 @@ export default function HomePage() {
                 Enable Widgets
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </main>
     </div>

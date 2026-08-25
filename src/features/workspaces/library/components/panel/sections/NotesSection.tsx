@@ -86,9 +86,9 @@ export default function NotesSection({
   return (
     <div className="space-y-3 min-w-0">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Notes ({notes.length})
-        </span>
+        </h3>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
@@ -102,7 +102,7 @@ export default function NotesSection({
 
       {/* Add New Note Box */}
       {isAdding && (
-        <div className="space-y-2 p-2.5 bg-muted/30 rounded-lg border border-border/40 text-xs">
+        <div className="space-y-2 p-2.5 bg-muted/20 rounded-lg border border-border/30 text-xs">
           <Textarea
             autoFocus
             placeholder="Write research notes, thoughts, or key findings... (Ctrl+Enter to save)"
@@ -157,7 +157,7 @@ export default function NotesSection({
           {notes.map((n) => (
             <div
               key={n.id}
-              className="group/note relative p-2.5 rounded-lg bg-card border border-border/40 hover:border-border transition-colors text-xs shadow-xs min-w-0"
+              className="group/note relative p-2.5 rounded-lg bg-muted/20 hover:bg-muted/30 border border-border/30 transition-colors text-xs min-w-0"
             >
               {editingNoteId === n.id ? (
                 <div className="space-y-2">

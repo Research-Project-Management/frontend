@@ -1,20 +1,37 @@
 import { apiGet, apiPost } from '@/shared/lib/api';
-import type { AsyncIngestionJob, Paper } from '../types/library.types';
+import type { AsyncIngestionJob, IngestPaperDTO, Paper } from '../types/library.types';
 
 export const IngestionService = {
+  /**
+   * Universal Single-document Academic Ingestion Engine
+   */
+  ingestDocument: (
+    workspaceId: string,
+    dto: IngestPaperDTO,
+  ) =>
+    apiPost<{
+      id: string;
+      title: string;
+      citationKey: string;
+      sourceType: string;
+      doi?: string;
+      year?: number | null;
+      authors: string[];
+      ragStatus?: string;
+      collectionId?: string | null;
+      fileUrl?: string | null;
+      paper?: Paper;
+    }>('/api/library/ingest', {
+      ...dto,
+      workspaceId,
+    }),
+
   /**
    * Async Non-blocking Batch Ingestion with job tracker
    */
   createBatchAsync: (
     workspaceId: string,
-    items: Array<{
-      sourceType: string;
-      fileUrl?: string;
-      doi?: string;
-      bibtex?: string;
-      title?: string;
-      collectionId?: string | null;
-    }>,
+    items: Array<IngestPaperDTO>,
   ) =>
     apiPost<{ jobId: string; status: string; total: number }>(
       '/api/library/ingest/batch-async',
@@ -37,18 +54,14 @@ export const IngestionService = {
    */
   createBatchSync: (
     workspaceId: string,
-    items: Array<{
-      sourceType: string;
-      fileUrl?: string;
-      doi?: string;
-      bibtex?: string;
-      title?: string;
-      collectionId?: string | null;
-    }>,
+    items: Array<IngestPaperDTO>,
   ) =>
     apiPost<{
-      summary: { total: number; successful: number; failed: number };
-      results: Array<{ status: 'fulfilled' | 'rejected'; paper?: Paper; error?: string }>;
+      total: number;
+      successCount: number;
+      failedCount: number;
+      successful: Paper[];
+      failed: Array<{ item: IngestPaperDTO; error: string }>;
     }>('/api/library/ingest/batch', {
       workspaceId,
       items: items.map((i) => ({ ...i, workspaceId })),
@@ -56,6 +69,7 @@ export const IngestionService = {
 };
 
 // Aliases
+export const ingestDocument = IngestionService.ingestDocument;
 export const createAsyncBatchJob = IngestionService.createBatchAsync;
 export const getAsyncJobStatus = IngestionService.getJobStatus;
 export const createBatchSync = IngestionService.createBatchSync;

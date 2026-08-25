@@ -65,9 +65,9 @@ ER  - `;
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Quote className="size-3.5 text-primary" />
-          <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
             Academic Citations
-          </span>
+          </h3>
         </div>
         <Button
           size="sm"
@@ -81,12 +81,18 @@ ER  - `;
       </div>
 
       {/* Mode Tabs: Bibliography | In-Text | BibTeX | RIS */}
-      <div className="grid grid-cols-4 gap-1 p-0.5 bg-muted/40 rounded-lg border border-border/40 select-none">
+      <div
+        role="tablist"
+        aria-label="Citation format modes"
+        className="grid grid-cols-4 gap-1 p-0.5 bg-muted/40 rounded-lg border border-border/40 select-none"
+      >
         <button
           type="button"
+          role="tab"
+          aria-selected={tabMode === 'bibliography'}
           onClick={() => setTabMode('bibliography')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer text-center',
+            'py-1 px-1.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'bibliography'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -96,9 +102,11 @@ ER  - `;
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tabMode === 'intext'}
           onClick={() => setTabMode('intext')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer text-center',
+            'py-1 px-1.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'intext'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -108,9 +116,11 @@ ER  - `;
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tabMode === 'bibtex'}
           onClick={() => setTabMode('bibtex')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-mono rounded-md transition-colors cursor-pointer text-center',
+            'py-1 px-1.5 text-[11px] font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'bibtex'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -120,9 +130,11 @@ ER  - `;
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tabMode === 'ris'}
           onClick={() => setTabMode('ris')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-mono rounded-md transition-colors cursor-pointer text-center',
+            'py-1 px-1.5 text-[11px] font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'ris'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -134,15 +146,21 @@ ER  - `;
 
       {/* CSL Style selector pills (Only for Bibliography & In-Text) */}
       {(tabMode === 'bibliography' || tabMode === 'intext') && (
-        <div className="flex items-center gap-1 p-0.5 bg-muted/20 rounded-lg border border-border/30 select-none overflow-x-auto">
+        <div
+          role="radiogroup"
+          aria-label="CSL citation styles"
+          className="flex items-center gap-1 p-0.5 bg-muted/20 rounded-lg border border-border/30 select-none overflow-x-auto"
+        >
           {(['apa', 'ieee', 'nature', 'harvard', 'chicago', 'mla', 'vancouver'] as CslStyle[]).map(
             (style) => (
               <button
                 key={style}
                 type="button"
+                role="radio"
+                aria-checked={activeStyle === style}
                 onClick={() => setActiveStyle(style)}
                 className={cn(
-                  'flex-1 py-0.5 px-1 text-[10px] font-mono font-medium rounded uppercase transition-colors cursor-pointer truncate text-center',
+                  'flex-1 py-0.5 px-1 text-[10px] font-mono font-medium rounded uppercase transition-colors cursor-pointer truncate text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                   activeStyle === style
                     ? 'bg-primary text-primary-foreground font-semibold shadow-2xs'
                     : 'text-muted-foreground hover:text-foreground',

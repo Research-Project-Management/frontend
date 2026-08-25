@@ -69,6 +69,10 @@ export function useChat() {
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      if (scrollRafRef.current !== null) {
+        cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
     };
   }, []);
 

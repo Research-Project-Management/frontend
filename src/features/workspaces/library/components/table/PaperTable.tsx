@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import PaperTableHeader from './PaperTableHeader';
 import PaperTableRow from './PaperTableRow';
 import PaperTableEmpty from './PaperTableEmpty';
 import PaperBatchBar from './PaperBatchBar';
+import QuickCiteModal from '../QuickCiteModal';
 import { usePaperTable, type SortField, type SortOrder } from '../../hooks/library/use-papers';
 import type { Paper, Collection } from '../../types/library.types';
 
@@ -42,6 +44,12 @@ export default function PaperTable({
   collectionName,
   showCollection = true,
 }: PaperTableProps) {
+  const { workspaceId: workspaceUrl } = useParams();
+  const currentWorkspaceId = (workspaceUrl as string) || '';
+
+  const [quickCitePaper, setQuickCitePaper] = useState<Paper | null>(null);
+  const [isQuickCiteMultiOpen, setIsQuickCiteMultiOpen] = useState(false);
+
   const {
     sortedPapers,
     sortField,
@@ -125,6 +133,7 @@ export default function PaperTable({
               onSelect={onSelectPaper}
               onToggleCheck={toggleSelect}
               onDelete={onDeletePaper}
+              onOpenQuickCite={(p) => setQuickCitePaper(p)}
               showCollection={showCollection}
             />
           ))}
@@ -139,6 +148,19 @@ export default function PaperTable({
         onClearSelection={clearSelection}
         onBatchMove={handleBatchMove}
         onBatchDelete={handleBatchDelete}
+        onBatchOpenQuickCite={() => setIsQuickCiteMultiOpen(true)}
+      />
+
+      {/* Quick Citation Dialog */}
+      <QuickCiteModal
+        isOpen={Boolean(quickCitePaper || isQuickCiteMultiOpen)}
+        onClose={() => {
+          setQuickCitePaper(null);
+          setIsQuickCiteMultiOpen(false);
+        }}
+        paper={quickCitePaper}
+        selectedPapers={isQuickCiteMultiOpen ? selectedPapers : []}
+        workspaceId={currentWorkspaceId}
       />
     </div>
   );

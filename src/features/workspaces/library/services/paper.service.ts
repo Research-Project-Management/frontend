@@ -12,7 +12,7 @@ export const paperKeys = {
   ] as const,
 };
 
-// ── Unified Academic Ingestion Seam ─────────────────────────────────────────
+// ── Unified Academic Ingestion ──────────────────────────────────────────────
 
 export interface IngestPaperDTO {
   source?: "upload" | "storage" | "identifier";
@@ -46,7 +46,7 @@ export const PaperService = {
 
   create: (workspaceId: string, collectionId: string, data: Partial<Paper>) =>
     collectionId
-      ? apiPost<{ paper: Paper }>(`/api/library/${workspaceId}/collections/${collectionId}/papers`, data)
+      ? apiPost<{ paper: Paper }>(`/api/library/${workspaceId}/collections/${collectionId}/upload`, { ...data, collectionId })
       : apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/upload`, data),
 
   update: (workspaceId: string, paperId: string, data: Partial<Paper>) =>

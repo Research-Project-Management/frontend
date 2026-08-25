@@ -43,7 +43,7 @@ export const getUser = async (): Promise<AuthUser | null> => {
 
   try {
     const data = await apiGet<{ user: AuthUser }>('/auth/user');
-    return data.user;
+    return data?.user ?? null;
   } catch (err: unknown) {
     if (isApiError(err) && (err.statusCode === 401 || err.status === 401)) {
       removeAuthToken();

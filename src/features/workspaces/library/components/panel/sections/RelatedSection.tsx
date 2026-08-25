@@ -50,10 +50,12 @@ export default function RelatedSection({ paper, workspaceId }: RelatedSectionPro
       {/* Header bar with Add Link & Graph visualizer */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
-          <Share2 className="size-3.5" />
-          <span>Bi-directional Paper Relations</span>
+          <Share2 className="size-3.5 text-primary" />
+          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+            Paper Relations
+          </h3>
           {relatedList.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-mono">
               {relatedList.length}
             </Badge>
           )}

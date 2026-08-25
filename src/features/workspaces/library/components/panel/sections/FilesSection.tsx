@@ -40,34 +40,34 @@ export default function FilesSection({ paper }: FilesSectionProps) {
   return (
     <div className="space-y-4 text-xs">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Paperclip className="size-3.5 text-primary" />
           <span>Attachments ({hasPrimaryFile ? 1 + attachments.length : attachments.length})</span>
-        </span>
+        </h3>
       </div>
 
       {/* Primary Document PDF */}
       {hasPrimaryFile ? (
         <div className="space-y-3">
-          <div className="p-3 bg-muted/30 rounded-lg border border-border/40 flex items-start gap-3">
+          <div className="p-3 bg-muted/20 hover:bg-muted/30 rounded-lg border border-border/30 flex items-start gap-3 transition-colors">
             <div className="size-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
               <FileText className="size-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0 bg-primary/10 text-primary">
+                <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 bg-primary/10 text-primary">
                   Primary PDF
                 </Badge>
                 {paper.provenance?.isOpenAccess && (
-                  <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 text-emerald-600 border-emerald-500/30">
+                  <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 text-emerald-600 border-emerald-500/30">
                     OA
                   </Badge>
                 )}
               </div>
-              <h4 className="text-xs font-medium text-foreground truncate mt-1" title={paper.filename || 'Paper PDF'}>
+              <h4 className="text-sm font-medium text-foreground truncate mt-1" title={paper.filename || 'Paper PDF'}>
                 {paper.filename || `${paper.title || 'Paper'}.pdf`}
               </h4>
-              <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-muted-foreground">
+              <div className="flex items-center gap-2 mt-1 text-xs font-mono text-muted-foreground">
                 <span>{formatSize(paper.size)}</span>
                 <span>•</span>
                 <span className="uppercase">{paper.mimeType?.split('/')[1] || 'PDF'}</span>
@@ -79,7 +79,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
           <div className="flex flex-col gap-2">
             <Button
               onClick={handleOpenReader}
-              className="w-full h-8.5 text-xs font-medium gap-2 shadow-xs cursor-pointer"
+              className="w-full h-8.5 text-xs font-medium gap-2 shadow-none cursor-pointer"
             >
               <BookOpen className="size-3.5" />
               <span>Open in Fullscreen Reader</span>
@@ -96,7 +96,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full h-8 text-xs font-medium gap-2 cursor-pointer"
+                  className="w-full h-8 text-xs font-medium gap-2 cursor-pointer shadow-none"
                 >
                   <Download className="size-3.5" />
                   <span>Download Primary PDF</span>
@@ -114,9 +114,9 @@ export default function FilesSection({ paper }: FilesSectionProps) {
       {/* Supplementary Attachments List */}
       {attachments.length > 0 && (
         <div className="space-y-2 pt-2 border-t border-border/20">
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Supplementary Files ({attachments.length})
-          </span>
+          </h3>
           <div className="space-y-1.5">
             {attachments.map((att) => {
               const attName = att.filename || 'Attachment';
@@ -124,7 +124,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
               return (
                 <div
                   key={att.id}
-                  className="p-2 bg-muted/20 hover:bg-muted/40 rounded-md border border-border/30 flex items-center justify-between gap-2 text-xs transition-colors"
+                  className="p-2.5 bg-muted/20 hover:bg-muted/30 rounded-lg border border-border/30 flex items-center justify-between gap-2 text-xs transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText className="size-3.5 text-muted-foreground shrink-0" />

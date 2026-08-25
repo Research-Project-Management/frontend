@@ -7,7 +7,7 @@ import { FileImage, AlertCircle, FileCode2, LayoutGrid } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
 
-import SideBar, { type SidebarTab } from '../components/sidebar/Sidebar';
+import SideBar, { type SidebarTab } from '../components/sidebar/SideBar';
 import Topbar from '../components/topbar/Topbar';
 import Setting from '../components/topbar/settings/Setting';
 import Tabs from '../components/editor/Tabs';

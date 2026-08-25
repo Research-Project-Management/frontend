@@ -55,10 +55,11 @@ export default function AbstractSection({ paper, onUpdatePaper }: AbstractSectio
         <div className="flex items-center justify-end">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors px-2 py-0.5 rounded hover:bg-muted"
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors px-2 py-0.5 rounded hover:bg-muted focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             title="Copy abstract text"
+            aria-label="Copy abstract text"
           >
-            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+            {copied ? <Check className="size-3 text-emerald-500" aria-hidden="true" /> : <Copy className="size-3" aria-hidden="true" />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
@@ -68,6 +69,7 @@ export default function AbstractSection({ paper, onUpdatePaper }: AbstractSectio
       <textarea
         ref={textareaRef}
         value={draft}
+        aria-label="Paper abstract summary"
         placeholder="Click to enter abstract summary..."
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
@@ -78,7 +80,7 @@ export default function AbstractSection({ paper, onUpdatePaper }: AbstractSectio
             textareaRef.current?.blur();
           }
         }}
-        className="w-full bg-transparent text-foreground/90 font-serif text-xs leading-relaxed outline-none resize-none placeholder:font-sans placeholder:text-muted-foreground/30 p-1 select-text transition-colors"
+        className="w-full bg-transparent text-foreground/90 font-serif text-sm leading-relaxed outline-none resize-none placeholder:font-sans placeholder:text-muted-foreground/40 p-1 select-text transition-colors focus-visible:ring-1 focus-visible:ring-ring rounded"
       />
     </div>
   );

@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/shared/components/ui/dropdown-menu';
 import { ChevronDown } from "lucide-react";
+import type { RecentItemUser } from '../types/home.types';
 
 export default function Recent() {
   const { workspaceId } = useParams() as { workspaceId: string };
@@ -86,9 +87,9 @@ export default function Recent() {
                 </div>
 
                 <div className="flex items-center -space-x-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  {(Array.isArray(item.users) ? item.users : (item.updatedBy ? [item.updatedBy] : [])).slice(0, 3).map((user: any, i: number) => (
-                    <Avatar key={i} className="size-6 border-2 border-background">
-                      <AvatarImage src={user.avatar || user.image} />
+                  {(Array.isArray(item.users) ? item.users : (item.updatedBy ? [item.updatedBy] : [])).slice(0, 3).map((user: RecentItemUser, i: number) => (
+                    <Avatar key={user.id || i} className="size-6 border-2 border-background">
+                      <AvatarImage src={user.avatar || user.image || undefined} />
                       <AvatarFallback className="bg-muted text-[10px] font-medium text-foreground">
                         {((user.name || user.email || 'U') as string).substring(0, 1).toUpperCase()}
                       </AvatarFallback>

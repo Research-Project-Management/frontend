@@ -72,8 +72,11 @@ export interface UpdateCollectionDTO {
 }
 
 export interface IngestPaperDTO {
-  source?: 'upload' | 'storage' | 'identifier';
+  source?: 'upload' | 'storage' | 'identifier' | 'doi' | 'bibtex' | 'ris' | 'manual';
+  sourceType?: 'DOI' | 'IDENTIFIER' | 'BIBTEX' | 'RIS' | 'PDF' | 'STORAGE' | 'MANUAL';
+  workspaceId?: string;
   fileId?: string | null;
+  storageFileId?: string | null;
   collectionId?: string | null;
   title?: string;
   filename?: string;
@@ -83,7 +86,29 @@ export interface IngestPaperDTO {
   authors?: string[];
   year?: number | null;
   doi?: string;
+  query?: string;
+  bibtex?: string;
+  ris?: string;
+  journal?: string;
+  publisher?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  issn?: string;
+  isbn?: string;
+  url?: string;
+  abstract?: string;
+  itemType?: string;
+  tags?: string[];
+  notes?: any[];
   citationKey?: string;
+  primaryFile?: {
+    fileId?: string | null;
+    filename: string;
+    url: string;
+    size?: number;
+    mimeType?: string;
+  };
 }
 
 export interface PaperQueryParams {

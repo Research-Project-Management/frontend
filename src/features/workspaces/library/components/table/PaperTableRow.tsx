@@ -2,12 +2,40 @@
 
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FileText, Copy, Trash2, BookOpen, Folder, Quote, MoreHorizontal } from 'lucide-react';
+import {
+  FileText,
+  Copy,
+  Trash2,
+  BookOpen,
+  Folder,
+  Quote,
+  MoreHorizontal,
+  ExternalLink,
+  Sparkles,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
 import { cn } from '@/shared/lib/utils';
-import { convertToBibTeX, formatCiteCommand, formatApaCitation, formatIeeeCitation } from '../../utils/library.util';
+import {
+  convertToBibTeX,
+  formatCiteCommand,
+  formatApaCitation,
+  formatIeeeCitation,
+} from '../../utils/library.util';
 import type { Paper, Collection } from '../../types/library.types';
 
 interface PaperTableRowProps {
@@ -19,6 +47,7 @@ interface PaperTableRowProps {
   onSelect: (paper: Paper) => void;
   onToggleCheck: (paperId: string, e: React.MouseEvent) => void;
   onDelete: (paperId: string) => void;
+  onOpenQuickCite?: (paper: Paper) => void;
 }
 
 export default function PaperTableRow({
@@ -30,6 +59,7 @@ export default function PaperTableRow({
   onSelect,
   onToggleCheck,
   onDelete,
+  onOpenQuickCite,
 }: PaperTableRowProps) {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams();
@@ -84,192 +114,273 @@ export default function PaperTableRow({
       : null;
 
   return (
-    <tr
-      role="row"
-      tabIndex={0}
-      aria-selected={isSelected || isActive}
-      onClick={() => onSelect(paper)}
-      onDoubleClick={handleDoubleClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          handleDoubleClick();
-        } else if (e.key === ' ') {
-          e.preventDefault();
-          onSelect(paper);
-        }
-      }}
-      className={cn(
-        'group border-b border-border/40 hover:bg-muted/30 transition-colors cursor-pointer select-none text-sm h-10',
-        isActive && 'bg-accent/70 text-foreground font-medium',
-        isSelected && !isActive && 'bg-accent/30'
-      )}
-    >
-      {/* Checkbox column */}
-      <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-center">
-          <Checkbox
-            checked={isSelected}
-            onClick={(e) => onToggleCheck(pId, e)}
-            aria-label={`Select ${paper.title}`}
-            className="size-3.5 rounded border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer"
-          />
-        </div>
-      </td>
-
-      {/* Title Column (with inline PDF indicator & collection tag) */}
-      <td className="px-3 py-1.5 align-middle min-w-[240px] flex-1">
-        <div className="flex items-center gap-2 min-w-0">
-          {hasFile && (
-            <span
-              title={paper.filename ? `PDF: ${paper.filename}` : "PDF Document Attached"}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/10 text-primary border border-primary/20 shrink-0 select-none"
-            >
-              PDF
-            </span>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <tr
+          role="row"
+          tabIndex={0}
+          aria-selected={isSelected || isActive}
+          onClick={() => onSelect(paper)}
+          onDoubleClick={handleDoubleClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleDoubleClick();
+            } else if (e.key === ' ') {
+              e.preventDefault();
+              onSelect(paper);
+            }
+          }}
+          className={cn(
+            'group border-b border-border/40 hover:bg-muted/30 transition-colors cursor-pointer select-none text-sm h-10',
+            isActive && 'bg-accent/70 text-foreground font-medium',
+            isSelected && !isActive && 'bg-accent/30'
           )}
-          {isRawArxiv && !hasFile && (
-            <span
-              title="arXiv Preprint"
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border/60 shrink-0 select-none"
-            >
-              arXiv
-            </span>
-          )}
-          <span
-            className={cn(
-              'truncate font-medium text-foreground transition-colors text-sm',
-              isActive && 'font-semibold',
-              isRawArxiv && 'font-mono text-xs'
-            )}
-            title={paper.title}
-          >
-            {paper.title || 'Untitled Paper'}
-          </span>
-          {showCollection && collection && (
-            <span
-              className="hidden sm:inline-flex items-center gap-1 text-xs px-1.5 py-0.5 text-muted-foreground bg-muted/60 rounded shrink-0 border border-border/40 truncate max-w-[120px]"
-              title={`In collection: ${collection.name}`}
-            >
-              <Folder className="size-3 shrink-0" />
-              <span className="truncate">{collection.name}</span>
-            </span>
-          )}
-        </div>
-      </td>
-
-      {/* Authors Column */}
-      <td className="px-3 py-1.5 align-middle w-[200px] max-w-[240px]">
-        <span
-          className="truncate block text-muted-foreground font-normal text-xs"
-          title={paper.authors?.join(', ')}
         >
-          {authorDisplay ? (
-            authorDisplay
-          ) : isRawArxiv ? (
-            <span className="text-[11px] text-muted-foreground/60 italic font-mono">arXiv preprint</span>
-          ) : (
-            <span className="opacity-40">—</span>
-          )}
-        </span>
-      </td>
+          {/* Checkbox column */}
+          <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-center">
+              <Checkbox
+                checked={isSelected}
+                onClick={(e) => onToggleCheck(pId, e)}
+                aria-label={`Select ${paper.title}`}
+                className="size-3.5 rounded border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary cursor-pointer"
+              />
+            </div>
+          </td>
 
-      {/* Year Column */}
-      <td className="px-3 py-1.5 align-middle w-[72px] whitespace-nowrap text-muted-foreground font-mono tabular-nums text-xs">
-        {paper.year ? paper.year : <span className="opacity-40">—</span>}
-      </td>
+          {/* Title Column (with inline PDF indicator & collection tag) */}
+          <td className="px-3 py-1.5 align-middle min-w-[240px] flex-1">
+            <div className="flex items-center gap-2 min-w-0">
+              {hasFile && (
+                <span
+                  title={paper.filename ? `PDF: ${paper.filename}` : "PDF Document Attached"}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/10 text-primary border border-primary/20 shrink-0 select-none"
+                >
+                  PDF
+                </span>
+              )}
+              {isRawArxiv && !hasFile && (
+                <span
+                  title="arXiv Preprint"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border/60 shrink-0 select-none"
+                >
+                  arXiv
+                </span>
+              )}
+              <span
+                className={cn(
+                  'truncate font-medium text-foreground transition-colors text-sm',
+                  isActive && 'font-semibold',
+                  isRawArxiv && 'font-mono text-xs'
+                )}
+                title={paper.title}
+              >
+                {paper.title || 'Untitled Paper'}
+              </span>
+              {showCollection && collection && (
+                <span
+                  className="hidden sm:inline-flex items-center gap-1 text-xs px-1.5 py-0.5 text-muted-foreground bg-muted/60 rounded shrink-0 border border-border/40 truncate max-w-[120px]"
+                  title={`In collection: ${collection.name}`}
+                >
+                  <Folder className="size-3 shrink-0" />
+                  <span className="truncate">{collection.name}</span>
+                </span>
+              )}
+            </div>
+          </td>
 
-      {/* Journal / Venue Column */}
-      <td className="px-3 py-1.5 align-middle w-[180px] max-w-[220px]">
-        <span
-          className="truncate block text-muted-foreground font-normal italic text-xs"
-          title={paper.journal || paper.publisher || ''}
-        >
-          {paper.journal || paper.publisher || (isRawArxiv ? <span className="not-italic text-[11px] text-muted-foreground/70 font-mono">arXiv.org</span> : <span className="opacity-40 not-italic">—</span>)}
-        </span>
-      </td>
+          {/* Authors Column */}
+          <td className="px-3 py-1.5 align-middle w-[200px] max-w-[240px]">
+            <span
+              className="truncate block text-muted-foreground font-normal text-sm"
+              title={paper.authors?.join(', ')}
+            >
+              {authorDisplay ? (
+                authorDisplay
+              ) : isRawArxiv ? (
+                <span className="text-xs text-muted-foreground/70 italic font-mono">arXiv preprint</span>
+              ) : (
+                <span className="opacity-40">—</span>
+              )}
+            </span>
+          </td>
 
-      {/* Hover Quick Action Buttons Column */}
-      <td className="w-20 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-          {/* Quick Copy \cite */}
-          <button
-            onClick={handleCopyCite}
-            className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
-            title="Copy \cite{key}"
-            aria-label="Copy \cite{key}"
-          >
-            <Quote className="size-3.5 text-foreground" />
-          </button>
+          {/* Year Column */}
+          <td className="px-3 py-1.5 align-middle w-[72px] whitespace-nowrap text-muted-foreground font-mono tabular-nums text-sm">
+            {paper.year ? paper.year : <span className="opacity-40">—</span>}
+          </td>
 
-          {/* Quick Copy BibTeX */}
-          <button
-            onClick={handleCopyBibtex}
-            className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
-            title="Copy BibTeX"
-            aria-label="Copy BibTeX"
-          >
-            <Copy className="size-3.5 text-foreground" />
-          </button>
+          {/* Journal / Venue Column */}
+          <td className="px-3 py-1.5 align-middle w-[180px] max-w-[220px]">
+            <span
+              className="truncate block text-muted-foreground font-normal italic text-sm"
+              title={paper.journal || paper.publisher || ''}
+            >
+              {paper.journal || paper.publisher || (isRawArxiv ? <span className="not-italic text-xs text-muted-foreground/70 font-mono">arXiv.org</span> : <span className="opacity-40 not-italic">—</span>)}
+            </span>
+          </td>
 
-          {/* More Citation Formats Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {/* Hover Quick Action Buttons Column */}
+          <td className="w-20 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+              {/* Quick Cite Dialog Button */}
               <button
-                className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
-                title="More citation actions"
-                aria-label="More actions"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOpenQuickCite) {
+                    onOpenQuickCite(paper);
+                  } else {
+                    handleCopyCite(e);
+                  }
+                }}
+                className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted hover:text-primary transition-colors cursor-pointer"
+                title="Quick Citation Dialog & Copy"
+                aria-label="Quick Citation"
               >
-                <MoreHorizontal className="size-3.5 text-foreground" />
+                <Quote className="size-3.5 text-foreground" />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 p-1 text-xs rounded-xl shadow-lg border border-border">
-              <DropdownMenuItem
-                onClick={handleDoubleClick}
-                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
-              >
-                <BookOpen className="size-3.5 text-muted-foreground" />
-                <span>Open in Reader</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleCopyCite}
-                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
-              >
-                <Quote className="size-3.5 text-muted-foreground" />
-                <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
+
+              {/* Quick Copy BibTeX */}
+              <button
                 onClick={handleCopyBibtex}
-                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
+                title="Copy BibTeX"
+                aria-label="Copy BibTeX"
               >
-                <Copy className="size-3.5 text-muted-foreground" />
-                <span>Copy BibTeX Entry</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleCopyApa}
-                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
-              >
-                <FileText className="size-3.5 text-muted-foreground" />
-                <span>Copy APA 7th Citation</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleCopyIeee}
-                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
-              >
-                <FileText className="size-3.5 text-muted-foreground" />
-                <span>Copy IEEE Citation</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onDelete(pId)}
-                className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
-              >
-                <Trash2 className="size-3.5 text-muted-foreground" />
-                <span>Move to Trash</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </td>
-    </tr>
+                <Copy className="size-3.5 text-foreground" />
+              </button>
+
+              {/* More Citation Formats Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                    title="More citation actions"
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal className="size-3.5 text-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1 text-xs rounded-xl shadow-lg border border-border">
+                  <DropdownMenuItem
+                    onClick={handleDoubleClick}
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                  >
+                    <BookOpen className="size-3.5 text-muted-foreground" />
+                    <span>Open in Reader</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onOpenQuickCite) onOpenQuickCite(paper);
+                    }}
+                    className="gap-2.5 text-xs font-medium text-primary cursor-pointer rounded-lg hover:bg-primary/10 focus:bg-primary/10"
+                  >
+                    <Sparkles className="size-3.5 text-amber-500" />
+                    <span>Quick Citation Dialog...</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleCopyCite}
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                  >
+                    <Quote className="size-3.5 text-muted-foreground" />
+                    <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleCopyBibtex}
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                  >
+                    <Copy className="size-3.5 text-muted-foreground" />
+                    <span>Copy BibTeX Entry</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleCopyApa}
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                  >
+                    <FileText className="size-3.5 text-muted-foreground" />
+                    <span>Copy APA 7th Citation</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleCopyIeee}
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                  >
+                    <FileText className="size-3.5 text-muted-foreground" />
+                    <span>Copy IEEE Citation</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => onDelete(pId)}
+                    className="gap-2.5 text-xs font-normal cursor-pointer rounded-lg"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Move to Trash</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </td>
+        </tr>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-56 p-1 text-xs rounded-xl shadow-xl border border-border">
+        <ContextMenuItem onClick={handleDoubleClick} className="gap-2.5 cursor-pointer">
+          <BookOpen className="size-3.5 text-muted-foreground" />
+          <span>Open in Reader</span>
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          onClick={() => {
+            if (onOpenQuickCite) onOpenQuickCite(paper);
+          }}
+          className="gap-2.5 cursor-pointer font-medium text-primary"
+        >
+          <Sparkles className="size-3.5 text-amber-500" />
+          <span>Quick Citation Dialog...</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleCopyCite} className="gap-2.5 cursor-pointer">
+          <Quote className="size-3.5 text-muted-foreground" />
+          <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleCopyBibtex} className="gap-2.5 cursor-pointer">
+          <Copy className="size-3.5 text-muted-foreground" />
+          <span>Copy BibTeX Entry</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleCopyApa} className="gap-2.5 cursor-pointer">
+          <FileText className="size-3.5 text-muted-foreground" />
+          <span>Copy APA 7th Citation</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleCopyIeee} className="gap-2.5 cursor-pointer">
+          <FileText className="size-3.5 text-muted-foreground" />
+          <span>Copy IEEE Citation</span>
+        </ContextMenuItem>
+        {paper.doi && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => {
+                navigator.clipboard.writeText(`https://doi.org/${paper.doi}`);
+                toast.success('DOI URL copied to clipboard');
+              }}
+              className="gap-2.5 cursor-pointer"
+            >
+              <ExternalLink className="size-3.5 text-muted-foreground" />
+              <span>Copy DOI URL</span>
+            </ContextMenuItem>
+          </>
+        )}
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          variant="destructive"
+          onClick={() => onDelete(pId)}
+          className="gap-2.5 cursor-pointer"
+        >
+          <Trash2 className="size-3.5" />
+          <span>Move to Trash</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

@@ -33,9 +33,9 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Tags ({tags.length})
-        </span>
+        </h3>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}

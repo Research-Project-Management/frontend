@@ -24,7 +24,6 @@ import CiteSection from './sections/CiteSection';
 import FilesSection from './sections/FilesSection';
 import RelatedSection from './sections/RelatedSection';
 import { usePapers } from '../../hooks/library/use-papers';
-import { useCollections } from '../../hooks/library/use-library';
 import { useLibrarySidebarStore } from '../../store/sidebar.store';
 import { normalizeNotes } from '../../utils/library.util';
 import { cn } from '@/shared/lib/utils';
@@ -66,6 +65,7 @@ export default function InspectorPanel({
   const { workspaceId: workspaceUrl } = useParams();
 
   const { inspectorWidth, setInspectorWidth } = useLibrarySidebarStore();
+  const tabButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Resizing state
   const [isDragging, setIsDragging] = useState(false);
@@ -89,7 +89,8 @@ export default function InspectorPanel({
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = startXRef.current - e.clientX;
-      setInspectorWidth(startWidthRef.current + deltaX);
+      const clamped = Math.max(320, Math.min(720, startWidthRef.current + deltaX));
+      setInspectorWidth(clamped);
     };
 
     const handleMouseUp = () => {
@@ -202,6 +203,29 @@ export default function InspectorPanel({
     }
   };
 
+  // Keyboard navigation across tabs
+  const handleTabKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      nextIndex = (index + 1) % TABS.length;
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      nextIndex = (index - 1 + TABS.length) % TABS.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = TABS.length - 1;
+    }
+
+    if (nextIndex !== index) {
+      setActiveTab(TABS[nextIndex].id);
+      tabButtonRefs.current[nextIndex]?.focus();
+    }
+  };
+
   const notesCount = paper.notes?.length || 0;
   const tagsCount = (paper.labels?.length || 0) + (paper.keywords?.length || 0);
   const filesCount = paper.fileUrl ? 1 + (paper.attachments?.length || 0) : (paper.attachments?.length || 0);
@@ -214,23 +238,39 @@ export default function InspectorPanel({
         minWidth: '320px',
         maxWidth: '720px',
       }}
-      className="relative h-full border-l border-border/50 bg-card/40 backdrop-blur-md flex flex-col shrink-0 select-none overflow-hidden"
+      className="relative h-full max-w-[100vw] sm:max-w-none border-l border-border/40 bg-background flex flex-col shrink-0 select-none overflow-hidden"
     >
-      {/* Resizable drag handle on left edge */}
+      {/* Resizable drag handle on left edge with WAI-ARIA separator semantics */}
       <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-valuenow={inspectorWidth}
+        aria-valuemin={320}
+        aria-valuemax={720}
+        aria-label="Resize inspector panel"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            setInspectorWidth(Math.min(720, inspectorWidth + 20));
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            setInspectorWidth(Math.max(320, inspectorWidth - 20));
+          }
+        }}
         className={cn(
-          "absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 transition-colors z-30 select-none",
+          "absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 focus-visible:bg-primary/60 focus-visible:outline-none transition-colors z-30 select-none",
           isDragging && "bg-primary/50"
         )}
       />
 
       {/* Header bar */}
-      <header className="h-12 px-3.5 border-b border-border/50 flex items-center justify-between shrink-0 bg-muted/10 gap-2">
+      <header className="h-12 px-3.5 border-b border-border/40 flex items-center justify-between shrink-0 bg-transparent gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <FileText className="size-4 text-muted-foreground shrink-0" />
+          <FileText className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <h2
-            className="text-xs font-semibold text-foreground tracking-tight truncate select-text leading-tight"
+            className="text-sm font-semibold text-foreground tracking-tight truncate select-text leading-tight"
             title={paper.title}
           >
             {paper.title || 'Untitled Reference'}
@@ -240,40 +280,42 @@ export default function InspectorPanel({
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={handleCopyCitationKey}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             title={paper.citationKey ? `Copy \\cite{${paper.citationKey}}` : 'Copy title'}
+            aria-label={paper.citationKey ? `Copy citation key ${paper.citationKey}` : 'Copy paper title'}
           >
-            {copied ? <Check className="size-3.5 text-foreground" /> : <Copy className="size-3.5" />}
+            {copied ? <Check className="size-3.5 text-foreground" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
           </button>
 
           <button
             onClick={() => paperId && router.push(`/${workspaceUrl}/library/papers/${paperId}`)}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             title="Open in Reader"
             aria-label="Open in Reader"
           >
-            <BookOpen className="size-3.5" />
+            <BookOpen className="size-3.5" aria-hidden="true" />
           </button>
 
           {onClose && (
             <button
               onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
               title="Close inspector"
               aria-label="Close inspector"
             >
-              <X className="size-3.5" />
+              <X className="size-3.5" aria-hidden="true" />
             </button>
           )}
         </div>
       </header>
 
-      {/* Modern Segment Tabs (Info, Notes, Tags, Files, Related, Cite) */}
-      <nav
+      {/* WAI-ARIA Standard Segment Tabs (Info, Notes, Tags, Files, Related, Cite) */}
+      <div
+        role="tablist"
         aria-label="Inspector tabs"
-        className="flex items-center border-b border-border/40 bg-muted/20 px-3 py-1 gap-1 shrink-0 overflow-x-auto scrollbar-none"
+        className="flex items-center border-b border-border/40 bg-transparent px-3 py-1.5 gap-1 shrink-0 overflow-x-auto scrollbar-none"
       >
-        {TABS.map((tab) => {
+        {TABS.map((tab, idx) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           const count =
@@ -288,21 +330,30 @@ export default function InspectorPanel({
           return (
             <button
               key={tab.id}
+              ref={(el) => {
+                tabButtonRefs.current[idx] = el;
+              }}
+              role="tab"
+              id={`inspector-tab-${tab.id}`}
+              aria-selected={isActive}
+              aria-controls={`inspector-panel-${tab.id}`}
+              tabIndex={isActive ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, idx)}
               className={cn(
-                'relative flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0',
+                'relative flex items-center gap-1.5 px-2.5 py-1.5 sm:py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
                 isActive
-                  ? 'bg-background text-foreground font-semibold border border-border/40 shadow-xs'
+                  ? 'bg-muted text-foreground font-semibold border border-border/40'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               )}
             >
-              <Icon className="size-3.5 text-muted-foreground" />
+              <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span>{tab.label}</span>
               {count > 0 && (
                 <span
                   className={cn(
                     'text-[10px] font-mono tabular-nums px-1.5 py-0.2 rounded-full',
-                    isActive ? 'bg-muted text-foreground font-semibold' : 'bg-muted/60 text-muted-foreground'
+                    isActive ? 'bg-background text-foreground font-semibold border border-border/30' : 'bg-muted/60 text-muted-foreground'
                   )}
                 >
                   {count}
@@ -311,10 +362,16 @@ export default function InspectorPanel({
             </button>
           );
         })}
-      </nav>
+      </div>
 
-      {/* Main Tab Content Body */}
-      <div className="flex-1 overflow-y-auto min-w-0 p-3">
+      {/* WAI-ARIA Standard Tab Panel Body */}
+      <div
+        role="tabpanel"
+        id={`inspector-panel-${activeTab}`}
+        aria-labelledby={`inspector-tab-${activeTab}`}
+        tabIndex={0}
+        className="flex-1 overflow-y-auto min-w-0 p-3 focus-visible:outline-none"
+      >
         {activeTab === 'info' && (
           <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
         )}

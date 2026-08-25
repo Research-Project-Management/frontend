@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download } from 'lucide-react';
+import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -21,6 +21,7 @@ interface PaperBatchBarProps {
   onClearSelection: () => void;
   onBatchMove: (collectionId: string | null) => void;
   onBatchDelete: () => void;
+  onBatchOpenQuickCite?: () => void;
 }
 
 export default function PaperBatchBar({
@@ -30,6 +31,7 @@ export default function PaperBatchBar({
   onClearSelection,
   onBatchMove,
   onBatchDelete,
+  onBatchOpenQuickCite,
 }: PaperBatchBarProps) {
   if (selectedCount === 0) return null;
 
@@ -78,6 +80,20 @@ export default function PaperBatchBar({
             {selectedCount === 1 ? '1 selected' : `${selectedCount} selected`}
           </span>
         </div>
+
+        {/* Quick Cite Dialog Button (All selected) */}
+        {onBatchOpenQuickCite && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBatchOpenQuickCite}
+            className="h-7 px-2.5 gap-1.5 text-xs font-semibold text-primary hover:bg-primary/10 rounded-full cursor-pointer transition-colors shadow-none"
+            title="Open Quick Citation Dialog for all selected papers"
+          >
+            <Sparkles className="size-3.5 text-amber-500" />
+            <span>Cite ({selectedCount})</span>
+          </Button>
+        )}
 
         {/* Move To Collection Dropdown */}
         <DropdownMenu>

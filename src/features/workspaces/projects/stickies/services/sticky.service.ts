@@ -1,13 +1,25 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import type { Sticky } from "@/features/workspaces/projects/stickies/types/sticky.types";
 
-export const normalizeSticky = (s: any): Sticky => {
-  if (!s) return s;
-  const id = s.id || '';
+export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky => {
+  if (!s) {
+    return {
+      id: '',
+      workspaceId: '',
+      content: '',
+      color: 'yellow-1',
+      title: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as Sticky;
+  }
   return {
     ...s,
-    id: id,
-  };
+    id: s.id || '',
+    workspaceId: s.workspaceId || '',
+    content: s.content || '',
+    color: s.color || 'yellow-1',
+  } as Sticky;
 };
 
 export const getStickies = async (workspaceId: string, search?: string, projectId?: string): Promise<Sticky[]> => {
@@ -16,7 +28,7 @@ export const getStickies = async (workspaceId: string, search?: string, projectI
   if (projectId) params.append("projectId", projectId);
 
   const queryStr = params.toString() ? `?${params.toString()}` : "";
-  const data = await apiGet<{ stickies: any[] }>(`/api/workspace/${workspaceId}/stickies${queryStr}`);
+  const data = await apiGet<{ stickies: Partial<Sticky>[] }>(`/api/workspace/${workspaceId}/stickies${queryStr}`);
   return (data?.stickies || []).map(normalizeSticky);
 };
 
@@ -28,13 +40,15 @@ export const createSticky = async (variables: {
   position?: { x: number; y: number };
   projectId?: string;
 }): Promise<Sticky> => {
-  const res = await apiPost<{ sticky: any }>(`/api/workspace/${variables.workspaceId}/stickies`, variables);
-  return normalizeSticky(res?.sticky || res);
+  const res = await apiPost<{ sticky: Partial<Sticky> } | Partial<Sticky>>(`/api/workspace/${variables.workspaceId}/stickies`, variables);
+  const stickyData = res && 'sticky' in res ? res.sticky : res;
+  return normalizeSticky(stickyData);
 };
 
 export const updateSticky = async (stickyId: string, updates: Partial<Sticky>): Promise<Sticky> => {
-  const res = await apiPut<{ sticky: any }>(`/api/stickies/${stickyId}`, updates);
-  return normalizeSticky(res?.sticky || res);
+  const res = await apiPut<{ sticky: Partial<Sticky> } | Partial<Sticky>>(`/api/stickies/${stickyId}`, updates);
+  const stickyData = res && 'sticky' in res ? res.sticky : res;
+  return normalizeSticky(stickyData);
 };
 
 export const deleteSticky = async (stickyId: string) => {

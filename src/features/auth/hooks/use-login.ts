@@ -38,9 +38,9 @@ export const useLogin = () => {
       queryClient.setQueryData(authKeys.session(), authenticatedUser);
 
       // Determine routing based on existing workspaces
-      apiGet<{ workspaces: Array<{ url: string }> }>('/api/workspace')
+      fetchAllWorkspaces()
         .then((res) => {
-          if (res.workspaces && res.workspaces.length > 0) {
+          if (res?.workspaces && res.workspaces.length > 0) {
             router.push(`/${res.workspaces[0].url}`);
           } else {
             router.push('/create-workspace');

@@ -173,7 +173,12 @@ export async function apiFetch<T>(
       if ((err as Error)?.name === 'AbortError') {
         throw err;
       }
-      throw err;
+      const apiError = new ApiError({
+        message: err instanceof Error ? err.message : 'Network error: Failed to fetch',
+        statusCode: 0,
+      });
+      logger.error(`Network Error: [${normalizedMethod}] ${path}`, apiError);
+      throw apiError;
     }
 
     // Auto-refresh on 401
@@ -186,7 +191,19 @@ export async function apiFetch<T>(
       const newToken = await tryRefresh();
 
       if (newToken) {
-        response = await rawFetch(path, normalizedMethod, body, options);
+        try {
+          response = await rawFetch(path, normalizedMethod, body, options);
+        } catch (err: unknown) {
+          if ((err as Error)?.name === 'AbortError') {
+            throw err;
+          }
+          const apiError = new ApiError({
+            message: err instanceof Error ? err.message : 'Network error: Failed to fetch',
+            statusCode: 0,
+          });
+          logger.error(`Network Error on retry: [${normalizedMethod}] ${path}`, apiError);
+          throw apiError;
+        }
       } else {
         removeAuthToken();
 
@@ -234,9 +251,12 @@ export async function apiFetch<T>(
 
   if (requestKey) {
     inFlightRequests.set(requestKey, executionPromise);
-    executionPromise.finally(() => {
-      inFlightRequests.delete(requestKey);
-    });
+    // Attach .catch handler to prevent unhandled rejection on this cleanup promise fork
+    executionPromise
+      .catch(() => {})
+      .finally(() => {
+        inFlightRequests.delete(requestKey);
+      });
   }
 
   return executionPromise;

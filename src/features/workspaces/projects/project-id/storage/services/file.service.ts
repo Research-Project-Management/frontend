@@ -3,7 +3,7 @@
  * @description Handles API requests for workspace storage operations including listing files/folders, creating folders, uploading files, and mutating storage items (rename, move, delete).
  */
 
-import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import { generateThumbnail } from '@/shared/utils/file';
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
@@ -70,6 +70,10 @@ const uploadBlobWithProgress = (
         xhr.onabort = () => reject(new Error("Upload aborted"));
 
         xhr.open("POST", `${API_BASE_URL}${uploadEndpoint}`, true);
+        const token = getAuthToken();
+        if (token) {
+            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+        }
         xhr.send(formData);
     });
 };

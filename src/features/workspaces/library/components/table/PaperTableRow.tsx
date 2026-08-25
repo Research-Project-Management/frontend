@@ -11,7 +11,6 @@ import {
   Quote,
   MoreHorizontal,
   ExternalLink,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -47,7 +46,6 @@ interface PaperTableRowProps {
   onSelect: (paper: Paper) => void;
   onToggleCheck: (paperId: string, e: React.MouseEvent) => void;
   onDelete: (paperId: string) => void;
-  onOpenQuickCite?: (paper: Paper) => void;
 }
 
 export default function PaperTableRow({
@@ -59,7 +57,6 @@ export default function PaperTableRow({
   onSelect,
   onToggleCheck,
   onDelete,
-  onOpenQuickCite,
 }: PaperTableRowProps) {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams();
@@ -224,19 +221,12 @@ export default function PaperTableRow({
           {/* Hover Quick Action Buttons Column */}
           <td className="w-20 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-              {/* Quick Cite Dialog Button */}
+              {/* Quick Copy LaTeX \cite */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onOpenQuickCite) {
-                    onOpenQuickCite(paper);
-                  } else {
-                    handleCopyCite(e);
-                  }
-                }}
+                onClick={handleCopyCite}
                 className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted hover:text-primary transition-colors cursor-pointer"
-                title="Quick Citation Dialog & Copy"
-                aria-label="Quick Citation"
+                title="Copy LaTeX \cite"
+                aria-label="Copy LaTeX \cite"
               >
                 <Quote className="size-3.5 text-foreground" />
               </button>
@@ -256,7 +246,7 @@ export default function PaperTableRow({
                 <DropdownMenuTrigger asChild>
                   <button
                     className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
-                    title="More citation actions"
+                    title="More actions"
                     aria-label="More actions"
                   >
                     <MoreHorizontal className="size-3.5 text-foreground" />
@@ -269,16 +259,6 @@ export default function PaperTableRow({
                   >
                     <BookOpen className="size-3.5 text-muted-foreground" />
                     <span>Open in Reader</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onOpenQuickCite) onOpenQuickCite(paper);
-                    }}
-                    className="gap-2.5 text-xs font-medium text-primary cursor-pointer rounded-lg hover:bg-primary/10 focus:bg-primary/10"
-                  >
-                    <Sparkles className="size-3.5 text-amber-500" />
-                    <span>Quick Citation Dialog...</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -331,15 +311,6 @@ export default function PaperTableRow({
           <span>Open in Reader</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem
-          onClick={() => {
-            if (onOpenQuickCite) onOpenQuickCite(paper);
-          }}
-          className="gap-2.5 cursor-pointer font-medium text-primary"
-        >
-          <Sparkles className="size-3.5 text-amber-500" />
-          <span>Quick Citation Dialog...</span>
-        </ContextMenuItem>
         <ContextMenuItem onClick={handleCopyCite} className="gap-2.5 cursor-pointer">
           <Quote className="size-3.5 text-muted-foreground" />
           <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>

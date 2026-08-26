@@ -28,7 +28,9 @@ import Topbar from '../components/layout/Topbar';
 
 import { useRouter } from 'next/navigation';
 import { useStorageSelectionStore } from '@/features/workspaces/storage/store/use-selection-store';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
 
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function MyFilesPage() {
@@ -43,9 +45,10 @@ export default function MyFilesPage() {
   const highlightParam = searchParams.get('highlight');
 
   const { view } = useViewStore();
-  const { typeFilter, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, sortBy } = useStorageFilterStore();
   const { clearSelection } = useStorageSelectionStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
   const [currentFolder, setCurrentFolder] = useState<string | null>(folderParam || null);
@@ -57,18 +60,19 @@ export default function MyFilesPage() {
 
   const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(projectId!, currentFolder);
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
+
+  const { data, isLoading: isFilesLoading } = useHomeFiles(projectId!, currentFolder, queryParams);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const rawFiles = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
-
-  const files = useMemo(
-    () => applyStorageFilters(rawFiles, { typeFilter, sortBy, searchQuery }),
-    [rawFiles, typeFilter, sortBy, searchQuery],
-  );
+  const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
 
   useEffect(() => {
     const nextFolder = routeFolderId || searchParams.get('folder') || null;
@@ -163,24 +167,6 @@ export default function MyFilesPage() {
     [breadcrumbs, moveItem],
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────
-  if (isProjectLoading || isFilesLoading) {
-    return (
-      <div className="flex-1 p-6 space-y-4">
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!projectId) {
-    return <div className="p-6 text-muted-foreground">Project not found</div>;
-  }
-
   const viewProps = {
     items: files,
     highlightedItemId,
@@ -207,7 +193,22 @@ export default function MyFilesPage() {
         onSearchChange={setSearchQuery}
       />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {view === 'list' ? <ListView {...viewProps} /> : <GridView {...viewProps} />}
+        {isProjectLoading || (isFilesLoading && !data) ? (
+          <div className="space-y-4">
+            <Skeleton className="h-9 w-full rounded-lg" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded" />
+              ))}
+            </div>
+          </div>
+        ) : !projectId ? (
+          <div className="p-6 text-muted-foreground">Project not found</div>
+        ) : view === 'list' ? (
+          <ListView {...viewProps} />
+        ) : (
+          <GridView {...viewProps} />
+        )}
       </div>
       <BulkActionBar items={files} />
     </div>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { storageKeys } from '@/features/workspaces/storage/constants/storage.keys';
 import {
   getAllFiles,
@@ -18,46 +18,68 @@ import {
   getFolderPath,
 } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 import type { CreateFileRecordParams } from '../types/storage.types';
+import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 
 // --- Queries ---
 
-export function useHomeFiles(projectId: string, parentId?: string | null) {
+const STORAGE_QUERY_OPTIONS = {
+  staleTime: 5 * 1000,
+  refetchOnWindowFocus: true,
+  refetchInterval: 15 * 1000,
+  placeholderData: keepPreviousData,
+};
+
+export function useHomeFiles(
+  projectId: string,
+  parentId?: string | null,
+  queryParams?: FileQueryParams
+) {
+  const mergedParams: FileQueryParams = {
+    parentId: parentId ?? undefined,
+    ...queryParams,
+  };
+
   return useQuery({
-    queryKey: storageKeys.projectHomeFiles(projectId, parentId),
-    queryFn: () => getAllFiles(projectId, parentId),
+    queryKey: [...storageKeys.projectHomeFiles(projectId, parentId), mergedParams],
+    queryFn: () => getAllFiles(projectId, mergedParams),
     enabled: !!projectId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useMyFiles(projectId: string) {
+export function useMyFiles(projectId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.projectMyFiles(projectId),
-    queryFn: () => getMyFiles(projectId),
+    queryKey: [...storageKeys.projectMyFiles(projectId), params],
+    queryFn: () => getMyFiles(projectId, params),
     enabled: !!projectId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useSharedFiles(projectId: string) {
+export function useSharedFiles(projectId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.projectShared(projectId),
-    queryFn: () => getSharedFiles(projectId),
+    queryKey: [...storageKeys.projectShared(projectId), params],
+    queryFn: () => getSharedFiles(projectId, params),
     enabled: !!projectId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useStarredFiles(projectId: string) {
+export function useStarredFiles(projectId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.projectStarred(projectId),
-    queryFn: () => getStarredFiles(projectId),
+    queryKey: [...storageKeys.projectStarred(projectId), params],
+    queryFn: () => getStarredFiles(projectId, params),
     enabled: !!projectId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useTrash(projectId: string) {
+export function useTrash(projectId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.projectTrashed(projectId),
-    queryFn: () => getTrashedFiles(projectId),
+    queryKey: [...storageKeys.projectTrashed(projectId), params],
+    queryFn: () => getTrashedFiles(projectId, params),
     enabled: !!projectId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 

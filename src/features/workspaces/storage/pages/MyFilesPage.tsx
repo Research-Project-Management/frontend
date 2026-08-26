@@ -30,7 +30,9 @@ import {
 import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
 
 export default function WorkspaceMyFilesPage() {
   const router = useRouter();
@@ -43,9 +45,10 @@ export default function WorkspaceMyFilesPage() {
   const highlightParam = searchParams.get('highlight');
 
   const { view } = useViewStore();
-  const { typeFilter, projectFilter, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const { clearSelection } = useStorageSelectionStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
   const [currentFolder, setCurrentFolder] = useState<string | null>(folderParam || null);
@@ -57,18 +60,20 @@ export default function WorkspaceMyFilesPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?.id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder);
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+    projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
+
+  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder, queryParams);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const rawFiles = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
-
-  const files = useMemo(
-    () => applyStorageFilters(rawFiles, { typeFilter, projectFilter, sortBy, searchQuery }),
-    [rawFiles, typeFilter, projectFilter, sortBy, searchQuery],
-  );
+  const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
 
   useEffect(() => {
     const nextFolder = routeFolderId || searchParams.get('folder') || null;
@@ -157,24 +162,6 @@ export default function WorkspaceMyFilesPage() {
     }
   };
 
-  // Render
-  if (isWorkspaceLoading || isFilesLoading) {
-    return (
-      <div className="flex-1 p-6 space-y-4">
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!workspaceId) {
-    return <div className="p-6 text-muted-foreground">Workspace not found</div>;
-  }
-
   const viewProps = {
     items: files,
     highlightedItemId,
@@ -201,7 +188,22 @@ export default function WorkspaceMyFilesPage() {
         onSearchChange={setSearchQuery}
       />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {view === 'list' ? <ListView {...viewProps} /> : <GridView {...viewProps} />}
+        {isWorkspaceLoading || (isFilesLoading && !data) ? (
+          <div className="space-y-4">
+            <Skeleton className="h-9 w-full rounded-lg" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded" />
+              ))}
+            </div>
+          </div>
+        ) : !workspaceId ? (
+          <div className="p-6 text-muted-foreground">Workspace not found</div>
+        ) : view === 'list' ? (
+          <ListView {...viewProps} />
+        ) : (
+          <GridView {...viewProps} />
+        )}
       </div>
       <BulkActionBar items={files} />
     </div>

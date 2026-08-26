@@ -8,6 +8,7 @@ import {
   Trash2,
   Pencil,
   FolderUp,
+  FolderInput,
   FolderSymlink,
   CheckSquare,
   Square,
@@ -103,6 +104,11 @@ export function ItemActions({
 
   const handleRenameClick = () => {
     const event = new CustomEvent('open-rename-modal', { detail: item });
+    window.dispatchEvent(event);
+  };
+
+  const handleMoveClick = () => {
+    const event = new CustomEvent('open-move-modal', { detail: { item } });
     window.dispatchEvent(event);
   };
 
@@ -205,12 +211,10 @@ export function ItemActions({
               <span>Rename</span>
             </DropdownMenuItem>
 
-            {onMoveToParent && item.parentId && (
-              <DropdownMenuItem onClick={() => onMoveToParent(item)} className="gap-2">
-                <FolderUp className="size-3.5" />
-                <span>Move to parent folder</span>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem onClick={handleMoveClick} className="gap-2 cursor-pointer">
+              <FolderInput className="size-3.5" />
+              <span>Move</span>
+            </DropdownMenuItem>
 
             {onOpenLocation && (
               <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2">

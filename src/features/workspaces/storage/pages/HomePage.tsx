@@ -14,24 +14,35 @@ import type { StorageItem } from '@/features/workspaces/storage/types/storage.ty
 import { downloadFileUrl } from '@/shared/utils/file';
 import { filterHomeFiles } from '../utils/home.util';
 import { applyStorageFilters } from '../utils/filter.util';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
 import { useStorageSelectionStore } from '../store/use-selection-store';
 import Topbar from '../components/layout/Topbar';
 import { Home } from 'lucide-react';
+
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
 
 export default function WorkspaceHomePage() {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
   const { view } = useViewStore();
-  const { typeFilter, projectFilter, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?.id || workspaceUrl;
 
-  // Home view always fetches root items
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId);
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+    projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
+
+  // Home view fetches filtered & sorted items directly from backend
+  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, null, queryParams);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 
@@ -53,26 +64,9 @@ export default function WorkspaceHomePage() {
   }, [router, workspaceUrl]);
 
   const files = useMemo(
-    () => applyStorageFilters(filterHomeFiles((data?.files || []) as StorageItem[]), { typeFilter, projectFilter, sortBy, searchQuery }),
-    [data?.files, typeFilter, projectFilter, sortBy, searchQuery],
+    () => (data?.files || []) as StorageItem[],
+    [data?.files],
   );
-
-  if (isWorkspaceLoading || isFilesLoading) {
-    return (
-      <div className="flex-1 p-6 space-y-4">
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!workspaceId) {
-    return <div className="p-6">Workspace not found</div>;
-  }
 
   const viewProps = {
     items: files,
@@ -95,7 +89,18 @@ export default function WorkspaceHomePage() {
         onSearchChange={setSearchQuery}
       />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {view === 'list' ? (
+        {isWorkspaceLoading || (isFilesLoading && !data) ? (
+          <div className="space-y-4">
+            <Skeleton className="h-9 w-full rounded-lg" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded" />
+              ))}
+            </div>
+          </div>
+        ) : !workspaceId ? (
+          <div className="p-6 text-muted-foreground">Workspace not found</div>
+        ) : view === 'list' ? (
           <ListView {...viewProps} />
         ) : (
           <GridView {...viewProps} />

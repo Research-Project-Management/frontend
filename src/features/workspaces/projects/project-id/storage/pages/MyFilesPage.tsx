@@ -66,13 +66,22 @@ export default function MyFilesPage() {
     types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
   }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(projectId!, currentFolder, queryParams);
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useHomeFiles(projectId!, currentFolder, queryParams);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
+  const files = useMemo(
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
+  );
 
   useEffect(() => {
     const nextFolder = routeFolderId || searchParams.get('folder') || null;
@@ -121,14 +130,14 @@ export default function MyFilesPage() {
   }, [breadcrumbs, handleBreadcrumbNavigate]);
 
   // ── Download ───────────────────────────────────────────────────────────
-  const handleDownload = useCallback(async (item: StorageItem) => {
+  const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
       await downloadFileUrl(item.url, item.filename);
     } catch {
       window.open(item.url, '_blank');
     }
-  }, []);
+  };
 
   // ── Drag-and-drop move ─────────────────────────────────────────────────
   const handleDragStart = useCallback((item: StorageItem) => {
@@ -170,6 +179,9 @@ export default function MyFilesPage() {
   const viewProps = {
     items: files,
     highlightedItemId,
+    hasMore: hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
     onFolderClick: handleFolderClick,
     onToggleStar: (id: string) => { void handleToggleStar(id); },
     onDelete: (id: string) => { void handleDelete(id); },

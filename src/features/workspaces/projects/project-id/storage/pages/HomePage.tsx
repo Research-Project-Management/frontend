@@ -39,7 +39,13 @@ export default function HomePage() {
   }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
 
   // Home view fetches filtered & sorted items directly from backend
-  const { data, isLoading: isFilesLoading } = useHomeFiles(projectId!, null, queryParams);
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useHomeFiles(projectId!, null, queryParams);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 
@@ -62,13 +68,16 @@ export default function HomePage() {
   }, [router, workspaceUrl, projectId]);
 
   const files = useMemo(
-    () => (data?.files || []) as StorageItem[],
-    [data?.files],
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
   );
 
   const viewProps = {
     items: files,
     isReadOnly: false,
+    hasMore: hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
     onToggleStar: (id: string) => { void handleToggleStar(id); },
     onDelete: (id: string) => { void handleDelete(id); },
     onDownload: handleDownload,

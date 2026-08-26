@@ -38,7 +38,13 @@ export default function SharedPage() {
     types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
   }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
 
-  const { data, isLoading: isFilesLoading } = useSharedFiles(projectId!, queryParams);
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useSharedFiles(projectId!, queryParams);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 
@@ -56,8 +62,8 @@ export default function SharedPage() {
   };
 
   const files = useMemo(
-    () => (data?.files || []) as StorageItem[],
-    [data?.files],
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
   );
 
   return (
@@ -77,6 +83,9 @@ export default function SharedPage() {
         ) : view === 'list' ? (
           <ListView
             items={files}
+            hasMore={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
             onFolderClick={handleFolderClick}
             onToggleStar={(id) => { void handleToggleStar(id); }}
             onDelete={(id) => { void handleDelete(id); }}
@@ -86,6 +95,9 @@ export default function SharedPage() {
         ) : (
           <GridView
             items={files}
+            hasMore={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
             onFolderClick={handleFolderClick}
             onToggleStar={(id) => { void handleToggleStar(id); }}
             onDelete={(id) => { void handleDelete(id); }}

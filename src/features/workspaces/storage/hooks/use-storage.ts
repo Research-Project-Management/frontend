@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';
 import {
   getAllFiles,
@@ -21,6 +21,7 @@ import {
   getFolderPath,
 } from '../services/file.service';
 import type { CreateFileRecordParams } from '../types/storage.types';
+import type { FileQueryParams } from '../services/file.service';
 
 // --- Queries ---
 
@@ -28,48 +29,58 @@ const STORAGE_QUERY_OPTIONS = {
   staleTime: 5 * 1000, // 5s fresh cache
   refetchOnWindowFocus: true, // Auto refetch when tab is focused
   refetchInterval: 15 * 1000, // Auto background polling every 15s
+  placeholderData: keepPreviousData,
 };
 
-export function useHomeFiles(workspaceId: string, parentId?: string | null) {
+export function useHomeFiles(
+  workspaceId: string,
+  parentId?: string | null,
+  queryParams?: FileQueryParams
+) {
+  const mergedParams: FileQueryParams = {
+    parentId: parentId ?? undefined,
+    ...queryParams,
+  };
+
   return useQuery({
-    queryKey: storageKeys.workspaceHomeFiles(workspaceId, parentId),
-    queryFn: () => getAllFiles(workspaceId, parentId),
+    queryKey: [...storageKeys.workspaceHomeFiles(workspaceId, parentId), mergedParams],
+    queryFn: () => getAllFiles(workspaceId, mergedParams),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useMyFiles(workspaceId: string) {
+export function useMyFiles(workspaceId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.workspaceMyFiles(workspaceId),
-    queryFn: () => getMyFiles(workspaceId),
+    queryKey: [...storageKeys.workspaceMyFiles(workspaceId), params],
+    queryFn: () => getMyFiles(workspaceId, params),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useSharedFiles(workspaceId: string) {
+export function useSharedFiles(workspaceId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.workspaceShared(workspaceId),
-    queryFn: () => getSharedFiles(workspaceId),
+    queryKey: [...storageKeys.workspaceShared(workspaceId), params],
+    queryFn: () => getSharedFiles(workspaceId, params),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useStarredFiles(workspaceId: string) {
+export function useStarredFiles(workspaceId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.workspaceStarred(workspaceId),
-    queryFn: () => getStarredFiles(workspaceId),
+    queryKey: [...storageKeys.workspaceStarred(workspaceId), params],
+    queryFn: () => getStarredFiles(workspaceId, params),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
-export function useTrash(workspaceId: string) {
+export function useTrash(workspaceId: string, params?: FileQueryParams) {
   return useQuery({
-    queryKey: storageKeys.workspaceTrashed(workspaceId),
-    queryFn: () => getTrashedFiles(workspaceId),
+    queryKey: [...storageKeys.workspaceTrashed(workspaceId), params],
+    queryFn: () => getTrashedFiles(workspaceId, params),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });

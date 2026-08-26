@@ -10,8 +10,9 @@ import { useTopbar } from '../../hooks/use-topbar';
 import CreateFolderModal from '../modal/CreateFolderModal';
 import RenameModal from '../modal/RenameModal';
 import DuplicateModal from '../modal/DuplicateModal';
+import MoveModal from '../modal/MoveModal';
 import { useViewStore } from '../../store/use-view-store';
-import { StorageFilterPopover } from './StorageFilterPopover';
+import { StorageFilterPopover } from '../filters/StorageFilterPopover';
 
 export interface BreadcrumbItem {
   id: string | null;
@@ -249,6 +250,7 @@ export default function Topbar({
         <CreateFolderModal workspaceId={workspaceId} parentId={parentId} />
       )}
       <RenameModal />
+      <MoveModal workspaceId={workspaceId} />
       <DuplicateModal
         isOpen={duplicatePrompt !== null}
         filename={duplicatePrompt?.file.name ?? ""}

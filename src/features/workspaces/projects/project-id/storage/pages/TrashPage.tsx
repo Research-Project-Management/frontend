@@ -17,19 +17,30 @@ import type { StorageItem } from '@/features/workspaces/projects/project-id/stor
 import { filterTrashFiles } from '../utils/trash.util';
 import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
+
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 
 export default function ProjectTrashPage() {
   const { projectId } = useParams() as { projectId: string };
   const { view } = useViewStore();
-  const { typeFilter, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, sortBy } = useStorageFilterStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   const { data: projectData, isLoading: isProjectLoading } = useProject(
     projectId!,
   );
 
-  const { data, isLoading: isFilesLoading } = useTrash(projectId!);
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
+
+  const { data, isLoading: isFilesLoading } = useTrash(projectId!, queryParams);
   const { mutateAsync: handleRestore } = useRestoreItem();
   const { mutateAsync: handlePermanentlyDelete } = usePermanentlyDeleteItem();
 
@@ -43,20 +54,12 @@ export default function ProjectTrashPage() {
   };
 
   const files = useMemo(
-    () => applyStorageFilters(filterTrashFiles((data?.files || []) as StorageItem[]), { typeFilter, sortBy, searchQuery }),
-    [data?.files, typeFilter, sortBy, searchQuery],
+    () => (data?.files || []) as StorageItem[],
+    [data?.files],
   );
 
-  if (isProjectLoading || isFilesLoading) {
-    return <Skeleton className="h-48 w-full rounded-lg" />;
-  }
-
-  if (!projectId) {
-    return <div className="p-6 text-muted-foreground">Project not found</div>;
-  }
-
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden">
+    <div className="flex h-full w-full flex-col overflow-hidden relative">
       <Topbar
         title="Trash"
         icon={Trash2}
@@ -65,11 +68,15 @@ export default function ProjectTrashPage() {
         onSearchChange={setSearchQuery}
       />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {view === 'list' ? (
+        {isProjectLoading || (isFilesLoading && !data) ? (
+          <Skeleton className="h-48 w-full rounded-lg" />
+        ) : !projectId ? (
+          <div className="p-6 text-muted-foreground">Project not found</div>
+        ) : view === 'list' ? (
           <ListView
             items={files}
-            onToggleStar={(id) => { void handleRestore(id); }}
-            onDelete={(id) => { void handlePermanentlyDelete(id); }}
+            onToggleStar={(id: string) => { void handleRestore(id); }}
+            onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
             isTrash={true}
@@ -77,14 +84,15 @@ export default function ProjectTrashPage() {
         ) : (
           <GridView
             items={files}
-            onToggleStar={(id) => { void handleRestore(id); }}
-            onDelete={(id) => { void handlePermanentlyDelete(id); }}
+            onToggleStar={(id: string) => { void handleRestore(id); }}
+            onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
             isTrash={true}
           />
         )}
       </div>
+      <BulkActionBar items={files} isTrash={true} />
     </div>
   );
 }

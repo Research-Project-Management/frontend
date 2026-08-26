@@ -16,21 +16,32 @@ import type { StorageItem } from '@/features/workspaces/storage/types/storage.ty
 import { filterTrashFiles } from '../utils/trash.util';
 import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
+
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
 
 export default function WorkspaceTrashPage() {
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
   const { view } = useViewStore();
-  const { typeFilter, projectFilter, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(
     workspaceUrl!,
   );
   const workspaceId = workspace?.id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useTrash(workspaceId);
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+    projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
+
+  const { data, isLoading: isFilesLoading } = useTrash(workspaceId, queryParams);
   const { mutateAsync: handleRestore } = useRestoreItem();
   const { mutateAsync: handlePermanentlyDelete } = usePermanentlyDeleteItem();
 
@@ -44,17 +55,9 @@ export default function WorkspaceTrashPage() {
   };
 
   const files = useMemo(
-    () => applyStorageFilters(filterTrashFiles((data?.files || []) as StorageItem[]), { typeFilter, projectFilter, sortBy, searchQuery }),
-    [data?.files, typeFilter, projectFilter, sortBy, searchQuery],
+    () => (data?.files || []) as StorageItem[],
+    [data?.files],
   );
-
-  if (isWorkspaceLoading || isFilesLoading) {
-    return <Skeleton className="h-48 w-full rounded-lg" />;
-  }
-
-  if (!workspaceId) {
-    return <div className="p-6">Workspace not found</div>;
-  }
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden relative">
@@ -66,11 +69,15 @@ export default function WorkspaceTrashPage() {
         onSearchChange={setSearchQuery}
       />
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {view === 'list' ? (
+        {isWorkspaceLoading || (isFilesLoading && !data) ? (
+          <Skeleton className="h-48 w-full rounded-lg" />
+        ) : !workspaceId ? (
+          <div className="p-6 text-muted-foreground">Workspace not found</div>
+        ) : view === 'list' ? (
           <ListView
             items={files}
-            onToggleStar={(id) => { void handleRestore(id); }}
-            onDelete={(id) => { void handlePermanentlyDelete(id); }}
+            onToggleStar={(id: string) => { void handleRestore(id); }}
+            onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
             isTrash={true}
@@ -78,8 +85,8 @@ export default function WorkspaceTrashPage() {
         ) : (
           <GridView
             items={files}
-            onToggleStar={(id) => { void handleRestore(id); }}
-            onDelete={(id) => { void handlePermanentlyDelete(id); }}
+            onToggleStar={(id: string) => { void handleRestore(id); }}
+            onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
             isTrash={true}

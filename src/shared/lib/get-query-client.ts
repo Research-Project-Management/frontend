@@ -14,6 +14,13 @@ export const defaultQueryOptions: DefaultOptions = {
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     retry: (failureCount, error) => {
+      // Do NOT retry aborted requests (cancelled by navigation or unmount)
+      if (
+        error instanceof Error &&
+        (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted'))
+      ) {
+        return false;
+      }
       // Do NOT retry client errors (400, 401, 403, 404, 422)
       if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
         return false;
@@ -25,6 +32,12 @@ export const defaultQueryOptions: DefaultOptions = {
   mutations: {
     onError: (error: unknown) => {
       if (typeof window !== 'undefined') {
+        if (
+          error instanceof Error &&
+          (error.name === 'AbortError' || error.message?.toLowerCase().includes('aborted'))
+        ) {
+          return;
+        }
         const message = getErrorMessage(error) || 'Đã xảy ra lỗi khi thực hiện thao tác';
         toast.error(message);
       }

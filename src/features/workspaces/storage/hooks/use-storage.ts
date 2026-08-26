@@ -13,17 +13,29 @@ import {
   moveItem,
   restoreItem,
   permanentlyDeleteItem,
-  createFileRecord
+  createFileRecord,
+  batchDeleteItems,
+  batchRestoreItems,
+  batchPermanentlyDeleteItems,
+  batchStarItems,
+  getFolderPath,
 } from '../services/file.service';
 import type { CreateFileRecordParams } from '../types/storage.types';
 
 // --- Queries ---
+
+const STORAGE_QUERY_OPTIONS = {
+  staleTime: 5 * 1000, // 5s fresh cache
+  refetchOnWindowFocus: true, // Auto refetch when tab is focused
+  refetchInterval: 15 * 1000, // Auto background polling every 15s
+};
 
 export function useHomeFiles(workspaceId: string, parentId?: string | null) {
   return useQuery({
     queryKey: storageKeys.workspaceHomeFiles(workspaceId, parentId),
     queryFn: () => getAllFiles(workspaceId, parentId),
     enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
@@ -32,6 +44,7 @@ export function useMyFiles(workspaceId: string) {
     queryKey: storageKeys.workspaceMyFiles(workspaceId),
     queryFn: () => getMyFiles(workspaceId),
     enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
@@ -40,6 +53,7 @@ export function useSharedFiles(workspaceId: string) {
     queryKey: storageKeys.workspaceShared(workspaceId),
     queryFn: () => getSharedFiles(workspaceId),
     enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
@@ -48,6 +62,7 @@ export function useStarredFiles(workspaceId: string) {
     queryKey: storageKeys.workspaceStarred(workspaceId),
     queryFn: () => getStarredFiles(workspaceId),
     enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
   });
 }
 
@@ -56,6 +71,16 @@ export function useTrash(workspaceId: string) {
     queryKey: storageKeys.workspaceTrashed(workspaceId),
     queryFn: () => getTrashedFiles(workspaceId),
     enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
+  });
+}
+
+export function useFolderPath(folderId?: string | null) {
+  return useQuery({
+    queryKey: ['storage', 'folder-path', folderId],
+    queryFn: () => getFolderPath(folderId!),
+    enabled: !!folderId,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -141,3 +166,44 @@ export const useCreateFileRecord = () => {
     },
   });
 };
+
+export const useBatchDeleteItems = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => batchDeleteItems(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
+    },
+  });
+};
+
+export const useBatchRestoreItems = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => batchRestoreItems(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
+    },
+  });
+};
+
+export const useBatchPermanentDeleteItems = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => batchPermanentlyDeleteItems(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
+    },
+  });
+};
+
+export const useBatchStarItems = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, starred }: { ids: string[]; starred: boolean }) => batchStarItems(ids, starred),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
+    },
+  });
+};
+

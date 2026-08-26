@@ -15,6 +15,7 @@ import {
   permanentlyDeleteItem,
   createFileRecord,
   uploadFile,
+  getFolderPath,
 } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 import type { CreateFileRecordParams } from '../types/storage.types';
 
@@ -57,6 +58,15 @@ export function useTrash(projectId: string) {
     queryKey: storageKeys.projectTrashed(projectId),
     queryFn: () => getTrashedFiles(projectId),
     enabled: !!projectId,
+  });
+}
+
+export function useFolderPath(folderId?: string | null) {
+  return useQuery({
+    queryKey: ['storage', 'folder-path', folderId],
+    queryFn: () => getFolderPath(folderId!),
+    enabled: !!folderId,
+    staleTime: 30 * 1000,
   });
 }
 

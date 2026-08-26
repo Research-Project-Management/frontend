@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   X, Download, FileText, Calendar, User, Fingerprint,
   Maximize2, Search, Save, Loader2, RefreshCw,
@@ -20,6 +21,11 @@ import { downloadFileUrl } from '@/shared/utils/file';
 
 export default function Preview() {
   const { selectedItem: item, setSelectedItem } = usePreviewStore();
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [item?.id, item?.url]);
 
   const {
     metadata, setMetadata,
@@ -98,17 +104,30 @@ export default function Preview() {
         <div
           className="relative border-b border-border flex items-center justify-center h-44 overflow-hidden shrink-0"
           style={{
-            background: isImage
+            background: isImage && !imageError && resolvedUrl
               ? 'repeating-conic-gradient(var(--color-muted) 0% 25%, var(--color-background) 0% 50%) 0 0 / 14px 14px'
               : 'color-mix(in oklch, var(--color-muted) 30%, transparent)',
           }}
         >
           {isImage ? (
-            <img
-              src={resolvedUrl || ''}
-              alt={item.filename}
-              className="w-full h-full object-contain drop-shadow-sm"
-            />
+            !imageError && resolvedUrl ? (
+              <img
+                src={resolvedUrl}
+                alt={item.filename}
+                onError={() => setImageError(true)}
+                className="w-full h-full object-contain drop-shadow-sm"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-8">
+                <div
+                  className="opacity-25 transition-opacity hover:opacity-40"
+                  style={{ color }}
+                >
+                  {getFileIcon('image', 10)}
+                </div>
+                <span className="text-[11px] text-muted-foreground/50">Preview unavailable</span>
+              </div>
+            )
           ) : isPdf ? (
             pdfLoading ? (
               /* Shimmer skeleton for PDF loading */

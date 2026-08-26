@@ -239,7 +239,7 @@ export default function PaperUploadDialog({
     const uploadPromise = (async () => {
       try {
         const resultUrl = await uploadFile(f, {
-          prefix: `workspace/${workspaceId}`,
+          prefix: `${workspaceId}/library`,
           allowedTypes: ['application/pdf'],
         });
         setUploadedUrl(resultUrl);
@@ -387,7 +387,7 @@ export default function PaperUploadDialog({
             </button>
           </div>
 
-          {/* Mode 1: Magic Wand / Identifier (Zotero Style) */}
+          {/* Mode 1: Magic Wand / Identifier (Reference Manager Style) */}
           {mode === 'identifier' && (
             <div className="space-y-3">
               <div className="space-y-1.5">

@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import {
   X, Download, FileText, Calendar, User, Fingerprint,
   Maximize2, Search, Save, Loader2, RefreshCw,
   CheckCircle2, ChevronDown, ChevronUp,
-  BookMarked, Building2, FileDigit, ScrollText, CircleDot
+  BookMarked, Building2, FileDigit, ScrollText, CircleDot,
+  BookOpen
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import LibraryPopover from './LibraryPopover';
 import {
   getFileType, getFileIcon, getFileColor,
   formatFileSize, formatDate, formatMimeType,
@@ -19,9 +22,13 @@ import { usePreview } from '../../hooks/use-preview';
 import { usePreviewStore } from '../../store/use-preview-store';
 import { downloadFileUrl } from '@/shared/utils/file';
 
+
 export default function Preview() {
+  const params = useParams();
+  const workspaceId = (params?.workspaceId as string) || '';
   const { selectedItem: item, setSelectedItem } = usePreviewStore();
   const [imageError, setImageError] = useState(false);
+
 
   useEffect(() => {
     setImageError(false);
@@ -179,14 +186,31 @@ export default function Preview() {
           </button>
           {(isPdf || isImage) && (
             <button
-              onClick={() => window.open(item.url, '_blank')}
+              onClick={() => window.open(resolvedUrl || item.url, '_blank')}
               className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
             >
               <Maximize2 className="size-3" />
               Open full
             </button>
           )}
+          {isPdf && workspaceId && (
+            <LibraryPopover
+              item={item}
+              workspaceId={workspaceId}
+              metadata={metadata}
+              trigger={
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
+                  title="Add to Research Library"
+                >
+                  <BookOpen className="size-3" />
+                  Library
+                </button>
+              }
+            />
+          )}
         </div>
+
 
         {/* ── File details ─────────────────────────────────────────── */}
         <div className="px-3.5 pt-3 pb-3 border-b border-border">

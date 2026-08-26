@@ -7,10 +7,25 @@
 
 // ─── 1. Standard Response Envelope ────────────────────────────────────────────
 
+export type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
 export type ApiResponse<T> = {
   data: T;
   message?: string;
   success: boolean;
+  pagination?: PaginationMeta;
+  timestamp?: string;
+};
+
+export type PaginatedResponse<T> = ApiResponse<T[]> & {
+  pagination: PaginationMeta;
 };
 
 // ─── 2. Type-Safe API Error Definition ────────────────────────────────────────
@@ -18,7 +33,8 @@ export type ApiResponse<T> = {
 export type ApiErrorPayload = {
   message: string;
   statusCode: number;
-  errors?: Record<string, string[]>;
+  errors?: Record<string, string[]> | unknown;
+  details?: unknown;
   code?: string;
 };
 
@@ -29,7 +45,8 @@ export type ApiErrorPayload = {
 export class ApiError extends Error {
   public readonly statusCode: number;
   public readonly status: number; // Aliased for backwards compatibility
-  public readonly errors?: Record<string, string[]>;
+  public readonly errors?: Record<string, string[]> | unknown;
+  public readonly details?: unknown;
   public readonly code?: string;
 
   constructor(payload: ApiErrorPayload) {
@@ -37,7 +54,8 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.statusCode = payload.statusCode;
     this.status = payload.statusCode;
-    this.errors = payload.errors;
+    this.errors = payload.errors || payload.details;
+    this.details = payload.details || payload.errors;
     this.code = payload.code;
 
     // Maintain proper prototype chain
@@ -59,4 +77,5 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type RequestOptions = Omit<RequestInit, 'method' | 'body'> & {
   params?: Record<string, string | number | boolean | undefined | null>;
   timeout?: number;
+  idempotencyKey?: string;
 };

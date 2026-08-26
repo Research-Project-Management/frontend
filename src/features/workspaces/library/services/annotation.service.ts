@@ -42,7 +42,7 @@ export const AnnotationService = {
     ),
 
   /**
-   * Zotero 7 Parity: Synthesize all highlights into a Markdown Literature Note
+   * Reference Manager Parity: Synthesize all highlights into a Markdown Literature Note
    */
   extractNotes: (workspaceId: string, paperId: string) =>
     apiPost<{ message: string; markdownNote: string; totalExtracted: number }>(

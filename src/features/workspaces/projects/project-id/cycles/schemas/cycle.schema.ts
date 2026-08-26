@@ -28,15 +28,18 @@ export const cycleDeliverableSchema = z.object({
 export const cycleSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string(),
-  project: z.string(),
+  description: z.string().nullable().optional(),
+  projectId: z.string().optional(),
+  project: z.union([z.string(), z.object({ id: z.string().optional(), name: z.string().optional() })]).optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
-  status: cycleStatusSchema,
-  phase: cyclePhaseSchema,
-  milestones: z.array(cycleMilestoneSchema),
-  deliverables: z.array(cycleDeliverableSchema),
+  status: cycleStatusSchema.optional(),
+  phase: cyclePhaseSchema.optional(),
+  milestones: z.array(cycleMilestoneSchema).optional(),
+  deliverables: z.array(cycleDeliverableSchema).optional(),
   labels: z.array(z.string()).optional(),
+  tasks: z.array(z.any()).optional(),
+  authorId: z.string().optional(),
   author: z
     .object({
       id: z.string(),
@@ -50,6 +53,7 @@ export const cycleSchema = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
+
 
 export const createCycleInputSchema = cycleSchema.omit({
   id: true,

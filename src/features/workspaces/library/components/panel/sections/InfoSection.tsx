@@ -109,7 +109,7 @@ function InlineField({
 }
 
 /**
- * Zotero-style Creator/Author Inline Field
+ * Reference-Manager-style Creator/Author Inline Field
  * - Enter: Saves and inserts a new author row below
  * - Backspace on empty: Removes current author row and focuses previous author
  * - Blur on empty: Removes author row automatically
@@ -273,7 +273,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     }
   };
 
-  // Zotero-style author operations
+  // Reference-Manager-style author operations
   const handleUpdateAuthorAtIndex = (index: number, newName: string) => {
     const updated = [...authorList];
     if (newName.trim()) {
@@ -738,7 +738,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         </div>
       </div>
 
-      {/* ── Group 4: Zotero Extra & Archival Fields ────────────────────────── */}
+      {/* ── Group 4: Reference Extra & Archival Fields ────────────────────────── */}
       <div className="space-y-1.5 border-t border-border/20 pt-2">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider select-none">
@@ -752,8 +752,8 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         </div>
         <InlineTextarea
           value={paper.extra || ''}
-          ariaLabel="Zotero Extra field"
-          placeholder="Zotero Extra lines (e.g. arXiv: 2305.18290, Funder: NSF)..."
+          ariaLabel="Reference Extra field"
+          placeholder="Extra lines (e.g. arXiv: 2305.18290, Funder: NSF)..."
           onSave={(val) => handleFieldChange('extra', val || undefined)}
           className="font-mono text-[11px] bg-muted/10 border-border/30 rounded p-1.5"
           rows={3}

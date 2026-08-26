@@ -1,9 +1,16 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Sidebar from '@/features/workspaces/storage/components/layout/Sidebar';
-import Preview from '@/features/workspaces/storage/components/preview/Preview';
+
 import { usePreviewStore } from '@/features/workspaces/storage/store/use-preview-store';
 import { cn } from '@/shared/lib/utils';
+
+const Preview = dynamic(
+  () => import('@/features/workspaces/storage/components/preview/Preview'),
+  { ssr: false }
+);
+
 
 export default function Layout({ children }: { children?: React.ReactNode }) {
     const isPreviewOpen = usePreviewStore(s => !!s.selectedItem);

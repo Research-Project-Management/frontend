@@ -142,14 +142,16 @@ export function Item({
   onToggleLabelDetails,
 }: ItemProps) {
   const phaseConfig = useMemo(() => {
-    const dynamic = phases.find(p => p.id === cycle.phase);
+    const currentPhase = cycle.phase || "custom";
+    const dynamic = phases.find((p) => p.id === currentPhase);
     if (dynamic) return dynamic;
-    
-    const stat = (STATIC_PHASE_CONFIG as any)[cycle.phase];
+
+    const stat = (STATIC_PHASE_CONFIG as any)[currentPhase];
     if (stat) return stat;
 
     return { label: "Custom", color: "#6b7280", icon: "📋" };
   }, [phases, cycle.phase]);
+
 
   const cycleLabels = useMemo(() => {
     return allLabels.filter(l => cycle.labels?.includes(l.id));
@@ -225,12 +227,13 @@ export function Item({
         {/* Phase Badge - Now at the end */}
         <div className="flex items-center gap-1.5 h-7 px-2 bg-muted/60 border border-border rounded-sm shrink-0 cursor-default">
           <PhaseIconRenderer 
-            phaseId={cycle.phase}
+            phaseId={cycle.phase || 'custom'}
             icon={phaseConfig.icon}
             color={phaseConfig.color}
             size="sm"
             className="!size-3.5 !bg-transparent"
           />
+
           <span className="text-[11px] font-medium text-foreground shrink-0">
             {phaseConfig.label}
           </span>

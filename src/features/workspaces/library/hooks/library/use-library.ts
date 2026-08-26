@@ -2,36 +2,40 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useUpload } from '@/shared/hooks/use-upload';
 import { usePapers } from './use-papers';
+import { useCollections } from './use-collections';
+import { useCollection } from './use-collection';
+import { useReferences, useCslCitation } from './use-references';
+import {
+  useAnnotations,
+  useCreateAnnotation,
+  useDeleteAnnotation,
+  useExtractNotes,
+} from './use-annotations';
+import {
+  useRelatedPapers,
+  useLinkPapers,
+  useUnlinkPapers,
+  useWorkspaceKnowledgeGraph,
+} from './use-relations';
+import {
+  useDuplicateGroups,
+  useMergePapers,
+  useLibraryIntegrity,
+} from './use-quality';
+import { useAsyncJobStatus } from './use-async-job';
 import { extractMetadata } from '../../utils/library.util';
 import {
   calculateDuplicatePaperIds,
   filterAndSortLibraryPapers,
   getCollectionWithDescendantIds,
 } from '../../utils/filter.util';
-import {
-  collectionKeys,
-  getCollections,
-  invalidateCollections,
-  createCollection,
-  updateCollection,
-  deleteCollection,
-} from '../../services/collection.service';
-import * as libraryService from '../../services/library.service';
-import { libraryKeys } from '../../services/library.service';
-import { fetchReferenceByDoi, searchReferences } from '../../services/reference.service';
 import type {
   Paper,
-  Collection,
   CollectionInput,
-  CreateCollectionDTO,
-  UpdateCollectionDTO,
-  CslStyle,
-  PdfAnnotation,
 } from '../../types/library.types';
 import type { AddLinkData } from '../../components/system/AddLinkModal';
 
@@ -129,7 +133,7 @@ export function useLibrary() {
       for (const file of files) {
         try {
           const fileStorageUrl = await uploadFile(file, {
-            prefix: `workspace/${workspaceId}`,
+            prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
 
@@ -215,7 +219,7 @@ export function useLibrary() {
       for (const file of files) {
         try {
           const fileStorageUrl = await uploadFile(file, {
-            prefix: `workspace/${workspaceId}`,
+            prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
 
@@ -420,361 +424,26 @@ export function useLibrary() {
   };
 }
 
-// ── 2. Subcollection Page View Model Hook ───────────────────────────────────
+// ── Re-exports for 100% Backward Compatibility ──────────────────────────────
 
-export function useCollection() {
-  const { workspaceId: workspaceSlug, collectionId } = useParams() as {
-    workspaceId: string;
-    collectionId: string;
-  };
-  const router = useRouter();
-  const { workspace } = useWorkspace(workspaceSlug!);
-  const workspaceId = workspace?.id || workspaceSlug || '';
-
-  const paperService = usePapers({ workspaceId, collectionId: collectionId ?? '' });
-  const collectionPapers = useMemo(
-    () => paperService.state.collectionPapers?.papers ?? [],
-    [paperService.state.collectionPapers?.papers],
-  );
-  const isLoading = paperService.state.isLoadingCollection;
-  const collectionService = useCollections(workspaceId);
-  const collections = collectionService.state.collections;
-
-  const [search, setSearch] = useState('');
-  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
-  const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
-  const [isCreateCollectionModalOpen, setIsCreateCollectionModalOpen] = useState(false);
-
-  const collectionMap = useMemo(
-    () => Object.fromEntries(collections.map((collection) => [collection.id, collection])),
-    [collections],
-  );
-
-  const currentCollection = useMemo(
-    () => (collectionId ? collectionMap[collectionId] ?? null : null),
-    [collectionId, collectionMap],
-  );
-
-  const filteredPapers = useMemo(() => {
-    return filterAndSortLibraryPapers({
-      papers: collectionPapers,
-      searchQuery: search,
-    });
-  }, [collectionPapers, search]);
-
-  const selectedPaper = useMemo(
-    () => collectionPapers.find((paper: Paper) => paper.id === selectedPaperId) || null,
-    [collectionPapers, selectedPaperId],
-  );
-
-  return {
-    state: {
-      workspaceId,
-      workspaceSlug,
-      collectionId,
-      currentCollection,
-      papers: collectionPapers,
-      filteredPapers,
-      collections,
-      collectionMap,
-      isLoading,
-      search,
-      selectedPaperId,
-      selectedPaper,
-      addLinkOpen: isAddLinkModalOpen,
-      createCollectionOpen: isCreateCollectionModalOpen,
-      isAddingPaper: paperService.state.isAdding,
-      isCreatingCollection: collectionService.state.isCreating,
-    },
-    actions: {
-      setSearch,
-      setSelectedPaperId,
-      setAddLinkOpen: setIsAddLinkModalOpen,
-      setCreateCollectionOpen: setIsCreateCollectionModalOpen,
-      handleAddPaper: paperService.actions.addPaper,
-      handleDeletePaper: paperService.actions.deletePaper,
-      navigate: router.push,
-    },
-  };
-}
-
-// ── 3. Collections Query Hook ───────────────────────────────────────────────
-
-export function useCollections(workspaceId: string) {
-  const queryClient = useQueryClient();
-
-  const collectionsQuery = useQuery({
-    queryKey: collectionKeys.all(workspaceId),
-    queryFn: () => getCollections(workspaceId),
-    enabled: Boolean(workspaceId),
-    select: (data) => data.collections || [],
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: CreateCollectionDTO) => createCollection(workspaceId, data),
-    onSuccess: () => invalidateCollections(queryClient, workspaceId),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (data: UpdateCollectionDTO & { collectionId: string }) => {
-      const { collectionId, ...rest } = data;
-      return updateCollection(workspaceId, collectionId, rest);
-    },
-    onSuccess: () => invalidateCollections(queryClient, workspaceId),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (collectionId: string) => deleteCollection(workspaceId, collectionId),
-    onSuccess: () => invalidateCollections(queryClient, workspaceId),
-  });
-
-  const collections = collectionsQuery.data ?? [];
-
-  return {
-    state: {
-      collections,
-      isLoading: collectionsQuery.isLoading,
-      isError: collectionsQuery.isError,
-      isCreating: createMutation.isPending,
-      isUpdating: updateMutation.isPending,
-      isDeleting: deleteMutation.isPending,
-    },
-    actions: {
-      create: createMutation.mutate,
-      createAsync: createMutation.mutateAsync,
-      update: updateMutation.mutate,
-      updateAsync: updateMutation.mutateAsync,
-      delete: deleteMutation.mutate,
-      deleteAsync: deleteMutation.mutateAsync,
-      refetch: collectionsQuery.refetch,
-    },
-  };
-}
-
-// ── 4. References Hook ──────────────────────────────────────────────────────
-
-export function useReferences() {
-  const lookupDoiMutation = useMutation({
-    mutationFn: fetchReferenceByDoi,
-  });
-
-  const searchCrossrefMutation = useMutation({
-    mutationFn: (query: string) => searchReferences(query),
-  });
-
-  return {
-    state: {
-      isLookingUp: lookupDoiMutation.isPending,
-      isSearching: searchCrossrefMutation.isPending,
-    },
-    actions: {
-      lookupDoi: lookupDoiMutation.mutateAsync,
-      searchCrossref: searchCrossrefMutation.mutateAsync,
-    },
-  };
-}
-
-// ── 5. CSL Citation Formatting Hook ─────────────────────────────────────────
-
-export function useCslCitation(
-  workspaceId: string,
-  paperId: string,
-  style: CslStyle = 'apa',
-  index: number = 1,
-) {
-  return useQuery({
-    queryKey: libraryKeys.citationItem(workspaceId, paperId, style, index),
-    queryFn: () =>
-      libraryService.formatCslCitation(workspaceId, paperId, style, index),
-    enabled: Boolean(workspaceId && paperId),
-    staleTime: 1000 * 60 * 30,
-  });
-}
-
-// ── 6. Duplicates, Safe Merge & Integrity Hooks ─────────────────────────────
-
-export function useDuplicateGroups(workspaceId: string) {
-  return useQuery({
-    queryKey: libraryKeys.duplicates(workspaceId),
-    queryFn: () => libraryService.getDuplicateGroups(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
-}
-
-export function useMergePapers(workspaceId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      masterPaperId,
-      sourcePaperIds,
-    }: {
-      masterPaperId: string;
-      sourcePaperIds: string[];
-    }) => libraryService.mergePapers(workspaceId, masterPaperId, sourcePaperIds),
-    onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.papers(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.integrity(workspaceId) });
-      toast.success(`Merged ${response.mergedCount} duplicate papers into master`);
-    },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Failed to merge papers');
-    },
-  });
-}
-
-export function useLibraryIntegrity(workspaceId: string) {
-  return useQuery({
-    queryKey: libraryKeys.integrity(workspaceId),
-    queryFn: () => libraryService.getLibraryIntegrityReport(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
-}
-
-// ── 7. Related Papers & Knowledge Graph Hooks ───────────────────────────────
-
-export function useRelatedPapers(workspaceId: string, paperId: string) {
-  return useQuery({
-    queryKey: libraryKeys.relations(workspaceId, paperId),
-    queryFn: () => libraryService.getRelatedPapers(workspaceId, paperId),
-    enabled: Boolean(workspaceId && paperId),
-  });
-}
-
-export function useLinkPapers(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      targetPaperId,
-      relationType,
-    }: {
-      targetPaperId: string;
-      relationType?: string;
-    }) => libraryService.linkPapers(workspaceId, paperId, targetPaperId, relationType),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.relations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.graph(workspaceId) });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-      toast.success('Related paper linked');
-    },
-  });
-}
-
-export function useUnlinkPapers(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (targetPaperId: string) =>
-      libraryService.unlinkPapers(workspaceId, paperId, targetPaperId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.relations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.graph(workspaceId) });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-      toast.success('Related paper unlinked');
-    },
-  });
-}
-
-export function useWorkspaceKnowledgeGraph(workspaceId: string) {
-  return useQuery({
-    queryKey: libraryKeys.graph(workspaceId),
-    queryFn: () => libraryService.getWorkspaceKnowledgeGraph(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
-}
-
-// ── 8. PDF Annotations & Extracted Notes Hooks ──────────────────────────────
-
-export function useAnnotations(workspaceId: string, paperId: string) {
-  return useQuery({
-    queryKey: libraryKeys.annotations(workspaceId, paperId),
-    queryFn: () => libraryService.getAnnotations(workspaceId, paperId),
-    enabled: Boolean(workspaceId && paperId),
-  });
-}
-
-export function useCreateAnnotation(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: Partial<PdfAnnotation>) =>
-      libraryService.createAnnotation(workspaceId, paperId, dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.annotations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-    },
-  });
-}
-
-export function useDeleteAnnotation(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (annotationId: string) =>
-      libraryService.deleteAnnotation(workspaceId, paperId, annotationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.annotations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-    },
-  });
-}
-
-export function useExtractNotes(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () =>
-      libraryService.extractNotesFromAnnotations(workspaceId, paperId),
-    onSuccess: (response: any) => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperDetail(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-      const count =
-        response?.literatureNote?.annotationCount ??
-        response?.totalExtracted ??
-        'all';
-      toast.success(`Synthesized ${count} highlight(s) into Literature Note`);
-    },
-    onError: (error: any) => {
-      toast.error(error?.message || 'Failed to extract notes');
-    },
-  });
-}
-
-// ── 9. Async Ingestion Polling Hook ─────────────────────────────────────────
-
-export function useAsyncJobStatus(jobId: string | null) {
-  return useQuery({
-    queryKey: jobId ? libraryKeys.job(jobId) : ['library', 'job', 'idle'],
-    queryFn: () => (jobId ? libraryService.getAsyncJobStatus(jobId) : null),
-    enabled: Boolean(jobId),
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (!data || data.status === 'processing' || data.status === 'queued') {
-        return 1000;
-      }
-      return false;
-    },
-  });
-}
+export { useCollection } from './use-collection';
+export { useCollections } from './use-collections';
+export { useReferences, useCslCitation } from './use-references';
+export {
+  useAnnotations,
+  useCreateAnnotation,
+  useDeleteAnnotation,
+  useExtractNotes,
+} from './use-annotations';
+export {
+  useRelatedPapers,
+  useLinkPapers,
+  useUnlinkPapers,
+  useWorkspaceKnowledgeGraph,
+} from './use-relations';
+export {
+  useDuplicateGroups,
+  useMergePapers,
+  useLibraryIntegrity,
+} from './use-quality';
+export { useAsyncJobStatus } from './use-async-job';

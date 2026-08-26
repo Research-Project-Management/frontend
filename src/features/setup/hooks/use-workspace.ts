@@ -27,8 +27,13 @@ export function useCreateWorkspace() {
   const createMutation = useMutation({
     mutationFn: async (data: CreateWorkspaceSchema) => {
       const finalAvatar = avatarFile ? await uploadFile(avatarFile) : (data.avatar ?? null);
-      return createWorkspace({ ...data, avatar: finalAvatar ?? undefined });
+      return createWorkspace({
+        ...data,
+        companySize: data.size,
+        avatar: finalAvatar ?? undefined,
+      });
     },
+
     onSuccess: (response: any) => {
       const workspace = response.workspace || response;
       const wsId = workspace.id;

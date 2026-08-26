@@ -79,7 +79,7 @@ export default function WorkspaceMyFilesPage() {
     if (highlightParam !== highlightedItemId) {
       setHighlightedItemId(highlightParam || null);
     }
-  }, [routeFolderId, searchParams, currentFolder, highlightedItemId, clearSelection]);
+  }, [routeFolderId, searchParams, currentFolder, highlightParam, highlightedItemId, clearSelection]);
 
   useEffect(() => {
     if (currentFolder && folderPathData?.path && folderPathData.path.length > 0) {

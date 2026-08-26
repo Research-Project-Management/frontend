@@ -88,7 +88,7 @@ export const StorageService = {
   },
 
   moveItem: async (itemId: string, targetFolderId: string | null) => {
-    return apiPut(`/api/files/${itemId}/move`, { targetFolderId });
+    return apiPut(`/api/files/${itemId}/move`, { parentId: targetFolderId });
   },
 };
 

@@ -173,8 +173,9 @@ export function CyclePage() {
     setEditingCycle(cycle);
     setFormName(cycle.name);
     setFormDescription(cycle.description || "");
-    setFormPhase(cycle.phase);
+    setFormPhase(cycle.phase || 'custom');
     setFormStart(cycle.startDate ? cycle.startDate.split("T")[0] : "");
+
     setFormEnd(cycle.endDate ? cycle.endDate.split("T")[0] : "");
     setFormLabels(cycle.labels || []);
     setDialogOpen(true);

@@ -247,8 +247,8 @@ export async function listChatSessions(
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to list chat sessions');
-  const data = (await res.json()) as { chats?: ChatSession[] };
-  return data.chats || [];
+  const data = (await res.json()) as any;
+  return data.chats || data.data?.chats || (Array.isArray(data.data) ? data.data : []);
 }
 
 export async function getChatSession(chatId: string): Promise<ChatSessionDetail> {
@@ -257,7 +257,8 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to get chat session');
-  return (await res.json()) as ChatSessionDetail;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
 }
 
 export async function createChatSession(
@@ -282,7 +283,8 @@ export async function createChatSession(
     }),
   });
   if (!res.ok) throw new Error('Failed to create chat session');
-  return (await res.json()) as ChatSessionDetail;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
 }
 
 export async function appendChatMessages(
@@ -297,7 +299,8 @@ export async function appendChatMessages(
     body: JSON.stringify({ messages, documentIds }),
   });
   if (!res.ok) throw new Error('Failed to append messages');
-  return (await res.json()) as ChatSessionDetail;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
 }
 
 export async function renameChatSession(
@@ -311,7 +314,8 @@ export async function renameChatSession(
     body: JSON.stringify({ title }),
   });
   if (!res.ok) throw new Error('Failed to rename chat session');
-  return (await res.json()) as ChatSession;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSession;
 }
 
 export async function deleteChatSession(chatId: string): Promise<void> {
@@ -340,8 +344,8 @@ export async function getPageChat(pageId: string, _options?: unknown): Promise<C
     credentials: 'include',
   });
   if (!res.ok) return [];
-  const data = (await res.json()) as { messages?: ChatMessage[] };
-  return data.messages || [];
+  const data = (await res.json()) as any;
+  return data.messages || data.data?.messages || (Array.isArray(data.data) ? data.data : []);
 }
 
 export async function clearPageChat(pageId: string): Promise<void> {
@@ -370,7 +374,8 @@ export async function uploadDocument(
     body: formData,
   });
   if (!res.ok) throw new Error('Failed to upload document');
-  return (await res.json()) as { id: string; name: string; size: number };
+  const data = (await res.json()) as any;
+  return (data.data || data) as { id: string; name: string; size: number };
 }
 
 export async function fetchDocumentsBulk(
@@ -383,8 +388,8 @@ export async function fetchDocumentsBulk(
     body: JSON.stringify({ ids }),
   });
   if (!res.ok) throw new Error('Failed to fetch documents');
-  const data = (await res.json()) as { documents?: Array<{ id: string; name: string; size: number }> };
-  return data.documents || [];
+  const data = (await res.json()) as any;
+  return data.documents || data.data?.documents || (Array.isArray(data.data) ? data.data : []);
 }
 
 export async function fetchDocumentContent(
@@ -395,5 +400,7 @@ export async function fetchDocumentContent(
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to fetch document content');
-  return (await res.json()) as { text: string };
+  const data = (await res.json()) as any;
+  return { text: data.text || data.data?.text || (typeof data.data === 'string' ? data.data : '') || '' };
 }
+

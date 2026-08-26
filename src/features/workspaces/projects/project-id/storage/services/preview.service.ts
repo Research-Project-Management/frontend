@@ -157,12 +157,13 @@ export const previewServices = {
   },
 
   async getCrossrefByDoi(doi: string) {
-    return apiGet<{ work: CrossrefWork }>(`/api/library/reference/crossref/doi/${encodeURIComponent(doi)}`);
+    return apiGet<{ work: CrossrefWork }>(`/api/library/references/doi/${encodeURIComponent(doi)}`);
   },
 
   async getCrossrefSearch(query: string, rows = 1) {
     return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
-      `/api/library/reference/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
+      `/api/library/references/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
     );
   }
 };
+

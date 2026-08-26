@@ -7,8 +7,9 @@ export const searchWorkspace = (
   query: string,
   signal?: AbortSignal,
 ): Promise<SearchResponse> =>
-  apiGet<SearchResponse>(`/api/search/workspaces/${workspaceId}`, {
+  apiGet<SearchResponse>(`/api/workspace/${workspaceId}/search`, {
     params: { q: query },
     signal,
   });
+
 

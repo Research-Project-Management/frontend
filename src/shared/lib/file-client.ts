@@ -35,14 +35,18 @@ export interface FileUploadPayload {
 // ─── 2. URL Normalization & Resolution ────────────────────────────────────────
 
 /**
- * Resolve a relative file path or key to a fully-qualified URL.
+ * Resolve a relative file path or key to a fully-qualified URL (or relative proxy URL in browser).
  */
 export function resolveFileUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   const normalized = path.startsWith('/') ? path : `/${path}`;
+  if (typeof window !== 'undefined') {
+    return normalized;
+  }
   return `${API_BASE_URL}${normalized}`;
 }
+
 
 // ─── 3. Client-Side Validation ────────────────────────────────────────────────
 
@@ -187,16 +191,29 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
     formData.append('fileName', file.name);
 
     if (prefix) {
-      const [scopeType, scopeId] = prefix.split('/');
-      if (scopeType === 'workspace' && scopeId) {
-        formData.append('workspaceId', scopeId);
-      } else if (scopeType === 'project' && scopeId) {
-        formData.append('projectId', scopeId);
-      } else if (scopeType === 'page' && scopeId) {
-        formData.append('pageId', scopeId);
+      const parts = prefix.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        if (parts[1] === 'library' || parts[0] === 'library') {
+          const wsId = parts[1] === 'library' ? parts[0] : parts[1];
+          formData.append('workspaceId', wsId);
+          formData.append('source', 'library');
+          formData.append('skipFileRecord', 'true');
+        } else if (parts[0] === 'workspace') {
+          formData.append('workspaceId', parts[1]);
+        } else if (parts[0] === 'project') {
+          formData.append('projectId', parts[1]);
+        } else if (parts[0] === 'page') {
+          formData.append('pageId', parts[1]);
+        }
+      } else if (parts.length === 1) {
+        formData.append('workspaceId', parts[0]);
       }
     } else if (scope) {
-      if (scope.type === 'workspace' && scope.id) {
+      if ((scope.type as string) === 'library' && scope.id) {
+        formData.append('workspaceId', scope.id);
+        formData.append('source', 'library');
+        formData.append('skipFileRecord', 'true');
+      } else if (scope.type === 'workspace' && scope.id) {
         formData.append('workspaceId', scope.id);
       } else if (scope.type === 'project' && scope.id) {
         formData.append('projectId', scope.id);
@@ -219,7 +236,8 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const response = JSON.parse(xhr.responseText) as Record<string, any>;
-          const rawUrl = response.url || response.file?.url || response.path || '';
+          const payload = response.data || response;
+          const rawUrl = payload.url || payload.file?.url || payload.path || '';
           const resolvedUrl = resolveFileUrl(rawUrl) || rawUrl;
           resolve(resolvedUrl);
         } catch {
@@ -233,7 +251,12 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
     xhr.onerror = () => reject(new Error('Network error during upload'));
     xhr.onabort = () => reject(new Error('Upload aborted by user'));
 
-    xhr.open('POST', `${API_BASE_URL}/api/files/upload-r2`, true);
+    const targetUploadUrl =
+      typeof window !== 'undefined'
+        ? '/api/files/upload-r2'
+        : `${API_BASE_URL}/api/files/upload-r2`;
+    xhr.open('POST', targetUploadUrl, true);
+
 
     const token = getAuthToken();
     if (token) {

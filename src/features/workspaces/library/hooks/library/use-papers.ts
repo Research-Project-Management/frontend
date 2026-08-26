@@ -11,9 +11,9 @@ import {
   createPaper,
   updatePaper,
   deletePaper,
+  getPaperAcademicBundle,
 } from '../../services/paper.service';
 import { invalidateCollections } from '../../services/collection.service';
-import * as libraryService from '../../services/library.service';
 import { libraryKeys } from '../../services/library.service';
 import type {
   Paper,
@@ -140,7 +140,7 @@ export function usePaperDetail(workspaceId: string, paperId: string) {
 export function usePaperAcademicBundle(workspaceId: string, paperId: string) {
   return useQuery({
     queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-    queryFn: () => libraryService.getPaperAcademicBundle(workspaceId, paperId),
+    queryFn: () => getPaperAcademicBundle(workspaceId, paperId),
     enabled: Boolean(workspaceId && paperId),
     staleTime: 1000 * 60 * 5,
   });
@@ -149,7 +149,7 @@ export function usePaperAcademicBundle(workspaceId: string, paperId: string) {
 export function useLibraryPapers(workspaceId: string, query?: PaperQueryParams) {
   return useQuery({
     queryKey: libraryKeys.paperList(workspaceId, query),
-    queryFn: () => libraryService.getPapers(workspaceId, query),
+    queryFn: () => getAllPapers(workspaceId, query),
     enabled: Boolean(workspaceId),
     staleTime: 1000 * 60 * 2,
   });
@@ -160,7 +160,7 @@ export function useUpdatePaper(workspaceId: string, paperId: string) {
 
   return useMutation({
     mutationFn: (data: Partial<Paper>) =>
-      libraryService.updatePaper(workspaceId, paperId, data),
+      updatePaper(workspaceId, paperId, data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.papers(workspaceId) });
       queryClient.setQueryData(libraryKeys.paperDetail(workspaceId, paperId), response);
@@ -177,7 +177,7 @@ export function useDeletePaper(workspaceId: string) {
 
   return useMutation({
     mutationFn: (paperId: string) =>
-      libraryService.deletePaper(workspaceId, paperId),
+      deletePaper(workspaceId, paperId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.papers(workspaceId) });
       toast.success('Paper moved to trash');

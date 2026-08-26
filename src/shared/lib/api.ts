@@ -114,7 +114,7 @@ async function rawFetch(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<Response> {
-  const { params, headers: extraHeaders, signal, timeout = 15000, ...rest } = options;
+  const { params, headers: extraHeaders, signal, timeout = 15000, idempotencyKey, ...rest } = options;
 
   const url = buildUrl(path, params);
   const token = getAuthToken();
@@ -124,6 +124,9 @@ async function rawFetch(
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey;
   }
 
   // Handle AbortSignal & Timeout
@@ -246,30 +249,50 @@ export async function apiFetch<T>(
     }
 
     if (!response.ok) {
-      let payload: { message?: string; errors?: Record<string, string[]>; code?: string } = {};
+      let payload: {
+        message?: string;
+        errors?: Record<string, string[]> | unknown;
+        details?: unknown;
+        code?: string;
+        error?: { message?: string; code?: string; details?: unknown };
+      } = {};
 
       try {
-        payload = (await response.json()) as { message?: string; errors?: Record<string, string[]>; code?: string };
+        payload = (await response.json()) as any;
       } catch {
         // Non-JSON error body fallback
       }
 
+      const errorMessage =
+        payload.error?.message ||
+        payload.message ||
+        response.statusText ||
+        'Request failed';
+      const errorCode =
+        payload.error?.code ||
+        payload.code;
+      const errorDetails =
+        payload.error?.details ||
+        payload.errors ||
+        payload.details;
+
       const error = new ApiError({
-        message: payload.message ?? response.statusText ?? 'Request failed',
+        message: errorMessage,
         statusCode: response.status,
-        errors: payload.errors,
-        code: payload.code,
+        errors: errorDetails,
+        details: errorDetails,
+        code: errorCode,
       });
 
       if (response.status === 401) {
         logger.warn(`Authentication required: [${normalizedMethod}] ${path}`, {
           statusCode: response.status,
-          message: payload.message,
+          message: errorMessage,
         });
       } else {
         logger.error(`API Error: [${normalizedMethod}] ${path}`, error, {
           statusCode: response.status,
-          errors: payload.errors,
+          errors: errorDetails,
         });
       }
 
@@ -279,6 +302,18 @@ export async function apiFetch<T>(
     if (response.status === 204) return undefined as T;
 
     const json = await response.json();
+
+    // Transparently unpack backend ApiResponseEnvelope<T> if wrapped
+    if (
+      json !== null &&
+      typeof json === 'object' &&
+      'success' in json &&
+      (json as Record<string, unknown>).success === true &&
+      'data' in json
+    ) {
+      return (json as Record<string, unknown>).data as T;
+    }
+
     return json as T;
   })();
 

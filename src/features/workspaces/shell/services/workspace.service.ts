@@ -17,8 +17,10 @@ export type CreateWorkspaceBody = {
   name: string;
   url: string;
   size?: string;
+  companySize?: string;
   avatar?: string | null;
 };
+
 
 export type WorkspacePatch = Partial<{
   name: string;

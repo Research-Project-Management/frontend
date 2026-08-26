@@ -3,25 +3,40 @@ import { extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata } from '../
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { getFileArrayBuffer } from './file.service';
 
-let pdfjsLibPromise: Promise<any> | null = null;
-
-const getPdfjsLib = () => {
-  if (!pdfjsLibPromise) {
-    pdfjsLibPromise = import('react-pdf').then(({ pdfjs }) => {
-      if (typeof window !== 'undefined') {
+async function getPdfjs() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const pdfModule = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const pdfjs = (pdfModule as any).default || pdfModule;
+    if (pdfjs?.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
+      pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+    }
+    return pdfjs;
+  } catch {
+    try {
+      const { pdfjs } = await import('react-pdf');
+      if (pdfjs?.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
         pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
       }
       return pdfjs;
-    });
+    } catch {
+      return null;
+    }
   }
-  return pdfjsLibPromise;
-};
+}
 
 export const previewServices = {
   async extractMetadata(arrayBuffer: ArrayBuffer): Promise<{ metadata: PdfMetadata; doi?: string }> {
-    const pdfjsLib = await getPdfjsLib();
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-    const meta = await pdf.getMetadata();
+    try {
+      const pdfjsLib = await getPdfjs();
+      if (!pdfjsLib) {
+        return { metadata: { pageCount: 1 } };
+      }
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) }).promise;
+      const meta = await pdf.getMetadata();
+
+
+
     
     const info = (meta?.info || {}) as Record<string, any>;
     const xmpRaw = (meta?.metadata as any)?.getRaw?.() || '';
@@ -91,7 +106,12 @@ export const previewServices = {
     };
 
     return { metadata: baseMeta, doi };
-  },
+  } catch (err) {
+    console.warn('[previewService] extractMetadata error:', err);
+    return { metadata: { pageCount: 1 } };
+  }
+},
+
 
   /**
    * Generates a PNG thumbnail of the first page of a PDF.
@@ -102,28 +122,36 @@ export const previewServices = {
     try {
       // Fetch a fresh buffer — cannot reuse the one passed to extractMetadata
       const arrayBuffer = await getFileArrayBuffer(url);
-      const pdfjsLib = await getPdfjsLib();
-      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const pdfjsLib = await getPdfjs();
+      if (!pdfjsLib) return null;
+
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) }).promise;
       const page = await pdf.getPage(1);
+
       
       const viewport = page.getViewport({ scale: 1 });
-      const scale = 280 / viewport.width;
+      const targetWidth = 280;
+      const scale = targetWidth / viewport.width;
       const scaledViewport = page.getViewport({ scale });
 
       const canvas = document.createElement('canvas');
-      canvas.width = scaledViewport.width;
-      canvas.height = scaledViewport.height;
+      canvas.width = Math.floor(scaledViewport.width);
+      canvas.height = Math.floor(scaledViewport.height);
       
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
 
-      await page.render({ canvasContext: ctx, viewport: scaledViewport, canvas } as any).promise;
+      await page.render({
+        canvasContext: ctx,
+        viewport: scaledViewport,
+      } as any).promise;
       return canvas.toDataURL('image/png');
     } catch (error) {
       console.error('Failed to generate PDF preview:', error);
       return null;
     }
   },
+
 
   async enrichWithCrossref(baseMeta: PdfMetadata, doi?: string): Promise<{ enrichedMeta: PdfMetadata; found: boolean }> {
     let crossrefWork: CrossrefWork | null = null;

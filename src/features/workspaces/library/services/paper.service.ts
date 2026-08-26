@@ -1,6 +1,11 @@
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
-import type { Collection, Paper, PaperAttachment } from "@/features/workspaces/library/types/library.types";
+import type {
+  Collection,
+  Paper,
+  PaperAcademicBundle,
+  PaperAttachment,
+} from "@/features/workspaces/library/types/library.types";
 
 export const paperKeys = {
   all: (workspaceId: string) => ["papers", workspaceId] as const,
@@ -37,6 +42,11 @@ export const PaperService = {
 
   getById: (workspaceId: string, paperId: string) =>
     apiGet<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`),
+
+  getAcademicBundle: (workspaceId: string, paperId: string) =>
+    apiGet<PaperAcademicBundle>(
+      `/api/library/${encodeURIComponent(workspaceId)}/papers/${encodeURIComponent(paperId)}/bundle`,
+    ),
 
   getByCollection: (workspaceId: string, collectionId: string, search?: string) =>
     apiGet<{ collection: Collection; papers: Paper[] }>(
@@ -99,6 +109,7 @@ export const PaperService = {
 export const ingestPaper = PaperService.ingest;
 export const getAllPapers = PaperService.getAll;
 export const getPaperById = PaperService.getById;
+export const getPaperAcademicBundle = PaperService.getAcademicBundle;
 export const getCollectionPapers = PaperService.getByCollection;
 export const createPaper = PaperService.create;
 export const updatePaper = PaperService.update;

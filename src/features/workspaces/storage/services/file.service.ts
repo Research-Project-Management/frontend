@@ -112,8 +112,13 @@ const uploadBlobWithProgress = (
         xhr.onerror = () => reject(new Error("Network error during upload"));
         xhr.onabort = () => reject(new Error("Upload aborted"));
 
-        xhr.open("POST", `${API_BASE_URL}/api/files/upload-r2`, true);
+        const targetUploadUrl =
+            typeof window !== 'undefined'
+                ? '/api/files/upload-r2'
+                : `${API_BASE_URL}/api/files/upload-r2`;
+        xhr.open("POST", targetUploadUrl, true);
         const token = getAuthToken();
+
         if (token) {
             xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
@@ -232,10 +237,15 @@ export const moveItem = (itemId: string, parentId: string | null) =>
     apiPut(`/api/files/${itemId}/move`, { parentId });
 
 export const updateFileMetadata = (itemId: string, metaData: Record<string, any>) =>
-    apiPut(`/api/files/${itemId}/metadata`, { metaData });
+    apiPut(`/api/files/${itemId}`, { metaData });
 
 export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
-    const response = await fetch(url, { credentials: "include" });
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token && !url.startsWith("blob:") && !url.startsWith("data:")) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+    const response = await fetch(url, { credentials: "include", headers });
     if (!response.ok) {
         throw new Error("Failed to fetch file buffer: " + response.statusText);
     }
@@ -243,12 +253,18 @@ export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
 };
 
 export const getFileBlob = async (url: string): Promise<Blob> => {
-    const response = await fetch(url, { credentials: "include" });
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token && !url.startsWith("blob:") && !url.startsWith("data:")) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+    const response = await fetch(url, { credentials: "include", headers });
     if (!response.ok) {
         throw new Error("Failed to fetch file blob: " + response.statusText);
     }
     return response.blob();
 };
+
 
 // ── Batch Operations ──────────────────────────────────────────────────────────
 

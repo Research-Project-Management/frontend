@@ -69,8 +69,13 @@ const uploadBlobWithProgress = (
         xhr.onerror = () => reject(new Error("Network error during upload"));
         xhr.onabort = () => reject(new Error("Upload aborted"));
 
-        xhr.open("POST", `${API_BASE_URL}${uploadEndpoint}`, true);
+        const targetUploadUrl =
+            typeof window !== 'undefined'
+                ? uploadEndpoint
+                : `${API_BASE_URL}${uploadEndpoint}`;
+        xhr.open("POST", targetUploadUrl, true);
         const token = getAuthToken();
+
         if (token) {
             xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
@@ -190,7 +195,7 @@ export const moveItem = (itemId: string, parentId: string | null) =>
     apiPut(`/api/files/${itemId}/move`, { parentId });
 
 export const updateFileMetadata = (itemId: string, metaData: Record<string, any>) =>
-    apiPut(`/api/files/${itemId}/metadata`, { metaData });
+    apiPut(`/api/files/${itemId}`, { metaData });
 
 export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
     const response = await fetch(url, { credentials: "include" });

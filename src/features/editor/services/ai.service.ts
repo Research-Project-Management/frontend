@@ -150,6 +150,8 @@ export async function getPageChat(pageId: string, workspaceId?: string): Promise
   if (!res.ok) return { id: null, messages: [] };
   const data = (await res.json()) as any;
   if (data?.chat) return data.chat;
+  if (data?.data?.chat) return data.data.chat;
+  if (data?.data) return data.data;
   return data;
 }
 
@@ -170,7 +172,8 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to get chat session');
-  return (await res.json()) as ChatSessionDetail;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
 }
 
 export async function createChatSession(input: {
@@ -193,7 +196,8 @@ export async function createChatSession(input: {
     }),
   });
   if (!res.ok) throw new Error('Failed to create chat session');
-  return (await res.json()) as ChatSessionDetail;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
 }
 
 export async function appendChatMessages(
@@ -208,7 +212,8 @@ export async function appendChatMessages(
     body: JSON.stringify({ messages, documentIds }),
   });
   if (!res.ok) throw new Error('Failed to append messages');
-  return (await res.json()) as ChatSessionDetail;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSessionDetail;
 }
 
 export async function listChatSessions(
@@ -224,8 +229,8 @@ export async function listChatSessions(
     credentials: 'include',
   });
   if (!res.ok) return [];
-  const data = (await res.json()) as { chats?: ChatSession[] };
-  return data.chats || [];
+  const data = (await res.json()) as any;
+  return data.chats || data.data?.chats || (Array.isArray(data.data) ? data.data : []);
 }
 
 export async function renameChatSession(
@@ -239,7 +244,8 @@ export async function renameChatSession(
     body: JSON.stringify({ title }),
   });
   if (!res.ok) throw new Error('Failed to rename chat session');
-  return (await res.json()) as ChatSession;
+  const data = (await res.json()) as any;
+  return (data.chat || data.data?.chat || data.data || data) as ChatSession;
 }
 
 export async function deleteChatSession(chatId: string): Promise<void> {

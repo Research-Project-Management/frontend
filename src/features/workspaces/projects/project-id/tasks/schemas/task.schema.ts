@@ -8,22 +8,34 @@ export const taskRecurrenceSchema = z.enum([
   "none",
   "daily",
   "mon-fri",
+  "mon_fri",
   "weekly",
   "monthly-day",
+  "monthly_day",
   "monthly-week",
+  "monthly_week",
 ]);
 
 export const taskReminderSchema = z.enum([
   "none",
   "at-time",
+  "at_time",
   "5m",
+  "m5",
   "10m",
+  "m10",
   "15m",
+  "m15",
   "1h",
+  "h1",
   "2h",
+  "h2",
   "1day",
+  "d1",
   "2day",
+  "d2",
 ]);
+
 
 // ── Checklist Schemas ────────────────────────────────────────────────────────
 

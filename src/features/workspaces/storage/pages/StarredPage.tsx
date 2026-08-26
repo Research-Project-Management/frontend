@@ -41,7 +41,13 @@ export default function WorkspaceStarredPage() {
     projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
   }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
 
-  const { data, isLoading: isFilesLoading } = useStarredFiles(workspaceId, queryParams);
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useStarredFiles(workspaceId, queryParams);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete } = useDeleteItem();
 
@@ -59,8 +65,8 @@ export default function WorkspaceStarredPage() {
   };
 
   const files = useMemo(
-    () => (data?.files || []) as StorageItem[],
-    [data?.files],
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
   );
 
   return (
@@ -80,6 +86,9 @@ export default function WorkspaceStarredPage() {
         ) : view === 'list' ? (
           <ListView
             items={files}
+            hasMore={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
             onFolderClick={handleFolderClick}
             onToggleStar={(id) => { void handleToggleStar(id); }}
             onDelete={(id) => { void handleDelete(id); }}
@@ -89,6 +98,9 @@ export default function WorkspaceStarredPage() {
         ) : (
           <GridView
             items={files}
+            hasMore={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
             onFolderClick={handleFolderClick}
             onToggleStar={(id) => { void handleToggleStar(id); }}
             onDelete={(id) => { void handleDelete(id); }}

@@ -40,7 +40,13 @@ export default function ProjectTrashPage() {
     types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
   }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
 
-  const { data, isLoading: isFilesLoading } = useTrash(projectId!, queryParams);
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useTrash(projectId!, queryParams);
   const { mutateAsync: handleRestore } = useRestoreItem();
   const { mutateAsync: handlePermanentlyDelete } = usePermanentlyDeleteItem();
 
@@ -54,8 +60,8 @@ export default function ProjectTrashPage() {
   };
 
   const files = useMemo(
-    () => (data?.files || []) as StorageItem[],
-    [data?.files],
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
   );
 
   return (
@@ -75,6 +81,9 @@ export default function ProjectTrashPage() {
         ) : view === 'list' ? (
           <ListView
             items={files}
+            hasMore={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
             onToggleStar={(id: string) => { void handleRestore(id); }}
             onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
@@ -84,6 +93,9 @@ export default function ProjectTrashPage() {
         ) : (
           <GridView
             items={files}
+            hasMore={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
             onToggleStar={(id: string) => { void handleRestore(id); }}
             onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Star, Folder, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Star, Folder, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from '@/shared/utils/url';
+import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../utils/file';
 import { ItemActions, type StorageViewProps } from './ListView';
@@ -51,8 +52,21 @@ export default function GridView({
   onMoveToParent,
   onOpenLocation,
   isReadOnly,
+  hasMore,
+  isFetchingNextPage,
+  onLoadMore,
 }: StorageViewProps) {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const { isIntersecting } = useIntersectionObserver(sentinelRef, {
+    rootMargin: '250px',
+  });
+
+  useEffect(() => {
+    if (isIntersecting && hasMore && !isFetchingNextPage && onLoadMore) {
+      onLoadMore();
+    }
+  }, [isIntersecting, hasMore, isFetchingNextPage, onLoadMore]);
   const {
     selectedIds,
     toggleSelect,
@@ -215,6 +229,16 @@ export default function GridView({
           );
         })}
       </AnimatePresence>
+
+      {/* Sentinel & Load more spinner */}
+      <div ref={sentinelRef} className="col-span-full py-2 flex items-center justify-center min-h-6">
+        {isFetchingNextPage && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <span>Loading more files...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Star,
   Folder,
@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Square,
   MinusSquare,
+  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ import {
 } from '@/shared/components/ui';
 import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from '@/shared/utils/url';
+import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import {
   getFileType,
@@ -76,6 +78,9 @@ export type StorageViewProps = {
   onMoveToParent?: (item: StorageItem) => void;
   onOpenLocation?: (item: StorageItem) => void;
   isReadOnly?: boolean;
+  hasMore?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
 };
 
 type ItemActionsProps = {
@@ -267,8 +272,22 @@ export default function ListView({
   onMoveToParent,
   onOpenLocation,
   isReadOnly,
+  hasMore,
+  isFetchingNextPage,
+  onLoadMore,
 }: StorageViewProps) {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const { isIntersecting } = useIntersectionObserver(sentinelRef, {
+    rootMargin: '250px',
+  });
+
+  useEffect(() => {
+    if (isIntersecting && hasMore && !isFetchingNextPage && onLoadMore) {
+      onLoadMore();
+    }
+  }, [isIntersecting, hasMore, isFetchingNextPage, onLoadMore]);
+
   const {
     selectedIds,
     toggleSelect,
@@ -471,6 +490,14 @@ export default function ListView({
               );
             })}
           </AnimatePresence>
+          <div ref={sentinelRef} className="py-2 flex items-center justify-center min-h-6">
+            {isFetchingNextPage && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                <span>Loading more files...</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { storageKeys } from '@/features/workspaces/storage/constants/storage.keys';
 import {
   getAllFiles,
@@ -39,45 +39,65 @@ export function useHomeFiles(
     ...queryParams,
   };
 
-  return useQuery({
-    queryKey: [...storageKeys.projectHomeFiles(projectId, parentId), mergedParams],
-    queryFn: () => getAllFiles(projectId, mergedParams),
+  return useInfiniteQuery({
+    queryKey: [...storageKeys.projectHomeFiles(projectId, parentId), 'infinite', mergedParams],
+    queryFn: ({ pageParam = 1 }) =>
+      getAllFiles(projectId, { ...mergedParams, page: pageParam as number, limit: 40 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
     enabled: !!projectId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
 export function useMyFiles(projectId: string, params?: FileQueryParams) {
-  return useQuery({
-    queryKey: [...storageKeys.projectMyFiles(projectId), params],
-    queryFn: () => getMyFiles(projectId, params),
+  return useInfiniteQuery({
+    queryKey: [...storageKeys.projectMyFiles(projectId), 'infinite', params],
+    queryFn: ({ pageParam = 1 }) =>
+      getMyFiles(projectId, { ...params, page: pageParam as number, limit: 40 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
     enabled: !!projectId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
 export function useSharedFiles(projectId: string, params?: FileQueryParams) {
-  return useQuery({
-    queryKey: [...storageKeys.projectShared(projectId), params],
-    queryFn: () => getSharedFiles(projectId, params),
+  return useInfiniteQuery({
+    queryKey: [...storageKeys.projectShared(projectId), 'infinite', params],
+    queryFn: ({ pageParam = 1 }) =>
+      getSharedFiles(projectId, { ...params, page: pageParam as number, limit: 40 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
     enabled: !!projectId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
 export function useStarredFiles(projectId: string, params?: FileQueryParams) {
-  return useQuery({
-    queryKey: [...storageKeys.projectStarred(projectId), params],
-    queryFn: () => getStarredFiles(projectId, params),
+  return useInfiniteQuery({
+    queryKey: [...storageKeys.projectStarred(projectId), 'infinite', params],
+    queryFn: ({ pageParam = 1 }) =>
+      getStarredFiles(projectId, { ...params, page: pageParam as number, limit: 40 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
     enabled: !!projectId,
     ...STORAGE_QUERY_OPTIONS,
   });
 }
 
 export function useTrash(projectId: string, params?: FileQueryParams) {
-  return useQuery({
-    queryKey: [...storageKeys.projectTrashed(projectId), params],
-    queryFn: () => getTrashedFiles(projectId, params),
+  return useInfiniteQuery({
+    queryKey: [...storageKeys.projectTrashed(projectId), 'infinite', params],
+    queryFn: ({ pageParam = 1 }) =>
+      getTrashedFiles(projectId, { ...params, page: pageParam as number, limit: 40 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
     enabled: !!projectId,
     ...STORAGE_QUERY_OPTIONS,
   });

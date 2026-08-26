@@ -67,13 +67,22 @@ export default function WorkspaceMyFilesPage() {
     projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
   }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder, queryParams);
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useHomeFiles(workspaceId, currentFolder, queryParams);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const files = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
+  const files = useMemo(
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
+  );
 
   useEffect(() => {
     const nextFolder = routeFolderId || searchParams.get('folder') || null;
@@ -165,6 +174,9 @@ export default function WorkspaceMyFilesPage() {
   const viewProps = {
     items: files,
     highlightedItemId,
+    hasMore: hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
     onFolderClick: handleFolderClick,
     onToggleStar: (id: string) => { void handleToggleStar(id); },
     onDelete: (id: string) => { void handleDelete(id); },

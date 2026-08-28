@@ -47,7 +47,7 @@ export function useLibrarySearch(workspaceId: string) {
     queryFn: async () => {
       const resp = await apiGet<any>(
         `/api/v1/workspaces/${workspaceId}/library/discovery/search`,
-        currentParams as any,
+        { params: currentParams as Record<string, string | number | boolean | null | undefined> },
       );
       return resp;
     },
@@ -114,9 +114,15 @@ export function useLibrarySearch(workspaceId: string) {
     });
   }, [updateUrlParams]);
 
+  const searchData = useMemo(() => {
+    if (Array.isArray(query.data)) return query.data;
+    if (Array.isArray(query.data?.data)) return query.data.data;
+    return [];
+  }, [query.data]);
+
   return {
     params: currentParams,
-    data: query.data?.data || [],
+    data: searchData,
     facets: query.data?.meta?.facets as SearchFacets | undefined,
     meta: query.data?.meta,
     isLoading: query.isLoading,

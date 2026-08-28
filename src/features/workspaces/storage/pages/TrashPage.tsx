@@ -69,7 +69,7 @@ export default function WorkspaceTrashPage() {
         {view === 'list' ? (
           <ListView
             items={files}
-            onToggleStar={(id) => { void handleRestore(id); }}
+            onRestore={(id) => { void handleRestore(id); }}
             onDelete={(id) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
@@ -78,7 +78,7 @@ export default function WorkspaceTrashPage() {
         ) : (
           <GridView
             items={files}
-            onToggleStar={(id) => { void handleRestore(id); }}
+            onRestore={(id) => { void handleRestore(id); }}
             onDelete={(id) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}

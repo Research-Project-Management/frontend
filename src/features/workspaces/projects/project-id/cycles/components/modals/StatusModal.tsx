@@ -74,7 +74,7 @@ export const StatusModal = ({
           {isComplete && (
             <div className="mt-5 space-y-3">
               <label className="text-xs font-semibold text-foreground block">
-                Incomplete Tasks Action
+                Incomplete Work Items Action
               </label>
 
               <div className="space-y-2">
@@ -95,7 +95,7 @@ export const StatusModal = ({
                       <CornerDownLeft className="size-3.5" /> Move to Project Backlog
                     </span>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Tasks will be unassigned from this cycle and returned to the general backlog.
+                      Work items will be unassigned from this cycle and returned to the general backlog.
                     </p>
                   </div>
                 </label>
@@ -118,7 +118,7 @@ export const StatusModal = ({
                         <ArrowRight className="size-3.5" /> Transfer to Next Cycle
                       </span>
                       <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
-                        Move all unfinished tasks into another planned or upcoming cycle.
+                        Move all unfinished work items into another planned or upcoming cycle.
                       </p>
                       {incompleteAction === 'transfer' && (
                         <select

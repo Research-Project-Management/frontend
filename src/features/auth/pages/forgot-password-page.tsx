@@ -5,7 +5,6 @@ import { Loader2 } from 'lucide-react';
 import { useForgotPassword } from '../hooks/use-forgot-password';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
 
 const ForgotPasswordPage = () => {
   const {
@@ -23,15 +22,15 @@ const ForgotPasswordPage = () => {
 
   if (isSubmitted) {
     return (
-      <div className='flex min-h-screen items-start justify-center bg-background px-4 py-12 sm:py-24'>
-        <div className='mx-auto w-full max-w-sm flex flex-col gap-6'>
-          <div className='flex flex-col items-center gap-4'>
+      <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
+        <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
+          <div className='flex flex-col items-center gap-3 text-center'>
             <Link href='/'>
-              <img src='/Flux.svg' alt='Flux' className='w-16 h-16' />
+              <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
             </Link>
             <h2 className='text-2xl font-semibold text-center'>Check your email</h2>
           </div>
-          <div className='mt-2 text-center'>
+          <div className='text-center'>
             <p className='text-muted-foreground'>
               We&apos;ve sent a password reset link to{' '}
               <span className='font-semibold text-foreground'>{email}</span>
@@ -46,7 +45,7 @@ const ForgotPasswordPage = () => {
               </button>
             </p>
           </div>
-          <Link href='/login' className='w-full mt-4'>
+          <Link href='/login' className='w-full'>
             <Button className='w-full h-10 rounded-lg cursor-pointer'>Return to sign in</Button>
           </Link>
         </div>
@@ -55,25 +54,22 @@ const ForgotPasswordPage = () => {
   }
 
   return (
-    <div className='flex min-h-screen items-start justify-center bg-background px-4 py-12 sm:py-24'>
-      <div className='mx-auto w-full max-w-sm flex flex-col gap-6'>
-        <div className='flex flex-col items-center gap-4'>
+    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
+      <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
+        <div className='flex flex-col items-center gap-3 text-center'>
           <Link href='/'>
-            <img src='/Flux.svg' alt='Flux' className='w-16 h-16' />
+            <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
           </Link>
           <h2 className='text-2xl font-bold text-center'>Reset your password</h2>
-          <p className='text-muted-foreground text-center'>
-            Enter your email address and we&apos;ll send you a link to reset your password.
-          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-          <div className='flex flex-col gap-1.5'>
-            <Label htmlFor='email'>Email address</Label>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-3.5'>
+          <div className='flex flex-col gap-1'>
             <Input
               id='email'
               type='email'
-              placeholder='you@example.com'
+              placeholder='Email'
+              aria-label='Email'
               className='h-10 rounded-lg'
               {...register('email')}
             />
@@ -90,7 +86,7 @@ const ForgotPasswordPage = () => {
 
           <Button
             type='submit'
-            className='w-full h-10 mt-2 rounded-lg cursor-pointer'
+            className='w-full h-10 mt-1 rounded-lg cursor-pointer'
             disabled={isPending}
           >
             {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
@@ -98,7 +94,7 @@ const ForgotPasswordPage = () => {
           </Button>
         </form>
 
-        <div className='text-center'>
+        <div className='text-center text-sm text-muted-foreground'>
           <Link
             href='/login'
             className='text-primary font-semibold transition-opacity hover:opacity-80'

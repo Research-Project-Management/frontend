@@ -16,7 +16,15 @@ export default function Topbar() {
   const rawWorkspaceId = params?.workspaceId && params.workspaceId !== 'undefined' ? params.workspaceId : null;
 
   const { workspaces = [] } = useWorkspaces();
-  const currentWorkspace: Workspace | null = workspaces.find((w: Workspace) => w.url === rawWorkspaceId) ?? workspaces[0] ?? null;
+  const currentWorkspace: Workspace | null =
+    workspaces.find(
+      (w: Workspace) =>
+        w.url === rawWorkspaceId ||
+        w.id === rawWorkspaceId ||
+        (w as any).slug === rawWorkspaceId,
+    ) ??
+    workspaces[0] ??
+    null;
 
 
   const workspaceId = rawWorkspaceId ?? currentWorkspace?.url ?? '';

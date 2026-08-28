@@ -10,6 +10,9 @@ import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordPa
 
 // ── Read Operations (Workspace-level) ────────────────────────────────────────
 
+export const getHomeFiles = (workspaceId: string) =>
+    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/home`);
+
 export const getAllFiles = (workspaceId: string, parentId?: string | null) => {
     let url = `/api/files/workspace/${workspaceId}`;
     if (parentId !== undefined) {
@@ -29,6 +32,9 @@ export const getSharedFiles = (workspaceId: string) =>
 
 export const getTrashedFiles = (workspaceId: string) =>
     apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/trash`);
+
+export const getStorageUsage = (workspaceId: string) =>
+    apiGet<{ totalBytes: number }>(`/api/files/workspace/${workspaceId}/usage`);
 
 const uploadBlobWithPresigned = async (
     blob: Blob,

@@ -64,7 +64,7 @@ const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon 
   overview: { label: 'Overview', icon: ChartBarBig },
   pages: { label: 'Pages', icon: PenLine },
   collection: { label: 'Collection', icon: BookOpen },
-  tasks: { label: 'Tasks', icon: KanbanSquare },
+  tasks: { label: 'Work Items', icon: KanbanSquare },
   cycles: { label: 'Cycles', icon: RotateCcw },
   storage: { label: 'Storage', icon: Cloud },
   stickies: { label: 'Stickies', icon: Layers2 },
@@ -348,9 +348,15 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           ).map((moduleKey) => {
             const mod = modulesConfig[moduleKey];
             if (!mod) return null;
-            const link = `/${workspaceId}/projects/${projId}/${moduleKey}`;
+            const link = moduleKey === 'tasks'
+              ? `/${workspaceId}/projects/${projId}/work-items`
+              : `/${workspaceId}/projects/${projId}/${moduleKey}`;
             const modActive =
-              pathname === link || pathname.startsWith(link + '/');
+              pathname === link ||
+              pathname.startsWith(link + '/') ||
+              (moduleKey === 'tasks' &&
+                (pathname === `/${workspaceId}/projects/${projId}/tasks` ||
+                  pathname.startsWith(`/${workspaceId}/projects/${projId}/tasks/`)));
             return (
               <Link
                 href={link}

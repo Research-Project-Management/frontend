@@ -68,3 +68,29 @@ export const joinWorkspaceByCode = async (inviteCode: string) => {
     { inviteCode },
   );
 };
+
+export const getWorkspaceInvitations = async (workspaceId: string) => {
+  const res = await apiGet<{ invitations: any[] }>(
+    `/api/workspace/${workspaceId}/invitations`,
+  );
+  return res.invitations || [];
+};
+
+export const createWorkspaceInvitation = async (
+  workspaceId: string,
+  payload: { email: string; role?: string; expiresInDays?: number },
+) => {
+  return apiPost<{ message: string; invitation: any }>(
+    `/api/workspace/${workspaceId}/invitations`,
+    payload,
+  );
+};
+
+export const revokeWorkspaceInvitation = async (
+  workspaceId: string,
+  invitationId: string,
+) => {
+  return apiDelete<{ message: string; invitation: any }>(
+    `/api/workspace/${workspaceId}/invitations/${invitationId}`,
+  );
+};

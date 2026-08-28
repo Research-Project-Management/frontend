@@ -100,63 +100,66 @@ export default function TrashPage() {
   };
 
   return (
-    <div className="flex flex-col h-full min-w-0 flex-1 overflow-hidden">
-      <Topbar
-        title="Trash"
-        icon={Trash2}
-        search={search}
-        onSearchChange={setSearch}
-      >
-        {trashPapers.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRestoreAll}
-              className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
-            >
-              <RotateCcw className="size-3.5" />
-              <span>Restore All</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setEmptyTrashDialogOpen(true)}
-              className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
-            >
-              <Trash2 className="size-3.5" />
-              <span>Empty Trash</span>
-            </Button>
-          </div>
-        )}
-      </Topbar>
+    <div className="flex h-full min-w-0 flex-1 overflow-hidden">
+      {/* Left Main Content Area (Topbar + Table) */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        <Topbar
+          title="Trash"
+          icon={Trash2}
+          search={search}
+          onSearchChange={setSearch}
+        >
+          {trashPapers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRestoreAll}
+                className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
+              >
+                <RotateCcw className="size-3.5" />
+                <span>Restore All</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setEmptyTrashDialogOpen(true)}
+                className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Empty Trash</span>
+              </Button>
+            </div>
+          )}
+        </Topbar>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Central Papers Table */}
-        <PaperTable
-          papers={trashPapers}
-          collectionMap={collectionMap}
-          collections={collections}
-          isLoading={isLoading}
-          isSearch={Boolean(search.trim())}
-          selectedPaperId={selectedPaperId}
-          onSelectPaper={handleSelectPaper}
-          onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={handleBatchDeletePapers}
-          onClearSearch={() => setSearch('')}
-          showCollection={true}
-        />
-
-        {/* Right Inspector Panel */}
-        {selectedPaper && (
-          <InspectorPanel
-            paper={selectedPaper}
-            collection={selectedCollection}
-            workspaceId={workspaceId}
-            onClose={() => setSelectedPaperId(null)}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <PaperTable
+            papers={trashPapers}
+            collectionMap={collectionMap}
+            collections={collections}
+            isLoading={isLoading}
+            isSearch={Boolean(search.trim())}
+            selectedPaperId={selectedPaperId}
+            onSelectPaper={handleSelectPaper}
+            onDeletePaper={handleDeletePaper}
+            onBatchDeletePapers={handleBatchDeletePapers}
+            onClearSearch={() => setSearch('')}
+            showCollection={true}
           />
-        )}
+        </div>
       </div>
+
+      {/* Right Inspector Panel */}
+      {selectedPaper && (
+        <InspectorPanel
+          paper={selectedPaper}
+          collection={selectedCollection}
+          workspaceId={workspaceId}
+          onClose={() => setSelectedPaperId(null)}
+        />
+      )}
 
       {/* Empty Trash Confirmation Dialog */}
       <Dialog open={emptyTrashDialogOpen} onOpenChange={setEmptyTrashDialogOpen}>

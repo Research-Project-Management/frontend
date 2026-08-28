@@ -37,9 +37,9 @@ export function Stats({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Total Tasks */}
+      {/* Total Work Items */}
       <div
-        onClick={() => router.push(`/${workspaceId}/projects/${projectId}/tasks`)}
+        onClick={() => router.push(`/${workspaceId}/projects/${projectId}/work-items`)}
         className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
@@ -48,7 +48,7 @@ export function Stats({
               <CheckSquare className="size-4 text-foreground" />
             </div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Tasks
+              Work Items
             </span>
           </div>
           <div className="text-2xl font-bold text-foreground tracking-tight">

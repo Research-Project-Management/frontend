@@ -11,8 +11,12 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 // Configure worker matching exact react-pdf bundled pdfjs-dist version
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'GlobalWorkerOptions' in pdfjs && pdfjs.GlobalWorkerOptions) {
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+  } catch {
+    // Ignore worker assignment error
+  }
 }
 
 interface ViewerProps {
@@ -39,7 +43,12 @@ export default function Viewer({
   const [docLoading, setDocLoading] = useState<boolean>(true);
   const [docError, setDocError] = useState<string | null>(null);
 
-  const fileSource = useMemo(() => (blobUrl ? { url: blobUrl } : null), [blobUrl]);
+  useEffect(() => {
+    if (blobUrl) {
+      setDocLoading(true);
+      setDocError(null);
+    }
+  }, [blobUrl]);
 
   // Text selection floating menu
   const [selectedText, setSelectedText] = useState<string>('');
@@ -202,7 +211,7 @@ export default function Viewer({
           </div>
         ) : (
           <Document
-            file={fileSource}
+            file={blobUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={

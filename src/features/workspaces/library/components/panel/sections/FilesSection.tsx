@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FileText, BookOpen, Download, ExternalLink, Paperclip, Plus } from 'lucide-react';
+import { FileText, BookOpen, Download, Paperclip } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { API_BASE_URL } from '@/config/env';
@@ -40,26 +40,25 @@ export default function FilesSection({ paper }: FilesSectionProps) {
   return (
     <div className="space-y-4 text-xs">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <Paperclip className="size-3.5 text-primary" />
-          <span>Attachments ({hasPrimaryFile ? 1 + attachments.length : attachments.length})</span>
+        <h3 className="text-xs font-semibold text-foreground">
+          Attachments
         </h3>
       </div>
 
       {/* Primary Document PDF */}
       {hasPrimaryFile ? (
         <div className="space-y-3">
-          <div className="p-3 bg-muted/20 hover:bg-muted/30 rounded-lg border border-border/30 flex items-start gap-3 transition-colors">
-            <div className="size-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <FileText className="size-5 text-primary" />
+          <div className="p-3 bg-muted/30 hover:bg-muted/40 rounded-lg border border-border/40 flex items-start gap-3 transition-colors">
+            <div className="size-8 rounded-md bg-muted border border-border/60 flex items-center justify-center shrink-0 mt-0.5">
+              <FileText className="size-4 text-foreground/70" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 bg-primary/10 text-primary">
-                  Primary PDF
+                <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0">
+                  Primary
                 </Badge>
                 {paper.provenance?.isOpenAccess && (
-                  <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 text-emerald-600 border-emerald-500/30">
+                  <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 text-emerald-600 border-emerald-500/30">
                     OA
                   </Badge>
                 )}
@@ -114,8 +113,8 @@ export default function FilesSection({ paper }: FilesSectionProps) {
       {/* Supplementary Attachments List */}
       {attachments.length > 0 && (
         <div className="space-y-2 pt-2 border-t border-border/20">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Supplementary Files ({attachments.length})
+          <h3 className="text-xs font-semibold text-muted-foreground">
+            Supplementary Files
           </h3>
           <div className="space-y-1.5">
             {attachments.map((att) => {
@@ -132,7 +131,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
                       {attName}
                     </span>
                     {att.size && (
-                      <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                      <span className="text-[10px] text-muted-foreground shrink-0">
                         ({formatSize(att.size)})
                       </span>
                     )}
@@ -146,7 +145,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
                       className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted shrink-0"
                       title="Download attachment"
                     >
-                      <Download className="size-3" />
+                      <Download className="size-3.5" />
                     </a>
                   )}
                 </div>

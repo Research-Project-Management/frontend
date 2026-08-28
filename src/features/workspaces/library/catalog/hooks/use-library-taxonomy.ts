@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { apiGet } from '@/shared/lib/api';
 import {
   collectionKeys,
   getCollections,
@@ -57,8 +58,20 @@ export function useLibraryTaxonomy(workspaceId: string) {
   const tagsQuery = useQuery({
     queryKey: ['workspace', workspaceId, 'library', 'tags'],
     queryFn: async (): Promise<LibraryTag[]> => {
-      // Tags fetcher fallback
-      return [];
+      try {
+        const res = await apiGet<{ tags: string[] } | string[]>(
+          `/api/library/papers/${workspaceId}/tags`,
+        );
+        const rawTags = Array.isArray(res) ? res : res?.tags || [];
+        return rawTags.map((name, i) => ({
+          id: `tag-${i}-${name}`,
+          name,
+          color: '#6366f1',
+          origin: 'user',
+        }));
+      } catch {
+        return [];
+      }
     },
     enabled: Boolean(workspaceId),
   });

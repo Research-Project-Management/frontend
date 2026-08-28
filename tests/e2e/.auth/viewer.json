@@ -1,15 +1,1 @@
-{
-  "cookies": [
-    {
-      "name": "connect.sid",
-      "value": "s%3ALZ82EYUQOifwdFXj9ONXfabcSuB6I4CI.JheVLg1i5zFThbV9c%2Bmye4wdZs62%2B0kKGLRjTKoRGFc",
-      "domain": "localhost",
-      "path": "/",
-      "expires": 1784966815,
-      "httpOnly": true,
-      "secure": false,
-      "sameSite": "Lax"
-    }
-  ],
-  "origins": []
-}
+{"cookies":[{"name":"access_token","value":"mock-jwt-token-for-viewer","domain":"localhost","path":"/","expires":-1,"httpOnly":false,"secure":false,"sameSite":"Lax"}],"origins":[{"origin":"http://localhost:2915","localStorage":[{"name":"auth_token","value":"mock-jwt-token-for-viewer"},{"name":"current_user","value":"{\"id\":\"usr-e2e-viewer\",\"name\":\"QA VIEWER\",\"email\":\"viewer@example.com\",\"role\":\"VIEWER\"}"}]}]}

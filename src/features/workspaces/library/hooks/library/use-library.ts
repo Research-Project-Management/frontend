@@ -137,59 +137,47 @@ export function useLibrary() {
             allowedTypes: ['application/pdf'],
           });
 
-          let extractedTitle = file.name.replace(/\.[^/.]+$/, '');
-          let extractedAuthors: string[] = [];
-          let extractedYear: number | null = null;
-          let extractedDoi = '';
-          let extractedAbstract = '';
-          let extractedJournal = '';
-          let extractedPublisher = '';
-          let extractedVolume = '';
-          let extractedIssue = '';
-          let extractedPages = '';
-          let extractedUrl = '';
-          let extractedType = 'journalArticle';
-
+          let extractedMeta: Partial<Paper> = {};
           try {
             const extracted = await extractMetadata(file);
-            if (extracted.title) extractedTitle = extracted.title;
-            if (extracted.authors && extracted.authors.length > 0)
-              extractedAuthors = extracted.authors;
-            if (extracted.year)
-              extractedYear = parseInt(String(extracted.year), 10) || null;
-            if (extracted.doi) extractedDoi = extracted.doi;
-            if (extracted.abstract) extractedAbstract = extracted.abstract;
-            if (extracted.journal || extracted.publicationTitle)
-              extractedJournal = extracted.journal || extracted.publicationTitle || '';
-            if (extracted.publisher) extractedPublisher = extracted.publisher;
-            if (extracted.volume) extractedVolume = extracted.volume;
-            if (extracted.issue) extractedIssue = extracted.issue;
-            if (extracted.pages) extractedPages = extracted.pages;
-            if (extracted.url) extractedUrl = extracted.url;
-            if (extracted.itemType || extracted.type)
-              extractedType = extracted.itemType || extracted.type || 'journalArticle';
+            extractedMeta = {
+              ...extracted,
+              title: extracted.title || file.name.replace(/\.[^/.]+$/, ''),
+              authors: extracted.authors && extracted.authors.length > 0 ? extracted.authors : undefined,
+              year: extracted.year ? parseInt(String(extracted.year), 10) || null : null,
+              doi: extracted.doi || undefined,
+              abstract: extracted.abstract || undefined,
+              journal: extracted.journal || extracted.publicationTitle || undefined,
+              publicationTitle: extracted.publicationTitle || extracted.journal || undefined,
+              publisher: extracted.publisher || undefined,
+              volume: extracted.volume || undefined,
+              issue: extracted.issue || undefined,
+              pages: extracted.pages || undefined,
+              url: extracted.url || undefined,
+              type: extracted.itemType || extracted.type || 'journalArticle',
+              itemType: extracted.itemType || extracted.type || 'journalArticle',
+              issn: extracted.issn || undefined,
+              isbn: extracted.isbn || undefined,
+              publicationDate: extracted.publicationDate || undefined,
+              language: extracted.language || undefined,
+              rights: extracted.rights || extracted.copyright || undefined,
+              license: extracted.license || undefined,
+              keywords: extracted.keywordsList || (extracted.keywords ? [extracted.keywords] : undefined),
+            };
           } catch {
-            // Fallback to filename
+            extractedMeta = {
+              title: file.name.replace(/\.[^/.]+$/, ''),
+              itemType: 'journalArticle',
+            };
           }
 
           await handleAddPaper({
-            title: extractedTitle,
-            authors: extractedAuthors,
-            year: extractedYear,
-            doi: extractedDoi,
-            abstract: extractedAbstract,
+            ...extractedMeta,
             fileUrl: fileStorageUrl,
             filename: file.name,
             mimeType: file.type || 'application/pdf',
             size: file.size,
             collectionId: collectionId || undefined,
-            journal: extractedJournal || undefined,
-            publisher: extractedPublisher || undefined,
-            volume: extractedVolume || undefined,
-            issue: extractedIssue || undefined,
-            pages: extractedPages || undefined,
-            url: extractedUrl || undefined,
-            type: extractedType || undefined,
           });
 
           successCount++;
@@ -223,59 +211,47 @@ export function useLibrary() {
             allowedTypes: ['application/pdf'],
           });
 
-          let extractedTitle = file.name.replace(/\.[^/.]+$/, '');
-          let extractedAuthors: string[] = [];
-          let extractedYear: number | null = null;
-          let extractedDoi = '';
-          let extractedAbstract = '';
-          let extractedJournal = '';
-          let extractedPublisher = '';
-          let extractedVolume = '';
-          let extractedIssue = '';
-          let extractedPages = '';
-          let extractedUrl = '';
-          let extractedType = 'journalArticle';
-
+          let extractedMeta: Partial<Paper> = {};
           try {
             const extracted = await extractMetadata(file);
-            if (extracted.title) extractedTitle = extracted.title;
-            if (extracted.authors && extracted.authors.length > 0)
-              extractedAuthors = extracted.authors;
-            if (extracted.year)
-              extractedYear = parseInt(String(extracted.year), 10) || null;
-            if (extracted.doi) extractedDoi = extracted.doi;
-            if (extracted.abstract) extractedAbstract = extracted.abstract;
-            if (extracted.journal || extracted.publicationTitle)
-              extractedJournal = extracted.journal || extracted.publicationTitle || '';
-            if (extracted.publisher) extractedPublisher = extracted.publisher;
-            if (extracted.volume) extractedVolume = extracted.volume;
-            if (extracted.issue) extractedIssue = extracted.issue;
-            if (extracted.pages) extractedPages = extracted.pages;
-            if (extracted.url) extractedUrl = extracted.url;
-            if (extracted.itemType || extracted.type)
-              extractedType = extracted.itemType || extracted.type || 'journalArticle';
+            extractedMeta = {
+              ...extracted,
+              title: extracted.title || file.name.replace(/\.[^/.]+$/, ''),
+              authors: extracted.authors && extracted.authors.length > 0 ? extracted.authors : undefined,
+              year: extracted.year ? parseInt(String(extracted.year), 10) || null : null,
+              doi: extracted.doi || undefined,
+              abstract: extracted.abstract || undefined,
+              journal: extracted.journal || extracted.publicationTitle || undefined,
+              publicationTitle: extracted.publicationTitle || extracted.journal || undefined,
+              publisher: extracted.publisher || undefined,
+              volume: extracted.volume || undefined,
+              issue: extracted.issue || undefined,
+              pages: extracted.pages || undefined,
+              url: extracted.url || undefined,
+              type: extracted.itemType || extracted.type || 'journalArticle',
+              itemType: extracted.itemType || extracted.type || 'journalArticle',
+              issn: extracted.issn || undefined,
+              isbn: extracted.isbn || undefined,
+              publicationDate: extracted.publicationDate || undefined,
+              language: extracted.language || undefined,
+              rights: extracted.rights || extracted.copyright || undefined,
+              license: extracted.license || undefined,
+              keywords: extracted.keywordsList || (extracted.keywords ? [extracted.keywords] : undefined),
+            };
           } catch {
-            // Fallback to filename
+            extractedMeta = {
+              title: file.name.replace(/\.[^/.]+$/, ''),
+              itemType: 'journalArticle',
+            };
           }
 
           await handleAddPaper({
-            title: extractedTitle,
-            authors: extractedAuthors,
-            year: extractedYear,
-            doi: extractedDoi,
-            abstract: extractedAbstract,
+            ...extractedMeta,
             fileUrl: fileStorageUrl,
             filename: file.name,
             mimeType: file.type || 'application/pdf',
             size: file.size,
             collectionId: collectionId || undefined,
-            journal: extractedJournal || undefined,
-            publisher: extractedPublisher || undefined,
-            volume: extractedVolume || undefined,
-            issue: extractedIssue || undefined,
-            pages: extractedPages || undefined,
-            url: extractedUrl || undefined,
-            type: extractedType || undefined,
           });
 
           successCount++;

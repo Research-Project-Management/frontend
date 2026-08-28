@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ColorPicker } from './ColorPicker';
-import { labelFormSchema, type LabelFormSchema } from '@/features/workspaces/projects/project-id/tasks/schemas/label.schema';
+import { labelFormSchema, type LabelFormSchema } from '@/features/workspaces/projects/project-id/work-items/schemas/label.schema';
 
 interface FormProps {
   initialName?: string;

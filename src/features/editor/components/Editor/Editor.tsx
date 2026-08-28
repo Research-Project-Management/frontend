@@ -618,7 +618,7 @@ export default function Editor({ page }: EditorProps) {
 
         try {
           const res = await PaperService.getAll(wsId, { limit: 100 });
-          const papers = res?.papers || [];
+          const papers: any[] = Array.isArray(res) ? res : (res as any)?.papers || [];
 
           const word = model.getWordUntilPosition(position);
           const range = {
@@ -628,7 +628,7 @@ export default function Editor({ page }: EditorProps) {
             endColumn: word.endColumn,
           };
 
-          const suggestions = papers.map((p) => {
+          const suggestions = papers.map((p: any) => {
             const citeKey = p.citationKey || generateCitationKey(p);
             const authors = p.authors?.join(', ') || 'Unknown Author';
             const yearStr = p.year ? ` (${p.year})` : '';

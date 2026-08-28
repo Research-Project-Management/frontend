@@ -7,7 +7,7 @@ import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
-  useHomeFiles,
+  useWorkspaceFiles,
   useToggleStarItem,
   useDeleteItem,
   useMoveItem,
@@ -57,7 +57,7 @@ export default function WorkspaceMyFilesPage() {
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?.id || workspaceUrl;
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId, currentFolder);
+  const { data, isLoading: isFilesLoading } = useWorkspaceFiles(workspaceId, currentFolder);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();

@@ -36,21 +36,31 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
     queryKey: paperKeys.all(workspaceId),
     queryFn: () => getAllPapers(workspaceId),
     enabled: Boolean(workspaceId),
-    select: (data) => data.papers || [],
+    select: (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      return (data as any).papers || (data as any).items || (data as any).data || [];
+    },
   });
 
   const paperByIdQuery = useQuery({
     queryKey: paperKeys.byId(workspaceId, collectionId || ''),
     queryFn: () => getPaperById(workspaceId, collectionId || ''),
     enabled: Boolean(workspaceId && collectionId),
-    select: (data) => data.paper || null,
+    select: (data) => (data as any)?.paper || (data as any)?.item || data || null,
   });
 
   const collectionPapersQuery = useQuery({
     queryKey: paperKeys.byCollection(workspaceId, collectionId || ''),
     queryFn: () => getCollectionPapers(workspaceId, collectionId || ''),
     enabled: Boolean(workspaceId && collectionId),
-    select: (data) => data || null,
+    select: (data) => {
+      if (!data) return { papers: [] };
+      if (Array.isArray(data)) return { papers: data };
+      const papers =
+        (data as any).papers || (data as any).items || (data as any).data || [];
+      return { papers, collection: (data as any).collection };
+    },
   });
 
   const addMutation = useMutation({
@@ -64,6 +74,8 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
         });
       }
       queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
       invalidateCollections(queryClient, workspaceId);
     },
   });
@@ -81,6 +93,8 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
         });
       }
       queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
     },
   });
 
@@ -95,6 +109,8 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
         });
       }
       queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
       invalidateCollections(queryClient, workspaceId);
     },
   });
@@ -127,7 +143,7 @@ export function usePaper(workspaceId: string, paperId: string) {
     queryKey: paperKeys.byId(workspaceId, paperId),
     queryFn: async () => {
       const response = await getPaperById(workspaceId, paperId);
-      return response.paper;
+      return (response as any)?.paper || (response as any)?.item || response || null;
     },
     enabled: Boolean(workspaceId && paperId),
   });
@@ -152,6 +168,11 @@ export function useLibraryPapers(workspaceId: string, query?: PaperQueryParams) 
     queryFn: () => getAllPapers(workspaceId, query),
     enabled: Boolean(workspaceId),
     staleTime: 1000 * 60 * 2,
+    select: (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      return (data as any).papers || (data as any).items || (data as any).data || [];
+    },
   });
 }
 

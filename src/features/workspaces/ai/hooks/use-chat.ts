@@ -196,7 +196,8 @@ export function useChat() {
 
     preloadedCollectionRef.current = collectionId;
     fetchCollectionPapers(resolvedWorkspaceId, collectionId)
-      .then(({ papers }: { papers: any[] }) => {
+      .then((res: any) => {
+        const papers: any[] = Array.isArray(res) ? res : res?.papers || [];
         const indexedPapers = papers.filter(
           (paper: any) => paper.ragStatus === 'indexed' && paper.ragDocId,
         );

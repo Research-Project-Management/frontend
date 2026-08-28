@@ -247,75 +247,35 @@ export function generateAcademicPdfBlob(options: {
   contentStream.push('ET');
 
   const streamData = contentStream.join('\n');
-  const streamLength = streamData.length;
+  const streamLength = new TextEncoder().encode(streamData).length;
 
-  const pdfDocument = `%PDF-1.4
-1 0 obj
-<<
-  /Type /Catalog
-  /Pages 2 0 R
->>
-endobj
-2 0 obj
-<<
-  /Type /Pages
-  /Kids [3 0 R]
-  /Count 1
->>
-endobj
-3 0 obj
-<<
-  /Type /Page
-  /Parent 2 0 R
-  /MediaBox [0 0 595 842]
-  /Contents 4 0 R
-  /Resources <<
-    /Font <<
-      /F1 5 0 R
-      /F2 6 0 R
-    >>
-  >>
->>
-endobj
-4 0 obj
-<<
-  /Length ${streamLength}
->>
-stream
-${streamData}
-endstream
-endobj
-5 0 obj
-<<
-  /Type /Font
-  /Subtype /Type1
-  /BaseFont /Helvetica
->>
-endobj
-6 0 obj
-<<
-  /Type /Font
-  /Subtype /Type1
-  /BaseFont /Helvetica-Bold
->>
-endobj
-xref
-0 7
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000266 00000 n 
-0000000000 00000 n 
-0000000000 00000 n 
-trailer
-<<
-  /Size 7
-  /Root 1 0 R
->>
-startxref
-${300 + streamLength}
-%%EOF`;
+  const header = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  const objects: string[] = [
+    '1 0 obj\n<<\n  /Type /Catalog\n  /Pages 2 0 R\n>>\nendobj',
+    '2 0 obj\n<<\n  /Type /Pages\n  /Kids [3 0 R]\n  /Count 1\n>>\nendobj',
+    '3 0 obj\n<<\n  /Type /Page\n  /Parent 2 0 R\n  /MediaBox [0 0 595 842]\n  /Contents 4 0 R\n  /Resources <<\n    /Font <<\n      /F1 5 0 R\n      /F2 6 0 R\n    >>\n  >>\n>>\nendobj',
+    `4 0 obj\n<<\n  /Length ${streamLength}\n>>\nstream\n${streamData}\nendstream\nendobj`,
+    '5 0 obj\n<<\n  /Type /Font\n  /Subtype /Type1\n  /BaseFont /Helvetica\n>>\nendobj',
+    '6 0 obj\n<<\n  /Type /Font\n  /Subtype /Type1\n  /BaseFont /Helvetica-Bold\n>>\nendobj',
+  ];
 
-  return new Blob([pdfDocument], { type: 'application/pdf' });
+  const encoder = new TextEncoder();
+  let currentOffset = encoder.encode(header).length;
+  const offsets: number[] = [];
+
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(currentOffset);
+    currentOffset += encoder.encode(objects[i]).length + 1; // + 1 for separator \n
+  }
+
+  const xrefOffset = currentOffset;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    xref += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  }
+
+  const trailer = `trailer\n<<\n  /Size ${objects.length + 1}\n  /Root 1 0 R\n>>\nstartxref\n${xrefOffset}\n%%EOF`;
+  const fullPdf = `${header}${objects.join('\n')}\n${xref}${trailer}`;
+
+  return new Blob([fullPdf], { type: 'application/pdf' });
 }

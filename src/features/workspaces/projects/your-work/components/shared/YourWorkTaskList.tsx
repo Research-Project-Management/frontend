@@ -13,7 +13,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { resolveTaskColumnColor } from '@/features/workspaces/projects/project-id/tasks/types/task.types';
+import { resolveTaskColumnColor } from '@/features/workspaces/projects/project-id/work-items/types/work-item.types';
 import { cn } from '@/shared/lib/utils';
 import { getTaskProject, type ProjectMap } from '../../utils/your-work.util';
 import type { YourWorkTask } from '../../schemas/your-work.schema';

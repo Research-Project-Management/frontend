@@ -457,9 +457,18 @@ export default function LibrarySideBar() {
     const counts: Record<string, number> = {};
     for (const p of papers) {
       if (p.deletedAt) continue;
-      if (p.labels) {
-        for (const l of p.labels) {
-          counts[l] = (counts[l] || 0) + 1;
+      const rawTags = p.labels || (p as any).tags || p.keywords || [];
+      if (Array.isArray(rawTags)) {
+        for (const l of rawTags) {
+          const tagStr =
+            typeof l === 'string'
+              ? l.trim()
+              : l && typeof l === 'object' && 'name' in (l as any) && typeof (l as any).name === 'string'
+              ? (l as any).name.trim()
+              : '';
+          if (tagStr && tagStr.toLowerCase() !== '[object object]') {
+            counts[tagStr] = (counts[tagStr] || 0) + 1;
+          }
         }
       }
     }

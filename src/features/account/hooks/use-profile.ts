@@ -12,15 +12,19 @@ export const useUpdateProfile = () => {
     onMutate: () => {
       toast.loading('Updating profile...', { id: 'profile-update' });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (res, variables) => {
       toast.success('Profile updated', { id: 'profile-update' });
-      // Optimistically update the user cache or invalidate
+      const updatedUser = res?.user;
       queryClient.setQueryData(authKeys.session(), (old: any) => {
         if (!old) return old;
         return {
           ...old,
-          name: variables.name,
-          ...(variables.avatar !== undefined ? { avatar: variables.avatar } : {}),
+          ...(updatedUser
+            ? updatedUser
+            : {
+                name: variables.name,
+                ...(variables.avatar !== undefined ? { avatar: variables.avatar } : {}),
+              }),
         };
       });
       queryClient.invalidateQueries({ queryKey: authKeys.session() });

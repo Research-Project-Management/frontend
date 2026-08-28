@@ -56,6 +56,8 @@ export default function WorkspaceMemberPage() {
     isLoading,
     canManage,
     activeTab,
+    members,
+    invitations,
     filteredMembers,
     search,
     roleFilter,
@@ -83,6 +85,7 @@ export default function WorkspaceMemberPage() {
     handleRemoveMember,
     handleLeaveWorkspace,
     handleInviteMembers,
+    handleCancelInvite,
     handleImportCsv,
   } = actions;
 
@@ -254,7 +257,11 @@ export default function WorkspaceMemberPage() {
 
           {/* ── Pending tab ────────────────────────────────────────────── */}
           {activeTab === 'pending' && (
-            <PendingInvites invites={[]} canManage={canManage} onCancelInvite={() => {}} />
+            <PendingInvites
+              invites={invitations}
+              canManage={canManage}
+              onCancelInvite={handleCancelInvite}
+            />
           )}
 
         </div>

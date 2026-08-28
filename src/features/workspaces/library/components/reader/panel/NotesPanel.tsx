@@ -165,10 +165,10 @@ export default function NotesPanel({
       <div className="border-b border-border bg-background p-3.5">
         <div className="rounded-xl border border-border bg-card p-3 transition-colors focus-within:border-primary/40">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              New Note
+            <label className="text-xs font-semibold text-foreground">
+              New note
             </label>
-            <span className="text-xs text-muted-foreground/60">Ctrl+Enter to save</span>
+            <span className="text-[11px] text-muted-foreground/60">⌘+Enter to save</span>
           </div>
           <textarea
             ref={textareaRef}

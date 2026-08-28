@@ -61,46 +61,49 @@ export default function FavoritesPage() {
   };
 
   return (
-    <div className="flex flex-col h-full min-w-0 flex-1 overflow-hidden">
-      <Topbar
-        title="Favorites"
-        icon={Star}
-        search={search}
-        onSearchChange={setSearch}
-        onDirectFilesUpload={handleDirectFilesUpload}
-        onDirectFolderUpload={handleDirectFolderUpload}
-        onAddCollection={() => setCreateCollectionOpen(true)}
-        onAddLink={() => setAddLinkOpen(true)}
-      />
-
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Central Papers Table */}
-        <PaperTable
-          papers={favoritePapers}
-          collectionMap={collectionMap}
-          collections={collections}
-          isLoading={isLoading}
-          isSearch={Boolean(search.trim())}
-          selectedPaperId={selectedPaperId}
-          onSelectPaper={handleSelectPaper}
-          onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={handleBatchDeletePapers}
-          onBatchMovePapers={handleBatchMovePapers}
-          onClearSearch={() => setSearch('')}
-          onAddPaper={() => setAddLinkOpen(true)}
-          showCollection={true}
+    <div className="flex h-full min-w-0 flex-1 overflow-hidden">
+      {/* Left Main Content Area (Topbar + Table) */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        <Topbar
+          title="Favorites"
+          icon={Star}
+          search={search}
+          onSearchChange={setSearch}
+          onDirectFilesUpload={handleDirectFilesUpload}
+          onDirectFolderUpload={handleDirectFolderUpload}
+          onAddCollection={() => setCreateCollectionOpen(true)}
+          onAddLink={() => setAddLinkOpen(true)}
         />
 
-        {/* Right Inspector Panel */}
-        {selectedPaper && (
-          <InspectorPanel
-            paper={selectedPaper}
-            collection={selectedCollection}
-            workspaceId={workspaceId}
-            onClose={() => setSelectedPaperId(null)}
+        {/* Central Papers Table */}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <PaperTable
+            papers={favoritePapers}
+            collectionMap={collectionMap}
+            collections={collections}
+            isLoading={isLoading}
+            isSearch={Boolean(search.trim())}
+            selectedPaperId={selectedPaperId}
+            onSelectPaper={handleSelectPaper}
+            onDeletePaper={handleDeletePaper}
+            onBatchDeletePapers={handleBatchDeletePapers}
+            onBatchMovePapers={handleBatchMovePapers}
+            onClearSearch={() => setSearch('')}
+            onAddPaper={() => setAddLinkOpen(true)}
+            showCollection={true}
           />
-        )}
+        </div>
       </div>
+
+      {/* Right Inspector Panel */}
+      {selectedPaper && (
+        <InspectorPanel
+          paper={selectedPaper}
+          collection={selectedCollection}
+          workspaceId={workspaceId}
+          onClose={() => setSelectedPaperId(null)}
+        />
+      )}
 
       <AddLinkModal
         open={addLinkOpen}

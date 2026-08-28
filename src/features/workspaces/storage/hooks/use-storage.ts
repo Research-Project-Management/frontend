@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';
 import {
+  getHomeFiles,
   getAllFiles,
   getMyFiles,
   getSharedFiles,
   getStarredFiles,
   getTrashedFiles,
+  getStorageUsage,
   createFolder,
   toggleStarItem,
   deleteItem,
@@ -30,9 +32,18 @@ const STORAGE_QUERY_OPTIONS = {
   refetchInterval: 15 * 1000, // Auto background polling every 15s
 };
 
-export function useHomeFiles(workspaceId: string, parentId?: string | null) {
+export function useHomeFiles(workspaceId: string) {
   return useQuery({
-    queryKey: storageKeys.workspaceHomeFiles(workspaceId, parentId),
+    queryKey: storageKeys.workspaceHomeFiles(workspaceId),
+    queryFn: () => getHomeFiles(workspaceId),
+    enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
+  });
+}
+
+export function useWorkspaceFiles(workspaceId: string, parentId?: string | null) {
+  return useQuery({
+    queryKey: storageKeys.workspaceFiles(workspaceId, parentId),
     queryFn: () => getAllFiles(workspaceId, parentId),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
@@ -70,6 +81,15 @@ export function useTrash(workspaceId: string) {
   return useQuery({
     queryKey: storageKeys.workspaceTrashed(workspaceId),
     queryFn: () => getTrashedFiles(workspaceId),
+    enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
+  });
+}
+
+export function useStorageUsage(workspaceId: string) {
+  return useQuery({
+    queryKey: storageKeys.workspaceUsage(workspaceId),
+    queryFn: () => getStorageUsage(workspaceId),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });

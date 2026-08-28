@@ -23,7 +23,7 @@ export default function AbstractSection({ paper, onUpdatePaper }: AbstractSectio
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 280)}px`;
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, [draft]);
 
@@ -49,39 +49,45 @@ export default function AbstractSection({ paper, onUpdatePaper }: AbstractSectio
   };
 
   return (
-    <div className="space-y-2 text-xs">
-      {/* Top clean action row (Copy button only) */}
-      {draft.trim() && (
-        <div className="flex items-center justify-end">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer transition-colors px-2 py-0.5 rounded hover:bg-muted focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-            title="Copy abstract text"
-            aria-label="Copy abstract text"
-          >
-            {copied ? <Check className="size-3 text-emerald-500" aria-hidden="true" /> : <Copy className="size-3" aria-hidden="true" />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
-        </div>
-      )}
+    <div className="space-y-3 text-xs min-w-0">
+      {/* Header bar */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-foreground">
+          Abstract
+        </h3>
 
-      {/* Unconstrained, natural-flowing editable abstract */}
-      <textarea
-        ref={textareaRef}
-        value={draft}
-        aria-label="Paper abstract summary"
-        placeholder="Click to enter abstract summary..."
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-            textareaRef.current?.blur();
-          }
-        }}
-        className="w-full bg-transparent text-foreground/90 font-serif text-sm leading-relaxed outline-none resize-none placeholder:font-sans placeholder:text-muted-foreground/40 p-1 select-text transition-colors focus-visible:ring-1 focus-visible:ring-ring rounded"
-      />
+        {draft.trim() && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+            title="Copy abstract"
+            aria-label="Copy abstract"
+          >
+            {copied ? <Check className="size-3.5 text-emerald-500" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+          </button>
+        )}
+      </div>
+
+      {/* Editable abstract card */}
+      <div className="p-3 bg-muted/20 rounded-lg border border-border/30 focus-within:border-border/60 transition-colors">
+        <textarea
+          ref={textareaRef}
+          value={draft}
+          aria-label="Paper abstract summary"
+          placeholder="Click to enter paper abstract summary..."
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+              textareaRef.current?.blur();
+            }
+          }}
+          className="w-full bg-transparent text-foreground text-xs leading-relaxed outline-none resize-none placeholder:text-muted-foreground/40 select-text transition-colors"
+        />
+      </div>
     </div>
   );
 }

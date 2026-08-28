@@ -70,7 +70,8 @@ export default function RenameModal() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Input
-                id="new-name"
+                id="name"
+                data-testid="rename-input"
                 placeholder="New name"
                 disabled={isPending}
                 autoFocus

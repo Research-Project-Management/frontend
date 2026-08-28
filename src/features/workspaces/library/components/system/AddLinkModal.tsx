@@ -39,12 +39,36 @@ export interface AddLinkData {
   mimeType: string;
   size: number;
   journal?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
   publisher?: string;
+  place?: string;
   volume?: string;
   issue?: string;
   pages?: string;
+  section?: string;
+  partNumber?: string;
+  partTitle?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesText?: string;
+  issn?: string;
+  isbn?: string;
+  pmid?: string;
+  pmcid?: string;
+  arxivId?: string;
   url?: string;
   type?: string;
+  itemType?: string;
+  language?: string;
+  journalAbbr?: string;
+  shortTitle?: string;
+  rights?: string;
+  license?: string;
+  citationKey?: string;
+  editors?: string[];
+  keywords?: string[];
+  extra?: string;
 }
 
 interface AddLinkModalProps {
@@ -76,9 +100,12 @@ export default function AddLinkModal({
   const [pages, setPages] = useState('');
   const [itemType, setItemType] = useState('journalArticle');
 
+  const [resolvedMeta, setResolvedMeta] = useState<any>(null);
+
   const reset = () => {
     setUrlInput('');
     setIsResolving(false);
+    setResolvedMeta(null);
     setTitle('');
     setAuthors('');
     setYear('');
@@ -110,17 +137,20 @@ export default function AddLinkModal({
       const res = await resolveAcademicQuery(trimmed);
       if (res && res.metadata && res.metadata.title) {
         const meta = res.metadata;
+        setResolvedMeta(meta);
         setTitle(meta.title);
         if (meta.authors?.length) setAuthors(meta.authors.join(', '));
         if (meta.year) setYear(String(meta.year));
-        if (meta.journal) setJournal(meta.journal);
+        if (meta.journal || meta.publicationTitle)
+          setJournal(meta.journal || meta.publicationTitle || '');
         if (meta.publisher) setPublisher(meta.publisher);
         if (meta.abstract) setAbstract(meta.abstract);
         if (meta.doi) setDoi(meta.doi);
         if (meta.volume) setVolume(meta.volume);
         if (meta.issue) setIssue(meta.issue);
         if (meta.pages) setPages(meta.pages);
-        if (meta.itemType) setItemType(meta.itemType);
+        if (meta.itemType || meta.type)
+          setItemType(meta.itemType || meta.type || 'journalArticle');
         toast.success(`Metadata resolved via ${res.provider} (${res.queryType})!`);
         return;
       }
@@ -130,12 +160,20 @@ export default function AddLinkModal({
       if (extractedDoi) {
         const meta = await fetchReferenceByDoi(extractedDoi);
         if (meta) {
+          setResolvedMeta(meta);
           if (meta.title) setTitle(meta.title);
           if (meta.authors?.length) setAuthors(meta.authors.join(', '));
           if (meta.year) setYear(String(meta.year));
-          if (meta.journal) setJournal(meta.journal);
+          if (meta.journal || meta.publicationTitle)
+            setJournal(meta.journal || meta.publicationTitle || '');
+          if (meta.publisher) setPublisher(meta.publisher);
           if (meta.abstract) setAbstract(meta.abstract);
           setDoi(meta.doi || extractedDoi);
+          if (meta.volume) setVolume(meta.volume);
+          if (meta.issue) setIssue(meta.issue);
+          if (meta.pages) setPages(meta.pages);
+          if (meta.itemType || meta.type)
+            setItemType(meta.itemType || meta.type || 'journalArticle');
           toast.success('Metadata resolved from CrossRef!');
           return;
         }
@@ -161,27 +199,47 @@ export default function AddLinkModal({
 
     const derivedName = trimmedUrl.split('/').pop()?.split('?')[0] || 'linked-document.pdf';
     const finalFilename = derivedName.endsWith('.pdf') ? derivedName : `${derivedName}.pdf`;
+    const resolved = resolvedMeta || {};
 
     await onSubmit({
-      title: title.trim(),
+      title: title.trim() || resolved.title,
       authors: authors
-        .split(',')
-        .map((a) => a.trim())
-        .filter(Boolean),
-      year: year ? parseInt(year, 10) : null,
-      doi: doi.trim(),
-      abstract: abstract.trim(),
+        ? authors.split(',').map((a) => a.trim()).filter(Boolean)
+        : (resolved.authors || []),
+      year: year ? parseInt(year, 10) : (resolved.year ? Number(resolved.year) : null),
+      doi: doi.trim() || resolved.doi || '',
+      abstract: abstract.trim() || resolved.abstract || '',
       fileUrl: trimmedUrl,
       filename: finalFilename,
       mimeType: 'application/pdf',
       size: 0,
-      journal: journal.trim() || undefined,
-      publisher: publisher.trim() || undefined,
-      volume: volume.trim() || undefined,
-      issue: issue.trim() || undefined,
-      pages: pages.trim() || undefined,
+      journal: journal.trim() || resolved.journal || resolved.publicationTitle || undefined,
+      publicationTitle: resolved.publicationTitle || journal.trim() || undefined,
+      publisher: publisher.trim() || resolved.publisher || undefined,
+      volume: volume.trim() || resolved.volume || undefined,
+      issue: issue.trim() || resolved.issue || undefined,
+      pages: pages.trim() || resolved.pages || undefined,
       url: trimmedUrl,
-      type: itemType,
+      type: itemType || resolved.itemType || resolved.type || 'journalArticle',
+      itemType: itemType || resolved.itemType || resolved.type || 'journalArticle',
+      issn: resolved.issn || undefined,
+      isbn: resolved.isbn || undefined,
+      pmid: resolved.pmid || undefined,
+      pmcid: resolved.pmcid || undefined,
+      arxivId: resolved.arxivId || undefined,
+      keywords: resolved.keywords || resolved.keywordsList || (resolved.tags ? resolved.tags : undefined),
+      publicationDate: resolved.publicationDate || resolved.date || undefined,
+      journalAbbr: resolved.journalAbbr || resolved.journalAbbreviation || undefined,
+      shortTitle: resolved.shortTitle || undefined,
+      language: resolved.language || undefined,
+      rights: resolved.rights || resolved.copyright || undefined,
+      license: resolved.license || undefined,
+      citationKey: resolved.citationKey || undefined,
+      editors: resolved.editors || undefined,
+      place: resolved.place || undefined,
+      series: resolved.series || undefined,
+      seriesTitle: resolved.seriesTitle || undefined,
+      seriesText: resolved.seriesText || undefined,
     });
 
     reset();

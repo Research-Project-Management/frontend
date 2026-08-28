@@ -67,7 +67,7 @@ export default function PaperBatchBar({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border rounded-full shadow-lg select-none"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border/80 rounded-full shadow-lg select-none ring-1 ring-black/5 dark:ring-white/5"
       >
         {/* Count Badge & Label */}
         <div className="flex items-center gap-2 pr-2.5 border-r border-border/60">
@@ -117,16 +117,16 @@ export default function PaperBatchBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Copy Multi \cite */}
+        {/* Copy Multi Citation */}
         <Button
           variant="ghost"
           size="sm"
           onClick={handleCopyMultiCite}
-          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none"
-          title="Copy LaTeX \cite{...} for all selected"
+          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
+          title="Copy citation for all selected"
         >
-          <Quote className="size-3.5 text-muted-foreground" />
-          <span>Copy \cite</span>
+          <Quote className="size-3.5 shrink-0 text-muted-foreground" />
+          <span>Copy citation</span>
         </Button>
 
         {/* Copy All BibTeX */}
@@ -134,10 +134,10 @@ export default function PaperBatchBar({
           variant="ghost"
           size="sm"
           onClick={handleExportAllBibtex}
-          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none"
+          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Copy BibTeX for all selected papers"
         >
-          <Copy className="size-3.5 text-muted-foreground" />
+          <Copy className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Copy BibTeX</span>
         </Button>
 
@@ -146,10 +146,10 @@ export default function PaperBatchBar({
           variant="ghost"
           size="sm"
           onClick={handleDownloadBibFile}
-          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none"
+          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Download .bib file"
         >
-          <Download className="size-3.5 text-muted-foreground" />
+          <Download className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Download .bib</span>
         </Button>
 
@@ -158,10 +158,10 @@ export default function PaperBatchBar({
           variant="ghost"
           size="sm"
           onClick={onBatchDelete}
-          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none"
+          className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Delete selected papers"
         >
-          <Trash2 className="size-3.5 text-muted-foreground" />
+          <Trash2 className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Delete</span>
         </Button>
 

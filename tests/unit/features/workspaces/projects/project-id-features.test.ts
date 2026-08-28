@@ -7,8 +7,8 @@ import PagesPage from '@/features/workspaces/projects/all-pages/pages/PagesPage'
 import { usePageActions } from '@/features/workspaces/projects/all-pages/hooks/use-page';
 import ProjectStorageHomePage from '@/features/workspaces/projects/project-id/storage/pages/HomePage';
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
-import TaskPage from '@/features/workspaces/projects/project-id/tasks/pages/TaskPage';
-import { useProjectTasks } from '@/features/workspaces/projects/project-id/tasks/hooks/use-task';
+import WorkItemPage from '@/features/workspaces/projects/project-id/work-items/pages/WorkItemPage';
+import { useProjectTasks } from '@/features/workspaces/projects/project-id/work-items/hooks/use-work-item';
 
 describe('Projects Global Domain API Health Check (Direct Layered Imports)', () => {
   it('should cleanly import Overview components and hooks', () => {
@@ -51,8 +51,8 @@ describe('Projects Global Domain API Health Check (Direct Layered Imports)', () 
     expect(usePreviewStore.getState().selectedItem).toBeNull();
   });
 
-  it('should cleanly import Tasks components and hooks', () => {
-    expect(TaskPage).toBeDefined();
+  it('should cleanly import WorkItem components and hooks', () => {
+    expect(WorkItemPage).toBeDefined();
     expect(useProjectTasks).toBeDefined();
   });
 });

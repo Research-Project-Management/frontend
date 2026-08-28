@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TaskHelpers } from '@/features/workspaces/projects/project-id/tasks/utils/tasks.util';
+import { TaskHelpers } from '@/features/workspaces/projects/project-id/work-items/utils/work-item.util';
 
 describe('TaskHelpers Domain Utilities (tasks.util.ts)', () => {
   it('extracts initials correctly from user names', () => {

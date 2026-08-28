@@ -4,18 +4,14 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X,
   FileText,
-  AlignLeft,
   Paperclip,
   Bookmark,
   Tag,
   Share2,
   Quote,
-  Copy,
-  Check,
-  BookOpen,
+  AlignLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter, useParams } from 'next/navigation';
 import InfoSection from './sections/InfoSection';
 import AbstractSection from './sections/AbstractSection';
 import NotesSection from './sections/NotesSection';
@@ -59,10 +55,7 @@ export default function InspectorPanel({
   onClose,
 }: InspectorPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('info');
-  const [copied, setCopied] = useState(false);
   const paperService = usePapers({ workspaceId });
-  const router = useRouter();
-  const { workspaceId: workspaceUrl } = useParams();
 
   const { inspectorWidth, setInspectorWidth } = useLibrarySidebarStore();
   const tabButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -189,20 +182,6 @@ export default function InspectorPanel({
     );
   };
 
-  const handleCopyCitationKey = () => {
-    if (paper.citationKey) {
-      navigator.clipboard.writeText(`\\cite{${paper.citationKey}}`);
-      setCopied(true);
-      toast.success(`Copied \\cite{${paper.citationKey}}`);
-      setTimeout(() => setCopied(false), 2000);
-    } else if (paper.title) {
-      navigator.clipboard.writeText(paper.title);
-      setCopied(true);
-      toast.success('Copied title');
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   // Keyboard navigation across tabs
   const handleTabKeyDown = (e: React.KeyboardEvent, index: number) => {
     let nextIndex = index;
@@ -266,7 +245,7 @@ export default function InspectorPanel({
       />
 
       {/* Header bar */}
-      <header className="h-12 px-3.5 border-b border-border/40 flex items-center justify-between shrink-0 bg-transparent gap-2">
+      <header className="h-14 px-3.5 border-b border-border/50 flex items-center justify-between shrink-0 bg-transparent gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <FileText className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <h2
@@ -278,24 +257,6 @@ export default function InspectorPanel({
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            onClick={handleCopyCitationKey}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-            title={paper.citationKey ? `Copy \\cite{${paper.citationKey}}` : 'Copy title'}
-            aria-label={paper.citationKey ? `Copy citation key ${paper.citationKey}` : 'Copy paper title'}
-          >
-            {copied ? <Check className="size-3.5 text-foreground" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
-          </button>
-
-          <button
-            onClick={() => paperId && router.push(`/${workspaceUrl}/library/papers/${paperId}`)}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-            title="Open in Reader"
-            aria-label="Open in Reader"
-          >
-            <BookOpen className="size-3.5" aria-hidden="true" />
-          </button>
-
           {onClose && (
             <button
               onClick={onClose}
@@ -313,7 +274,7 @@ export default function InspectorPanel({
       <div
         role="tablist"
         aria-label="Inspector tabs"
-        className="flex items-center border-b border-border/40 bg-transparent px-3 py-1.5 gap-1 shrink-0 overflow-x-auto scrollbar-none"
+        className="flex items-center border-b border-border/40 bg-transparent px-3 py-1.5 gap-1 shrink-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {TABS.map((tab, idx) => {
           const Icon = tab.icon;
@@ -348,17 +309,7 @@ export default function InspectorPanel({
               )}
             >
               <Icon className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>{tab.label}</span>
-              {count > 0 && (
-                <span
-                  className={cn(
-                    'text-[10px] font-mono tabular-nums px-1.5 py-0.2 rounded-full',
-                    isActive ? 'bg-background text-foreground font-semibold border border-border/30' : 'bg-muted/60 text-muted-foreground'
-                  )}
-                >
-                  {count}
-                </span>
-              )}
+              <span>{count > 0 ? `${count} ${tab.label}` : tab.label}</span>
             </button>
           );
         })}

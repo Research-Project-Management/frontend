@@ -56,8 +56,9 @@ function FileIconItem({ item }: { item: StorageItem }) {
 
 export type StorageViewProps = {
   items: StorageItem[];
-  onToggleStar: (fileId: string) => void | Promise<void>;
+  onToggleStar?: (fileId: string) => void | Promise<void>;
   onDelete: (fileId: string) => void | Promise<void>;
+  onRestore?: (fileId: string) => void | Promise<void>;
   onDownload: (item: StorageItem) => void;
   onFolderClick?: (folder: StorageItem) => void;
   onFileClick?: (file: StorageItem) => void;
@@ -74,8 +75,9 @@ export type StorageViewProps = {
 
 type ItemActionsProps = {
   item: StorageItem;
-  onToggleStar: (fileId: string) => void | Promise<void>;
+  onToggleStar?: (fileId: string) => void | Promise<void>;
   onDelete: (fileId: string) => void | Promise<void>;
+  onRestore?: (fileId: string) => void | Promise<void>;
   onDownload: (item: StorageItem) => void;
   isTrash?: boolean;
   onMoveToParent?: (item: StorageItem) => void;
@@ -86,6 +88,7 @@ export function ItemActions({
   item,
   onToggleStar,
   onDelete,
+  onRestore,
   onDownload,
   isTrash,
   onMoveToParent,
@@ -125,7 +128,11 @@ export function ItemActions({
     try {
       const event = new CustomEvent('restore-storage-item', { detail: item.id });
       window.dispatchEvent(event);
-      await Promise.resolve(onDelete(item.id));
+      if (onRestore) {
+        await Promise.resolve(onRestore(item.id));
+      } else {
+        await Promise.resolve(onDelete(item.id));
+      }
       toast.success("Restored successfully");
     } catch {
       toast.error("Failed to restore");
@@ -141,7 +148,7 @@ export function ItemActions({
           variant="ghost"
           size="icon"
           className="size-7 text-muted-foreground hover:text-foreground"
-          onClick={() => onToggleStar(item.id)}
+          onClick={() => onToggleStar?.(item.id)}
           title={item.starred ? "Unstar" : "Star"}
         >
           <Star className={`size-3.5 ${item.starred ? "fill-amber-400 text-amber-400" : ""}`} />
@@ -247,6 +254,7 @@ export default function ListView({
   items,
   onToggleStar,
   onDelete,
+  onRestore,
   onDownload,
   onFolderClick,
   onFileClick,
@@ -451,6 +459,7 @@ export default function ListView({
                         item={item}
                         onToggleStar={onToggleStar}
                         onDelete={onDelete}
+                        onRestore={onRestore}
                         onDownload={onDownload}
                         isTrash={isTrash}
                         onMoveToParent={onMoveToParent}

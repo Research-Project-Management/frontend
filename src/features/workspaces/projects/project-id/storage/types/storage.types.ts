@@ -1,41 +1,10 @@
-export type FileType = "folder" | "document" | "image" | "video" | "audio" | "archive" | "other";
-
-export type StorageLevel = "workspace" | "project";
-
-export type StorageItem = {
-    id: string;
-    filename: string;
-    isFolder: boolean;
-    size?: number;
-    mimeType?: string;
-    url?: string;
-    thumbnail?: string;
-    starred: boolean;
-    parentId?: string | null;
-    parent?: string | null;
-    metaData?: Record<string, any>;
-    sharedWith?: Array<{
-        user: string;
-        permission: "view" | "edit";
-    }>;
-    author: {
-        name: string;
-        email: string;
-        avatar: string;
-    };
-    project?: {
-        id: string;
-        name: string;
-    };
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type StorageResponse = {
-    files?: StorageItem[];
-    project?: { id: string; name: string };
-    yourRole?: string;
-};
+export type {
+  FileType,
+  StorageLevel,
+  StorageItem,
+  StorageResponse,
+  StorageUsageResponse,
+} from '@/features/workspaces/storage/types/storage.types';
 
 export type UploadFileParams = {
     projectId: string;

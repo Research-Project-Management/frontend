@@ -40,6 +40,7 @@ export default function GridView({
   items,
   onToggleStar,
   onDelete,
+  onRestore,
   onDownload,
   onFolderClick,
   onFileClick,
@@ -171,6 +172,7 @@ export default function GridView({
                         item={item}
                         onToggleStar={onToggleStar}
                         onDelete={onDelete}
+                        onRestore={onRestore}
                         onDownload={onDownload}
                         isTrash={isTrash}
                         onMoveToParent={onMoveToParent}

@@ -11,8 +11,13 @@ import {
   Star,
   Trash,
   PanelLeftClose,
+  Cloud,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { useStorageUsage } from '../../hooks/use-storage';
+import { formatFileSize } from '../../utils/file';
+
+const DEFAULT_WORKSPACE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB default quota
 
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const { workspaceId } = useParams();
@@ -20,6 +25,14 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const id = useId();
 
   const basePath = `/${workspaceId}/storage`;
+
+  // Storage usage query
+  const { data: usageData } = useStorageUsage(workspaceId as string);
+  const usedBytes = usageData?.totalBytes || 0;
+  const usagePercentage = Math.min(
+    100,
+    Math.round((usedBytes / DEFAULT_WORKSPACE_QUOTA_BYTES) * 100)
+  );
 
   // Storage-specific navigation
   const storageItems = [
@@ -31,61 +44,95 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className='h-full w-60 overflow-x-hidden border-r border-border/50 bg-transparent p-2 py-4 max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
-      {/* Header */}
-      <div className='mb-4 px-2 flex items-center justify-between font-semibold text-base tracking-tight text-foreground max-md:hidden'>
-        <span>Storage</span>
-        <button
-          onClick={onToggle}
-          aria-label='Toggle Storage Sidebar'
-          className='p-1 hidden rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring'
-        >
-          <PanelLeftClose className='size-5' />
-        </button>
-      </div>
+    <aside className='h-full w-60 flex flex-col justify-between overflow-x-hidden border-r border-border/50 bg-transparent p-2 py-4 max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
+      <div>
+        {/* Header */}
+        <div className='mb-4 px-2 flex items-center justify-between font-semibold text-base tracking-tight text-foreground max-md:hidden'>
+          <span>Storage</span>
+          <button
+            onClick={onToggle}
+            aria-label='Toggle Storage Sidebar'
+            className='p-1 hidden rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          >
+            <PanelLeftClose className='size-5' />
+          </button>
+        </div>
 
-      {/* Storage Navigation */}
-      <LayoutGroup id={`storage-nav-${id}`}>
-        <nav
-          aria-label='Storage Navigation'
-          className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto'
-        >
-          {storageItems.map((item) => {
-            const isActive = pathname === item.to;
-            return (
-              <Link
-                href={item.to}
-                key={item.label}
-                aria-current={isActive ? 'page' : undefined}
-                className={cn(
-                  'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring max-md:shrink-0 text-foreground',
-                  isActive ? 'font-semibold' : 'font-medium'
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId={`storage-nav-active-${id}`}
-                    className='absolute inset-0 rounded-md bg-accent'
-                    initial={false}
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <item.icon
-                  className="relative z-10 size-4 shrink-0 text-foreground"
-                />
-                <span
+        {/* Storage Navigation */}
+        <LayoutGroup id={`storage-nav-${id}`}>
+          <nav
+            aria-label='Storage Navigation'
+            className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto'
+          >
+            {storageItems.map((item) => {
+              const isActive = pathname === item.to;
+              return (
+                <Link
+                  href={item.to}
+                  key={item.label}
+                  aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'relative z-10 min-w-0 truncate text-foreground',
+                    'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring max-md:shrink-0 text-foreground',
                     isActive ? 'font-semibold' : 'font-medium'
                   )}
                 >
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </LayoutGroup>
+                  {isActive && (
+                    <motion.div
+                      layoutId={`storage-nav-active-${id}`}
+                      className='absolute inset-0 rounded-md bg-accent'
+                      initial={false}
+                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                  <item.icon
+                    className="relative z-10 size-4 shrink-0 text-foreground"
+                  />
+                  <span
+                    className={cn(
+                      'relative z-10 min-w-0 truncate text-foreground',
+                      isActive ? 'font-semibold' : 'font-medium'
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </LayoutGroup>
+      </div>
+
+      {/* Storage Quota Bar */}
+      <div className="px-2 pt-4 pb-2 border-t border-border/40 max-md:hidden">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <Cloud className="size-3.5 text-muted-foreground/80" />
+            <span className="font-medium text-foreground text-[12px]">Storage</span>
+          </div>
+          <span className="text-[11px] tabular-nums font-medium text-muted-foreground">
+            {usagePercentage}%
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-500",
+              usagePercentage > 90
+                ? "bg-destructive"
+                : usagePercentage > 75
+                ? "bg-amber-500"
+                : "bg-primary"
+            )}
+            style={{ width: `${Math.max(2, usagePercentage)}%` }}
+          />
+        </div>
+
+        <p className="text-[11px] text-muted-foreground mt-1.5 truncate">
+          {formatFileSize(usedBytes)} of {formatFileSize(DEFAULT_WORKSPACE_QUOTA_BYTES)} used
+        </p>
+      </div>
     </aside>
   );
 }

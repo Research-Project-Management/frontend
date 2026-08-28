@@ -9,7 +9,7 @@ import {
   BookOpen,
   Folder,
   Quote,
-  MoreHorizontal,
+  MoreVertical,
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,14 +18,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
 import { cn } from '@/shared/lib/utils';
@@ -34,6 +32,7 @@ import {
   formatCiteCommand,
   formatApaCitation,
   formatIeeeCitation,
+  normalizeAuthors,
 } from '../../utils/library.util';
 import type { Paper, Collection } from '../../types/library.types';
 
@@ -101,13 +100,14 @@ export default function PaperTableRow({
   };
 
   const isRawArxiv = /^\d{4}\.\d{4,5}(v\d+)?$/i.test(paper.title || '');
+  const authors = normalizeAuthors(paper.authors, (paper as any).creators);
   const authorDisplay =
-    paper.authors && paper.authors.length > 0
-      ? paper.authors.length === 1
-        ? paper.authors[0]
-        : paper.authors.length === 2
-        ? `${paper.authors[0]} & ${paper.authors[1]}`
-        : `${paper.authors[0]} et al.`
+    authors.length > 0
+      ? authors.length === 1
+        ? authors[0]
+        : authors.length === 2
+        ? `${authors[0]} & ${authors[1]}`
+        : `${authors[0]} et al.`
       : null;
 
   return (
@@ -188,7 +188,7 @@ export default function PaperTableRow({
           </td>
 
           {/* Authors Column */}
-          <td className="px-3 py-1.5 align-middle w-[200px] max-w-[240px]">
+          <td className="px-3 py-1.5 align-middle w-[240px] max-w-[320px]">
             <span
               className="truncate block text-muted-foreground font-normal text-sm"
               title={paper.authors?.join(', ')}
@@ -203,99 +203,60 @@ export default function PaperTableRow({
             </span>
           </td>
 
-          {/* Year Column */}
-          <td className="px-3 py-1.5 align-middle w-[72px] whitespace-nowrap text-muted-foreground font-mono tabular-nums text-sm">
-            {paper.year ? paper.year : <span className="opacity-40">—</span>}
-          </td>
-
-          {/* Journal / Venue Column */}
-          <td className="px-3 py-1.5 align-middle w-[180px] max-w-[220px]">
-            <span
-              className="truncate block text-muted-foreground font-normal italic text-sm"
-              title={paper.journal || paper.publisher || ''}
-            >
-              {paper.journal || paper.publisher || (isRawArxiv ? <span className="not-italic text-xs text-muted-foreground/70 font-mono">arXiv.org</span> : <span className="opacity-40 not-italic">—</span>)}
-            </span>
-          </td>
-
-          {/* Hover Quick Action Buttons Column */}
-          <td className="w-20 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-              {/* Quick Copy LaTeX \cite */}
-              <button
-                onClick={handleCopyCite}
-                className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted hover:text-primary transition-colors cursor-pointer"
-                title="Copy LaTeX \cite"
-                aria-label="Copy LaTeX \cite"
-              >
-                <Quote className="size-3.5 text-foreground" />
-              </button>
-
-              {/* Quick Copy BibTeX */}
-              <button
-                onClick={handleCopyBibtex}
-                className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
-                title="Copy BibTeX"
-                aria-label="Copy BibTeX"
-              >
-                <Copy className="size-3.5 text-foreground" />
-              </button>
-
-              {/* More Citation Formats Dropdown */}
+          {/* Hover Quick Action Dropdown Column */}
+          <td className="w-10 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="flex size-6 items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                    className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
                     title="More actions"
                     aria-label="More actions"
                   >
-                    <MoreHorizontal className="size-3.5 text-foreground" />
+                    <MoreVertical className="size-3.5" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 p-1 text-xs rounded-xl shadow-lg border border-border">
+                <DropdownMenuContent align="end" className="w-56 p-1 text-xs rounded-lg shadow-lg border border-border">
                   <DropdownMenuItem
                     onClick={handleDoubleClick}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
                   >
                     <BookOpen className="size-3.5 text-muted-foreground" />
                     <span>Open in Reader</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleCopyCite}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
                   >
                     <Quote className="size-3.5 text-muted-foreground" />
                     <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyBibtex}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
                   >
                     <Copy className="size-3.5 text-muted-foreground" />
                     <span>Copy BibTeX Entry</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyApa}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
                   >
                     <FileText className="size-3.5 text-muted-foreground" />
                     <span>Copy APA 7th Citation</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyIeee}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-lg hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
                   >
                     <FileText className="size-3.5 text-muted-foreground" />
                     <span>Copy IEEE Citation</span>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    variant="destructive"
                     onClick={() => onDelete(pId)}
-                    className="gap-2.5 text-xs font-normal cursor-pointer rounded-lg"
+                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-3.5 text-muted-foreground" />
                     <span>Move to Trash</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -305,50 +266,44 @@ export default function PaperTableRow({
         </tr>
       </ContextMenuTrigger>
 
-      <ContextMenuContent className="w-56 p-1 text-xs rounded-xl shadow-xl border border-border">
-        <ContextMenuItem onClick={handleDoubleClick} className="gap-2.5 cursor-pointer">
+      <ContextMenuContent className="w-56 p-1 text-xs rounded-lg shadow-xl border border-border">
+        <ContextMenuItem onClick={handleDoubleClick} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
           <BookOpen className="size-3.5 text-muted-foreground" />
           <span>Open in Reader</span>
         </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={handleCopyCite} className="gap-2.5 cursor-pointer">
+        <ContextMenuItem onClick={handleCopyCite} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
           <Quote className="size-3.5 text-muted-foreground" />
           <span>Copy LaTeX <code className="font-mono text-[10.5px] bg-muted px-1 rounded">\cite</code></span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyBibtex} className="gap-2.5 cursor-pointer">
+        <ContextMenuItem onClick={handleCopyBibtex} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
           <Copy className="size-3.5 text-muted-foreground" />
           <span>Copy BibTeX Entry</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyApa} className="gap-2.5 cursor-pointer">
+        <ContextMenuItem onClick={handleCopyApa} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
           <FileText className="size-3.5 text-muted-foreground" />
           <span>Copy APA 7th Citation</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyIeee} className="gap-2.5 cursor-pointer">
+        <ContextMenuItem onClick={handleCopyIeee} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
           <FileText className="size-3.5 text-muted-foreground" />
           <span>Copy IEEE Citation</span>
         </ContextMenuItem>
         {paper.doi && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() => {
-                navigator.clipboard.writeText(`https://doi.org/${paper.doi}`);
-                toast.success('DOI URL copied to clipboard');
-              }}
-              className="gap-2.5 cursor-pointer"
-            >
-              <ExternalLink className="size-3.5 text-muted-foreground" />
-              <span>Copy DOI URL</span>
-            </ContextMenuItem>
-          </>
+          <ContextMenuItem
+            onClick={() => {
+              navigator.clipboard.writeText(`https://doi.org/${paper.doi}`);
+              toast.success('DOI URL copied to clipboard');
+            }}
+            className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+          >
+            <ExternalLink className="size-3.5 text-muted-foreground" />
+            <span>Copy DOI URL</span>
+          </ContextMenuItem>
         )}
-        <ContextMenuSeparator />
         <ContextMenuItem
-          variant="destructive"
           onClick={() => onDelete(pId)}
-          className="gap-2.5 cursor-pointer"
+          className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 className="size-3.5 text-muted-foreground" />
           <span>Move to Trash</span>
         </ContextMenuItem>
       </ContextMenuContent>

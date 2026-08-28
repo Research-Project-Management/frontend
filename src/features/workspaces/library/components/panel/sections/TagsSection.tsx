@@ -33,8 +33,8 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-          Tags ({tags.length})
+        <h3 className="text-xs font-semibold text-foreground">
+          Tags
         </h3>
         {!isAdding && (
           <button

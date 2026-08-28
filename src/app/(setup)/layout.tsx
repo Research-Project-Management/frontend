@@ -43,8 +43,15 @@ export default function WorkspacesLayout({
 
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Skeleton className="h-48 w-96 rounded-lg" />
+      <div
+        className="flex min-h-screen items-center justify-center bg-background"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="h-48 w-96 rounded-lg" />
+          <span className="sr-only">Loading workspace setup...</span>
+        </div>
       </div>
     );
   }

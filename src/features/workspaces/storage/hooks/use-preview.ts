@@ -7,6 +7,7 @@ import type { StorageItem } from '@/features/workspaces/storage/types/storage.ty
 import { resolveFileUrl } from '@/shared/utils/url';
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';
 import { mergeCrossrefMetadata } from '../utils/preview.utils';
+import { storageKeys } from '../constants/storage.keys';
 
 export function usePreview(item: StorageItem | null) {
   const [metadata, setMetadata] = useState<PdfMetadata | null>(null);
@@ -30,10 +31,7 @@ export function usePreview(item: StorageItem | null) {
   const saveMetadataMutation = useMutation({
     mutationFn: (args: { fileId: string; metaData: Record<string, any> }) => updateFileMetadata(args.fileId, args.metaData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['files'] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-home-files'] });
-      queryClient.invalidateQueries({ queryKey: ['my-files'] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-my-files'] });
+      queryClient.invalidateQueries({ queryKey: storageKeys.all });
     }
   });
 

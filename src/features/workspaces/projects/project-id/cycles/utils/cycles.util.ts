@@ -12,8 +12,9 @@ export const deriveStatus = (cycle: {
   endDate?: string | null;
 }): DerivedStatus => {
   // 1. Priority: Explicit Manual Status
-  if (cycle.status === "completed") return "completed";
+  if (cycle.status === "completed" || cycle.status === "cancelled") return "completed";
   if (cycle.status === "active") return "active";
+  if (cycle.status === "planned" || cycle.status === "upcoming") return "planned";
 
   // 2. Fallback: Automatic Date-based Status
   if (!cycle.startDate || !cycle.endDate) return "planned";
@@ -38,7 +39,7 @@ export const deriveStatus = (cycle: {
 export const groupCyclesByStatus = (
   cycles: Cycle[],
   searchTerm: string = ''
-): { active: Cycle[]; upcoming: Cycle[]; completed: Cycle[] } => {
+): { active: Cycle[]; upcoming: Cycle[]; completed: Cycle[]; planned: Cycle[] } => {
   const term = searchTerm.toLowerCase().trim();
   const filtered = term
     ? cycles.filter((c) => c.name.toLowerCase().includes(term) || c.description?.toLowerCase().includes(term))
@@ -55,5 +56,5 @@ export const groupCyclesByStatus = (
     else upcoming.push(cycle);
   });
 
-  return { active, upcoming, completed };
+  return { active, upcoming, completed, planned: upcoming };
 };

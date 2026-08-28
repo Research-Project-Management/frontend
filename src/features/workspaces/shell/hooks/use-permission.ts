@@ -65,7 +65,7 @@ export function useWorkspacePermission(
 
     let role: WorkspaceRole = 'viewer';
 
-    if (workspace.ownerId === userId) {
+    if (workspace.ownerId === userId || (workspace as any).createdById === userId) {
       role = 'owner';
     } else {
       const member = workspace.members?.find(
@@ -129,12 +129,22 @@ export function useProjectPermission(
 
     let rawRole: ProjectRole = 'viewer';
 
+    const creatorId =
+      typeof project.createdBy === 'object'
+        ? project.createdBy?.id
+        : project.createdBy;
+    const isCreator = Boolean(creatorId && creatorId === userId);
+
     const member = project.members?.find((m) => {
-      const mId = typeof m.userId === 'object' ? m.userId?.id : m.userId;
+      const mId =
+        (m as any).user?.id ||
+        (typeof m.userId === 'object' ? (m.userId as any)?.id : m.userId);
       return mId === userId;
     });
 
-    if (member?.role) {
+    if (isCreator) {
+      rawRole = 'admin';
+    } else if (member?.role) {
       rawRole = member.role.toLowerCase() as ProjectRole;
     }
 

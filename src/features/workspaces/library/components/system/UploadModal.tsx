@@ -42,7 +42,7 @@ import {
 import { toast } from 'sonner';
 import { Badge } from '@/shared/components/ui/badge';
 
-interface PaperUploadData {
+export interface PaperUploadData {
   title: string;
   authors: string[];
   year: number | null;
@@ -53,19 +53,35 @@ interface PaperUploadData {
   mimeType: string;
   size: number;
   journal?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
   publisher?: string;
+  place?: string;
   keywords?: string[];
   volume?: string;
   issue?: string;
   pages?: string;
+  section?: string;
+  partNumber?: string;
+  partTitle?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesText?: string;
   issn?: string;
   isbn?: string;
+  pmid?: string;
+  pmcid?: string;
+  arxivId?: string;
   url?: string;
   type?: string;
+  itemType?: string;
   language?: string;
   journalAbbr?: string;
   shortTitle?: string;
   rights?: string;
+  license?: string;
+  citationKey?: string;
+  editors?: string[];
   extra?: string;
 }
 
@@ -259,13 +275,21 @@ export default function PaperUploadDialog({
       try {
         setExtractStatus('extracting');
         const meta = await extractMetadata(f);
+        setResolvedMeta(meta);
         if (meta.title) setTitle(meta.title);
         if (meta.authors && meta.authors.length > 0)
           setAuthors(meta.authors.join(', '));
         if (meta.year) setYear(String(meta.year));
         if (meta.doi) setDoi(meta.doi);
         if (meta.abstract) setAbstract(meta.abstract);
-        if (meta.journal) setJournal(meta.journal);
+        if (meta.journal || meta.publicationTitle)
+          setJournal(meta.journal || meta.publicationTitle || '');
+        if (meta.publisher) setPublisher(meta.publisher);
+        if (meta.volume) setVolume(meta.volume);
+        if (meta.issue) setIssue(meta.issue);
+        if (meta.pages) setPages(meta.pages);
+        if (meta.itemType || meta.type)
+          setItemType(meta.itemType || meta.type || 'journalArticle');
         setExtractStatus('done');
       } catch (err) {
         console.warn('PDF metadata extraction warning:', err);
@@ -278,49 +302,180 @@ export default function PaperUploadDialog({
 
   // 3. Submit handler
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (mode !== 'folder' && !title.trim()) return;
+    const resolved = resolvedMeta || {};
 
     if (mode === 'identifier') {
       await onSubmit({
-        title: title.trim(),
-        authors: authors.split(',').map((a) => a.trim()).filter(Boolean),
-        year: year ? parseInt(year, 10) : null,
-        doi: doi.trim(),
-        abstract: abstract.trim(),
-        fileUrl: url.trim(),
+        title: title.trim() || resolved.title,
+        authors: authors
+          ? authors.split(',').map((a) => a.trim()).filter(Boolean)
+          : (resolved.authors || []),
+        year: year ? parseInt(year, 10) : (resolved.year ? Number(resolved.year) : null),
+        doi: doi.trim() || resolved.doi || '',
+        abstract: abstract.trim() || resolved.abstract || '',
+        fileUrl: url.trim() || resolved.url || '',
         filename: `${title.trim().slice(0, 30)}.pdf`,
         mimeType: 'application/pdf',
         size: 0,
-        journal: journal.trim() || undefined,
-        publisher: publisher.trim() || undefined,
-        volume: volume.trim() || undefined,
-        issue: issue.trim() || undefined,
-        pages: pages.trim() || undefined,
-        url: url.trim() || undefined,
-        type: itemType,
+        journal: journal.trim() || resolved.journal || resolved.publicationTitle || undefined,
+        publicationTitle: resolved.publicationTitle || journal.trim() || undefined,
+        publisher: publisher.trim() || resolved.publisher || undefined,
+        volume: volume.trim() || resolved.volume || undefined,
+        issue: issue.trim() || resolved.issue || undefined,
+        pages: pages.trim() || resolved.pages || undefined,
+        url: url.trim() || resolved.url || undefined,
+        type: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        itemType: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        issn: resolved.issn || undefined,
+        isbn: resolved.isbn || undefined,
+        pmid: resolved.pmid || undefined,
+        pmcid: resolved.pmcid || undefined,
+        arxivId: resolved.arxivId || undefined,
+        keywords: resolved.keywords || resolved.keywordsList || (resolved.tags ? resolved.tags : undefined),
+        publicationDate: resolved.publicationDate || resolved.date || undefined,
+        journalAbbr: resolved.journalAbbr || resolved.journalAbbreviation || undefined,
+        shortTitle: resolved.shortTitle || undefined,
+        language: resolved.language || undefined,
+        rights: resolved.rights || resolved.copyright || undefined,
+        license: resolved.license || undefined,
+        citationKey: resolved.citationKey || undefined,
+        editors: resolved.editors || undefined,
+        place: resolved.place || undefined,
+        series: resolved.series || undefined,
+        seriesTitle: resolved.seriesTitle || undefined,
+        seriesText: resolved.seriesText || undefined,
       });
       reset();
       onOpenChange(false);
     } else if (mode === 'file') {
       if (!uploadedUrl || !file) return;
       await onSubmit({
-        title: title.trim(),
-        authors: authors.split(',').map((a) => a.trim()).filter(Boolean),
-        year: year ? parseInt(year, 10) : null,
-        doi: doi.trim(),
-        abstract: abstract.trim(),
+        title: title.trim() || resolved.title,
+        authors: authors
+          ? authors.split(',').map((a) => a.trim()).filter(Boolean)
+          : (resolved.authors || []),
+        year: year ? parseInt(year, 10) : (resolved.year ? Number(resolved.year) : null),
+        doi: doi.trim() || resolved.doi || '',
+        abstract: abstract.trim() || resolved.abstract || '',
         fileUrl: uploadedUrl,
         filename: file.name,
         mimeType: file.type || 'application/pdf',
         size: file.size,
-        journal: journal.trim() || undefined,
-        publisher: publisher.trim() || undefined,
-        volume: volume.trim() || undefined,
-        issue: issue.trim() || undefined,
-        pages: pages.trim() || undefined,
-        url: url.trim() || undefined,
-        type: itemType,
+        journal: journal.trim() || resolved.journal || resolved.publicationTitle || undefined,
+        publicationTitle: resolved.publicationTitle || journal.trim() || undefined,
+        publisher: publisher.trim() || resolved.publisher || undefined,
+        volume: volume.trim() || resolved.volume || undefined,
+        issue: issue.trim() || resolved.issue || undefined,
+        pages: pages.trim() || resolved.pages || undefined,
+        url: url.trim() || resolved.url || undefined,
+        type: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        itemType: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        issn: resolved.issn || undefined,
+        isbn: resolved.isbn || undefined,
+        pmid: resolved.pmid || undefined,
+        pmcid: resolved.pmcid || undefined,
+        arxivId: resolved.arxivId || undefined,
+        keywords: resolved.keywords || resolved.keywordsList || (resolved.tags ? resolved.tags : undefined),
+        publicationDate: resolved.publicationDate || resolved.date || undefined,
+        journalAbbr: resolved.journalAbbr || resolved.journalAbbreviation || undefined,
+        shortTitle: resolved.shortTitle || undefined,
+        language: resolved.language || undefined,
+        rights: resolved.rights || resolved.copyright || undefined,
+        license: resolved.license || undefined,
+        citationKey: resolved.citationKey || undefined,
+        editors: resolved.editors || undefined,
+        place: resolved.place || undefined,
+        series: resolved.series || undefined,
+        seriesTitle: resolved.seriesTitle || undefined,
+        seriesText: resolved.seriesText || undefined,
       });
+      reset();
+      onOpenChange(false);
+    } else if (mode === 'folder') {
+      if (!folderFiles.length) return;
+      setIsFolderUploading(true);
+      const loadingToastId = toast.loading(
+        `Batch importing ${folderFiles.length} files from "${folderName || 'Folder'}"...`,
+      );
+      let successCount = 0;
+
+      for (let i = 0; i < folderFiles.length; i++) {
+        const f = folderFiles[i];
+        setFolderProgress({ current: i + 1, total: folderFiles.length });
+        try {
+          const fileStorageUrl = await uploadFile(f, {
+            prefix: `${workspaceId}/library`,
+            allowedTypes: ['application/pdf'],
+          });
+
+          let extractedTitle = f.name.replace(/\.[^/.]+$/, '');
+          let extractedAuthors: string[] = [];
+          let extractedYear: number | null = null;
+          let extractedDoi = '';
+          let extractedAbstract = '';
+          let extractedJournal = '';
+          let extractedPublisher = '';
+          let extractedVolume = '';
+          let extractedIssue = '';
+          let extractedPages = '';
+          let extractedUrl = '';
+          let extractedType = 'journalArticle';
+
+          try {
+            const extracted = await extractMetadata(f);
+            if (extracted.title) extractedTitle = extracted.title;
+            if (extracted.authors && extracted.authors.length > 0)
+              extractedAuthors = extracted.authors;
+            if (extracted.year)
+              extractedYear = parseInt(String(extracted.year), 10) || null;
+            if (extracted.doi) extractedDoi = extracted.doi;
+            if (extracted.abstract) extractedAbstract = extracted.abstract;
+            if (extracted.journal || extracted.publicationTitle)
+              extractedJournal = extracted.journal || extracted.publicationTitle || '';
+            if (extracted.publisher) extractedPublisher = extracted.publisher;
+            if (extracted.volume) extractedVolume = extracted.volume;
+            if (extracted.issue) extractedIssue = extracted.issue;
+            if (extracted.pages) extractedPages = extracted.pages;
+            if (extracted.url) extractedUrl = extracted.url;
+            if (extracted.itemType || extracted.type)
+              extractedType = extracted.itemType || extracted.type || 'journalArticle';
+          } catch {
+            // Keep default extracted from filename
+          }
+
+          await onSubmit({
+            title: extractedTitle,
+            authors: extractedAuthors,
+            year: extractedYear,
+            doi: extractedDoi,
+            abstract: extractedAbstract,
+            fileUrl: fileStorageUrl,
+            filename: f.name,
+            mimeType: f.type || 'application/pdf',
+            size: f.size,
+            journal: extractedJournal || undefined,
+            publisher: extractedPublisher || undefined,
+            volume: extractedVolume || undefined,
+            issue: extractedIssue || undefined,
+            pages: extractedPages || undefined,
+            url: extractedUrl || undefined,
+            type: extractedType || undefined,
+          });
+
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to upload ${f.name}:`, err);
+        }
+      }
+
+      toast.dismiss(loadingToastId);
+      setIsFolderUploading(false);
+      if (successCount > 0) {
+        toast.success(`Successfully imported ${successCount} papers from folder!`);
+      } else {
+        toast.error('Failed to import documents from folder.');
+      }
       reset();
       onOpenChange(false);
     }

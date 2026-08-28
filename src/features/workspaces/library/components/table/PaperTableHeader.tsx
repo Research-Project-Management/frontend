@@ -34,9 +34,7 @@ export default function PaperTableHeader({
 }: PaperTableHeaderProps) {
   const columns: ColumnDef[] = [
     { field: 'title', label: 'Title', sortable: true, className: 'text-left min-w-[240px] flex-1' },
-    { field: 'authors', label: 'Creator / Authors', sortable: true, className: 'text-left w-[200px] max-w-[240px]' },
-    { field: 'year', label: 'Year', sortable: true, className: 'text-left w-[72px]' },
-    { field: 'journal', label: 'Publication / Venue', sortable: true, className: 'text-left w-[180px] max-w-[220px]' },
+    { field: 'authors', label: 'Creator', sortable: true, className: 'text-left w-[240px] max-w-[320px]' },
   ];
 
   return (
@@ -88,7 +86,7 @@ export default function PaperTableHeader({
         })}
 
         {/* Action column space */}
-        <th className="w-16 px-2 py-2" />
+        <th className="w-10 px-2 py-2" />
       </tr>
     </thead>
   );

@@ -50,7 +50,7 @@ export default function ReferencesPage() {
 
   const selectedPaper = useMemo(() => {
     if (!selectedPaperId) return null;
-    return allPapers.find((p) => p.id === selectedPaperId) ?? null;
+    return allPapers.find((p: Paper) => p.id === selectedPaperId) ?? null;
   }, [allPapers, selectedPaperId]);
 
   const handleSelectPaper = (paper: Paper) => {
@@ -82,7 +82,7 @@ export default function ReferencesPage() {
       toast.error('No references to export');
       return;
     }
-    const bibtex = allPapers.map((p) => convertToBibTeX(p)).join('\n\n');
+    const bibtex = allPapers.map((p: Paper) => convertToBibTeX(p)).join('\n\n');
     const blob = new Blob([bibtex], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

@@ -10,6 +10,7 @@ import { useCollections } from '../library/use-library';
 import { usePapers, usePaper } from '../library/use-papers';
 import { usePdf } from './use-pdf';
 import { reindexPaper, paperKeys } from '../../services/paper.service';
+import { UserStateService } from '../../services/user-state.service';
 import { getPaperFileUrl } from '../../utils/library.util';
 import { useLibraryReaderStore } from '../../store/reader.store';
 import type { ReaderPanel } from '../../types/reader.types';
@@ -95,6 +96,14 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     return () => clearInterval(interval);
   }, [paper, workspaceId, qc]);
 
+  const markedPaperIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (workspaceId && paper?.id && markedPaperIdRef.current !== paper.id) {
+      markedPaperIdRef.current = paper.id;
+      UserStateService.markAsRead(workspaceId, paper.id).catch(() => {});
+    }
+  }, [workspaceId, paper?.id]);
+
   useEffect(() => {
     setDraftTitle(paper?.title || '');
     setIsEditingTitle(false);
@@ -150,6 +159,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const handleAddToNote = (text: string) => {
     setPendingNoteText(text);
     setActivePanel('notes');
+  };
+
+  const handleAnnotate = (_text: string, _pageNum?: number) => {
+    setActivePanel('annotations');
   };
 
   const clearSelectionContext = () => setSelectionContext('');
@@ -238,6 +251,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handlePanelToggle,
       handleAskAi,
       handleAddToNote,
+      handleAnnotate,
       setPendingNoteText,
       clearSelectionContext,
       handleReindex,

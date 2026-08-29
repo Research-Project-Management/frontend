@@ -72,7 +72,7 @@ export default function PdfViewerToolbar({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="pointer-events-auto flex select-none items-center gap-2 rounded-xl border border-border bg-background/95 px-3 py-1.5 backdrop-blur-md transition-colors">
+      <div className="pointer-events-auto flex select-none items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1 backdrop-blur-md shadow-md ring-1 ring-border/30 transition-colors">
         {/* Page navigation */}
         <div className="flex items-center gap-1">
           <Tooltip>
@@ -80,12 +80,12 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 text-muted-foreground hover:text-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground rounded-full"
                 disabled={pageNumber <= 1 || loading}
                 onClick={() => onPageChange(pageNumber - 1)}
                 aria-label="Previous page"
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Previous page (K / ↑)</TooltipContent>
@@ -103,9 +103,9 @@ export default function PdfViewerToolbar({
               onKeyDown={handlePageInputKeyDown}
               disabled={loading || !numPages}
               aria-label="Current page"
-              className="h-7 w-12 px-1 text-center font-mono text-xs focus-visible:ring-1"
+              className="h-6 w-11 px-1 text-center font-mono text-xs tabular-nums focus-visible:ring-1"
             />
-            <span className="pr-1 text-xs font-medium text-muted-foreground">
+            <span className="pr-1 text-xs font-mono tabular-nums font-medium text-muted-foreground">
               / {numPages ?? "-"}
             </span>
           </div>
@@ -115,19 +115,19 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 text-muted-foreground hover:text-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground rounded-full"
                 disabled={numPages ? pageNumber >= numPages || loading : true}
                 onClick={() => onPageChange(pageNumber + 1)}
                 aria-label="Next page"
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Next page (J / ↓)</TooltipContent>
           </Tooltip>
         </div>
 
-        <div className="mx-0.5 h-4 w-px bg-border" />
+        <div className="mx-0.5 h-4 w-px bg-border/60" />
 
         {/* Zoom and fit controls */}
         <div className="flex items-center gap-1">
@@ -136,18 +136,18 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 text-muted-foreground hover:text-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground rounded-full"
                 disabled={zoom <= 0.5 || loading}
                 onClick={handleZoomOut}
                 aria-label="Zoom out"
               >
-                <ZoomOut className="size-4" />
+                <ZoomOut className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">Zoom out (Ctrl -)</TooltipContent>
           </Tooltip>
 
-          <span className="min-w-[3.2rem] text-center font-mono text-xs font-semibold text-foreground/80">
+          <span className="min-w-[3rem] text-center font-mono text-xs font-semibold tabular-nums text-foreground/80">
             {Math.round(zoom * 100)}%
           </span>
 

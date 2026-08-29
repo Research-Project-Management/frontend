@@ -22,6 +22,14 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
 
 interface ZoteroConnectionPanelProps {
   workspaceId: string;
@@ -551,37 +559,34 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
       )}
 
       {/* Confirmation Modal for Two-Way Switch (Bước 4) */}
-      {directionModalBinding && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-        >
-          <div className="bg-card border rounded-xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="size-6" />
-              <h4 className="text-base font-bold text-foreground">
-                {directionModalBinding.syncDirection === 'read_only'
-                  ? 'Enable Controlled Two-Way Sync?'
-                  : 'Revert to Read-Only Sync?'}
-              </h4>
-            </div>
+      <Dialog open={Boolean(directionModalBinding)} onOpenChange={(open) => !open && setDirectionModalBinding(null)}>
+        {directionModalBinding && (
+          <DialogContent className="max-w-md w-full p-6 space-y-4" showCloseButton={true}>
+            <DialogHeader className="text-left space-y-2">
+              <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="size-5 shrink-0" />
+                <DialogTitle className="text-base font-semibold text-foreground">
+                  {directionModalBinding.syncDirection === 'read_only'
+                    ? 'Enable Controlled Two-Way Sync?'
+                    : 'Revert to Read-Only Sync?'}
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                {directionModalBinding.syncDirection === 'read_only' ? (
+                  <>
+                    Enabling Two-Way sync allows local modifications to items, tags, and collections in Flux to propagate directly to your remote Zotero library.
+                    <br /><br />
+                    <strong className="text-foreground">Important:</strong> Conflicting simultaneous edits on both ends will be safely routed to the Conflict Inbox for 3-way resolution.
+                  </>
+                ) : (
+                  <>
+                    Reverting to Read-Only sync immediately halts all outgoing writes to Zotero. Any local changes will remain stored in Flux without modifying your remote library.
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
 
-            <p className="text-sm text-muted-foreground">
-              {directionModalBinding.syncDirection === 'read_only' ? (
-                <>
-                  Enabling Two-Way sync allows local modifications to items, tags, and collections in Flux to propagate directly to your remote Zotero library.
-                  <br /><br />
-                  <strong>Important:</strong> Conflicting simultaneous edits on both ends will be safely routed to the Conflict Inbox for 3-way resolution.
-                </>
-              ) : (
-                <>
-                  Reverting to Read-Only sync immediately halts all outgoing writes to Zotero. Any local changes will remain stored in Flux without modifying your remote library.
-                </>
-              )}
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <DialogFooter className="flex items-center justify-end gap-3 pt-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -602,10 +607,10 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                   'Confirm & Switch'
                 )}
               </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

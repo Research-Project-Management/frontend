@@ -4,8 +4,8 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { Puzzle } from 'lucide-react';
 import { TopBar } from '../components/layout/TopBar';
-import { ZoteroConnectionPanel } from '@/features/workspaces/library/integrations/zotero/components/zotero-connection-panel';
-import { ZoteroConflictInbox } from '@/features/workspaces/library/integrations/zotero/components/zotero-conflict-inbox';
+import { ZoteroConnectionPanel } from '../integrations/zotero/components/zotero-connection-panel';
+import { ZoteroConflictInbox } from '../integrations/zotero/components/zotero-conflict-inbox';
 
 export default function IntegrationsPage() {
   const params = useParams();

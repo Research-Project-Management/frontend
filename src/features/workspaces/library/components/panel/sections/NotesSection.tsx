@@ -5,6 +5,7 @@ import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { normalizeNotes, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
+import { useNotes } from '@/features/workspaces/library/hooks/library/use-notes';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface NotesSectionProps {
@@ -41,6 +42,13 @@ export default function NotesSection({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
 
+  const {
+    notes: canonicalNotes,
+    createNote,
+    updateNote,
+    deleteNote,
+  } = useNotes(paper.workspaceId || '', paper.id);
+
   // Reset internal interactive state when switching papers to avoid state leakage
   useEffect(() => {
     setIsAdding(false);
@@ -50,14 +58,30 @@ export default function NotesSection({
   }, [paperId]);
 
   const notes: NormalizedNote[] = useMemo(() => {
+    if (canonicalNotes && canonicalNotes.length > 0) {
+      return canonicalNotes.map((n: any) => ({
+        id: n.id,
+        content: n.contentMd || n.content || '',
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+      }));
+    }
     return normalizeNotes(paper.notes);
-  }, [paper.notes]);
+  }, [canonicalNotes, paper.notes]);
 
-  const handleSaveNewNote = () => {
+  const handleSaveNewNote = async () => {
     const trimmed = newNoteContent.trim();
-    if (!trimmed || !onAddNote) return;
+    if (!trimmed) return;
 
-    onAddNote(trimmed);
+    if (paper.workspaceId) {
+      try {
+        await createNote({ itemId: paper.id, contentMd: trimmed });
+      } catch {
+        if (onAddNote) onAddNote(trimmed);
+      }
+    } else if (onAddNote) {
+      onAddNote(trimmed);
+    }
     setNewNoteContent('');
     setIsAdding(false);
   };
@@ -67,15 +91,35 @@ export default function NotesSection({
     setEditingContent(n.content);
   };
 
-  const handleSaveEdit = (noteId: string) => {
+  const handleSaveEdit = async (noteId: string) => {
     const trimmed = editingContent.trim();
     if (!trimmed) return;
 
-    if (onUpdateNote) {
+    const target = canonicalNotes.find((n) => n.id === noteId);
+    if (target && paper.workspaceId) {
+      try {
+        await updateNote(noteId, target.version || 1, { contentMd: trimmed });
+      } catch {
+        if (onUpdateNote) onUpdateNote(noteId, trimmed);
+      }
+    } else if (onUpdateNote) {
       onUpdateNote(noteId, trimmed);
     }
     setEditingNoteId(null);
     setEditingContent('');
+  };
+
+  const handleDelete = async (noteId: string) => {
+    const target = canonicalNotes.find((n) => n.id === noteId);
+    if (target && paper.workspaceId) {
+      try {
+        await deleteNote(noteId, target.version);
+      } catch {
+        if (onDeleteNote) onDeleteNote(noteId);
+      }
+    } else if (onDeleteNote) {
+      onDeleteNote(noteId);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -211,15 +255,13 @@ export default function NotesSection({
                       >
                         <Edit2 className="size-3" />
                       </button>
-                      {onDeleteNote && (
-                        <button
-                          onClick={() => onDeleteNote(n.id)}
-                          className="p-1 hover:text-foreground rounded cursor-pointer"
-                          title="Delete note"
-                        >
-                          <Trash2 className="size-3" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleDelete(n.id)}
+                        className="p-1 hover:text-foreground rounded cursor-pointer"
+                        title="Delete note"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
                     </div>
                   </div>
                 </>

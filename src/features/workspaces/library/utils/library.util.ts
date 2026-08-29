@@ -182,7 +182,6 @@ export interface LibraryFilterOptions {
   fromYear?: number;
   toYear?: number;
   itemType?: string;
-  isFavorite?: boolean;
   hasAttachment?: boolean;
 }
 
@@ -214,7 +213,7 @@ export class LibraryFilterEngine {
   }
 
   static filter(papers: Paper[], options: LibraryFilterOptions): Paper[] {
-    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, isFavorite, hasAttachment } = options;
+    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
 
     let result = papers;
 
@@ -254,11 +253,6 @@ export class LibraryFilterEngine {
       if (itemType && itemType !== 'all') {
         const pType = (paper.itemType || (paper as any).type || '').toLowerCase();
         if (pType !== itemType.toLowerCase()) return false;
-      }
-
-      // Favorite
-      if (isFavorite) {
-        if (!paper.isFavorite && !p.starred) return false;
       }
 
       // Attachment

@@ -15,6 +15,7 @@ import {
   WandSparkles,
   ArrowRight,
   ArrowDown,
+  Loader2,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
@@ -300,7 +301,7 @@ function WelcomeScreen({
     <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 py-8">
       <div className="flex group flex-col items-center mb-8">
         <img src="/Chat.svg" alt="AI" className="size-14 mb-5" />
-        <h3 className="font-serif font-semibold text-3xl mb-2">Ask AI</h3>
+        <h3 className="font-sans font-semibold text-2xl tracking-tight mb-2 text-foreground">Ask AI</h3>
         <p className="text-sm text-muted-foreground text-center max-w-sm leading-relaxed">
           Pick a workflow, refine the draft, then send when it feels right.
         </p>
@@ -317,10 +318,10 @@ function WelcomeScreen({
                 type="button"
                 onClick={() => setStarter(item)}
                 className={cn(
-                  'group flex min-h-28 items-start gap-3.5 rounded-lg border bg-card p-4 text-left transition-all',
+                  'group flex min-h-28 items-start gap-3.5 rounded-lg border bg-card p-4 text-left transition-all cursor-pointer',
                   active
-                    ? 'border-primary/40 bg-primary/5 shadow-sm'
-                    : 'border-border/50 hover:border-primary/30 hover:bg-muted/30 hover:shadow-sm',
+                    ? 'border-primary/40 bg-primary/5 shadow-none'
+                    : 'border-border/50 hover:border-primary/30 hover:bg-muted/30 shadow-none',
                 )}
               >
                 <span
@@ -331,11 +332,11 @@ function WelcomeScreen({
                       : 'bg-muted/50 text-muted-foreground group-hover:text-primary',
                   )}
                 >
-                  <Icon className="size-4" />
+                  <Icon className="size-4 shrink-0" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-base font-medium text-foreground">{item.title}</p>
+                    <p className="truncate text-[15px] font-medium text-foreground">{item.title}</p>
                     <ArrowRight
                       className={cn(
                         'size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1',
@@ -343,8 +344,8 @@ function WelcomeScreen({
                       )}
                     />
                   </div>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
-                  <p className="mt-2.5 line-clamp-1 text-xs text-foreground/50">{item.draft}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+                  <p className="mt-2.5 line-clamp-1 font-mono text-[11px] text-muted-foreground/60">{item.draft}</p>
                 </div>
               </button>
             );
@@ -369,11 +370,11 @@ function WelcomeScreen({
 function EmptyConversation() {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center px-4">
-      <div className="size-16 rounded-3xl flex items-center justify-center mb-5 bg-muted/30">
-        <img src="/Chat.svg" alt="ai" className="size-8" />
+      <div className="size-14 rounded-2xl flex items-center justify-center mb-4 bg-muted/40 border border-border/40">
+        <img src="/Chat.svg" alt="ai" className="size-7" />
       </div>
-      <h2 className="text-2xl font-serif font-semibold mb-2">Start a conversation</h2>
-      <p className="text-base text-muted-foreground max-w-sm leading-relaxed">
+      <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1.5">Start a conversation</h2>
+      <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
         Ask about your project, analyze papers, generate LaTeX, or plan your next research tasks.
       </p>
     </div>
@@ -477,7 +478,7 @@ export function ChatPage() {
                 ) : activeActions.length === 0 && (
                   <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                     <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/30 border border-border/30">
-                      <div className="size-3.5 rounded-full border-2 border-primary/40 border-t-primary animate-spin" />
+                      <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
                       <span className="text-xs text-muted-foreground">Thinking…</span>
                     </div>
                   </div>

@@ -27,7 +27,7 @@ export const readerAnnotationSchema = z.object({
 
 // ── Reader Viewport & Settings ───────────────────────────────────────────────
 
-export const readerPanelSchema = z.enum(['ai', 'details', 'notes']);
+export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations']);
 export const readerNavPanelSchema = z.enum(['outline', 'thumbnails']);
 
 export const readerSettingsSchema = z.object({

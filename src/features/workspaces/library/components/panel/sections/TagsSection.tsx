@@ -14,7 +14,11 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
   const [newTag, setNewTag] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
-  const tags = paper.labels || [];
+  const tags: string[] = (paper as any).tags?.length
+    ? (paper as any).tags
+    : paper.labels?.length
+      ? paper.labels
+      : paper.keywords || [];
 
   const handleAddTag = () => {
     const trimmed = newTag.trim();
@@ -98,9 +102,11 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
               <Hash className="size-3 text-muted-foreground/60" />
               <span>{tag}</span>
               <button
+                type="button"
                 onClick={() => handleRemoveTag(tag)}
-                className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity ml-0.5 cursor-pointer"
+                className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity ml-0.5 cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
                 title={`Remove tag "${tag}"`}
+                aria-label={`Remove tag "${tag}"`}
               >
                 <X className="size-3 text-foreground" />
               </button>

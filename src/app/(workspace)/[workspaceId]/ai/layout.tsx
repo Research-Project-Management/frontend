@@ -36,7 +36,7 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
             <button
               onClick={() => setSourcesOpen(true)}
               title="Show sources"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#dadce0] bg-white px-3 text-[12px] font-medium text-[#5f6368] shadow-sm hover:bg-[#f1f3f4] hover:text-[#202222] transition-colors"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-card px-3 text-[12px] font-medium text-muted-foreground shadow-none hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <PanelRightOpen className="size-3.5" />
               Sources
@@ -49,14 +49,14 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
 
       {/* Sources panel — right side, wiki mode only */}
       {showSources && sourcesOpen && (
-        <aside className="shrink-0 h-full w-82 border-l border-[#dadce0] bg-white flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-4 border-b border-[#dadce0]">
-            <h2 className="text-[13px] font-semibold text-[#202222] tracking-tight">
+        <aside className="shrink-0 h-full w-80 border-l border-border/50 bg-card flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/50">
+            <h2 className="text-[13px] font-semibold text-foreground tracking-tight">
               Sources
             </h2>
             <button
               onClick={() => setSourcesOpen(false)}
-              className="rounded-lg p-1.5 text-[#5f6368] hover:bg-[#f1f3f4] hover:text-[#202222] transition-colors"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
               title="Close sources"
             >
               <PanelRightClose className="size-4" />

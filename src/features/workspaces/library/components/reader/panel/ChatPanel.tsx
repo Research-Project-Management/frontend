@@ -142,8 +142,9 @@ const MessageBubble = React.memo(function MessageBubble({
 
         {!isUser && !isStreaming && (
           <button
+            type="button"
             onClick={handleCopy}
-            className="mt-2 flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-[10px] text-muted-foreground/50 transition-all hover:border-border hover:bg-muted hover:text-foreground"
+            className="mt-2 flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-[10px] text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
             {copied ? 'Copied' : 'Copy'}
@@ -453,9 +454,11 @@ export default function ChatPanel({
               {messages.length > 0 ? `${messages.length} msg` : 'paper chat'}
             </span>
             <button
+              type="button"
               onClick={isStreaming ? handleStop : () => handleSend(inputMessage)}
               disabled={(!inputMessage.trim() && !selectionContext && !isStreaming) || isLoadingHistory}
-              className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-20"
+              aria-label={isStreaming ? 'Stop generating' : 'Send message'}
+              className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {isStreaming ? <Square className="size-3.5" /> : <ArrowUp className="size-4" />}
             </button>

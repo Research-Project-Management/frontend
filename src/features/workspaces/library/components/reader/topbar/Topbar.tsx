@@ -12,6 +12,7 @@ import {
   PanelRightOpen,
   RefreshCcw,
   StickyNote,
+  Highlighter,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Separator } from '@/shared/components/ui/separator';
@@ -285,6 +286,14 @@ export default function Topbar({
             label="Notes"
             shortcut="⌘⇧N"
             count={paper?.notes?.length}
+          />
+          <PanelButton
+            panel="annotations"
+            activePanel={activePanel}
+            onToggle={onPanelToggle}
+            icon={Highlighter}
+            label="Annotations"
+            shortcut="⌘⇧H"
           />
         </div>
 

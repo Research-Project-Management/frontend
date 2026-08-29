@@ -110,7 +110,7 @@ export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = {
   reportNumber: { field: 'reportNumber', label: 'Report #', type: 'text', category: 'identifiers', placeholder: 'Report number', mono: true },
   reportType: { field: 'reportType', label: 'Report Type', type: 'text', category: 'publication', placeholder: 'Technical Report / White Paper' },
   thesisType: { field: 'thesisType', label: 'Type', type: 'text', category: 'publication', placeholder: 'Ph.D. Dissertation / Master\'s Thesis' },
-  genre: { field: 'genre', label: 'Genre / Type', type: 'text', category: 'publication', placeholder: 'Document genre' },
+  genre: { field: 'genre', label: 'Genre', type: 'text', category: 'publication', placeholder: 'Document genre' },
   identifier: { field: 'identifier', label: 'Identifier', type: 'text', category: 'identifiers', placeholder: 'Unique resource ID', mono: true },
   versionNumber: { field: 'versionNumber', label: 'Version', type: 'text', category: 'publication', placeholder: 'e.g. 1.0.0', mono: true },
   legalStatus: { field: 'legalStatus', label: 'Legal Status', type: 'text', category: 'publication', placeholder: 'e.g. Active, Expired, Pending' },
@@ -179,7 +179,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
     label: 'Preprint (arXiv / SSRN)',
     category: 'academic',
     primaryCreatorType: 'author',
-    creatorTypes: buildCreators(['author', 'contributor', 'reviewedAuthor'], 'author'),
+    creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'translator'], 'author'),
     fields: buildFields([
       'genre', 'institution', 'series', 'seriesNumber', 'date',
       'DOI', 'arxivId', 'PMID', 'citationKey', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
@@ -191,7 +191,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
     label: 'Thesis / Dissertation',
     category: 'academic',
     primaryCreatorType: 'author',
-    creatorTypes: buildCreators(['author', 'contributor'], 'author'),
+    creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'translator'], 'author'),
     fields: buildFields([
       'thesisType', 'university', 'place', 'date',
       'numPages', 'language', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
@@ -203,7 +203,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
     label: 'Report',
     category: 'academic',
     primaryCreatorType: 'author',
-    creatorTypes: buildCreators(['author', 'editor', 'translator', 'seriesEditor', 'contributor'], 'author'),
+    creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'seriesEditor', 'translator'], 'author'),
     fields: buildFields([
       'reportNumber', 'reportType', 'institution', 'place', 'date',
       'pages', 'language', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
@@ -215,7 +215,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
     label: 'Dataset',
     category: 'academic',
     primaryCreatorType: 'author',
-    creatorTypes: buildCreators(['author', 'contributor'], 'author'),
+    creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'translator'], 'author'),
     fields: buildFields([
       'identifier', 'genre', 'versionNumber', 'publisher', 'place',
       'date', 'DOI', 'shortTitle', 'url', 'accessDate', 'rights', 'extra'
@@ -223,7 +223,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
   },
   presentation: {
     itemType: 'presentation',
-    label: 'Presentation / Slides',
+    label: 'Presentation',
     category: 'academic',
     primaryCreatorType: 'presenter',
     creatorTypes: buildCreators(['presenter', 'contributor'], 'presenter'),
@@ -249,7 +249,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
   },
   bookSection: {
     itemType: 'bookSection',
-    label: 'Book Section / Chapter',
+    label: 'Book Section',
     category: 'books',
     primaryCreatorType: 'author',
     creatorTypes: buildCreators(['author', 'bookAuthor', 'editor', 'translator', 'seriesEditor', 'contributor'], 'author'),
@@ -544,7 +544,7 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
   },
   computerProgram: {
     itemType: 'computerProgram',
-    label: 'Computer Program / Software',
+    label: 'Software',
     category: 'documents',
     primaryCreatorType: 'programmer',
     creatorTypes: buildCreators(['programmer', 'contributor'], 'programmer'),
@@ -553,43 +553,77 @@ export const ZOTERO_SCHEMA_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> 
       'place', 'company', 'ISBN', 'shortTitle', 'url', 'accessDate', 'rights', 'extra'
     ]),
   },
+  instantMessage: {
+    itemType: 'instantMessage',
+    label: 'Instant Message',
+    category: 'documents',
+    primaryCreatorType: 'author',
+    creatorTypes: buildCreators(['author', 'recipient', 'contributor'], 'author'),
+    fields: buildFields([
+      'date', 'language', 'shortTitle', 'url', 'accessDate', 'rights', 'extra'
+    ]),
+  },
+  radioBroadcast: {
+    itemType: 'radioBroadcast',
+    label: 'Radio Broadcast',
+    category: 'media',
+    primaryCreatorType: 'director',
+    creatorTypes: buildCreators(['director', 'producer', 'scriptwriter', 'guest', 'contributor'], 'director'),
+    fields: buildFields([
+      'programTitle', 'episodeNumber', 'audioRecordingFormat', 'place', 'network', 'date', 'runningTime', 'language', 'shortTitle', 'url', 'accessDate', 'rights', 'extra'
+    ]),
+  },
+  tvBroadcast: {
+    itemType: 'tvBroadcast',
+    label: 'TV Broadcast',
+    category: 'media',
+    primaryCreatorType: 'director',
+    creatorTypes: buildCreators(['director', 'producer', 'scriptwriter', 'guest', 'contributor'], 'director'),
+    fields: buildFields([
+      'programTitle', 'episodeNumber', 'videoRecordingFormat', 'place', 'network', 'date', 'runningTime', 'language', 'shortTitle', 'url', 'accessDate', 'rights', 'extra'
+    ]),
+  },
 };
 
-// ── 4. Flat & Grouped Categories for Dropdown UI ───────────────────────────
+// ── 4. Flat Categories for Dropdown UI (Sorted Alphabetically A-Z matching Official Zotero) ───
 export const ALL_ITEM_TYPES_FLAT = [
-  { value: 'journalArticle', label: 'Journal Article' },
-  { value: 'conferencePaper', label: 'Conference Paper' },
-  { value: 'preprint', label: 'Preprint (arXiv / SSRN)' },
-  { value: 'book', label: 'Book' },
-  { value: 'bookSection', label: 'Book Section / Chapter' },
-  { value: 'thesis', label: 'Thesis / Dissertation' },
-  { value: 'report', label: 'Report / White Paper' },
-  { value: 'webpage', label: 'Web Page' },
-  { value: 'patent', label: 'Patent' },
-  { value: 'dataset', label: 'Dataset' },
-  { value: 'presentation', label: 'Presentation / Slides' },
-  { value: 'document', label: 'Document' },
-  { value: 'manuscript', label: 'Manuscript' },
-  { value: 'blogPost', label: 'Blog Post' },
-  { value: 'magazineArticle', label: 'Magazine Article' },
-  { value: 'newspaperArticle', label: 'Newspaper Article' },
-  { value: 'forumPost', label: 'Forum Post' },
-  { value: 'dictionaryEntry', label: 'Dictionary Entry' },
-  { value: 'encyclopediaArticle', label: 'Encyclopedia Article' },
-  { value: 'computerProgram', label: 'Software / Program' },
-  { value: 'film', label: 'Film / Video' },
-  { value: 'audioRecording', label: 'Audio Recording' },
-  { value: 'podcast', label: 'Podcast' },
-  { value: 'interview', label: 'Interview' },
-  { value: 'letter', label: 'Letter' },
-  { value: 'email', label: 'E-mail' },
-  { value: 'map', label: 'Map' },
   { value: 'artwork', label: 'Artwork' },
-  { value: 'statute', label: 'Statute' },
+  { value: 'audioRecording', label: 'Audio Recording' },
   { value: 'bill', label: 'Bill' },
+  { value: 'blogPost', label: 'Blog Post' },
+  { value: 'book', label: 'Book' },
+  { value: 'bookSection', label: 'Book Section' },
   { value: 'case', label: 'Case' },
+  { value: 'conferencePaper', label: 'Conference Paper' },
+  { value: 'dataset', label: 'Dataset' },
+  { value: 'dictionaryEntry', label: 'Dictionary Entry' },
+  { value: 'document', label: 'Document' },
+  { value: 'email', label: 'E-mail' },
+  { value: 'encyclopediaArticle', label: 'Encyclopedia Article' },
+  { value: 'film', label: 'Film' },
+  { value: 'forumPost', label: 'Forum Post' },
   { value: 'hearing', label: 'Hearing' },
+  { value: 'instantMessage', label: 'Instant Message' },
+  { value: 'interview', label: 'Interview' },
+  { value: 'journalArticle', label: 'Journal Article' },
+  { value: 'letter', label: 'Letter' },
+  { value: 'magazineArticle', label: 'Magazine Article' },
+  { value: 'manuscript', label: 'Manuscript' },
+  { value: 'map', label: 'Map' },
+  { value: 'newspaperArticle', label: 'Newspaper Article' },
+  { value: 'patent', label: 'Patent' },
+  { value: 'podcast', label: 'Podcast' },
+  { value: 'preprint', label: 'Preprint' },
+  { value: 'presentation', label: 'Presentation' },
+  { value: 'radioBroadcast', label: 'Radio Broadcast' },
+  { value: 'report', label: 'Report' },
+  { value: 'computerProgram', label: 'Software' },
   { value: 'standard', label: 'Standard' },
+  { value: 'statute', label: 'Statute' },
+  { value: 'thesis', label: 'Thesis' },
+  { value: 'tvBroadcast', label: 'TV Broadcast' },
+  { value: 'videoRecording', label: 'Video Recording' },
+  { value: 'webpage', label: 'Web Page' },
 ];
 
 export const ITEM_TYPE_GROUPS: ItemTypeCategoryGroup[] = [

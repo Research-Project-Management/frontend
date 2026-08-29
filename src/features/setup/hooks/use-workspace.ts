@@ -7,8 +7,7 @@ import { toast } from 'sonner';
 import { useUpload } from '@/shared/hooks/use-upload';
 import { useUpdateWorkspace as useWorkspaceUpdateMutation } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useDeleteWorkspace as useWorkspaceDeleteMutation } from '@/features/workspaces/shell/hooks/use-workspace';
-import { createWorkspace } from '@/features/workspaces/shell/services/workspace.service';
-import { workspaceKeys } from '@/features/workspaces/constants/workspace.keys';
+import { createWorkspace, workspaceKeys } from '@/features/workspaces/shell/services/workspace.service';
 import type { CreateWorkspaceSchema } from '../schemas/workspace.schema';
 import type { Workspace } from '../types/workspace.types';
 

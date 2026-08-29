@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import type { SortField, SortOrder } from '../../hooks/library/use-papers';
@@ -59,24 +59,28 @@ export default function PaperTableHeader({
             <th
               key={idx}
               className={cn(
-                'px-3 py-2 text-xs font-medium text-muted-foreground tracking-normal',
+                'px-3 py-2 text-xs font-medium tracking-normal select-none',
                 col.className,
-                col.sortable && 'cursor-pointer hover:text-foreground transition-colors'
+                col.sortable ? 'cursor-pointer text-muted-foreground' : 'text-muted-foreground'
               )}
               onClick={() => col.field && col.sortable && onSort(col.field)}
             >
-              <div className="flex items-center gap-1.5 group">
-                <span className="truncate">{col.label}</span>
-                {col.sortable && (
-                  <span className="shrink-0 text-muted-foreground/40 group-hover:text-foreground transition-colors">
-                    {isSorted ? (
-                      sortOrder === 'asc' ? (
-                        <ArrowUp className="size-3 text-primary" />
-                      ) : (
-                        <ArrowDown className="size-3 text-primary" />
-                      )
+              <div className="inline-flex items-center gap-1.5 group/col">
+                <span
+                  className={cn(
+                    'truncate transition-colors rounded px-1.5 py-0.5 -mx-1.5',
+                    col.sortable && 'hover:text-foreground hover:bg-muted/60',
+                    isSorted && 'text-foreground font-semibold'
+                  )}
+                >
+                  {col.label}
+                </span>
+                {col.sortable && isSorted && (
+                  <span className="shrink-0 text-foreground">
+                    {sortOrder === 'asc' ? (
+                      <ArrowUp className="size-3.5" />
                     ) : (
-                      <ArrowUpDown className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowDown className="size-3.5" />
                     )}
                   </span>
                 )}

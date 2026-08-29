@@ -35,6 +35,17 @@ export type DeleteWorkspaceResult = {
   alreadyDeleted: boolean;
 };
 
+// ── Query Keys ────────────────────────────────────────────────────────────────
+
+export const workspaceKeys = {
+  all: ['workspaces'] as const,
+  lists: () => [...workspaceKeys.all, 'list'] as const,
+  list: (filters?: Record<string, unknown>) => [...workspaceKeys.lists(), filters] as const,
+  details: () => [...workspaceKeys.all, 'detail'] as const,
+  detail: (idOrUrl: string) => [...workspaceKeys.details(), idOrUrl] as const,
+  members: (workspaceId: string) => [...workspaceKeys.detail(workspaceId), 'members'] as const,
+};
+
 // ── Services ──────────────────────────────────────────────────────────────────
 
 export const fetchAllWorkspaces = (signal?: AbortSignal) =>
@@ -62,3 +73,4 @@ export const deleteWorkspaceById = async (
     throw error;
   }
 };
+

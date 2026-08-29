@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { workspaceKeys } from '@/features/workspaces/constants/workspace.keys';
+import { workspaceKeys } from '@/features/workspaces/shell/services/workspace.service';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {

@@ -197,22 +197,20 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
           const wsId = parts[1] === 'library' ? parts[0] : parts[1];
           formData.append('workspaceId', wsId);
           formData.append('source', 'library');
-          formData.append('skipFileRecord', 'true');
-        } else if (parts[0] === 'workspace') {
+        } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
           formData.append('workspaceId', parts[1]);
         } else if (parts[0] === 'project') {
           formData.append('projectId', parts[1]);
         } else if (parts[0] === 'page') {
           formData.append('pageId', parts[1]);
         }
-      } else if (parts.length === 1) {
+      } else if (parts.length === 1 && !['avatars', 'general', 'workspace'].includes(parts[0])) {
         formData.append('workspaceId', parts[0]);
       }
     } else if (scope) {
       if ((scope.type as string) === 'library' && scope.id) {
         formData.append('workspaceId', scope.id);
         formData.append('source', 'library');
-        formData.append('skipFileRecord', 'true');
       } else if (scope.type === 'workspace' && scope.id) {
         formData.append('workspaceId', scope.id);
       } else if (scope.type === 'project' && scope.id) {
@@ -244,7 +242,20 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
           reject(new Error('Failed to parse backend response'));
         }
       } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
+        let errorMsg = `Upload failed with status ${xhr.status}`;
+        try {
+          const errRes = JSON.parse(xhr.responseText) as Record<string, any>;
+          if (errRes.message) {
+            errorMsg = Array.isArray(errRes.message)
+              ? errRes.message.join(', ')
+              : errRes.message;
+          } else if (errRes.error) {
+            errorMsg = errRes.error;
+          }
+        } catch {
+          // ignore
+        }
+        reject(new Error(errorMsg));
       }
     };
 
@@ -257,6 +268,115 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
         : `${API_BASE_URL}/api/files/upload-r2`;
     xhr.open('POST', targetUploadUrl, true);
 
+    const token = getAuthToken();
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    if (signal) {
+      signal.addEventListener('abort', () => xhr.abort(), { once: true });
+    }
+
+    xhr.send(formData);
+  });
+}
+
+export function uploadFileWithDetails(
+  payload: FileUploadPayload,
+): Promise<{ url: string; fileId: string }> {
+  const { file, prefix, scope, signal, onProgress } = payload;
+
+  return new Promise<{ url: string; fileId: string }>((resolve, reject) => {
+    if (signal?.aborted) {
+      return reject(new Error('Upload aborted by user'));
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileName', file.name);
+
+    if (prefix) {
+      const parts = prefix.split('/').filter(Boolean);
+      if (parts.length >= 2) {
+        if (parts[1] === 'library' || parts[0] === 'library') {
+          const wsId = parts[1] === 'library' ? parts[0] : parts[1];
+          formData.append('workspaceId', wsId);
+          formData.append('source', 'library');
+        } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
+          formData.append('workspaceId', parts[1]);
+        } else if (parts[0] === 'project') {
+          formData.append('projectId', parts[1]);
+        } else if (parts[0] === 'page') {
+          formData.append('pageId', parts[1]);
+        }
+      } else if (parts.length === 1 && !['avatars', 'general', 'workspace'].includes(parts[0])) {
+        formData.append('workspaceId', parts[0]);
+      }
+    } else if (scope) {
+      if ((scope.type as string) === 'library' && scope.id) {
+        formData.append('workspaceId', scope.id);
+        formData.append('source', 'library');
+      } else if (scope.type === 'workspace' && scope.id) {
+        formData.append('workspaceId', scope.id);
+      } else if (scope.type === 'project' && scope.id) {
+        formData.append('projectId', scope.id);
+      } else if (scope.type === 'page' && scope.id) {
+        formData.append('pageId', scope.id);
+      }
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.withCredentials = true;
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        onProgress(percentComplete);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText) as Record<string, any>;
+          const payloadData = response.data || response;
+          const rawUrl =
+            payloadData.url ||
+            payloadData.file?.url ||
+            payloadData.path ||
+            '';
+          const resolvedUrl = resolveFileUrl(rawUrl) || rawUrl;
+          const fileId = payloadData.file?.id || payloadData.id || '';
+          resolve({ url: resolvedUrl, fileId });
+        } catch {
+          reject(new Error('Failed to parse backend response'));
+        }
+      } else {
+        let errorMsg = `Upload failed with status ${xhr.status}`;
+        try {
+          const errRes = JSON.parse(xhr.responseText) as Record<string, any>;
+          if (errRes.message) {
+            errorMsg = Array.isArray(errRes.message)
+              ? errRes.message.join(', ')
+              : errRes.message;
+          } else if (errRes.error) {
+            errorMsg = errRes.error;
+          }
+        } catch {
+          // ignore
+        }
+        reject(new Error(errorMsg));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.onabort = () => reject(new Error('Upload aborted by user'));
+
+    const targetUploadUrl =
+      typeof window !== 'undefined'
+        ? '/api/files/upload-r2'
+        : `${API_BASE_URL}/api/files/upload-r2`;
+    xhr.open('POST', targetUploadUrl, true);
 
     const token = getAuthToken();
     if (token) {

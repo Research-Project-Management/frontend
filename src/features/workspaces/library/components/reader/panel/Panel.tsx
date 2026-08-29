@@ -7,6 +7,7 @@ import {
   Loader2,
   MessageSquare,
   StickyNote,
+  Highlighter,
   Trash2,
   X,
 } from 'lucide-react';
@@ -17,17 +18,20 @@ import type { ReaderPanel } from '../../../types/reader.types';
 import { CopilotDrawer } from '../../copilot/CopilotDrawer';
 import InfoSection from '../../panel/sections/InfoSection';
 import NotesPanel from './NotesPanel';
+import AnnotationsPanel from './AnnotationsPanel';
 
 const PANEL_ICONS: Record<ReaderPanel, React.ComponentType<{ className?: string }>> = {
   ai: MessageSquare,
   details: Info,
   notes: StickyNote,
+  annotations: Highlighter,
 };
 
 const PANEL_TITLES: Record<ReaderPanel, string> = {
   ai: 'Assistant',
   details: 'Info',
   notes: 'Notes',
+  annotations: 'Annotations',
 };
 
 // ── Props ────────────────────────────────────────────────────
@@ -185,6 +189,17 @@ export default function Sidebar({
               workspaceId={workspaceId}
               pendingText={pendingNoteText}
               onClearPendingText={clearPendingNoteText}
+            />
+          ) : null}
+        </div>
+
+        {/* Annotations panel */}
+        <div className={cn('h-full', activePanel !== 'annotations' && 'hidden')}>
+          {paper ? (
+            <AnnotationsPanel
+              paper={paper}
+              workspaceId={workspaceId}
+              attachmentId={paper.attachments?.[0]?.id}
             />
           ) : null}
         </div>

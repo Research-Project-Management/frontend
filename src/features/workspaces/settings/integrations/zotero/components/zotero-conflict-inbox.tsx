@@ -123,26 +123,26 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
             role="tab"
             aria-selected={filterTab === 'conflicts'}
             onClick={() => setFilterTab('conflicts')}
-            className={`px-3 py-1.5 rounded-md font-medium transition-all outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer ${
               filterTab === 'conflicts'
                 ? 'bg-background text-foreground shadow-2xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Conflicts ({conflicts.length})
+            Conflicts (<span className="tabular-nums font-mono">{conflicts.length}</span>)
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={filterTab === 'pending'}
             onClick={() => setFilterTab('pending')}
-            className={`px-3 py-1.5 rounded-md font-medium transition-all outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer ${
               filterTab === 'pending'
                 ? 'bg-background text-foreground shadow-2xs font-semibold'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            Pending / In-Flight ({pendingPushes.length})
+            Pending / In-Flight (<span className="tabular-nums font-mono">{pendingPushes.length}</span>)
           </button>
         </div>
       </div>

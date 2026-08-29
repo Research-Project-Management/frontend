@@ -1,6 +1,6 @@
-# 🚀 RPM - Research Project Management
+# 🚀 Flux — Research Project Management (SaaS Platform)
 
-A comprehensive research project management platform with AI integration, helping research teams organize work, manage documents, and collaborate effectively.
+A cloud-native, multi-tenant B2B/Academic SaaS platform with AI integration, engineered for research teams to collaborate seamlessly, manage literature, draft manuscripts, and track research projects from start to finish.
 
 ## ✨ Key Features
 
@@ -50,12 +50,15 @@ A comprehensive research project management platform with AI integration, helpin
 - **React 19** - Latest React with React Server Components support
 - **TypeScript** - Strict type safety
 - **TailwindCSS 4** - Modern utility-first CSS framework
+- **Geist Sans & Geist Mono** - High-density typography with OpenType features (`cv02-cv11`, `tnum`)
 
-### UI Components
+### UI & Design System
 
-- **Radix UI** - Accessible component primitives
-- **Lucide React** - Icon library
-- **shadcn/ui** - Component system
+- **Flat Precision SaaS Architecture** - 4-color foundation (Black, White, Zinc Gray, SaaS Blue)
+- **Radix UI** - Accessible headless component primitives
+- **Lucide React** - High-precision icon library with optical centering
+- **shadcn/ui** - Semantic token-based component system
+- **6-Layer Platform Model** - Header Chrome, Sidebar, Action Toolbar, Data Workspaces, Overlays, 5 Interactive States
 
 ### State & Data Management
 
@@ -73,7 +76,7 @@ A comprehensive research project management platform with AI integration, helpin
 - **date-fns** - Date utilities
 - **react-pdf** - PDF rendering
 - **emoji-picker-react** - Emoji support
-- **sonner** - Toast notifications
+- **sonner** - Toast notifications with undo action
 
 ## 🚀 Getting Started
 

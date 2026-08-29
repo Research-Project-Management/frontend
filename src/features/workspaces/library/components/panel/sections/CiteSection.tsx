@@ -74,9 +74,11 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   );
 
   const citeKey = getPaperCitationKey(paper);
+  const paperAuthors = paper.authors;
+  const paperCreators = (paper as any)?.creators;
   const authors = useMemo(
-    () => normalizeAuthors(paper.authors, (paper as any)?.creators),
-    [paper.authors, (paper as any)?.creators],
+    () => normalizeAuthors(paperAuthors, paperCreators),
+    [paperAuthors, paperCreators],
   );
   const parsedAuthors = useMemo(() => authors.map(parseAuthor), [authors]);
 
@@ -287,7 +289,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'bibliography'}
           onClick={() => setTabMode('bibliography')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'bibliography'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -301,7 +303,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'intext'}
           onClick={() => setTabMode('intext')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'intext'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -315,7 +317,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'bibtex'}
           onClick={() => setTabMode('bibtex')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'bibtex'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -329,7 +331,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'ris'}
           onClick={() => setTabMode('ris')}
           className={cn(
-            'py-1 px-1.5 text-[11px] font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             tabMode === 'ris'
               ? 'bg-background text-foreground shadow-xs font-semibold'
               : 'text-muted-foreground hover:text-foreground',
@@ -357,7 +359,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
                 onClick={() => setActiveStyle(style.id)}
                 title={style.name}
                 className={cn(
-                  'flex-1 py-1 px-1.5 text-[11px] font-medium rounded-md transition-all cursor-pointer truncate text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none shrink-0 min-w-12',
+                  'flex-1 py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer truncate text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none shrink-0 min-w-12',
                   isSelected
                     ? 'bg-foreground text-background font-semibold shadow-xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -374,9 +376,9 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
       <div className="p-3 bg-muted/20 rounded-lg border border-border/40 text-xs min-w-0">
         {tabMode === 'bibtex' ? (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+            <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
               <span>BibTeX Entry</span>
-              <span className="text-[10px] text-muted-foreground/80">@{citeKey}</span>
+              <span className="text-xs text-muted-foreground/80">@{citeKey}</span>
             </div>
             <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap break-all leading-relaxed bg-background/80 p-3 rounded-md border border-border/30 overflow-x-auto select-text">
               {bibtexContent}
@@ -384,9 +386,9 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           </div>
         ) : tabMode === 'ris' ? (
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+            <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
               <span>RIS Format</span>
-              <span className="text-[10px] text-muted-foreground/80">EndNote / Zotero</span>
+              <span className="text-xs text-muted-foreground/80">EndNote / Zotero</span>
             </div>
             <pre className="font-mono text-xs text-foreground/90 whitespace-pre-wrap break-all leading-relaxed bg-background/80 p-3 rounded-md border border-border/30 overflow-x-auto select-text">
               {risContent}
@@ -394,7 +396,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           </div>
         ) : tabMode === 'intext' ? (
           <div className="p-3 bg-background/80 rounded-md border border-border/30 space-y-1">
-            <span className="text-[11px] font-medium text-muted-foreground block">
+            <span className="text-xs font-medium text-muted-foreground block">
               In-Text Citation ({activeStyle.toUpperCase()}):
             </span>
             <p className="text-foreground font-mono text-sm font-semibold select-text">
@@ -403,7 +405,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           </div>
         ) : (
           <div className="p-3 bg-background/80 rounded-md border border-border/30 space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
               <span>Formatted Reference ({activeStyle.toUpperCase()}):</span>
             </div>
             {isLoading && !cslData ? (
@@ -413,14 +415,14 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
               </div>
             ) : cslData?.html ? (
               <div
-                className="text-foreground/90 leading-relaxed font-serif text-[13px] break-words select-text [&>i]:italic [&>b]:font-semibold"
+                className="text-foreground/90 leading-relaxed font-serif text-sm break-words select-text [&>i]:italic [&>b]:font-semibold"
                 dangerouslySetInnerHTML={{
                   __html: cslData.html || formattedClientCitation.bibliographyHtml,
                 }}
               />
             ) : (
               <div
-                className="text-foreground/90 leading-relaxed font-serif text-[13px] break-words select-text [&>i]:italic [&>b]:font-semibold"
+                className="text-foreground/90 leading-relaxed font-serif text-sm break-words select-text [&>i]:italic [&>b]:font-semibold"
                 dangerouslySetInnerHTML={{
                   __html: formattedClientCitation.bibliographyHtml,
                 }}

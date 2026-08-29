@@ -79,13 +79,13 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
               {/* Progress Bar */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-medium">
-                  <span>Progress ({job.processed}/{job.total})</span>
-                  <span>{job.progressPercentage}%</span>
+                  <span>Progress (<span className="tabular-nums font-mono">{job.processed}</span>/<span className="tabular-nums font-mono">{job.total}</span>)</span>
+                  <span className="tabular-nums font-mono font-semibold">{job.progressPercentage}%</span>
                 </div>
                 <div className="h-2 w-full bg-muted/50 rounded-full overflow-hidden border border-border/40">
                   <div
                     className={cn(
-                      'h-full transition-all duration-300 rounded-full',
+                      'h-full transition-[width] duration-300 ease-out rounded-full',
                       isCompleted ? 'bg-emerald-500' : isFailed ? 'bg-destructive' : 'bg-primary',
                     )}
                     style={{ width: `${job.progressPercentage}%` }}
@@ -96,23 +96,23 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
               {/* Counts metrics */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2.5 rounded-lg border border-border/50 bg-card/60 text-center">
-                  <span className="text-[10px] text-muted-foreground block">Total</span>
-                  <span className="text-sm font-bold text-foreground">{job.total}</span>
+                  <span className="text-xs text-muted-foreground block">Total</span>
+                  <span className="text-sm font-bold text-foreground font-mono tabular-nums">{job.total}</span>
                 </div>
                 <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-center">
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block">Success</span>
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{job.successCount}</span>
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 block">Success</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{job.successCount}</span>
                 </div>
                 <div className="p-2.5 rounded-lg border border-destructive/20 bg-destructive/5 text-center">
-                  <span className="text-[10px] text-destructive block">Failed</span>
-                  <span className="text-sm font-bold text-destructive">{job.failedCount}</span>
+                  <span className="text-xs text-destructive block">Failed</span>
+                  <span className="text-sm font-bold text-destructive font-mono tabular-nums">{job.failedCount}</span>
                 </div>
               </div>
 
               {/* Imported papers list */}
               {job.successful && job.successful.length > 0 && (
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Imported Papers
                   </p>
                   {job.successful.map((item, idx) => (
@@ -124,7 +124,7 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
                         <FileText className="size-3.5 text-primary shrink-0" />
                         <span className="truncate font-medium">{item.title}</span>
                       </div>
-                      <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                      <Badge variant="outline" className="text-xs h-4.5 font-mono">
                         @{item.citationKey}
                       </Badge>
                     </div>
@@ -135,16 +135,16 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
               {/* Failed items list */}
               {job.failed && job.failed.length > 0 && (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  <p className="text-[11px] font-semibold text-destructive uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-destructive uppercase tracking-wider">
                     Failed Items
                   </p>
                   {job.failed.map((fail, idx) => (
                     <div
                       key={idx}
-                      className="p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-[11px] text-destructive space-y-0.5"
+                      className="p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive space-y-0.5"
                     >
                       <p className="font-semibold">{fail.item?.title || fail.item?.doi || `Item #${idx + 1}`}</p>
-                      <p className="opacity-80 text-[10px]">{fail.error}</p>
+                      <p className="opacity-80 text-xs">{fail.error}</p>
                     </div>
                   ))}
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookOpen, FolderOpen, X, Tag, Star, History, Inbox, Files, Trash2 } from 'lucide-react';
+import { BookOpen, FolderOpen, X, Tag, History, Inbox, Files, Trash2 } from 'lucide-react';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
@@ -60,8 +60,6 @@ export default function LibraryPage() {
       return { title: selectedCollection.name, icon: FolderOpen };
     }
     switch (activeFilter) {
-      case 'starred':
-        return { title: 'Favorites', icon: Star };
       case 'recent-read':
         return { title: 'Recently Read', icon: History };
       case 'unfiled':

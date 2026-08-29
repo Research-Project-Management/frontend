@@ -6,6 +6,11 @@
 
 web
 
+## Domain & Delivery Model
+
+- **Domain Category**: B2B & Academic Research Management SaaS (Software-as-a-Service).
+- **Delivery Model**: Multi-tenant cloud-native SaaS with workspace isolation, role-based access control (RBAC), real-time collaboration, and AI-assisted workflows.
+
 ## Users
 Students, lecturers, PhD candidates, researchers, and scientific research teams. They need an environment to collaborate, organize literature, and manage research projects from start to finish.
 
@@ -24,5 +29,5 @@ Primarily used in academic contexts, university environments, and R&D labs. User
 - **Data Flow:** The frontend leverages Zustand and React Query; form handling relies on React Hook Form + Zod.
 
 ## Brand Commitments
-- **Project Name:** Research Management (rpm / Flux).
-- **Design Direction:** Adheres to a design system and UI/UX feel akin to Midday.ai—focusing on minimalism, clarity, professional typography, and strong visual hierarchy to reduce cognitive load during complex research tasks.
+- **Project Name:** Flux — Research Management Platform.
+- **Design Direction:** Flat Precision SaaS (Academic Workbench) — built upon a strict 4-color foundation (Black, White, Zinc Gray, SaaS Blue), Geist Sans & Geist Mono typography with OpenType precision (`cv02-cv11`, `tnum`), 13px dense tables, negative tracking (`-0.011em`), and a 6-layer platform model adhering to international SaaS benchmarks (Linear, Vercel, Midday, Supabase).

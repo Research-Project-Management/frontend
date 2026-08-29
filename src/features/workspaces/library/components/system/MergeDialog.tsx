@@ -83,7 +83,7 @@ export default function MergeDialog({
                 <div
                   key={paper.id}
                   onClick={() => setSelectedMasterId(paper.id)}
-                  className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                  className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
                     isSelected
                       ? 'border-primary bg-primary/5 shadow-xs'
                       : 'border-border/70 hover:border-border hover:bg-muted/30'
@@ -99,19 +99,19 @@ export default function MergeDialog({
                         {paper.title || 'Untitled Paper'}
                       </Label>
                       {isSelected && (
-                        <Badge variant="default" className="text-[10px] h-4.5 px-1.5 shrink-0">
+                        <Badge variant="default" className="text-xs h-5 px-2 shrink-0 font-medium">
                           Master
                         </Badge>
                       )}
                     </div>
 
-                    <p className="text-[11px] text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {Array.isArray(paper.authors) ? paper.authors.join(', ') : 'Unknown Authors'}
                       {paper.year ? ` (${paper.year})` : ''}
                     </p>
 
                     {paper.doi && (
-                      <p className="text-[10px] text-muted-foreground/80 font-mono truncate">
+                      <p className="text-xs text-muted-foreground font-mono truncate">
                         DOI: {paper.doi}
                       </p>
                     )}

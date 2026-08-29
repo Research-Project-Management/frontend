@@ -550,10 +550,10 @@ export default function PaperUploadDialog({
                   <Label className="text-xs font-semibold text-foreground">
                     Identifier (DOI / arXiv / PubMed)
                   </Label>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Badge variant="outline" className="text-[9px] font-mono px-1 py-0 h-4">DOI</Badge>
-                    <Badge variant="outline" className="text-[9px] font-mono px-1 py-0 h-4">arXiv</Badge>
-                    <Badge variant="outline" className="text-[9px] font-mono px-1 py-0 h-4">PMID</Badge>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5">DOI</Badge>
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5">arXiv</Badge>
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5">PMID</Badge>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -718,7 +718,7 @@ export default function PaperUploadDialog({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{file.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {uploading ? 'Uploading...' : `${formatBytes(file.size)} • PDF`}
                       </p>
                     </div>
@@ -822,7 +822,7 @@ export default function PaperUploadDialog({
                     {folderFiles.slice(0, 10).map((f, i) => (
                       <div key={i} className="px-2.5 py-1.5 flex items-center justify-between">
                         <span className="truncate max-w-64">{f.name}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">{formatBytes(f.size)}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{formatBytes(f.size)}</span>
                       </div>
                     ))}
                   </div>

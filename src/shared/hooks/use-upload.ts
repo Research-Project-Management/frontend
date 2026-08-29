@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { validateFile, uploadFileXhr } from '@/shared/lib/file-client';
+import { validateFile, uploadFileXhr, uploadFileWithDetails } from '@/shared/lib/file-client';
 
 export type UploadStatus = 'pending' | 'uploading' | 'success' | 'error' | 'aborted';
 
@@ -62,7 +62,7 @@ export function useUpload() {
     async (
       file: File,
       options: UseUploadOptions = {},
-    ): Promise<{ id: string; url: string }> => {
+    ): Promise<{ id: string; url: string; fileId?: string }> => {
       const id = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : Math.random().toString(36).substring(7);
@@ -102,7 +102,7 @@ export function useUpload() {
       abortControllers.current[id] = controller;
 
       try {
-        const uploadUrl = await uploadFileXhr({
+        const { url: uploadUrl, fileId } = await uploadFileWithDetails({
           file,
           prefix,
           signal: controller.signal,
@@ -117,7 +117,7 @@ export function useUpload() {
 
         updateUploadState(id, { status: 'success', progress: 100, url: uploadUrl });
         options.onSuccess?.(id, uploadUrl);
-        return { id, url: uploadUrl };
+        return { id, url: uploadUrl, fileId };
       } catch (err) {
         const uploadError = err instanceof Error ? err : new Error('Unknown upload error');
         const isAborted = uploadError.message === 'Upload aborted by user';
@@ -201,6 +201,26 @@ export function useUpload() {
     [uploadFileInternal],
   );
 
+  const uploadFileDetailed = useCallback(
+    async (
+      file: File,
+      optionsOrPrefix?: string | UploadOptions,
+    ): Promise<{ url: string; fileId: string }> => {
+      let options: UseUploadOptions = {};
+      if (typeof optionsOrPrefix === 'string') {
+        options.prefix = optionsOrPrefix;
+      } else if (optionsOrPrefix) {
+        options.prefix = optionsOrPrefix.prefix;
+        options.maxSize = (optionsOrPrefix as UseUploadOptions).maxSize;
+        options.allowedTypes = (optionsOrPrefix as UseUploadOptions).allowedTypes;
+      }
+
+      const { url, fileId } = await uploadFileInternal(file, options);
+      return { url, fileId: fileId || '' };
+    },
+    [uploadFileInternal],
+  );
+
   const uploadFiles = useCallback(
     async (files: File[], options?: UploadOptions): Promise<string[]> => {
       return Promise.all(files.map((file) => uploadFile(file, options)));
@@ -246,6 +266,7 @@ export function useUpload() {
     removeUpload,
     clearAll,
     uploadFile,
+    uploadFileDetailed,
     uploadFiles,
     isUploading,
     progress: legacyProgress,

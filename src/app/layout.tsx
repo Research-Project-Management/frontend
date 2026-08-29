@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
-import { Inter, Lora } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import '@/shared/styles/globals.css';
 import Providers from './providers';
 
-const inter = Inter({ 
+const geistSans = Geist({
+  variable: '--font-sans',
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-sans',
 });
 
-const lora = Lora({
+const geistMono = Geist_Mono({
+  variable: '--font-mono',
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-serif',
 });
 
 export const metadata: Metadata = {
@@ -39,19 +39,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
       <body
-        className={`${inter.variable} ${lora.variable} font-sans antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary min-h-dvh flex flex-col`}
-      >    <Toaster 
-            position='bottom-right' 
-            toastOptions={{
-              className: 'bg-background text-foreground border-border shadow-lg font-sans'
-            }}
-          />
-        <Providers>
-          {children}
-        </Providers>
-
+        className="font-sans antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary min-h-dvh flex flex-col"
+      >
+        <Toaster
+          position="bottom-right"
+          closeButton
+          richColors
+          toastOptions={{
+            classNames: {
+              toast:
+                'bg-background text-foreground border border-border shadow-md font-sans rounded-xl p-3.5 flex items-start gap-3',
+              title: 'font-medium text-sm text-foreground',
+              description: 'text-muted-foreground text-xs mt-0.5',
+              closeButton:
+                '!bg-transparent !border-none !text-muted-foreground hover:!text-foreground !top-2.5 !right-2.5',
+            },
+          }}
+        />
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

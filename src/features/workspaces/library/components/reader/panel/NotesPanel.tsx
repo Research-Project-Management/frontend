@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { Loader2, Plus, Edit3, Trash2, Calendar, FileText, Check, X } from "lucide-react";
-import { toast } from "sonner";
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Loader2, Plus, Edit3, Trash2, Calendar, FileText, Check, X, Tag } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
-import { usePapers } from "@/features/workspaces/library/hooks/library/use-papers";
-import type { Paper, Note } from "@/features/workspaces/library/types/library.types";
+import { useNotes } from '@/features/workspaces/library/hooks/library/use-notes';
+import type { Paper, Note } from '@/features/workspaces/library/types/library.types';
 
 interface NotesPanelProps {
   paper: Paper;
@@ -14,23 +14,44 @@ interface NotesPanelProps {
   onClearPendingText?: () => void;
 }
 
+interface DisplayNote {
+  id: string;
+  title?: string;
+  content: string;
+  tags?: string[];
+  version: number;
+  createdAt?: string;
+  updatedAt?: string;
+  isLegacy: boolean;
+}
+
 export default function NotesPanel({
   paper,
   workspaceId,
   pendingText,
   onClearPendingText,
 }: NotesPanelProps) {
-  const paperService = usePapers({ workspaceId, collectionId: paper.collectionId || "" });
-  const [newNote, setNewNote] = useState("");
+  const {
+    notes: canonicalNotes,
+    isLoading: isNotesLoading,
+    createNote,
+    updateNote,
+    deleteNote,
+    isCreating,
+    isUpdating,
+    isDeleting,
+  } = useNotes(workspaceId, paper.id);
+
+  const [newNote, setNewNote] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
+  const [editingText, setEditingText] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setNewNote("");
+    setNewNote('');
     setEditingId(null);
-    setEditingText("");
+    setEditingText('');
     setDeletingId(null);
   }, [paper.id]);
 
@@ -51,113 +72,146 @@ export default function NotesPanel({
     }
   }, [pendingText, onClearPendingText]);
 
-  const notes: Note[] = useMemo(() => {
-    return (paper.notes ?? []).map((n: any, idx) => {
-      if (typeof n === 'string') {
+  // Read canonical notes first. Only fallback to paper.notes when canonical is empty.
+  const displayNotes: DisplayNote[] = useMemo(() => {
+    if (canonicalNotes && canonicalNotes.length > 0) {
+      return canonicalNotes.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        content: n.contentMd || n.content || '',
+        tags: n.tags || [],
+        version: n.version || 1,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+        isLegacy: false,
+      }));
+    }
+
+    // Compatibility fallback for legacy paper.notes
+    if (paper.notes && Array.isArray(paper.notes) && paper.notes.length > 0) {
+      return paper.notes.map((n: any, idx) => {
+        if (typeof n === 'string') {
+          return {
+            id: `legacy-${idx}`,
+            content: n,
+            version: 1,
+            createdAt: paper.createdAt,
+            updatedAt: paper.updatedAt,
+            isLegacy: true,
+          };
+        }
         return {
-          id: `note-${idx}`,
-          content: n,
-          createdAt: paper.createdAt,
-          updatedAt: paper.updatedAt,
+          id: n.id || `legacy-${idx}`,
+          title: n.title,
+          content: n.content || n.contentMd || '',
+          tags: n.tags || [],
+          version: n.version || 1,
+          createdAt: n.createdAt || paper.createdAt,
+          updatedAt: n.updatedAt || paper.updatedAt,
+          isLegacy: true,
         };
-      }
-      return {
-        id: n.id || `note-${idx}`,
-        content: n.content || '',
-        createdAt: n.createdAt || paper.createdAt,
-        updatedAt: n.updatedAt || paper.updatedAt,
-      };
-    });
-  }, [paper.notes, paper.createdAt, paper.updatedAt]);
+      });
+    }
 
-  const updatePaper = paperService.actions.updatePaper;
+    return [];
+  }, [canonicalNotes, paper.notes, paper.createdAt, paper.updatedAt]);
 
-  const saveNotes = useCallback(
-    (
-      nextNotes: Array<{
-        id?: string;
-        content: string;
-        createdAt?: string;
-        updatedAt?: string;
-      }>,
-      successMessage: string,
-    ) => {
-      const stringNotes = nextNotes.map((n) => (typeof n === 'string' ? n : n.content));
-      updatePaper(
-        { paperId: paper.id, notes: stringNotes as any },
-        { onSuccess: () => toast.success(successMessage) },
-      );
-    },
-    [paper.id, updatePaper],
-  );
-
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     const content = newNote.trim();
     if (!content) return;
-    saveNotes(
-      [...notes.map(({ id, content }: Note) => ({ id, content })), { content }],
-      "Note added",
-    );
-    setNewNote("");
+    try {
+      await createNote({
+        itemId: paper.id,
+        title: 'Note',
+        contentMd: content,
+      });
+      setNewNote('');
+      toast.success('Note added');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add note');
+    }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     const content = editingText.trim();
     if (!editingId || !content) return;
-    saveNotes(
-      notes.map((note: Note) =>
-        note.id === editingId
-          ? { id: note.id, content }
-          : { id: note.id, content: note.content },
-      ),
-      "Note updated",
-    );
-    setEditingId(null);
-    setEditingText("");
+
+    const noteToEdit = displayNotes.find((n) => n.id === editingId);
+    if (!noteToEdit) return;
+
+    try {
+      if (noteToEdit.isLegacy) {
+        // Migrate legacy note edit to a real canonical note record
+        await createNote({
+          itemId: paper.id,
+          title: noteToEdit.title || 'Note',
+          contentMd: content,
+          tags: noteToEdit.tags || [],
+        });
+      } else {
+        await updateNote(noteToEdit.id, noteToEdit.version, {
+          title: noteToEdit.title,
+          contentMd: content,
+          tags: noteToEdit.tags,
+        });
+      }
+      setEditingId(null);
+      setEditingText('');
+      toast.success('Note updated');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update note');
+    }
   };
 
-  const handleDelete = (noteId: string) => {
-    saveNotes(
-      notes
-        .filter((note: Note) => note.id !== noteId)
-        .map(({ id, content }: Note) => ({ id, content })),
-      "Note deleted",
-    );
-    setDeletingId(null);
+  const handleDelete = async (noteId: string) => {
+    const noteToDelete = displayNotes.find((n) => n.id === noteId);
+    if (!noteToDelete) return;
+
+    try {
+      if (!noteToDelete.isLegacy) {
+        await deleteNote(noteToDelete.id, noteToDelete.version);
+      }
+      setDeletingId(null);
+      toast.success('Note deleted');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete note');
+    }
   };
 
   const handleNewNoteKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleAddNote();
     }
   };
 
   const handleEditNoteKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSaveEdit();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       setEditingId(null);
-      setEditingText("");
+      setEditingText('');
     }
   };
 
   function formatNoteDate(dateStr?: string): string {
-    if (!dateStr) return "";
+    if (!dateStr) return '';
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
       return dateStr;
     }
   }
+
+  const isBusy = isCreating || isUpdating || isDeleting;
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -183,10 +237,10 @@ export default function NotesPanel({
             <Button
               size="sm"
               onClick={handleAddNote}
-              disabled={!newNote.trim() || paperService.state.isUpdating}
-              className="gap-1.5 h-8 text-xs font-semibold shadow-none"
+              disabled={!newNote.trim() || isBusy}
+              className="gap-1.5 h-8 text-xs font-semibold shadow-none cursor-pointer"
             >
-              {paperService.state.isUpdating ? (
+              {isCreating ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
                 <Plus className="size-3.5" />
@@ -199,7 +253,11 @@ export default function NotesPanel({
 
       {/* Notes list */}
       <div className="flex-1 overflow-y-auto p-3.5">
-        {notes.length === 0 ? (
+        {isNotesLoading ? (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : displayNotes.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4">
             <div className="flex size-11 items-center justify-center rounded-xl border border-border bg-muted/40">
               <FileText className="size-5 text-muted-foreground/60" />
@@ -211,10 +269,10 @@ export default function NotesPanel({
           </div>
         ) : (
           <ul className="space-y-3">
-            {notes.map((note: Note) => {
+            {displayNotes.map((note) => {
               if (!note.id) return null;
               const isEditing = editingId === note.id;
-              const isDeleting = deletingId === note.id;
+              const isDeletingNote = deletingId === note.id;
 
               return (
                 <li
@@ -237,24 +295,24 @@ export default function NotesPanel({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-xs px-2.5"
+                            className="h-7 text-xs px-2.5 cursor-pointer"
                             onClick={() => {
                               setEditingId(null);
-                              setEditingText("");
+                              setEditingText('');
                             }}
                           >
                             Cancel
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 text-xs px-3 font-semibold"
+                            className="h-7 text-xs px-3 font-semibold cursor-pointer"
                             onClick={handleSaveEdit}
-                            disabled={!editingText.trim() || paperService.state.isUpdating}
+                            disabled={!editingText.trim() || isBusy}
                           >
-                            {paperService.state.isUpdating ? (
+                            {isUpdating ? (
                               <Loader2 className="size-3.5 animate-spin" />
                             ) : (
-                              "Save"
+                              'Save'
                             )}
                           </Button>
                         </div>
@@ -263,17 +321,37 @@ export default function NotesPanel({
                   ) : (
                     <>
                       <div className="flex items-start justify-between gap-3">
-                        <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/90 select-text">
-                          {note.content}
-                        </p>
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          {note.title && note.title !== 'Note' && note.title !== 'Untitled Note' && (
+                            <h4 className="text-xs font-semibold text-foreground truncate">
+                              {note.title}
+                            </h4>
+                          )}
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground/90 select-text">
+                            {note.content}
+                          </p>
+                          {note.tags && note.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {note.tags.map((t) => (
+                                <span
+                                  key={t}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-muted/60 text-muted-foreground font-medium"
+                                >
+                                  <Tag className="size-2.5 opacity-60" />
+                                  <span>{t}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
-                          {isDeleting ? (
+                          {isDeletingNote ? (
                             <div className="flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 p-0.5 animate-in fade-in zoom-in-95 duration-150">
                               <button
                                 type="button"
-                                onClick={() => handleDelete(note.id as string)}
+                                onClick={() => handleDelete(note.id)}
                                 title="Confirm delete"
-                                className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors"
+                                className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
                               >
                                 <Check className="size-3" />
                               </button>
@@ -281,7 +359,7 @@ export default function NotesPanel({
                                 type="button"
                                 onClick={() => setDeletingId(null)}
                                 title="Cancel"
-                                className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors"
+                                className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors cursor-pointer"
                               >
                                 <X className="size-3" />
                               </button>
@@ -291,9 +369,9 @@ export default function NotesPanel({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                                className="size-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
                                 onClick={() => {
-                                  setEditingId(note.id as string);
+                                  setEditingId(note.id);
                                   setEditingText(note.content);
                                   setDeletingId(null);
                                 }}
@@ -304,8 +382,8 @@ export default function NotesPanel({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => setDeletingId(note.id as string)}
+                                className="size-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                                onClick={() => setDeletingId(note.id)}
                                 title="Delete note"
                               >
                                 <Trash2 className="size-3.5" />
@@ -317,6 +395,11 @@ export default function NotesPanel({
                       <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground/70">
                         <Calendar className="size-3" />
                         <span>{formatNoteDate(note.updatedAt || note.createdAt)}</span>
+                        {note.isLegacy && (
+                          <span className="ml-1.5 px-1 py-0.2 rounded bg-muted text-[9px] text-muted-foreground/60">
+                            Legacy
+                          </span>
+                        )}
                       </div>
                     </>
                   )}

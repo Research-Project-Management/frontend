@@ -19,6 +19,14 @@ import type {
 import { resolveWorkItemColumnId, resolveTaskColumnId } from "../types/work-item.types";
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
 import { toast } from "sonner";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
@@ -411,24 +419,24 @@ export function WorkItemPage({
       )}
 
       {/* Task Delete Confirmation Modal */}
-      {modal.type === 'delete-task' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-card p-6 rounded-lg border border-border shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-foreground">Delete Work Item</h3>
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete &quot;{modal.task.title}&quot;? This action cannot be undone.
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={closeModal} disabled={projectState.status.isDeleting}>
-                Cancel
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleTaskDeleteConfirm} disabled={projectState.status.isDeleting}>
-                {projectState.status.isDeleting ? "Deleting..." : "Delete Work Item"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={modal.type === 'delete-task'} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="w-full max-w-md p-6 gap-4">
+          <DialogHeader className="text-left space-y-1.5">
+            <DialogTitle className="text-base font-semibold text-foreground">Delete Work Item</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Are you sure you want to delete &quot;{modal.type === 'delete-task' ? modal.task.title : ''}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="ghost" size="sm" onClick={closeModal} disabled={projectState.status.isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleTaskDeleteConfirm} disabled={projectState.status.isDeleting}>
+              {projectState.status.isDeleting ? "Deleting..." : "Delete Work Item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Cycle Modals */}
       {cycleId && (

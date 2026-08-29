@@ -31,6 +31,17 @@ export default function PaperBatchBar({
   onBatchMove,
   onBatchDelete,
 }: PaperBatchBarProps) {
+  React.useEffect(() => {
+    if (selectedCount === 0) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClearSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCount, onClearSelection]);
+
   if (selectedCount === 0) return null;
 
   const handleCopyMultiCite = () => {
@@ -67,11 +78,11 @@ export default function PaperBatchBar({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border/80 rounded-full shadow-lg select-none ring-1 ring-black/5 dark:ring-white/5"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border rounded-full shadow-lg select-none ring-1 ring-border/40"
       >
         {/* Count Badge & Label */}
         <div className="flex items-center gap-2 pr-2.5 border-r border-border/60">
-          <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[11px] font-mono font-bold">
+          <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-xs font-mono font-bold tabular-nums">
             {selectedCount}
           </span>
           <span className="text-xs font-medium text-foreground whitespace-nowrap">

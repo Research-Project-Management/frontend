@@ -112,15 +112,7 @@ export function filterAndSortLibraryPapers({
   }
 
   // 3. Apply smart view filters
-  if (activeFilter === 'starred') {
-    filteredPapers = filteredPapers.filter(
-      (paper) =>
-        Boolean(paper.isFavorite) ||
-        paper.labels?.includes('starred') ||
-        paper.labels?.includes('favorite') ||
-        Boolean((paper as any).isStarred),
-    );
-  } else if (activeFilter === 'recent-read') {
+  if (activeFilter === 'recent-read') {
     const accessedPapers = filteredPapers.filter((paper) => Boolean(paper.accessedAt));
     if (accessedPapers.length > 0) {
       filteredPapers = accessedPapers.sort(
@@ -153,3 +145,112 @@ export function filterAndSortLibraryPapers({
 
   return filteredPapers;
 }
+
+// ── Consolidated Smart View Utilities ────────────────────────────────────────
+
+const TRASH_RETENTION_DAYS = 30;
+
+/**
+ * Calculates remaining days before a trashed item is automatically purged.
+ */
+export function getDaysUntilPurge(deletedAt?: string | null): number {
+  if (!deletedAt) return TRASH_RETENTION_DAYS;
+  const deletedTime = new Date(deletedAt).getTime();
+  const now = Date.now();
+  const elapsedDays = Math.floor((now - deletedTime) / (1000 * 60 * 60 * 24));
+  return Math.max(0, TRASH_RETENTION_DAYS - elapsedDays);
+}
+
+/**
+ * Checks if a trashed paper has exceeded the 30-day retention window.
+ */
+export function isExpiredTrash(deletedAt?: string | null): boolean {
+  return getDaysUntilPurge(deletedAt) === 0;
+}
+
+/**
+ * Filters items marked as in trash.
+ */
+export function filterTrashPapers(papers: Paper[]): Paper[] {
+  return papers.filter((p) => Boolean(p.deletedAt || (p as any).isTrash || (p as any).isInTrash));
+}
+
+/**
+ * Checks if a paper is unfiled (not assigned to any collection/folder).
+ */
+export function isUnfiledPaper(paper: Paper): boolean {
+  if (paper.deletedAt || (paper as any).isTrash || (paper as any).isInTrash) return false;
+  if (paper.collectionId) return false;
+  const p = paper as any;
+  if (Array.isArray(p.collections) && p.collections.length > 0) return false;
+  if (Array.isArray(p.collectionIds) && p.collectionIds.length > 0) return false;
+  return true;
+}
+
+/**
+ * Filters items that are not assigned to any collection.
+ */
+export function filterUnfiledPapers(papers: Paper[]): Paper[] {
+  return papers.filter(isUnfiledPaper);
+}
+
+/**
+ * Groups recently accessed papers into temporal buckets (Today, Yesterday, This Week, Earlier).
+ */
+export function groupRecentlyReadByTime(papers: Paper[]): {
+  today: Paper[];
+  yesterday: Paper[];
+  thisWeek: Paper[];
+  earlier: Paper[];
+} {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  const weekStart = todayStart - 6 * 86400000;
+
+  const result = {
+    today: [] as Paper[],
+    yesterday: [] as Paper[],
+    thisWeek: [] as Paper[],
+    earlier: [] as Paper[],
+  };
+
+  const getTimestamp = (paper: Paper) => {
+    const p = paper as any;
+    return new Date(p.accessedAt || p.lastOpenedAt || p.updatedAt || p.createdAt || 0).getTime();
+  };
+
+  const sorted = [...papers].sort((a, b) => getTimestamp(b) - getTimestamp(a));
+
+  for (const paper of sorted) {
+    const paperTime = getTimestamp(paper);
+    if (paperTime >= todayStart) {
+      result.today.push(paper);
+    } else if (paperTime >= yesterdayStart) {
+      result.yesterday.push(paper);
+    } else if (paperTime >= weekStart) {
+      result.thisWeek.push(paper);
+    } else {
+      result.earlier.push(paper);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Formats a timestamp into a human-friendly relative reading label.
+ */
+export function formatReadingSession(dateString?: string | null): string {
+  if (!dateString) return 'Not opened yet';
+  const date = new Date(dateString);
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+

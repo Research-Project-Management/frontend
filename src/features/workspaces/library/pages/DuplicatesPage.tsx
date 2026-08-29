@@ -8,10 +8,8 @@ import InspectorPanel from '../components/panel/Panel';
 import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import MergeDialog from '../components/system/MergeDialog';
-import { useLibrary, useDuplicateGroups, useMergePapers, useLibraryIntegrity } from '../hooks/library/use-library';
+import { useLibrary, useDuplicateGroups, useMergePapers } from '../hooks/library/use-library';
 import type { Paper } from '../types/library.types';
-import { Badge } from '@/shared/components/ui/badge';
-import { Button } from '@/shared/components/ui/button';
 
 export default function DuplicatesPage() {
   const { state, actions } = useLibrary();
@@ -44,7 +42,6 @@ export default function DuplicatesPage() {
   } = actions;
 
   const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(workspaceId);
-  const { data: integrityData } = useLibraryIntegrity(workspaceId);
   const mergeMutation = useMergePapers(workspaceId);
 
   const duplicateGroups = useMemo(
@@ -123,37 +120,6 @@ export default function DuplicatesPage() {
           onAddCollection={() => setCreateCollectionOpen(true)}
           onAddLink={() => setAddLinkOpen(true)}
         />
-
-        {/* Duplicate detection summary bar */}
-        <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
-            <Files className="size-4 shrink-0" />
-            <span>
-              Found <strong>{duplicateGroups.length}</strong> duplicate clusters ({allDuplicatePapers.length} duplicate records)
-            </span>
-            {integrityData?.healthScorePercentage != null && (
-              <Badge variant="outline" className="ml-2 text-[10px] bg-background/50 border-amber-500/30">
-                Library Health: {integrityData.healthScorePercentage}%
-              </Badge>
-            )}
-          </div>
-
-          {duplicateGroups.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto max-w-md">
-              {duplicateGroups.map((grp: any, idx: number) => (
-                <Button
-                  key={idx}
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenMergeDialog(grp.papers)}
-                  className="h-6 text-[11px] px-2 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
-                >
-                  Merge Cluster #{idx + 1} ({grp.papers.length})
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Central Duplicate Table */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

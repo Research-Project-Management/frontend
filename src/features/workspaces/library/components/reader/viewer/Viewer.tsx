@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { X, Loader2, AlertTriangle, StickyNote, Copy, Check } from 'lucide-react';
+import { X, Loader2, AlertTriangle, StickyNote, Copy, Check, Highlighter } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import Toolbar from './Toolbar';
@@ -26,6 +26,7 @@ interface ViewerProps {
   error: string | null;
   onAskAi: (selectedText: string) => void;
   onAddToNote?: (selectedText: string) => void;
+  onAnnotate?: (selectedText: string, pageNumber: number) => void;
 }
 
 export default function Viewer({
@@ -35,6 +36,7 @@ export default function Viewer({
   error,
   onAskAi,
   onAddToNote,
+  onAnnotate,
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -293,6 +295,22 @@ export default function Viewer({
               >
                 <StickyNote className="size-3.5 text-background" />
                 Note
+              </button>
+            ) : null}
+
+            {onAnnotate ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onAnnotate(selectedText, visiblePage);
+                  setShowFloatingMenu(false);
+                  window.getSelection()?.removeAllRanges();
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 transition-colors"
+                title="Highlight & annotate selected text"
+              >
+                <Highlighter className="size-3.5 text-background" />
+                Highlight
               </button>
             ) : null}
 

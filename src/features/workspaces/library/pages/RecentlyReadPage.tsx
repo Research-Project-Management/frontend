@@ -1,23 +1,21 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { History } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
 import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { filterAndSortLibraryPapers } from '../utils/filter.util';
+import { PaperService } from '../services/paper.service';
 import type { Paper } from '../types/library.types';
 
 export default function RecentlyReadPage() {
   const { state, actions } = useLibrary();
   const {
     workspaceId,
-    papers,
-    isLoading,
-    search,
     selectedPaperId,
     selectedPaper,
     selectedCollection,
@@ -30,7 +28,6 @@ export default function RecentlyReadPage() {
   } = state;
 
   const {
-    setSearch,
     setSelectedPaperId,
     setAddLinkOpen,
     handleDirectFilesUpload,
@@ -43,13 +40,21 @@ export default function RecentlyReadPage() {
     handleBatchMovePapers,
   } = actions;
 
-  const recentlyReadPapers = useMemo(() => {
-    return filterAndSortLibraryPapers({
-      papers,
-      searchQuery: search,
-      activeFilter: 'recent-read',
-    });
-  }, [papers, search]);
+  const [search, setSearch] = useState('');
+
+  const { data: viewData, isLoading } = useQuery({
+    queryKey: ['papers', workspaceId, 'view', 'recent', search],
+    queryFn: () =>
+      PaperService.getAll(workspaceId, {
+        view: 'recent',
+        search: search.trim() || undefined,
+      }),
+    enabled: Boolean(workspaceId),
+  });
+
+  const recentlyReadPapers: Paper[] = Array.isArray(viewData?.papers)
+    ? viewData.papers
+    : [];
 
   const handleSelectPaper = (paper: Paper) => {
     const paperId = paper.id;
@@ -89,7 +94,6 @@ export default function RecentlyReadPage() {
             onBatchDeletePapers={handleBatchDeletePapers}
             onBatchMovePapers={handleBatchMovePapers}
             onClearSearch={() => setSearch('')}
-            onAddPaper={() => setAddLinkOpen(true)}
             showCollection={true}
           />
         </div>
@@ -105,6 +109,7 @@ export default function RecentlyReadPage() {
         />
       )}
 
+      {/* Add Link Modal */}
       <AddLinkModal
         open={addLinkOpen}
         onOpenChange={setAddLinkOpen}
@@ -112,12 +117,12 @@ export default function RecentlyReadPage() {
         isPending={isAddingPaper}
       />
 
+      {/* Create Collection Modal */}
       <CreateCollectionModal
         open={createCollectionOpen}
         onOpenChange={setCreateCollectionOpen}
         onSubmit={handleCreateCollection}
         isPending={isCreatingCollection}
-        collections={collections}
       />
     </div>
   );

@@ -26,6 +26,24 @@ export default function FilesSection({ paper }: FilesSectionProps) {
   const hasPrimaryFile = Boolean(paper.fileUrl);
   const attachments: PaperAttachment[] = paper.attachments || [];
 
+  // Filter out any attachment that represents the primary file
+  const supplementaryAttachments = attachments.filter((att) => {
+    if ((att as any).isPrimary || att.attachmentType === 'primary_pdf' || (att as any).type === 'primary') return false;
+    if (
+      paper.fileUrl &&
+      att.url &&
+      (att.url === paper.fileUrl ||
+        att.url.endsWith(paper.fileUrl) ||
+        paper.fileUrl.endsWith(att.url))
+    ) {
+      return false;
+    }
+    if (paper.filename && att.filename && att.filename === paper.filename) {
+      return false;
+    }
+    return true;
+  });
+
   const resolveFileUrl = (url?: string) => {
     if (!url) return '';
     return url.startsWith('/api/files/') ? `${API_BASE_URL}${url}` : url;
@@ -54,11 +72,11 @@ export default function FilesSection({ paper }: FilesSectionProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0">
+                <Badge variant="secondary" className="text-xs font-normal px-2 py-0.5">
                   Primary
                 </Badge>
                 {paper.provenance?.isOpenAccess && (
-                  <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 text-emerald-600 border-emerald-500/30">
+                  <Badge variant="outline" className="text-xs font-normal px-2 py-0.5 text-emerald-600 border-emerald-500/30">
                     OA
                   </Badge>
                 )}
@@ -111,13 +129,13 @@ export default function FilesSection({ paper }: FilesSectionProps) {
       )}
 
       {/* Supplementary Attachments List */}
-      {attachments.length > 0 && (
+      {supplementaryAttachments.length > 0 && (
         <div className="space-y-2 pt-2 border-t border-border/20">
           <h3 className="text-xs font-semibold text-muted-foreground">
             Supplementary Files
           </h3>
           <div className="space-y-1.5">
-            {attachments.map((att) => {
+            {supplementaryAttachments.map((att) => {
               const attName = att.filename || 'Attachment';
               const attUrl = att.url;
               return (
@@ -131,7 +149,7 @@ export default function FilesSection({ paper }: FilesSectionProps) {
                       {attName}
                     </span>
                     {att.size && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         ({formatSize(att.size)})
                       </span>
                     )}

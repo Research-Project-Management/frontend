@@ -17,7 +17,6 @@ import {
   Copy,
   Search,
   Plus,
-  Star,
   History,
   Inbox,
   Files,
@@ -437,7 +436,6 @@ export default function LibrarySideBar() {
   const currentTag = searchParams.get('tag');
 
   const isLibraryActive = pathname === basePath && !currentFilter && !currentTag && !activeId;
-  const isStarredActive = pathname === `${basePath}/favorites` || (pathname === basePath && currentFilter === 'starred');
   const isRecentReadActive = pathname === `${basePath}/recently-read` || (pathname === basePath && currentFilter === 'recent-read');
   const isUnfiledActive = pathname === `${basePath}/unfiled` || (pathname === basePath && currentFilter === 'unfiled');
   const isDuplicatesActive = pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates');
@@ -625,15 +623,24 @@ export default function LibrarySideBar() {
               }}
               className="h-full flex-1 min-w-0 text-xs bg-transparent focus:outline-none placeholder:text-muted-foreground/60 border-none p-0"
             />
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleClearSearch}
-              className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded shrink-0 ml-1 transition-colors"
-              aria-label="Close search"
-              title="Close search"
-            >
-              <Plus className="size-3.5 rotate-45" />
-            </button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleClearSearch}
+                    className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded shrink-0 ml-1 transition-colors hover:bg-muted"
+                    aria-label="Close search"
+                  >
+                    <Plus className="size-3.5 rotate-45" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                  Close search
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         ) : (
           <>
@@ -787,29 +794,7 @@ export default function LibrarySideBar() {
             </span>
           </Link>
 
-          {/* 3. Favorites */}
-          <Link
-            href={`${basePath}/favorites`}
-            className={cn(
-              'group/item relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
-              isStarredActive ? 'font-semibold' : 'font-medium'
-            )}
-          >
-            {isStarredActive && (
-              <motion.div
-                layoutId={`library-nav-active-${id}`}
-                className="absolute inset-0 rounded-md bg-accent"
-                initial={false}
-                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-              />
-            )}
-            <Star className="relative z-10 size-4 shrink-0 text-foreground" />
-            <span className="relative z-10 min-w-0 truncate text-foreground flex-1">
-              Favorites
-            </span>
-          </Link>
-
-          {/* 4. Duplicate Items */}
+          {/* 3. Duplicate Items */}
           <Link
             href={`${basePath}/duplicates`}
             className={cn(

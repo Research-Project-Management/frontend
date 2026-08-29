@@ -221,7 +221,7 @@ export const TOOL_CATEGORY_COLORS: Record<ToolCategory, string> = {
   create:  "text-emerald-600 dark:text-emerald-400",
   update:  "text-amber-600 dark:text-amber-400",
   delete:  "text-red-500",
-  analyze: "text-violet-600 dark:text-violet-400",
+  analyze: "text-primary",
 };
 
 // ── Agent Configuration ─────────────────────────────────────────────────────────
@@ -262,9 +262,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: "Documents",
     description: "Search and summarize your uploaded files",
     icon: "",
-    color: "text-violet-500",
-    bg: "bg-violet-500/8 hover:bg-violet-500/14",
-    border: "border-violet-500/25",
+    color: "text-foreground",
+    bg: "bg-muted hover:bg-muted/80",
+    border: "border-border",
     quickPrompts: [
       "Summarize this document",
       "What are the key findings?",

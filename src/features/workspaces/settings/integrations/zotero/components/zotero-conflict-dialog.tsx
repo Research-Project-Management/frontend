@@ -3,6 +3,14 @@
 import React, { useState } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
 import { resolveZoteroConflict } from '../services/zotero.service';
 import type { ResolveConflictPayload } from '../types/zotero.types';
 import { AlertTriangle, Check, RefreshCw, X } from 'lucide-react';
@@ -109,33 +117,21 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-    >
-      <div className="bg-card border rounded-xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b pb-3">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto" showCloseButton={true}>
+        <DialogHeader className="border-b pb-3 text-left space-y-1">
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="size-5 text-amber-500" />
+            <AlertTriangle className="size-5 text-amber-500 shrink-0" />
             <div>
-              <h3 className="text-base font-bold text-foreground">
+              <DialogTitle className="text-base font-semibold text-foreground">
                 Resolve 3-Way Sync Conflict
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                 Item: <span className="font-medium text-foreground">{itemTitle}</span>
-              </p>
+              </DialogDescription>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close conflict resolver"
-            className="rounded-md p-1 text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {errorMsg && (
           <div className="p-3 bg-destructive/10 text-destructive text-xs rounded-lg border border-destructive/20">
@@ -203,7 +199,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
                         handleChoose(c.field, c.localValue);
                       }
                     }}
-                    className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-all outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                    className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                       isLocalChosen
                         ? 'border-primary bg-primary/10 text-foreground font-medium ring-1 ring-primary'
                         : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
@@ -227,7 +223,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
                         handleChoose(c.field, c.remoteValue);
                       }
                     }}
-                    className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-all outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                    className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                       isRemoteChosen
                         ? 'border-primary bg-primary/10 text-foreground font-medium ring-1 ring-primary'
                         : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
@@ -256,16 +252,16 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
           })}
         </div>
 
-        <div className="pt-3 border-t flex items-center justify-end gap-2.5">
+        <DialogFooter className="pt-3 border-t flex items-center justify-end gap-2.5">
           <Button variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleResolve} disabled={isSubmitting} className="gap-1.5">
+          <Button size="sm" onClick={handleResolve} disabled={isSubmitting} className="gap-1.5 font-medium">
             {isSubmitting ? <RefreshCw className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
             {isSubmitting ? 'Resolving Conflict...' : 'Apply & Sync to Zotero'}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -127,9 +127,10 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        "flex items-center justify-between border-b border-border/50 bg-transparent px-6 h-14 sticky top-0 z-10 shrink-0 select-none",
+        "flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 h-14 sticky top-0 z-10 shrink-0 select-none",
         className
       )}
+      style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       {/* Left Section: Title or Breadcrumbs */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
@@ -142,7 +143,7 @@ export default function Topbar({
                   aria-label="Expand sidebar"
                   className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none mr-0.5 shrink-0"
                 >
-                  <PanelLeft className="size-4.5 text-foreground" />
+                  <PanelLeft className="size-4 text-foreground" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={6}>
@@ -159,10 +160,10 @@ export default function Topbar({
                 return (
                   <React.Fragment key={crumb.id || idx}>
                     {idx > 0 && (
-                      <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
+                      <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                     )}
                     <div className="flex items-center justify-center shrink-0">
-                      <MoreHorizontal className="size-4 text-foreground/60" />
+                      <MoreHorizontal className="size-4 text-muted-foreground" />
                     </div>
                   </React.Fragment>
                 );
@@ -173,7 +174,7 @@ export default function Topbar({
               return (
                 <React.Fragment key={crumb.id || idx}>
                   {idx > 0 && (
-                    <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
+                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                   )}
                   <div
                     role={!isLast && onNavigateCrumb ? "button" : undefined}
@@ -213,7 +214,7 @@ export default function Topbar({
             })}
           </nav>
         ) : (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {Icon && <Icon className="size-4.5 text-foreground shrink-0" />}
             {title && (
               <h1 className="text-base font-semibold tracking-tight text-foreground transition-colors duration-200 truncate">
@@ -226,7 +227,7 @@ export default function Topbar({
 
       {/* Right Section: Search & Actions */}
       <div className="flex items-center gap-3 shrink-0">
-        {/* Search Input (Standard Animated Expandable) */}
+        {/* Search Input (Expandable Icon Search) */}
         {onSearchChange !== undefined && (
           <div
             className={cn(
@@ -239,7 +240,7 @@ export default function Topbar({
           >
             <Search
               className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-[left,transform] duration-200 ease-out z-10 text-foreground",
+                "absolute top-1/2 -translate-y-1/2 size-4 transition-[left,transform] duration-200 ease-out z-10 text-foreground",
                 isSearchExpanded || search
                   ? "left-2.5 translate-x-0"
                   : "left-1/2 -translate-x-1/2"
@@ -286,15 +287,15 @@ export default function Topbar({
         {(onAddPaper || onAddCollection || onDirectFilesUpload || onDirectFolderUpload || onAddLink) && (
           <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <PopoverTrigger asChild>
-              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer font-medium text-xs">
-                <Plus className="size-3.5 text-primary-foreground" />
+              <Button size="sm" className="h-8 gap-1.5 px-3 rounded-md cursor-pointer font-medium text-xs">
+                <Plus className="size-4 text-primary-foreground" />
                 <span>New</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent
               align="end"
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-52 p-1 shadow-md border-border/60"
+              className="w-52 p-1 shadow-md border-border"
             >
               {(onDirectFilesUpload || onAddPaper) && (
                 <button
@@ -302,9 +303,9 @@ export default function Topbar({
                     setIsMenuOpen(false);
                     handleAddFileClick();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer font-normal"
                 >
-                  <FileText className="size-3.5 text-foreground" />
+                  <FileText className="size-4 text-foreground" />
                   <span>Add File...</span>
                 </button>
               )}
@@ -314,9 +315,9 @@ export default function Topbar({
                     setIsMenuOpen(false);
                     handleAddFolderClick();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer font-normal"
                 >
-                  <FolderUp className="size-3.5 text-foreground" />
+                  <FolderUp className="size-4 text-foreground" />
                   <span>Add Folder...</span>
                 </button>
               )}
@@ -326,9 +327,9 @@ export default function Topbar({
                     setIsMenuOpen(false);
                     onAddCollection();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer font-normal"
                 >
-                  <FolderPlus className="size-3.5 text-foreground" />
+                  <FolderPlus className="size-4 text-foreground" />
                   <span>{isSubcollection ? "Add Subcollection..." : "Add Collection..."}</span>
                 </button>
               )}
@@ -338,9 +339,9 @@ export default function Topbar({
                     setIsMenuOpen(false);
                     handleAddLinkClick();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm hover:bg-muted transition-colors text-left text-foreground cursor-pointer font-normal"
                 >
-                  <Link2 className="size-3.5 text-foreground" />
+                  <Link2 className="size-4 text-foreground" />
                   <span>Add Link to File...</span>
                 </button>
               )}

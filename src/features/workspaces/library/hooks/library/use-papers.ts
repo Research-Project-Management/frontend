@@ -27,9 +27,10 @@ import type {
 export interface UsePapersOptions {
   workspaceId: string;
   collectionId?: string;
+  paperId?: string;
 }
 
-export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
+export function usePapers({ workspaceId, collectionId, paperId }: UsePapersOptions) {
   const queryClient = useQueryClient();
 
   const allPapersQuery = useQuery({
@@ -44,9 +45,9 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
   });
 
   const paperByIdQuery = useQuery({
-    queryKey: paperKeys.byId(workspaceId, collectionId || ''),
-    queryFn: () => getPaperById(workspaceId, collectionId || ''),
-    enabled: Boolean(workspaceId && collectionId),
+    queryKey: paperKeys.byId(workspaceId, paperId || ''),
+    queryFn: () => getPaperById(workspaceId, paperId || ''),
+    enabled: Boolean(workspaceId && paperId),
     select: (data) => (data as any)?.paper || (data as any)?.item || data || null,
   });
 

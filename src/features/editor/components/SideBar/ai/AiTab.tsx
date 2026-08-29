@@ -46,6 +46,13 @@ import {
 import SuggestionCard from "./SuggestionCard";
 import ChatHistory from "./ChatHistory";
 import { renderMarkdown } from "@/features/editor/utils/markdown.util";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 
 function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   if (!value || typeof value !== "object") return false;
@@ -467,20 +474,17 @@ function PDFPreviewModal({
   }, [result.pdf, result.success]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200">
-      <div className="bg-background border border-border rounded-lg shadow-2xl w-[820px] max-w-[92vw] h-[82vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-[820px] max-w-[92vw] h-[82vh] p-0 flex flex-col overflow-hidden gap-0" showCloseButton={true}>
+        <DialogHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-border shrink-0 space-y-0">
           <div className="flex items-center gap-2">
             <FileCode2 className="size-4 text-amber-500" />
-            <span className="text-sm font-semibold">AI Suggestion Preview</span>
+            <DialogTitle className="text-sm font-semibold">AI Suggestion Preview</DialogTitle>
             <span className="text-[10px] text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full ml-1">
-              Isolated ΓÇö does not affect your document
+              Isolated — does not affect your document
             </span>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-secondary/80 transition-colors">
-            <X className="size-4" />
-          </button>
-        </div>
+        </DialogHeader>
         <div className="flex-1 overflow-hidden flex">
           {result.success && blobUrl ? (
             <object data={blobUrl} type="application/pdf" className="w-full h-full">
@@ -504,19 +508,19 @@ function PDFPreviewModal({
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-secondary/80 transition-colors">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0 bg-card">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
             Discard
-          </button>
+          </Button>
           {result.success && (
-            <button onClick={onInsert} className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2">
+            <Button size="sm" onClick={onInsert} className="gap-2 text-xs font-medium">
               <Download className="size-3.5" />
               Insert into editor
-            </button>
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

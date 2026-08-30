@@ -225,7 +225,7 @@ export function Topbar({
             onChange={(e) => handleSearchChange(e.target.value)}
             onBlur={() => collapseSearch(searchQuery)}
             className={cn(
-              'h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8',
+              'h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8',
               isSearchExpanded || searchQuery ? 'opacity-100' : 'opacity-0 pointer-events-none',
             )}
             autoFocus={isSearchExpanded}
@@ -297,7 +297,7 @@ export function Topbar({
                   >
                     <ListFilter className="size-4 text-foreground" strokeWidth={2.2} />
                     {hasActiveFilters && (
-                      <span className="absolute -top-1 -right-1 size-4 flex items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      <span className="absolute -top-1 -right-1 size-4 flex items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                         {totalActiveFilters}
                       </span>
                     )}
@@ -329,7 +329,7 @@ export function Topbar({
               {/* Columns Section */}
               {columns.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Columns
                   </span>
                   <div className="space-y-1 max-h-36 overflow-y-auto">
@@ -365,7 +365,7 @@ export function Topbar({
               {/* Assignees Section */}
               {assignees.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Assignees
                   </span>
                   <div className="space-y-1 max-h-36 overflow-y-auto">
@@ -385,12 +385,12 @@ export function Topbar({
                             {user.avatar ? (
                               <Avatar className="size-4.5 shrink-0">
                                 <AvatarImage src={user.avatar} />
-                                <AvatarFallback className="text-[9px]">
+                                <AvatarFallback className="text-xs">
                                   {(user.name || 'U').slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
                             ) : (
-                              <div className="size-4.5 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold shrink-0">
+                              <div className="size-4.5 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">
                                 {(user.name || 'U').slice(0, 1)}
                               </div>
                             )}
@@ -415,7 +415,7 @@ export function Topbar({
                 variant="outline"
                 size="sm"
                 onClick={onAddExistingTask}
-                className="h-8 gap-1.5 px-3 text-[13px] font-medium border-border/80 hover:bg-muted rounded-lg shadow-2xs cursor-pointer"
+                className="h-8 gap-1.5 px-3 text-sm font-medium border-border/80 hover:bg-muted rounded-lg shadow-2xs cursor-pointer"
               >
                 <ArrowRightLeft className="size-3.5" />
                 <span className="hidden sm:inline">Add Existing</span>
@@ -425,7 +425,7 @@ export function Topbar({
             <Button
               size="sm"
               onClick={onAddTask}
-              className="h-8 gap-1.5 px-3 text-[13px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+              className="h-8 gap-1.5 px-3 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-xs cursor-pointer transition-all active:scale-[0.98]"
             >
               <Plus className="size-3.5" strokeWidth={2.5} />
               <span>Add Work Item</span>

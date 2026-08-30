@@ -163,6 +163,7 @@ export const paperSchema = z.object({
   deletedAt: z.string().nullish(),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
+  lastReadAt: z.string().nullish(),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
   provenance: provenanceSchema.nullish(),
 });

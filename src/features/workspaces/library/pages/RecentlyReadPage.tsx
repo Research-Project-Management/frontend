@@ -10,10 +10,12 @@ import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
 import { PaperService } from '../services/paper.service';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import type { Paper } from '../types/library.types';
 
 export default function RecentlyReadPage() {
   const { state, actions } = useLibrary();
+  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
     selectedPaperId,
@@ -95,19 +97,18 @@ export default function RecentlyReadPage() {
             onBatchMovePapers={handleBatchMovePapers}
             onClearSearch={() => setSearch('')}
             showCollection={true}
+            showLastRead={true}
           />
         </div>
       </div>
 
       {/* Right Inspector Panel */}
-      {selectedPaper && (
-        <InspectorPanel
-          paper={selectedPaper}
-          collection={selectedCollection}
-          workspaceId={workspaceId}
-          onClose={() => setSelectedPaperId(null)}
-        />
-      )}
+      <InspectorPanel
+        paper={selectedPaper || null}
+        collection={selectedCollection || null}
+        workspaceId={workspaceId}
+        onClose={() => setSelectedPaperId(null)}
+      />
 
       {/* Add Link Modal */}
       <AddLinkModal

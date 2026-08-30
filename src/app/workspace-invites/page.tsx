@@ -26,13 +26,24 @@ export default function WorkspaceInvitesPage() {
     
     setIsPending(true);
     try {
-      const result = await apiPost<{ workspaceId: string }>('/api/workspace/join/code', {
-        inviteCode: inviteCode.trim()
+      const result = await apiPost<{
+        workspace: { id: string; name: string; url?: string; slug?: string };
+        yourRole?: string;
+        workspaceId?: string;
+      }>('/api/workspace/join/code', {
+        inviteCode: inviteCode.trim(),
       });
       toast.success('Successfully joined workspace!');
-      // Assuming result contains workspace URL or we just redirect to dashboard
-      // Redirect to root so it can resolve the workspace automatically or if it returns workspace info
-      router.push('/');
+      const targetPath =
+        result?.workspace?.url ||
+        result?.workspace?.slug ||
+        result?.workspace?.id ||
+        result?.workspaceId;
+      if (targetPath) {
+        router.push(`/${targetPath}`);
+      } else {
+        router.push('/');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to join workspace. Please check the invite code.');
     } finally {

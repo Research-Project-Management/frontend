@@ -55,7 +55,7 @@ export function ArchiveCard({
       <div className={cn('relative h-24 w-full bg-gradient-to-tr overflow-hidden', bannerClass)}>
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[0.5px]" />
         <div className="absolute top-2 right-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 backdrop-blur-xs">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 backdrop-blur-xs">
             <Archive className="size-2.5" />
             <span>Archived</span>
           </span>
@@ -83,7 +83,7 @@ export function ArchiveCard({
             {project.name}
           </Link>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono text-[10px] uppercase">{projectKey}</span>
+            <span className="font-mono text-xs uppercase">{projectKey}</span>
             <span>•</span>
             <span className="flex items-center gap-1">
               {isPrivate ? (
@@ -115,16 +115,16 @@ export function ArchiveCard({
               <div className="flex items-center gap-1 min-w-0">
                 <Avatar className="size-4.5 border border-background shrink-0">
                   <AvatarImage src={leadUser.avatar} alt={leadUser.name} />
-                  <AvatarFallback className="text-[9px] bg-muted font-medium">
+                  <AvatarFallback className="text-xs bg-muted font-medium">
                     {leadUser.name ? leadUser.name.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-[11px] font-medium text-foreground truncate max-w-[80px]">
+                <span className="text-xs font-medium text-foreground truncate max-w-[80px]">
                   {leadUser.name || 'Lead'}
                 </span>
               </div>
             ) : (
-              <span className="text-[11px] text-muted-foreground/60 italic">No lead</span>
+              <span className="text-xs text-muted-foreground/60 italic">No lead</span>
             )}
           </div>
 

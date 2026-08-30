@@ -51,7 +51,7 @@ export function PendingInvites({
                 {invite.email}
               </td>
               <td className="py-3 px-4">
-                <Badge variant="secondary" className="text-[10px] font-medium h-5 px-2 rounded capitalize">
+                <Badge variant="secondary" className="text-xs font-medium h-5 px-2 rounded capitalize">
                   {invite.role}
                 </Badge>
               </td>

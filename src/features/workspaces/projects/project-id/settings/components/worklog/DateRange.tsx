@@ -57,7 +57,7 @@ export function WorklogDateRange({
 
       <PopoverContent align="start" className="w-64 p-3 rounded-lg space-y-3">
         <div className="space-y-1">
-          <Label className="text-[11px] font-medium text-foreground">Start date</Label>
+          <Label className="text-xs font-medium text-foreground">Start date</Label>
           <Input
             type="date"
             value={localStart}
@@ -67,7 +67,7 @@ export function WorklogDateRange({
         </div>
 
         <div className="space-y-1">
-          <Label className="text-[11px] font-medium text-foreground">End date</Label>
+          <Label className="text-xs font-medium text-foreground">End date</Label>
           <Input
             type="date"
             value={localEnd}
@@ -81,7 +81,7 @@ export function WorklogDateRange({
             <button
               type="button"
               onClick={handleReset}
-              className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
             >
               <X className="size-3" />
               <span>Clear</span>

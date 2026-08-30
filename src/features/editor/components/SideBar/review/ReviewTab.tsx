@@ -133,16 +133,16 @@ function CommentCard({
         {/* Row 1: avatar + author + status badge */}
         <div className="flex items-center gap-1.5 min-w-0 mb-1">
           <Avatar author={comment.author} size={5} />
-          <span className="text-[11px] font-semibold truncate flex-1 min-w-0">
+          <span className="text-xs font-semibold truncate flex-1 min-w-0">
             {comment.author.name}
           </span>
           {isResolved ? (
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-green-600 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-full">
+            <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-green-600 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-full">
               <CheckCircle2 className="size-2.5" />
               Resolved
             </span>
           ) : (
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+            <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
               <Circle className="size-2.5" />
               Open
             </span>
@@ -154,7 +154,7 @@ function CommentCard({
           {comment.line != null && (
             <button
               onClick={() => onNavigate?.(comment.line!)}
-              className="text-[9px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground shrink-0 hover:bg-primary/10 hover:text-primary transition-colors"
+              className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground shrink-0 hover:bg-primary/10 hover:text-primary transition-colors"
               title="Jump to line"
             >
               L{comment.line}
@@ -163,7 +163,7 @@ function CommentCard({
                 : ""}
             </button>
           )}
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {timeAgo(comment.createdAt)}
           </span>
         </div>
@@ -179,7 +179,7 @@ function CommentCard({
             onClick={handleToggleStatus}
             disabled={updateMutation.isPending}
             className={cn(
-              "flex items-center gap-1 text-[10px] transition-colors",
+              "flex items-center gap-1 text-xs transition-colors",
               isResolved
                 ? "text-muted-foreground hover:text-foreground"
                 : "text-green-600 dark:text-green-400 hover:opacity-80",
@@ -197,7 +197,7 @@ function CommentCard({
 
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <MessageSquare className="size-3" />
             {hasReplies
@@ -215,7 +215,7 @@ function CommentCard({
             <button
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors ml-auto"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors ml-auto"
               title="Delete comment"
             >
               {deleteMutation.isPending ? (
@@ -285,10 +285,10 @@ function ReplyRow({
       <Avatar author={reply.author} size={4} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-[10px] font-semibold truncate">
+          <span className="text-xs font-semibold truncate">
             {reply.author.name}
           </span>
-          <span className="text-[10px] text-muted-foreground shrink-0">
+          <span className="text-xs text-muted-foreground shrink-0">
             {timeAgo(reply.createdAt)}
           </span>
           {isAuthor && (
@@ -398,7 +398,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
           <MessageSquare className="size-3.5" />
           Review
           {openCount > 0 && (
-            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium normal-case tracking-normal">
+            <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium normal-case tracking-normal">
               {openCount}
             </span>
           )}
@@ -429,11 +429,11 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="border-b border-border px-3 py-3 bg-muted/20">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-[10px] font-semibold text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground">
                 New comment
               </span>
               {(lineStartVal || lineEndVal) && (
-                <span className="text-[9px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                   L{lineStartVal}
                   {lineEndVal && lineEndVal !== lineStartVal
                     ? `–${lineEndVal}`
@@ -451,7 +451,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
             />
 
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="shrink-0">Lines:</span>
                 <input
                   type="number"
@@ -522,7 +522,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
               <span className="truncate">{item.label}</span>
               <span
                 className={cn(
-                  "rounded-full px-1 text-[9px]",
+                  "rounded-full px-1 text-xs",
                   active ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
                 )}
               >

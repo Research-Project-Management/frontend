@@ -217,12 +217,12 @@ export default function NotesPanel({
     <div className="flex h-full flex-col bg-background">
       {/* Add note box */}
       <div className="border-b border-border bg-background p-3.5">
-        <div className="rounded-xl border border-border bg-card p-3 transition-colors focus-within:border-primary/40">
+        <div className="rounded-xl border border-border bg-card p-3 transition-colors focus-within:border-border">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-foreground">
               New note
             </label>
-            <span className="text-[11px] text-muted-foreground/60">⌘+Enter to save</span>
+            <span className="text-xs text-muted-foreground/60">⌘+Enter to save</span>
           </div>
           <textarea
             ref={textareaRef}
@@ -231,7 +231,7 @@ export default function NotesPanel({
             onKeyDown={handleNewNoteKeyDown}
             placeholder="Capture thoughts, quotes, or questions while reading..."
             rows={3}
-            className="mt-2 w-full resize-none rounded-md border border-input/60 bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
+            className="mt-2 w-full resize-none rounded-md border border-border/60 bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border"
           />
           <div className="mt-2 flex justify-end">
             <Button
@@ -285,12 +285,12 @@ export default function NotesPanel({
                         value={editingText}
                         onChange={(e) => setEditingText(e.target.value)}
                         onKeyDown={handleEditNoteKeyDown}
-                        className="w-full resize-none rounded-md border border-primary/50 bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors focus:ring-1 focus:ring-primary/20"
+                        className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors focus:ring-1 focus:ring-ring"
                         rows={3}
                         autoFocus
                       />
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground/50">Esc to cancel</span>
+                        <span className="text-xs text-muted-foreground/50">Esc to cancel</span>
                         <div className="flex justify-end gap-1.5">
                           <Button
                             variant="ghost"
@@ -335,7 +335,7 @@ export default function NotesPanel({
                               {note.tags.map((t) => (
                                 <span
                                   key={t}
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-muted/60 text-muted-foreground font-medium"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-muted/60 text-muted-foreground font-medium"
                                 >
                                   <Tag className="size-2.5 opacity-60" />
                                   <span>{t}</span>
@@ -392,11 +392,11 @@ export default function NotesPanel({
                           )}
                         </div>
                       </div>
-                      <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground/70">
+                      <div className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70">
                         <Calendar className="size-3" />
                         <span>{formatNoteDate(note.updatedAt || note.createdAt)}</span>
                         {note.isLegacy && (
-                          <span className="ml-1.5 px-1 py-0.2 rounded bg-muted text-[9px] text-muted-foreground/60">
+                          <span className="ml-1.5 px-1 py-0.2 rounded bg-muted text-xs text-muted-foreground/60">
                             Legacy
                           </span>
                         )}

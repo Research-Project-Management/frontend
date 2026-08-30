@@ -269,14 +269,14 @@ export function TaskActivities({
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
-          <h3 className="text-[16px] font-bold text-foreground">
+          <h3 className="text-base font-bold text-foreground">
             Comments & Activity
           </h3>
         </div>
 
         <Button
           variant="secondary"
-          className="h-8 rounded-md bg-muted px-3 text-[13px] font-medium text-foreground shadow-none hover:bg-muted/80 transition-colors border-none"
+          className="h-8 rounded-md bg-muted px-3 text-sm font-medium text-foreground shadow-none hover:bg-muted/80 transition-colors border-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -315,7 +315,7 @@ export function TaskActivities({
             placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
             disabled={!canComment || isReadOnly}
             className={cn(
-              "min-h-11.5 rounded-sm border border-border bg-card px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-1 focus-visible:ring-ring",
+              "min-h-11.5 rounded-sm border border-border bg-card px-4 py-3 text-base text-foreground shadow-none transition-all duration-200 focus-visible:ring-1 focus-visible:ring-ring",
               (!canComment || isReadOnly) && "cursor-not-allowed bg-muted/50"
             )}
           />
@@ -352,13 +352,13 @@ export function TaskActivities({
 
       <div className="px-5 pb-5 pt-4">
         {activityLoading ? (
-          <div className="mb-3 rounded-md bg-muted px-3 py-2 text-[13px] text-muted-foreground">
+          <div className="mb-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
-          <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
+          <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
             Could not load activity. Please try again.
           </div>
         ) : null}
@@ -377,7 +377,7 @@ export function TaskActivities({
                 <div key={item.id} className="flex items-start gap-2.5">
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-muted text-[14px] font-bold text-foreground">
+                    <AvatarFallback className="bg-muted text-sm font-bold text-foreground">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -387,7 +387,7 @@ export function TaskActivities({
                       <>
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-foreground">{item.author}</span>
-                          <span className="ml-0.5 text-[14px] text-muted-foreground">{item.timestamp}</span>
+                          <span className="ml-0.5 text-sm text-muted-foreground">{item.timestamp}</span>
                         </div>
 
                         {isEditing ? (
@@ -395,7 +395,7 @@ export function TaskActivities({
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-11.5 rounded-sm border border-border bg-card px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring"
+                              className="min-h-11.5 rounded-sm border border-border bg-card px-4 py-3 text-base text-foreground shadow-none transition-all duration-200 focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
@@ -424,16 +424,16 @@ export function TaskActivities({
                           </div>
                         ) : (
                           <>
-                            <div className="mt-1.5 rounded-sm border border-border bg-card px-4 py-3 text-[15px] leading-6 text-foreground shadow-none whitespace-pre-wrap break-words">
+                            <div className="mt-1.5 rounded-sm border border-border bg-card px-4 py-3 text-base leading-6 text-foreground shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
-                              <div className="mt-1.5 inline-flex items-center rounded-full border border-border bg-card px-2 py-1 text-[16px] shadow-none">
+                              <div className="mt-1.5 inline-flex items-center rounded-full border border-border bg-card px-2 py-1 text-base shadow-none">
                                 {item.reactionEmoji}
                               </div>
                             ) : null}
 
-                            <div className="relative mt-1.5 inline-flex items-center gap-2 text-[13px] text-muted-foreground">
+                            <div className="relative mt-1.5 inline-flex items-center gap-2 text-sm text-muted-foreground">
                               <button
                                 type="button"
                                 disabled={isReadOnly}
@@ -483,7 +483,7 @@ export function TaskActivities({
                                       <button
                                         key={emoji}
                                         type="button"
-                                        className="flex size-10 items-center justify-center rounded-full text-[24px] transition-transform duration-200 hover:scale-110 hover:bg-muted active:scale-95"
+                                        className="flex size-10 items-center justify-center rounded-full text-2xl transition-transform duration-200 hover:scale-110 hover:bg-muted active:scale-95"
                                         onClick={() => handlePickReaction(item.id, emoji)}
                                         aria-label={`Pick reaction ${emoji}`}
                                       >
@@ -499,10 +499,10 @@ export function TaskActivities({
                       </>
                     ) : (
                       <>
-                        <p className="text-[16px] leading-6 text-foreground">
+                        <p className="text-base leading-6 text-foreground">
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
-                        <p className="mt-1.5 text-[14px]">
+                        <p className="mt-1.5 text-sm">
                           <span className="text-primary">{item.timestamp}</span>
                         </p>
                       </>
@@ -513,11 +513,11 @@ export function TaskActivities({
             })}
           </div>
         ) : canComment ? (
-          <div className="py-10 text-center text-[14px] text-muted-foreground">
+          <div className="py-10 text-center text-sm text-muted-foreground">
             No activity yet
           </div>
         ) : (
-          <div className="py-10 text-center text-[14px] text-muted-foreground">
+          <div className="py-10 text-center text-sm text-muted-foreground">
             Add a comment or view activity
           </div>
         )}
@@ -532,10 +532,10 @@ export function TaskActivities({
         <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-[18px] font-bold text-foreground">
+              <DialogTitle className="text-lg font-bold text-foreground">
                 Delete comment?
               </DialogTitle>
-              <DialogDescription className="text-[14px] leading-6 text-muted-foreground">
+              <DialogDescription className="text-sm leading-6 text-muted-foreground">
                 This comment will be removed and cannot be recovered.
               </DialogDescription>
             </DialogHeader>

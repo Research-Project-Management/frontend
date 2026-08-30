@@ -9,10 +9,12 @@ import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import MergeDialog from '../components/system/MergeDialog';
 import { useLibrary, useDuplicateGroups, useMergePapers } from '../hooks/library/use-library';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import type { Paper } from '../types/library.types';
 
 export default function DuplicatesPage() {
   const { state, actions } = useLibrary();
+  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
     search,
@@ -150,14 +152,13 @@ export default function DuplicatesPage() {
         </div>
       </div>
 
-      {selectedPaper && (
-        <InspectorPanel
-          paper={selectedPaper}
-          collection={selectedCollection}
-          workspaceId={workspaceId}
-          onClose={() => setSelectedPaperId(null)}
-        />
-      )}
+      {/* Right Inspector Panel */}
+      <InspectorPanel
+        paper={selectedPaper || null}
+        collection={selectedCollection || null}
+        workspaceId={workspaceId}
+        onClose={() => setSelectedPaperId(null)}
+      />
 
       <AddLinkModal
         open={addLinkOpen}

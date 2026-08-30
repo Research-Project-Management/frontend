@@ -517,7 +517,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   return (
     <div className="space-y-0.5 select-text font-sans antialiased">
       {/* Item Type (Shadcn DropdownMenu matching Zotero UI) */}
-      <div className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs py-0.5">
+      <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs py-0.5">
         <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap" id="label-item-type">
           Item Type
         </span>
@@ -532,7 +532,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 {ALL_ITEM_TYPES_FLAT.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-[360px] min-w-[210px] overflow-y-auto p-1 text-xs">
+            <DropdownMenuContent align="start" className="max-h-[360px] min-w-[210px] overflow-y-auto p-1 text-xs rounded-lg shadow-none border border-border bg-popover text-popover-foreground">
               {ALL_ITEM_TYPES_FLAT.map((t) => {
                 const isSelected = t.value === currentItemType;
                 return (
@@ -554,7 +554,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
             </DropdownMenuContent>
           </DropdownMenu>
           {paper.provenance?.isOpenAccess && (
-            <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 shrink-0 font-medium select-none px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+            <span className="text-xs font-mono text-foreground shrink-0 font-medium select-none px-1.5 py-0.5 rounded bg-muted/40 border border-border/50">
               Open Access
             </span>
           )}
@@ -562,7 +562,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       </div>
 
       {/* Title */}
-      <div className="grid grid-cols-[96px_1fr] gap-2 items-start text-xs py-0.5">
+      <div className="grid grid-cols-[66px_1fr] gap-1.5 items-start text-xs py-0.5">
         <span className="text-muted-foreground text-right font-normal select-none pt-0.5 whitespace-nowrap" id="label-title">
           Title
         </span>
@@ -578,14 +578,14 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       {/* Creators / Authors */}
       <div className="py-0.5 space-y-0.5">
         {localCreators.length === 0 ? (
-          <div className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs">
+          <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs">
             <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap">
               {typeDefinition.creatorTypes[0]?.label || 'Author'}
             </span>
             <button
               type="button"
               onClick={() => handleAddCreator()}
-              className="text-[11px] text-muted-foreground hover:text-foreground text-left cursor-pointer flex items-center gap-1 font-normal focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none rounded px-1"
+              className="text-xs text-muted-foreground hover:text-foreground text-left cursor-pointer flex items-center gap-1 font-normal focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none rounded px-1"
               aria-label="Add author"
             >
               <Plus className="size-3.5" aria-hidden="true" />
@@ -595,7 +595,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         ) : (
           <>
             {visibleCreators.map((creator, idx) => (
-              <div key={idx} className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs group">
+              <div key={idx} className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs group">
                 {/* Left Role Column (Shadcn DropdownMenu matching Zotero UI) */}
                 <div className="flex items-center justify-end min-w-0">
                   <DropdownMenu>
@@ -610,7 +610,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         </span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[140px] p-1 text-xs">
+                    <DropdownMenuContent align="start" className="min-w-[140px] p-1 text-xs rounded-lg shadow-none border border-border bg-popover text-popover-foreground">
                       {creatorTypesList.map((ct) => (
                         <DropdownMenuItem
                           key={ct.creatorType}
@@ -622,7 +622,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         >
                           <span>{ct.label}</span>
                           {creator.creatorType === ct.creatorType && (
-                            <Check className="size-3 text-primary shrink-0" aria-hidden="true" />
+                            <Check className="size-3 text-foreground shrink-0" aria-hidden="true" />
                           )}
                         </DropdownMenuItem>
                       ))}
@@ -664,13 +664,13 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                           <button
                             type="button"
                             onClick={() => handleAddCreator(idx)}
-                            className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                            className="size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                             aria-label="Add creator below"
                           >
-                            <Plus className="size-3" aria-hidden="true" />
+                            <Plus className="size-3 text-foreground" aria-hidden="true" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="text-[11px] py-0.5 px-1.5">
+                        <TooltipContent side="top" className="text-xs py-0.5 px-1.5">
                           Add creator
                         </TooltipContent>
                       </Tooltip>
@@ -683,13 +683,13 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                             <button
                               type="button"
                               onClick={() => handleRemoveCreator(idx)}
-                              className="size-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                              className="size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label="Remove creator"
                             >
-                              <Minus className="size-3" aria-hidden="true" />
+                              <Minus className="size-3 text-foreground" aria-hidden="true" />
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="text-[11px] py-0.5 px-1.5">
+                          <TooltipContent side="top" className="text-xs py-0.5 px-1.5">
                             Remove creator
                           </TooltipContent>
                         </Tooltip>
@@ -701,12 +701,12 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
             ))}
 
             {localCreators.length > MAX_COLLAPSED_AUTHORS + 1 && (
-              <div className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs pt-0.5">
+              <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs pt-0.5">
                 <span />
                 <button
                   type="button"
                   onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-normal cursor-pointer py-0.5 transition-colors hover:underline focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none rounded"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-normal cursor-pointer py-0.5 transition-colors hover:underline focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none rounded"
                   aria-expanded={isAuthorsExpanded}
                 >
                   {isAuthorsExpanded ? (
@@ -734,7 +734,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         const isUrl = fieldDef.field === 'url';
 
         return (
-          <div key={fieldDef.field} className="grid grid-cols-[96px_1fr] gap-2 items-start text-xs py-0.5 group">
+          <div key={fieldDef.field} className="grid grid-cols-[66px_1fr] gap-1.5 items-start text-xs py-0.5 group">
             <span className="text-muted-foreground text-right font-normal select-none pt-0.5 whitespace-nowrap">
               {fieldDef.label}
             </span>
@@ -763,7 +763,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                           <ExternalLink className="size-3" aria-hidden="true" />
                         </a>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                      <TooltipContent side="top" className="text-xs py-1 px-2">
                         Open DOI link
                       </TooltipContent>
                     </Tooltip>
@@ -785,7 +785,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                           )}
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                      <TooltipContent side="top" className="text-xs py-1 px-2">
                         Copy DOI
                       </TooltipContent>
                     </Tooltip>
@@ -808,7 +808,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         <ExternalLink className="size-3" aria-hidden="true" />
                       </a>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                    <TooltipContent side="top" className="text-xs py-1 px-2">
                       Open in new tab
                     </TooltipContent>
                   </Tooltip>
@@ -834,7 +834,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         <ExternalLink className="size-3" aria-hidden="true" />
                       </a>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                    <TooltipContent side="top" className="text-xs py-1 px-2">
                       Open in {fieldDef.field.toUpperCase()}
                     </TooltipContent>
                   </Tooltip>
@@ -856,7 +856,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         <ExternalLink className="size-3" aria-hidden="true" />
                       </a>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                    <TooltipContent side="top" className="text-xs py-1 px-2">
                       Open in arXiv
                     </TooltipContent>
                   </Tooltip>
@@ -868,7 +868,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       })}
 
       {/* Cite Key */}
-      <div className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs py-0.5 group">
+      <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs py-0.5 group">
         <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap" id="label-citekey">
           Cite Key
         </span>
@@ -897,7 +897,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     )}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                <TooltipContent side="top" className="text-xs py-1 px-2">
                   Copy \cite&#123;key&#125;
                 </TooltipContent>
               </Tooltip>
@@ -907,7 +907,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       </div>
 
       {/* Extra Field */}
-      <div className="grid grid-cols-[96px_1fr] gap-2 items-start text-xs py-0.5">
+      <div className="grid grid-cols-[66px_1fr] gap-1.5 items-start text-xs py-0.5">
         <span className="text-muted-foreground text-right font-normal select-none pt-0.5 whitespace-nowrap" id="label-extra">
           Extra
         </span>
@@ -921,7 +921,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
 
       {/* Date Added */}
       {isValidValue(paper.createdAt) && (
-        <div className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs py-0.5">
+        <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs py-0.5">
           <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap">
             Date Added
           </span>
@@ -933,7 +933,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
 
       {/* Modified */}
       {isValidValue(paper.updatedAt) && (
-        <div className="grid grid-cols-[96px_1fr] gap-2 items-center text-xs py-0.5">
+        <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs py-0.5">
           <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap">
             Modified
           </span>

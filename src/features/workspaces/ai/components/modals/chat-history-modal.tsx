@@ -191,7 +191,7 @@ export function ChatHistoryModal({
 
               return (
                 <div key={groupKey} className="space-y-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
                     {GROUP_LABELS[groupKey]}
                   </div>
                   <div className="space-y-1">
@@ -231,7 +231,7 @@ export function ChatHistoryModal({
                                 <p className="truncate text-xs font-medium text-foreground">
                                   {chat.title || 'Untitled Session'}
                                 </p>
-                                <p className="truncate text-[11px] text-muted-foreground/80 mt-0.5">
+                                <p className="truncate text-xs text-muted-foreground/80 mt-0.5">
                                   {chat.lastMessage || 'No messages'}
                                 </p>
                               </div>

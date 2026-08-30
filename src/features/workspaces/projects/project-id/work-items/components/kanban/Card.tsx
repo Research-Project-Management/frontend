@@ -192,7 +192,7 @@ export function CardUI({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold text-white"
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold text-white"
                 style={{ backgroundColor: label.color }}
               >
                 {label.title}
@@ -218,12 +218,12 @@ export function CardUI({
         )}
         <div className="min-w-0 flex-1">
           {card.identifier && (
-            <span className="mb-0.5 block text-[11px] font-semibold text-muted-foreground tracking-tight">
+            <span className="mb-0.5 block text-xs font-semibold text-muted-foreground tracking-tight">
               {card.identifier}
             </span>
           )}
           <h4
-            className={`min-w-0 flex-1 wrap-break-word text-[14px] font-medium leading-5 tracking-tight pr-6 ${
+            className={`min-w-0 flex-1 wrap-break-word text-sm font-medium leading-5 tracking-tight pr-6 ${
               isDone ? 'text-muted-foreground line-through' : 'text-foreground'
             }`}
           >
@@ -246,7 +246,7 @@ export function CardUI({
                 return (
                   <div
                     key={item.key}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-destructive px-2 py-1 text-[12px] font-semibold text-destructive-foreground"
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-destructive px-2 py-1 text-xs font-semibold text-destructive-foreground"
                     title={hoverText}
                     aria-label={hoverText}
                   >
@@ -261,7 +261,7 @@ export function CardUI({
                   key={item.key}
                   className={
                     hasText
-                      ? 'inline-flex items-center gap-1.5 text-[12px] font-medium text-foreground'
+                      ? 'inline-flex items-center gap-1.5 text-xs font-medium text-foreground'
                       : 'inline-flex size-5 items-center justify-center text-foreground'
                   }
                   title={hoverText}
@@ -278,7 +278,7 @@ export function CardUI({
 
           {assignee.user && (
             <div className="shrink-0" title={assignee.user.name}>
-              <Avatar className="size-5 border border-border/80 bg-background text-[10px] font-bold text-foreground">
+              <Avatar className="size-5 border border-border/80 bg-background text-xs font-bold text-foreground">
                 {assignee.avatar ? (
                   <AvatarImage src={assignee.avatar} alt={assignee.user.name} />
                 ) : null}

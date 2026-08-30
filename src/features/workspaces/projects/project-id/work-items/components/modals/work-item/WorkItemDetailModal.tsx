@@ -540,7 +540,7 @@ export function WorkItemDetailModal({
           {/* Top Dialog Action Bar */}
           <div className="flex items-center justify-between px-7 py-5 border-b border-border bg-background sticky top-0 z-20 shrink-0">
             <Select value={columnId} onValueChange={handleColumnChange} disabled={isReadOnly}>
-              <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-muted px-3 text-[14px] font-semibold text-foreground shadow-none hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer">
+              <SelectTrigger className="h-9 w-auto min-w-30 rounded-sm border-0 bg-muted px-3 text-sm font-semibold text-foreground shadow-none hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent className="rounded-sm border-border/50 shadow-xl">
@@ -631,7 +631,7 @@ export function WorkItemDetailModal({
                     </span>
                   )}
                   {card?.identifier && (
-                    <span className="bg-muted px-2 py-0.5 rounded text-[11px] font-bold text-foreground">
+                    <span className="bg-muted px-2 py-0.5 rounded text-xs font-bold text-foreground">
                       {card.identifier}
                     </span>
                   )}
@@ -645,7 +645,7 @@ export function WorkItemDetailModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
                 disabled={isReadOnly}
-                className="w-full text-[24px] font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-1 -m-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
+                className="w-full text-2xl font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-1 -m-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
               />
 
               {/* Task Actions Badges & Toolbars */}
@@ -679,7 +679,7 @@ export function WorkItemDetailModal({
                       <div className="flex items-center gap-1.5 bg-muted rounded-md px-2 py-1 text-xs font-medium text-foreground">
                         <Avatar className="size-4">
                           <AvatarImage src={selectedMember.avatar} />
-                          <AvatarFallback className="text-[9px]">
+                          <AvatarFallback className="text-xs">
                             {selectedMember.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
@@ -702,7 +702,7 @@ export function WorkItemDetailModal({
                     {selectedLabelsList.map((l: any) => (
                       <span
                         key={l.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-[11px] font-bold text-white shadow-xs"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-bold text-white shadow-xs"
                         style={{ backgroundColor: l.color }}
                       >
                         {l.name}
@@ -824,7 +824,7 @@ export function WorkItemDetailModal({
                           variant="outline"
                           className={
                             openChecklistPopover
-                              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-[15px] font-medium text-foreground shadow-none'
+                              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
                               : actionBtnClass
                           }
                         >
@@ -886,7 +886,7 @@ export function WorkItemDetailModal({
                           variant="outline"
                           className={
                             openAttachmentPopover
-                              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-[15px] font-medium text-foreground shadow-none'
+                              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
                               : actionBtnClass
                           }
                         >
@@ -930,7 +930,7 @@ export function WorkItemDetailModal({
                           >
                             <Paperclip className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                             <p className="text-xs font-semibold text-foreground">Click to upload or drag and drop</p>
-                            <p className="text-[11px] text-muted-foreground mt-1">SVG, PNG, JPG, PDF or Docs</p>
+                            <p className="text-xs text-muted-foreground mt-1">SVG, PNG, JPG, PDF or Docs</p>
                             <input
                               ref={fileInputRef}
                               type="file"
@@ -948,7 +948,7 @@ export function WorkItemDetailModal({
 
               {/* Description */}
               <div className="space-y-2 pt-2">
-                <label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wider">
+                <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                   Description
                 </label>
                 <textarea
@@ -1011,7 +1011,7 @@ export function WorkItemDetailModal({
               {Array.isArray(card?.subtasks) && card.subtasks.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <GitBranch className="size-4" /> Subtasks ({card.subtaskCompletedCount ?? card.subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{card.subtasks.length})
                     </label>
                   </div>
@@ -1026,7 +1026,7 @@ export function WorkItemDetailModal({
                             {sub.title}
                           </span>
                         </div>
-                        <span className="text-[11px] px-2 py-0.5 rounded-sm bg-muted capitalize font-medium text-foreground">
+                        <span className="text-xs px-2 py-0.5 rounded-sm bg-muted capitalize font-medium text-foreground">
                           {sub.columnId || (sub.completed ? 'done' : 'todo')}
                         </span>
                       </div>

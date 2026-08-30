@@ -37,7 +37,7 @@ export function WorklogItem({ log, onDelete }: WorklogItemProps) {
             <span className="text-xs font-semibold text-foreground truncate">
               {log.taskTitle}
             </span>
-            <Badge variant="secondary" className="text-[10px] font-medium h-4.5 px-1.5 rounded">
+            <Badge variant="secondary" className="text-xs font-medium h-4.5 px-1.5 rounded">
               {log.hours} {log.hours === 1 ? 'hr' : 'hrs'}
             </Badge>
           </div>
@@ -48,7 +48,7 @@ export function WorklogItem({ log, onDelete }: WorklogItemProps) {
             </p>
           )}
 
-          <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground/80 pt-0.5">
+          <div className="flex items-center gap-2.5 text-xs text-muted-foreground/80 pt-0.5">
             <span>{log.user.name}</span>
             <span>•</span>
             <span>{log.date}</span>

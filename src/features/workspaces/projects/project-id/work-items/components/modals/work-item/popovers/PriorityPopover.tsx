@@ -23,7 +23,7 @@ export const PRIORITY_CONFIG: Record<
   high: { label: 'High', icon: ArrowUp, color: 'text-orange-600', bg: 'bg-orange-50 text-orange-700 border-orange-200' },
   medium: { label: 'Medium', icon: Minus, color: 'text-amber-600', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
   low: { label: 'Low', icon: ArrowDown, color: 'text-blue-600', bg: 'bg-blue-50 text-blue-700 border-blue-200' },
-  none: { label: 'None', icon: CircleSlash, color: 'text-zinc-400', bg: 'bg-zinc-100 text-zinc-600 border-zinc-200' },
+  none: { label: 'None', icon: CircleSlash, color: 'text-muted-foreground', bg: 'bg-muted text-muted-foreground border-border' },
 };
 
 interface PriorityPopoverProps {

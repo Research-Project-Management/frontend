@@ -48,12 +48,12 @@ export default function DuplicateModal({
         className="sm:max-w-md p-6 overflow-hidden gap-0 border-border bg-popover shadow-xl"
       >
         <DialogHeader className="mb-4">
-          <DialogTitle className="text-[1.125rem] leading-snug font-semibold text-foreground">
+          <DialogTitle className="text-lg leading-snug font-semibold text-foreground">
             File already exists
           </DialogTitle>
         </DialogHeader>
 
-        <div className="text-[14.4px] text-muted-foreground space-y-5">
+        <div className="text-sm text-muted-foreground space-y-5">
           <p className="leading-relaxed">
             An item named <strong className="font-medium text-foreground break-all">"{filename}"</strong> already exists in this folder.
           </p>
@@ -73,7 +73,7 @@ export default function DuplicateModal({
             >
               <RadioGroupItem value="replace" id="replace" />
               <div className="flex flex-col w-full">
-                <span className="font-medium text-foreground text-[14.4px]">
+                <span className="font-medium text-foreground text-sm">
                   Replace existing file
                 </span>
               </div>
@@ -89,7 +89,7 @@ export default function DuplicateModal({
             >
               <RadioGroupItem value="keep-both" id="keep-both" />
               <div className="flex flex-col w-full">
-                <span className="font-medium text-foreground text-[14.4px]">
+                <span className="font-medium text-foreground text-sm">
                   Keep both files
                 </span>
               </div>

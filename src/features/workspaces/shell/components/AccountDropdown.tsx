@@ -48,37 +48,51 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
         <DropdownMenuContent
           align='end'
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className='w-[260px] p-2 bg-popover'
+          className='w-[250px] p-0 overflow-hidden bg-popover rounded-lg shadow-none border border-border'
           alignOffset={0}
         >
-          <div className="px-2.5 py-2 border-b border-border/60">
-            <p className="text-xs font-semibold text-foreground truncate">{user?.name || 'User'}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{user?.email || ''}</p>
+          <div className="flex flex-col items-center justify-center text-center px-4 py-4 border-b border-border/50 bg-muted/20">
+            <Avatar className="size-12 rounded-full border border-border/50">
+              {user.avatar ? (
+                <AvatarImage
+                  src={resolveFileUrl(user.avatar) || undefined}
+                  alt={String(user.name || '')}
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
+              <AvatarFallback className="text-sm font-semibold">
+                {String(user.name || '').substring(0, 2).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <p className="text-sm font-semibold text-foreground mt-2.5 max-w-full truncate tracking-tight">{user?.name || 'User'}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-full truncate">{user?.email || ''}</p>
           </div>
           
-          <DropdownMenuItem
-            className="cursor-pointer text-muted-foreground focus:text-foreground mt-1"
-            onClick={() => openModal('profile')}
-          >
-            <Settings className="mr-2 size-4" />
-            <span>Settings</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem
-            className="cursor-pointer text-muted-foreground focus:text-foreground mb-1"
-            onClick={() => openModal('preferences')}
-          >
-            <SlidersHorizontal className="mr-2 size-4" />
-            <span>Preferences</span>
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => logout()} 
-            className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
-          >
-            <LogOut className="mr-2 size-4" />
-            <span>Sign out</span>
-          </DropdownMenuItem>
+          <div className="p-1.5 space-y-0.5">
+            <DropdownMenuItem
+              className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
+              onClick={() => openModal('profile')}
+            >
+              <Settings className="size-4 text-foreground" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem
+              className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
+              onClick={() => openModal('preferences')}
+            >
+              <SlidersHorizontal className="size-4 text-foreground" />
+              <span>Preferences</span>
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem 
+              onClick={() => logout()} 
+              className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
+            >
+              <LogOut className="size-4 text-foreground" />
+              <span>Sign out</span>
+            </DropdownMenuItem>
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 

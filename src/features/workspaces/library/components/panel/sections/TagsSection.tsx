@@ -2,17 +2,31 @@
 
 import React, { useState } from 'react';
 import { Plus, X, Tag, Hash } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 interface TagsSectionProps {
   paper: Paper;
   onUpdateTags?: (tags: string[]) => void;
+  hideHeader?: boolean;
+  forceAdding?: boolean;
 }
 
-export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
+export default function TagsSection({
+  paper,
+  onUpdateTags,
+  hideHeader = false,
+  forceAdding = false,
+}: TagsSectionProps) {
   const [newTag, setNewTag] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+
+  React.useEffect(() => {
+    if (forceAdding) {
+      setIsAdding(true);
+    }
+  }, [forceAdding]);
 
   const tags: string[] = (paper as any).tags?.length
     ? (paper as any).tags
@@ -36,23 +50,27 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-foreground">
-          Tags
-        </h3>
-        {!isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer"
-          >
-            <Plus className="size-3 text-foreground" />
-            <span>Add Tag</span>
-          </button>
-        )}
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-foreground">
+            Tags
+          </h3>
+          {!isAdding && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsAdding(true)}
+              className="h-6 px-1.5 text-xs text-foreground hover:bg-muted font-medium gap-1 cursor-pointer"
+            >
+              <Plus className="size-3 text-foreground" />
+              <span>Add Tag</span>
+            </Button>
+          )}
+        </div>
+      )}
 
       {isAdding && (
-        <div className="flex items-center gap-1.5 p-2 bg-muted/20 rounded-lg border border-border/40">
+        <div className="flex items-center gap-1.5 p-2 bg-muted/20 rounded-md border border-border/40">
           <Input
             autoFocus
             placeholder="Tag name (e.g. LLM, Survey, Benchmark)..."
@@ -67,44 +85,56 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
                 setNewTag('');
               }
             }}
-            className="h-7 text-xs bg-background"
+            className="h-7 text-xs bg-background border-border/40 focus-visible:ring-1"
           />
-          <button
+          <Button
+            size="sm"
             onClick={handleAddTag}
             disabled={!newTag.trim()}
-            className="px-2.5 h-7 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 disabled:opacity-50 cursor-pointer shrink-0"
+            className="h-7 px-2.5 text-xs font-medium cursor-pointer shrink-0"
           >
             Add
-          </button>
-          <button
+          </Button>
+          <Button
+            size="icon-sm"
+            variant="ghost"
             onClick={() => {
               setIsAdding(false);
               setNewTag('');
             }}
-            className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+            className="size-7 text-foreground hover:bg-muted cursor-pointer shrink-0"
           >
-            <X className="size-3.5" />
-          </button>
+            <X className="size-3.5 text-foreground" />
+          </Button>
         </div>
       )}
 
       {tags.length === 0 && !isAdding ? (
-        <div className="py-6 text-center text-muted-foreground text-xs bg-muted/10 rounded-lg border border-dashed border-border/40">
-          No tags assigned yet.
+        <div className="py-5 text-center text-muted-foreground text-xs bg-muted/10 rounded-md border border-dashed border-border/40 space-y-2">
+          <p>No tags assigned yet.</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsAdding(true)}
+            className="h-7 px-2.5 text-xs cursor-pointer font-medium"
+          >
+            <Plus className="size-3.5 mr-1" />
+            Add Tag
+          </Button>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 items-center">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-muted/60 text-foreground border border-border/40 group hover:border-primary/40 transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium bg-muted/50 text-foreground border border-border/40 group hover:border-border/80 transition-colors"
             >
-              <Hash className="size-3 text-muted-foreground/60" />
+              <Hash className="size-2.5 text-foreground" />
               <span>{tag}</span>
               <button
                 type="button"
                 onClick={() => handleRemoveTag(tag)}
-                className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity ml-0.5 cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+                className="opacity-60 group-hover:opacity-100 hover:text-foreground transition-opacity ml-0.5 cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
                 title={`Remove tag "${tag}"`}
                 aria-label={`Remove tag "${tag}"`}
               >
@@ -112,6 +142,16 @@ export default function TagsSection({ paper, onUpdateTags }: TagsSectionProps) {
               </button>
             </span>
           ))}
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-dashed border-border/60 transition-colors cursor-pointer"
+            >
+              <Plus className="size-3" />
+              <span>Add</span>
+            </button>
+          )}
         </div>
       )}
     </div>

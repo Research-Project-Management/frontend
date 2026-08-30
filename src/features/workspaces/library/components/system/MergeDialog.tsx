@@ -58,8 +58,8 @@ export default function MergeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-primary">
-            <Files className="size-5" />
+          <div className="flex items-center gap-2 text-foreground">
+            <Files className="size-5 text-foreground" />
             <DialogTitle>Merge Duplicate Papers</DialogTitle>
           </div>
           <DialogDescription>
@@ -85,7 +85,7 @@ export default function MergeDialog({
                   onClick={() => setSelectedMasterId(paper.id)}
                   className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
                     isSelected
-                      ? 'border-primary bg-primary/5 shadow-xs'
+                      ? 'border-border bg-muted/60 shadow-none'
                       : 'border-border/70 hover:border-border hover:bg-muted/30'
                   }`}
                 >
@@ -99,7 +99,7 @@ export default function MergeDialog({
                         {paper.title || 'Untitled Paper'}
                       </Label>
                       {isSelected && (
-                        <Badge variant="default" className="text-xs h-5 px-2 shrink-0 font-medium">
+                        <Badge variant="secondary" className="text-xs h-5 px-2 shrink-0 font-medium">
                           Master
                         </Badge>
                       )}

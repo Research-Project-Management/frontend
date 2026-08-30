@@ -43,9 +43,25 @@ interface PaperTableRowProps {
   isSelected: boolean;
   isActive: boolean;
   showCollection?: boolean;
+  showLastRead?: boolean;
   onSelect: (paper: Paper) => void;
   onToggleCheck: (paperId: string, e: React.MouseEvent) => void;
   onDelete: (paperId: string) => void;
+}
+
+function formatLastReadDate(dateString?: string | null): string {
+  if (!dateString) return '—';
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-US', {
+    month: 'numeric',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
 }
 
 export default function PaperTableRow({
@@ -54,6 +70,7 @@ export default function PaperTableRow({
   isSelected,
   isActive,
   showCollection = true,
+  showLastRead = false,
   onSelect,
   onToggleCheck,
   onDelete,
@@ -153,7 +170,7 @@ export default function PaperTableRow({
               {hasFile && (
                 <span
                   title={paper.filename ? `PDF: ${paper.filename}` : "PDF Document Attached"}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono font-medium bg-muted text-foreground border border-border/60 shrink-0 select-none"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-mono font-semibold tracking-wider bg-muted/70 text-foreground border border-border/60 shrink-0 select-none leading-none"
                 >
                   PDF
                 </span>
@@ -161,7 +178,7 @@ export default function PaperTableRow({
               {isRawArxiv && !hasFile && (
                 <span
                   title="arXiv Preprint"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono font-medium bg-muted text-muted-foreground border border-border/60 shrink-0 select-none"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-mono font-semibold tracking-wider bg-muted/70 text-muted-foreground border border-border/60 shrink-0 select-none leading-none"
                 >
                   arXiv
                 </span>
@@ -178,7 +195,7 @@ export default function PaperTableRow({
               </span>
               {showCollection && collection && (
                 <span
-                  className="hidden sm:inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 text-muted-foreground bg-muted/60 rounded-md shrink-0 border border-border/40 truncate max-w-[120px]"
+                  className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 text-muted-foreground bg-muted/50 rounded shrink-0 border border-border/40 truncate max-w-[120px]"
                   title={`In collection: ${collection.name}`}
                 >
                   <Folder className="size-3 shrink-0" />
@@ -191,7 +208,7 @@ export default function PaperTableRow({
           {/* Authors Column */}
           <td className="px-3 py-1.5 align-middle w-[240px] max-w-[320px]">
             <span
-              className="truncate block text-muted-foreground font-normal text-[13px]"
+              className="truncate block text-muted-foreground font-normal text-xs"
               title={paper.authors?.join(', ')}
             >
               {authorDisplay ? (
@@ -201,6 +218,18 @@ export default function PaperTableRow({
               )}
             </span>
           </td>
+
+          {/* Last Read Column */}
+          {showLastRead && (
+            <td className="px-3 py-1.5 align-middle w-[200px] max-w-[240px]">
+              <span
+                className="truncate block text-muted-foreground font-normal text-xs font-mono tabular-nums"
+                title={paper.lastReadAt || paper.accessedAt || paper.updatedAt || paper.createdAt || ''}
+              >
+                {formatLastReadDate(paper.lastReadAt || paper.accessedAt || paper.updatedAt || paper.createdAt)}
+              </span>
+            </td>
+          )}
 
           {/* Hover Quick Action Dropdown Column */}
           <td className="w-10 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
@@ -212,60 +241,60 @@ export default function PaperTableRow({
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
+                          className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
                           aria-label="More actions"
                         >
-                          <MoreVertical className="size-3.5" />
+                          <MoreVertical className="size-4 text-foreground" />
                         </button>
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="left" className="text-[11px] py-1 px-2">
+                    <TooltipContent side="left" className="text-xs py-1 px-2">
                       More actions
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <DropdownMenuContent align="end" className="w-56 p-1 text-xs rounded-lg shadow-lg border border-border">
+                <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1 rounded-lg border border-border bg-popover text-popover-foreground z-50 text-sm shadow-none">
                   <DropdownMenuItem
                     onClick={handleDoubleClick}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
                   >
-                    <BookOpen className="size-3.5 text-muted-foreground" />
-                    <span>Open in Reader</span>
+                    <BookOpen className="size-4 text-foreground" />
+                    <span>Open in reader</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyCite}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
                   >
-                    <Quote className="size-3.5 text-muted-foreground" />
-                    <span>Copy LaTeX <code className="font-mono text-xs bg-muted px-1 rounded">\cite</code></span>
+                    <Quote className="size-4 text-foreground" />
+                    <span>Copy LaTeX \cite</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyBibtex}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
                   >
-                    <Copy className="size-3.5 text-muted-foreground" />
-                    <span>Copy BibTeX Entry</span>
+                    <Copy className="size-4 text-foreground" />
+                    <span>Copy BibTeX</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyApa}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
                   >
-                    <FileText className="size-3.5 text-muted-foreground" />
-                    <span>Copy APA 7th Citation</span>
+                    <FileText className="size-4 text-foreground" />
+                    <span>Copy APA citation</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleCopyIeee}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
                   >
-                    <FileText className="size-3.5 text-muted-foreground" />
-                    <span>Copy IEEE Citation</span>
+                    <FileText className="size-4 text-foreground" />
+                    <span>Copy IEEE citation</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onDelete(pId)}
-                    className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+                    className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
                   >
-                    <Trash2 className="size-3.5 text-muted-foreground" />
-                    <span>Move to Trash</span>
+                    <Trash2 className="size-4 text-foreground" />
+                    <span>Move to trash</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -274,26 +303,26 @@ export default function PaperTableRow({
         </tr>
       </ContextMenuTrigger>
 
-      <ContextMenuContent className="w-56 p-1 text-xs rounded-lg shadow-xl border border-border">
-        <ContextMenuItem onClick={handleDoubleClick} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
-          <BookOpen className="size-3.5 text-muted-foreground" />
-          <span>Open in Reader</span>
+      <ContextMenuContent className="w-48 p-1 rounded-lg border border-border bg-popover text-popover-foreground z-50 text-sm shadow-none">
+        <ContextMenuItem onClick={handleDoubleClick} className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none">
+          <BookOpen className="size-4 text-foreground" />
+          <span>Open in reader</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyCite} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
-          <Quote className="size-3.5 text-muted-foreground" />
-          <span>Copy LaTeX <code className="font-mono text-xs bg-muted px-1 rounded">\cite</code></span>
+        <ContextMenuItem onClick={handleCopyCite} className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none">
+          <Quote className="size-4 text-foreground" />
+          <span>Copy LaTeX \cite</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyBibtex} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
-          <Copy className="size-3.5 text-muted-foreground" />
-          <span>Copy BibTeX Entry</span>
+        <ContextMenuItem onClick={handleCopyBibtex} className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none">
+          <Copy className="size-4 text-foreground" />
+          <span>Copy BibTeX</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyApa} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
-          <FileText className="size-3.5 text-muted-foreground" />
-          <span>Copy APA 7th Citation</span>
+        <ContextMenuItem onClick={handleCopyApa} className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none">
+          <FileText className="size-4 text-foreground" />
+          <span>Copy APA citation</span>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleCopyIeee} className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted">
-          <FileText className="size-3.5 text-muted-foreground" />
-          <span>Copy IEEE Citation</span>
+        <ContextMenuItem onClick={handleCopyIeee} className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none">
+          <FileText className="size-4 text-foreground" />
+          <span>Copy IEEE citation</span>
         </ContextMenuItem>
         {paper.doi && (
           <ContextMenuItem
@@ -301,18 +330,18 @@ export default function PaperTableRow({
               navigator.clipboard.writeText(`https://doi.org/${paper.doi}`);
               toast.success('DOI URL copied to clipboard');
             }}
-            className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+            className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
           >
-            <ExternalLink className="size-3.5 text-muted-foreground" />
-            <span>Copy DOI URL</span>
+            <ExternalLink className="size-4 text-foreground" />
+            <span>Copy DOI</span>
           </ContextMenuItem>
         )}
         <ContextMenuItem
           onClick={() => onDelete(pId)}
-          className="gap-2.5 text-xs font-normal text-foreground cursor-pointer rounded-md hover:bg-muted focus:bg-muted"
+          className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
         >
-          <Trash2 className="size-3.5 text-muted-foreground" />
-          <span>Move to Trash</span>
+          <Trash2 className="size-4 text-foreground" />
+          <span>Move to trash</span>
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

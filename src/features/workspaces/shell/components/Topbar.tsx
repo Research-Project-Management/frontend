@@ -45,7 +45,7 @@ export default function Topbar() {
 
       {/* Center: Search placeholder */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
-        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-foreground/80 shadow-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer'>
+        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-foreground/80 shadow-none transition-colors hover:bg-accent hover:text-foreground cursor-pointer'>
           <Search className='size-3.5 text-foreground' />
           <span className='text-xs text-foreground/80'>Search...</span>
         </button>

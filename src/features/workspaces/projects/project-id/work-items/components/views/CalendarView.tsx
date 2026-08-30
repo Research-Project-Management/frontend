@@ -397,7 +397,7 @@ export default function CalendarView({
             {WEEK_DAY_LABELS.map((label) => (
               <div
                 key={label}
-                className="py-2.5 text-center text-[11px] font-semibold text-muted-foreground"
+                className="py-2.5 text-center text-xs font-semibold text-muted-foreground"
               >
                 {label}
               </div>
@@ -471,7 +471,7 @@ export default function CalendarView({
                   onChange={(event) => setExistingSearch(event.target.value)}
                   placeholder="Type to search"
                   autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-[18px] font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground/60 focus:border-border"
+                  className="h-10 w-full pl-13 pr-3 text-lg font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground/60 focus:border-border"
                 />
               </div>
             </div>
@@ -489,7 +489,7 @@ export default function CalendarView({
                       key={taskId}
                       type="button"
                       onClick={() => handleToggleExistingTask(taskId)}
-                      className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/70"
+                      className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/70"
                       title={selectedTask.title || "Untitled task"}
                     >
                       <span className="max-w-45 truncate">
@@ -507,7 +507,7 @@ export default function CalendarView({
               {filteredExistingTaskCandidates.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                   <Search className="size-8 mb-2 opacity-20" strokeWidth={1.5} />
-                  <p className="text-[13px] font-medium">No work items found</p>
+                  <p className="text-sm font-medium">No work items found</p>
                 </div>
               ) : (
                 filteredExistingTaskCandidates.map((task) => {
@@ -530,12 +530,12 @@ export default function CalendarView({
                             const col = columns.find(c => c.id === task.columnId);
                             if (!col) return null;
                             return (
-                              <span className="shrink-0 text-[11px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-[2px] truncate max-w-[80px]">
+                              <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-[2px] truncate max-w-[80px]">
                                 {col.title}
                               </span>
                             );
                           })()}
-                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground group-hover:text-foreground transition-colors">
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground group-hover:text-foreground transition-colors">
                             {task.title}
                           </span>
                         </div>
@@ -579,7 +579,7 @@ export default function CalendarView({
                   }
                 }}
                 disabled={filteredExistingTaskCandidates.length === 0}
-                className="h-8 rounded-sm px-2 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                className="h-8 rounded-sm px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
               >
                 {allFilteredTasksSelected ? "Deselect all" : "Select all"}
               </button>
@@ -676,8 +676,8 @@ const CalendarDayCell = memo(({
         <span
           className={
             isThisToday
-              ? "inline-flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-white pt-[1px]"
-              : `text-[11px] font-medium leading-none tracking-tight ${dayTextClass}`
+              ? "inline-flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white pt-[1px]"
+              : `text-xs font-medium leading-none tracking-tight ${dayTextClass}`
           }
         >
           {format(day, "d")}

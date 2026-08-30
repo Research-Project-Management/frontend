@@ -91,7 +91,7 @@ export function StorageFilterPopover() {
           {isActive && (
             <button
               onClick={resetFilters}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <RotateCcw className="size-3" />
               Reset
@@ -101,7 +101,7 @@ export function StorageFilterPopover() {
 
         {/* 1. File Type Dropdown */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
             File Type
           </label>
           <Select
@@ -129,7 +129,7 @@ export function StorageFilterPopover() {
 
         {/* 2. Project Dropdown (if workspace contains projects) */}
         <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
             Project
           </label>
           <Select
@@ -166,7 +166,7 @@ export function StorageFilterPopover() {
 
         {/* 3. Sort By Dropdown */}
         <div className="space-y-1.5 pt-1 border-t border-border/30">
-          <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
             Sort by
           </label>
           <Select

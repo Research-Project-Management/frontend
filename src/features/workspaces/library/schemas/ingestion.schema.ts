@@ -96,7 +96,8 @@ export type UnifiedIngestionResponse = z.infer<
 >;
 
 export const IngestionRunSnapshotDataSchema = z.object({
-  id: z.string(),
+  id: z.string().optional(),
+  runId: z.string().optional(),
   workspaceId: z.string(),
   sourceType: z.string().optional().default('unknown'),
   status: z.string(),

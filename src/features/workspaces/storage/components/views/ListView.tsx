@@ -433,7 +433,7 @@ export default function ListView({
                           />
                         ) : (
                           <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <span className="text-[11px] font-medium text-muted-foreground">
+                            <span className="text-xs font-medium text-muted-foreground">
                               {item.author?.name?.charAt(0)?.toUpperCase() || "?"}
                             </span>
                           </div>

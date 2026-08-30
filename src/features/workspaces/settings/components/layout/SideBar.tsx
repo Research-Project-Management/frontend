@@ -23,7 +23,7 @@ export function SideBar() {
   ];
 
   return (
-    <aside className="h-full w-52 shrink-0 border-r border-border/40 bg-transparent p-2 py-4 max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2">
+    <aside className="h-full w-60 shrink-0 border-r border-border/40 bg-transparent p-2 py-4 max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2">
       {/* Header */}
       <div className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 max-md:hidden">
         Settings

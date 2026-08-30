@@ -14,9 +14,17 @@ interface RelatedSectionProps {
   paper: Paper;
   workspaceId: string;
   onSelectPaper?: (paperId: string) => void;
+  hideHeader?: boolean;
+  forceAdding?: boolean;
 }
 
-export default function RelatedSection({ paper, workspaceId, onSelectPaper }: RelatedSectionProps) {
+export default function RelatedSection({
+  paper,
+  workspaceId,
+  onSelectPaper,
+  hideHeader = false,
+  forceAdding = false,
+}: RelatedSectionProps) {
   const targetWsId = workspaceId || paper.workspaceId || '';
   const { data: relatedData, isLoading } = useRelatedPapers(targetWsId, paper.id || '');
   const { data: allPapersData } = useLibraryPapers(targetWsId);
@@ -25,6 +33,13 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
   const unlinkMutation = useUnlinkPapers(targetWsId, paper.id || '');
 
   const [addOpen, setAddOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (forceAdding) {
+      setAddOpen(true);
+    }
+  }, [forceAdding]);
+
   const [selectedTargetId, setSelectedTargetId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -53,20 +68,22 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
   return (
     <div className="space-y-3 text-xs min-w-0">
       {/* Header bar */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-foreground">
-          Related
-        </h3>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 px-2.5 text-xs gap-1 cursor-pointer font-medium"
-          onClick={() => setAddOpen(true)}
-        >
-          <Plus className="size-3.5 text-foreground" />
-          <span>Add</span>
-        </Button>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-foreground">
+            Related
+          </h3>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-xs gap-1 cursor-pointer font-medium"
+            onClick={() => setAddOpen(true)}
+          >
+            <Plus className="size-3.5 text-foreground" />
+            <span>Add</span>
+          </Button>
+        </div>
+      )}
 
       {/* Loading state */}
       {isLoading && (
@@ -78,7 +95,7 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
 
       {/* Empty state */}
       {!isLoading && relatedList.length === 0 && (
-        <div className="p-6 border border-dashed border-border/70 rounded-lg text-center space-y-2">
+        <div className="p-6 border border-dashed border-border/70 rounded-md text-center space-y-2">
           <p className="text-xs text-muted-foreground">No related items</p>
           <Button
             size="sm"
@@ -94,7 +111,7 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
 
       {/* Relations list (Zotero-style clean list) */}
       {!isLoading && relatedList.length > 0 && (
-        <div className="space-y-1 divide-y divide-border/20 border border-border/40 rounded-lg overflow-hidden bg-card">
+        <div className="space-y-1 divide-y divide-border/20 border border-border/40 rounded-md overflow-hidden bg-card">
           {relatedList.map((item) => (
             <div
               key={item.id}
@@ -102,13 +119,13 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
               onClick={() => onSelectPaper?.(item.id)}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                <FileText className="size-3.5 text-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="font-normal text-foreground truncate text-xs group-hover:underline">
                     {item.title || 'Untitled Paper'}
                   </p>
                   {(item.authors?.length || item.year) && (
-                    <p className="text-[11px] text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {[item.authors?.join(', '), item.year].filter(Boolean).join(' • ')}
                     </p>
                   )}
@@ -124,13 +141,13 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
                           href={`https://doi.org/${item.doi}`}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          className="p-1 rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
                           aria-label="Open DOI"
                         >
-                          <ExternalLink className="size-3.5" />
+                          <ExternalLink className="size-3.5 text-foreground" />
                         </a>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                      <TooltipContent side="top" className="text-xs py-1 px-2">
                         Open DOI
                       </TooltipContent>
                     </Tooltip>
@@ -143,13 +160,13 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
                       <button
                         type="button"
                         onClick={() => handleUnlink(item.id)}
-                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        className="p-1 rounded text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                         aria-label="Remove relation"
                       >
-                        <X className="size-3.5" />
+                        <X className="size-3.5 text-foreground" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="top" className="text-[11px] py-1 px-2">
+                    <TooltipContent side="top" className="text-xs py-1 px-2">
                       Remove
                     </TooltipContent>
                   </Tooltip>
@@ -162,7 +179,7 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
 
       {/* Add Related Item Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md bg-popover text-foreground p-5 space-y-4 shadow-xl border-border rounded-xl">
+        <DialogContent className="sm:max-w-md bg-background text-foreground p-5 space-y-4 shadow-none border border-border rounded-xl">
           <DialogHeader className="p-0 space-y-1">
             <DialogTitle className="text-sm font-semibold text-foreground">
               Add Related Item
@@ -179,11 +196,11 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search library items..."
-              className="w-full px-3 py-1.5 text-xs bg-background text-foreground rounded-lg border border-border focus:border-border outline-none transition-colors"
+              className="w-full px-3 py-1.5 text-xs bg-muted/20 text-foreground rounded-lg border border-border/40 focus:border-border outline-none transition-colors"
             />
 
             {/* Paper options select / list */}
-            <div className="max-h-48 overflow-y-auto space-y-1 border border-border/50 rounded-lg p-1">
+            <div className="max-h-48 overflow-y-auto space-y-1 border border-border/40 rounded-lg p-1 bg-muted/10">
               {availablePapers.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
                   No other items available to link
@@ -205,7 +222,7 @@ export default function RelatedSection({ paper, workspaceId, onSelectPaper }: Re
                     >
                       <span className="truncate flex-1">{targetPaper.title || 'Untitled'}</span>
                       {targetPaper.year && (
-                        <span className="text-[11px] text-muted-foreground shrink-0 font-mono">
+                        <span className="text-xs text-muted-foreground shrink-0 font-mono">
                           {targetPaper.year}
                         </span>
                       )}

@@ -113,7 +113,7 @@ export function InviteModal({
                             </Button>
                           )}
                         </div>
-                        <FormMessage className="text-[11px]" />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
@@ -157,7 +157,7 @@ export function InviteModal({
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormMessage className="text-[11px]" />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />

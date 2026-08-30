@@ -127,7 +127,7 @@ export default function ProfileTab() {
       <AvatarFallback>{String(currentName).substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
     </Avatar>
                 <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
-                  <span className='text-[10px] text-white font-medium'>Upload</span>
+                  <span className='text-xs text-white font-medium'>Upload</span>
                 </div>
               </button>
               <input

@@ -109,7 +109,7 @@ export const Phase = ({
     color: string,
     size: "sm" | "md" = "md"
   ) => {
-    const textSize = size === "sm" ? "text-[16px]" : "text-[22px]";
+    const textSize = size === "sm" ? "text-base" : "text-xl";
 
     if (typeof icon === "string") {
       return (
@@ -225,20 +225,20 @@ export const Phase = ({
         onWheel={handleScrollableWheel}
       >
         <div className="space-y-2">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             TITLE
           </Label>
           <Input
             value={tempLabel}
             onChange={(event) => setTempLabel(event.target.value)}
-            className="h-9 rounded-sm border-border/50 bg-background text-[13px] shadow-none ring-primary/20 focus-visible:ring-1"
+            className="h-9 rounded-sm border-border/50 bg-background text-sm shadow-none ring-primary/20 focus-visible:ring-1"
             placeholder="Phase name..."
             autoFocus
           />
         </div>
 
         <div className="space-y-3">
-          <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             ICON
           </Label>
 
@@ -312,7 +312,7 @@ export const Phase = ({
                   setFormPhase(phase.id);
                   setIsOpen(false);
                 }}
-                className={`flex flex-1 cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-[13px] transition-colors duration-150 ${
+                className={`flex flex-1 cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors duration-150 ${
                   formPhase === phase.id
                     ? "bg-accent text-foreground"
                     : "text-foreground hover:bg-accent/70"
@@ -409,7 +409,7 @@ export const Phase = ({
     >
       <PopoverTrigger asChild>
         {trigger || (
-          <button ref={triggerRef} className="flex h-10 items-center gap-2 rounded-sm border border-border bg-background px-4 text-[15px] font-medium text-foreground outline-none transition-colors hover:bg-muted cursor-pointer">
+          <button ref={triggerRef} className="flex h-10 items-center gap-2 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground outline-none transition-colors hover:bg-muted cursor-pointer">
             <ClipboardList className="size-4 text-foreground" />
             Phase
           </button>

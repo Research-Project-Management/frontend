@@ -35,7 +35,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
 
   return (
     <div className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Sources
       </p>
       <div className="flex flex-wrap gap-1">
@@ -43,7 +43,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           s.snippet ? (
             <Popover key={i}>
               <PopoverTrigger asChild>
-                <button className="inline-flex max-w-48 cursor-pointer items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary transition-colors hover:bg-primary/20">
+                <button className="inline-flex max-w-48 cursor-pointer items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary transition-colors hover:bg-primary/20">
                   <FileText className="size-2.5 shrink-0" />
                   <span className="truncate">{s.source}</span>
                 </button>
@@ -56,12 +56,12 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
               >
                 <div className="flex items-center gap-1.5 border-b border-border bg-muted/45 px-2.5 py-1.5">
                   <Quote className="size-3 shrink-0 text-primary" />
-                  <span className="truncate text-[10px] font-semibold text-foreground/80">
+                  <span className="truncate text-xs font-semibold text-foreground/80">
                     {s.source}
                   </span>
                 </div>
                 <div className="px-2.5 py-2 max-h-40 overflow-y-auto">
-                  <p className="select-text whitespace-pre-wrap text-[10px] leading-relaxed text-foreground/70">
+                  <p className="select-text whitespace-pre-wrap text-xs leading-relaxed text-foreground/70">
                     {s.snippet}
                   </p>
                 </div>
@@ -70,7 +70,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           ) : (
             <span
               key={i}
-              className="inline-flex max-w-48 items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+              className="inline-flex max-w-48 items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
             >
               <FileText className="size-2.5 shrink-0" />
               <span className="truncate">{s.source}</span>
@@ -144,7 +144,7 @@ const MessageBubble = React.memo(function MessageBubble({
           <button
             type="button"
             onClick={handleCopy}
-            className="mt-2 flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-[10px] text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="mt-2 flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-xs text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
             {copied ? 'Copied' : 'Copy'}
@@ -345,7 +345,7 @@ export default function ChatPanel({
                   className="mb-2 size-10 transition-transform duration-1000 group-hover:rotate-180"
                 />
                 <p className="text-sm font-semibold">AI Reader</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                <p className="mt-0.5 text-xs text-muted-foreground/60">
                   Ask about this indexed paper.
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function ChatPanel({
                       setInputMessage(prompt);
                       textareaRef.current?.focus();
                     }}
-                    className="group flex w-full items-center gap-2 rounded-lg border border-border/40 bg-secondary/20 px-3 py-2 text-left text-[11px] text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                    className="group flex w-full items-center gap-2 rounded-lg border border-border/40 bg-secondary/20 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                   >
                     <span className="shrink-0 text-primary/40 transition-colors group-hover:text-primary">›</span>
                     <span className="truncate">{prompt}</span>
@@ -367,7 +367,7 @@ export default function ChatPanel({
                 ),
               )}
             </div>
-            <p className="text-center text-[10px] text-muted-foreground/30">
+            <p className="text-center text-xs text-muted-foreground/30">
               Select text in the PDF to focus the next answer.
             </p>
           </div>
@@ -404,10 +404,10 @@ export default function ChatPanel({
           <div className="group relative mb-2">
             <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-border/50 bg-muted/35 px-2.5 py-1.5">
               <FileText className="size-3 shrink-0 text-primary/60" />
-              <span className="truncate text-[10px] font-mono text-muted-foreground">
+              <span className="truncate text-xs font-mono text-muted-foreground">
                 selected passage
               </span>
-              <span className="shrink-0 text-[9px] text-muted-foreground/45">
+              <span className="shrink-0 text-xs text-muted-foreground/45">
                 {selectionContext.split(/\s+/).filter(Boolean).length}w
               </span>
               <button
@@ -419,7 +419,7 @@ export default function ChatPanel({
               </button>
             </div>
             <div className="pointer-events-none absolute bottom-full left-0 right-0 z-50 mb-1 hidden group-hover:block">
-              <div className="rounded-lg border border-border bg-popover p-2.5 text-[10px] font-mono shadow-xl">
+              <div className="rounded-lg border border-border bg-popover p-2.5 text-xs font-mono shadow-xl">
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <FileText className="size-3 text-primary/70" />
                   <span className="text-muted-foreground">Reader selection</span>
@@ -433,7 +433,7 @@ export default function ChatPanel({
           </div>
         )}
 
-        <div className="relative rounded-lg border border-border bg-background shadow-sm transition-shadow duration-300 focus-within:border-primary/30 focus-within:shadow-md">
+        <div className="relative rounded-lg border border-border bg-background shadow-none transition-colors focus-within:border-border">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -450,7 +450,7 @@ export default function ChatPanel({
           />
 
           <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-            <span className="font-mono text-[10px] text-muted-foreground/30">
+            <span className="font-mono text-xs text-muted-foreground/30">
               {messages.length > 0 ? `${messages.length} msg` : 'paper chat'}
             </span>
             <button

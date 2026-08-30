@@ -77,21 +77,21 @@ export function ColumnFormModal({
       <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 shadow-2xl rounded-sm">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-[18px] font-bold text-foreground">
+            <DialogTitle className="text-lg font-bold text-foreground">
               {mode === "create" ? "New Column" : "Edit Column"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="p-6 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="column-name" className="text-[13px] font-medium text-muted-foreground">
+              <Label htmlFor="column-name" className="text-sm font-medium text-muted-foreground">
                 Column Name
               </Label>
               <Input
                 id="column-name"
                 placeholder="Enter column title..."
                 autoFocus
-                className="h-10 text-[14px] font-medium text-foreground rounded-md border-border bg-background shadow-none focus-visible:ring-0 focus-visible:border-primary transition-all"
+                className="h-10 text-sm font-medium text-foreground rounded-md border-border bg-background shadow-none focus-visible:ring-0 focus-visible:border-primary transition-all"
                 {...register("sectionName")}
               />
               {errors.sectionName && (
@@ -100,7 +100,7 @@ export function ColumnFormModal({
             </div>
 
             <div className="space-y-2.5">
-              <Label className="text-[13px] font-medium text-muted-foreground">
+              <Label className="text-sm font-medium text-muted-foreground">
                 Accent Color
               </Label>
               <div className="flex items-center gap-3">
@@ -135,13 +135,13 @@ export function ColumnFormModal({
               variant="ghost"
               onClick={onClose}
               disabled={isLoading}
-              className="h-9 px-4 text-[13px] font-medium text-muted-foreground hover:bg-muted shadow-none rounded-md"
+              className="h-9 px-4 text-sm font-medium text-muted-foreground hover:bg-muted shadow-none rounded-md"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="h-9 px-6 text-[13px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-md transition-all duration-200 active:scale-[0.98]"
+              className="h-9 px-6 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-md transition-all duration-200 active:scale-[0.98]"
               disabled={!watch("sectionName")?.trim() || isLoading}
             >
               {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create Column" : "Save Changes")}
@@ -199,7 +199,7 @@ export function DeleteColumnModal({
           </DialogHeader>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50/30">
+        <div className="px-6 py-4 bg-muted/30">
           <DialogFooter className="flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"

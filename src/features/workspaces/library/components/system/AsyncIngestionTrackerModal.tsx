@@ -60,7 +60,7 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
             {job && (
               <Badge
                 variant={isCompleted ? 'default' : isProcessing ? 'secondary' : 'destructive'}
-                className="uppercase text-[10px]"
+                className="uppercase text-xs"
               >
                 {job.status}
               </Badge>
@@ -99,13 +99,13 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
                   <span className="text-xs text-muted-foreground block">Total</span>
                   <span className="text-sm font-bold text-foreground font-mono tabular-nums">{job.total}</span>
                 </div>
-                <div className="p-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-center">
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400 block">Success</span>
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{job.successCount}</span>
+                <div className="p-2.5 rounded-lg border border-border/50 bg-card/60 text-center">
+                  <span className="text-xs text-muted-foreground block">Success</span>
+                  <span className="text-sm font-bold text-foreground font-mono tabular-nums">{job.successCount}</span>
                 </div>
-                <div className="p-2.5 rounded-lg border border-destructive/20 bg-destructive/5 text-center">
-                  <span className="text-xs text-destructive block">Failed</span>
-                  <span className="text-sm font-bold text-destructive font-mono tabular-nums">{job.failedCount}</span>
+                <div className="p-2.5 rounded-lg border border-border/50 bg-card/60 text-center">
+                  <span className="text-xs text-muted-foreground block">Failed</span>
+                  <span className="text-sm font-bold text-foreground font-mono tabular-nums">{job.failedCount}</span>
                 </div>
               </div>
 

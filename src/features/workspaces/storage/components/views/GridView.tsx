@@ -204,7 +204,7 @@ export default function GridView({
                         />
                       ) : (
                         <div className="size-4 rounded-full bg-muted flex items-center justify-center">
-                          <span className="text-[10px] font-medium">
+                          <span className="text-xs font-medium">
                             {item.author.name?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>

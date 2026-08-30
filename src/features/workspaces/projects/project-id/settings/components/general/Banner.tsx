@@ -187,7 +187,7 @@ export function GeneralBanner({
   const networkLabel = isPrivate ? 'Private' : 'Public';
 
   return (
-    <div className="relative w-full rounded-lg border border-border/80 overflow-hidden bg-neutral-200 dark:bg-neutral-800 h-44 sm:h-52 flex flex-col justify-end p-5 shadow-xs">
+    <div className="relative w-full rounded-lg border border-border/80 overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5 shadow-xs">
       {/* Background Cover Image or Default Gradient */}
       {cover ? (
         <img
@@ -196,7 +196,7 @@ export function GeneralBanner({
           className="absolute inset-0 size-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-r from-neutral-300 via-neutral-200 to-neutral-300 dark:from-neutral-900 dark:via-neutral-800 dark:to-neutral-900" />
+        <div className="absolute inset-0 bg-gradient-to-r from-muted via-muted/80 to-muted" />
       )}
 
       {/* Subtle overlay for text contrast */}
@@ -212,10 +212,10 @@ export function GeneralBanner({
               className="cursor-pointer group relative block shrink-0 outline-none"
               title="Change emoji or icon"
             >
-              <Avatar className="size-14 rounded-lg border-2 border-white/80 dark:border-white/20 bg-background shadow-md">
+              <Avatar className="size-14 rounded-lg border-2 border-white/80 dark:border-white/20 bg-background shadow-xs">
                 {renderAvatarContent(avatar, name)}
               </Avatar>
-              <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white font-medium">
+              <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white font-medium">
                 Edit
               </div>
             </button>
@@ -240,7 +240,7 @@ export function GeneralBanner({
         >
           <button
             type="button"
-            className="h-8 px-3 rounded-lg border border-white/40 bg-white/90 hover:bg-white text-neutral-900 dark:bg-black/70 dark:hover:bg-black/90 dark:text-white dark:border-white/20 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer outline-none shrink-0"
+            className="h-8 px-3 rounded-lg border border-white/40 bg-white/90 hover:bg-white text-foreground dark:bg-black/70 dark:hover:bg-black/90 dark:text-white dark:border-white/20 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer outline-none shrink-0"
           >
             <span>Change cover</span>
           </button>

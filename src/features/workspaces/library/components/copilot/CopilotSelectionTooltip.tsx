@@ -35,7 +35,7 @@ export const CopilotSelectionTooltip: React.FC<CopilotSelectionTooltipProps> = (
       <button
         type="button"
         onClick={() => onAskCopilot(selectedText)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground text-background text-[11px] font-medium shadow-md border border-border/40 hover:bg-foreground/90 active:scale-95 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-medium border border-border/40 hover:bg-foreground/90 active:scale-95 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-none"
       >
         <Sparkles className="size-3 text-background shrink-0" />
         <span>Ask Copilot about selection</span>

@@ -105,7 +105,7 @@ export function Subscribers({
                         {m.user.avatar && (
                           <AvatarImage src={m.user.avatar} className="object-cover" />
                         )}
-                        <AvatarFallback className="text-[9px] bg-muted font-medium">
+                        <AvatarFallback className="text-xs bg-muted font-medium">
                           {m.user.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

@@ -11,13 +11,8 @@ import {
   Star,
   Trash,
   PanelLeftClose,
-  Cloud,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { useStorageUsage } from '../../hooks/use-storage';
-import { formatFileSize } from '../../utils/file';
-
-const DEFAULT_WORKSPACE_QUOTA_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB default quota
 
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const { workspaceId } = useParams();
@@ -25,14 +20,6 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const id = useId();
 
   const basePath = `/${workspaceId}/storage`;
-
-  // Storage usage query
-  const { data: usageData } = useStorageUsage(workspaceId as string);
-  const usedBytes = usageData?.totalBytes || 0;
-  const usagePercentage = Math.min(
-    100,
-    Math.round((usedBytes / DEFAULT_WORKSPACE_QUOTA_BYTES) * 100)
-  );
 
   // Storage-specific navigation
   const storageItems = [
@@ -100,38 +87,6 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             })}
           </nav>
         </LayoutGroup>
-      </div>
-
-      {/* Storage Quota Bar */}
-      <div className="px-2 pt-4 pb-2 border-t border-border/40 max-md:hidden">
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-          <div className="flex items-center gap-1.5">
-            <Cloud className="size-3.5 text-muted-foreground/80" />
-            <span className="font-medium text-foreground text-[12px]">Storage</span>
-          </div>
-          <span className="text-[11px] tabular-nums font-medium text-muted-foreground">
-            {usagePercentage}%
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-500",
-              usagePercentage > 90
-                ? "bg-destructive"
-                : usagePercentage > 75
-                ? "bg-amber-500"
-                : "bg-primary"
-            )}
-            style={{ width: `${Math.max(2, usagePercentage)}%` }}
-          />
-        </div>
-
-        <p className="text-[11px] text-muted-foreground mt-1.5 truncate">
-          {formatFileSize(usedBytes)} of {formatFileSize(DEFAULT_WORKSPACE_QUOTA_BYTES)} used
-        </p>
       </div>
     </aside>
   );

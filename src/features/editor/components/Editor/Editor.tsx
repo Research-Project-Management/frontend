@@ -776,12 +776,12 @@ export default function Editor({ page }: EditorProps) {
               <div key={c.id}>
                 {idx > 0 && <div className="my-1.5 h-px bg-border" />}
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-[11px] font-semibold text-foreground leading-tight">
+                  <span className="text-xs font-semibold text-foreground leading-tight">
                     {c.author.name}
                   </span>
                   <span
                     className={cn(
-                      "text-[10px] p-1 py-px rounded-full font-medium",
+                      "text-xs p-1 py-px rounded-full font-medium",
                       c.status === "resolved"
                         ? "bg-green-500/15 text-green-600"
                         : "bg-blue-500/15 text-blue-600",
@@ -794,11 +794,11 @@ export default function Editor({ page }: EditorProps) {
                     )}
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-snug line-clamp-3">
+                <p className="text-xs text-muted-foreground leading-snug line-clamp-3">
                   {c.content}
                 </p>
                 {c.replies.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">
                     {c.replies.length}{" "}
                     {c.replies.length === 1 ? "reply" : "replies"}
                   </p>
@@ -893,7 +893,7 @@ export default function Editor({ page }: EditorProps) {
                       )}
                       <span className="flex-1 text-left">{item.label}</span>
                       {item.kbd && (
-                        <kbd className="text-[9px] text-muted-foreground font-mono tracking-tight">
+                        <kbd className="text-xs text-muted-foreground font-mono tracking-tight">
                           {item.kbd}
                         </kbd>
                       )}

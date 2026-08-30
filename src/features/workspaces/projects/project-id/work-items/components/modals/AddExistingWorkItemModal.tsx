@@ -120,7 +120,7 @@ export function AddExistingWorkItemModal({
               <Plus className="size-4.5 text-primary" />
               <span>Add Existing Work Items to Cycle</span>
             </div>
-            <p className="text-[13px] text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Select work items from the project to include in{" "}
               <span className="font-semibold text-foreground">{currentCycleName}</span>.
             </p>
@@ -203,7 +203,7 @@ export function AddExistingWorkItemModal({
                             {task.title}
                           </p>
                           {task.identifier && (
-                            <span className="text-[10px] text-muted-foreground font-mono">
+                            <span className="text-xs text-muted-foreground font-mono">
                               {task.identifier}
                             </span>
                           )}
@@ -211,7 +211,7 @@ export function AddExistingWorkItemModal({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             setDetailTask(task);

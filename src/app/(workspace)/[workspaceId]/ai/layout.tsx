@@ -36,7 +36,7 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
             <button
               onClick={() => setSourcesOpen(true)}
               title="Show sources"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-card px-3 text-[12px] font-medium text-muted-foreground shadow-none hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-card px-3 text-xs font-medium text-muted-foreground shadow-none hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <PanelRightOpen className="size-3.5" />
               Sources
@@ -51,7 +51,7 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
       {showSources && sourcesOpen && (
         <aside className="shrink-0 h-full w-80 border-l border-border/50 bg-card flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/50">
-            <h2 className="text-[13px] font-semibold text-foreground tracking-tight">
+            <h2 className="text-sm font-semibold text-foreground tracking-tight">
               Sources
             </h2>
             <button

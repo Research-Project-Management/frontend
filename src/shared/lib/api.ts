@@ -118,8 +118,9 @@ async function rawFetch(
 
   const url = buildUrl(path, params);
   const token = getAuthToken();
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = {
-    ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(extraHeaders as Record<string, string>),
   };
   if (token) {
@@ -150,7 +151,7 @@ async function rawFetch(
       method,
       credentials: 'include',
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? (isFormData ? (body as any) : JSON.stringify(body)) : undefined,
       signal: finalSignal,
       ...rest,
     });

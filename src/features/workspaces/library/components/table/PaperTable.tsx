@@ -25,6 +25,7 @@ interface PaperTableProps {
   onAddPaper?: () => void;
   collectionName?: string;
   showCollection?: boolean;
+  showLastRead?: boolean;
 }
 
 export default function PaperTable({
@@ -42,6 +43,7 @@ export default function PaperTable({
   onAddPaper,
   collectionName,
   showCollection = true,
+  showLastRead = false,
 }: PaperTableProps) {
   const { workspaceId: workspaceUrl } = useParams();
   const currentWorkspaceId = (workspaceUrl as string) || '';
@@ -58,7 +60,12 @@ export default function PaperTable({
     isAllSelected,
     isPartiallySelected,
     selectedCount,
-  } = usePaperTable({ papers, initialActiveId: selectedPaperId });
+  } = usePaperTable({
+    papers,
+    initialActiveId: selectedPaperId,
+    initialSortField: showLastRead ? 'lastReadAt' : 'createdAt',
+    initialSortOrder: 'desc',
+  });
 
   // Selected paper objects for batch actions
   const selectedPapers = React.useMemo(() => {
@@ -116,6 +123,7 @@ export default function PaperTable({
           isPartiallySelected={isPartiallySelected}
           onToggleSelectAll={toggleSelectAll}
           showCollection={showCollection}
+          showLastRead={showLastRead}
         />
 
         <tbody className="divide-y divide-border/30">
@@ -130,6 +138,7 @@ export default function PaperTable({
               onToggleCheck={toggleSelect}
               onDelete={onDeletePaper}
               showCollection={showCollection}
+              showLastRead={showLastRead}
             />
           ))}
         </tbody>

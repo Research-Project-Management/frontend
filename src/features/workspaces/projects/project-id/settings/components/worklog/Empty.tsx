@@ -126,7 +126,7 @@ export function WorklogEmpty() {
       </div>
 
       {/* ── Title & Message ── */}
-      <h3 className="text-[15px] font-semibold text-foreground tracking-tight">
+      <h3 className="text-base font-semibold text-foreground tracking-tight">
         Track timesheets for all members
       </h3>
 

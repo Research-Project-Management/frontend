@@ -115,7 +115,7 @@ export default function AnnotationsPanel({
       <div className="border-b border-border bg-background p-3.5 flex items-center justify-between">
         <div>
           <h3 className="text-xs font-semibold text-foreground">Annotations & Highlights</h3>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {annotations.length} annotation{annotations.length !== 1 ? 's' : ''} on file
           </p>
         </div>
@@ -137,7 +137,7 @@ export default function AnnotationsPanel({
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">New Annotation</span>
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground">Page:</span>
+              <span className="text-xs text-muted-foreground">Page:</span>
               <input
                 type="number"
                 min="1"
@@ -152,14 +152,14 @@ export default function AnnotationsPanel({
             value={newQuote}
             onChange={(e) => setNewQuote(e.target.value)}
             rows={2}
-            className="w-full resize-none rounded-md border border-input/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-primary placeholder:text-muted-foreground/50"
+            className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-border placeholder:text-muted-foreground/50"
           />
           <textarea
             placeholder="Your notes or comments on this quote..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             rows={2}
-            className="w-full resize-none rounded-md border border-input/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-primary placeholder:text-muted-foreground/50"
+            className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-border placeholder:text-muted-foreground/50"
           />
           <div className="flex justify-end gap-1.5">
             <Button
@@ -218,19 +218,19 @@ export default function AnnotationsPanel({
                 >
                   {isEditing ? (
                     <div className="space-y-2">
-                      <div className="text-[11px] font-medium text-muted-foreground">Quote:</div>
+                      <div className="text-xs font-medium text-muted-foreground">Quote:</div>
                       <textarea
                         value={editingQuote}
                         onChange={(e) => setEditingQuote(e.target.value)}
                         rows={2}
-                        className="w-full resize-none rounded-md border border-primary/40 bg-background px-2.5 py-1.5 text-xs outline-none"
+                        className="w-full resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none"
                       />
-                      <div className="text-[11px] font-medium text-muted-foreground">Comment:</div>
+                      <div className="text-xs font-medium text-muted-foreground">Comment:</div>
                       <textarea
                         value={editingComment}
                         onChange={(e) => setEditingComment(e.target.value)}
                         rows={2}
-                        className="w-full resize-none rounded-md border border-primary/40 bg-background px-2.5 py-1.5 text-xs outline-none"
+                        className="w-full resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none"
                       />
                       <div className="flex justify-end gap-1.5 pt-1">
                         <Button
@@ -259,7 +259,7 @@ export default function AnnotationsPanel({
                             className="size-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: anno.color || '#ffeb3b' }}
                           />
-                          <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          <span className="text-xs font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                             Page {page}
                           </span>
                         </div>
@@ -313,7 +313,7 @@ export default function AnnotationsPanel({
                       </div>
 
                       {quote && (
-                        <blockquote className="border-l-2 border-primary/60 pl-2 text-xs italic text-foreground/80 leading-relaxed select-text">
+                        <blockquote className="border-l-2 border-border pl-2 text-xs italic text-foreground/80 leading-relaxed select-text">
                           &ldquo;{quote}&rdquo;
                         </blockquote>
                       )}

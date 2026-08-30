@@ -66,7 +66,7 @@ export default function NavigationBar({
             {typeof count === 'number' && count > 0 && (
               <span
                 className={cn(
-                  'text-[10px] px-1.5 py-0.5 rounded-full font-semibold leading-none',
+                  'text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none',
                   isActive
                     ? 'bg-primary/15 text-primary'
                     : 'bg-muted text-muted-foreground',

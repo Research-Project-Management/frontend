@@ -144,7 +144,7 @@ function InlineInput({
           if (e.key === "Escape") onCancel();
         }}
         placeholder={placeholder}
-        className="flex-1 min-w-0 text-[12px] bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/40"
+        className="flex-1 min-w-0 text-xs bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/40"
       />
       <button
         onClick={onCommit}
@@ -195,7 +195,7 @@ function RenameInput({
           if (e.key === "Enter") onCommit();
           if (e.key === "Escape") onCancel();
         }}
-        className="min-w-0 flex-1 rounded-md border border-primary/40 bg-primary/5 px-1 text-[12px] text-foreground outline-none"
+        className="min-w-0 flex-1 rounded-md border border-primary/40 bg-primary/5 px-1 text-xs text-foreground outline-none"
       />
       <button
         onClick={(e) => {
@@ -237,7 +237,7 @@ function RowActions({ children }: { children: React.ReactNode }) {
           <Ellipsis className="size-3.5" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44 text-[12px] z-[9999]">
+      <DropdownMenuContent align="end" className="w-44 text-xs z-[9999]">
         {children}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -337,12 +337,12 @@ function StorageFolderNode({
           />
         ) : (
           <>
-            <span className="flex-1 min-w-0 truncate text-[13px] text-foreground/90">
+            <span className="flex-1 min-w-0 truncate text-sm text-foreground/90">
               {folder.filename}
             </span>
             <RowActions>
               <DropdownMenuItem
-                className="text-[12px]!"
+                className="text-xs!"
                 onClick={(e) => {
                   e.stopPropagation();
                   setRenamingId(folder.id);
@@ -353,7 +353,7 @@ function StorageFolderNode({
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="text-[12px]!"
+                className="text-xs!"
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteFile.mutate(folder.id);
@@ -401,7 +401,7 @@ function StorageFolderNode({
           )}
           {!isLoading && !children?.length && (
             <div
-              className="flex h-8 items-center text-[11px] italic text-muted-foreground/50"
+              className="flex h-8 items-center text-xs italic text-muted-foreground/50"
               style={{ paddingLeft: `${(depth + 1) * 16 + 20}px` }}
             >
               Empty folder
@@ -469,12 +469,12 @@ function StorageFileRow({
         />
       ) : (
         <>
-          <span className="flex-1 min-w-0 truncate text-[13px] text-foreground/90">
+          <span className="flex-1 min-w-0 truncate text-sm text-foreground/90">
             {item.filename}
           </span>
           <RowActions>
             <DropdownMenuItem
-              className="text-[12px]!"
+              className="text-xs!"
               onClick={(e) => {
                 e.stopPropagation();
                 onInsertAsset(item.filename);
@@ -484,7 +484,7 @@ function StorageFileRow({
               Insert Command
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-[12px]!"
+              className="text-xs!"
               onClick={(e) => {
                 e.stopPropagation();
                 setRenamingId(item.id);
@@ -495,7 +495,7 @@ function StorageFileRow({
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="text-[12px]!"
+              className="text-xs!"
               onClick={(e) => {
                 e.stopPropagation();
                 deleteFile.mutate(item.id);
@@ -1381,7 +1381,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
 
   return (
     <>
-      <div className="w-full h-full flex flex-col select-none text-[13px]">
+      <div className="w-full h-full flex flex-col select-none text-sm">
         {/* Hidden upload inputs */}
         <input
           ref={combinedUploadRef}
@@ -1507,7 +1507,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           {uploadingCount > 0 && (
             <div className="flex h-8 items-center gap-2 px-5">
               <Loader2 className="size-3 animate-spin text-muted-foreground" />
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Uploading {uploadingCount} file{uploadingCount > 1 ? "s" : ""}GÇª
               </span>
             </div>
@@ -1550,7 +1550,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                 return (
                   <div className="flex flex-col items-center gap-2 px-5 py-8 text-muted-foreground">
                     <FileText className="size-6 opacity-20" />
-                    <span className="text-[11px] text-center">
+                    <span className="text-xs text-center">
                       No files yet.{" "}
                       <button
                         onClick={handleStartCreate}
@@ -1635,7 +1635,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                       <>
                         <span
                           className={cn(
-                            "flex-1 min-w-0 truncate text-[13px]",
+                            "flex-1 min-w-0 truncate text-sm",
                             isActive
                               ? "text-primary font-medium"
                               : "text-foreground/90",
@@ -1644,7 +1644,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                           {displayName(file.title)}
                         </span>
                         {isMain && !renamingId && (
-                          <span className="shrink-0 text-[10px] px-1.5 py-px rounded-full border border-primary/30 bg-primary/8 text-primary/80 font-medium mr-1">
+                          <span className="shrink-0 text-xs px-1.5 py-px rounded-full border border-primary/30 bg-primary/8 text-primary/80 font-medium mr-1">
                             main
                           </span>
                         )}
@@ -1652,7 +1652,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                           <RowActions>
                             {!isMain && (
                               <DropdownMenuItem
-                                className="text-[12px]!"
+                                className="text-xs!"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSetMain(file.id);
@@ -1663,7 +1663,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              className="text-[12px]!"
+                              className="text-xs!"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleStartRename(file);
@@ -1673,7 +1673,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                               Rename
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-[12px]!"
+                              className="text-xs!"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDelete(file.id);
@@ -1696,7 +1696,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={() => setIsOutlineOpen((value) => !value)}
-            className="flex h-8 w-full items-center gap-2 px-3 text-left text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-accent/70 hover:text-foreground"
+            className="flex h-8 w-full items-center gap-2 px-3 text-left text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent/70 hover:text-foreground"
           >
             <ChevronRight
               className={cn(
@@ -1706,14 +1706,14 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
             />
             <ListTree className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">Outline</span>
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               {outline.length}
             </span>
           </button>
           {isOutlineOpen && (
             <div className="max-h-[42vh] overflow-y-auto pb-1">
               {outline.length === 0 ? (
-                <div className="px-9 py-2 text-[11px] text-muted-foreground">
+                <div className="px-9 py-2 text-xs text-muted-foreground">
                   No sections found.
                 </div>
               ) : (
@@ -1739,7 +1739,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                     <span className="min-w-0 flex-1 truncate">
                       {entry.title}
                     </span>
-                    <span className="shrink-0 text-[10px] text-muted-foreground/60">
+                    <span className="shrink-0 text-xs text-muted-foreground/60">
                       :{entry.line}
                     </span>
                   </button>
@@ -1788,7 +1788,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                       {folderPath && (
                         <div className="flex items-center gap-1 min-w-0">
                           <Folder className="size-3 text-amber-500 shrink-0" />
-                          <span className="text-[10px] text-muted-foreground truncate">{folderPath}</span>
+                          <span className="text-xs text-muted-foreground truncate">{folderPath}</span>
                         </div>
                       )}
                       <span className="text-xs text-foreground truncate block">{item.file.name}</span>
@@ -1803,7 +1803,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                   {/* Conflict resolution GÇö only shown for duplicates */}
                   {isDuplicate && (
                     <div className="ml-5 flex items-center gap-1.5">
-                      <span className="text-[10px] text-amber-600 flex items-center gap-1 mr-1">
+                      <span className="text-xs text-amber-600 flex items-center gap-1 mr-1">
                         <AlertTriangle className="size-2.5" />
                         Already exists
                       </span>
@@ -1814,7 +1814,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                           )
                         }
                         className={cn(
-                          "h-5 px-2 rounded text-[10px] border transition-colors",
+                          "h-5 px-2 rounded text-xs border transition-colors",
                           item.resolution === "overwrite"
                             ? "bg-primary text-primary-foreground border-primary"
                             : "border-border text-muted-foreground hover:border-primary hover:text-primary",
@@ -1829,7 +1829,7 @@ export default function FilesTab({ onClose }: { onClose?: () => void }) {
                           )
                         }
                         className={cn(
-                          "h-5 px-2 rounded text-[10px] border transition-colors",
+                          "h-5 px-2 rounded text-xs border transition-colors",
                           item.resolution === "suffix"
                             ? "bg-primary text-primary-foreground border-primary"
                             : "border-border text-muted-foreground hover:border-primary hover:text-primary",

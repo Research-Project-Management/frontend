@@ -66,12 +66,12 @@ export default function TagSelector({
                 placeholder="Filter tags..."
                 value={filterQuery}
                 onChange={(e) => setFilterQuery(e.target.value)}
-                className="w-full h-6 px-2 text-xs rounded bg-muted/40 border border-border/40 placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring transition-colors"
+                className="w-full h-6.5 px-2 text-xs rounded-md bg-muted/40 border border-border/40 placeholder:text-muted-foreground/50 focus:outline-none focus:border-border transition-colors"
               />
               {filterQuery && (
                 <button
                   onClick={() => setFilterQuery('')}
-                  className="absolute right-1.5 top-1 text-foreground hover:text-foreground cursor-pointer"
+                  className="absolute right-1.5 top-1.5 text-foreground hover:text-foreground cursor-pointer"
                 >
                   <X className="size-3 text-foreground" />
                 </button>
@@ -88,14 +88,14 @@ export default function TagSelector({
                   key={tag}
                   onClick={() => onSelectTag(isSelected ? null : tag)}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors cursor-pointer max-w-full',
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium transition-colors cursor-pointer max-w-full text-foreground',
                     isSelected
-                      ? 'bg-accent text-foreground font-semibold shadow-xs'
-                      : 'bg-muted/40 text-foreground hover:bg-muted border border-border/30'
+                      ? 'bg-muted font-semibold border border-border/60 shadow-none'
+                      : 'bg-muted/40 hover:bg-muted border border-border/40'
                   )}
                   title={tag}
                 >
-                  <Hash className="size-2.5 text-foreground/60 shrink-0" />
+                  <Hash className="size-2.5 text-foreground/70 shrink-0" />
                   <span className="truncate max-w-[120px]">{tag}</span>
                 </button>
               );

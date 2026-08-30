@@ -106,10 +106,10 @@ export default function WorkspaceMemberPage() {
 
           {/* ── Page title ─────────────────────────────────────────────── */}
           <div className="pt-7 pb-6">
-            <h1 className="text-[1.35rem] font-bold text-foreground tracking-tight leading-snug">
+            <h1 className="text-xl font-bold text-foreground tracking-tight leading-snug">
               Members
             </h1>
-            <p className="text-[0.72rem] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Manage who has access to this workspace.
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function WorkspaceMemberPage() {
                   type="button"
                   onClick={() => setActiveTab(key)}
                   className={cn(
-                    'relative px-3.5 py-2 text-[0.72rem] font-medium transition-all cursor-pointer outline-none select-none',
+                    'relative px-3.5 py-2 text-xs font-medium transition-all cursor-pointer outline-none select-none',
                     activeTab === key
                       ? 'text-foreground'
                       : 'text-muted-foreground hover:text-foreground',
@@ -161,7 +161,7 @@ export default function WorkspaceMemberPage() {
                   <thead>
                     <tr className="border-b border-border/70 bg-muted/25 text-muted-foreground">
                       {/* Full name — wider */}
-                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[22%]">
+                      <th className="py-2.5 px-4 text-xs font-medium w-[22%]">
                         <Sortable
                           label="Full name"
                           field="name"
@@ -171,7 +171,7 @@ export default function WorkspaceMemberPage() {
                         />
                       </th>
                       {/* Display name */}
-                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[16%]">
+                      <th className="py-2.5 px-4 text-xs font-medium w-[16%]">
                         <Sortable
                           label="Display name"
                           field="displayName"
@@ -181,7 +181,7 @@ export default function WorkspaceMemberPage() {
                         />
                       </th>
                       {/* Email — flexible */}
-                      <th className="py-2.5 px-4 text-[0.7rem] font-medium">
+                      <th className="py-2.5 px-4 text-xs font-medium">
                         <Sortable
                           label="Email"
                           field="email"
@@ -191,7 +191,7 @@ export default function WorkspaceMemberPage() {
                         />
                       </th>
                       {/* Role */}
-                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[11%]">
+                      <th className="py-2.5 px-4 text-xs font-medium w-[11%]">
                         <Sortable
                           label="Role"
                           field="role"
@@ -203,11 +203,11 @@ export default function WorkspaceMemberPage() {
                         />
                       </th>
                       {/* Authentication — no sort */}
-                      <th className="py-2.5 px-4 text-[0.7rem] font-medium text-muted-foreground w-[13%]">
+                      <th className="py-2.5 px-4 text-xs font-medium text-muted-foreground w-[13%]">
                         Authentication
                       </th>
                       {/* Joining date */}
-                      <th className="py-2.5 px-4 text-[0.7rem] font-medium w-[13%]">
+                      <th className="py-2.5 px-4 text-xs font-medium w-[13%]">
                         <Sortable
                           label="Joining date"
                           field="date"
@@ -228,7 +228,7 @@ export default function WorkspaceMemberPage() {
                       <tr>
                         <td
                           colSpan={7}
-                          className="py-14 text-center text-[0.72rem] text-muted-foreground"
+                          className="py-14 text-center text-xs text-muted-foreground"
                         >
                           No members found matching your filters.
                         </td>

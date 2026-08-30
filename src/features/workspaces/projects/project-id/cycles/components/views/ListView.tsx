@@ -32,8 +32,8 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
   if (searchTerm?.trim()) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-        <h3 className="text-[14px] font-semibold text-foreground mb-1">No cycles found</h3>
-        <p className="text-[12px] text-muted-foreground">
+        <h3 className="text-sm font-semibold text-foreground mb-1">No cycles found</h3>
+        <p className="text-xs text-muted-foreground">
           No cycles in <span className="font-medium text-foreground">{status}</span> section match "{searchTerm}"
         </p>
       </div>
@@ -70,8 +70,8 @@ function EmptyState({ status, searchTerm }: { status: DerivedStatus; searchTerm?
             </svg>
          </div>
       )}
-      <h3 className="text-[15px] font-semibold text-foreground mb-2">{configs.title}</h3>
-      <p className="text-[13px] text-muted-foreground max-w-[440px] leading-relaxed">
+      <h3 className="text-base font-semibold text-foreground mb-2">{configs.title}</h3>
+      <p className="text-sm text-muted-foreground max-w-[440px] leading-relaxed">
         {configs.description}
       </p>
     </div>
@@ -181,7 +181,7 @@ export function Item({
       />
 
       <div className="flex-1 min-w-0">
-        <span className="text-[13px] font-medium text-foreground truncate">
+        <span className="text-sm font-medium text-foreground truncate">
           {cycle.name}
         </span>
       </div>
@@ -206,7 +206,7 @@ export function Item({
                 return (
                   <span
                     key={label.id}
-                    className="inline-flex h-4 items-center rounded-sm px-2 text-[10px] font-semibold leading-none text-white animate-in fade-in zoom-in-95 duration-200"
+                    className="inline-flex h-4 items-center rounded-sm px-2 text-xs font-semibold leading-none text-white animate-in fade-in zoom-in-95 duration-200"
                     style={{ backgroundColor: label.color }}
                   >
                     <span className="max-w-[120px] truncate">{label.name}</span>
@@ -234,7 +234,7 @@ export function Item({
             className="!size-3.5 !bg-transparent"
           />
 
-          <span className="text-[11px] font-medium text-foreground shrink-0">
+          <span className="text-xs font-medium text-foreground shrink-0">
             {phaseConfig.label}
           </span>
         </div>
@@ -244,7 +244,7 @@ export function Item({
         )}
 
         {dateText && (
-          <span className="flex items-center gap-1.5 h-7 px-2 text-[11px] text-foreground font-medium shrink-0 bg-muted/60 border border-border rounded-sm cursor-default">
+          <span className="flex items-center gap-1.5 h-7 px-2 text-xs text-foreground font-medium shrink-0 bg-muted/60 border border-border rounded-sm cursor-default">
             <CalendarDays className="size-3 text-foreground" />
             <span className="whitespace-nowrap">{dateText}</span>
           </span>
@@ -309,13 +309,13 @@ export function Item({
       </div>
 
       {isExpanded && (
-        <div className="absolute left-0 right-0 top-full bg-zinc-50/30 border-b border-border/40 px-12 py-3 z-10 animate-in fade-in slide-in-from-top-1 duration-200 pointer-events-auto shadow-sm">
+        <div className="absolute left-0 right-0 top-full bg-muted/30 border-b border-border/40 px-12 py-3 z-10 animate-in fade-in slide-in-from-top-1 duration-200 pointer-events-auto shadow-xs">
           {cycle.description && (
             <p className="text-xs text-muted-foreground leading-relaxed mb-2">
               {cycle.description}
             </p>
           )}
-          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onNavigate(); }} className="h-7 text-[11px] px-3">
+          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onNavigate(); }} className="h-7 text-xs px-3">
             {isReadOnly ? "View Cycle" : "Open Cycle"}
           </Button>
         </div>
@@ -377,8 +377,8 @@ export function ListViewGroup({
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="shrink-0">{config.icon}</div>
-          <span className="text-[13.5px] font-semibold text-foreground">{config.label}</span>
-          {count > 0 && <span className="text-[12px] text-foreground/60 font-normal">{count}</span>}
+          <span className="text-sm font-semibold text-foreground">{config.label}</span>
+          {count > 0 && <span className="text-xs text-foreground/60 font-normal">{count}</span>}
         </div>
         <ChevronDown 
           className={`size-4 text-foreground transition-all duration-300 ${

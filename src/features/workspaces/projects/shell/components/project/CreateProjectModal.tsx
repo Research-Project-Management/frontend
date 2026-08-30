@@ -219,7 +219,7 @@ export function CreateProjectModal({
                     {tpl.name}
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
                   {tpl.description}
                 </p>
               </button>

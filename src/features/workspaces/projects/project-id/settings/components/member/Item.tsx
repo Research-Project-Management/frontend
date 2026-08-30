@@ -77,7 +77,7 @@ export function Item({
             {user.avatar && (
               <AvatarImage src={user.avatar} className="object-cover" />
             )}
-            <AvatarFallback className="text-[10px] bg-muted text-muted-foreground font-semibold">
+            <AvatarFallback className="text-xs bg-muted text-muted-foreground font-semibold">
               {user.name
                 .split(' ')
                 .map((n) => n[0])

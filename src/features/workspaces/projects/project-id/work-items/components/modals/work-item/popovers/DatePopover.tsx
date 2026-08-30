@@ -100,7 +100,7 @@ export function DatePopover({
           variant="outline"
           className={
             open
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-[15px] font-medium text-foreground shadow-none'
+              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
               : actionBtnClass
           }
         >
@@ -176,7 +176,7 @@ export function DatePopover({
             </div>
 
             <div className="space-y-1.5 pt-2 border-t border-border/50">
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">
                 Set due date reminder
               </label>
               <Select
@@ -201,7 +201,7 @@ export function DatePopover({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+              <label className="text-xs font-semibold text-muted-foreground uppercase">
                 Repeat
               </label>
               <Select

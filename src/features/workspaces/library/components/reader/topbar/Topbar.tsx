@@ -26,7 +26,7 @@ import type { ReaderPanel } from '../../../types/reader.types';
 function RagStatusIndicator({ status }: { status: string }) {
   if (status === 'indexed') {
     return (
-      <div className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium text-muted-foreground border border-border/40 bg-muted/20">
+      <div className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-muted-foreground border border-border/40 bg-muted/20">
         <span className="size-1.5 rounded-full bg-emerald-500" />
         <span>Indexed</span>
       </div>
@@ -35,7 +35,7 @@ function RagStatusIndicator({ status }: { status: string }) {
 
   if (status === 'pending' || status === 'indexing') {
     return (
-      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium text-amber-600 dark:text-amber-400 border border-amber-500/20 bg-amber-500/10">
+      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-foreground border border-border/50 bg-muted/40">
         <Loader2 className="size-3 animate-spin" />
         <span>Indexing</span>
       </div>
@@ -44,8 +44,8 @@ function RagStatusIndicator({ status }: { status: string }) {
 
   if (status === 'failed') {
     return (
-      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium text-destructive border border-destructive/20 bg-destructive/10">
-        <span className="size-1.5 rounded-full bg-destructive" />
+      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-foreground border border-border/50 bg-muted/40">
+        <span className="size-1.5 rounded-full bg-muted-foreground" />
         <span>Index failed</span>
       </div>
     );
@@ -81,14 +81,14 @@ function PanelButton({
             onClick={() => onToggle(panel)}
             className={cn(
               'relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground cursor-pointer',
-              active && 'bg-background text-foreground shadow-xs font-medium',
+              active && 'bg-background text-foreground shadow-none border border-border/50 font-medium',
             )}
             aria-pressed={active}
             aria-label={label}
           >
             <Icon className="size-3.5" />
             {count ? (
-              <span className="absolute -right-1 -top-1 min-w-3.5 h-3.5 flex items-center justify-center rounded-full border border-background bg-primary px-1 text-[8px] font-semibold text-primary-foreground leading-none">
+              <span className="absolute -right-1 -top-1 min-w-3.5 h-3.5 flex items-center justify-center rounded-full border border-background bg-primary px-1 text-xs font-semibold text-primary-foreground leading-none">
                 {count}
               </span>
             ) : null}
@@ -96,7 +96,7 @@ function PanelButton({
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs flex items-center gap-1.5">
           <span>{label}</span>
-          {shortcut && <kbd className="text-[10px] opacity-60 font-mono">{shortcut}</kbd>}
+          {shortcut && <kbd className="text-xs opacity-60 font-mono">{shortcut}</kbd>}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -176,7 +176,7 @@ export default function Topbar({
                   setIsEditingTitle(false);
                 }
               }}
-              className="h-6 w-full rounded border border-primary/40 bg-background px-1.5 text-xs font-semibold leading-tight text-foreground outline-none focus:ring-1 focus:ring-primary/20"
+              className="h-6 w-full rounded border border-border bg-background px-1.5 text-xs font-semibold leading-tight text-foreground outline-none focus:ring-1 focus:ring-ring"
               autoFocus
             />
           ) : (
@@ -192,7 +192,7 @@ export default function Topbar({
               {paper?.title || 'Loading document...'}
             </h1>
           )}
-          <p className="truncate text-[11px] text-muted-foreground leading-none mt-0.5">
+          <p className="truncate text-xs text-muted-foreground leading-none mt-0.5">
             {paper?.authors?.length
               ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ` +${paper.authors.length - 3}` : '')
               : paper?.publicationTitle || (paper?.year ? String(paper.year) : 'Reference')}
@@ -252,7 +252,7 @@ export default function Topbar({
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs flex items-center gap-1">
                 <span>Export BibTeX</span>
-                <kbd className="text-[10px] opacity-60 font-mono">⌘B</kbd>
+                <kbd className="text-xs opacity-60 font-mono">⌘B</kbd>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

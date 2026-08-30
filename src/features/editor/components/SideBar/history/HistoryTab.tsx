@@ -291,7 +291,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                     <p className="text-xs font-medium truncate">
                       {v.label || "Snapshot"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {timeAgo(v.createdAt)} • {v.savedBy?.name ?? "Unknown"}
                     </p>
                   </div>
@@ -301,7 +301,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                         <button
                           onClick={() => handleRestoreFile(v.id)}
                           disabled={restoreFileMutation.isPending}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                          className="text-xs px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                         >
                           {restoreFileMutation.isPending ? (
                             <Loader2 className="size-3 animate-spin" />
@@ -311,7 +311,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                         </button>
                         <button
                           onClick={() => setConfirmId(null)}
-                          className="text-[10px] px-1.5 py-0.5 rounded text-muted-foreground hover:bg-muted transition-colors"
+                          className="text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:bg-muted transition-colors"
                         >
                           Cancel
                         </button>
@@ -368,7 +368,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
           ) : (
             groupedEvents.map(({ label: dayLabel, items }) => (
               <div key={dayLabel}>
-                <div className="sticky top-0 z-10 border-b border-border/50 bg-card px-3 py-1.5 text-[10px] font-semibold text-muted-foreground">
+                <div className="sticky top-0 z-10 border-b border-border/50 bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground">
                   {dayLabel}
                 </div>
 
@@ -390,7 +390,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                         <p className="text-xs font-medium truncate">
                           {meta.label(evt)}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {timeAgo(evt.createdAt)} •{" "}
                           {evt.savedBy?.name ?? "Unknown"}
                         </p>
@@ -404,7 +404,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                                 onClick={() => handleRestoreProject(evt.id)}
                                 disabled={restoreProjectMutation.isPending}
                                 title="Restore all project files to this snapshot"
-                                className="text-[10px] px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                                className="text-xs px-1.5 py-0.5 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
                               >
                                 {restoreProjectMutation.isPending ? (
                                   <Loader2 className="size-3 animate-spin" />
@@ -414,7 +414,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                               </button>
                               <button
                                 onClick={() => setConfirmId(null)}
-                                className="text-[10px] px-1.5 py-0.5 rounded text-muted-foreground hover:bg-muted transition-colors"
+                                className="text-xs px-1.5 py-0.5 rounded text-muted-foreground hover:bg-muted transition-colors"
                               >
                                 Cancel
                               </button>

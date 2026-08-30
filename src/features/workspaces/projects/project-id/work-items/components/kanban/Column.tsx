@@ -84,13 +84,13 @@ export function Column({
           style={{ backgroundColor: columnColor }}
         />
         <span
-          className="text-[13px] font-semibold text-foreground max-h-36 overflow-hidden"
+          className="text-sm font-semibold text-foreground max-h-36 overflow-hidden"
           style={{ writingMode: 'vertical-lr' }}
         >
           {column.title}
         </span>
         <span
-          className="text-[12px] text-muted-foreground"
+          className="text-xs text-muted-foreground"
           style={{ writingMode: 'vertical-lr', textOrientation: 'upright' }}
         >
           {cards.length}
@@ -156,10 +156,10 @@ export function Column({
             className="w-2.5 h-2.5 rounded-full shrink-0"
             style={{ backgroundColor: columnColor }}
           />
-          <h3 className="font-semibold text-[14px] text-foreground tracking-tight truncate">
+          <h3 className="font-semibold text-sm text-foreground tracking-tight truncate">
             {column.title}
           </h3>
-          <span className="text-[12px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
+          <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full shrink-0">
             {cards.length}
           </span>
         </div>

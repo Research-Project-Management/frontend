@@ -60,7 +60,7 @@ export function LabelPopover({
           variant="outline"
           className={
             isOpen
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-[15px] font-medium text-foreground shadow-none'
+              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
               : actionBtnClass
           }
         >

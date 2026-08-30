@@ -98,7 +98,7 @@ export const CycleModal = ({
                 {mode === 'create' ? 'Create Cycle' : (isReadOnly ? 'Cycle Details' : 'Edit Cycle')}
               </span>
               {isReadOnly && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted rounded-sm text-[10px] font-bold text-foreground border border-border uppercase tracking-tight">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted rounded-sm text-xs font-bold text-foreground border border-border uppercase tracking-tight">
                   <Lock className="size-2.5 text-foreground" /> Read Only
                 </div>
               )}
@@ -123,7 +123,7 @@ export const CycleModal = ({
                 target.style.height = `${target.scrollHeight}px`;
               }}
               placeholder="Enter cycle title..."
-              className="w-full resize-none bg-transparent p-0 text-[24px] font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground block"
+              className="w-full resize-none bg-transparent p-0 text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground block"
               autoFocus={mode === 'create' && !isReadOnly}
               style={{ height: 'auto' }}
             />
@@ -144,12 +144,12 @@ export const CycleModal = ({
           <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
             {/* Phase */}
             <div className="flex shrink-0 flex-col gap-1.5">
-              <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">Research Phase</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Research Phase</span>
               <button
                 type="button"
                 disabled={isReadOnly}
                 onClick={() => phaseTriggerRef.current?.click()}
-                className={`h-9 px-3 bg-muted border border-border rounded-sm flex items-center gap-2 text-foreground font-medium text-[14px] ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted/80'} transition-colors`}
+                className={`h-9 px-3 bg-muted border border-border rounded-sm flex items-center gap-2 text-foreground font-medium text-sm ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted/80'} transition-colors`}
               >
                 <PhaseIconRenderer
                   phaseId={formPhase}
@@ -165,7 +165,7 @@ export const CycleModal = ({
             {/* Labels */}
             {formLabels.length > 0 && (
               <div className="flex shrink-0 flex-col gap-1.5">
-                <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">Labels</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Labels</span>
                 <LabelsDisplay
                   labels={(data || []).filter((t: any) => formLabels.includes(t.id))}
                   onOpen={() => labelsTriggerRef.current?.click()}
@@ -179,9 +179,9 @@ export const CycleModal = ({
             {/* Dates */}
             {(formStart || formEnd) && (
               <div className="flex shrink-0 flex-col gap-1.5">
-                <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">Dates</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Dates</span>
                 <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} trigger={
-                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-muted px-3 text-[13px] font-medium text-foreground ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted/80'} transition-colors whitespace-nowrap`}>
+                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-muted px-3 text-sm font-medium text-foreground ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted/80'} transition-colors whitespace-nowrap`}>
                     <CalendarDays className="size-3.5 shrink-0 text-foreground" />
                     <div className="flex items-center gap-2">
                       {formStart && formEnd ? (
@@ -213,7 +213,7 @@ export const CycleModal = ({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
-              <h3 className="text-[16px] font-bold text-foreground">Description</h3>
+              <h3 className="text-base font-bold text-foreground">Description</h3>
             </div>
             <textarea
               value={formDescription}
@@ -223,7 +223,7 @@ export const CycleModal = ({
                 setFormDescription(e.target.value);
               }}
               placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
-              className={`min-h-[120px] w-full resize-none rounded-sm border border-border px-4 py-3 text-[15px] text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-muted/30 focus:bg-background focus:border-border'} transition-all`}
+              className={`min-h-[120px] w-full resize-none rounded-sm border border-border px-4 py-3 text-base text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-muted/30 focus:bg-background focus:border-border'} transition-all`}
             />
           </div>
         </div>

@@ -37,12 +37,12 @@ const AGENT_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 function AgentBadge({ agent }: { agent: string }) {
-  const info = AGENT_LABELS[agent] ?? {
+  const info = (AGENT_LABELS as Record<string, { label: string; color: string }>)[agent] ?? {
     label: agent,
     color: 'bg-secondary text-muted-foreground',
   };
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${info.color}`}>
+    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${info.color}`}>
       {info.label}
     </span>
   );
@@ -80,7 +80,7 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/40 transition-colors"
       >
         <Brain className={`size-3.5 shrink-0 text-violet-400 ${isOpen ? 'animate-pulse' : ''}`} />
-        <span className="text-[11px] font-medium text-muted-foreground flex-1">
+        <span className="text-xs font-medium text-muted-foreground flex-1">
           {isOpen ? 'Thinking…' : 'Thought process'}
         </span>
         {!isOpen && (
@@ -91,7 +91,7 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
       </button>
       {!collapsed && (
         <div className="px-4 pb-3 pt-1 border-t border-border/30">
-          <p className="text-[11px] leading-relaxed text-muted-foreground/70 whitespace-pre-wrap font-mono">
+          <p className="text-xs leading-relaxed text-muted-foreground/70 whitespace-pre-wrap font-mono">
             {content}
           </p>
         </div>
@@ -108,7 +108,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
 
   return (
     <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
         Sources
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -119,7 +119,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
             target="_blank"
             rel="noopener noreferrer"
             title={[s.authors, s.snippet].filter(Boolean).join('\n')}
-            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 transition-colors max-w-55 truncate"
+            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 transition-colors max-w-55 truncate"
           >
             <ExternalLink className="size-2.5 shrink-0" />
             <span className="truncate">{s.title || s.url}</span>
@@ -130,7 +130,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           s.snippet ? (
             <Popover key={i}>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-pointer hover:bg-violet-500/20 transition-colors">
+                <button className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-pointer hover:bg-violet-500/20 transition-colors">
                   <FileText className="size-2.5 shrink-0" />
                   <span className="truncate">{s.source}</span>
                 </button>
@@ -138,12 +138,12 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
               <PopoverContent side="top" align="start" className="w-80 p-0 overflow-hidden">
                 <div className="px-3 py-2 border-b border-border/50 bg-secondary/60 flex items-center gap-2">
                   <Quote className="size-3 text-violet-500 shrink-0" />
-                  <span className="text-[11px] font-semibold text-foreground/80 truncate">
+                  <span className="text-xs font-semibold text-foreground/80 truncate">
                     {s.source}
                   </span>
                 </div>
                 <div className="px-3 py-2.5 max-h-52 overflow-y-auto">
-                  <p className="text-[11px] leading-relaxed text-foreground/70 whitespace-pre-wrap">
+                  <p className="text-xs leading-relaxed text-foreground/70 whitespace-pre-wrap">
                     {s.snippet}
                   </p>
                 </div>
@@ -152,7 +152,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           ) : (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-default"
+              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-default"
             >
               <FileText className="size-2.5 shrink-0" />
               <span className="truncate">{s.source}</span>
@@ -225,7 +225,7 @@ const MessageBubble = memo(function MessageBubble({
           <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary/80 transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary/80 transition-colors"
             >
               {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
               {copied ? 'Copied' : 'Copy'}
@@ -336,7 +336,7 @@ function WelcomeScreen({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-[15px] font-medium text-foreground">{item.title}</p>
+                    <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
                     <ArrowRight
                       className={cn(
                         'size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1',
@@ -345,7 +345,7 @@ function WelcomeScreen({
                     />
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.description}</p>
-                  <p className="mt-2.5 line-clamp-1 font-mono text-[11px] text-muted-foreground/60">{item.draft}</p>
+                  <p className="mt-2.5 line-clamp-1 font-mono text-xs text-muted-foreground/60">{item.draft}</p>
                 </div>
               </button>
             );

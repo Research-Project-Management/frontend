@@ -211,7 +211,7 @@ const TaskRowContent = ({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className="inline-flex h-4 items-center rounded px-1.5 text-[10px] font-semibold leading-none text-white"
+                className="inline-flex h-4 items-center rounded px-1.5 text-xs font-semibold leading-none text-white"
                 style={{ backgroundColor: label.color }}
               >
                 {label.title}
@@ -229,7 +229,7 @@ const TaskRowContent = ({
 
       {dueDateInfo.hasAnyDate && (
         <span className={cn(
-          "flex items-center gap-1 text-[11px] shrink-0 px-2 py-0.5 rounded transition-colors",
+          "flex items-center gap-1 text-xs shrink-0 px-2 py-0.5 rounded transition-colors",
           dueDateInfo.isOverdueAlert 
             ? "bg-destructive/10 text-destructive font-medium" 
             : "text-muted-foreground"
@@ -242,19 +242,19 @@ const TaskRowContent = ({
       <div className="flex items-center gap-2 text-muted-foreground transition-colors">
         {metadata.hasDescription && <AlignLeft className="size-3" />}
         {metadata.commentCount > 0 && (
-          <div className="flex items-center gap-0.5 text-[11px]" title="Comments">
+          <div className="flex items-center gap-0.5 text-xs" title="Comments">
             <MessageSquare className="size-3" />
             <span>{metadata.commentCount}</span>
           </div>
         )}
         {metadata.attachmentCount > 0 && (
-          <div className="flex items-center gap-0.5 text-[11px]" title="Attachments">
+          <div className="flex items-center gap-0.5 text-xs" title="Attachments">
             <Paperclip className="size-3" />
             <span>{metadata.attachmentCount}</span>
           </div>
         )}
         {metadata.checklistTotal > 0 && (
-          <div className="flex items-center gap-0.5 text-[11px]" title="Checklist progress">
+          <div className="flex items-center gap-0.5 text-xs" title="Checklist progress">
             <CheckSquare className="size-3" />
             <span>{metadata.checklistDone}/{metadata.checklistTotal}</span>
           </div>
@@ -266,7 +266,7 @@ const TaskRowContent = ({
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
-          <AvatarFallback className="text-[9px] font-bold bg-muted text-muted-foreground">
+          <AvatarFallback className="text-xs font-bold bg-muted text-muted-foreground">
             {assignee.name?.charAt(0) || 'U'}
           </AvatarFallback>
         </Avatar>
@@ -454,7 +454,7 @@ const ListViewColumn = ({
           )}
           <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
           <span className="text-xs font-semibold text-foreground tracking-tight">{group.label}</span>
-          <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
+          <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
             {group.items.length}
           </span>
         </div>

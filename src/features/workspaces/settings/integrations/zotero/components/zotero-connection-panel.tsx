@@ -30,6 +30,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/shared/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 
 interface ZoteroConnectionPanelProps {
   workspaceId: string;
@@ -386,25 +393,31 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
               </div>
             ) : remoteLibraries.length > 0 ? (
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[240px]">
-                  <select
-                    aria-label="Select remote Zotero library"
-                    className="w-full h-9 rounded-md border bg-background px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                <div className="min-w-[260px]">
+                  <Select
                     value={`${selectedLibraryType}:${selectedLibraryId}`}
-                    onChange={(e) => {
-                      const [type, id] = e.target.value.split(':');
+                    onValueChange={(val) => {
+                      const [type, id] = val.split(':');
                       setSelectedLibraryType(type as 'user' | 'group');
                       setSelectedLibraryId(id);
                     }}
                     disabled={!isManager || isCreatingBinding}
                   >
-                    {remoteLibraries.map((lib) => (
-                      <option key={`${lib.type}:${lib.id}`} value={`${lib.type}:${lib.id}`}>
-                        {lib.name} ({lib.type === 'user' ? 'My Personal Library' : 'Group Library'})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-2.5 size-4 opacity-50 pointer-events-none" />
+                    <SelectTrigger className="w-full h-9 text-sm bg-background">
+                      <SelectValue placeholder="Select remote Zotero library..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {remoteLibraries.map((lib) => (
+                        <SelectItem
+                          key={`${lib.type}:${lib.id}`}
+                          value={`${lib.type}:${lib.id}`}
+                          className="text-sm"
+                        >
+                          {lib.name} ({lib.type === 'user' ? 'My Personal Library' : 'Group Library'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {isManager && (
@@ -479,7 +492,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                               {b.remoteLibraryType === 'user' ? 'Personal Library' : `Group Library (${b.remoteLibraryId})`}
                             </span>
                             <span
-                              className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
+                              className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
                                 isTwoWay
                                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                                   : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
@@ -487,7 +500,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                             >
                               {isTwoWay ? 'Two-Way Sync' : 'Read-Only'}
                             </span>
-                            <span className="text-[11px] text-muted-foreground font-mono">
+                            <span className="text-xs text-muted-foreground font-mono">
                               v{b.lastSyncVersion}
                             </span>
                           </div>

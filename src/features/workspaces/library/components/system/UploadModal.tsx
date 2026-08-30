@@ -490,10 +490,10 @@ export default function PaperUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden bg-background border-border">
+      <DialogContent className="max-w-lg p-0 overflow-hidden bg-background border-border shadow-none">
         <DialogHeader className="p-4 border-b border-border bg-muted/20">
-          <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-            <BookOpen className="size-4 text-primary" />
+          <DialogTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+            <BookOpen className="size-4 text-foreground" />
             Add Paper to Library
           </DialogTitle>
         </DialogHeader>
@@ -507,11 +507,11 @@ export default function PaperUploadDialog({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer',
                 mode === 'identifier'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  ? 'bg-background text-foreground shadow-none font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Wand2 className="size-3.5 text-primary" />
+              <Wand2 className="size-3.5 text-foreground" />
               <span>By Identifier</span>
             </button>
             <button
@@ -520,11 +520,11 @@ export default function PaperUploadDialog({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer',
                 mode === 'file'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  ? 'bg-background text-foreground shadow-none font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <FileText className="size-3.5" />
+              <FileText className="size-3.5 text-foreground" />
               <span>Upload PDF</span>
             </button>
             <button
@@ -533,11 +533,11 @@ export default function PaperUploadDialog({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer',
                 mode === 'folder'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  ? 'bg-background text-foreground shadow-none font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <FolderUp className="size-3.5" />
+              <FolderUp className="size-3.5 text-foreground" />
               <span>Upload Folder</span>
             </button>
           </div>
@@ -590,18 +590,18 @@ export default function PaperUploadDialog({
                       {title}
                     </h4>
                     {doi && (
-                      <Badge variant="outline" className="text-[9px] font-mono shrink-0">
+                      <Badge variant="outline" className="text-xs font-mono shrink-0">
                         {doi}
                       </Badge>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground flex items-center gap-2">
                     <span>{authors || 'Unknown Authors'}</span>
                     {year && <span>• ({year})</span>}
                     {journal && <span>• {journal}</span>}
                   </div>
                   {abstract && (
-                    <p className="text-[11px] text-foreground/80 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-foreground/80 line-clamp-3 leading-relaxed">
                       {abstract}
                     </p>
                   )}
@@ -613,7 +613,7 @@ export default function PaperUploadDialog({
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer"
                 >
                   {showAdvanced ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
                   <span>{showAdvanced ? 'Hide metadata fields' : 'Edit details before adding'}</span>
@@ -622,7 +622,7 @@ export default function PaperUploadDialog({
                 {showAdvanced && (
                   <div className="mt-2 space-y-2.5 p-3 rounded-lg bg-card border border-border/50 text-xs animate-in fade-in duration-150">
                     <div className="space-y-1">
-                      <Label className="text-[11px]">Title</Label>
+                      <Label className="text-xs">Title</Label>
                       <Input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -630,7 +630,7 @@ export default function PaperUploadDialog({
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px]">Authors (comma separated)</Label>
+                      <Label className="text-xs">Authors (comma separated)</Label>
                       <Input
                         value={authors}
                         onChange={(e) => setAuthors(e.target.value)}
@@ -639,7 +639,7 @@ export default function PaperUploadDialog({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Journal</Label>
+                        <Label className="text-xs">Journal</Label>
                         <Input
                           value={journal}
                           onChange={(e) => setJournal(e.target.value)}
@@ -647,7 +647,7 @@ export default function PaperUploadDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Year</Label>
+                        <Label className="text-xs">Year</Label>
                         <Input
                           value={year}
                           onChange={(e) => setYear(e.target.value)}
@@ -669,8 +669,8 @@ export default function PaperUploadDialog({
                   className={cn(
                     'flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer',
                     dragOver
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/40 hover:bg-accent/30',
+                      ? 'border-border bg-muted/40'
+                      : 'border-border/60 hover:border-border hover:bg-muted/30',
                   )}
                   onClick={() => fileRef.current?.click()}
                   onDragOver={(e) => {
@@ -692,7 +692,7 @@ export default function PaperUploadDialog({
                     <p className="text-xs font-semibold text-foreground">
                       Click or drag PDF document here
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Metadata will be extracted automatically
                     </p>
                   </div>
@@ -744,7 +744,7 @@ export default function PaperUploadDialog({
                   {title && (
                     <div className="space-y-2 pt-1 text-xs">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Title *</Label>
+                        <Label className="text-xs">Title *</Label>
                         <Input
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
@@ -752,7 +752,7 @@ export default function PaperUploadDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Authors</Label>
+                        <Label className="text-xs">Authors</Label>
                         <Input
                           value={authors}
                           onChange={(e) => setAuthors(e.target.value)}
@@ -771,7 +771,7 @@ export default function PaperUploadDialog({
             <div className="space-y-3">
               {folderFiles.length === 0 ? (
                 <div
-                  className="flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed p-6 border-border hover:border-primary/40 hover:bg-accent/30 transition-colors cursor-pointer"
+                  className="flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed p-6 border-border/60 hover:border-border hover:bg-muted/30 transition-colors cursor-pointer"
                   onClick={() => folderInputRef.current?.click()}
                 >
                   <FolderUp className="size-8 text-primary/70" />
@@ -779,7 +779,7 @@ export default function PaperUploadDialog({
                     <p className="text-xs font-semibold text-foreground">
                       Select a folder containing PDFs
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Batch imports all academic PDF files inside
                     </p>
                   </div>

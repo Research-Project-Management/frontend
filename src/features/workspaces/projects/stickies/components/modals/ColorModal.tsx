@@ -33,7 +33,7 @@ export default function ColorModal({
       </PopoverTrigger>
       <PopoverContent 
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-[242px] p-0 rounded-lg shadow-2xl z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
+        className="w-[242px] p-0 rounded-lg shadow-xs z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
         align="start" 
         side="top" 
         sideOffset={14}
@@ -47,7 +47,7 @@ export default function ColorModal({
               transition={{ duration: 0.2, ease: [0.2, 0, 0, 1.0] }}
               className="p-3"
             >
-              <div className="mb-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="mb-2.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
                 Background colors
               </div>
               <div className="grid grid-cols-6 gap-2">
@@ -58,8 +58,8 @@ export default function ColorModal({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     className={cn(
-                      "w-8 h-8 rounded-lg transition-shadow shadow-sm border-2",
-                      sticky.color === color ? "border-black" : "border-black/5"
+                      "w-8 h-8 rounded-lg transition-shadow shadow-xs border-2",
+                      sticky.color === color ? "border-foreground" : "border-border/40"
                     )}
                     style={{
                       backgroundColor: STICKY_COLOR_MAP[color].bg,

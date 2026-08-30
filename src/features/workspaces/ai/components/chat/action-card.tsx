@@ -131,7 +131,7 @@ export function ActionCardsGroup({
       {!collapsed && (
         <div className="border-t border-border/40 divide-y divide-border/20 px-3 py-2 space-y-1.5 bg-background/50">
           {thinkingAction && (
-            <div className="text-[11px] text-muted-foreground italic flex items-center gap-1.5 py-1">
+            <div className="text-xs text-muted-foreground italic flex items-center gap-1.5 py-1">
               <CircleDashed className="size-3 text-muted-foreground animate-spin" />
               <span>Analyzing intent and workspace context…</span>
             </div>
@@ -194,7 +194,7 @@ function ActionRow({ action }: { action: AgentAction }) {
           {(action.input || action.output) && (
             <button
               onClick={() => setOpen((v) => !v)}
-              className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-secondary"
+              className="text-xs text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-secondary"
             >
               {open ? 'Hide' : 'Details'}
             </button>
@@ -203,22 +203,22 @@ function ActionRow({ action }: { action: AgentAction }) {
       </div>
 
       {open && (
-        <div className="mt-1.5 rounded bg-muted/40 p-2 text-[11px] font-mono space-y-1">
+        <div className="mt-1.5 rounded bg-muted/40 p-2 text-xs font-mono space-y-1">
           {action.input && (
             <div>
-              <p className="text-[10px] text-muted-foreground font-sans font-semibold">Input:</p>
+              <p className="text-xs text-muted-foreground font-sans font-semibold">Input:</p>
               <pre className="text-foreground/80 whitespace-pre-wrap">{JSON.stringify(action.input, null, 2)}</pre>
             </div>
           )}
           {action.output && (
             <div>
-              <p className="text-[10px] text-muted-foreground font-sans font-semibold">Output:</p>
+              <p className="text-xs text-muted-foreground font-sans font-semibold">Output:</p>
               <pre className="text-foreground/80 whitespace-pre-wrap">{JSON.stringify(action.output, null, 2)}</pre>
             </div>
           )}
           {action.error && (
             <div className="text-destructive">
-              <p className="text-[10px] font-sans font-semibold">Error:</p>
+              <p className="text-xs font-sans font-semibold">Error:</p>
               <p>{action.error}</p>
             </div>
           )}

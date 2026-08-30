@@ -37,10 +37,10 @@ export function Item({ mod, active, disabled, onToggle }: ItemProps) {
           <Icon className="size-4" />
         </div>
         <div className="min-w-0">
-          <h3 className="text-[13px] font-semibold text-foreground leading-tight">
+          <h3 className="text-sm font-semibold text-foreground leading-tight">
             {mod.label}
           </h3>
-          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+          <p className="text-xs text-muted-foreground leading-snug mt-0.5">
             {mod.desc}
           </p>
         </div>

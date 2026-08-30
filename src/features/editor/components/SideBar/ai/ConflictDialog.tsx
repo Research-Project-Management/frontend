@@ -58,21 +58,21 @@ export default function ConflictDialog({
         {/* Conflicting line ranges list */}
         {conflicts.length > 0 && (
           <div className="rounded-lg border border-border/60 bg-muted/20 overflow-hidden text-xs max-h-48 overflow-y-auto">
-            <div className="bg-muted/40 px-3 py-1.5 font-medium text-[11px] text-muted-foreground border-b border-border/40">
+            <div className="bg-muted/40 px-3 py-1.5 font-medium text-xs text-muted-foreground border-b border-border/40">
               Conflicting Line Ranges ({conflicts.length})
             </div>
-            <div className="p-3 space-y-2 font-mono text-[11px]">
+            <div className="p-3 space-y-2 font-mono text-xs">
               {conflicts.map((c, i) => (
                 <div key={i} className="space-y-1">
-                  <div className="text-muted-foreground text-[10px]">
+                  <div className="text-muted-foreground text-xs">
                     Lines {c.startLine}-{c.endLine}:
                   </div>
                   <div className="p-1.5 rounded bg-destructive/10 text-destructive border border-destructive/20 break-all">
-                    <span className="font-sans font-semibold text-[10px] uppercase text-destructive/80 block">Current on Main:</span>
+                    <span className="font-sans font-semibold text-xs uppercase text-destructive/80 block">Current on Main:</span>
                     {c.currentText}
                   </div>
                   <div className="p-1.5 rounded bg-muted/60 text-muted-foreground border border-border/40 break-all">
-                    <span className="font-sans font-semibold text-[10px] uppercase text-muted-foreground/80 block">AI Expected:</span>
+                    <span className="font-sans font-semibold text-xs uppercase text-muted-foreground/80 block">AI Expected:</span>
                     {c.expectedText}
                   </div>
                 </div>

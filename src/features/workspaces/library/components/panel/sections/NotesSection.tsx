@@ -13,6 +13,8 @@ interface NotesSectionProps {
   onAddNote?: (content: string) => void;
   onDeleteNote?: (noteId: string) => void;
   onUpdateNote?: (noteId: string, content: string) => void;
+  hideHeader?: boolean;
+  forceAdding?: boolean;
 }
 
 function formatNoteDate(dateStr?: string): string {
@@ -35,9 +37,18 @@ export default function NotesSection({
   onAddNote,
   onDeleteNote,
   onUpdateNote,
+  hideHeader = false,
+  forceAdding = false,
 }: NotesSectionProps) {
   const paperId = paper.id;
   const [isAdding, setIsAdding] = useState(false);
+
+  useEffect(() => {
+    if (forceAdding) {
+      setIsAdding(true);
+    }
+  }, [forceAdding]);
+
   const [newNoteContent, setNewNoteContent] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
@@ -129,24 +140,28 @@ export default function NotesSection({
 
   return (
     <div className="space-y-3 min-w-0">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-foreground">
-          Notes
-        </h3>
-        {!isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 text-xs text-foreground hover:underline font-medium cursor-pointer"
-          >
-            <Plus className="size-3 text-foreground" />
-            <span>Add Note</span>
-          </button>
-        )}
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-foreground">
+            Notes
+          </h3>
+          {!isAdding && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsAdding(true)}
+              className="h-6 px-1.5 text-xs text-foreground hover:bg-muted font-medium gap-1 cursor-pointer"
+            >
+              <Plus className="size-3 text-foreground" />
+              <span>Add Note</span>
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Add New Note Box */}
       {isAdding && (
-        <div className="space-y-2 p-2.5 bg-muted/20 rounded-lg border border-border/30 text-xs">
+        <div className="space-y-2 p-2.5 bg-muted/20 rounded-md border border-border/40 text-xs">
           <Textarea
             autoFocus
             placeholder="Write research notes, thoughts, or key findings... (Ctrl+Enter to save)"
@@ -193,15 +208,24 @@ export default function NotesSection({
 
       {/* Notes List */}
       {notes.length === 0 && !isAdding ? (
-        <div className="py-6 text-center text-muted-foreground text-xs bg-muted/10 rounded-lg border border-dashed border-border/40">
-          No notes yet. Click &quot;Add Note&quot; to write thoughts or annotations.
+        <div className="py-5 text-center text-muted-foreground text-xs bg-muted/10 rounded-md border border-dashed border-border/40 space-y-2">
+          <p>No notes yet.</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsAdding(true)}
+            className="h-7 px-2.5 text-xs cursor-pointer font-medium"
+          >
+            <Plus className="size-3.5 mr-1" />
+            Add Note
+          </Button>
         </div>
       ) : (
         <div className="space-y-2 min-w-0">
           {notes.map((n) => (
             <div
               key={n.id}
-              className="group/note relative p-2.5 rounded-lg bg-muted/20 hover:bg-muted/30 border border-border/30 transition-colors text-xs min-w-0"
+              className="group/note relative p-3 rounded-md bg-muted/20 hover:bg-muted/30 border border-border/40 transition-colors text-xs min-w-0"
             >
               {editingNoteId === n.id ? (
                 <div className="space-y-2">
@@ -250,17 +274,19 @@ export default function NotesSection({
                     <div className="flex items-center gap-1 opacity-0 group-hover/note:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleStartEdit(n)}
-                        className="p-1 hover:text-foreground rounded cursor-pointer"
+                        className="p-1 text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
                         title="Edit note"
+                        aria-label="Edit note"
                       >
-                        <Edit2 className="size-3" />
+                        <Edit2 className="size-3 text-foreground" />
                       </button>
                       <button
                         onClick={() => handleDelete(n.id)}
-                        className="p-1 hover:text-foreground rounded cursor-pointer"
+                        className="p-1 text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
                         title="Delete note"
+                        aria-label="Delete note"
                       >
-                        <Trash2 className="size-3" />
+                        <Trash2 className="size-3 text-foreground" />
                       </button>
                     </div>
                   </div>
@@ -268,6 +294,17 @@ export default function NotesSection({
               )}
             </div>
           ))}
+          {!isAdding && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsAdding(true)}
+              className="w-full h-7 text-xs gap-1.5 cursor-pointer font-medium border-dashed border-border/60 hover:border-border mt-1"
+            >
+              <Plus className="size-3.5 text-foreground" />
+              <span>Add Note</span>
+            </Button>
+          )}
         </div>
       )}
     </div>

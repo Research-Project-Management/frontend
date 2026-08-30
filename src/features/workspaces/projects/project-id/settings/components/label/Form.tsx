@@ -78,7 +78,7 @@ export function Form({
           className="w-full h-8.5 rounded-md border border-border/80 bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none focus:outline-none focus:ring-0 disabled:opacity-60"
         />
         {errors.name && (
-          <p className="text-[11px] text-destructive mt-1">{errors.name.message}</p>
+          <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
         )}
       </div>
 

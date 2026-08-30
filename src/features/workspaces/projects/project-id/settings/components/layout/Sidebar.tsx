@@ -135,7 +135,7 @@ function GroupSection({
 }) {
   return (
     <div>
-      <div className="px-2.5 pb-1 pt-0.5 text-[11px] font-medium text-muted-foreground/60 select-none">
+      <div className="px-2.5 pb-1 pt-0.5 text-xs font-medium text-muted-foreground/60 select-none">
         {group.title}
       </div>
       <nav className="flex flex-col gap-0.5">

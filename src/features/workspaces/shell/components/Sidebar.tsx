@@ -29,7 +29,7 @@ export default function Sidebar() {
   return (
     <LayoutGroup id={id}>
       <nav
-        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-14 md:flex-col md:justify-start md:gap-1 md:rounded-none md:border-0 md:bg-transparent md:px-1 md:py-3'
+        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-12 md:flex-col md:justify-start md:gap-1 md:rounded-none md:border-0 md:bg-transparent md:px-1 md:py-3'
       >
         {NAV_ITEMS.map((item) => {
           const Icon = 'icon' in item ? item.icon : null;
@@ -59,7 +59,7 @@ export default function Sidebar() {
               href={fullPath}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'group relative flex w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg py-1 select-none outline-none transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
+                'group relative flex w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg py-1 select-none outline-none transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
                 isActive
                   ? 'text-foreground'
                   : 'text-foreground/80 hover:text-foreground'
@@ -94,7 +94,7 @@ export default function Sidebar() {
                 ) : null}
               </div>
 
-              <span className='relative z-10 max-w-full whitespace-nowrap text-xs font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground' data-active={isActive}>
+              <span className='relative z-10 max-w-full whitespace-nowrap text-[11px] font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground' data-active={isActive}>
                 {item.label}
               </span>
             </Link>

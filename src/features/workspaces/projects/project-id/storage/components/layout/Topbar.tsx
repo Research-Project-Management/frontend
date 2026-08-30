@@ -132,7 +132,7 @@ export default function Topbar({
             onChange={(e) => handleSearchChange(e.target.value)}
             onBlur={() => collapseSearch(searchQuery)}
             className={cn(
-              "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8",
+              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8",
               isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
             autoFocus={isSearchExpanded}

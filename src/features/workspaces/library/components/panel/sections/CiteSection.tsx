@@ -270,7 +270,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           size="sm"
           variant="outline"
           onClick={handleCopy}
-          className="h-7 px-2.5 text-xs gap-1.5 shadow-xs cursor-pointer rounded-md hover:bg-muted"
+          className="h-7 px-2.5 text-xs gap-1.5 shadow-none cursor-pointer rounded-md hover:bg-muted"
         >
           {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5 text-foreground" />}
           <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -281,7 +281,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
       <div
         role="tablist"
         aria-label="Citation format modes"
-        className="grid grid-cols-4 gap-1 p-0.5 bg-muted/40 rounded-lg border border-border/40 select-none"
+        className="grid grid-cols-4 gap-1 p-0.5 bg-muted/40 rounded-md border border-border/40 select-none text-foreground"
       >
         <button
           type="button"
@@ -289,10 +289,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'bibliography'}
           onClick={() => setTabMode('bibliography')}
           className={cn(
-            'py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none text-foreground',
             tabMode === 'bibliography'
-              ? 'bg-background text-foreground shadow-xs font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-background shadow-none font-medium'
+              : 'hover:bg-muted/50',
           )}
         >
           Bibliography
@@ -303,10 +303,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'intext'}
           onClick={() => setTabMode('intext')}
           className={cn(
-            'py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none text-foreground',
             tabMode === 'intext'
-              ? 'bg-background text-foreground shadow-xs font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-background shadow-none font-medium'
+              : 'hover:bg-muted/50',
           )}
         >
           In-Text
@@ -317,10 +317,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'bibtex'}
           onClick={() => setTabMode('bibtex')}
           className={cn(
-            'py-1 px-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none text-foreground',
             tabMode === 'bibtex'
-              ? 'bg-background text-foreground shadow-xs font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-background shadow-none font-medium'
+              : 'hover:bg-muted/50',
           )}
         >
           BibTeX
@@ -331,10 +331,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           aria-selected={tabMode === 'ris'}
           onClick={() => setTabMode('ris')}
           className={cn(
-            'py-1 px-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+            'py-1 px-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none text-foreground',
             tabMode === 'ris'
-              ? 'bg-background text-foreground shadow-xs font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-background shadow-none font-medium'
+              : 'hover:bg-muted/50',
           )}
         >
           RIS
@@ -346,7 +346,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
         <div
           role="radiogroup"
           aria-label="Citation styles"
-          className="flex items-center gap-1 p-1 bg-muted/20 rounded-lg border border-border/30 select-none overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-center gap-1 p-1 bg-muted/20 rounded-md border border-border/40 select-none overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden text-foreground"
         >
           {CSL_STYLES.map((style) => {
             const isSelected = activeStyle === style.id;
@@ -359,10 +359,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
                 onClick={() => setActiveStyle(style.id)}
                 title={style.name}
                 className={cn(
-                  'flex-1 py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer truncate text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none shrink-0 min-w-12',
+                  'flex-1 py-1 px-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer truncate text-center focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none shrink-0 min-w-12 text-foreground',
                   isSelected
-                    ? 'bg-foreground text-background font-semibold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                    ? 'bg-muted font-semibold border border-border/60 shadow-none'
+                    : 'hover:bg-muted/50',
                 )}
               >
                 {style.label}
@@ -373,7 +373,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
       )}
 
       {/* Citation Preview Container */}
-      <div className="p-3 bg-muted/20 rounded-lg border border-border/40 text-xs min-w-0">
+      <div className="p-3 bg-muted/20 rounded-md border border-border/40 text-xs min-w-0">
         {tabMode === 'bibtex' ? (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">

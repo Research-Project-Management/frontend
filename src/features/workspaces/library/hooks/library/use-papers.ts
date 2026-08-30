@@ -212,17 +212,24 @@ export function useDeletePaper(workspaceId: string) {
 
 // ── 3. Table Sorting & Selection Hook ───────────────────────────────────────
 
-export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt';
+export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt' | 'lastReadAt';
 export type SortOrder = 'asc' | 'desc';
 
 export interface UsePaperTableOptions {
   papers: Paper[];
   initialActiveId?: string | null;
+  initialSortField?: SortField;
+  initialSortOrder?: SortOrder;
 }
 
-export function usePaperTable({ papers, initialActiveId = null }: UsePaperTableOptions) {
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+export function usePaperTable({
+  papers,
+  initialActiveId = null,
+  initialSortField = 'createdAt',
+  initialSortOrder = 'desc',
+}: UsePaperTableOptions) {
+  const [sortField, setSortField] = useState<SortField>(initialSortField);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activePaperId, setActivePaperId] = useState<string | null>(initialActiveId);
 
@@ -279,6 +286,16 @@ export function usePaperTable({ papers, initialActiveId = null }: UsePaperTableO
             secondPaper.journal || secondPaper.publisher || '',
           );
           break;
+        case 'lastReadAt': {
+          const t1 = new Date(
+            firstPaper.lastReadAt || firstPaper.accessedAt || firstPaper.updatedAt || firstPaper.createdAt || 0,
+          ).getTime();
+          const t2 = new Date(
+            secondPaper.lastReadAt || secondPaper.accessedAt || secondPaper.updatedAt || secondPaper.createdAt || 0,
+          ).getTime();
+          comparison = t1 - t2;
+          break;
+        }
         case 'createdAt':
           comparison =
             new Date(firstPaper.createdAt || 0).getTime() -

@@ -117,7 +117,7 @@ export function TransferModal({
               <ArrowRightLeft className="size-4.5 text-primary" />
               <span>Transfer Work Items from Cycle</span>
             </div>
-            <p className="text-[13px] text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Select work items to move from{" "}
               <span className="font-semibold text-foreground">{sourceCycleName}</span> to another cycle.
             </p>
@@ -126,7 +126,7 @@ export function TransferModal({
           {/* Controls */}
           <div className="p-6 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 Destination Cycle
               </label>
               <Select value={targetCycleId} onValueChange={setTargetCycleId}>
@@ -224,7 +224,7 @@ export function TransferModal({
                             {task.title}
                           </p>
                           {task.identifier && (
-                            <span className="text-[10px] text-muted-foreground font-mono">
+                            <span className="text-xs text-muted-foreground font-mono">
                               {task.identifier}
                             </span>
                           )}
@@ -232,7 +232,7 @@ export function TransferModal({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             setDetailTask(task);

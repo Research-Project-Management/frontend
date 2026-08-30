@@ -181,7 +181,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
                   <span>Field: <strong className="text-primary">{c.field}</strong></span>
                   {c.baseValue !== undefined && (
-                    <span className="text-[11px] font-normal normal-case text-muted-foreground">
+                    <span className="text-xs font-normal normal-case text-muted-foreground">
                       Base: {String(c.baseValue)}
                     </span>
                   )}

@@ -132,7 +132,7 @@ export function ChecklistBlock({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <CheckSquare className="size-5 text-foreground" />
-          <h4 className="text-[15px] font-bold leading-tight text-foreground">
+          <h4 className="text-base font-bold leading-tight text-foreground">
             {checklist.title}
           </h4>
         </div>
@@ -140,7 +140,7 @@ export function ChecklistBlock({
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-md bg-muted px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-muted/80"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/80"
           >
             Delete
           </button>
@@ -148,7 +148,7 @@ export function ChecklistBlock({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold text-muted-foreground min-w-8">{progress}%</span>
+        <span className="text-xs font-semibold text-muted-foreground min-w-8">{progress}%</span>
         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-primary transition-all"
@@ -161,7 +161,7 @@ export function ChecklistBlock({
         {(checklist.items || []).length > 0 ? (
           (checklist.items || []).map((item) =>
             editingItemId === item.id ? (
-              <div key={item.id} className="flex items-start gap-3 text-[14px] text-foreground">
+              <div key={item.id} className="flex items-start gap-3 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={item.completed}
@@ -178,7 +178,7 @@ export function ChecklistBlock({
                   <input
                     value={editingItemTitle}
                     onChange={(e) => setEditingItemTitle(e.target.value)}
-                    className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none outline-none focus:border-primary"
+                    className="h-9 w-full rounded-sm border border-transparent px-3 text-sm shadow-none outline-none focus:border-primary"
                     autoFocus
                   />
                   <div className="flex items-center gap-2">
@@ -212,7 +212,7 @@ export function ChecklistBlock({
                 </button>
               </div>
             ) : (
-              <div key={item.id} className="group flex items-center gap-3 text-[14px] text-foreground">
+              <div key={item.id} className="group flex items-center gap-3 text-sm text-foreground">
                 <input
                   type="checkbox"
                   checked={item.completed}
@@ -251,7 +251,7 @@ export function ChecklistBlock({
             ),
           )
         ) : (
-          <p className="text-[13px] text-muted-foreground">No items yet.</p>
+          <p className="text-sm text-muted-foreground">No items yet.</p>
         )}
       </div>
 
@@ -261,7 +261,7 @@ export function ChecklistBlock({
             value={newItemTitle}
             onChange={(e) => setNewItemTitle(e.target.value)}
             placeholder="Add an item..."
-            className="h-9 w-full rounded-sm border border-transparent px-3 text-[14px] shadow-none hover:bg-muted"
+            className="h-9 w-full rounded-sm border border-transparent px-3 text-sm shadow-none hover:bg-muted"
             autoFocus
           />
           <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ export function ChecklistBlock({
         <button
           type="button"
           onClick={() => setShowNewItemInput(true)}
-          className="rounded-md bg-muted px-3 py-1.5 text-[13px] font-medium text-foreground hover:bg-muted/80"
+          className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/80"
         >
           Add an item
         </button>

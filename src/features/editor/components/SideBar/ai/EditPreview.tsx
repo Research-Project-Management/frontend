@@ -34,11 +34,11 @@ function DiffRow({ label, text, color }: { label: string; text: string; color: '
       {lines.map((line, i) => (
         <div key={`${label}-${i}`} className={`flex px-0 ${bgClass}`}>
           <span
-            className={`select-none shrink-0 w-5 text-center text-[10px] border-r border-border/40 mr-2 ${gutterClass}`}
+            className={`select-none shrink-0 w-5 text-center text-xs border-r border-border/40 mr-2 ${gutterClass}`}
           >
             {glyph}
           </span>
-          <span className={`py-px pr-4 whitespace-pre font-mono text-[11px] ${textClass}`}>
+          <span className={`py-px pr-4 whitespace-pre font-mono text-xs ${textClass}`}>
             {line}
           </span>
         </div>
@@ -69,21 +69,21 @@ function EditDiffBlock({
   return (
     <div className="border border-border/60 rounded-lg overflow-hidden mb-3 text-xs bg-background shadow-xs">
       <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/50 border-b border-border/40">
-        <span className="font-mono text-[11px] text-muted-foreground font-medium">
+        <span className="font-mono text-xs text-muted-foreground font-medium">
           Change #{index + 1}: {rangeLabel}
         </span>
         {edit.description && (
-          <span className="text-[11px] text-foreground/70 truncate max-w-[280px]">
+          <span className="text-xs text-foreground/70 truncate max-w-[280px]">
             {edit.description}
           </span>
         )}
       </div>
 
-      <div className="divide-y divide-border/20 font-mono text-[11px]">
+      <div className="divide-y divide-border/20 font-mono text-xs">
         {oldText && <DiffRow label="old" text={oldText} color="red" />}
         {edit.text && <DiffRow label="new" text={edit.text} color="green" />}
         {!oldText && !edit.text && (
-          <div className="px-3 py-2 text-muted-foreground/40 text-[10px]">(empty change)</div>
+          <div className="px-3 py-2 text-muted-foreground/40 text-xs">(empty change)</div>
         )}
       </div>
     </div>
@@ -130,7 +130,7 @@ export function EditPreview({
             </DialogTitle>
             <Badge
               variant={isNoChange ? "secondary" : "default"}
-              className="text-[10px] font-medium uppercase tracking-wide"
+              className="text-xs font-medium uppercase tracking-wide"
             >
               {editResponse.intent.replace(/_/g, ' ')}
             </Badge>
@@ -148,7 +148,7 @@ export function EditPreview({
         {safetyWarning && (
           <div className="flex items-start gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 shrink-0">
             <AlertTriangle className="size-3.5 text-primary shrink-0 mt-px" />
-            <p className="text-[11px] text-foreground/80 leading-relaxed">{safetyWarning}</p>
+            <p className="text-xs text-foreground/80 leading-relaxed">{safetyWarning}</p>
           </div>
         )}
 

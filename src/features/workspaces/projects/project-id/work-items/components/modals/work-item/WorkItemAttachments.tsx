@@ -84,7 +84,7 @@ export function TaskAttachments({
       <div className="mt-10">
         <div className="mb-4 flex items-center gap-2">
           <Paperclip className="size-4 text-muted-foreground" />
-          <h3 className="text-[16px] font-bold text-foreground">Attachments</h3>
+          <h3 className="text-base font-bold text-foreground">Attachments</h3>
         </div>
         <div className="space-y-3 pl-1">
           {attachments.map((item) => (
@@ -93,7 +93,7 @@ export function TaskAttachments({
               className="group flex items-center justify-between gap-4 rounded-md px-2 py-2 transition-colors hover:bg-muted/70"
             >
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-[13px] font-semibold text-muted-foreground border border-border/60">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground border border-border/60">
                   {getAttachmentTypeLabel(item)}
                 </div>
 
@@ -102,12 +102,12 @@ export function TaskAttachments({
                     href={item.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="block min-w-0 max-w-full truncate text-[14px] font-medium text-foreground hover:underline"
+                    className="block min-w-0 max-w-full truncate text-sm font-medium text-foreground hover:underline"
                     title={item.name}
                   >
                     {item.name}
                   </a>
-                  <p className="mt-1 text-[12px] text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {formatAttachmentMeta(item.createdAt)}
                   </p>
                 </div>
@@ -139,7 +139,7 @@ export function TaskAttachments({
                         <button
                           type="button"
                           onClick={() => handleOpenRename(item)}
-                          className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-foreground hover:bg-muted cursor-pointer"
+                          className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm text-foreground hover:bg-muted cursor-pointer"
                         >
                           Edit
                         </button>
@@ -150,7 +150,7 @@ export function TaskAttachments({
                               onCommentAttachment(item);
                               setActiveMenuId(null);
                             }}
-                            className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-foreground hover:bg-muted cursor-pointer"
+                            className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm text-foreground hover:bg-muted cursor-pointer"
                           >
                             Comment
                           </button>
@@ -162,7 +162,7 @@ export function TaskAttachments({
                               onDownloadAttachment(item);
                               setActiveMenuId(null);
                             }}
-                            className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-foreground hover:bg-muted cursor-pointer"
+                            className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm text-foreground hover:bg-muted cursor-pointer"
                           >
                             Download
                           </button>
@@ -173,7 +173,7 @@ export function TaskAttachments({
                             onRemoveAttachment(item.id);
                             setActiveMenuId(null);
                           }}
-                          className="flex w-full items-center rounded-sm px-3 py-2 text-left text-[14px] text-destructive hover:bg-destructive/10 cursor-pointer"
+                          className="flex w-full items-center rounded-sm px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10 cursor-pointer"
                         >
                           Remove
                         </button>
@@ -197,10 +197,10 @@ export function TaskAttachments({
         <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-[18px] font-bold text-foreground">
+              <DialogTitle className="text-lg font-bold text-foreground">
                 Rename attachment
               </DialogTitle>
-              <DialogDescription className="text-[14px] leading-6 text-muted-foreground">
+              <DialogDescription className="text-sm leading-6 text-muted-foreground">
                 Update the display name for this attachment.
               </DialogDescription>
             </DialogHeader>
@@ -209,7 +209,7 @@ export function TaskAttachments({
               <input
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
-                className="h-10 w-full rounded-sm border border-border px-4 text-[14px] text-foreground outline-none focus:border-primary"
+                className="h-10 w-full rounded-sm border border-border px-4 text-sm text-foreground outline-none focus:border-primary"
                 placeholder="Enter new file name"
                 autoFocus
               />

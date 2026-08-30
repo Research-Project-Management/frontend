@@ -77,7 +77,7 @@ export function MemberFilter({
             <span>Filters</span>
             {/* Active badge */}
             {hasActiveFilters && (
-              <span className="size-4 rounded-full bg-foreground text-background text-[10px] font-bold flex items-center justify-center leading-none">
+              <span className="size-4 rounded-full bg-foreground text-background text-xs font-bold flex items-center justify-center leading-none">
                 {roleFilter.length}
               </span>
             )}
@@ -92,7 +92,7 @@ export function MemberFilter({
           onEscapeKeyDown={() => setOpen(false)}
         >
           {/* Title */}
-          <p className="px-2 py-1 text-[11px] font-semibold text-muted-foreground tracking-wide">
+          <p className="px-2 py-1 text-xs font-semibold text-muted-foreground tracking-wide">
             Roles
           </p>
 

@@ -16,8 +16,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/unit/setup.ts'],
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
-    pool: 'threads',
+    pool: 'forks',
+    testTimeout: 20000,
     fileParallelism: false,
     coverage: {
       provider: 'v8',

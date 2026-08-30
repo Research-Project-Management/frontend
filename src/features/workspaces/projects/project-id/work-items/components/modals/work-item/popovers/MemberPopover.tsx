@@ -41,7 +41,7 @@ export function MemberPopover({
           variant="outline"
           className={
             open
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-[15px] font-medium text-foreground shadow-none'
+              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
               : actionBtnClass
           }
         >
@@ -76,7 +76,7 @@ export function MemberPopover({
             />
           </div>
           <div className="mt-4">
-            <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Board members
             </h4>
             <div className="space-y-1">
@@ -100,7 +100,7 @@ export function MemberPopover({
                   >
                     <Avatar className="size-6">
                       <AvatarImage src={uAvatar} />
-                      <AvatarFallback className="text-[10px] font-bold">{fallback}</AvatarFallback>
+                      <AvatarFallback className="text-xs font-bold">{fallback}</AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground flex-1 truncate">{uName}</span>
                     {assigneeId === uId && <Check className="size-4 text-foreground" />}

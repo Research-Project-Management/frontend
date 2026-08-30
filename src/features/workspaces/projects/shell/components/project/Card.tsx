@@ -162,7 +162,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
             >
               {project.name}
             </Link>
-            <span className="text-[10px] font-mono font-medium text-muted-foreground uppercase px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
+            <span className="text-xs font-mono font-medium text-muted-foreground uppercase px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
               {projectKey}
             </span>
           </div>
@@ -181,12 +181,12 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
           {/* Left: Visibility */}
           <div className="flex items-center gap-1.5 shrink-0">
             {isPrivate ? (
-              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
                 <Lock className="size-3" />
                 <span>Private</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
                 <Globe className="size-3" />
                 <span>Public</span>
               </span>
@@ -199,11 +199,11 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
               <div className="flex items-center gap-1">
                 <Avatar className="size-4.5 border border-background shrink-0">
                   <AvatarImage src={leadUser.avatar} alt={leadUser.name} />
-                  <AvatarFallback className="text-[9px] bg-muted font-medium">
+                  <AvatarFallback className="text-xs bg-muted font-medium">
                     {leadUser.name ? leadUser.name.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-[11px] font-medium text-foreground truncate max-w-[80px]">
+                <span className="text-xs font-medium text-foreground truncate max-w-[80px]">
                   {leadUser.name || 'Lead'}
                 </span>
               </div>
@@ -214,20 +214,20 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
                   return (
                     <Avatar key={u.id || idx} className="size-4.5 border border-background">
                       <AvatarImage src={u.avatar} alt={u.name} />
-                      <AvatarFallback className="text-[9px] bg-muted font-medium">
+                      <AvatarFallback className="text-xs bg-muted font-medium">
                         {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
                       </AvatarFallback>
                     </Avatar>
                   );
                 })}
                 {extraMembersCount > 0 && (
-                  <span className="flex size-4.5 items-center justify-center rounded-full bg-muted text-[9px] font-medium border border-background">
+                  <span className="flex size-4.5 items-center justify-center rounded-full bg-muted text-xs font-medium border border-background">
                     +{extraMembersCount}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-[11px] text-muted-foreground/60 italic">No members</span>
+              <span className="text-xs text-muted-foreground/60 italic">No members</span>
             )}
           </div>
         </div>

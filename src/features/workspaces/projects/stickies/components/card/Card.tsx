@@ -74,7 +74,7 @@ const Card = memo(
           {...dragHandleProps}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-            <div className="text-[10px] opacity-50 font-medium">
+            <div className="text-xs opacity-50 font-medium">
               {sticky.updatedAt ? new Date(sticky.updatedAt).toLocaleDateString() : ""}
             </div>
           </div>

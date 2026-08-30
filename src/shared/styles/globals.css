@@ -394,39 +394,50 @@ html {
   scroll-behavior: smooth;
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--gray-300) transparent;
-}
-
-.dark * {
-  scrollbar-color: oklch(30% 0 0) transparent;
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 1.5px !important;
+  height: 1.5px !important;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--gray-300);
-  border-radius: 9999px;
+  background-color: var(--border) !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--gray-400);
+  background-color: var(--muted-foreground) !important;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background-color: oklch(30% 0 0);
+.thin-scrollbar::-webkit-scrollbar {
+  width: 1px !important;
+  height: 1px !important;
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background-color: oklch(40% 0 0);
+.thin-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border) !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground) !important;
 }
 
 .kanban-scrollbar {

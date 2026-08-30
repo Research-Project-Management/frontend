@@ -78,11 +78,11 @@ export default function PaperBatchBar({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border rounded-full shadow-lg select-none ring-1 ring-border/40"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border/80 rounded-full select-none shadow-none"
       >
         {/* Count Badge & Label */}
         <div className="flex items-center gap-2 pr-2.5 border-r border-border/60">
-          <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-xs font-mono font-bold tabular-nums">
+          <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-mono font-bold tabular-nums">
             {selectedCount}
           </span>
           <span className="text-xs font-medium text-foreground whitespace-nowrap">
@@ -98,7 +98,7 @@ export default function PaperBatchBar({
               size="sm"
               className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none"
             >
-              <FolderInput className="size-3.5 text-muted-foreground" />
+              <FolderInput className="size-3.5 text-foreground" />
               <span>Move to</span>
             </Button>
           </DropdownMenuTrigger>
@@ -106,22 +106,22 @@ export default function PaperBatchBar({
             align="center"
             sideOffset={8}
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-56 p-1 text-xs rounded-xl shadow-xl"
+            className="w-48 p-1 rounded-lg border border-border bg-popover text-popover-foreground z-50 text-sm shadow-none"
           >
             <DropdownMenuItem
               onClick={() => onBatchMove(null)}
-              className="gap-2 text-xs cursor-pointer rounded-lg"
+              className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
             >
-              <Library className="size-3.5 text-muted-foreground" />
-              <span>My Library (Root)</span>
+              <Library className="size-4 text-foreground" />
+              <span>My Library</span>
             </DropdownMenuItem>
             {collections.map((c) => (
               <DropdownMenuItem
                 key={c.id}
                 onClick={() => onBatchMove(c.id)}
-                className="gap-2 text-xs cursor-pointer rounded-lg"
+                className="gap-2.5 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none"
               >
-                <Folder className="size-3.5 text-muted-foreground shrink-0" />
+                <Folder className="size-4 text-foreground shrink-0" />
                 <span className="truncate">{c.name}</span>
               </DropdownMenuItem>
             ))}
@@ -136,7 +136,7 @@ export default function PaperBatchBar({
           className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Copy citation for all selected"
         >
-          <Quote className="size-3.5 shrink-0 text-muted-foreground" />
+          <Quote className="size-3.5 shrink-0 text-foreground" />
           <span>Copy citation</span>
         </Button>
 
@@ -148,7 +148,7 @@ export default function PaperBatchBar({
           className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Copy BibTeX for all selected papers"
         >
-          <Copy className="size-3.5 shrink-0 text-muted-foreground" />
+          <Copy className="size-3.5 shrink-0 text-foreground" />
           <span>Copy BibTeX</span>
         </Button>
 
@@ -160,7 +160,7 @@ export default function PaperBatchBar({
           className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Download .bib file"
         >
-          <Download className="size-3.5 shrink-0 text-muted-foreground" />
+          <Download className="size-3.5 shrink-0 text-foreground" />
           <span>Download .bib</span>
         </Button>
 
@@ -172,7 +172,7 @@ export default function PaperBatchBar({
           className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-full cursor-pointer transition-colors shadow-none inline-flex items-center"
           title="Delete selected papers"
         >
-          <Trash2 className="size-3.5 shrink-0 text-muted-foreground" />
+          <Trash2 className="size-3.5 shrink-0 text-foreground" />
           <span>Delete</span>
         </Button>
 

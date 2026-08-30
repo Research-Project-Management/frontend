@@ -115,7 +115,7 @@ function ToolbarButton({
       <TooltipContent side="bottom" align="center" className="flex items-center gap-2">
         <span>{tooltip}</span>
         {kbd && (
-          <kbd className="bg-muted px-1 rounded text-[10px] text-muted-foreground font-mono leading-none border border-border/40">
+          <kbd className="bg-muted px-1 rounded text-xs text-muted-foreground font-mono leading-none border border-border/40">
             {kbd}
           </kbd>
         )}
@@ -260,7 +260,7 @@ export default function Format() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-95 outline-none">
-                    <span className="text-[10px] font-bold">Env</span>
+                    <span className="text-xs font-bold">Env</span>
                     <ChevronDown className="size-3 shrink-0 opacity-60" />
                   </button>
                 </DropdownMenuTrigger>
@@ -336,7 +336,7 @@ export default function Format() {
               <DropdownMenuContent align="start" className="w-56 z-[9999]">
                 {!showFormat && (
                   <>
-                    <DropdownMenuLabel className="text-[11px] text-muted-foreground font-semibold px-2 py-1">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
                       Formatting
                     </DropdownMenuLabel>
                     {BASIC_FORMATS.map((item) => (
@@ -354,7 +354,7 @@ export default function Format() {
                 {!showMath && (
                   <>
                     {!showFormat && <DropdownMenuSeparator />}
-                    <DropdownMenuLabel className="text-[11px] text-muted-foreground font-semibold px-2 py-1">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
                       Math
                     </DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => handleFormat('inlineMath')}>
@@ -371,7 +371,7 @@ export default function Format() {
                 {!showStructure && (
                   <>
                     {(!showFormat || !showMath) && <DropdownMenuSeparator />}
-                    <DropdownMenuLabel className="text-[11px] text-muted-foreground font-semibold px-2 py-1">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
                       Structure
                     </DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => handleInsert('\\section{}')}>
@@ -428,7 +428,7 @@ export default function Format() {
                   tooltip="Decrease Font Size"
                   variant="settings"
                 />
-                <span className="text-[11px] font-mono font-semibold px-1 w-9 text-center text-muted-foreground select-none">
+                <span className="text-xs font-mono font-semibold px-1 w-9 text-center text-muted-foreground select-none">
                   {fontSize}px
                 </span>
                 <ToolbarButton
@@ -451,20 +451,20 @@ export default function Format() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 z-[9999]">
-                <DropdownMenuLabel className="text-[11px] text-muted-foreground font-semibold px-2 py-1">
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold px-2 py-1">
                   Settings
                 </DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setWordWrap(!wordWrap)}>
                   <Pilcrow className={cn('size-4 mr-2', wordWrap && 'text-primary')} />
                   <span>Word Wrap</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground font-semibold">
+                  <span className="ml-auto text-xs text-muted-foreground font-semibold">
                     {wordWrap ? 'On' : 'Off'}
                   </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setLineNumbers(!lineNumbers)}>
                   <Hash className={cn('size-4 mr-2', lineNumbers && 'text-primary')} />
                   <span>Line Numbers</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground font-semibold">
+                  <span className="ml-auto text-xs text-muted-foreground font-semibold">
                     {lineNumbers ? 'On' : 'Off'}
                   </span>
                 </DropdownMenuItem>

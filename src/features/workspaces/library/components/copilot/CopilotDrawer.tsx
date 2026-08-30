@@ -177,7 +177,7 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
 
                   {/* Action Bar for Assistant Message */}
                   {!isUser && !msg.isStreaming && (
-                    <div className="pt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <div className="pt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <button
                         type="button"
                         onClick={() => handleSaveNote(msg.content)}
@@ -204,7 +204,7 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
             onKeyDown={handleKeyDown}
             placeholder="Ask a question or cite page..."
             rows={1}
-            className="flex-1 resize-none bg-transparent px-2 py-1 text-[12px] outline-none placeholder:text-muted-foreground/60 max-h-28 min-h-[32px]"
+            className="flex-1 resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-muted-foreground/60 max-h-28 min-h-[32px]"
           />
           {isStreaming ? (
             <button
@@ -227,7 +227,7 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
             </button>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+        <p className="text-xs text-muted-foreground text-center mt-1.5">
           Press Enter to send • Shift+Enter for new line
         </p>
       </div>

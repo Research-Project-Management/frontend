@@ -178,7 +178,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
                   <div className="space-y-1 max-w-lg">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm text-foreground">{c.title}</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                         Conflict Detected
                       </span>
                     </div>
@@ -234,7 +234,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm text-foreground">{p.title}</span>
                         <span
-                          className={`text-[11px] px-2 py-0.5 rounded-full font-medium uppercase border ${
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium uppercase border ${
                             isFailed
                               ? 'bg-destructive/10 text-destructive border-destructive/20'
                               : 'bg-primary/10 text-primary border-primary/20'

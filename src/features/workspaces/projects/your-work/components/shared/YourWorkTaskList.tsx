@@ -170,7 +170,7 @@ export function YourWorkTaskList({
                   <span className="text-xs font-bold text-foreground">
                     {group.label}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">
                     {group.items.length}
                   </span>
                 </div>
@@ -218,7 +218,7 @@ export function YourWorkTaskList({
                       >
                         <div className="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
                           {task.identifier && (
-                            <span className="text-[11px] font-bold text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/80 shrink-0">
+                            <span className="text-xs font-bold text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/80 shrink-0">
                               {task.identifier}
                             </span>
                           )}
@@ -226,7 +226,7 @@ export function YourWorkTaskList({
                           {priorityConfig && PriorityIcon && (
                             <span
                               className={cn(
-                                'inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md border shrink-0',
+                                'inline-flex items-center gap-1 text-xs font-semibold px-1.5 py-0.5 rounded-md border shrink-0',
                                 priorityConfig.bg,
                               )}
                             >
@@ -248,13 +248,13 @@ export function YourWorkTaskList({
                           </span>
 
                           {projectInfo && (
-                            <span className="inline-flex items-center text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+                            <span className="inline-flex items-center text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0">
                               {projectInfo.name}
                             </span>
                           )}
 
                           {subCount > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">
                               <GitBranch className="size-2.5" />
                               {subDone}/{subCount}
                             </span>
@@ -264,7 +264,7 @@ export function YourWorkTaskList({
                         <div className="flex items-center gap-3 shrink-0">
                           {(task.commentCount ?? 0) > 0 && (
                             <div
-                              className="flex items-center gap-1 text-[11px] text-muted-foreground"
+                              className="flex items-center gap-1 text-xs text-muted-foreground"
                               title="Comments"
                             >
                               <MessageSquare className="size-3" />
@@ -275,7 +275,7 @@ export function YourWorkTaskList({
                           {task.dueDate && (
                             <span
                               className={cn(
-                                'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-medium',
+                                'flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium',
                                 isOverdue
                                   ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/50'
                                   : 'bg-muted text-muted-foreground',
@@ -297,7 +297,7 @@ export function YourWorkTaskList({
                                 src={assigneeObj.avatar || undefined}
                                 alt={assigneeObj.name || 'Assignee'}
                               />
-                              <AvatarFallback className="text-[9px] font-bold bg-muted">
+                              <AvatarFallback className="text-xs font-bold bg-muted">
                                 {assigneeObj.name?.charAt(0) || 'U'}
                               </AvatarFallback>
                             </Avatar>

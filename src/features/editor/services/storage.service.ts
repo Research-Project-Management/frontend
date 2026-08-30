@@ -7,7 +7,7 @@
  *  - Item management (rename, move, delete)
  */
 
-import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 
 export interface EditorStorageItem {
@@ -34,10 +34,7 @@ export const StorageService = {
 
   uploadToR2: async (pageId: string, formData: FormData): Promise<{ url: string; path: string }> => {
     formData.append('pageId', pageId);
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('token') || localStorage.getItem('accessToken')
-        : null;
+    const token = getAuthToken();
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -48,7 +45,11 @@ export const StorageService = {
       headers,
     });
     if (!response.ok) throw new Error('Upload to R2 proxy failed');
-    return (await response.json()) as { url: string; path: string };
+    const json = (await response.json()) as any;
+    const payload = json.data || json;
+    const url = payload.url || payload.file?.url || payload.path || '';
+    const path = payload.path || payload.url || url;
+    return { url, path };
   },
 
   createFileRecord: async (

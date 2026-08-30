@@ -199,7 +199,7 @@ export function Sidebar() {
   const groups = useMemo(() => groupByProject(filtered), [filtered]);
 
   return (
-    <aside className="w-64 shrink-0 h-full border-r border-border/60 bg-sidebar flex flex-col overflow-hidden select-none">
+    <aside className="w-60 shrink-0 h-full border-r border-border/60 bg-sidebar flex flex-col overflow-hidden select-none">
       {/* Header */}
       <div className="p-3 border-b border-border/40 flex items-center justify-between gap-2">
         <button
@@ -259,7 +259,7 @@ export function Sidebar() {
                 <div key={pid} className="space-y-1">
                   <button
                     onClick={() => handleToggleCollapse(pid)}
-                    className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider hover:text-foreground transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider hover:text-foreground transition-colors"
                   >
                     <span className="truncate">{pName}</span>
                     <ChevronDown

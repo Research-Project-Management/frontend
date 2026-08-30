@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { PlayCircle, CheckCircle2, ArrowRight, CornerDownLeft, CircleSlash } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -57,7 +58,7 @@ export const StatusModal = ({
               <DialogTitle className="text-base font-semibold text-foreground">
                 {isComplete ? "Complete Cycle?" : "Start Cycle?"}
               </DialogTitle>
-              <DialogDescription className="mt-1.5 text-[13.5px] text-muted-foreground leading-relaxed">
+              <DialogDescription className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
                 {isComplete ? (
                   <>
                     Are you sure you want to end <span className="font-semibold text-foreground">{title}</span>? Choose how to handle any incomplete tasks.
@@ -94,7 +95,7 @@ export const StatusModal = ({
                     <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
                       <CornerDownLeft className="size-3.5" /> Move to Project Backlog
                     </span>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Work items will be unassigned from this cycle and returned to the general backlog.
                     </p>
                   </div>
@@ -117,24 +118,30 @@ export const StatusModal = ({
                       <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
                         <ArrowRight className="size-3.5" /> Transfer to Next Cycle
                       </span>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                      <p className="text-xs text-muted-foreground mt-0.5 mb-2">
                         Move all unfinished work items into another planned or upcoming cycle.
                       </p>
                       {incompleteAction === 'transfer' && (
-                        <select
-                          value={targetCycleId}
-                          onChange={(e) => setTargetCycleId(e.target.value)}
-                          className="w-full h-8 px-2 text-xs border border-border bg-background rounded-sm text-foreground focus:outline-none"
-                        >
-                          {availableCycles.map((c) => {
-                            const cId = c.id || '';
-                            return (
-                              <option key={cId} value={cId}>
-                                {c.name}
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <div className="mt-1">
+                          <Select
+                            value={targetCycleId}
+                            onValueChange={(val) => setTargetCycleId(val)}
+                          >
+                            <SelectTrigger className="w-full h-8 text-xs bg-background">
+                              <SelectValue placeholder="Select target cycle..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableCycles.map((c) => {
+                                const cId = c.id || '';
+                                return (
+                                  <SelectItem key={cId} value={cId} className="text-xs">
+                                    {c.name}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       )}
                     </div>
                   </label>
@@ -156,7 +163,7 @@ export const StatusModal = ({
                     <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
                       <CircleSlash className="size-3.5" /> Keep in this Cycle
                     </span>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Preserve incomplete tasks inside this completed cycle as historical record.
                     </p>
                   </div>
@@ -180,7 +187,7 @@ export const StatusModal = ({
               type="button"
               onClick={handleConfirm}
               disabled={isSubmitting}
-              className="h-9 px-5 text-[13px] font-semibold border-none shadow-none rounded-sm transition-all active:scale-95 cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="h-9 px-5 text-sm font-semibold border-none shadow-none rounded-sm transition-all active:scale-95 cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isSubmitting ? "Processing..." : (isComplete ? "Complete Cycle" : "Start Cycle")}
             </Button>

@@ -43,7 +43,7 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {trigger || (
-          <button className="h-10 rounded-sm border border-border bg-background px-4 text-[15px] font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer">
+          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer">
             <UserPlus className="size-4 text-foreground" /> Members
           </button>
         )}
@@ -73,12 +73,12 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
               placeholder="Search members" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 pl-9 pr-4 text-[14px] border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-sm shadow-none"
+              className="h-9 pl-9 pr-4 text-sm border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-sm shadow-none"
             />
           </div>
 
           <div className="mt-4">
-            <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
               BOARD MEMBERS
             </h4>
             <div className="space-y-0.5 max-h-[280px] overflow-y-auto custom-scrollbar px-1.5">
@@ -98,11 +98,11 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
                     >
                       <Avatar className="size-7">
                         <AvatarImage src={user.avatar} className="object-cover" />
-                        <AvatarFallback className="bg-muted text-foreground text-[10px] font-bold flex items-center justify-center">
+                        <AvatarFallback className="bg-muted text-foreground text-xs font-bold flex items-center justify-center">
                           {user.name?.charAt(0).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className={`text-[13px] flex-1 truncate text-foreground ${isSelected ? 'font-semibold' : 'font-medium'}`}>
+                      <span className={`text-sm flex-1 truncate text-foreground ${isSelected ? 'font-semibold' : 'font-medium'}`}>
                         {user.name}
                       </span>
                       {isSelected && <Check className="size-3.5 text-foreground stroke-[3]" />}
@@ -110,7 +110,7 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
                   );
                 })
               ) : (
-                <p className="text-[13px] text-muted-foreground py-4 text-center">No members found</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">No members found</p>
               )}
             </div>
           </div>

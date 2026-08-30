@@ -78,12 +78,12 @@ export default function Preview() {
 
         <div className="flex-1 min-w-0">
           <p
-            className="text-[13px] font-semibold text-foreground leading-snug break-words line-clamp-2 pr-1"
+            className="text-sm font-semibold text-foreground leading-snug break-words line-clamp-2 pr-1"
             title={item.filename}
           >
             {item.filename}
           </p>
-          <p className="text-[11px] text-muted-foreground/60 mt-0.5 truncate">
+          <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
             {formatMimeType(item as any)}
           </p>
         </div>
@@ -125,7 +125,7 @@ export default function Preview() {
                 >
                   {getFileIcon('image', 10)}
                 </div>
-                <span className="text-[11px] text-muted-foreground/50">Preview unavailable</span>
+                <span className="text-xs text-muted-foreground/50">Preview unavailable</span>
               </div>
             )
           ) : isPdf ? (
@@ -138,7 +138,7 @@ export default function Preview() {
                     background: 'linear-gradient(90deg, transparent, color-mix(in oklch, var(--color-muted-foreground) 8%, transparent), transparent)',
                   }}
                 />
-                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
+                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs text-muted-foreground/50">
                   <Loader2 className="size-3 animate-spin" />
                   Rendering…
                 </div>
@@ -152,7 +152,7 @@ export default function Preview() {
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
                 <FileText className="size-9 text-muted-foreground/20" />
-                <span className="text-[11px] text-muted-foreground/40">No preview available</span>
+                <span className="text-xs text-muted-foreground/40">No preview available</span>
               </div>
             )
           ) : (
@@ -163,7 +163,7 @@ export default function Preview() {
               >
                 {getFileIcon(fileType, 10)}
               </div>
-              <span className="text-[11px] text-muted-foreground/40">No preview</span>
+              <span className="text-xs text-muted-foreground/40">No preview</span>
             </div>
           )}
         </div>
@@ -172,7 +172,7 @@ export default function Preview() {
         <div className="flex gap-1.5 px-3.5 pt-2 pb-2.5 border-b border-border">
           <button
             onClick={handleDownload}
-            className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
+            className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
           >
             <Download className="size-3" />
             Download
@@ -180,7 +180,7 @@ export default function Preview() {
           {(isPdf || isImage) && (
             <button
               onClick={() => window.open(item.url, '_blank')}
-              className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
+              className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
             >
               <Maximize2 className="size-3" />
               Open full
@@ -190,7 +190,7 @@ export default function Preview() {
 
         {/* ── File details ─────────────────────────────────────────── */}
         <div className="px-3.5 pt-3 pb-3 border-b border-border">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/40 mb-2">
             File details
           </p>
           <div className="divide-y divide-border/30">
@@ -203,8 +203,8 @@ export default function Preview() {
                 : []),
             ].map(({ label, value }) => (
               <div key={label} className="flex items-baseline justify-between gap-3 py-1.5">
-                <span className="text-[12px] text-muted-foreground/50 shrink-0">{label}</span>
-                <span className="text-[12px] font-medium text-foreground text-right break-all">{value}</span>
+                <span className="text-xs text-muted-foreground/50 shrink-0">{label}</span>
+                <span className="text-xs font-medium text-foreground text-right break-all">{value}</span>
               </div>
             ))}
           </div>
@@ -216,14 +216,14 @@ export default function Preview() {
 
             {/* Section header + Crossref badge */}
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/40">
                 Academic metadata
               </p>
               <div className="flex items-center gap-1.5">
                 {crossrefLoading ? (
                   <Loader2 className="size-3 animate-spin text-muted-foreground/30" />
                 ) : (
-                  <span className={`text-[10px] font-medium px-1.5 py-px rounded-full leading-none ${crossrefBadge.cls}`}>
+                  <span className={`text-xs font-medium px-1.5 py-px rounded-full leading-none ${crossrefBadge.cls}`}>
                     {crossrefBadge.label}
                   </span>
                 )}
@@ -242,7 +242,7 @@ export default function Preview() {
             {crossrefStatus !== 'found' && !crossrefLoading && (
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="mb-4 text-[12px] text-primary/50 hover:text-primary transition-colors flex items-center gap-1.5 group"
+                className="mb-4 text-xs text-primary/50 hover:text-primary transition-colors flex items-center gap-1.5 group"
               >
                 <Search className="size-3 group-hover:scale-110 transition-transform duration-150" />
                 {searchOpen ? 'Cancel' : 'Search Crossref manually'}
@@ -258,7 +258,7 @@ export default function Preview() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="h-7 text-[11.5px] bg-background/80"
+                    className="h-7 text-xs bg-background/80"
                   />
                   <Button
                     size="sm"
@@ -280,10 +280,10 @@ export default function Preview() {
                         className="w-full text-left px-2.5 py-2 text-xs hover:bg-accent/50 transition-colors"
                       >
                         <p className="font-medium line-clamp-2 leading-snug mb-0.5">{work.title}</p>
-                        <p className="text-[10.5px] text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {work.authors?.join(', ') || 'Unknown authors'}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted-foreground/50">
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground/50">
                           <span className="bg-muted px-1.5 py-px rounded-sm font-medium">{work.year || 'N/A'}</span>
                           {work.journal && <span className="truncate">{work.journal}</span>}
                         </div>
@@ -299,92 +299,92 @@ export default function Preview() {
 
               {/* Title */}
               <div>
-                <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                   <FileText className="size-3" />Title
                 </Label>
                 <Input
                   value={metadata.title || ''}
                   onChange={(e) => { setMetadata({ ...metadata, title: e.target.value }); setSaved(false); }}
                   placeholder="Paper title…"
-                  className="h-8 text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
               {/* Authors */}
               <div>
-                <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                   <User className="size-3" />Authors
                 </Label>
                 <Input
                   value={metadata.author || metadata.authors?.join(', ') || ''}
                   onChange={(e) => { setMetadata({ ...metadata, author: e.target.value }); setSaved(false); }}
                   placeholder="Last, First; Last, First…"
-                  className="h-8 text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
               {/* DOI */}
               <div>
-                <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                   <Fingerprint className="size-3" />DOI
                 </Label>
                 <Input
                   value={metadata.doi || ''}
                   onChange={(e) => { setMetadata({ ...metadata, doi: e.target.value }); setSaved(false); }}
                   placeholder="10.xxxx/xxxxx"
-                  className="h-[30px] text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25 font-mono text-[11px]"
+                  className="h-[30px] text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25 font-mono text-xs"
                 />
               </div>
 
               {/* Year + Pages side by side */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                  <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                     <Calendar className="size-3" />Year
                   </Label>
                   <Input
                     value={metadata.year ? String(metadata.year) : ''}
                     onChange={(e) => { setMetadata({ ...metadata, year: e.target.value ? parseInt(e.target.value) : undefined }); setSaved(false); }}
                     placeholder="2024"
-                    className="h-8 text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                    className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                   />
                 </div>
                 <div>
-                  <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                  <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                     <FileDigit className="size-3" />Pages
                   </Label>
                   <Input
                     value={metadata.pages || ''}
                     onChange={(e) => { setMetadata({ ...metadata, pages: e.target.value }); setSaved(false); }}
                     placeholder="1–12"
-                    className="h-8 text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                    className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                   />
                 </div>
               </div>
 
               {/* Journal */}
               <div>
-                <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                   <BookMarked className="size-3" />Journal
                 </Label>
                 <Input
                   value={metadata.journal || ''}
                   onChange={(e) => { setMetadata({ ...metadata, journal: e.target.value }); setSaved(false); }}
                   placeholder="Journal name…"
-                  className="h-8 text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
               {/* Publisher */}
               <div>
-                <Label className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
                   <Building2 className="size-3" />Publisher
                 </Label>
                 <Input
                   value={metadata.publisher || ''}
                   onChange={(e) => { setMetadata({ ...metadata, publisher: e.target.value }); setSaved(false); }}
                   placeholder="Publisher…"
-                  className="h-8 text-[12px] bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
@@ -392,7 +392,7 @@ export default function Preview() {
               {metadata.abstract && (
                 <div>
                   <button
-                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-[10px] font-semibold text-muted-foreground/40 hover:text-muted-foreground uppercase tracking-widest transition-colors"
+                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-xs font-semibold text-muted-foreground/40 hover:text-muted-foreground uppercase tracking-widest transition-colors"
                     onClick={() => setAbstractExpanded(!abstractExpanded)}
                   >
                     <ScrollText className="size-3" />
@@ -404,7 +404,7 @@ export default function Preview() {
                     </span>
                   </button>
                   <div
-                    className={`relative text-[11px] leading-[1.65] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2.5 border border-border/30 overflow-hidden transition-all duration-300 ${abstractExpanded ? 'max-h-[600px]' : 'max-h-[68px]'}`}
+                    className={`relative text-xs leading-[1.65] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2.5 border border-border/30 overflow-hidden transition-all duration-300 ${abstractExpanded ? 'max-h-[600px]' : 'max-h-[68px]'}`}
                   >
                     {metadata.abstract}
                     {!abstractExpanded && (
@@ -424,7 +424,7 @@ export default function Preview() {
           <button
             disabled={saved || !item}
             onClick={handleSaveMetadata}
-            className={`relative w-full h-8 rounded-sm flex items-center justify-center gap-2 text-[12px] font-medium transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`relative w-full h-8 rounded-sm flex items-center justify-center gap-2 text-xs font-medium transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
               saved
                 ? 'bg-emerald-500/8 text-emerald-600 dark:text-emerald-400 cursor-default'
                 : 'bg-primary text-primary-foreground hover:opacity-90'

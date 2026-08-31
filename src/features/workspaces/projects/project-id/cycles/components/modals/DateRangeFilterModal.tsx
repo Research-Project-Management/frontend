@@ -106,7 +106,7 @@ export const DoubleCalendarModal = ({
 
           <div className="grid grid-cols-7 mb-2">
             {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
-              <div key={d} className="text-xs font-bold text-muted-foreground text-center uppercase tracking-wider">{d}</div>
+              <div key={d} className="text-xs font-bold text-muted-foreground text-center">{d}</div>
             ))}
           </div>
 

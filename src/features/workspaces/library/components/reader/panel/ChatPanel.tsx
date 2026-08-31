@@ -35,7 +35,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
 
   return (
     <div className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold text-muted-foreground">
         Sources
       </p>
       <div className="flex flex-wrap gap-1">
@@ -288,7 +288,7 @@ export default function ChatPanel({
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
           <div className="flex min-w-0 items-center gap-2">
             <img src="/Chat.svg" alt="AI" className="size-4" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-semibold text-muted-foreground">
               AI
             </span>
           </div>

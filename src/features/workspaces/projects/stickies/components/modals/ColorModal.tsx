@@ -47,7 +47,7 @@ export default function ColorModal({
               transition={{ duration: 0.2, ease: [0.2, 0, 0, 1.0] }}
               className="p-3"
             >
-              <div className="mb-2.5 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="mb-2.5 text-xs font-semibold text-muted-foreground">
                 Background colors
               </div>
               <div className="grid grid-cols-6 gap-2">

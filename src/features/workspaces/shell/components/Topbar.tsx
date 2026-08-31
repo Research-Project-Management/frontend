@@ -32,7 +32,7 @@ export default function Topbar() {
   return (
     <nav
       aria-label='Workspace Header Navigation'
-      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-4'
+      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-2'
     >
       {/* Left: Workspace & Project breadcrumb */}
       <div className='flex items-center gap-2 min-w-0 shrink-0'>

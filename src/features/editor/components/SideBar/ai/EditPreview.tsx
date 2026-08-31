@@ -130,7 +130,7 @@ export function EditPreview({
             </DialogTitle>
             <Badge
               variant={isNoChange ? "secondary" : "default"}
-              className="text-xs font-medium uppercase tracking-wide"
+              className="text-xs font-medium capitalize"
             >
               {editResponse.intent.replace(/_/g, ' ')}
             </Badge>

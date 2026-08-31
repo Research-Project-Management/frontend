@@ -948,7 +948,7 @@ export function WorkItemDetailModal({
 
               {/* Description */}
               <div className="space-y-2 pt-2">
-                <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                <label className="text-sm font-semibold text-muted-foreground">
                   Description
                 </label>
                 <textarea
@@ -1011,7 +1011,7 @@ export function WorkItemDetailModal({
               {Array.isArray(card?.subtasks) && card.subtasks.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <label className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
                       <GitBranch className="size-4" /> Subtasks ({card.subtaskCompletedCount ?? card.subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{card.subtasks.length})
                     </label>
                   </div>

@@ -207,7 +207,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
                   onCloseAutoFocus={(e) => e.preventDefault()}
                   className="w-72 p-3 space-y-2 bg-popover"
                 >
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">
                     Search filter sites
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-1 pr-1">

@@ -82,7 +82,7 @@ export default function PaperBatchBar({
       >
         {/* Count Badge & Label */}
         <div className="flex items-center gap-2 pr-2.5 border-r border-border/60">
-          <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-[10px] font-mono font-bold tabular-nums">
+          <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background text-xs font-mono font-bold tabular-nums">
             {selectedCount}
           </span>
           <span className="text-xs font-medium text-foreground whitespace-nowrap">

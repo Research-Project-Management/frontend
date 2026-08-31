@@ -290,7 +290,7 @@ export function useCard({
         key: 'priority',
         icon: PIcon,
         label: `Priority: ${card.priority}`,
-        text: card.priority.toUpperCase(),
+        text: card.priority.charAt(0).toUpperCase() + card.priority.slice(1),
       });
     }
 

@@ -83,7 +83,7 @@ export function ArchiveCard({
             {project.name}
           </Link>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono text-xs uppercase">{projectKey}</span>
+            <span className="font-mono text-xs">{projectKey}</span>
             <span>•</span>
             <span className="flex items-center gap-1">
               {isPrivate ? (

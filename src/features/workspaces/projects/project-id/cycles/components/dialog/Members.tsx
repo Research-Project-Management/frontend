@@ -78,8 +78,8 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
           </div>
 
           <div className="mt-4">
-            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
-              BOARD MEMBERS
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2.5">
+              Board members
             </h4>
             <div className="space-y-0.5 max-h-[280px] overflow-y-auto custom-scrollbar px-1.5">
               {filteredProjectMembers?.length > 0 ? (

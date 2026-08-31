@@ -47,11 +47,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
               <CheckSquare className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Work Items
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {stats.tasks.total}
           </div>
         </div>
@@ -73,11 +73,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
               <Users className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Team
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {stats.members || project.members.length}
           </div>
         </div>
@@ -103,11 +103,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
               <HardDrive className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Files
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {stats.files.count}
           </div>
         </div>
@@ -123,11 +123,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground">
               <CalendarDays className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Active Age
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {daysActive}
           </div>
         </div>

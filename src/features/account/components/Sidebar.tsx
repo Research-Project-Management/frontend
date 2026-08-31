@@ -39,30 +39,30 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       <div className='flex flex-col gap-6 px-3 py-2'>
         {/* Your Profile Section */}
         <div>
-          <h3 className='mb-1 px-2 text-xs font-semibold text-muted-foreground'>
+          <h3 className='mb-1.5 px-2.5 text-sm font-semibold text-muted-foreground select-none'>
             Your profile
           </h3>
-          <nav className='flex flex-col space-y-0.5'>
+          <nav className='flex flex-col gap-1'>
             <SidebarItem
-              icon={<User className='size-4' />}
+              icon={<User className='size-4 text-foreground shrink-0' />}
               label='Profile'
               active={activeTab === 'profile'}
               onClick={() => setTab('profile')}
             />
             <SidebarItem
-              icon={<SlidersHorizontal className='size-4' />}
+              icon={<SlidersHorizontal className='size-4 text-foreground shrink-0' />}
               label='Preferences'
               active={activeTab === 'preferences'}
               onClick={() => setTab('preferences')}
             />
             <SidebarItem
-              icon={<Bell className='size-4' />}
+              icon={<Bell className='size-4 text-foreground shrink-0' />}
               label='Notifications'
               active={activeTab === 'notifications'}
               onClick={() => setTab('notifications')}
             />
             <SidebarItem
-              icon={<Lock className='size-4' />}
+              icon={<Lock className='size-4 text-foreground shrink-0' />}
               label='Security'
               active={activeTab === 'security'}
               onClick={() => setTab('security')}
@@ -90,10 +90,10 @@ function SidebarItem({
     <button
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors outline-none cursor-pointer',
+        'flex h-9.5 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors outline-none cursor-pointer text-foreground',
         active
-          ? 'bg-muted font-medium text-foreground'
-          : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          ? 'bg-accent font-semibold'
+          : 'font-medium hover:bg-accent/70'
       )}
     >
       {icon}

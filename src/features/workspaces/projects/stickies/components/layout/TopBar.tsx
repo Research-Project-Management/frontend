@@ -170,7 +170,7 @@ export default function TopBar({
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <span className="text-xs font-semibold text-foreground">
                   Projects {hasActiveFilters && `(${projectFilter.length})`}
                 </span>
                 {hasActiveFilters && (

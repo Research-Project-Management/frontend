@@ -372,7 +372,7 @@ export function ProjectsPage() {
                         >
                           {project.name}
                         </Link>
-                        <span className="text-xs font-mono font-medium text-muted-foreground uppercase px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
+                        <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
                           {projectKey}
                         </span>
                       </div>

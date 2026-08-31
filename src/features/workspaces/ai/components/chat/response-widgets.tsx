@@ -161,7 +161,7 @@ export function ResponseWidgets({ widgets }: { widgets?: ResponseWidget[] }) {
 function MetricSummaryCard({ widget }: { widget: Extract<ResponseWidget, { type: 'metric_summary' }> }) {
   return (
     <div className="rounded-xl border border-border/60 bg-card/60 p-4 shadow-sm">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{widget.title}</h4>
+      <h4 className="text-xs font-semibold text-muted-foreground">{widget.title}</h4>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {widget.metrics.map((metric, i) => (
           <div key={i} className="rounded-lg bg-secondary/40 p-3">
@@ -192,7 +192,7 @@ function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 
       <div className="mt-3 space-y-3">
         {widget.groups.map((group, groupIdx) => (
           <div key={groupIdx} className="space-y-1.5">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/80">{group.label}</p>
+            <p className="text-xs font-medium text-muted-foreground/80">{group.label}</p>
             <div className="divide-y divide-border/30 rounded-lg border border-border/40 bg-secondary/20">
               {group.tasks.map((task, taskIdx) => {
                 const priority = normalizePriority(task.priority);

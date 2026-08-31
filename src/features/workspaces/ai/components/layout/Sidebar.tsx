@@ -259,7 +259,7 @@ export function Sidebar() {
                 <div key={pid} className="space-y-1">
                   <button
                     onClick={() => handleToggleCollapse(pid)}
-                    className="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider hover:text-foreground transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <span className="truncate">{pName}</span>
                     <ChevronDown
@@ -282,14 +282,14 @@ export function Sidebar() {
                               workspaceId && router.push(`/${workspaceId}/ai/${chat.id}`)
                             }
                             className={cn(
-                              'group relative flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors',
+                              'group relative flex h-9.5 items-center justify-between gap-2.5 px-2.5 rounded-md text-sm cursor-pointer transition-colors',
                               isActive
-                                ? 'bg-accent text-accent-foreground font-medium shadow-xs'
-                                : 'text-foreground/80 hover:bg-secondary/50',
+                                ? 'bg-accent text-foreground font-semibold'
+                                : 'text-foreground font-medium hover:bg-accent/70',
                             )}
                           >
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <MessageSquare className="size-3.5 shrink-0 opacity-60" />
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <MessageSquare className="size-4 shrink-0 text-foreground" />
                               {isEditing ? (
                                 <input
                                   ref={editInputRef}
@@ -301,7 +301,7 @@ export function Sidebar() {
                                     if (e.key === 'Escape') setEditingId(null);
                                   }}
                                   onBlur={() => handleSaveRename(chat.id)}
-                                  className="w-full bg-background px-1 py-0.5 text-xs rounded border border-primary focus:outline-none"
+                                  className="w-full bg-background px-1.5 py-0.5 text-xs rounded border border-primary focus:outline-none text-foreground"
                                 />
                               ) : (
                                 <span className="truncate">{chat.title || 'Untitled'}</span>
@@ -313,17 +313,17 @@ export function Sidebar() {
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={(e) => handleStartRename(e, chat)}
-                                  className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                                  className="p-1 rounded hover:bg-muted text-foreground cursor-pointer transition-colors"
                                   title="Rename"
                                 >
-                                  <Pencil className="size-3" />
+                                  <Pencil className="size-3.5 text-foreground" />
                                 </button>
                                 <button
                                   onClick={(e) => handleDelete(e, chat.id)}
-                                  className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"
+                                  className="p-1 rounded hover:bg-muted text-foreground hover:text-destructive cursor-pointer transition-colors"
                                   title="Delete"
                                 >
-                                  <Trash2 className="size-3" />
+                                  <Trash2 className="size-3.5" />
                                 </button>
                               </div>
                             )}

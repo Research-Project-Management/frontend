@@ -113,7 +113,7 @@ export function GeneralDetails({
               value={identifier}
               onChange={handleIdentifierInput}
               placeholder="e.g. XINCHAO23"
-              className="h-10 text-xs font-mono font-medium rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3 pr-9 uppercase"
+              className="h-10 text-xs font-mono font-medium rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3 pr-9"
             />
             <TooltipProvider>
               <Tooltip>

@@ -51,7 +51,7 @@ export default function PaperTableHeader({
 
   return (
     <thead className="sticky top-0 z-20 bg-background select-none">
-      <tr className="h-9 text-[11px] font-medium uppercase tracking-[0.04em] text-muted-foreground border-b border-border/40">
+      <tr className="h-9 text-xs font-medium text-muted-foreground border-b border-border/40">
         {/* Select All Checkbox */}
         <th className="w-10 px-2.5 py-1.5 text-center align-middle">
           <div className="flex items-center justify-center">
@@ -71,7 +71,7 @@ export default function PaperTableHeader({
             <th
               key={idx}
               className={cn(
-                'px-3 py-2 text-[11px] font-medium uppercase tracking-[0.04em] select-none',
+                'px-3 py-2 text-xs font-medium select-none',
                 col.className,
                 col.sortable ? 'cursor-pointer text-muted-foreground' : 'text-muted-foreground'
               )}

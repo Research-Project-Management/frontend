@@ -64,7 +64,7 @@ export const CopilotQuickPrompts: React.FC<CopilotQuickPromptsProps> = ({
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+      <p className="text-xs font-semibold text-muted-foreground px-1">
         Quick Academic Starters
       </p>
       <div className="grid grid-cols-2 gap-1.5">

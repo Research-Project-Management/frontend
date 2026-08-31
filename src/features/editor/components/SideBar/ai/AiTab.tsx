@@ -258,7 +258,7 @@ const AssistantMessage = memo(function AssistantMessage({
           elements.push(
             <div key={key} className="my-3 rounded-lg overflow-hidden border border-border/50 font-mono">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">diff</span>
+                <span className="text-xs font-mono text-muted-foreground">diff</span>
                 {!isStreaming && (
                   <button
                     onClick={() => {
@@ -319,7 +319,7 @@ const AssistantMessage = memo(function AssistantMessage({
           elements.push(
             <div key={key} className="my-3 rounded-lg overflow-hidden border border-border/50">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                <span className="text-xs font-mono text-muted-foreground">
                   {codeLang || "latex"}
                 </span>
                 {isLatex && !isStreaming && (

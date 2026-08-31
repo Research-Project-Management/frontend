@@ -311,7 +311,7 @@ export function Topbar({
 
             <PopoverContent align="end" className="w-72 p-3 space-y-4 rounded-lg shadow-xl">
               <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <span className="text-xs font-semibold text-foreground">
                   Filters {hasActiveFilters && `(${totalActiveFilters})`}
                 </span>
                 {hasActiveFilters && (
@@ -329,7 +329,7 @@ export function Topbar({
               {/* Columns Section */}
               {columns.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     Columns
                   </span>
                   <div className="space-y-1 max-h-36 overflow-y-auto">
@@ -365,7 +365,7 @@ export function Topbar({
               {/* Assignees Section */}
               {assignees.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     Assignees
                   </span>
                   <div className="space-y-1 max-h-36 overflow-y-auto">

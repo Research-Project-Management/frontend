@@ -39,7 +39,7 @@ const LoginPage = () => {
           <Link href='/'>
             <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
           </Link>
-          <h2 className='text-2xl font-bold'>Sign in to Flux</h2>
+          <h2 className='text-2xl font-semibold tracking-tight text-foreground'>Sign in to Flux</h2>
         </div>
 
         <form onSubmit={handleSubmit} className='flex flex-col gap-3.5'>

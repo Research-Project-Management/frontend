@@ -248,7 +248,7 @@ export function YourWorkTaskList({
                           </span>
 
                           {projectInfo && (
-                            <span className="inline-flex items-center text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+                            <span className="inline-flex items-center text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded-md shrink-0">
                               {projectInfo.name}
                             </span>
                           )}

@@ -126,7 +126,7 @@ export function TransferModal({
           {/* Controls */}
           <div className="p-6 space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              <label className="text-xs font-semibold text-muted-foreground">
                 Destination Cycle
               </label>
               <Select value={targetCycleId} onValueChange={setTargetCycleId}>

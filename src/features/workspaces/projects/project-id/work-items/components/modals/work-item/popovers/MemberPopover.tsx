@@ -76,7 +76,7 @@ export function MemberPopover({
             />
           </div>
           <div className="mt-4">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2">
               Board members
             </h4>
             <div className="space-y-1">

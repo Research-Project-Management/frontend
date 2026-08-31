@@ -142,7 +142,7 @@ export default function TopBar({
               <div className="px-1 pb-2 border-b border-border">
                 <button
                   onClick={() => setIsStartExpanded(!isStartExpanded)}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-bold text-muted-foreground hover:text-foreground"
+                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
                 >
                   <span>Start date</span>
                   {isStartExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -211,7 +211,7 @@ export default function TopBar({
               <div className="px-1 mt-2">
                  <button
                   onClick={() => setIsDueExpanded(!isDueExpanded)}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <span>End date</span>
                   {isDueExpanded ? <ChevronUp className="size-3.5 text-foreground" /> : <ChevronDown className="size-3.5 text-foreground" />}

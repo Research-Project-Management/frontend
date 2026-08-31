@@ -176,7 +176,7 @@ export function DatePopover({
             </div>
 
             <div className="space-y-1.5 pt-2 border-t border-border/50">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">
+              <label className="text-xs font-semibold text-muted-foreground">
                 Set due date reminder
               </label>
               <Select
@@ -201,7 +201,7 @@ export function DatePopover({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase">
+              <label className="text-xs font-semibold text-muted-foreground">
                 Repeat
               </label>
               <Select

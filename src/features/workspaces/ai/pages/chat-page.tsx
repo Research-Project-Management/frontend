@@ -108,7 +108,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
 
   return (
     <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+      <p className="text-xs font-semibold text-muted-foreground/80">
         Sources
       </p>
       <div className="flex flex-wrap gap-1.5">

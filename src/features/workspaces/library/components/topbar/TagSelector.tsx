@@ -88,7 +88,7 @@ export default function TagSelector({
                   key={tag}
                   onClick={() => onSelectTag(isSelected ? null : tag)}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium transition-colors cursor-pointer max-w-full text-foreground',
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-micro font-mono font-medium transition-colors cursor-pointer max-w-full text-foreground',
                     isSelected
                       ? 'bg-muted font-semibold border border-border/60 shadow-none'
                       : 'bg-muted/40 hover:bg-muted border border-border/40'

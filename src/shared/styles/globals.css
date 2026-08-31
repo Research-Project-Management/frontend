@@ -27,6 +27,11 @@
   --leading-relaxed: 1.625;
   --leading-loose: 2;
 
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+  --text-dense: 0.8125rem;
+  --text-dense--line-height: 1.125rem;
+
   --tracking-tighter: -0.05em;
   --tracking-tight: -0.025em;
   --tracking-normal: 0em;

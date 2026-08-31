@@ -109,25 +109,12 @@ export default function TagsSection({
         </div>
       )}
 
-      {tags.length === 0 && !isAdding ? (
-        <div className="py-5 text-center text-muted-foreground text-xs bg-muted/10 rounded-md border border-dashed border-border/40 space-y-2">
-          <p>No tags assigned yet.</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsAdding(true)}
-            className="h-7 px-2.5 text-xs cursor-pointer font-medium"
-          >
-            <Plus className="size-3.5 mr-1" />
-            Add Tag
-          </Button>
-        </div>
-      ) : (
+      {tags.length === 0 && !isAdding ? null : (
         <div className="flex flex-wrap gap-1.5 items-center">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-medium bg-muted/50 text-foreground border border-border/40 group hover:border-border/80 transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-micro font-mono font-medium bg-muted/50 text-foreground border border-border/40 group hover:border-border/80 transition-colors"
             >
               <Hash className="size-2.5 text-foreground" />
               <span>{tag}</span>

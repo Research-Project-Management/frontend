@@ -147,7 +147,7 @@ export default function PaperTableRow({
             }
           }}
           className={cn(
-            'group border-b border-border/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:bg-muted/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring transition-colors cursor-pointer select-none text-[13px] tracking-[-0.005em] h-10',
+            'group border-b border-border/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:bg-muted/50 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring transition-colors cursor-pointer select-none text-sm h-10',
             isActive && 'bg-accent/70 text-foreground font-medium',
             isSelected && !isActive && 'bg-accent/30'
           )}
@@ -170,7 +170,7 @@ export default function PaperTableRow({
               {hasFile && (
                 <span
                   title={paper.filename ? `PDF: ${paper.filename}` : "PDF Document Attached"}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-mono font-semibold tracking-wider bg-muted/70 text-foreground border border-border/60 shrink-0 select-none leading-none"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-semibold tracking-wider bg-muted/70 text-foreground border border-border/60 shrink-0 select-none leading-none"
                 >
                   PDF
                 </span>
@@ -178,14 +178,14 @@ export default function PaperTableRow({
               {isRawArxiv && !hasFile && (
                 <span
                   title="arXiv Preprint"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10.5px] font-mono font-semibold tracking-wider bg-muted/70 text-muted-foreground border border-border/60 shrink-0 select-none leading-none"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono font-semibold tracking-wider bg-muted/70 text-muted-foreground border border-border/60 shrink-0 select-none leading-none"
                 >
                   arXiv
                 </span>
               )}
               <span
                 className={cn(
-                  'truncate font-medium text-foreground transition-colors text-[13px]',
+                  'truncate font-medium text-foreground transition-colors text-sm',
                   isActive && 'font-semibold',
                   isRawArxiv && 'font-mono text-xs'
                 )}
@@ -195,7 +195,7 @@ export default function PaperTableRow({
               </span>
               {showCollection && collection && (
                 <span
-                  className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 text-muted-foreground bg-muted/50 rounded shrink-0 border border-border/40 truncate max-w-[120px]"
+                  className="hidden sm:inline-flex items-center gap-1 text-micro font-medium px-1.5 py-0.5 text-muted-foreground bg-muted/50 rounded shrink-0 border border-border/40 truncate max-w-[120px]"
                   title={`In collection: ${collection.name}`}
                 >
                   <Folder className="size-3 shrink-0" />

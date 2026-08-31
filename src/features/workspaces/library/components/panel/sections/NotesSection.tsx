@@ -207,20 +207,7 @@ export default function NotesSection({
       )}
 
       {/* Notes List */}
-      {notes.length === 0 && !isAdding ? (
-        <div className="py-5 text-center text-muted-foreground text-xs bg-muted/10 rounded-md border border-dashed border-border/40 space-y-2">
-          <p>No notes yet.</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsAdding(true)}
-            className="h-7 px-2.5 text-xs cursor-pointer font-medium"
-          >
-            <Plus className="size-3.5 mr-1" />
-            Add Note
-          </Button>
-        </div>
-      ) : (
+      {notes.length === 0 && !isAdding ? null : (
         <div className="space-y-2 min-w-0">
           {notes.map((n) => (
             <div

@@ -172,7 +172,7 @@ function InlineField({
         }
       }}
       className={cn(
-        'w-full bg-transparent text-foreground hover:bg-muted/40 focus:bg-background px-1.5 py-0.5 rounded border border-transparent focus:border-border transition-colors outline-none text-xs leading-normal font-normal truncate focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
+        'w-full min-h-[22px] bg-transparent text-foreground hover:bg-muted/40 focus:bg-background px-1.5 py-0.5 rounded border border-transparent focus:border-border transition-colors outline-none text-xs leading-normal font-normal truncate focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
         mono && 'font-mono text-xs',
         className,
       )}
@@ -368,102 +368,100 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   /**
    * Helper to retrieve value for a field definition key from paper
    */
-  const getFieldValue = (fieldKey: string): string => {
-    const p = paper as any;
-    const derivedArxiv =
-      cleanValue(p.arxivId || p.arXivId || p.arxiv) ||
-      (p.url ? extractArxivId(p.url) : '') ||
-      (p.callNumber ? extractArxivId(p.callNumber) : '');
-
-    if (fieldKey === 'date') {
-      return cleanValue(p.publicationDate || (p.year ? String(p.year) : ''));
-    }
-    if (fieldKey === 'publicationTitle' || fieldKey === 'journal') {
-      return cleanValue(p.publicationTitle || p.journal);
-    }
-    if (fieldKey === 'journalAbbreviation' || fieldKey === 'journalAbbr') {
-      return cleanValue(p.journalAbbr || p.journalAbbreviation);
-    }
-    if (fieldKey === 'accessDate' || fieldKey === 'accessedAt') {
-      return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(p.accessedAt) : ''));
-    }
-    if (fieldKey === 'doi' || fieldKey === 'DOI') {
-      return displayDoi;
-    }
-    if (fieldKey === 'pmid' || fieldKey === 'PMID') {
-      return cleanValue(p.pmid || p.PMID);
-    }
-    if (fieldKey === 'pmcid' || fieldKey === 'PMCID') {
-      return cleanValue(p.pmcid || p.PMCID);
-    }
-    if (fieldKey === 'arxivId' || fieldKey === 'arXivId' || fieldKey === 'arxiv') {
-      return cleanValue(p.arxivId || p.arXivId || p.arxiv || extractArxivId(p.url) || extractArxivId(p.callNumber));
-    }
-    if (fieldKey === 'series' || fieldKey === 'seriesTitle') {
-      return cleanValue(p.series || p.seriesTitle);
-    }
-    if (fieldKey === 'seriesNumber' || fieldKey === 'seriesText') {
-      return cleanValue(p.seriesNumber || p.seriesText);
-    }
-    if (fieldKey === 'rights' || fieldKey === 'license') {
-      return cleanValue(p.rights || p.license);
-    }
-    if (fieldKey === 'publisher') {
-      return cleanValue(p.publisher);
-    }
-    if (fieldKey === 'place') {
-      return cleanValue(p.place);
-    }
-    if (fieldKey === 'genre') {
-      return cleanValue(p.genre || p.type);
-    }
-    if (fieldKey === 'issn') {
-      return cleanValue(p.issn);
-    }
-    if (fieldKey === 'isbn') {
-      return cleanValue(p.isbn);
-    }
-    if (fieldKey === 'language') {
-      return cleanValue(p.language);
-    }
-    if (fieldKey === 'callNumber') {
-      return cleanValue(p.callNumber);
-    }
-    if (fieldKey === 'archive') {
-      return cleanValue(p.archive);
-    }
-    if (fieldKey === 'archiveLocation') {
-      return cleanValue(p.archiveLocation);
-    }
-    if (fieldKey === 'libraryCatalog') {
-      return cleanValue(p.libraryCatalog);
-    }
-    if (fieldKey === 'abstractNote' || fieldKey === 'abstract') {
-      return cleanValue(p.abstract || p.abstractNote);
-    }
-    if (fieldKey === 'bookTitle') {
-      return cleanValue(p.bookTitle || p.publicationTitle || p.journal || p.extraFields?.bookTitle);
-    }
-    if (fieldKey === 'proceedingsTitle') {
-      return cleanValue(p.proceedingsTitle || p.publicationTitle || p.extraFields?.proceedingsTitle);
-    }
-    if (fieldKey === 'conferenceName') {
-      return cleanValue(p.conferenceName || p.proceedingsTitle || p.publicationTitle || p.extraFields?.conferenceName);
-    }
-    if (fieldKey === 'university' || fieldKey === 'institution') {
-      return cleanValue(p.university || p.institution || p.publisher || p.extraFields?.university || p.extraFields?.institution);
-    }
-    if (fieldKey === 'websiteTitle') {
-      return cleanValue(p.websiteTitle || p.publicationTitle || p.extraFields?.websiteTitle);
-    }
-    if (fieldKey === 'websiteType' || fieldKey === 'thesisType' || fieldKey === 'reportType') {
-      return cleanValue(p[fieldKey] || p.type || p.genre || p.extraFields?.[fieldKey]);
-    }
-    if (fieldKey === 'country') {
-      return cleanValue(p.country || p.place || p.extraFields?.country);
-    }
-    return cleanValue(p[fieldKey] ?? p.extraFields?.[fieldKey] ?? p.customFields?.[fieldKey]);
-  };
+  const getFieldValue = useCallback(
+    (fieldKey: string): string => {
+      const p = paper as any;
+      if (fieldKey === 'date') {
+        return cleanValue(p.publicationDate || (p.year ? String(p.year) : ''));
+      }
+      if (fieldKey === 'publicationTitle' || fieldKey === 'journal') {
+        return cleanValue(p.publicationTitle || p.journal);
+      }
+      if (fieldKey === 'journalAbbreviation' || fieldKey === 'journalAbbr') {
+        return cleanValue(p.journalAbbr || p.journalAbbreviation);
+      }
+      if (fieldKey === 'accessDate' || fieldKey === 'accessedAt') {
+        return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(p.accessedAt) : ''));
+      }
+      if (fieldKey === 'doi' || fieldKey === 'DOI') {
+        return displayDoi;
+      }
+      if (fieldKey === 'pmid' || fieldKey === 'PMID') {
+        return cleanValue(p.pmid || p.PMID);
+      }
+      if (fieldKey === 'pmcid' || fieldKey === 'PMCID') {
+        return cleanValue(p.pmcid || p.PMCID);
+      }
+      if (fieldKey === 'arxivId' || fieldKey === 'arXivId' || fieldKey === 'arxiv') {
+        return cleanValue(p.arxivId || p.arXivId || p.arxiv || extractArxivId(p.url) || extractArxivId(p.callNumber));
+      }
+      if (fieldKey === 'series' || fieldKey === 'seriesTitle') {
+        return cleanValue(p.series || p.seriesTitle);
+      }
+      if (fieldKey === 'seriesNumber' || fieldKey === 'seriesText') {
+        return cleanValue(p.seriesNumber || p.seriesText);
+      }
+      if (fieldKey === 'rights' || fieldKey === 'license') {
+        return cleanValue(p.rights || p.license);
+      }
+      if (fieldKey === 'publisher') {
+        return cleanValue(p.publisher);
+      }
+      if (fieldKey === 'place') {
+        return cleanValue(p.place);
+      }
+      if (fieldKey === 'genre') {
+        return cleanValue(p.genre || p.type);
+      }
+      if (fieldKey === 'issn') {
+        return cleanValue(p.issn);
+      }
+      if (fieldKey === 'isbn') {
+        return cleanValue(p.isbn);
+      }
+      if (fieldKey === 'language') {
+        return cleanValue(p.language);
+      }
+      if (fieldKey === 'callNumber') {
+        return cleanValue(p.callNumber);
+      }
+      if (fieldKey === 'archive') {
+        return cleanValue(p.archive);
+      }
+      if (fieldKey === 'archiveLocation') {
+        return cleanValue(p.archiveLocation);
+      }
+      if (fieldKey === 'libraryCatalog') {
+        return cleanValue(p.libraryCatalog);
+      }
+      if (fieldKey === 'abstractNote' || fieldKey === 'abstract') {
+        return cleanValue(p.abstract || p.abstractNote);
+      }
+      if (fieldKey === 'bookTitle') {
+        return cleanValue(p.bookTitle || p.publicationTitle || p.journal || p.extraFields?.bookTitle);
+      }
+      if (fieldKey === 'proceedingsTitle') {
+        return cleanValue(p.proceedingsTitle || p.publicationTitle || p.extraFields?.proceedingsTitle);
+      }
+      if (fieldKey === 'conferenceName') {
+        return cleanValue(p.conferenceName || p.proceedingsTitle || p.publicationTitle || p.extraFields?.conferenceName);
+      }
+      if (fieldKey === 'university' || fieldKey === 'institution') {
+        return cleanValue(p.university || p.institution || p.publisher || p.extraFields?.university || p.extraFields?.institution);
+      }
+      if (fieldKey === 'websiteTitle') {
+        return cleanValue(p.websiteTitle || p.publicationTitle || p.extraFields?.websiteTitle);
+      }
+      if (fieldKey === 'websiteType' || fieldKey === 'thesisType' || fieldKey === 'reportType') {
+        return cleanValue(p[fieldKey] || p.type || p.genre || p.extraFields?.[fieldKey]);
+      }
+      if (fieldKey === 'country') {
+        return cleanValue(p.country || p.place || p.extraFields?.country);
+      }
+      return cleanValue(p[fieldKey] ?? p.extraFields?.[fieldKey] ?? p.customFields?.[fieldKey]);
+    },
+    [paper, displayDoi],
+  );
 
   /**
    * Helper to save value for a dynamic field definition
@@ -501,7 +499,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     }
   };
 
-  // Filter out fields that are handled specially (title, abstractNote, extra, citationKey)
+  // Render all schema fields for the selected item type in Zotero schema order without hiding empty fields
   const dynamicFields = useMemo(() => {
     return typeDefinition.fields.filter(
       (f) =>
@@ -510,7 +508,9 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         f.field !== 'abstract' &&
         f.field !== 'extra' &&
         f.field !== 'citationKey' &&
-        f.field !== 'citeKey',
+        f.field !== 'citeKey' &&
+        f.field !== 'dateAdded' &&
+        f.field !== 'dateModified',
     );
   }, [typeDefinition]);
 
@@ -868,19 +868,19 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       })}
 
       {/* Cite Key */}
-      <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs py-0.5 group">
-        <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap" id="label-citekey">
-          Cite Key
-        </span>
-        <div className="flex items-center gap-1 min-w-0">
-          <InlineField
-            value={cleanValue(paper.citationKey)}
-            ariaLabel="BibTeX Citation Key"
-            onSave={(val) => handleFieldChange('citationKey', val || undefined)}
-            className="text-foreground font-mono text-xs flex-1 font-normal"
-            mono
-          />
-          {isValidValue(paper.citationKey) && (
+      {isValidValue(paper.citationKey) && (
+        <div className="grid grid-cols-[66px_1fr] gap-1.5 items-center text-xs py-0.5 group">
+          <span className="text-muted-foreground text-right font-normal select-none whitespace-nowrap" id="label-citekey">
+            Cite Key
+          </span>
+          <div className="flex items-center gap-1 min-w-0">
+            <InlineField
+              value={cleanValue(paper.citationKey)}
+              ariaLabel="BibTeX Citation Key"
+              onSave={(val) => handleFieldChange('citationKey', val || undefined)}
+              className="text-foreground font-mono text-xs flex-1 font-normal"
+              mono
+            />
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -902,22 +902,24 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Extra Field */}
-      <div className="grid grid-cols-[66px_1fr] gap-1.5 items-start text-xs py-0.5">
-        <span className="text-muted-foreground text-right font-normal select-none pt-0.5 whitespace-nowrap" id="label-extra">
-          Extra
-        </span>
-        <InlineField
-          value={cleanValue(paper.extra)}
-          ariaLabel="Extra"
-          onSave={(val) => handleFieldChange('extra', val || undefined)}
-          className="text-foreground flex-1 font-normal"
-        />
-      </div>
+      {isValidValue(paper.extra) && (
+        <div className="grid grid-cols-[66px_1fr] gap-1.5 items-start text-xs py-0.5">
+          <span className="text-muted-foreground text-right font-normal select-none pt-0.5 whitespace-nowrap" id="label-extra">
+            Extra
+          </span>
+          <InlineField
+            value={cleanValue(paper.extra)}
+            ariaLabel="Extra"
+            onSave={(val) => handleFieldChange('extra', val || undefined)}
+            className="text-foreground flex-1 font-normal"
+          />
+        </div>
+      )}
 
       {/* Date Added */}
       {isValidValue(paper.createdAt) && (

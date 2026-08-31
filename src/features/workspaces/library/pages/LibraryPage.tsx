@@ -98,7 +98,7 @@ export default function LibraryPage() {
           <div className="px-6 py-2 bg-accent/40 border-b border-border/40 flex items-center justify-between text-xs select-none">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Filtering by tag:</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent text-foreground font-mono text-[11px] font-medium border border-border/40">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent text-foreground font-mono text-micro font-medium border border-border/40">
                 <Tag className="size-3 text-foreground" />
                 {activeTag}
               </span>

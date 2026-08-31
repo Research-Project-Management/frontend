@@ -72,7 +72,7 @@ export default function Recent() {
                 </div>
                 
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <span className='text-sm font-medium text-muted-foreground uppercase w-16 shrink-0 truncate'>
+                  <span className='text-sm font-medium text-muted-foreground w-16 shrink-0 truncate'>
                     {item.project?.name?.substring(0, 5) || (typeof workspaceId === 'string' ? workspaceId.substring(0, 5) : '')}
                   </span>
                   <Link

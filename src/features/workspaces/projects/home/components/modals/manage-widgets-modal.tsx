@@ -126,7 +126,7 @@ export function ManageWidgetsModal({
         showCloseButton={false}
       >
         <DialogHeader className="mb-4">
-          <DialogTitle className="text-xl font-bold text-foreground">
+          <DialogTitle className="text-xl font-semibold text-foreground">
             Manage widgets
           </DialogTitle>
         </DialogHeader>

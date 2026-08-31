@@ -214,7 +214,7 @@ export default function Preview() {
 
         {/* ── File details ─────────────────────────────────────────── */}
         <div className="px-3.5 pt-3 pb-3 border-b border-border">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/40 mb-2">
+          <p className="text-xs font-semibold text-muted-foreground mb-2">
             File details
           </p>
           <div className="divide-y divide-border/30">
@@ -240,7 +240,7 @@ export default function Preview() {
 
             {/* Section header + Crossref badge */}
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/40">
+              <p className="text-xs font-semibold text-muted-foreground">
                 Academic metadata
               </p>
               <div className="flex items-center gap-1.5">
@@ -323,7 +323,7 @@ export default function Preview() {
 
               {/* Title */}
               <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                   <FileText className="size-3" />Title
                 </Label>
                 <Input
@@ -336,7 +336,7 @@ export default function Preview() {
 
               {/* Authors */}
               <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                   <User className="size-3" />Authors
                 </Label>
                 <Input
@@ -349,7 +349,7 @@ export default function Preview() {
 
               {/* DOI */}
               <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                   <Fingerprint className="size-3" />DOI
                 </Label>
                 <Input
@@ -363,7 +363,7 @@ export default function Preview() {
               {/* Year + Pages side by side */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                  <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                     <Calendar className="size-3" />Year
                   </Label>
                   <Input
@@ -374,7 +374,7 @@ export default function Preview() {
                   />
                 </div>
                 <div>
-                  <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                  <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                     <FileDigit className="size-3" />Pages
                   </Label>
                   <Input
@@ -388,7 +388,7 @@ export default function Preview() {
 
               {/* Journal */}
               <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                   <BookMarked className="size-3" />Journal
                 </Label>
                 <Input
@@ -401,7 +401,7 @@ export default function Preview() {
 
               {/* Publisher */}
               <div>
-                <Label className="flex items-center gap-1 text-xs font-semibold uppercase tracking-widest mb-1 text-muted-foreground/40">
+                <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
                   <Building2 className="size-3" />Publisher
                 </Label>
                 <Input
@@ -416,7 +416,7 @@ export default function Preview() {
               {metadata.abstract && (
                 <div>
                   <button
-                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-xs font-semibold text-muted-foreground/40 hover:text-muted-foreground uppercase tracking-widest transition-colors"
+                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-xs font-semibold text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                     onClick={() => setAbstractExpanded(!abstractExpanded)}
                   >
                     <ScrollText className="size-3" />

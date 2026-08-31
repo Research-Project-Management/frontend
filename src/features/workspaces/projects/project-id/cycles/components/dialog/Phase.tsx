@@ -225,8 +225,8 @@ export const Phase = ({
         onWheel={handleScrollableWheel}
       >
         <div className="space-y-2">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            TITLE
+          <Label className="text-xs font-semibold text-muted-foreground">
+            Title
           </Label>
           <Input
             value={tempLabel}
@@ -238,8 +238,8 @@ export const Phase = ({
         </div>
 
         <div className="space-y-3">
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            ICON
+          <Label className="text-xs font-semibold text-muted-foreground">
+            Icon
           </Label>
 
           <div className="grid grid-cols-5 gap-2">

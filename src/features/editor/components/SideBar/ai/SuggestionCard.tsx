@@ -35,7 +35,7 @@ function DiffViewer({
   return (
     <div className="overflow-hidden rounded-lg border border-border/55 bg-muted/20 text-xs">
       <div className="flex min-h-7 items-center gap-2 border-b border-border/45 bg-muted/35 px-2.5">
-        <span className="select-none font-sans text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+        <span className="select-none font-sans text-xs font-semibold text-muted-foreground/70">
           Diff
         </span>
         {startLine > 0 && (
@@ -129,7 +129,7 @@ export function SuggestionCard({
     <div className="w-full overflow-hidden rounded-lg rounded-tl-sm border border-border/60 bg-card">
       <div className="px-3.5 pt-3 pb-2.5 border-b border-border/35">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-primary/80 uppercase tracking-wide">
+          <span className="text-xs font-semibold text-primary/80">
             AI
           </span>
           {editCount > 1 && (

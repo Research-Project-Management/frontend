@@ -135,10 +135,10 @@ function GroupSection({
 }) {
   return (
     <div>
-      <div className="px-2.5 pb-1 pt-0.5 text-xs font-medium text-muted-foreground/60 select-none">
+      <div className="px-2.5 pb-1.5 pt-1 text-sm font-semibold text-muted-foreground select-none">
         {group.title}
       </div>
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex flex-col gap-1">
         {group.items.map((item) => {
           const active = isItemActive(item);
           const Icon = item.icon;
@@ -147,13 +147,13 @@ function GroupSection({
               key={item.id}
               href={item.to}
               className={cn(
-                'group flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors',
+                'group flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors',
                 active
                   ? 'bg-accent text-foreground font-semibold'
-                  : 'text-foreground/80 font-medium hover:bg-accent/70 hover:text-foreground',
+                  : 'text-foreground font-medium hover:bg-accent/70 hover:text-foreground',
               )}
             >
-              <Icon className="size-4 shrink-0 transition-colors" />
+              <Icon className="size-4 shrink-0 text-foreground transition-colors" />
               <span className="min-w-0 truncate">{item.label}</span>
             </Link>
           );

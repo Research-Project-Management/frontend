@@ -141,7 +141,7 @@ function CollectionNode({
 
         {renamingId === node.id ? (
           <div
-            className="relative z-10 flex h-9 w-full items-center pr-2 min-w-0"
+            className="relative z-10 flex h-9.5 w-full items-center pr-2 min-w-0"
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             <input
@@ -153,13 +153,13 @@ function CollectionNode({
                 if (e.key === 'Enter') onSubmitRename(node.id);
                 if (e.key === 'Escape') onSubmitRename('__cancel__');
               }}
-              className="h-7 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
+              className="h-8 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
             />
           </div>
         ) : (
           <div
             className={cn(
-              'relative z-10 flex h-9 w-full items-center gap-2 rounded-md pr-2 transition-colors cursor-pointer select-none text-sm text-foreground',
+              'relative z-10 flex h-9.5 w-full items-center gap-2.5 rounded-md pr-2 transition-colors cursor-pointer select-none text-sm text-foreground',
               isActive
                 ? 'font-semibold'
                 : 'hover:bg-muted/60 font-medium'
@@ -714,7 +714,7 @@ export default function LibrarySideBar() {
             <Link
               href={basePath}
               className={cn(
-                'group/item relative flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+                'group/item relative flex h-9.5 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
                 isLibraryActive ? 'font-semibold' : 'font-medium',
                 tree.length > 0 && 'pr-8'
               )}
@@ -778,7 +778,7 @@ export default function LibrarySideBar() {
           <Link
             href={`${basePath}/recently-read`}
             className={cn(
-              'group/item relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              'group/item relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
               isRecentReadActive ? 'font-semibold' : 'font-medium'
             )}
           >
@@ -800,7 +800,7 @@ export default function LibrarySideBar() {
           <Link
             href={`${basePath}/duplicates`}
             className={cn(
-              'group/item relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              'group/item relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
               isDuplicatesActive ? 'font-semibold' : 'font-medium'
             )}
           >
@@ -822,7 +822,7 @@ export default function LibrarySideBar() {
           <Link
             href={`${basePath}/unfiled`}
             className={cn(
-              'group/item relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              'group/item relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
               isUnfiledActive ? 'font-semibold' : 'font-medium'
             )}
           >
@@ -844,7 +844,7 @@ export default function LibrarySideBar() {
           <Link
             href={`${basePath}/trash`}
             className={cn(
-              'group/item relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
+              'group/item relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-muted/60 outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground select-none',
               isTrashActive ? 'font-semibold' : 'font-medium'
             )}
           >

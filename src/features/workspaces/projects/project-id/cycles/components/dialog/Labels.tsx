@@ -80,7 +80,7 @@ const LabelSelect = ({
               {editingName && <span className="text-xs font-bold text-white truncate max-w-full drop-shadow-sm">{editingName}</span>}
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Title</Label>
+              <Label className="text-sm font-semibold text-muted-foreground">Title</Label>
               <Input
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
@@ -90,7 +90,7 @@ const LabelSelect = ({
               />
             </div>
             <div className="space-y-3">
-              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Select a color</Label>
+              <Label className="text-sm font-semibold text-muted-foreground">Select a color</Label>
               <div className="grid grid-cols-5 gap-2">
 
                 {AVAILABLE_LABEL_COLORS.map((item: any) => (
@@ -149,7 +149,7 @@ const LabelSelect = ({
           </div>
         </div>
         <div className="shrink-0 bg-popover px-4 pt-2">
-          <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Labels</h4>
+          <h4 className="text-sm font-semibold text-muted-foreground">Labels</h4>
         </div>
 
         <div 

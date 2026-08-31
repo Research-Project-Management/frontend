@@ -191,7 +191,7 @@ export function ChatHistoryModal({
 
               return (
                 <div key={groupKey} className="space-y-1">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 py-1">
+                  <div className="text-xs font-semibold text-muted-foreground px-2 py-1">
                     {GROUP_LABELS[groupKey]}
                   </div>
                   <div className="space-y-1">

@@ -93,21 +93,8 @@ export default function RelatedSection({
         </div>
       )}
 
-      {/* Empty state */}
-      {!isLoading && relatedList.length === 0 && (
-        <div className="p-6 border border-dashed border-border/70 rounded-md text-center space-y-2">
-          <p className="text-xs text-muted-foreground">No related items</p>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs gap-1 cursor-pointer hover:bg-muted text-foreground"
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus className="size-3.5" />
-            <span>Add related item</span>
-          </Button>
-        </div>
-      )}
+      {/* Empty state - suppressed */}
+      {!isLoading && relatedList.length === 0 ? null : null}
 
       {/* Relations list (Zotero-style clean list) */}
       {!isLoading && relatedList.length > 0 && (

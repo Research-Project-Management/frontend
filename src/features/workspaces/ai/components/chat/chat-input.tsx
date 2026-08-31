@@ -233,7 +233,7 @@ export function ChatInput({
           ref={dropdownRef}
           className="absolute bottom-full mb-2 left-0 z-50 w-72 rounded-xl border border-border/80 bg-popover/95 backdrop-blur-md shadow-xl overflow-hidden p-1.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
         >
-          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
             Mention Agent
           </div>
           {filteredAgents.map((agent, i) => (
@@ -315,7 +315,7 @@ export function ChatInput({
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-56 p-1.5">
-                <div className="text-xs font-semibold text-muted-foreground px-2 py-1 uppercase tracking-wider">
+                <div className="text-xs font-semibold text-muted-foreground px-2 py-1">
                   Scope Context
                 </div>
                 <button

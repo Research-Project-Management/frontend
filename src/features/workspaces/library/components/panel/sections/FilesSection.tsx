@@ -137,7 +137,8 @@ export default function FilesSection({ paper, hideHeader = false }: FilesSection
       {paperUrl ? (
         <div
           ref={previewRef}
-          className="relative w-full rounded-md border border-border/50 bg-card overflow-hidden shadow-xs flex flex-col items-center justify-center min-h-[220px]"
+          onClick={handleOpenReader}
+          className="relative w-full rounded-lg border border-border/50 bg-white dark:bg-zinc-950 overflow-hidden shadow-none flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
         >
           {pdfBlobUrl ? (
             <Document
@@ -148,7 +149,7 @@ export default function FilesSection({ paper, hideHeader = false }: FilesSection
               }}
               loading={
                 <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin" />
+                  <Loader2 className="size-5 animate-spin text-foreground" />
                   <span className="text-xs font-medium">Loading preview...</span>
                 </div>
               }
@@ -167,7 +168,7 @@ export default function FilesSection({ paper, hideHeader = false }: FilesSection
             </Document>
           ) : pdfLoading ? (
             <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin" />
+              <Loader2 className="size-5 animate-spin text-foreground" />
               <span className="text-xs font-medium">Loading document...</span>
             </div>
           ) : (
@@ -178,22 +179,31 @@ export default function FilesSection({ paper, hideHeader = false }: FilesSection
 
           {/* Navigation Arrows: [<] [>] floating at bottom center */}
           {numPages > 1 && (
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10">
+            <div
+              className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
                 type="button"
                 disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentPage((p) => Math.max(1, p - 1));
+                }}
                 aria-label="Previous page"
-                className="size-7 rounded bg-black/70 hover:bg-black/90 disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center cursor-pointer transition-colors shadow-md"
+                className="size-7 rounded-md bg-neutral-800/75 hover:bg-neutral-900 disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center cursor-pointer transition-colors shadow-none"
               >
                 <ChevronLeft className="size-4" />
               </button>
               <button
                 type="button"
                 disabled={currentPage >= numPages}
-                onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentPage((p) => Math.min(numPages, p + 1));
+                }}
                 aria-label="Next page"
-                className="size-7 rounded bg-black/70 hover:bg-black/90 disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center cursor-pointer transition-colors shadow-md"
+                className="size-7 rounded-md bg-neutral-800/75 hover:bg-neutral-900 disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center cursor-pointer transition-colors shadow-none"
               >
                 <ChevronRight className="size-4" />
               </button>
@@ -260,10 +270,6 @@ export default function FilesSection({ paper, hideHeader = false }: FilesSection
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        ) : supplementaryAttachments.length === 0 ? (
-          <div className="py-4 text-center text-muted-foreground text-xs bg-muted/10 rounded-md border border-dashed border-border/40">
-            No attachments
-          </div>
         ) : null}
 
         {/* Supplementary Attachments */}
@@ -281,7 +287,7 @@ export default function FilesSection({ paper, hideHeader = false }: FilesSection
                   {attName}
                 </span>
                 {att.size && (
-                  <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                  <span className="text-micro font-mono text-muted-foreground shrink-0">
                     ({formatSize(att.size)})
                   </span>
                 )}

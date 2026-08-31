@@ -68,11 +68,11 @@ export default function ConflictDialog({
                     Lines {c.startLine}-{c.endLine}:
                   </div>
                   <div className="p-1.5 rounded bg-destructive/10 text-destructive border border-destructive/20 break-all">
-                    <span className="font-sans font-semibold text-xs uppercase text-destructive/80 block">Current on Main:</span>
+                    <span className="font-sans font-semibold text-xs text-destructive/80 block">Current on Main:</span>
                     {c.currentText}
                   </div>
                   <div className="p-1.5 rounded bg-muted/60 text-muted-foreground border border-border/40 break-all">
-                    <span className="font-sans font-semibold text-xs uppercase text-muted-foreground/80 block">AI Expected:</span>
+                    <span className="font-sans font-semibold text-xs text-muted-foreground/80 block">AI Expected:</span>
                     {c.expectedText}
                   </div>
                 </div>

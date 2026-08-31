@@ -60,7 +60,7 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
             {job && (
               <Badge
                 variant={isCompleted ? 'default' : isProcessing ? 'secondary' : 'destructive'}
-                className="uppercase text-xs"
+                className="capitalize text-xs"
               >
                 {job.status}
               </Badge>
@@ -112,7 +112,7 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
               {/* Imported papers list */}
               {job.successful && job.successful.length > 0 && (
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-muted-foreground">
                     Imported Papers
                   </p>
                   {job.successful.map((item, idx) => (
@@ -135,7 +135,7 @@ export const AsyncIngestionTrackerModal: React.FC<AsyncIngestionTrackerModalProp
               {/* Failed items list */}
               {job.failed && job.failed.length > 0 && (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  <p className="text-xs font-semibold text-destructive uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-destructive">
                     Failed Items
                   </p>
                   {job.failed.map((fail, idx) => (

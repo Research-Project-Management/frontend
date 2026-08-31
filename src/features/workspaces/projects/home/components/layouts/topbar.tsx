@@ -14,7 +14,7 @@ export function Topbar({ onManageWidgetsClick }: TopbarProps) {
     >
       <div className="flex items-center gap-2.5">
         <Home className="size-4.5 text-foreground" aria-hidden="true" />
-        <h1 className="text-sm font-bold text-foreground transition-colors duration-200">
+        <h1 className="text-sm font-semibold text-foreground transition-colors duration-200">
           Home
         </h1>
       </div>
@@ -22,7 +22,7 @@ export function Topbar({ onManageWidgetsClick }: TopbarProps) {
       <Button
         variant="ghost"
         size="sm"
-        className="min-h-[44px] md:min-h-0 md:h-8 gap-2 rounded-lg border border-border/50 bg-muted/40 px-3 text-sm font-medium text-foreground hover:bg-muted/40 hover:text-foreground cursor-pointer"
+        className="min-h-[44px] md:min-h-0 md:h-8 gap-2 rounded-lg border border-border/60 bg-background px-3 text-sm font-medium text-foreground hover:bg-background hover:border-foreground/30 hover:text-foreground cursor-pointer shadow-none"
         onClick={onManageWidgetsClick}
       >
         <Shapes className="size-4 text-foreground" aria-hidden="true" />

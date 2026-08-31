@@ -234,7 +234,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm text-foreground">{p.title}</span>
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium uppercase border ${
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize border ${
                             isFailed
                               ? 'bg-destructive/10 text-destructive border-destructive/20'
                               : 'bg-primary/10 text-primary border-primary/20'

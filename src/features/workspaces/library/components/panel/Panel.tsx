@@ -29,6 +29,12 @@ import { useLibrarySidebarStore } from '../../store/sidebar.store';
 import { normalizeNotes } from '../../utils/library.util';
 import { cn } from '@/shared/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import type { Paper, Collection } from '../../types/library.types';
 
 interface InspectorPanelProps {
@@ -277,6 +283,9 @@ export default function InspectorPanel({
   };
 
   const handleJumpToSection = (sectionId: SectionId) => {
+    if (!isInspectorOpen) {
+      setIsInspectorOpen(true);
+    }
     setCollapsedSections((prev) => ({ ...prev, [sectionId]: false }));
     setActiveSectionId(sectionId);
 
@@ -292,7 +301,11 @@ export default function InspectorPanel({
     }, 50);
   };
 
-  const toggleSection = (sectionId: SectionId) => {
+  const toggleSection = (sectionId: SectionId, itemCount: number = 1) => {
+    // If section has 0 items and is not in adding mode, clicking arrow/header does nothing
+    if (itemCount === 0 && addingSection !== sectionId) {
+      return;
+    }
     setCollapsedSections((prev) => {
       const currentIsOpen = prev[sectionId] === false;
       return {
@@ -304,9 +317,7 @@ export default function InspectorPanel({
 
   const handleQuickAdd = (sectionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (collapsedSections[sectionId]) {
-      setCollapsedSections((prev) => ({ ...prev, [sectionId]: false }));
-    }
+    setCollapsedSections((prev) => ({ ...prev, [sectionId]: false }));
     setAddingSection(sectionId);
     handleJumpToSection(sectionId as SectionId);
   };
@@ -394,7 +405,7 @@ export default function InspectorPanel({
   };
 
   const notesCount = paper?.notes?.length || 0;
-  const tagsCount = (paper?.labels?.length || 0) + (paper?.keywords?.length || 0);
+  const tagsCount = (paper?.labels?.length || 0) + (paper?.keywords?.length || 0) + ((paper as any)?.tags?.length || 0);
   const supplementaryCount = (paper?.attachments || []).filter((att: any) => {
     if (att.isPrimary || att.type === 'primary') return false;
     if (
@@ -412,6 +423,8 @@ export default function InspectorPanel({
     return true;
   }).length;
   const filesCount = (paper?.fileUrl ? 1 : 0) + supplementaryCount;
+  const relationsCount = ((paper as any)?.relations?.length || (paper as any)?.relatedPapers?.length || 0);
+  const collectionsCount = paper?.collectionId ? 1 : 0;
   const abstractText = (paper?.abstract || (paper as any)?.abstractNote || '').trim();
 
   const isPanelExpanded = isInspectorOpen && Boolean(paper);
@@ -486,7 +499,7 @@ export default function InspectorPanel({
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
                 tabIndex={0}
-                className="flex-1 overflow-y-auto min-w-0 focus-visible:outline-none divide-y divide-border/50 scroll-smooth thin-scrollbar bg-background"
+                className="flex-1 overflow-y-auto min-w-0 focus-visible:outline-none scroll-smooth thin-scrollbar bg-background"
               >
                 {/* 1. Info Section (OPEN by default) */}
                 {visibleSections['info'] && (
@@ -499,31 +512,31 @@ export default function InspectorPanel({
                   >
                     <div
                       onClick={() => toggleSection('info')}
-                      className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('info') && "border-b border-border/50"
-                      )}
+                      className="flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background"
                     >
                       <div className="flex items-center gap-2">
-                        <FileText className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
+                        <FileText className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
                           Info
                         </span>
                       </div>
                       <ChevronDown
                         className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('info') && "-rotate-90"
+                          "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                          isSectionOpen('info') && "rotate-180"
                         )}
                       />
                     </div>
                     {isSectionOpen('info') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <InfoSection paper={paper} onUpdatePaper={handleUpdatePaper} />
                       </div>
                     )}
                   </div>
                 )}
+
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
 
                 {/* 2. Abstract Section (CLOSED by default) */}
                 {visibleSections['abstract'] && (
@@ -536,74 +549,38 @@ export default function InspectorPanel({
                   >
                     <div
                       onClick={() => toggleSection('abstract')}
-                      className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('abstract') && "border-b border-border/50"
-                      )}
+                      className="flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background"
                     >
-                      <div className="flex items-center gap-2">
-                        <AlignLeft className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                        <AlignLeft className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground shrink-0">
                           Abstract
                         </span>
+                        {!isSectionOpen('abstract') && abstractText && (
+                          <span className="text-xs text-muted-foreground truncate font-normal ml-1">
+                            {abstractText}
+                          </span>
+                        )}
                       </div>
                       <ChevronDown
                         className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('abstract') && "-rotate-90"
+                          "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                          isSectionOpen('abstract') && "rotate-180"
                         )}
                       />
                     </div>
                     {isSectionOpen('abstract') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} hideHeader />
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* 3. Collections Section (CLOSED by default) */}
-                {visibleSections['collections'] && (
-                  <div
-                    ref={(el) => {
-                      sectionRefs.current['collections'] = el;
-                    }}
-                    id="inspector-section-collections"
-                    className="scroll-mt-1 bg-background"
-                  >
-                    <div
-                      onClick={() => toggleSection('collections')}
-                      className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('collections') && "border-b border-border/50"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Library className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
-                          Collections
-                        </span>
-                      </div>
-                      <ChevronDown
-                        className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('collections') && "-rotate-90"
-                        )}
-                      />
-                    </div>
-                    {isSectionOpen('collections') && (
-                      <div className="px-2.5 py-2.5 bg-background">
-                        <CollectionsSection
-                          paper={paper}
-                          workspaceId={workspaceId}
-                          hideHeader
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
 
-                {/* 4. Files & Attachments Section (CLOSED by default) */}
+                {/* 3. Attachments Section (CLOSED by default) */}
                 {visibleSections['files'] && (
                   <div
                     ref={(el) => {
@@ -613,34 +590,80 @@ export default function InspectorPanel({
                     className="scroll-mt-1 bg-background"
                   >
                     <div
-                      onClick={() => toggleSection('files')}
+                      onClick={() => toggleSection('files', filesCount)}
                       className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('files') && "border-b border-border/50"
+                        "flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors select-none group bg-background",
+                        filesCount > 0 ? "cursor-pointer" : "cursor-default"
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <Paperclip className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
-                          Attachments
+                        <Paperclip className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
+                          {filesCount} {filesCount === 1 ? 'Attachment' : 'Attachments'}
                         </span>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('files') && "-rotate-90"
-                        )}
-                      />
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="size-5.5 rounded flex items-center justify-center text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                              aria-label="Add attachment options"
+                            >
+                              <Plus className="size-3.5 text-foreground" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36 p-1 bg-popover text-popover-foreground border border-border/80 shadow-md rounded-lg text-xs font-normal z-50">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setCollapsedSections((prev) => ({ ...prev, files: false }));
+                                toast.info('File attachment option');
+                              }}
+                              className="px-3 py-2 cursor-pointer rounded-md hover:bg-muted font-normal text-xs text-foreground"
+                            >
+                              File
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setCollapsedSections((prev) => ({ ...prev, files: false }));
+                                toast.info('Link file option');
+                              }}
+                              className="px-3 py-2 cursor-pointer rounded-md hover:bg-muted font-normal text-xs text-foreground"
+                            >
+                              Linked File
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setCollapsedSections((prev) => ({ ...prev, files: false }));
+                                toast.info('Add web link option');
+                              }}
+                              className="px-3 py-2 cursor-pointer rounded-md hover:bg-muted font-normal text-xs text-foreground"
+                            >
+                              Web Link
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <ChevronDown
+                          onClick={() => toggleSection('files', filesCount)}
+                          className={cn(
+                            "size-3.5 text-foreground transition-transform duration-200 cursor-pointer shrink-0",
+                            isSectionOpen('files') && "rotate-180"
+                          )}
+                        />
+                      </div>
                     </div>
                     {isSectionOpen('files') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <FilesSection paper={paper} hideHeader />
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* 5. Notes Section (CLOSED by default) */}
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
+
+                {/* 4. Notes Section (CLOSED by default) */}
                 {visibleSections['notes'] && (
                   <div
                     ref={(el) => {
@@ -650,27 +673,37 @@ export default function InspectorPanel({
                     className="scroll-mt-1 bg-background"
                   >
                     <div
-                      onClick={() => toggleSection('notes')}
+                      onClick={() => toggleSection('notes', notesCount)}
                       className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('notes') && "border-b border-border/50"
+                        "flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors select-none group bg-background",
+                        notesCount > 0 || addingSection === 'notes' ? "cursor-pointer" : "cursor-default"
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <StickyNote className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
-                          Notes
+                        <StickyNote className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
+                          {notesCount} {notesCount === 1 ? 'Note' : 'Notes'}
                         </span>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('notes') && "-rotate-90"
-                        )}
-                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd('notes', e)}
+                          className="size-5.5 rounded flex items-center justify-center text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                          aria-label="Add note"
+                        >
+                          <Plus className="size-3.5 text-foreground" />
+                        </button>
+                        <ChevronDown
+                          className={cn(
+                            "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                            isSectionOpen('notes') && "rotate-180"
+                          )}
+                        />
+                      </div>
                     </div>
                     {isSectionOpen('notes') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <NotesSection
                           paper={paper}
                           onAddNote={handleAddNote}
@@ -684,6 +717,63 @@ export default function InspectorPanel({
                   </div>
                 )}
 
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
+
+                {/* 5. Collections Section (CLOSED by default) */}
+                {visibleSections['collections'] && (
+                  <div
+                    ref={(el) => {
+                      sectionRefs.current['collections'] = el;
+                    }}
+                    id="inspector-section-collections"
+                    className="scroll-mt-1 bg-background"
+                  >
+                    <div
+                      onClick={() => toggleSection('collections', collectionsCount)}
+                      className={cn(
+                        "flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors select-none group bg-background",
+                        collectionsCount > 0 ? "cursor-pointer" : "cursor-default"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Library className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
+                          Libraries and Collections
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd('collections', e)}
+                          className="size-5.5 rounded flex items-center justify-center text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                          aria-label="Add to collection"
+                        >
+                          <Plus className="size-3.5 text-foreground" />
+                        </button>
+                        <ChevronDown
+                          className={cn(
+                            "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                            isSectionOpen('collections') && "rotate-180"
+                          )}
+                        />
+                      </div>
+                    </div>
+                    {isSectionOpen('collections') && (
+                      <div className="px-3.5 py-2.5 bg-background">
+                        <CollectionsSection
+                          paper={paper}
+                          workspaceId={workspaceId}
+                          hideHeader
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
+
                 {/* 6. Tags Section (CLOSED by default) */}
                 {visibleSections['tags'] && (
                   <div
@@ -694,27 +784,37 @@ export default function InspectorPanel({
                     className="scroll-mt-1 bg-background"
                   >
                     <div
-                      onClick={() => toggleSection('tags')}
+                      onClick={() => toggleSection('tags', tagsCount)}
                       className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('tags') && "border-b border-border/50"
+                        "flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors select-none group bg-background",
+                        tagsCount > 0 || addingSection === 'tags' ? "cursor-pointer" : "cursor-default"
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <Tag className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
-                          Tags
+                        <Tag className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
+                          {tagsCount} {tagsCount === 1 ? 'Tag' : 'Tags'}
                         </span>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('tags') && "-rotate-90"
-                        )}
-                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd('tags', e)}
+                          className="size-5.5 rounded flex items-center justify-center text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                          aria-label="Add tag"
+                        >
+                          <Plus className="size-3.5 text-foreground" />
+                        </button>
+                        <ChevronDown
+                          className={cn(
+                            "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                            isSectionOpen('tags') && "rotate-180"
+                          )}
+                        />
+                      </div>
                     </div>
                     {isSectionOpen('tags') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <TagsSection
                           paper={paper}
                           onUpdateTags={handleUpdateTags}
@@ -726,6 +826,9 @@ export default function InspectorPanel({
                   </div>
                 )}
 
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
+
                 {/* 7. Related Items Section (CLOSED by default) */}
                 {visibleSections['relations'] && (
                   <div
@@ -736,27 +839,37 @@ export default function InspectorPanel({
                     className="scroll-mt-1 bg-background"
                   >
                     <div
-                      onClick={() => toggleSection('relations')}
+                      onClick={() => toggleSection('relations', relationsCount)}
                       className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('relations') && "border-b border-border/50"
+                        "flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors select-none group bg-background",
+                        relationsCount > 0 || addingSection === 'relations' ? "cursor-pointer" : "cursor-default"
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <Share2 className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
-                          Related
+                        <Share2 className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
+                          {relationsCount} Related
                         </span>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('relations') && "-rotate-90"
-                        )}
-                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd('relations', e)}
+                          className="size-5.5 rounded flex items-center justify-center text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+                          aria-label="Add related paper"
+                        >
+                          <Plus className="size-3.5 text-foreground" />
+                        </button>
+                        <ChevronDown
+                          className={cn(
+                            "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                            isSectionOpen('relations') && "rotate-180"
+                          )}
+                        />
+                      </div>
                     </div>
                     {isSectionOpen('relations') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <RelatedSection
                           paper={paper}
                           workspaceId={workspaceId}
@@ -767,6 +880,9 @@ export default function InspectorPanel({
                     )}
                   </div>
                 )}
+
+                {/* Inset Divider Line */}
+                <div className="mx-3.5 border-t border-border/50" />
 
                 {/* 8. Cite Section (CLOSED by default) */}
                 {visibleSections['cite'] && (
@@ -779,26 +895,23 @@ export default function InspectorPanel({
                   >
                     <div
                       onClick={() => toggleSection('cite')}
-                      className={cn(
-                        "flex items-center justify-between px-3.5 py-2.5 hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background",
-                        isSectionOpen('cite') && "border-b border-border/50"
-                      )}
+                      className="flex items-center justify-between px-3.5 py-2 min-h-[34px] hover:bg-muted/60 transition-colors cursor-pointer select-none group bg-background"
                     >
                       <div className="flex items-center gap-2">
-                        <Quote className="size-4 text-foreground" />
-                        <span className="text-xs font-semibold tracking-tight text-foreground">
-                          Cite
+                        <Quote className="size-4 text-foreground shrink-0" />
+                        <span className="text-xs font-medium tracking-tight text-foreground">
+                          Citations
                         </span>
                       </div>
                       <ChevronDown
                         className={cn(
-                          "size-3.5 text-muted-foreground transition-transform duration-200",
-                          !isSectionOpen('cite') && "-rotate-90"
+                          "size-3.5 text-foreground transition-transform duration-200 shrink-0",
+                          isSectionOpen('cite') && "rotate-180"
                         )}
                       />
                     </div>
                     {isSectionOpen('cite') && (
-                      <div className="px-2.5 py-2.5 bg-background">
+                      <div className="px-3.5 py-2.5 bg-background">
                         <CiteSection paper={paper} workspaceId={workspaceId} />
                       </div>
                     )}
@@ -812,10 +925,10 @@ export default function InspectorPanel({
       <div
         role="tablist"
         aria-label="Inspector sections"
-        className="w-11 shrink-0 border-l border-border/50 flex flex-col items-center bg-background select-none h-full"
+        className="w-10 shrink-0 border-l border-border/50 flex flex-col items-center bg-background select-none h-full"
       >
-        {/* Top Toggle / Collapse Button Header (Exact h-11 aligned with Topbar & Paper Title header) */}
-        <div className="h-11 w-full border-b border-border/50 flex items-center justify-center shrink-0">
+        {/* Top Toggle Button Header - Exactly h-11 (44px) aligned with Topbar & Paper Title header */}
+        <div className="h-11 w-full flex items-center justify-center relative shrink-0">
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -828,7 +941,7 @@ export default function InspectorPanel({
                       toggleInspector();
                     }
                   }}
-                  className="size-8 rounded-md flex items-center justify-center text-foreground hover:bg-muted/60 transition-colors cursor-pointer focus-visible:outline-none"
+                  className="size-8 rounded-md flex items-center justify-center text-foreground bg-transparent hover:bg-transparent cursor-pointer focus-visible:outline-none"
                   aria-label={isInspectorOpen ? "Collapse inspector" : "Expand inspector"}
                 >
                   <InspectorPaneIcon className="size-4 text-foreground" />
@@ -839,13 +952,15 @@ export default function InspectorPanel({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* Inset separator line: exactly at bottom edge of h-11, aligning with topbar horizontal line */}
+          <div className="absolute bottom-0 w-5 h-px bg-border/60" />
         </div>
 
-        {/* Section Icons (Jump / Toggle Section) */}
-        <div className="flex-1 w-full flex flex-col items-center py-2 gap-1 overflow-y-auto thin-scrollbar">
+        {/* Section Icons (Jump / Navigate directly to Section) */}
+        <div className="flex-1 w-full flex flex-col items-center py-3 gap-3.5 overflow-y-auto thin-scrollbar">
           {SECTIONS_CONFIG.map((sec) => {
             const Icon = sec.icon;
-            const isSectionOpened = isSectionOpen(sec.id);
             const tooltipLabel = sec.label;
 
             return (
@@ -855,18 +970,12 @@ export default function InspectorPanel({
                     <button
                       role="tab"
                       id={`inspector-tab-${sec.id}`}
-                      aria-selected={isSectionOpened}
                       tabIndex={0}
-                      onClick={() => handleToggleSectionVisibility(sec.id)}
-                      className={cn(
-                        "size-8 rounded-md flex items-center justify-center relative cursor-pointer transition-colors outline-none text-foreground",
-                        isSectionOpened
-                          ? "bg-muted/60 font-semibold shadow-xs"
-                          : "hover:bg-muted/50"
-                      )}
+                      onClick={() => handleJumpToSection(sec.id)}
+                      className="size-8 rounded-md flex items-center justify-center relative cursor-pointer outline-none text-foreground shadow-none bg-transparent hover:bg-transparent"
                       aria-label={tooltipLabel}
                     >
-                      <Icon className="size-4" aria-hidden="true" />
+                      <Icon className="size-4 text-foreground" aria-hidden="true" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="text-xs py-1 px-2 font-medium">

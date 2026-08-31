@@ -106,7 +106,7 @@ export default function CollectionsSection({
               <span className="font-semibold text-foreground truncate block text-xs">
                 My Library
               </span>
-              <span className="text-[11px] text-muted-foreground truncate block font-normal">
+              <span className="text-micro text-muted-foreground truncate block font-normal">
                 Workspace Library
               </span>
             </div>
@@ -122,7 +122,7 @@ export default function CollectionsSection({
               </div>
               <div className="min-w-0 flex-1">
                 {collectionPath.length > 1 ? (
-                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground truncate mb-0.5">
+                  <div className="flex items-center gap-1 text-micro text-muted-foreground truncate mb-0.5">
                     {collectionPath.slice(0, -1).map((crumb, i) => (
                       <React.Fragment key={i}>
                         {i > 0 && <ChevronRight className="size-2.5 shrink-0" />}
@@ -147,14 +147,7 @@ export default function CollectionsSection({
               <X className="size-3.5" />
             </button>
           </div>
-        ) : (
-          <div className="p-2.5 bg-muted/10 rounded-md border border-dashed border-border/40 flex items-center justify-between gap-2 text-muted-foreground">
-            <div className="flex items-center gap-2 min-w-0">
-              <Inbox className="size-3.5 shrink-0 text-muted-foreground/80" />
-              <span className="text-xs">Unfiled (Not in any collection)</span>
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* Collection Picker / Move Dropdown */}
@@ -170,7 +163,7 @@ export default function CollectionsSection({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 p-1 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-none">
-          <DropdownMenuLabel className="text-[11px] text-muted-foreground font-medium px-2 py-1">
+          <DropdownMenuLabel className="text-micro text-muted-foreground font-medium px-2 py-1">
             Select Collection
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

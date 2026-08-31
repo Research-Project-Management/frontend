@@ -60,7 +60,7 @@ const ForgotPasswordPage = () => {
           <Link href='/'>
             <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
           </Link>
-          <h2 className='text-2xl font-bold text-center'>Reset your password</h2>
+          <h2 className='text-2xl font-semibold tracking-tight text-foreground text-center'>Reset your password</h2>
         </div>
 
         <form onSubmit={handleSubmit} className='flex flex-col gap-3.5'>

@@ -64,7 +64,7 @@ export default function PaperBibtexDialog({
         <div className="relative group rounded-lg overflow-hidden border border-border/80 bg-muted/40 shadow-none">
           {/* Header toolbar for code block */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-border/60 bg-muted/70 text-muted-foreground select-none">
-            <span className="text-xs font-bold uppercase tracking-wider font-mono">
+            <span className="text-xs font-semibold font-mono">
               BibTeX Format
             </span>
             <div className="flex items-center gap-1.5">

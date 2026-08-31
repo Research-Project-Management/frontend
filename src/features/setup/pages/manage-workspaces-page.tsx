@@ -29,7 +29,7 @@ export default function ManageWorkspacesPage() {
         {/* Header */}
         <div className='flex items-start justify-between'>
           <div>
-            <h1 className='text-2xl font-bold'>Workspaces</h1>
+            <h1 className='text-2xl font-semibold tracking-tight text-foreground'>Workspaces</h1>
             <p className='text-sm text-muted-foreground mt-1'>
               Manage and switch between your workspaces.
             </p>

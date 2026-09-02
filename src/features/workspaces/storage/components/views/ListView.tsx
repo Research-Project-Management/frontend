@@ -7,7 +7,6 @@ import {
   RotateCcw,
   Trash2,
   Pencil,
-  FolderUp,
   FolderInput,
   FolderSymlink,
   CheckSquare,
@@ -52,7 +51,11 @@ function FileIconItem({ item }: { item: StorageItem }) {
 
   return (
     <div className={`flex items-center justify-center shrink-0 ${getFileColor(fileType)}`}>
-      {getFileIcon(fileType, 5)}
+      {item.isFolder ? (
+        <Folder className="size-5 fill-amber-500/20 text-amber-500" />
+      ) : (
+        getFileIcon(fileType, 5)
+      )}
     </div>
   );
 }
@@ -151,7 +154,7 @@ export function ItemActions({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground"
+          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onToggleStar(item.id)}
           title={item.starred ? "Unstar" : "Star"}
         >
@@ -163,7 +166,7 @@ export function ItemActions({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground"
+          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onDownload(item)}
           title="Download"
         >
@@ -176,7 +179,7 @@ export function ItemActions({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-muted-foreground hover:text-foreground"
+            className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={handleRestore}
             disabled={isRestoring}
             title="Restore"
@@ -187,7 +190,7 @@ export function ItemActions({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="size-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
             onClick={() => setIsDeleteModalOpen(true)}
             title="Delete Permanently"
           >
@@ -200,13 +203,13 @@ export function ItemActions({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
+              className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <MoreVertical className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 text-xs">
-            <DropdownMenuItem onClick={handleRenameClick} className="gap-2">
+            <DropdownMenuItem onClick={handleRenameClick} className="gap-2 cursor-pointer">
               <Pencil className="size-3.5" />
               <span>Rename</span>
             </DropdownMenuItem>
@@ -217,7 +220,7 @@ export function ItemActions({
             </DropdownMenuItem>
 
             {onOpenLocation && (
-              <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2">
+              <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2 cursor-pointer">
                 <FolderSymlink className="size-3.5" />
                 <span>Go to location</span>
               </DropdownMenuItem>
@@ -225,7 +228,7 @@ export function ItemActions({
 
             <DropdownMenuItem
               onClick={() => setIsDeleteModalOpen(true)}
-              className="gap-2 text-destructive focus:text-destructive"
+              className="gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
               <Trash2 className="size-3.5" />
               <span>Delete</span>
@@ -306,7 +309,7 @@ export default function ListView({
   };
 
   return (
-    <div className="rounded-lg overflow-hidden">
+    <div className="rounded-lg overflow-hidden select-none">
       {/* Header - Google Drive style */}
       <div className="grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 select-none">
         <div className="col-span-5 flex items-center gap-3">
@@ -427,7 +430,7 @@ export default function ListView({
                     )}
 
                     <FileIconItem item={item} />
-                    <span className="text-sm truncate" title={item.filename}>
+                    <span className="text-sm truncate font-medium text-foreground" title={item.filename}>
                       {item.filename}
                     </span>
                     {item.starred && (
@@ -444,7 +447,7 @@ export default function ListView({
                           <img
                             src={resolveFileUrl(item.author.avatar) || ""}
                             alt=""
-                            className="size-5 rounded-full shrink-0"
+                            className="size-5 rounded-full shrink-0 object-cover"
                           />
                         ) : (
                           <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">

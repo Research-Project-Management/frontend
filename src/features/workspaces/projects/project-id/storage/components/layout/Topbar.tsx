@@ -104,13 +104,13 @@ export default function Topbar({
           <div className="flex items-center gap-2">
             {Icon && <Icon className="size-4 text-foreground/80" />}
             <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
-              {title || 'My Drive'}
+              {title || 'Files'}
             </h1>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <div
           className={cn(
             "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
@@ -128,7 +128,7 @@ export default function Topbar({
           />
           <Input
             ref={inputRef}
-            placeholder="Search files..."
+            placeholder="Search files & folders..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             onBlur={() => collapseSearch(searchQuery)}
@@ -183,32 +183,33 @@ export default function Topbar({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg">
+            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg shadow-sm">
               <Plus className="size-3.5" />
-              New
+              <span>New</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-48 p-1">
+          <PopoverContent align="end" className="w-52 p-1.5 shadow-lg">
             <button
               onClick={handleUploadFile}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <Upload className="size-4 text-muted-foreground" />
-              Upload file
+              <Upload className="size-4 text-primary" />
+              <span>Upload file</span>
             </button>
             <button
               onClick={handleUploadFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <FolderUp className="size-4 text-muted-foreground" />
-              Upload folder
+              <FolderUp className="size-4 text-primary" />
+              <span>Upload folder</span>
             </button>
+            <div className="h-px bg-border/50 my-1" />
             <button
               onClick={handleCreateFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <FolderPlus className="size-4 text-muted-foreground" />
-              New folder
+              <FolderPlus className="size-4 text-emerald-500" />
+              <span>New folder</span>
             </button>
           </PopoverContent>
         </Popover>

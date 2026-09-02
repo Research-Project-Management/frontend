@@ -104,13 +104,13 @@ export default function Topbar({
           <div className="flex items-center gap-2">
             {Icon && <Icon className="size-4 text-foreground/80" />}
             <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
-              {title || 'My Drive'}
+              {title || 'All Files'}
             </h1>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <div
           className={cn(
             "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
@@ -120,15 +120,15 @@ export default function Topbar({
         >
           <Search
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
+              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10",
               isSearchExpanded || searchQuery
-                ? "left-2.5 translate-x-0"
-                : "left-1/2 -translate-x-1/2"
+                ? "left-2.5 translate-x-0 text-muted-foreground/50"
+                : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
             )}
           />
           <Input
             ref={inputRef}
-            placeholder="Search files..."
+            placeholder="Search files & folders..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             onBlur={() => collapseSearch(searchQuery)}
@@ -142,16 +142,16 @@ export default function Topbar({
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
             >
-              <Plus className="size-3.5 rotate-45 text-foreground" />
+              <Plus className="size-3.5 rotate-45" />
             </button>
           )}
         </div>
 
         {/* View Toggle and Filter */}
         <div className="flex items-center gap-2">
-          <TooltipProvider delayDuration={150}>
+          <TooltipProvider delayDuration={300}>
             <div className="flex items-center bg-muted p-1 rounded-lg">
               {(['grid', 'list'] as const).map((v) => (
                 <Tooltip key={v}>
@@ -159,12 +159,12 @@ export default function Topbar({
                     <button
                       onClick={() => setView(v)}
                       className={cn(
-                        "relative p-1.5 rounded-md transition-colors cursor-pointer outline-none",
-                        view === v 
-                          ? "text-foreground" 
-                          : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
+                        "relative p-1.5 rounded-md transition-colors cursor-pointer",
+                        view === v
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       )}
-                      aria-label={`${v === 'grid' ? 'Grid' : 'List'} view`}
+                      aria-label={`${v} view`}
                     >
                       {view === v && (
                         <motion.div
@@ -174,8 +174,8 @@ export default function Topbar({
                         />
                       )}
                       <span className="relative z-10 flex">
-                        {v === 'grid' && <Columns3 className="size-4 text-foreground" strokeWidth={2.5} />}
-                        {v === 'list' && <AlignJustify className="size-4 text-foreground" strokeWidth={2.5} />}
+                        {v === 'grid' && <Columns3 className="size-4" strokeWidth={2.5} />}
+                        {v === 'list' && <AlignJustify className="size-4" strokeWidth={2.5} />}
                       </span>
                     </button>
                   </TooltipTrigger>
@@ -192,36 +192,37 @@ export default function Topbar({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer">
+            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer shadow-sm">
               <Plus className="size-3.5 text-primary-foreground" />
-              New
+              <span>New</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent
             align="end"
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-48 p-1"
+            className="w-52 p-1.5 shadow-lg"
           >
             <button
               onClick={handleUploadFile}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <Upload className="size-4 text-foreground" />
-              Upload file
+              <Upload className="size-4 text-primary" />
+              <span>Upload file</span>
             </button>
             <button
               onClick={handleUploadFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <FolderUp className="size-4 text-foreground" />
-              Upload folder
+              <FolderUp className="size-4 text-primary" />
+              <span>Upload folder</span>
             </button>
+            <div className="h-px bg-border/50 my-1" />
             <button
               onClick={handleCreateFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <FolderPlus className="size-4 text-foreground" />
-              New folder
+              <FolderPlus className="size-4 text-emerald-500" />
+              <span>New folder</span>
             </button>
           </PopoverContent>
         </Popover>

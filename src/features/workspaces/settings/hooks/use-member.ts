@@ -16,8 +16,15 @@ import {
   updateWorkspaceMemberRole,
   removeWorkspaceMember,
   leaveWorkspace,
+  inviteWorkspaceMembers,
+  getWorkspacePendingInvites,
+  revokeWorkspaceInvite,
 } from '@/features/workspaces/settings/services/settings.service';
-import type { WorkspaceMemberItem, WorkspaceRole } from '../types/member.types';
+import type {
+  WorkspaceMemberItem,
+  WorkspacePendingInvite,
+  WorkspaceRole,
+} from '../types/member.types';
 import {
   normalizeWorkspaceMembers,
   filterAndSortMembers,
@@ -50,6 +57,58 @@ export function useMember(workspaceId: string) {
     queryFn: () => getWorkspaceMembers(workspaceId),
     enabled: Boolean(workspaceId),
     staleTime: 30_000,
+  });
+
+  const pendingInvitesQuery = useQuery({
+    queryKey: ['workspace-invitations', workspaceId],
+    queryFn: () => getWorkspacePendingInvites(workspaceId),
+    enabled: Boolean(workspaceId),
+    staleTime: 15_000,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: ({ emails, role = 'member' }: { emails: string[]; role: string }) => {
+      return inviteWorkspaceMembers(workspaceId, { emails, role });
+    },
+    onMutate: () => {
+      toast.loading('Sending invitations...', { id: 'invite-action' });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-invitations', workspaceId] });
+      if (data.skipped && data.skipped.length > 0) {
+        toast.info(
+          `${data.message}. (${data.skipped.length} email(s) already in workspace)`,
+          { id: 'invite-action' },
+        );
+      } else {
+        toast.success(data.message || 'Invitations sent successfully', {
+          id: 'invite-action',
+        });
+      }
+      setInviteModalOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message ?? 'Failed to send invitations', {
+        id: 'invite-action',
+      });
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (invitationId: string) =>
+      revokeWorkspaceInvite(workspaceId, invitationId),
+    onMutate: () => {
+      toast.loading('Revoking invitation...', { id: 'revoke-invite' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-invitations', workspaceId] });
+      toast.success('Invitation cancelled', { id: 'revoke-invite' });
+    },
+    onError: (error: any) => {
+      toast.error(error.message ?? 'Failed to revoke invitation', {
+        id: 'revoke-invite',
+      });
+    },
   });
 
   const addMutation = useMutation({
@@ -173,7 +232,6 @@ export function useMember(workspaceId: string) {
   const updateRoleMutate = updateRoleMutation.mutate;
   const removeMutate = removeMutation.mutate;
   const leaveMutate = leaveMutation.mutate;
-  const addMutateAsync = addMutation.mutateAsync;
 
   const handleUpdateRole = useCallback(
     (userId: string, newRole: WorkspaceRole) => {
@@ -197,33 +255,38 @@ export function useMember(workspaceId: string) {
 
   const handleInviteMembers = useCallback(
     async (emails: string[], role: WorkspaceRole) => {
-      for (const email of emails) {
-        const trimmed = email.trim();
-        if (trimmed) {
-          await addMutateAsync({ userId: trimmed, role });
-        }
-      }
-      setInviteModalOpen(false);
+      await inviteMutation.mutateAsync({ emails, role });
     },
-    [addMutateAsync],
+    [inviteMutation],
+  );
+
+  const handleCancelInvite = useCallback(
+    (inviteId: string) => {
+      revokeInviteMutation.mutate(inviteId);
+    },
+    [revokeInviteMutation],
   );
 
   const handleImportCsv = useCallback(
     async (rows: { email: string; role: WorkspaceRole }[]) => {
-      let count = 0;
-      for (const { email, role } of rows) {
-        if (email?.includes('@')) {
-          try {
-            await addMutateAsync({ userId: email.trim(), role: role || 'member' });
-            count++;
-          } catch {}
-        }
+      const validEmails = rows
+        .map((r) => r.email?.trim())
+        .filter((e) => e && e.includes('@'));
+
+      if (validEmails.length > 0) {
+        await inviteMutation.mutateAsync({
+          emails: validEmails,
+          role: 'member',
+        });
       }
-      toast.success(`Imported ${count} members successfully`);
       setImportModalOpen(false);
     },
-    [addMutateAsync],
+    [inviteMutation],
   );
+
+  const pendingInvites: WorkspacePendingInvite[] = useMemo(() => {
+    return (pendingInvitesQuery.data as any[]) || [];
+  }, [pendingInvitesQuery.data]);
 
   return {
     state: {
@@ -233,6 +296,7 @@ export function useMember(workspaceId: string) {
       canManage,
       members,
       filteredMembers,
+      pendingInvites,
       activeTab,
       search,
       roleFilter,
@@ -243,7 +307,9 @@ export function useMember(workspaceId: string) {
       memberToRemove,
       memberToLeave,
       isLoading: isWorkspaceLoading || membersQuery.isLoading,
-      isInviting: addMutation.isPending,
+      isInvitesLoading: pendingInvitesQuery.isLoading,
+      isInviting: inviteMutation.isPending,
+      isRevokingInvite: revokeInviteMutation.isPending,
       isRemoving: removeMutation.isPending,
       isLeaving: leaveMutation.isPending,
     },
@@ -261,6 +327,7 @@ export function useMember(workspaceId: string) {
       handleLeave,
       handleLeaveWorkspace: handleLeave,
       handleInviteMembers,
+      handleCancelInvite,
       handleImportCsv,
     },
   };

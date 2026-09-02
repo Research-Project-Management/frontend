@@ -4,6 +4,19 @@ import { z } from "zod";
 
 export const taskPrioritySchema = z.enum(["urgent", "high", "medium", "low", "none"]);
 
+export const taskIssueTypeSchema = z.enum(["task", "bug", "feature", "improvement", "epic"]);
+
+export const taskRelationTypeSchema = z.enum(["blocks", "blocked_by", "relates_to", "duplicate_of"]);
+
+export const taskRelationSchema = z.object({
+  id: z.string(),
+  type: taskRelationTypeSchema,
+  targetTaskId: z.string(),
+  targetTitle: z.string().optional(),
+  targetIdentifier: z.string().optional(),
+  targetColumnId: z.string().optional(),
+});
+
 export const taskRecurrenceSchema = z.enum([
   "none",
   "daily",
@@ -85,6 +98,9 @@ export const taskSchema = z.object({
   description: z.string(),
   projectId: z.string(),
   columnId: z.string(),
+  issueType: taskIssueTypeSchema.default("task").optional(),
+  storyPoints: z.number().nullable().optional(),
+  relations: z.array(taskRelationSchema).optional(),
   assigneeId: z
     .object({
       id: z.string(),
@@ -155,6 +171,9 @@ export const taskMutationInputSchema = taskSchema
     content: true,
     description: true,
     columnId: true,
+    issueType: true,
+    storyPoints: true,
+    relations: true,
     labels: true,
     priority: true,
     estimate: true,
@@ -179,6 +198,8 @@ export const columnSchema = z.object({
   id: z.string(),
   title: z.string(),
   accentColor: z.string().optional(),
+  isDefault: z.boolean().optional(),
+  slug: z.string().optional(),
 });
 
 export const columnFormSchema = z.object({

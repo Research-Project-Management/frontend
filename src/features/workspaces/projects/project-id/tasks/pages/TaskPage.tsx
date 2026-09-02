@@ -7,12 +7,14 @@ import { TaskViews } from "../components/views/TaskViews";
 import { TaskDetailModal as TaskDialog } from "../components/modals/task/TaskDetailModal";
 import { TransferModal } from "../components/modals/TransferModal";
 import { AddExistingTaskModal } from "../components/modals/AddExistingTaskModal";
+import { ColumnFormModal, DeleteColumnModal } from "../components/modals/ColumnModals";
 import { useTaskProject } from "../hooks/use-task";
 import { useTopbar } from "../hooks/use-topbar";
 import { useKanban } from "../hooks/use-kanban";
 import type {
   Task as TaskType,
   TaskMutationInput,
+  Column as ColumnType,
 } from "../types/task.types";
 import { resolveTaskColumnId } from "../types/task.types";
 import { Button } from '@/shared/components/ui/button';
@@ -30,7 +32,10 @@ export type TaskModalState =
   | { type: 'detail'; card: Partial<TaskType> }
   | { type: 'delete-task'; task: TaskType }
   | { type: 'add-existing' }
-  | { type: 'transfer' };
+  | { type: 'transfer' }
+  | { type: 'create-column' }
+  | { type: 'edit-column'; column: ColumnType }
+  | { type: 'delete-column'; column: ColumnType };
 
 export interface TaskPageProps {
   cycleId?: string;
@@ -266,6 +271,44 @@ export default function TaskPage({
     }
   };
 
+  const handleOpenAddColumn = () => {
+    setModal({ type: 'create-column' });
+  };
+
+  const handleOpenEditColumn = (column: ColumnType) => {
+    setModal({ type: 'edit-column', column });
+  };
+
+  const handleOpenDeleteColumn = (column: ColumnType) => {
+    setModal({ type: 'delete-column', column });
+  };
+
+  const handleCreateColumn = (payload: { sectionName: string; selectedColor: string }) => {
+    projectActions.addColumn({
+      title: payload.sectionName,
+      accentColor: payload.selectedColor,
+    }).then(() => {
+      closeModal();
+    });
+  };
+
+  const handleEditColumn = (payload: { sectionName: string; selectedColor: string }) => {
+    if (modal.type !== 'edit-column') return;
+    projectActions.updateColumn(modal.column.id, {
+      title: payload.sectionName,
+      accentColor: payload.selectedColor,
+    }).then(() => {
+      closeModal();
+    });
+  };
+
+  const handleDeleteColumnConfirm = () => {
+    if (modal.type !== 'delete-column') return;
+    projectActions.deleteColumn(modal.column.id).then(() => {
+      closeModal();
+    });
+  };
+
   const isCycleEmpty = cycleId && allTasks.length === 0 && !isLoading;
 
   if (isLoading) {
@@ -372,6 +415,9 @@ export default function TaskPage({
             onLeaveCard={handleLeaveCard}
             onRemoveFromCycle={handleRemoveFromCycle}
             onAssignExistingTasks={handleAssignExistingTasksToDate}
+            onAddColumn={handleOpenAddColumn}
+            onEditColumn={handleOpenEditColumn}
+            onDeleteColumn={handleOpenDeleteColumn}
             isReadOnly={isReadOnly}
           />
         )}
@@ -422,6 +468,40 @@ export default function TaskPage({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Column Modals */}
+      <ColumnFormModal
+        isOpen={modal.type === 'create-column'}
+        onClose={closeModal}
+        onSubmit={handleCreateColumn}
+        mode="create"
+        isLoading={projectState.status.isSaving}
+      />
+
+      {modal.type === 'edit-column' && (
+        <ColumnFormModal
+          isOpen={true}
+          onClose={closeModal}
+          onSubmit={handleEditColumn}
+          mode="edit"
+          initialData={{
+            sectionName: modal.column.title,
+            selectedColor: modal.column.accentColor,
+          }}
+          isLoading={projectState.status.isSaving}
+        />
+      )}
+
+      {modal.type === 'delete-column' && (
+        <DeleteColumnModal
+          isOpen={true}
+          onClose={closeModal}
+          onConfirm={handleDeleteColumnConfirm}
+          columnTitle={modal.column.title}
+          fallbackColumnTitle={columns.find((c) => c.id !== modal.column.id)?.title || 'Backlog'}
+          isLoading={projectState.status.isDeleting}
+        />
       )}
 
       {/* Cycle Modals */}

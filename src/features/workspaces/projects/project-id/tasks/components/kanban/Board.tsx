@@ -9,6 +9,7 @@ import {
   type DropAnimation,
 } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
+import { Plus } from 'lucide-react';
 import { Column } from './Column';
 import { CardUI, type TaskCardLabel } from './Card';
 import { useKanban } from '../../hooks/use-kanban';
@@ -29,6 +30,9 @@ export type BoardProps = {
   onLeaveCard: (card: Task) => void;
   onRemoveFromCycle?: (card: Task) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
+  onAddColumn?: () => void;
+  onEditColumn?: (column: ColumnType) => void;
+  onDeleteColumn?: (column: ColumnType) => void;
   cycleId?: string;
   isReadOnly?: boolean;
 };
@@ -57,6 +61,9 @@ export function Board({
   onLeaveCard,
   onRemoveFromCycle,
   onMoveCard,
+  onAddColumn,
+  onEditColumn,
+  onDeleteColumn,
   isReadOnly = false,
 }: BoardProps) {
   const [isMounted, setIsMounted] = useState(false);
@@ -84,7 +91,7 @@ export function Board({
         onDragEnd={dragEnd}
         onDragCancel={dragCancel}
       >
-        <div className="flex gap-4 h-full min-w-max pb-2">
+        <div className="flex gap-4 h-full min-w-max pb-2 items-start">
           {columns?.map((column) => {
             if (!column) return null;
             const columnId = resolveTaskColumnId(column);
@@ -107,11 +114,26 @@ export function Board({
                 onJoinCard={onJoinCard}
                 onLeaveCard={onLeaveCard}
                 onRemoveFromCycle={onRemoveFromCycle}
+                onEditColumn={onEditColumn}
+                onDeleteColumn={onDeleteColumn}
                 onAddDisabled={isReadOnly}
                 isReadOnly={isReadOnly}
               />
             );
           })}
+
+          {!isReadOnly && onAddColumn && (
+            <div className="w-72 shrink-0 pt-0.5">
+              <button
+                type="button"
+                onClick={onAddColumn}
+                className="w-full h-11 border border-dashed border-border/80 hover:border-primary/60 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-all cursor-pointer bg-muted/20 shadow-none"
+              >
+                <Plus className="size-4" />
+                <span>Add Column</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {isMounted &&
@@ -138,3 +160,4 @@ export function Board({
 }
 
 export default Board;
+

@@ -54,11 +54,15 @@ export const LabelService = {
     return [];
   },
 
-  create: ({ workspaceId, ...payload }: CreateLabelInput) =>
-    apiPost<{ label?: Label; tag?: Label }>(`/api/workspace/${workspaceId}/labels`, payload),
+  create: ({ workspaceId, ...payload }: CreateLabelInput) => {
+    const { projectId, ...cleanPayload } = payload as any;
+    return apiPost<{ label?: Label; tag?: Label }>(`/api/workspace/${workspaceId}/labels`, cleanPayload);
+  },
 
-  update: ({ labelId, ...payload }: UpdateLabelInput) =>
-    apiPut<{ label?: Label; tag?: Label }>(`/api/labels/${labelId}`, payload),
+  update: ({ labelId, ...payload }: UpdateLabelInput) => {
+    const { projectId, ...cleanPayload } = payload as any;
+    return apiPut<{ label?: Label; tag?: Label }>(`/api/labels/${labelId}`, cleanPayload);
+  },
 
   delete: (labelId: string) =>
     apiDelete(`/api/labels/${labelId}`),

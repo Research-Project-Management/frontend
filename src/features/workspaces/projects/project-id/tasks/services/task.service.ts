@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import type { Task, TaskMutationInput, ProjectTasksData, Project, Cycle } from "../types/task.types";
+import type { Task, TaskMutationInput, ProjectTasksData, Project, Cycle, Column } from "../types/task.types";
 
 // ── Pure Task API Service (Self-contained) ──────────────────────────────────
 
@@ -18,11 +18,38 @@ export const TaskService = {
   getProjectDetails: (projectId: string) =>
     apiGet<{ project: Project }>(`/api/project/${projectId}`),
 
-  create: ({ projectId, ...data }: { projectId: string } & TaskMutationInput) =>
-    apiPost<{ task?: Task }>(`/api/project/${projectId}/tasks`, data),
+  create: ({ projectId, ...data }: { projectId: string } & TaskMutationInput) => {
+    const allowed = [
+      'title', 'content', 'description', 'columnId', 'assignee', 'assigneeId',
+      'startDate', 'dueDate', 'priority', 'cycle', 'cycleId', 'parentTask',
+      'parentTaskId', 'labels', 'checklists', 'issueType', 'storyPoints',
+      'relations', 'recurrence', 'reminder', 'completed', 'rank',
+    ];
+    const cleanData: Record<string, any> = {};
+    for (const key of allowed) {
+      if ((data as any)[key] !== undefined) {
+        cleanData[key] = (data as any)[key];
+      }
+    }
+    return apiPost<{ task?: Task }>(`/api/project/${projectId}/tasks`, cleanData);
+  },
 
-  update: ({ taskId, ...data }: { taskId: string; projectId?: string } & TaskMutationInput) =>
-    apiPut<{ task?: Task }>(`/api/tasks/${taskId}`, data),
+  update: ({ taskId, projectId, ...data }: { taskId: string; projectId?: string } & TaskMutationInput) => {
+    const allowed = [
+      'title', 'content', 'description', 'columnId', 'assignee', 'assigneeId',
+      'startDate', 'dueDate', 'priority', 'cycle', 'cycleId', 'parentTask',
+      'parentTaskId', 'labels', 'checklists', 'issueType', 'storyPoints',
+      'relations', 'recurrence', 'reminder', 'completed', 'rank',
+    ];
+    const cleanData: Record<string, any> = {};
+    for (const key of allowed) {
+      if ((data as any)[key] !== undefined) {
+        cleanData[key] = (data as any)[key];
+      }
+    }
+    const url = projectId ? `/api/project/${projectId}/tasks/${taskId}` : `/api/tasks/${taskId}`;
+    return apiPut<{ task?: Task }>(url, cleanData);
+  },
 
   delete: (taskId: string) =>
     apiDelete(`/api/tasks/${taskId}`),
@@ -55,6 +82,23 @@ export const TaskService = {
 
   getActivityLogs: (taskId: string) =>
     apiGet(`/api/tasks/${taskId}/activity`),
+
+  addColumn: (projectId: string, data: { title: string; accentColor?: string; id?: string }) =>
+    apiPost<{ columns: Column[] }>(`/api/project/${projectId}/columns`, data),
+
+  updateColumn: (projectId: string, columnId: string, data: { title?: string; accentColor?: string }) =>
+    apiPut<{ columns: Column[] }>(`/api/project/${projectId}/columns/${columnId}`, data),
+
+  deleteColumn: (projectId: string, columnId: string, targetColumnId?: string) =>
+    apiDelete<{ columns: Column[]; fallbackColumnId?: string }>(
+      `/api/project/${projectId}/columns/${columnId}${targetColumnId ? `?targetColumnId=${encodeURIComponent(targetColumnId)}` : ''}`,
+    ),
+
+  reorderColumns: (projectId: string, columns: Column[]) =>
+    apiPut<{ columns: Column[] }>(`/api/project/${projectId}/columns`, { columns }),
+
+  resetColumns: (projectId: string) =>
+    apiPost<{ columns: Column[] }>(`/api/project/${projectId}/columns/reset`, {}),
 };
 
 // ── Backward-compatible Function Aliases ─────────────────────────────────────

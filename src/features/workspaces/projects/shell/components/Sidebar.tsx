@@ -374,7 +374,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none">
+    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none sidebar-scrollbar">
       {/* Header */}
       <div className="mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
         <span>Projects</span>

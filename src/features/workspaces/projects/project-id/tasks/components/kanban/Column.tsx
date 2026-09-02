@@ -3,9 +3,16 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, Minimize2, Maximize2 } from 'lucide-react';
+import { Plus, Minimize2, Maximize2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { Card, type TaskCardLabel } from './Card';
 import type { Task, Column as ColumnType } from '../../types/task.types';
 import { resolveTaskColumnColor, resolveTaskColumnId } from '../../types/task.types';
@@ -23,6 +30,8 @@ export interface ColumnProps {
   onJoinCard?: (card: Task) => void;
   onLeaveCard?: (card: Task) => void;
   onRemoveFromCycle?: (card: Task) => void;
+  onEditColumn?: (column: ColumnType) => void;
+  onDeleteColumn?: (column: ColumnType) => void;
   onAddDisabled?: boolean;
   isReadOnly?: boolean;
 }
@@ -40,6 +49,8 @@ export function Column({
   onJoinCard,
   onLeaveCard,
   onRemoveFromCycle,
+  onEditColumn,
+  onDeleteColumn,
   onAddDisabled,
   isReadOnly = false,
 }: ColumnProps) {
@@ -185,6 +196,45 @@ export function Column({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+
+          {!isReadOnly && (onEditColumn || onDeleteColumn) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-foreground hover:bg-muted cursor-pointer"
+                  aria-label="Column options"
+                >
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44 text-xs z-50">
+                {onEditColumn && (
+                  <DropdownMenuItem
+                    onClick={() => onEditColumn(column)}
+                    className="cursor-pointer gap-2 py-1.5"
+                  >
+                    <Pencil className="size-3.5 text-muted-foreground" />
+                    <span>Edit column</span>
+                  </DropdownMenuItem>
+                )}
+                {onDeleteColumn && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onDeleteColumn(column)}
+                      className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span>Delete column</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           <TooltipProvider delayDuration={150}>

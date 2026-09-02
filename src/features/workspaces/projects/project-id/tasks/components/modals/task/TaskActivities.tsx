@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { SmilePlus } from "lucide-react";
+import { SmilePlus, MessageSquare } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
@@ -261,110 +261,111 @@ export function TaskActivities({
   }, []);
 
   return (
-    <div className="flex w-[40%] min-w-105 flex-col border-l border-border bg-muted/30">
-      <div className="flex h-17 items-center justify-between bg-muted/30 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="size-5 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-[16px] font-bold text-foreground">
+    <div className="w-full flex flex-col space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-border/60">
+        <div className="flex items-center gap-1.5">
+          <MessageSquare className="size-3.5 text-muted-foreground" />
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             Comments & Activity
           </h3>
         </div>
 
         <Button
-          variant="secondary"
-          className="h-8 rounded-md bg-muted px-3 text-[13px] font-medium text-foreground shadow-none hover:bg-muted/80 transition-colors border-none"
+          variant="ghost"
+          size="sm"
+          className="h-6 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
         </Button>
       </div>
 
-      <div className="px-5 pt-4">
-        <div className="space-y-3">
-          <Textarea
-            ref={commentTextareaRef as any}
-            value={commentText}
-            onChange={(e) => {
-              if (!canComment) return;
-              setCommentText(e.target.value);
-              onCommentCaretChange?.(e.target.selectionStart ?? e.target.value.length);
-              setShowCommentActions(true);
-            }}
-            onSelect={(e) => {
-              if (!canComment) return;
-              onCommentCaretChange?.(e.currentTarget.selectionStart ?? 0);
-              setShowCommentActions(true);
-            }}
-            onFocus={(e) => {
-              if (!canComment) return;
-              onCommentCaretChange?.(e.currentTarget.selectionStart ?? e.currentTarget.value.length);
-              setShowCommentActions(true);
-            }}
-            onBlur={(e) => {
-              if (!canComment) return;
-              const nextFocused = e.relatedTarget as HTMLElement | null;
-              if (nextFocused?.closest("[data-comment-actions='true']")) return;
-              if (!commentText.trim()) {
-                setShowCommentActions(false);
-              }
-            }}
-            placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
-            disabled={!canComment || isReadOnly}
-            className={cn(
-              "min-h-11.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-0",
-              (!canComment || isReadOnly) && "cursor-not-allowed bg-zinc-50/50"
-            )}
-          />
+      {/* Write Comment Box */}
+      <div className="space-y-2">
+        <Textarea
+          ref={commentTextareaRef as any}
+          value={commentText}
+          onChange={(e) => {
+            if (!canComment) return;
+            setCommentText(e.target.value);
+            onCommentCaretChange?.(e.target.selectionStart ?? e.target.value.length);
+            setShowCommentActions(true);
+          }}
+          onSelect={(e) => {
+            if (!canComment) return;
+            onCommentCaretChange?.(e.currentTarget.selectionStart ?? 0);
+            setShowCommentActions(true);
+          }}
+          onFocus={(e) => {
+            if (!canComment) return;
+            onCommentCaretChange?.(e.currentTarget.selectionStart ?? e.currentTarget.value.length);
+            setShowCommentActions(true);
+          }}
+          onBlur={(e) => {
+            if (!canComment) return;
+            const nextFocused = e.relatedTarget as HTMLElement | null;
+            if (nextFocused?.closest("[data-comment-actions='true']")) return;
+            if (!commentText.trim()) {
+              setShowCommentActions(false);
+            }
+          }}
+          placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
+          disabled={!canComment || isReadOnly}
+          className={cn(
+            "min-h-[58px] rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary/40 resize-none transition-colors leading-relaxed",
+            (!canComment || isReadOnly) && "cursor-not-allowed bg-muted/40"
+          )}
+          rows={2}
+        />
 
-          {canComment && !isReadOnly && (showCommentActions || Boolean(commentText.trim())) ? (
-            <div
-              className="flex items-center gap-2 transition-all duration-200"
-              data-comment-actions="true"
+        {canComment && !isReadOnly && (showCommentActions || Boolean(commentText.trim())) ? (
+          <div
+            className="flex items-center gap-1.5 justify-end"
+            data-comment-actions="true"
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleCancelComment}
+              disabled={isSavingComment}
             >
-              <Button
-                type="button"
-                className="h-9 min-w-16 bg-primary px-4 text-white shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
-                onClick={handleSaveComment}
-                disabled={!commentText.trim() || isSavingComment}
-              >
-                {isSavingComment ? (
-                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/80 border-t-transparent" />
-                ) : null}
-                Save
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-9 px-3 text-muted-foreground transition-all duration-200 hover:bg-muted active:scale-[0.98] disabled:opacity-60"
-                onClick={handleCancelComment}
-                disabled={isSavingComment}
-              >
-                Cancel
-              </Button>
-            </div>
-          ) : null}
-        </div>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-6.5 px-3 text-xs"
+              onClick={handleSaveComment}
+              disabled={!commentText.trim() || isSavingComment}
+            >
+              {isSavingComment ? (
+                <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/80 border-t-transparent mr-1" />
+              ) : null}
+              Save
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      <div className="px-5 pb-5 pt-4">
+      {/* Activity Timeline List */}
+      <div className="space-y-3 pt-1">
         {activityLoading ? (
-          <div className="mb-3 rounded-md bg-muted px-3 py-2 text-[13px] text-muted-foreground">
+          <div className="rounded-md bg-muted px-2.5 py-1.5 text-[11px] text-muted-foreground">
             Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
-          <div className="mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
+          <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
             Could not load activity. Please try again.
           </div>
         ) : null}
 
         {activities.length > 0 ? (
-          <div className="space-y-5">
+          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-0.5">
             {activities.map((item) => {
               const isComment = item.kind === "comment";
               const isEditing = editingCommentId === item.id;
@@ -374,72 +375,74 @@ export function TaskActivities({
                 editSubmittingCommentId === item.id;
 
               return (
-                <div key={item.id} className="flex items-start gap-2.5">
-                  <Avatar className="size-10 shrink-0">
+                <div key={item.id} className="flex items-start gap-2 text-xs">
+                  <Avatar className="size-6 shrink-0 mt-0.5">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-muted text-[14px] font-bold text-foreground">
+                    <AvatarFallback className="bg-muted text-[10px] font-bold text-foreground">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     {isComment ? (
                       <>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-foreground">{item.author}</span>
-                          <span className="ml-0.5 text-[14px] text-muted-foreground">{item.timestamp}</span>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="font-semibold text-foreground truncate">{item.author}</span>
+                          <span className="text-[10px] text-muted-foreground">{item.timestamp}</span>
                         </div>
 
                         {isEditing ? (
-                          <div className="mt-1.5 space-y-2 transition-all duration-200">
+                          <div className="space-y-1.5">
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-11.5 rounded-sm border border-border bg-card px-4 py-3 text-[15px] text-foreground shadow-none transition-all duration-200 focus-visible:ring-0"
+                              className="min-h-[50px] rounded-md border border-border bg-card p-2 text-xs text-foreground shadow-none resize-none focus-visible:ring-1 focus-visible:ring-primary/40"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                className="h-9 min-w-16 bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60"
-                                onClick={handleSaveEditedComment}
-                                disabled={!editingCommentText.trim() || isSubmittingEdit}
-                              >
-                                {isSubmittingEdit ? (
-                                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary-foreground/80 border-t-transparent" />
-                                ) : null}
-                                Save
-                              </Button>
+                            <div className="flex items-center gap-1.5 justify-end">
                               <Button
                                 type="button"
                                 variant="ghost"
-                                className="h-9 px-3 text-muted-foreground transition-all duration-200 hover:bg-muted active:scale-[0.98] disabled:opacity-60"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
                                 Cancel
                               </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-6 px-2.5 text-xs"
+                                onClick={handleSaveEditedComment}
+                                disabled={!editingCommentText.trim() || isSubmittingEdit}
+                              >
+                                {isSubmittingEdit ? (
+                                  <span className="inline-block size-2.5 animate-spin rounded-full border-2 border-white/80 border-t-transparent mr-1" />
+                                ) : null}
+                                Save
+                              </Button>
                             </div>
                           </div>
                         ) : (
                           <>
-                            <div className="mt-1.5 rounded-sm border border-border bg-white px-4 py-3 text-[15px] leading-6 text-foreground shadow-none whitespace-pre-wrap break-words">
+                            <div className="rounded-md border border-border/70 bg-muted/20 px-2.5 py-1.5 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
-                              <div className="mt-1.5 inline-flex items-center rounded-full border border-border bg-white px-2 py-1 text-[16px] shadow-none">
+                              <div className="inline-flex items-center rounded-full border border-border/70 bg-background px-1.5 py-0.5 text-[11px] shadow-xs">
                                 {item.reactionEmoji}
                               </div>
                             ) : null}
 
-                            <div className="relative mt-1.5 inline-flex items-center gap-2 text-[13px] text-muted-foreground">
+                            <div className="relative inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
                               <button
                                 type="button"
                                 disabled={isReadOnly}
                                 className={cn(
-                                  "inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors focus:outline-none focus:ring-0",
-                                  isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-muted hover:text-foreground"
+                                  "inline-flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors focus:outline-none",
+                                  isReadOnly ? "cursor-not-allowed opacity-30" : "hover:bg-muted hover:text-foreground cursor-pointer"
                                 )}
                                 aria-label="Open reaction picker"
                                 title="Open reaction picker"
@@ -449,14 +452,14 @@ export function TaskActivities({
                                   )
                                 }
                               >
-                                <SmilePlus className="size-3.5" />
+                                <SmilePlus className="size-3" />
                               </button>
                               {item.permissions?.canEdit && !isReadOnly ? (
                                 <>
-                                  <span className="text-muted-foreground/60">•</span>
+                                  <span className="text-muted-foreground/50">•</span>
                                   <button
                                     type="button"
-                                    className="rounded px-1 py-0.5 transition-colors hover:bg-muted hover:underline focus:outline-none focus:ring-0"
+                                    className="rounded px-1 py-0.2 hover:underline cursor-pointer"
                                     onClick={() => handleStartEditComment(item.id, item.content)}
                                   >
                                     Edit
@@ -465,10 +468,10 @@ export function TaskActivities({
                               ) : null}
                               {item.permissions?.canDelete && !isReadOnly ? (
                                 <>
-                                  <span className="text-muted-foreground/60">•</span>
+                                  <span className="text-muted-foreground/50">•</span>
                                   <button
                                     type="button"
-                                    className="rounded px-1 py-0.5 transition-colors hover:bg-destructive/10 hover:underline hover:text-destructive focus:outline-none focus:ring-0"
+                                    className="rounded px-1 py-0.2 text-destructive hover:underline cursor-pointer"
                                     onClick={() => setDeleteCommentId(item.id)}
                                   >
                                     Delete
@@ -477,20 +480,18 @@ export function TaskActivities({
                               ) : null}
 
                               {reactionPickerCommentId === item.id ? (
-                                <div className="absolute bottom-full left-0 z-20 mb-2 rounded-full border border-border bg-popover text-popover-foreground px-2 py-1 shadow-lg">
-                                  <div className="flex items-center gap-1">
-                                    {reactionOptions.map((emoji) => (
-                                      <button
-                                        key={emoji}
-                                        type="button"
-                                        className="flex size-10 items-center justify-center rounded-full text-[24px] transition-transform duration-200 hover:scale-110 hover:bg-muted active:scale-95"
-                                        onClick={() => handlePickReaction(item.id, emoji)}
-                                        aria-label={`Pick reaction ${emoji}`}
-                                      >
-                                        {emoji}
-                                      </button>
-                                    ))}
-                                  </div>
+                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-full border border-border bg-popover text-popover-foreground px-1.5 py-0.5 shadow-lg flex items-center gap-0.5">
+                                  {reactionOptions.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      className="flex size-7 items-center justify-center rounded-full text-base transition-transform hover:scale-115 hover:bg-muted active:scale-95 cursor-pointer"
+                                      onClick={() => handlePickReaction(item.id, emoji)}
+                                      aria-label={`Pick reaction ${emoji}`}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
                                 </div>
                               ) : null}
                             </div>
@@ -498,14 +499,14 @@ export function TaskActivities({
                         )}
                       </>
                     ) : (
-                      <>
-                        <p className="text-[16px] leading-6 text-foreground">
+                      <div className="text-[11px] leading-snug">
+                        <p className="text-foreground">
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
-                        <p className="mt-1.5 text-[14px]">
-                          <span className="text-primary">{item.timestamp}</span>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {item.timestamp}
                         </p>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -513,54 +514,53 @@ export function TaskActivities({
             })}
           </div>
         ) : canComment ? (
-          <div className="py-10 text-center text-[14px] text-muted-foreground">
+          <div className="py-6 text-center text-xs text-muted-foreground">
             No activity yet
           </div>
         ) : (
-          <div className="py-10 text-center text-[14px] text-muted-foreground">
+          <div className="py-6 text-center text-xs text-muted-foreground">
             Add a comment or view activity
           </div>
         )}
       </div>
 
+      {/* Delete Comment Confirmation Dialog */}
       <Dialog
         open={!!deleteCommentId}
         onOpenChange={(open) => {
           if (!open) setDeleteCommentId(null);
         }}
       >
-        <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
-          <div className="p-6">
-            <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-[18px] font-bold text-foreground">
-                Delete comment?
-              </DialogTitle>
-              <DialogDescription className="text-[14px] leading-6 text-muted-foreground">
-                This comment will be removed and cannot be recovered.
-              </DialogDescription>
-            </DialogHeader>
-          </div>
+        <DialogContent className="max-w-xs rounded-lg border border-border p-4 shadow-xl" showCloseButton={false}>
+          <DialogHeader className="space-y-1 text-left">
+            <DialogTitle className="text-sm font-bold text-foreground">
+              Delete comment?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              This comment will be removed and cannot be recovered.
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="border-t border-border px-6 py-4">
-            <DialogFooter className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-9 px-4 text-muted-foreground hover:bg-muted"
-                onClick={() => setDeleteCommentId(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                className="h-9 bg-destructive px-4 text-white shadow-none transition-all duration-200 hover:bg-destructive/90 active:scale-[0.98] disabled:opacity-60"
-                onClick={handleConfirmDeleteComment}
-                disabled={isDeleteCommentRunning}
-              >
-                Delete
-              </Button>
-            </DialogFooter>
-          </div>
+          <DialogFooter className="flex items-center justify-end gap-2 pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2.5 text-muted-foreground hover:bg-muted"
+              onClick={() => setDeleteCommentId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 text-xs bg-destructive px-3 text-white shadow-none hover:bg-destructive/90"
+              onClick={handleConfirmDeleteComment}
+              disabled={isDeleteCommentRunning}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

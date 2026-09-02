@@ -8,6 +8,8 @@ import {
   Columns3,
   AlignJustify,
   CalendarDays,
+  TableProperties,
+  LayoutTemplate,
   ListFilter,
   KanbanSquare,
   Check,
@@ -134,9 +136,11 @@ export function Topbar({
   } = actions;
 
   const viewOptions: Array<{ id: ViewMode; label: string; icon: LucideIcon }> = [
-    { id: 'board', label: 'Board view', icon: Columns3 },
     { id: 'list', label: 'List view', icon: AlignJustify },
+    { id: 'board', label: 'Board view', icon: Columns3 },
     { id: 'calendar', label: 'Calendar view', icon: CalendarDays },
+    { id: 'table', label: 'Table view', icon: TableProperties },
+    { id: 'split', label: 'Split view', icon: LayoutTemplate },
   ];
 
   return (

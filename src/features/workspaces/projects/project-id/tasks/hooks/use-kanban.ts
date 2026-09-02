@@ -22,10 +22,16 @@ import {
   ArrowUp,
   Minus,
   ArrowDown,
+  Hash,
+  ShieldAlert,
+  Bug,
+  Sparkles,
+  TrendingUp,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
-import type { Task, Column } from '../types/task.types';
-import { resolveTaskColumnId } from '../types/task.types';
+import type { Task, Column, TaskIssueType } from '../types/task.types';
+import { resolveTaskColumnId, ISSUE_TYPE_CONFIG } from '../types/task.types';
 import { TaskHelpers } from './use-task';
 
 export type TaskCardLabel = {
@@ -258,6 +264,25 @@ export function useCard({
         text: `${checkDone}/${checkTotal}`,
       });
     }
+    if (card.storyPoints !== undefined && card.storyPoints !== null) {
+      list.push({
+        key: 'story-points',
+        icon: Hash,
+        label: `Estimate: ${card.storyPoints} points`,
+        text: `${card.storyPoints} pts`,
+      });
+    }
+
+    const isBlocked = Array.isArray(card.relations) && card.relations.some((r) => r.type === 'blocked_by');
+    if (isBlocked) {
+      list.push({
+        key: 'blocked',
+        icon: ShieldAlert,
+        label: 'Blocked by dependencies',
+        text: 'Blocked',
+      });
+    }
+
     const subCount = card.subtaskCount ?? (card.subtasks?.length ?? 0);
     const subDone = card.subtaskCompletedCount ?? (card.subtasks?.filter((s: any) => s.completed || s.columnId === 'done').length ?? 0);
     if (subCount > 0) {
@@ -286,7 +311,20 @@ export function useCard({
     }
 
     return list;
-  }, [dateText, hasDesc, comments, attachments, checkTotal, checkDone, card.subtaskCount, card.subtaskCompletedCount, card.subtasks, card.priority]);
+  }, [
+    dateText,
+    hasDesc,
+    comments,
+    attachments,
+    checkTotal,
+    checkDone,
+    card.subtaskCount,
+    card.subtaskCompletedCount,
+    card.subtasks,
+    card.priority,
+    card.storyPoints,
+    card.relations,
+  ]);
 
   const toggleLabels = useCallback(() => setShowLabels((prev) => !prev), []);
 
@@ -298,6 +336,9 @@ export function useCard({
     hasDescription: hasDesc,
     showLabelDetails: showLabels,
     metadataItems,
+    issueType: (card.issueType as TaskIssueType) || 'task',
+    storyPoints: card.storyPoints,
+    isBlocked: Array.isArray(card.relations) && card.relations.some((r) => r.type === 'blocked_by'),
     status: {
       isCompleted: card.columnId === 'done',
       isReadOnly,

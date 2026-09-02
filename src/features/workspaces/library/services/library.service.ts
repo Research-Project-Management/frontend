@@ -2,7 +2,7 @@ import { paperKeys, getAllPapers as getPapers, getPaperById, getPaperAcademicBun
 import { collectionKeys, getCollections, createCollection, updateCollection, deleteCollection } from './collection.service';
 import { formatCslCitation, batchFormatCslCitations, resolveAcademicQuery } from './reference.service';
 import { getAnnotations, createAnnotation, deleteAnnotation, extractNotesFromAnnotations } from './annotation.service';
-import { getRelatedPapers, linkPapers, unlinkPapers, getWorkspaceKnowledgeGraph } from './relation.service';
+import { getRelatedPapers, linkPapers, unlinkPapers } from './relation.service';
 import { getDuplicateGroups, mergePapers, getLibraryIntegrityReport } from './quality.service';
 import { createAsyncBatchJob, getAsyncJobStatus } from './ingestion.service';
 import type { CslStyle, PaperQueryParams } from '../types/library.types';
@@ -40,10 +40,9 @@ export const libraryKeys = {
   annotations: (wsId: string, paperId: string) =>
     [...libraryKeys.all, 'annotations', wsId, paperId] as const,
 
-  // Relations & Graph
+  // Relations
   relations: (wsId: string, paperId: string) =>
     [...libraryKeys.all, 'relations', wsId, paperId] as const,
-  graph: (wsId: string) => [...libraryKeys.all, 'graph', wsId] as const,
 
   // Quality & Diagnostics
   duplicates: (wsId: string) =>
@@ -77,10 +76,10 @@ export {
   getRelatedPapers,
   linkPapers,
   unlinkPapers,
-  getWorkspaceKnowledgeGraph,
   getDuplicateGroups,
   mergePapers,
   getLibraryIntegrityReport,
   createAsyncBatchJob,
   getAsyncJobStatus,
 };
+

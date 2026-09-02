@@ -157,7 +157,7 @@ export default function TopBar({
                 <ListFilter className="size-3.5" />
                 <span>Filter</span>
                 {hasActiveFilters && (
-                  <span className="ml-0.5 rounded-full bg-primary/15 px-1.5 py-0.2 text-[10px] font-semibold text-primary leading-none">
+                  <span className="ml-0.5 rounded-full bg-primary/15 px-1.5 py-0.2 text-xs font-semibold text-primary leading-none">
                     {projectFilter.length}
                   </span>
                 )}
@@ -170,7 +170,7 @@ export default function TopBar({
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <span className="text-xs font-semibold text-foreground">
                   Projects {hasActiveFilters && `(${projectFilter.length})`}
                 </span>
                 {hasActiveFilters && (
@@ -221,7 +221,7 @@ export default function TopBar({
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="size-5 rounded flex items-center justify-center bg-muted text-[10px] font-bold shrink-0">
+                          <span className="size-5 rounded flex items-center justify-center bg-muted text-xs font-bold shrink-0">
                             {project.name?.charAt(0).toUpperCase() || "P"}
                           </span>
                           <span className="truncate">{project.name}</span>

@@ -66,7 +66,7 @@ export function DeleteModal({
                 onConfirm();
               }}
               disabled={isDeleting}
-              className="h-9 px-6 text-[13px] font-bold shadow-none transition-all active:scale-95 cursor-pointer"
+              className="h-9 px-6 text-sm font-bold shadow-none transition-all active:scale-95 cursor-pointer"
             >
               {isDeleting ? "Deleting..." : (
                 <>

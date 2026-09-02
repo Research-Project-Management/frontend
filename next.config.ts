@@ -18,11 +18,20 @@ const nextConfig: NextConfig = {
     },
   },
 
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     config.module.rules.push({
       test: /\.svg$/,
       use: ['@svgr/webpack'],
     });
+
+    if (dev) {
+      config.devtool = 'source-map';
+    }
+
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
+    };
 
     if (!isServer) {
       config.resolve.fallback = {

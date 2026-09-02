@@ -249,7 +249,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
                     <span className="text-xs font-medium flex-1 truncate">
                       {fileName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 rounded">
+                    <span className="text-xs text-muted-foreground bg-muted px-1.5 rounded">
                       {matches.length}
                     </span>
                   </button>

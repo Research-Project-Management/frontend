@@ -76,29 +76,29 @@ export function QuicklinkModal({
           <div className="space-y-4 px-5 pb-5">
             <div className="space-y-1.5">
               <div className="flex flex-col">
-                <Label htmlFor="url" className="text-[13px] font-medium text-foreground">URL</Label>
-                <span className="text-[11px] text-muted-foreground">Required</span>
+                <Label htmlFor="url" className="text-sm font-medium text-foreground">URL</Label>
+                <span className="text-xs text-muted-foreground">Required</span>
               </div>
               <Input
                 id="url"
                 placeholder="Type or paste a URL"
-                className="w-full h-9 bg-background border-border focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-foreground/10 text-[13px] transition-colors"
+                className="w-full h-9 bg-background border-border focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-foreground/10 text-sm transition-colors"
                 {...register("url")}
               />
               {errors.url && (
-                <p className="text-[11px] text-destructive">{errors.url.message}</p>
+                <p className="text-xs text-destructive">{errors.url.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
               <div className="flex flex-col">
-                <Label htmlFor="title" className="text-[13px] font-medium text-foreground">Display title</Label>
-                <span className="text-[11px] text-muted-foreground">Optional</span>
+                <Label htmlFor="title" className="text-sm font-medium text-foreground">Display title</Label>
+                <span className="text-xs text-muted-foreground">Optional</span>
               </div>
               <Input
                 id="title"
                 placeholder="What you'd like to see this link as"
-                className="w-full h-9 bg-background border-border focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-foreground/10 text-[13px] transition-colors"
+                className="w-full h-9 bg-background border-border focus-visible:border-foreground/30 focus-visible:ring-1 focus-visible:ring-foreground/10 text-sm transition-colors"
                 {...register("title")}
               />
             </div>

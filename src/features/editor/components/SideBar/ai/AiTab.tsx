@@ -46,6 +46,13 @@ import {
 import SuggestionCard from "./SuggestionCard";
 import ChatHistory from "./ChatHistory";
 import { renderMarkdown } from "@/features/editor/utils/markdown.util";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 
 function isActionableAiEditResponse(value: unknown): value is AiEditResponse {
   if (!value || typeof value !== "object") return false;
@@ -110,18 +117,18 @@ function DiffApplyBlock({
         : `lines ${op.startLine}ΓÇô${op.endLine}`;
 
   return (
-    <div className="my-2 rounded-lg border border-border/50 overflow-hidden text-[11px] font-mono">
+    <div className="my-2 rounded-lg border border-border/50 overflow-hidden text-xs font-mono">
       <div className="flex items-center justify-between px-2.5 py-1 bg-secondary/60 border-b border-border/40">
         <span className="text-muted-foreground/60">{rangeLabel}</span>
         {!applied && (
           <button
             onClick={() => { onApply(op); setApplied(true); }}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-primary/90 text-primary-foreground text-[10px] hover:bg-primary transition-colors"
+            className="flex items-center gap-1 px-2 py-0.5 rounded bg-primary/90 text-primary-foreground text-xs hover:bg-primary transition-colors"
           >
             <Zap className="size-2.5" /> Apply
           </button>
         )}
-        {applied && <span className="text-emerald-500 text-[10px]">Γ£ô Applied</span>}
+        {applied && <span className="text-emerald-500 text-xs">Γ£ô Applied</span>}
       </div>
       <div className="bg-[#1a1a1a] overflow-x-auto max-h-48">
         {oldLines.map((l, i) => (
@@ -138,7 +145,7 @@ function DiffApplyBlock({
         ))}
       </div>
       {op.explanation && (
-        <div className="px-2.5 py-1 text-[10px] text-muted-foreground/50 border-t border-border/30 bg-secondary/20">
+        <div className="px-2.5 py-1 text-xs text-muted-foreground/50 border-t border-border/30 bg-secondary/20">
           {op.explanation}
         </div>
       )}
@@ -175,7 +182,7 @@ const AssistantMessage = memo(function AssistantMessage({
   if (!hasEditorActionBlock) {
     return (
       <div className="group relative">
-        <div className="text-[13px] leading-relaxed space-y-0.5">
+        <div className="text-sm leading-relaxed space-y-0.5">
           {renderMarkdown(content)}
           {isStreaming && (
             <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
@@ -184,7 +191,7 @@ const AssistantMessage = memo(function AssistantMessage({
         {!isStreaming && content && (
           <button
             onClick={handleCopy}
-            className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
+            className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
           >
             {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
             {copied ? "Copied" : "Copy"}
@@ -251,7 +258,7 @@ const AssistantMessage = memo(function AssistantMessage({
           elements.push(
             <div key={key} className="my-3 rounded-lg overflow-hidden border border-border/50 font-mono">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">diff</span>
+                <span className="text-xs font-mono text-muted-foreground">diff</span>
                 {!isStreaming && (
                   <button
                     onClick={() => {
@@ -265,7 +272,7 @@ const AssistantMessage = memo(function AssistantMessage({
                         if (added) onInsert(added);
                       }
                     }}
-                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                   >
                     <Download className="size-2.5" />
                     Apply diff
@@ -289,13 +296,13 @@ const AssistantMessage = memo(function AssistantMessage({
                     >
                       {/* gutter */}
                       <span className={[
-                        "select-none shrink-0 w-5 text-center text-[10px] border-r border-white/10 mr-2",
+                        "select-none shrink-0 w-5 text-center text-xs border-r border-white/10 mr-2",
                         isAdd ? "text-emerald-400" : isDel ? "text-red-400" : "text-zinc-600",
                       ].join(" ")}>
                         {isAdd ? "+" : isDel ? "ΓêÆ" : " "}
                       </span>
                       <span className={[
-                        "py-px pr-4 whitespace-pre font-mono text-[11px]",
+                        "py-px pr-4 whitespace-pre font-mono text-xs",
                         isAdd ? "text-emerald-200" : isDel ? "text-red-300 line-through opacity-70" : "text-zinc-300",
                         isMeta ? "text-blue-400 no-underline opacity-100" : "",
                       ].filter(Boolean).join(" ")}>
@@ -312,21 +319,21 @@ const AssistantMessage = memo(function AssistantMessage({
           elements.push(
             <div key={key} className="my-3 rounded-lg overflow-hidden border border-border/50">
               <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/80 border-b border-border/40">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                <span className="text-xs font-mono text-muted-foreground">
                   {codeLang || "latex"}
                 </span>
                 {isLatex && !isStreaming && (
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => onPreview(code)}
-                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
                     >
                       <Eye className="size-2.5" />
                       Preview
                     </button>
                     <button
                       onClick={() => onInsert(code)}
-                      className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                     >
                       <Download className="size-2.5" />
                       Insert
@@ -336,12 +343,12 @@ const AssistantMessage = memo(function AssistantMessage({
               </div>
               <div className="flex overflow-x-auto bg-secondary/30 text-xs leading-relaxed">
                 {/* Line numbers */}
-                <div className="select-none shrink-0 text-right pr-3 py-3 pl-2 text-muted-foreground/40 border-r border-border/30 font-mono text-[10px] leading-relaxed">
+                <div className="select-none shrink-0 text-right pr-3 py-3 pl-2 text-muted-foreground/40 border-r border-border/30 font-mono text-xs leading-relaxed">
                   {codeLines.map((_, li) => (
                     <div key={li}>{li + 1}</div>
                   ))}
                 </div>
-                <pre className="px-3 py-3 overflow-x-auto flex-1 font-mono text-[11px] leading-relaxed">
+                <pre className="px-3 py-3 overflow-x-auto flex-1 font-mono text-xs leading-relaxed">
                   <code>{code}</code>
                 </pre>
               </div>
@@ -360,7 +367,7 @@ const AssistantMessage = memo(function AssistantMessage({
 
   return (
     <div className="group relative">
-      <div className="text-[13px] leading-relaxed space-y-0.5">
+      <div className="text-sm leading-relaxed space-y-0.5">
         {elements}
         {isStreaming && (
           <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
@@ -369,7 +376,7 @@ const AssistantMessage = memo(function AssistantMessage({
       {!isStreaming && content && (
         <button
           onClick={handleCopy}
-          className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
+          className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
         >
           {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
           {copied ? "Copied" : "Copy"}
@@ -427,7 +434,7 @@ function MarkdownAssistantMessage({
 
   return (
     <div className="group relative" data-ai-response-renderer="react-markdown">
-      <div className="text-[13px] leading-relaxed space-y-0.5">
+      <div className="text-sm leading-relaxed space-y-0.5">
         {renderMarkdown(content)}
         {isStreaming && (
           <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-text-bottom" />
@@ -436,7 +443,7 @@ function MarkdownAssistantMessage({
       {!isStreaming && content && (
         <button
           onClick={handleCopy}
-          className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
+          className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md hover:bg-secondary/80 transition-colors opacity-0 group-hover:opacity-100"
         >
           {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
           {copied ? "Copied" : "Copy"}
@@ -467,20 +474,17 @@ function PDFPreviewModal({
   }, [result.pdf, result.success]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200">
-      <div className="bg-background border border-border rounded-lg shadow-2xl w-[820px] max-w-[92vw] h-[82vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-[820px] max-w-[92vw] h-[82vh] p-0 flex flex-col overflow-hidden gap-0" showCloseButton={true}>
+        <DialogHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-border shrink-0 space-y-0">
           <div className="flex items-center gap-2">
             <FileCode2 className="size-4 text-amber-500" />
-            <span className="text-sm font-semibold">AI Suggestion Preview</span>
-            <span className="text-[10px] text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full ml-1">
-              Isolated ΓÇö does not affect your document
+            <DialogTitle className="text-sm font-semibold">AI Suggestion Preview</DialogTitle>
+            <span className="text-xs text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full ml-1">
+              Isolated — does not affect your document
             </span>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-secondary/80 transition-colors">
-            <X className="size-4" />
-          </button>
-        </div>
+        </DialogHeader>
         <div className="flex-1 overflow-hidden flex">
           {result.success && blobUrl ? (
             <object data={blobUrl} type="application/pdf" className="w-full h-full">
@@ -497,26 +501,26 @@ function PDFPreviewModal({
               <div className="text-center">
                 <p className="font-semibold text-sm mb-1">Compilation failed</p>
                 <p className="text-xs text-muted-foreground mb-4">The AI suggestion contains LaTeX errors</p>
-                <pre className="text-[10px] text-destructive/80 bg-destructive/5 rounded-lg px-3 py-2 max-h-48 overflow-y-auto text-left whitespace-pre-wrap border border-destructive/20">
+                <pre className="text-xs text-destructive/80 bg-destructive/5 rounded-lg px-3 py-2 max-h-48 overflow-y-auto text-left whitespace-pre-wrap border border-destructive/20">
                   {result.log.slice(0, 1200)}
                 </pre>
               </div>
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-secondary/80 transition-colors">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0 bg-card">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
             Discard
-          </button>
+          </Button>
           {result.success && (
-            <button onClick={onInsert} className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-2">
+            <Button size="sm" onClick={onInsert} className="gap-2 text-xs font-medium">
               <Download className="size-3.5" />
               Insert into editor
-            </button>
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1537,7 +1541,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
               onClick={() => setAutoApply((v) => !v)}
               title={autoApply ? "Auto Apply ON ΓÇö click to disable" : "Auto Apply OFF ΓÇö click to enable"}
               className={[
-                "flex h-8 items-center gap-1 rounded-md px-2 text-[10px] font-semibold transition-all",
+                "flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-all",
                 autoApply
                   ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/25"
                   : "text-muted-foreground/40 hover:text-foreground hover:bg-secondary/60",
@@ -1598,14 +1602,14 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
         {compileStatus === "error" && compileErrors.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/8 border-b border-destructive/15 shrink-0">
             <AlertTriangle className="size-3 text-destructive shrink-0" />
-            <span className="text-[10px] text-destructive/80 truncate flex-1">{compileErrors[0].message}</span>
+            <span className="text-xs text-destructive/80 truncate flex-1">{compileErrors[0].message}</span>
             <button
               onClick={() => {
                 const cmd = SLASH_COMMANDS.find(c => c.cmd === "/fix")!;
                 setActiveCommand(cmd);
                 handleSend(`Fix the LaTeX compile error: ${compileErrors[0].message}`, cmd);
               }}
-              className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-destructive text-white hover:bg-destructive/90 transition-colors font-medium"
+              className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-destructive text-white hover:bg-destructive/90 transition-colors font-medium"
             >
               Fix with AI
             </button>
@@ -1628,7 +1632,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                 <div className="flex group flex-col items-center">
                   <img src="/Chat.svg" alt="AI" className="size-10 mb-2 group-hover:rotate-180 transition-transform duration-1000" />
                   <p className="text-sm font-semibold">AI Editor</p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-0.5">Your LaTeX co-pilot. Select code, then ask.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">Your LaTeX co-pilot. Select code, then ask.</p>
                 </div>
               </div>
               <div className="w-full space-y-1.5">
@@ -1637,14 +1641,14 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                     key={p}
                     type="button"
                     onClick={() => { setInput(p); textareaRef.current?.focus(); }}
-                    className="w-full text-left text-[11px] px-3 py-2 rounded-lg border border-border/40 bg-secondary/20 hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
+                    className="w-full text-left text-xs px-3 py-2 rounded-lg border border-border/40 bg-secondary/20 hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 group"
                   >
                     <Sparkles className="size-3 text-primary/60 group-hover:text-primary shrink-0 transition-colors" />
                     <span className="truncate">{p}</span>
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground/30 text-center">Type <kbd className="px-1 py-px rounded bg-secondary/60 font-mono text-[9px]">/</kbd> for editor commands</p>
+              <p className="text-xs text-muted-foreground/30 text-center">Type <kbd className="px-1 py-px rounded bg-secondary/60 font-mono text-xs">/</kbd> for editor commands</p>
             </div>
           ) : (
             /* ΓöÇΓöÇ Chat messages ΓöÇΓöÇ */
@@ -1717,7 +1721,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                         const isApplied = editStatus === "applied";
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
-                            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg rounded-tl-sm border text-[13px] ${isApplied
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg rounded-tl-sm border text-sm ${isApplied
                               ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                               : "bg-muted/50 border-border/50 text-muted-foreground"
                               }`}>
@@ -1732,7 +1736,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                       if (resolvedMsgIdxes.has(i)) {
                         return (
                           <div key={i} className="flex gap-2.5 animate-in fade-in-0 duration-300 justify-start">
-                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[13px]">
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg rounded-tl-sm bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm">
                               <Check className="size-3.5 shrink-0" />
                               <span>{historicalEdit.explanation}</span>
                             </div>
@@ -1789,14 +1793,14 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                     <div key={i} className="flex justify-end animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
                       <div className="flex max-w-[85%] flex-col items-end gap-2">
                         <div className="bg-muted text-foreground rounded-lg rounded-br-md px-3 py-2 border border-border">
-                          <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                         </div>
                         {ctx && (
                           <div className="group relative">
                             <button
                               type="button"
                               onClick={() => jumpToSelectionContext(ctx)}
-                              className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-mono text-muted-foreground shadow-sm hover:border-primary/40 hover:text-foreground transition-colors"
+                              className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-xs font-mono text-muted-foreground shadow-sm hover:border-primary/40 hover:text-foreground transition-colors"
                               title="Jump to selection"
                             >
                               <FileCode2 className="size-3 shrink-0 text-primary/70" />
@@ -1805,7 +1809,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                             </button>
                             {ctx.text && (
                               <div className="absolute bottom-full right-0 mb-2 hidden w-80 max-w-[75vw] group-hover:block z-50">
-                                <div className="rounded-lg border border-border bg-popover p-2.5 text-[10px] font-mono text-muted-foreground shadow-xl">
+                                <div className="rounded-lg border border-border bg-popover p-2.5 text-xs font-mono text-muted-foreground shadow-xl">
                                   <div className="mb-1.5 flex items-center gap-1.5">
                                     <FileCode2 className="size-3 text-primary/70" />
                                     <span className="truncate">{ctx.filename}</span>
@@ -1882,7 +1886,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
         {previewPending && (
           <div className="px-3 py-1.5 border-t border-border/40 bg-secondary/20 flex items-center gap-2 shrink-0">
             <Loader2 className="size-3 animate-spin text-primary/60" />
-            <span className="text-[10px] text-muted-foreground/60">compiling preview…</span>
+            <span className="text-xs text-muted-foreground/60">compiling preview…</span>
           </div>
         )}
 
@@ -1894,13 +1898,13 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
             <div className="mb-2 group relative">
               <div className="flex items-center gap-1.5 min-w-0 px-2.5 py-1.5 rounded-lg border border-border/50 bg-muted/35">
                 <FileCode2 className="size-3 text-primary/60 shrink-0" />
-                <span className="text-[10px] font-mono text-muted-foreground truncate">
+                <span className="text-xs font-mono text-muted-foreground truncate">
                   {(activeFilePage ?? currentPage)?.title ?? "main.tex"}
                 </span>
-                <span className="text-[10px] font-mono text-primary/80 shrink-0">
+                <span className="text-xs font-mono text-primary/80 shrink-0">
                   {selectionToolbarRange}
                 </span>
-                <span className="text-[9px] text-muted-foreground/45 shrink-0">
+                <span className="text-xs text-muted-foreground/45 shrink-0">
                   {selectionToolbarWordCount}w
                 </span>
                 <button
@@ -1914,7 +1918,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                 </button>
               </div>
               <div className="absolute bottom-full left-0 right-0 mb-1 hidden group-hover:block z-50 pointer-events-none">
-                <div className="bg-popover border border-border rounded-lg shadow-xl p-2.5 text-[10px] font-mono">
+                <div className="bg-popover border border-border rounded-lg shadow-xl p-2.5 text-xs font-mono">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     {"section" in selectionToolbarContext && selectionToolbarContext.section && (
                       <span className="px-1.5 py-px rounded-full bg-primary/10 text-primary border border-primary/20">
@@ -1940,7 +1944,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
           {slashMenuOpen && (
             <div className="absolute bottom-full left-3 right-3 mb-1 bg-popover border border-border rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in-0 slide-in-from-bottom-2 duration-150">
               <div className="px-3 py-2 border-b border-border/40">
-                <p className="text-[10px] font-semibold text-muted-foreground">Editor Commands</p>
+                <p className="text-xs font-semibold text-muted-foreground">Editor Commands</p>
               </div>
               {SLASH_COMMANDS
                 .filter(c => c.cmd.slice(1).startsWith(slashFilter))
@@ -1957,8 +1961,8 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                     }}
                     className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent/60 text-left transition-colors"
                   >
-                    <span className="text-[10px] font-mono text-primary w-20 shrink-0">{c.cmd}</span>
-                    <span className="text-[10px] text-muted-foreground truncate">{c.description}</span>
+                    <span className="text-xs font-mono text-primary w-20 shrink-0">{c.cmd}</span>
+                    <span className="text-xs text-muted-foreground truncate">{c.description}</span>
                   </button>
                 ))
               }
@@ -1968,10 +1972,10 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
           {/* Active command chip */}
           {activeCommand && (
             <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 <Zap className="size-2.5" />{activeCommand.cmd}
               </span>
-              <span className="text-[10px] text-muted-foreground/50">{activeCommand.description}</span>
+              <span className="text-xs text-muted-foreground/50">{activeCommand.description}</span>
               <button
                 type="button"
                 onClick={() => setActiveCommand(null)}
@@ -2000,7 +2004,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
               disabled={isLoading}
             />
             <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-              <span className="text-[10px] text-muted-foreground/30 font-mono">
+              <span className="text-xs text-muted-foreground/30 font-mono">
                 {messages.length > 0 ? `${messages.length} msg` : "new chat"}
               </span>
               <button

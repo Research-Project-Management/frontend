@@ -11,7 +11,6 @@ import {
   formattedCitationSchema,
   pdfAnnotationSchema,
   relatedPaperItemSchema,
-  workspaceKnowledgeGraphSchema,
   paperAcademicBundleSchema,
   duplicateGroupSchema,
   libraryIntegrityReportSchema,
@@ -43,11 +42,11 @@ export type CslStyle = z.infer<typeof cslStyleSchema>;
 export type FormattedCitation = z.infer<typeof formattedCitationSchema>;
 export type PdfAnnotation = z.infer<typeof pdfAnnotationSchema>;
 export type RelatedPaperItem = z.infer<typeof relatedPaperItemSchema>;
-export type WorkspaceKnowledgeGraph = z.infer<typeof workspaceKnowledgeGraphSchema>;
 export type PaperAcademicBundle = z.infer<typeof paperAcademicBundleSchema>;
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
 export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
+
 
 export type { ReferenceData };
 
@@ -161,22 +160,7 @@ export interface TrashState {
   isPurging: boolean;
 }
 
-// 3. Favorites
-export type FavoritesSortBy = 'year' | 'title' | 'author' | 'dateAdded';
-
-export interface FavoritesFilterOptions {
-  sortBy?: FavoritesSortBy;
-  searchQuery?: string;
-  tag?: string;
-}
-
-export interface FavoritesState {
-  papers: Paper[];
-  selectedPaperId: string | null;
-  isLoading: boolean;
-}
-
-// 4. Recently Read
+// 3. Recently Read
 export interface TimeGroupedPapers {
   today: Paper[];
   yesterday: Paper[];

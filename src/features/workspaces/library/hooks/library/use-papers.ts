@@ -27,30 +27,41 @@ import type {
 export interface UsePapersOptions {
   workspaceId: string;
   collectionId?: string;
+  paperId?: string;
 }
 
-export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
+export function usePapers({ workspaceId, collectionId, paperId }: UsePapersOptions) {
   const queryClient = useQueryClient();
 
   const allPapersQuery = useQuery({
     queryKey: paperKeys.all(workspaceId),
     queryFn: () => getAllPapers(workspaceId),
     enabled: Boolean(workspaceId),
-    select: (data) => data.papers || [],
+    select: (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      return (data as any).papers || (data as any).items || (data as any).data || [];
+    },
   });
 
   const paperByIdQuery = useQuery({
-    queryKey: paperKeys.byId(workspaceId, collectionId || ''),
-    queryFn: () => getPaperById(workspaceId, collectionId || ''),
-    enabled: Boolean(workspaceId && collectionId),
-    select: (data) => data.paper || null,
+    queryKey: paperKeys.byId(workspaceId, paperId || ''),
+    queryFn: () => getPaperById(workspaceId, paperId || ''),
+    enabled: Boolean(workspaceId && paperId),
+    select: (data) => (data as any)?.paper || (data as any)?.item || data || null,
   });
 
   const collectionPapersQuery = useQuery({
     queryKey: paperKeys.byCollection(workspaceId, collectionId || ''),
     queryFn: () => getCollectionPapers(workspaceId, collectionId || ''),
     enabled: Boolean(workspaceId && collectionId),
-    select: (data) => data || null,
+    select: (data) => {
+      if (!data) return { papers: [] };
+      if (Array.isArray(data)) return { papers: data };
+      const papers =
+        (data as any).papers || (data as any).items || (data as any).data || [];
+      return { papers, collection: (data as any).collection };
+    },
   });
 
   const addMutation = useMutation({
@@ -64,6 +75,8 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
         });
       }
       queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
       invalidateCollections(queryClient, workspaceId);
     },
   });
@@ -81,6 +94,8 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
         });
       }
       queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
     },
   });
 
@@ -95,6 +110,8 @@ export function usePapers({ workspaceId, collectionId }: UsePapersOptions) {
         });
       }
       queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({ queryKey: ['library'] });
       invalidateCollections(queryClient, workspaceId);
     },
   });
@@ -127,7 +144,7 @@ export function usePaper(workspaceId: string, paperId: string) {
     queryKey: paperKeys.byId(workspaceId, paperId),
     queryFn: async () => {
       const response = await getPaperById(workspaceId, paperId);
-      return response.paper;
+      return (response as any)?.paper || (response as any)?.item || response || null;
     },
     enabled: Boolean(workspaceId && paperId),
   });
@@ -152,6 +169,11 @@ export function useLibraryPapers(workspaceId: string, query?: PaperQueryParams) 
     queryFn: () => getAllPapers(workspaceId, query),
     enabled: Boolean(workspaceId),
     staleTime: 1000 * 60 * 2,
+    select: (data) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      return (data as any).papers || (data as any).items || (data as any).data || [];
+    },
   });
 }
 
@@ -190,17 +212,24 @@ export function useDeletePaper(workspaceId: string) {
 
 // ── 3. Table Sorting & Selection Hook ───────────────────────────────────────
 
-export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt';
+export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt' | 'lastReadAt';
 export type SortOrder = 'asc' | 'desc';
 
 export interface UsePaperTableOptions {
   papers: Paper[];
   initialActiveId?: string | null;
+  initialSortField?: SortField;
+  initialSortOrder?: SortOrder;
 }
 
-export function usePaperTable({ papers, initialActiveId = null }: UsePaperTableOptions) {
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+export function usePaperTable({
+  papers,
+  initialActiveId = null,
+  initialSortField = 'createdAt',
+  initialSortOrder = 'desc',
+}: UsePaperTableOptions) {
+  const [sortField, setSortField] = useState<SortField>(initialSortField);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(initialSortOrder);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activePaperId, setActivePaperId] = useState<string | null>(initialActiveId);
 
@@ -257,6 +286,16 @@ export function usePaperTable({ papers, initialActiveId = null }: UsePaperTableO
             secondPaper.journal || secondPaper.publisher || '',
           );
           break;
+        case 'lastReadAt': {
+          const t1 = new Date(
+            firstPaper.lastReadAt || firstPaper.accessedAt || firstPaper.updatedAt || firstPaper.createdAt || 0,
+          ).getTime();
+          const t2 = new Date(
+            secondPaper.lastReadAt || secondPaper.accessedAt || secondPaper.updatedAt || secondPaper.createdAt || 0,
+          ).getTime();
+          comparison = t1 - t2;
+          break;
+        }
         case 'createdAt':
           comparison =
             new Date(firstPaper.createdAt || 0).getTime() -

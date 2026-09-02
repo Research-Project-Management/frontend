@@ -11,8 +11,12 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up PDF.js worker
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'GlobalWorkerOptions' in pdfjs && pdfjs.GlobalWorkerOptions) {
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+  } catch {
+    // Ignore worker assignment error
+  }
 }
 
 // ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
@@ -178,7 +182,7 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
             <p className="text-sm font-medium">No PDF yet</p>
             <p className="text-xs mt-1">
               Click <strong>Compile</strong> or press{' '}
-              <kbd className="px-1 py-0.5 text-[10px] bg-muted border rounded">Ctrl+Enter</kbd> to
+              <kbd className="px-1 py-0.5 text-xs bg-muted border rounded">Ctrl+Enter</kbd> to
               generate the PDF
             </p>
           </div>

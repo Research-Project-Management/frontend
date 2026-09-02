@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as api from '@/shared/lib/api';
-import { useProjectTasks } from '@/features/workspaces/projects/project-id/tasks/hooks/use-task';
+import { useProjectTasks } from '@/features/workspaces/projects/project-id/work-items/hooks/use-work-item';
 import React from 'react';
 
 // Mock dependencies
@@ -61,7 +61,7 @@ describe('task queries', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(api.apiGet).toHaveBeenCalledWith('/api/project/project-123/tasks');
+      expect(api.apiGet).toHaveBeenCalledWith('/api/projects/project-123/work-items');
       expect(result.current.data).toEqual(mockData);
     });
 
@@ -76,7 +76,7 @@ describe('task queries', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(api.apiGet).toHaveBeenCalledWith('/api/project/project-123/tasks?cycle=cycle-456');
+      expect(api.apiGet).toHaveBeenCalledWith('/api/projects/project-123/work-items?cycleId=cycle-456');
     });
 
     it('handles api error correctly', async () => {

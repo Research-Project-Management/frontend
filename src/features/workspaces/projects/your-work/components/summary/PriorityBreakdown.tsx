@@ -23,7 +23,7 @@ export function PriorityBreakdown({
     { key: 'high', label: 'High', color: 'text-orange-600', dot: 'bg-orange-500' },
     { key: 'medium', label: 'Medium', color: 'text-amber-600', dot: 'bg-amber-500' },
     { key: 'low', label: 'Low', color: 'text-blue-600', dot: 'bg-blue-500' },
-    { key: 'none', label: 'None', color: 'text-zinc-400', dot: 'bg-zinc-400' },
+    { key: 'none', label: 'None', color: 'text-muted-foreground', dot: 'bg-muted-foreground/60' },
   ];
 
   return (

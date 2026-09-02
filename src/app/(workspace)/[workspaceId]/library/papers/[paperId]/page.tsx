@@ -3,6 +3,11 @@ import ReaderPage from '@/features/workspaces/library/pages/ReaderPage';
 
 export const metadata: Metadata = { title: 'Paper Reader · Flux' };
 
-export default function LibraryPaperPage() {
-  return <ReaderPage />;
+export default async function LibraryPaperPage({
+  params,
+}: {
+  params: Promise<{ workspaceId: string; paperId: string }>;
+}) {
+  const resolvedParams = await params;
+  return <ReaderPage paperId={resolvedParams.paperId} />;
 }

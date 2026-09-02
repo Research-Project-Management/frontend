@@ -169,7 +169,7 @@ export function ProjectsPage() {
               )}
             >
               <span>All Projects</span>
-              <span className="text-[10px] font-mono tabular-nums px-1 rounded-full bg-muted/60">
+              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted/60">
                 {filterCounts.all}
               </span>
             </button>
@@ -186,7 +186,7 @@ export function ProjectsPage() {
               <Globe className="size-3 text-muted-foreground" />
               <span>Public</span>
               {filterCounts.public > 0 && (
-                <span className="text-[10px] font-mono tabular-nums px-1 rounded-full bg-muted/60">
+                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted/60">
                   {filterCounts.public}
                 </span>
               )}
@@ -204,7 +204,7 @@ export function ProjectsPage() {
               <Lock className="size-3 text-muted-foreground" />
               <span>Private</span>
               {filterCounts.private > 0 && (
-                <span className="text-[10px] font-mono tabular-nums px-1 rounded-full bg-muted/60">
+                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted/60">
                   {filterCounts.private}
                 </span>
               )}
@@ -372,12 +372,12 @@ export function ProjectsPage() {
                         >
                           {project.name}
                         </Link>
-                        <span className="text-[10px] font-mono font-medium text-muted-foreground uppercase px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
+                        <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
                           {projectKey}
                         </span>
                       </div>
                       {project.description && (
-                        <p className="text-[11px] text-muted-foreground truncate max-w-xl">
+                        <p className="text-xs text-muted-foreground truncate max-w-xl">
                           {project.description}
                         </p>
                       )}
@@ -392,19 +392,19 @@ export function ProjectsPage() {
                         <>
                           <Avatar className="size-4 shrink-0">
                             <AvatarImage src={leadUser.avatar} alt={leadUser.name} />
-                            <AvatarFallback className="text-[8px] bg-muted">
+                            <AvatarFallback className="text-xs bg-muted">
                               {leadUser.name ? leadUser.name.charAt(0).toUpperCase() : 'U'}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="truncate max-w-[100px] text-[11px]">{leadUser.name || 'Lead'}</span>
+                          <span className="truncate max-w-[100px] text-xs">{leadUser.name || 'Lead'}</span>
                         </>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground/60 italic">No lead</span>
+                        <span className="text-xs text-muted-foreground/60 italic">No lead</span>
                       )}
                     </div>
 
                     {/* Visibility */}
-                    <div className="w-16 flex items-center gap-1 text-[11px]">
+                    <div className="w-16 flex items-center gap-1 text-xs">
                       {isPrivate ? (
                         <>
                           <Lock className="size-3 text-muted-foreground" />
@@ -419,7 +419,7 @@ export function ProjectsPage() {
                     </div>
 
                     {/* Status */}
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       Joined
                     </span>
                   </div>

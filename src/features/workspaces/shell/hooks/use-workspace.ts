@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import { workspaceKeys } from '../../constants/workspace.keys';
 import {
+  workspaceKeys,
   fetchWorkspaceById,
   fetchAllWorkspaces,
   updateWorkspaceById,

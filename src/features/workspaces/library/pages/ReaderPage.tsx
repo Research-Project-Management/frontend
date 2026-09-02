@@ -52,6 +52,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handlePanelToggle,
     handleAskAi,
     handleAddToNote,
+    handleAnnotate,
     setPendingNoteText,
     clearSelectionContext,
     handleReindex,
@@ -137,6 +138,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               error={pdfError}
               onAskAi={handleAskAi}
               onAddToNote={handleAddToNote}
+              onAnnotate={handleAnnotate}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center max-w-lg mx-auto">

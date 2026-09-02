@@ -50,7 +50,7 @@ export function LabelsDisplay({
         <div
           key={label.id}
           data-chip-idx={i}
-          className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-[12px] font-semibold text-white shadow-sm"
+          className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-xs font-semibold text-white shadow-sm"
           style={{ backgroundColor: label.color }}
         >
           <span className="whitespace-nowrap drop-shadow-sm">{label.name}</span>
@@ -59,7 +59,7 @@ export function LabelsDisplay({
 
       {/* Overflow badge */}
       {hiddenCount > 0 && (
-        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-[12px] font-bold text-muted-foreground bg-muted">
+        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-xs font-bold text-muted-foreground bg-muted">
           +{hiddenCount}
         </div>
       )}

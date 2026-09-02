@@ -52,7 +52,7 @@ export default function Stickies() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4 px-1">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-foreground select-none">
+        <h2 className="text-xs font-semibold text-foreground select-none">
           Stickies
         </h2>
         <div className="flex items-center gap-4">

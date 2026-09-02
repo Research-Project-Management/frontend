@@ -5,6 +5,9 @@ export const CycleService = {
   getProjectCycles: (projectId: string) =>
     apiGet<{ cycles: Cycle[] }>(`/api/project/${projectId}/cycles`),
 
+  getCycle: (cycleId: string) =>
+    apiGet<{ cycle: Cycle }>(`/api/cycles/${cycleId}`),
+
   create: ({ projectId, ...data }: { projectId: string } & Partial<CreateCycleInput>) =>
     apiPost<{ cycle?: Cycle }>(`/api/project/${projectId}/cycles`, data),
 

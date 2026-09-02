@@ -55,7 +55,7 @@ export function MemberItem({
             {member.user.avatar && (
               <AvatarImage src={member.user.avatar} className="object-cover" />
             )}
-            <AvatarFallback className="text-[10px] bg-muted font-semibold text-muted-foreground">
+            <AvatarFallback className="text-xs bg-muted font-semibold text-muted-foreground">
               {initial}
             </AvatarFallback>
           </Avatar>

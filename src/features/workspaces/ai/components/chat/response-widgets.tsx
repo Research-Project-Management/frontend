@@ -161,11 +161,11 @@ export function ResponseWidgets({ widgets }: { widgets?: ResponseWidget[] }) {
 function MetricSummaryCard({ widget }: { widget: Extract<ResponseWidget, { type: 'metric_summary' }> }) {
   return (
     <div className="rounded-xl border border-border/60 bg-card/60 p-4 shadow-sm">
-      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{widget.title}</h4>
+      <h4 className="text-xs font-semibold text-muted-foreground">{widget.title}</h4>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {widget.metrics.map((metric, i) => (
           <div key={i} className="rounded-lg bg-secondary/40 p-3">
-            <p className="text-[11px] text-muted-foreground">{metric.label}</p>
+            <p className="text-xs text-muted-foreground">{metric.label}</p>
             <p className="mt-1 text-lg font-semibold text-foreground">{metric.value}</p>
           </div>
         ))}
@@ -192,7 +192,7 @@ function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 
       <div className="mt-3 space-y-3">
         {widget.groups.map((group, groupIdx) => (
           <div key={groupIdx} className="space-y-1.5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80">{group.label}</p>
+            <p className="text-xs font-medium text-muted-foreground/80">{group.label}</p>
             <div className="divide-y divide-border/30 rounded-lg border border-border/40 bg-secondary/20">
               {group.tasks.map((task, taskIdx) => {
                 const priority = normalizePriority(task.priority);
@@ -211,23 +211,23 @@ function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 
 
                     <div className="flex items-center gap-2 shrink-0">
                       {task.project?.name && (
-                        <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <span className="hidden sm:inline text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {task.project.name}
                         </span>
                       )}
                       {task.assignee && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <UserRound className="size-3" />
                           {task.assignee}
                         </span>
                       )}
                       {task.dueDate && (
-                        <span className={`inline-flex items-center gap-1 text-[10px] ${task.isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                        <span className={`inline-flex items-center gap-1 text-xs ${task.isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
                           <Clock3 className="size-3" />
                           {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
                       )}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priority.className}`}>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${priority.className}`}>
                         {priority.label}
                       </span>
                     </div>
@@ -258,7 +258,7 @@ function StatBadge({
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${toneClasses[tone]}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${toneClasses[tone]}`}>
       <Icon className="size-3" />
       {label}
     </span>

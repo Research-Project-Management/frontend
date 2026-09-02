@@ -37,7 +37,7 @@ export function WorklogTable({ logs, onDelete }: WorklogTableProps) {
                       {log.user.avatar && (
                         <AvatarImage src={log.user.avatar} className="object-cover" />
                       )}
-                      <AvatarFallback className="text-[9px] bg-muted text-muted-foreground font-semibold">
+                      <AvatarFallback className="text-xs bg-muted text-muted-foreground font-semibold">
                         {log.user.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -54,7 +54,7 @@ export function WorklogTable({ logs, onDelete }: WorklogTableProps) {
 
                 {/* Hours */}
                 <td className="py-3 px-4">
-                  <Badge variant="secondary" className="text-[10px] font-medium h-4.5 px-1.5 rounded">
+                  <Badge variant="secondary" className="text-xs font-medium h-4.5 px-1.5 rounded">
                     {log.hours} {log.hours === 1 ? 'hr' : 'hrs'}
                   </Badge>
                 </td>

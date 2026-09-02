@@ -66,7 +66,7 @@ export function Topbar({
           Projects
         </h1>
         {totalProjectsCount !== undefined && totalProjectsCount > 0 && (
-          <span className="text-[11px] font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
+          <span className="text-xs font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
             {totalProjectsCount}
           </span>
         )}
@@ -163,7 +163,7 @@ export function Topbar({
             <Link href={`/${workspaceId}/projects/archives`}>
               <Archive className="size-3.5" />
               <span>Archives</span>
-              <span className="text-[10px] font-mono tabular-nums px-1 rounded-full bg-muted">
+              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
                 {archivedCount}
               </span>
             </Link>

@@ -233,7 +233,7 @@ export function ChatInput({
           ref={dropdownRef}
           className="absolute bottom-full mb-2 left-0 z-50 w-72 rounded-xl border border-border/80 bg-popover/95 backdrop-blur-md shadow-xl overflow-hidden p-1.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
         >
-          <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
             Mention Agent
           </div>
           {filteredAgents.map((agent, i) => (
@@ -249,7 +249,7 @@ export function ChatInput({
               <span className={`size-2 rounded-full ${agent.color.replace('text-', 'bg-')}`} />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-foreground">{agent.label}</div>
-                <div className="text-[10px] text-muted-foreground truncate">{agent.description}</div>
+                <div className="text-xs text-muted-foreground truncate">{agent.description}</div>
               </div>
             </button>
           ))}
@@ -315,7 +315,7 @@ export function ChatInput({
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-56 p-1.5">
-                <div className="text-[10px] font-semibold text-muted-foreground px-2 py-1 uppercase tracking-wider">
+                <div className="text-xs font-semibold text-muted-foreground px-2 py-1">
                   Scope Context
                 </div>
                 <button
@@ -371,14 +371,14 @@ export function ChatInput({
                   </div>
                   <Switch checked={webSearch} onCheckedChange={setWebSearch} />
                 </div>
-                <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
                   Search academic repositories and the web for current literature and references.
                 </p>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {sites.map((site) => (
                     <div
                       key={site}
-                      className="flex items-center justify-between text-[11px] px-2 py-1 rounded bg-secondary/50"
+                      className="flex items-center justify-between text-xs px-2 py-1 rounded bg-secondary/50"
                     >
                       <span className="truncate">{site}</span>
                       <button

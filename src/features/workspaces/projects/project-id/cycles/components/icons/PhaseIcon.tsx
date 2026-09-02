@@ -31,7 +31,7 @@ export const PhaseIcon = ({
   }[size];
 
   if (typeof svgIcon === "string") {
-    const textSize = size === "sm" ? "text-[14px]" : size === "md" ? "text-[20px]" : "text-[26px]";
+    const textSize = size === "sm" ? "text-sm" : size === "md" ? "text-xl" : "text-2xl";
     return (
       <div 
         className={`${containerSizeClass} flex items-center justify-center rounded-lg ${className}`}

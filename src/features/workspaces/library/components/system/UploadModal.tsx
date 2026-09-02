@@ -42,7 +42,7 @@ import {
 import { toast } from 'sonner';
 import { Badge } from '@/shared/components/ui/badge';
 
-interface PaperUploadData {
+export interface PaperUploadData {
   title: string;
   authors: string[];
   year: number | null;
@@ -53,19 +53,35 @@ interface PaperUploadData {
   mimeType: string;
   size: number;
   journal?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
   publisher?: string;
+  place?: string;
   keywords?: string[];
   volume?: string;
   issue?: string;
   pages?: string;
+  section?: string;
+  partNumber?: string;
+  partTitle?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesText?: string;
   issn?: string;
   isbn?: string;
+  pmid?: string;
+  pmcid?: string;
+  arxivId?: string;
   url?: string;
   type?: string;
+  itemType?: string;
   language?: string;
   journalAbbr?: string;
   shortTitle?: string;
   rights?: string;
+  license?: string;
+  citationKey?: string;
+  editors?: string[];
   extra?: string;
 }
 
@@ -259,13 +275,21 @@ export default function PaperUploadDialog({
       try {
         setExtractStatus('extracting');
         const meta = await extractMetadata(f);
+        setResolvedMeta(meta);
         if (meta.title) setTitle(meta.title);
         if (meta.authors && meta.authors.length > 0)
           setAuthors(meta.authors.join(', '));
         if (meta.year) setYear(String(meta.year));
         if (meta.doi) setDoi(meta.doi);
         if (meta.abstract) setAbstract(meta.abstract);
-        if (meta.journal) setJournal(meta.journal);
+        if (meta.journal || meta.publicationTitle)
+          setJournal(meta.journal || meta.publicationTitle || '');
+        if (meta.publisher) setPublisher(meta.publisher);
+        if (meta.volume) setVolume(meta.volume);
+        if (meta.issue) setIssue(meta.issue);
+        if (meta.pages) setPages(meta.pages);
+        if (meta.itemType || meta.type)
+          setItemType(meta.itemType || meta.type || 'journalArticle');
         setExtractStatus('done');
       } catch (err) {
         console.warn('PDF metadata extraction warning:', err);
@@ -278,49 +302,180 @@ export default function PaperUploadDialog({
 
   // 3. Submit handler
   const handleSubmit = async () => {
-    if (!title.trim()) return;
+    if (mode !== 'folder' && !title.trim()) return;
+    const resolved = resolvedMeta || {};
 
     if (mode === 'identifier') {
       await onSubmit({
-        title: title.trim(),
-        authors: authors.split(',').map((a) => a.trim()).filter(Boolean),
-        year: year ? parseInt(year, 10) : null,
-        doi: doi.trim(),
-        abstract: abstract.trim(),
-        fileUrl: url.trim(),
+        title: title.trim() || resolved.title,
+        authors: authors
+          ? authors.split(',').map((a) => a.trim()).filter(Boolean)
+          : (resolved.authors || []),
+        year: year ? parseInt(year, 10) : (resolved.year ? Number(resolved.year) : null),
+        doi: doi.trim() || resolved.doi || '',
+        abstract: abstract.trim() || resolved.abstract || '',
+        fileUrl: url.trim() || resolved.url || '',
         filename: `${title.trim().slice(0, 30)}.pdf`,
         mimeType: 'application/pdf',
         size: 0,
-        journal: journal.trim() || undefined,
-        publisher: publisher.trim() || undefined,
-        volume: volume.trim() || undefined,
-        issue: issue.trim() || undefined,
-        pages: pages.trim() || undefined,
-        url: url.trim() || undefined,
-        type: itemType,
+        journal: journal.trim() || resolved.journal || resolved.publicationTitle || undefined,
+        publicationTitle: resolved.publicationTitle || journal.trim() || undefined,
+        publisher: publisher.trim() || resolved.publisher || undefined,
+        volume: volume.trim() || resolved.volume || undefined,
+        issue: issue.trim() || resolved.issue || undefined,
+        pages: pages.trim() || resolved.pages || undefined,
+        url: url.trim() || resolved.url || undefined,
+        type: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        itemType: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        issn: resolved.issn || undefined,
+        isbn: resolved.isbn || undefined,
+        pmid: resolved.pmid || undefined,
+        pmcid: resolved.pmcid || undefined,
+        arxivId: resolved.arxivId || undefined,
+        keywords: resolved.keywords || resolved.keywordsList || (resolved.tags ? resolved.tags : undefined),
+        publicationDate: resolved.publicationDate || resolved.date || undefined,
+        journalAbbr: resolved.journalAbbr || resolved.journalAbbreviation || undefined,
+        shortTitle: resolved.shortTitle || undefined,
+        language: resolved.language || undefined,
+        rights: resolved.rights || resolved.copyright || undefined,
+        license: resolved.license || undefined,
+        citationKey: resolved.citationKey || undefined,
+        editors: resolved.editors || undefined,
+        place: resolved.place || undefined,
+        series: resolved.series || undefined,
+        seriesTitle: resolved.seriesTitle || undefined,
+        seriesText: resolved.seriesText || undefined,
       });
       reset();
       onOpenChange(false);
     } else if (mode === 'file') {
       if (!uploadedUrl || !file) return;
       await onSubmit({
-        title: title.trim(),
-        authors: authors.split(',').map((a) => a.trim()).filter(Boolean),
-        year: year ? parseInt(year, 10) : null,
-        doi: doi.trim(),
-        abstract: abstract.trim(),
+        title: title.trim() || resolved.title,
+        authors: authors
+          ? authors.split(',').map((a) => a.trim()).filter(Boolean)
+          : (resolved.authors || []),
+        year: year ? parseInt(year, 10) : (resolved.year ? Number(resolved.year) : null),
+        doi: doi.trim() || resolved.doi || '',
+        abstract: abstract.trim() || resolved.abstract || '',
         fileUrl: uploadedUrl,
         filename: file.name,
         mimeType: file.type || 'application/pdf',
         size: file.size,
-        journal: journal.trim() || undefined,
-        publisher: publisher.trim() || undefined,
-        volume: volume.trim() || undefined,
-        issue: issue.trim() || undefined,
-        pages: pages.trim() || undefined,
-        url: url.trim() || undefined,
-        type: itemType,
+        journal: journal.trim() || resolved.journal || resolved.publicationTitle || undefined,
+        publicationTitle: resolved.publicationTitle || journal.trim() || undefined,
+        publisher: publisher.trim() || resolved.publisher || undefined,
+        volume: volume.trim() || resolved.volume || undefined,
+        issue: issue.trim() || resolved.issue || undefined,
+        pages: pages.trim() || resolved.pages || undefined,
+        url: url.trim() || resolved.url || undefined,
+        type: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        itemType: itemType || resolved.itemType || resolved.type || 'journalArticle',
+        issn: resolved.issn || undefined,
+        isbn: resolved.isbn || undefined,
+        pmid: resolved.pmid || undefined,
+        pmcid: resolved.pmcid || undefined,
+        arxivId: resolved.arxivId || undefined,
+        keywords: resolved.keywords || resolved.keywordsList || (resolved.tags ? resolved.tags : undefined),
+        publicationDate: resolved.publicationDate || resolved.date || undefined,
+        journalAbbr: resolved.journalAbbr || resolved.journalAbbreviation || undefined,
+        shortTitle: resolved.shortTitle || undefined,
+        language: resolved.language || undefined,
+        rights: resolved.rights || resolved.copyright || undefined,
+        license: resolved.license || undefined,
+        citationKey: resolved.citationKey || undefined,
+        editors: resolved.editors || undefined,
+        place: resolved.place || undefined,
+        series: resolved.series || undefined,
+        seriesTitle: resolved.seriesTitle || undefined,
+        seriesText: resolved.seriesText || undefined,
       });
+      reset();
+      onOpenChange(false);
+    } else if (mode === 'folder') {
+      if (!folderFiles.length) return;
+      setIsFolderUploading(true);
+      const loadingToastId = toast.loading(
+        `Batch importing ${folderFiles.length} files from "${folderName || 'Folder'}"...`,
+      );
+      let successCount = 0;
+
+      for (let i = 0; i < folderFiles.length; i++) {
+        const f = folderFiles[i];
+        setFolderProgress({ current: i + 1, total: folderFiles.length });
+        try {
+          const fileStorageUrl = await uploadFile(f, {
+            prefix: `${workspaceId}/library`,
+            allowedTypes: ['application/pdf'],
+          });
+
+          let extractedTitle = f.name.replace(/\.[^/.]+$/, '');
+          let extractedAuthors: string[] = [];
+          let extractedYear: number | null = null;
+          let extractedDoi = '';
+          let extractedAbstract = '';
+          let extractedJournal = '';
+          let extractedPublisher = '';
+          let extractedVolume = '';
+          let extractedIssue = '';
+          let extractedPages = '';
+          let extractedUrl = '';
+          let extractedType = 'journalArticle';
+
+          try {
+            const extracted = await extractMetadata(f);
+            if (extracted.title) extractedTitle = extracted.title;
+            if (extracted.authors && extracted.authors.length > 0)
+              extractedAuthors = extracted.authors;
+            if (extracted.year)
+              extractedYear = parseInt(String(extracted.year), 10) || null;
+            if (extracted.doi) extractedDoi = extracted.doi;
+            if (extracted.abstract) extractedAbstract = extracted.abstract;
+            if (extracted.journal || extracted.publicationTitle)
+              extractedJournal = extracted.journal || extracted.publicationTitle || '';
+            if (extracted.publisher) extractedPublisher = extracted.publisher;
+            if (extracted.volume) extractedVolume = extracted.volume;
+            if (extracted.issue) extractedIssue = extracted.issue;
+            if (extracted.pages) extractedPages = extracted.pages;
+            if (extracted.url) extractedUrl = extracted.url;
+            if (extracted.itemType || extracted.type)
+              extractedType = extracted.itemType || extracted.type || 'journalArticle';
+          } catch {
+            // Keep default extracted from filename
+          }
+
+          await onSubmit({
+            title: extractedTitle,
+            authors: extractedAuthors,
+            year: extractedYear,
+            doi: extractedDoi,
+            abstract: extractedAbstract,
+            fileUrl: fileStorageUrl,
+            filename: f.name,
+            mimeType: f.type || 'application/pdf',
+            size: f.size,
+            journal: extractedJournal || undefined,
+            publisher: extractedPublisher || undefined,
+            volume: extractedVolume || undefined,
+            issue: extractedIssue || undefined,
+            pages: extractedPages || undefined,
+            url: extractedUrl || undefined,
+            type: extractedType || undefined,
+          });
+
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to upload ${f.name}:`, err);
+        }
+      }
+
+      toast.dismiss(loadingToastId);
+      setIsFolderUploading(false);
+      if (successCount > 0) {
+        toast.success(`Successfully imported ${successCount} papers from folder!`);
+      } else {
+        toast.error('Failed to import documents from folder.');
+      }
       reset();
       onOpenChange(false);
     }
@@ -335,10 +490,10 @@ export default function PaperUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden bg-background border-border">
+      <DialogContent className="max-w-lg p-0 overflow-hidden bg-background border-border shadow-none">
         <DialogHeader className="p-4 border-b border-border bg-muted/20">
-          <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-            <BookOpen className="size-4 text-primary" />
+          <DialogTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+            <BookOpen className="size-4 text-foreground" />
             Add Paper to Library
           </DialogTitle>
         </DialogHeader>
@@ -352,11 +507,11 @@ export default function PaperUploadDialog({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer',
                 mode === 'identifier'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  ? 'bg-background text-foreground shadow-none font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Wand2 className="size-3.5 text-primary" />
+              <Wand2 className="size-3.5 text-foreground" />
               <span>By Identifier</span>
             </button>
             <button
@@ -365,11 +520,11 @@ export default function PaperUploadDialog({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer',
                 mode === 'file'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  ? 'bg-background text-foreground shadow-none font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <FileText className="size-3.5" />
+              <FileText className="size-3.5 text-foreground" />
               <span>Upload PDF</span>
             </button>
             <button
@@ -378,11 +533,11 @@ export default function PaperUploadDialog({
               className={cn(
                 'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-medium transition-colors cursor-pointer',
                 mode === 'folder'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
+                  ? 'bg-background text-foreground shadow-none font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <FolderUp className="size-3.5" />
+              <FolderUp className="size-3.5 text-foreground" />
               <span>Upload Folder</span>
             </button>
           </div>
@@ -395,10 +550,10 @@ export default function PaperUploadDialog({
                   <Label className="text-xs font-semibold text-foreground">
                     Identifier (DOI / arXiv / PubMed)
                   </Label>
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <Badge variant="outline" className="text-[9px] font-mono px-1 py-0 h-4">DOI</Badge>
-                    <Badge variant="outline" className="text-[9px] font-mono px-1 py-0 h-4">arXiv</Badge>
-                    <Badge variant="outline" className="text-[9px] font-mono px-1 py-0 h-4">PMID</Badge>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5">DOI</Badge>
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5">arXiv</Badge>
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5">PMID</Badge>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -435,18 +590,18 @@ export default function PaperUploadDialog({
                       {title}
                     </h4>
                     {doi && (
-                      <Badge variant="outline" className="text-[9px] font-mono shrink-0">
+                      <Badge variant="outline" className="text-xs font-mono shrink-0">
                         {doi}
                       </Badge>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground flex items-center gap-2">
                     <span>{authors || 'Unknown Authors'}</span>
                     {year && <span>• ({year})</span>}
                     {journal && <span>• {journal}</span>}
                   </div>
                   {abstract && (
-                    <p className="text-[11px] text-foreground/80 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-foreground/80 line-clamp-3 leading-relaxed">
                       {abstract}
                     </p>
                   )}
@@ -458,7 +613,7 @@ export default function PaperUploadDialog({
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-medium cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium cursor-pointer"
                 >
                   {showAdvanced ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
                   <span>{showAdvanced ? 'Hide metadata fields' : 'Edit details before adding'}</span>
@@ -467,7 +622,7 @@ export default function PaperUploadDialog({
                 {showAdvanced && (
                   <div className="mt-2 space-y-2.5 p-3 rounded-lg bg-card border border-border/50 text-xs animate-in fade-in duration-150">
                     <div className="space-y-1">
-                      <Label className="text-[11px]">Title</Label>
+                      <Label className="text-xs">Title</Label>
                       <Input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -475,7 +630,7 @@ export default function PaperUploadDialog({
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px]">Authors (comma separated)</Label>
+                      <Label className="text-xs">Authors (comma separated)</Label>
                       <Input
                         value={authors}
                         onChange={(e) => setAuthors(e.target.value)}
@@ -484,7 +639,7 @@ export default function PaperUploadDialog({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Journal</Label>
+                        <Label className="text-xs">Journal</Label>
                         <Input
                           value={journal}
                           onChange={(e) => setJournal(e.target.value)}
@@ -492,7 +647,7 @@ export default function PaperUploadDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Year</Label>
+                        <Label className="text-xs">Year</Label>
                         <Input
                           value={year}
                           onChange={(e) => setYear(e.target.value)}
@@ -514,8 +669,8 @@ export default function PaperUploadDialog({
                   className={cn(
                     'flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed p-6 transition-colors cursor-pointer',
                     dragOver
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/40 hover:bg-accent/30',
+                      ? 'border-border bg-muted/40'
+                      : 'border-border/60 hover:border-border hover:bg-muted/30',
                   )}
                   onClick={() => fileRef.current?.click()}
                   onDragOver={(e) => {
@@ -537,7 +692,7 @@ export default function PaperUploadDialog({
                     <p className="text-xs font-semibold text-foreground">
                       Click or drag PDF document here
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Metadata will be extracted automatically
                     </p>
                   </div>
@@ -563,7 +718,7 @@ export default function PaperUploadDialog({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{file.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {uploading ? 'Uploading...' : `${formatBytes(file.size)} • PDF`}
                       </p>
                     </div>
@@ -589,7 +744,7 @@ export default function PaperUploadDialog({
                   {title && (
                     <div className="space-y-2 pt-1 text-xs">
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Title *</Label>
+                        <Label className="text-xs">Title *</Label>
                         <Input
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
@@ -597,7 +752,7 @@ export default function PaperUploadDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px]">Authors</Label>
+                        <Label className="text-xs">Authors</Label>
                         <Input
                           value={authors}
                           onChange={(e) => setAuthors(e.target.value)}
@@ -616,7 +771,7 @@ export default function PaperUploadDialog({
             <div className="space-y-3">
               {folderFiles.length === 0 ? (
                 <div
-                  className="flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed p-6 border-border hover:border-primary/40 hover:bg-accent/30 transition-colors cursor-pointer"
+                  className="flex flex-col items-center justify-center gap-2.5 rounded-lg border-2 border-dashed p-6 border-border/60 hover:border-border hover:bg-muted/30 transition-colors cursor-pointer"
                   onClick={() => folderInputRef.current?.click()}
                 >
                   <FolderUp className="size-8 text-primary/70" />
@@ -624,7 +779,7 @@ export default function PaperUploadDialog({
                     <p className="text-xs font-semibold text-foreground">
                       Select a folder containing PDFs
                     </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Batch imports all academic PDF files inside
                     </p>
                   </div>
@@ -667,7 +822,7 @@ export default function PaperUploadDialog({
                     {folderFiles.slice(0, 10).map((f, i) => (
                       <div key={i} className="px-2.5 py-1.5 flex items-center justify-between">
                         <span className="truncate max-w-64">{f.name}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">{formatBytes(f.size)}</span>
+                        <span className="text-xs font-mono text-muted-foreground">{formatBytes(f.size)}</span>
                       </div>
                     ))}
                   </div>

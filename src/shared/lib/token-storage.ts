@@ -28,7 +28,25 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: 'refreshToken',
 } as const;
 
-// ─── 3. LocalStorage Adapter (Browser Runtime) ────────────────────────────────
+const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60; // 604,800 seconds (1 week)
+
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+  return match ? decodeURIComponent(match[3]) : null;
+}
+
+function setCookieValue(name: string, value: string, maxAgeSeconds: number = SEVEN_DAYS_SECONDS): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+}
+
+function deleteCookieValue(name: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
+
+// ─── 3. LocalStorage Adapter (Browser Runtime with Cookie Synchronization) ─────
 
 export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   private isBrowser(): boolean {
@@ -36,24 +54,34 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   }
 
   public getAccessToken(): string | null {
-    if (!this.isBrowser()) return null;
+    if (!this.isBrowser()) {
+      return getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+    }
     try {
       return (
         window.localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) ||
         window.localStorage.getItem(STORAGE_KEYS.LEGACY_TOKEN) ||
+        getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) ||
+        getCookieValue(STORAGE_KEYS.LEGACY_TOKEN) ||
         null
       );
     } catch {
-      return null;
+      return getCookieValue(STORAGE_KEYS.ACCESS_TOKEN) || getCookieValue(STORAGE_KEYS.LEGACY_TOKEN) || null;
     }
   }
 
   public getRefreshToken(): string | null {
-    if (!this.isBrowser()) return null;
+    if (!this.isBrowser()) {
+      return getCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
+    }
     try {
-      return window.localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) || null;
+      return (
+        window.localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) ||
+        getCookieValue(STORAGE_KEYS.REFRESH_TOKEN) ||
+        null
+      );
     } catch {
-      return null;
+      return getCookieValue(STORAGE_KEYS.REFRESH_TOKEN) || null;
     }
   }
 
@@ -65,6 +93,8 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
     } catch {
       // Ignore private browsing quota errors
     }
+    setCookieValue(STORAGE_KEYS.ACCESS_TOKEN, accessToken, SEVEN_DAYS_SECONDS);
+    setCookieValue(STORAGE_KEYS.LEGACY_TOKEN, accessToken, SEVEN_DAYS_SECONDS);
   }
 
   public setRefreshToken(refreshToken: string): void {
@@ -74,6 +104,7 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
     } catch {
       // Ignore private browsing quota errors
     }
+    setCookieValue(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, SEVEN_DAYS_SECONDS * 4); // 30 days for refresh
   }
 
   public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
@@ -92,6 +123,9 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
     } catch {
       // Ignore private browsing errors
     }
+    deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
+    deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+    deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
   }
 }
 

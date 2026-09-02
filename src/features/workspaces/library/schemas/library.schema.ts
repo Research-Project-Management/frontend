@@ -25,7 +25,15 @@ export const collectionSchema = z.object({
 
 export const noteSchema = z.object({
   id: z.string().optional().default(''),
+  workspaceId: z.string().optional(),
+  itemId: z.string().nullable().optional(),
+  title: z.string().optional().default('Untitled Note'),
+  contentJson: z.any().optional(),
+  contentMd: z.string().optional().default(''),
   content: z.string().optional().default(''),
+  tags: z.array(z.string()).optional().default([]),
+  version: z.number().optional().default(1),
+  createdById: z.string().optional(),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
 });
@@ -75,6 +83,7 @@ export const paperSchema = z.object({
   year: z.union([z.number(), z.string()]).nullish(),
   doi: z.string().optional().default(''),
   abstract: z.string().optional().default(''),
+  abstractNote: z.string().optional(),
   keywords: z.array(z.string()).optional().default([]),
   itemType: z.string().optional().default('journalArticle'),
   editors: z.array(z.string()).optional().default([]),
@@ -105,12 +114,36 @@ export const paperSchema = z.object({
   rights: z.string().optional().default(''),
   license: z.string().optional(),
   citationKey: z.string().optional().default(''),
+  edition: z.string().optional(),
+  numPages: z.string().optional(),
+  numberOfVolumes: z.string().optional(),
+  seriesNumber: z.string().optional(),
+  bookTitle: z.string().optional(),
+  proceedingsTitle: z.string().optional(),
+  conferenceName: z.string().optional(),
+  websiteTitle: z.string().optional(),
+  websiteType: z.string().optional(),
+  university: z.string().optional(),
+  institution: z.string().optional(),
+  country: z.string().optional(),
+  assignee: z.string().optional(),
+  issuingAuthority: z.string().optional(),
+  patentNumber: z.string().optional(),
+  applicationNumber: z.string().optional(),
+  reportNumber: z.string().optional(),
+  reportType: z.string().optional(),
+  thesisType: z.string().optional(),
+  genre: z.string().optional(),
+  filingDate: z.string().optional(),
+  legalStatus: z.string().optional(),
+  versionNumber: z.string().optional(),
   libraryCatalog: z.string().optional(),
   archive: z.string().optional(),
   archiveLocation: z.string().optional(),
   callNumber: z.string().optional(),
   accessedAt: z.string().nullish(),
   extra: z.string().optional().default(''),
+  creators: z.array(z.any()).optional(),
   notes: z.array(noteSchema).optional().default([]),
   primaryFile: primaryFileSchema.nullish(),
   attachments: z.array(paperAttachmentSchema).optional().default([]),
@@ -130,7 +163,7 @@ export const paperSchema = z.object({
   deletedAt: z.string().nullish(),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
-  isFavorite: z.boolean().optional().default(false),
+  lastReadAt: z.string().nullish(),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
   provenance: provenanceSchema.nullish(),
 });
@@ -162,15 +195,20 @@ export const annotationTypeSchema = z.enum([
 ]);
 
 export const pdfAnnotationSchema = z.object({
-  id: z.string(),
-  paperId: z.string(),
+  id: z.string().optional().default(''),
+  attachmentId: z.string().optional(),
+  paperId: z.string().optional(),
   userId: z.string().optional(),
-  type: annotationTypeSchema,
-  color: z.string().default('#facc15'),
-  pageNumber: z.number().int().min(1),
-  quote: z.string().optional(),
-  text: z.string().optional(),
-  comment: z.string().optional(),
+  authorId: z.string().optional(),
+  type: annotationTypeSchema.optional().default('highlight'),
+  color: z.string().default('#ffeb3b'),
+  pageIndex: z.number().int().optional().default(0),
+  pageNumber: z.number().int().optional().default(1),
+  quote: z.string().nullable().optional(),
+  quoteText: z.string().nullable().optional(),
+  text: z.string().nullable().optional(),
+  comment: z.string().nullable().optional(),
+  rectCoords: z.any().optional(),
   rect: z
     .object({
       x1: z.number(),
@@ -179,11 +217,12 @@ export const pdfAnnotationSchema = z.object({
       y2: z.number(),
     })
     .optional(),
-  createdAt: z.string(),
-  updatedAt: z.string().optional(),
+  version: z.number().optional().default(1),
+  createdAt: z.string().optional().default(''),
+  updatedAt: z.string().optional().default(''),
 });
 
-// ── Related Paper & Knowledge Graph Schemas ─────────────────────────────────
+// ── Related Paper Schemas ───────────────────────────────────────────────────
 export const relationTypeSchema = z.enum([
   'related',
   'extends',
@@ -204,28 +243,6 @@ export const relatedPaperItemSchema = z.object({
   linkedAt: z.string(),
 });
 
-export const graphNodeSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  label: z.string().optional(),
-  authors: z.array(z.string()),
-  year: z.number().nullable(),
-  citationKey: z.string().optional(),
-  collectionId: z.string().nullable().optional(),
-});
-
-export const graphEdgeSchema = z.object({
-  source: z.string(),
-  target: z.string(),
-  relationType: relationTypeSchema,
-});
-
-export const workspaceKnowledgeGraphSchema = z.object({
-  nodes: z.array(graphNodeSchema),
-  edges: z.array(graphEdgeSchema),
-  totalNodes: z.number(),
-  totalEdges: z.number(),
-});
 
 // ── Unified Academic Bundle Schema ──────────────────────────────────────────
 export const paperAcademicBundleSchema = z.object({

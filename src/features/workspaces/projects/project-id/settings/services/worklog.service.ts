@@ -12,6 +12,11 @@ export interface WorklogListResponse {
     workspaceId: string;
     taskId?: string | null;
     taskTitle?: string | null;
+    task?: {
+      id: string;
+      title: string;
+      identifier?: string | null;
+    } | null;
     createdAt: string;
     updatedAt: string;
     user?: {
@@ -60,7 +65,7 @@ export const WorklogService = {
         avatar: item.user?.avatar || undefined,
         email: item.user?.email || undefined,
       },
-      taskTitle: item.taskTitle || 'Research Activity',
+      taskTitle: item.taskTitle || item.task?.title || item.description || 'Research Activity',
       hours: Number(item.hours) || 0,
       date: item.date ? new Date(item.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       description: item.description || '',

@@ -29,6 +29,13 @@ import { usePageStore } from '@/features/editor/store/page.store';
 import { filesQuery, useFileActions } from '@/features/editor/hooks/use-page';
 import { Separator } from '@/shared/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
 
 // ── Setting Row Helper ───────────────────────────────────────────────────────
@@ -51,7 +58,7 @@ function SettingRow({
         <div className="min-w-0">
           <div className="text-sm font-medium">{label}</div>
           {description && (
-            <div className="text-[11px] text-muted-foreground truncate">{description}</div>
+            <div className="text-xs text-muted-foreground truncate">{description}</div>
           )}
         </div>
       </div>
@@ -166,14 +173,14 @@ export default function Setting() {
       <div className="flex-1 overflow-y-auto py-3 space-y-4">
         {/* Compiler Section */}
         <div className="space-y-1">
-          <h3 className="text-[11px] font-medium text-muted-foreground px-4">Compiler</h3>
+          <h3 className="text-xs font-medium text-muted-foreground px-4">Compiler</h3>
           
           <SettingRow icon={Cpu} label="Engine" description="LaTeX compiler">
             <Tabs value={engine} onValueChange={(v) => setEngine(v as LaTeXEngine)}>
               <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
-                <TabsTrigger value="pdflatex" className="text-[11px] px-2 py-1">pdf</TabsTrigger>
-                <TabsTrigger value="xelatex" className="text-[11px] px-2 py-1">Xe</TabsTrigger>
-                <TabsTrigger value="lualatex" className="text-[11px] px-2 py-1">Lua</TabsTrigger>
+                <TabsTrigger value="pdflatex" className="text-xs px-2 py-1">pdf</TabsTrigger>
+                <TabsTrigger value="xelatex" className="text-xs px-2 py-1">Xe</TabsTrigger>
+                <TabsTrigger value="lualatex" className="text-xs px-2 py-1">Lua</TabsTrigger>
               </TabsList>
             </Tabs>
           </SettingRow>
@@ -181,8 +188,8 @@ export default function Setting() {
           <SettingRow icon={Zap} label="Compile mode" description="Full = renders images">
             <Tabs value={compileMode} onValueChange={(v) => setCompileMode(v as CompileMode)}>
               <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
-                <TabsTrigger value="full" className="text-[11px] px-2 py-1">Full</TabsTrigger>
-                <TabsTrigger value="draft" className="text-[11px] px-2 py-1">Draft</TabsTrigger>
+                <TabsTrigger value="full" className="text-xs px-2 py-1">Full</TabsTrigger>
+                <TabsTrigger value="draft" className="text-xs px-2 py-1">Draft</TabsTrigger>
               </TabsList>
             </Tabs>
           </SettingRow>
@@ -196,26 +203,22 @@ export default function Setting() {
           </SettingRow>
 
           <SettingRow icon={FileText} label="Main file" description="Root document">
-            <div className="relative">
-              <select
-                aria-label="Select root document"
-                value={texFiles.includes(currentMainFile) ? currentMainFile : ''}
-                onChange={(e) => handleMainFileChange(e.target.value)}
-                className={cn(
-                  'w-28 text-xs bg-secondary border border-border rounded px-2 py-1 pr-6',
-                  'text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-primary',
-                  'cursor-pointer truncate',
-                  !texFiles.includes(currentMainFile) && 'text-muted-foreground',
-                )}
+            <div className="w-36">
+              <Select
+                value={texFiles.includes(currentMainFile) ? currentMainFile : undefined}
+                onValueChange={(val) => handleMainFileChange(val)}
               >
-                {!texFiles.includes(currentMainFile) && (
-                  <option value="" disabled>Select file…</option>
-                )}
-                {texFiles.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+                <SelectTrigger className="h-7 text-xs bg-secondary">
+                  <SelectValue placeholder="Select file…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {texFiles.map((f) => (
+                    <SelectItem key={f} value={f} className="text-xs">
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </SettingRow>
         </div>
@@ -224,13 +227,13 @@ export default function Setting() {
 
         {/* Editor Section */}
         <div className="space-y-1">
-          <h3 className="text-[11px] font-medium text-muted-foreground px-4">Editor</h3>
+          <h3 className="text-xs font-medium text-muted-foreground px-4">Editor</h3>
 
           <SettingRow icon={editorTheme === 'light' ? Sun : Moon} label="Theme">
             <Tabs value={editorTheme} onValueChange={(v) => setEditorTheme(v as 'light' | 'dark')}>
               <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
-                <TabsTrigger value="light" className="text-[11px] px-2 py-1">Light</TabsTrigger>
-                <TabsTrigger value="dark" className="text-[11px] px-2 py-1">Dark</TabsTrigger>
+                <TabsTrigger value="light" className="text-xs px-2 py-1">Light</TabsTrigger>
+                <TabsTrigger value="dark" className="text-xs px-2 py-1">Dark</TabsTrigger>
               </TabsList>
             </Tabs>
           </SettingRow>

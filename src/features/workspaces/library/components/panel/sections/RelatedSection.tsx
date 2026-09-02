@@ -1,22 +1,30 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Share2, Link2, Unlink2, Plus, ArrowRight, ExternalLink, Network } from 'lucide-react';
+import { FileText, Plus, X, ExternalLink, Loader2 } from 'lucide-react';
 import { useRelatedPapers, useLinkPapers, useUnlinkPapers } from '@/features/workspaces/library/hooks/library/use-library';
 import { useLibraryPapers } from '@/features/workspaces/library/hooks/library/use-papers';
 import { Button } from '@/shared/components/ui/button';
-import { Badge } from '@/shared/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { Paper, RelatedPaperItem } from '@/features/workspaces/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
-import { KnowledgeGraphModal } from '../../system/KnowledgeGraphModal';
 
 interface RelatedSectionProps {
   paper: Paper;
   workspaceId: string;
+  onSelectPaper?: (paperId: string) => void;
+  hideHeader?: boolean;
+  forceAdding?: boolean;
 }
 
-export default function RelatedSection({ paper, workspaceId }: RelatedSectionProps) {
+export default function RelatedSection({
+  paper,
+  workspaceId,
+  onSelectPaper,
+  hideHeader = false,
+  forceAdding = false,
+}: RelatedSectionProps) {
   const targetWsId = workspaceId || paper.workspaceId || '';
   const { data: relatedData, isLoading } = useRelatedPapers(targetWsId, paper.id || '');
   const { data: allPapersData } = useLibraryPapers(targetWsId);
@@ -25,19 +33,31 @@ export default function RelatedSection({ paper, workspaceId }: RelatedSectionPro
   const unlinkMutation = useUnlinkPapers(targetWsId, paper.id || '');
 
   const [addOpen, setAddOpen] = useState(false);
-  const [graphOpen, setGraphOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (forceAdding) {
+      setAddOpen(true);
+    }
+  }, [forceAdding]);
+
   const [selectedTargetId, setSelectedTargetId] = useState('');
-  const [relationType, setRelationType] = useState('related');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const relatedList: RelatedPaperItem[] = relatedData?.relatedPapers || [];
   const availablePapers = (allPapersData?.papers || []).filter(
-    (targetPaper: Paper) => targetPaper.id !== paper.id && !relatedList.some((rel) => rel.id === targetPaper.id),
+    (targetPaper: Paper) =>
+      targetPaper.id !== paper.id &&
+      !relatedList.some((rel) => rel.id === targetPaper.id) &&
+      (searchQuery.trim() === '' ||
+        (targetPaper.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (targetPaper.authors || []).some((a) => a.toLowerCase().includes(searchQuery.toLowerCase()))),
   );
 
   const handleLink = async () => {
     if (!selectedTargetId) return;
-    await linkMutation.mutateAsync({ targetPaperId: selectedTargetId, relationType });
+    await linkMutation.mutateAsync({ targetPaperId: selectedTargetId, relationType: 'related' });
     setSelectedTargetId('');
+    setSearchQuery('');
     setAddOpen(false);
   };
 
@@ -46,168 +66,171 @@ export default function RelatedSection({ paper, workspaceId }: RelatedSectionPro
   };
 
   return (
-    <div className="p-4 space-y-4 text-xs">
-      {/* Header bar with Add Link & Graph visualizer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
-          <Share2 className="size-3.5 text-primary" />
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-            Paper Relations
+    <div className="space-y-3 text-xs min-w-0">
+      {/* Header bar */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-foreground">
+            Related
           </h3>
-          {relatedList.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-mono">
-              {relatedList.length}
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs gap-1 cursor-pointer"
-            onClick={() => setGraphOpen(true)}
-          >
-            <Network className="size-3 text-primary" />
-            <span>Graph View</span>
-          </Button>
-          <Button
-            size="sm"
-            variant="default"
-            className="h-7 text-xs gap-1 cursor-pointer"
+            className="h-7 px-2.5 text-xs gap-1 cursor-pointer font-medium"
             onClick={() => setAddOpen(true)}
           >
-            <Plus className="size-3" />
-            <span>Link Paper</span>
+            <Plus className="size-3.5 text-foreground" />
+            <span>Add</span>
           </Button>
         </div>
-      </div>
+      )}
 
       {/* Loading state */}
       {isLoading && (
-        <div className="p-6 text-center text-muted-foreground space-y-2">
-          <div className="animate-spin inline-block size-4 border-2 border-primary border-t-transparent rounded-full" />
-          <p>Loading linked references...</p>
+        <div className="p-4 text-center text-muted-foreground space-y-1.5 flex flex-col items-center justify-center">
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <p className="text-xs">Loading related items...</p>
         </div>
       )}
 
-      {/* Empty state */}
-      {!isLoading && relatedList.length === 0 && (
-        <div className="p-8 border border-dashed border-border rounded-lg text-center space-y-2">
-          <Share2 className="size-8 mx-auto text-muted-foreground/40" />
-          <p className="font-medium text-foreground">No linked papers yet</p>
-          <p className="text-muted-foreground text-[11px]">
-            Connect this paper with others to build your personal knowledge graph.
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs gap-1 mt-2 cursor-pointer"
-            onClick={() => setAddOpen(true)}
-          >
-            <Link2 className="size-3" />
-            <span>Add Connection</span>
-          </Button>
-        </div>
-      )}
+      {/* Empty state - suppressed */}
+      {!isLoading && relatedList.length === 0 ? null : null}
 
-      {/* Relations list */}
+      {/* Relations list (Zotero-style clean list) */}
       {!isLoading && relatedList.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1 divide-y divide-border/20 border border-border/40 rounded-md overflow-hidden bg-card">
           {relatedList.map((item) => (
             <div
               key={item.id}
-              className="p-2.5 rounded-lg border border-border bg-card hover:bg-muted/40 transition-colors flex items-start justify-between gap-3 group"
+              className="p-2.5 hover:bg-muted/40 transition-colors flex items-center justify-between gap-2.5 group cursor-pointer"
+              onClick={() => onSelectPaper?.(item.id)}
             >
-              <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Badge variant="outline" className="text-[10px] uppercase font-mono py-0">
-                    {item.relationType || 'related'}
-                  </Badge>
-                  {item.year && (
-                    <span className="text-[10px] text-muted-foreground">({item.year})</span>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <FileText className="size-3.5 text-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-normal text-foreground truncate text-xs group-hover:underline">
+                    {item.title || 'Untitled Paper'}
+                  </p>
+                  {(item.authors?.length || item.year) && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[item.authors?.join(', '), item.year].filter(Boolean).join(' • ')}
+                    </p>
                   )}
                 </div>
-                <p className="font-medium text-foreground truncate text-xs">{item.title}</p>
-                {item.authors && item.authors.length > 0 && (
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {item.authors.join(', ')}
-                  </p>
-                )}
               </div>
 
-              <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 {item.doi && (
-                  <a
-                    href={`https://doi.org/${item.doi}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Open DOI"
-                  >
-                    <ExternalLink className="size-3.5" />
-                  </a>
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <a
+                          href={`https://doi.org/${item.doi}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="p-1 rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          aria-label="Open DOI"
+                        >
+                          <ExternalLink className="size-3.5 text-foreground" />
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs py-1 px-2">
+                        Open DOI
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
-                <button
-                  onClick={() => handleUnlink(item.id)}
-                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
-                  title="Remove Link"
-                >
-                  <Unlink2 className="size-3.5" />
-                </button>
+
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleUnlink(item.id)}
+                        className="p-1 rounded text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        aria-label="Remove relation"
+                      >
+                        <X className="size-3.5 text-foreground" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs py-1 px-2">
+                      Remove
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Add Link Dialog */}
+      {/* Add Related Item Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-          <DialogHeader className="p-4 pb-2 border-b border-border">
-            <DialogTitle className="text-sm font-semibold">Link Paper Connection</DialogTitle>
+        <DialogContent className="sm:max-w-md bg-background text-foreground p-5 space-y-4 shadow-none border border-border rounded-xl">
+          <DialogHeader className="p-0 space-y-1">
+            <DialogTitle className="text-sm font-semibold text-foreground">
+              Add Related Item
+            </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Select a paper in this workspace to establish a 2-way academic relationship
+              Select an item from your library to link with this paper.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-4 space-y-3 text-xs">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">
-                Target Paper
-              </label>
-              <select
-                value={selectedTargetId}
-                onChange={(e) => setSelectedTargetId(e.target.value)}
-                className="w-full p-2 rounded-md border border-border bg-background text-foreground text-xs outline-none focus:border-primary"
-              >
-                <option value="">-- Choose a paper --</option>
-                {availablePapers.map((targetPaper: Paper) => (
-                  <option key={targetPaper.id} value={targetPaper.id}>
-                    {targetPaper.title} ({targetPaper.year || 'n.d.'})
-                  </option>
-                ))}
-              </select>
+          <div className="space-y-3 pt-1">
+            {/* Quick search input */}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search library items..."
+              className="w-full px-3 py-1.5 text-xs bg-muted/20 text-foreground rounded-lg border border-border/40 focus:border-border outline-none transition-colors"
+            />
+
+            {/* Paper options select / list */}
+            <div className="max-h-48 overflow-y-auto space-y-1 border border-border/40 rounded-lg p-1 bg-muted/10">
+              {availablePapers.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No other items available to link
+                </p>
+              ) : (
+                availablePapers.map((targetPaper: Paper) => {
+                  const isSelected = selectedTargetId === targetPaper.id;
+                  return (
+                    <button
+                      key={targetPaper.id}
+                      type="button"
+                      onClick={() => setSelectedTargetId(targetPaper.id)}
+                      className={cn(
+                        'w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors flex items-center justify-between gap-2 cursor-pointer',
+                        isSelected
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-foreground hover:bg-muted/60',
+                      )}
+                    >
+                      <span className="truncate flex-1">{targetPaper.title || 'Untitled'}</span>
+                      {targetPaper.year && (
+                        <span className="text-xs text-muted-foreground shrink-0 font-mono">
+                          {targetPaper.year}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">
-                Relationship Type
-              </label>
-              <select
-                value={relationType}
-                onChange={(e) => setRelationType(e.target.value)}
-                className="w-full p-2 rounded-md border border-border bg-background text-foreground text-xs outline-none focus:border-primary"
+            {/* Actions */}
+            <div className="pt-2 flex justify-end items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                onClick={() => {
+                  setAddOpen(false);
+                  setSearchQuery('');
+                  setSelectedTargetId('');
+                }}
               >
-                <option value="related">Related / Mentions</option>
-                <option value="extends">Extends / Builds Upon</option>
-                <option value="rebuts">Rebuts / Contradicts</option>
-                <option value="uses_dataset">Uses Same Dataset</option>
-                <option value="survey_of">Survey / Literature Review</option>
-              </select>
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
               <Button
@@ -215,20 +238,14 @@ export default function RelatedSection({ paper, workspaceId }: RelatedSectionPro
                 variant="default"
                 disabled={!selectedTargetId || linkMutation.isPending}
                 onClick={handleLink}
+                className="h-8 px-4 text-xs cursor-pointer font-medium"
               >
-                {linkMutation.isPending ? 'Linking...' : 'Create Relation'}
+                {linkMutation.isPending ? 'Adding...' : 'Confirm'}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Graph Visualizer Modal */}
-      <KnowledgeGraphModal
-        open={graphOpen}
-        onOpenChange={setGraphOpen}
-        workspaceId={targetWsId}
-      />
     </div>
   );
 }

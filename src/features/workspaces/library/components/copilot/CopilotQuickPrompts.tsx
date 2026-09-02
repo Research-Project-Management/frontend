@@ -64,7 +64,7 @@ export const CopilotQuickPrompts: React.FC<CopilotQuickPromptsProps> = ({
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+      <p className="text-xs font-semibold text-muted-foreground px-1">
         Quick Academic Starters
       </p>
       <div className="grid grid-cols-2 gap-1.5">
@@ -75,7 +75,7 @@ export const CopilotQuickPrompts: React.FC<CopilotQuickPromptsProps> = ({
             disabled={disabled}
             onClick={() => onSelectPrompt(item.prompt)}
             className={cn(
-              'flex flex-col items-start p-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/50 transition-colors text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+              'flex flex-col items-start p-2.5 rounded-lg border border-border bg-muted/20 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
             <div className="flex items-center gap-1.5 mb-1">

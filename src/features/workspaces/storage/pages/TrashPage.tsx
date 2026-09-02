@@ -85,8 +85,8 @@ export default function WorkspaceTrashPage() {
             hasMore={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}
-            onToggleStar={(id: string) => { void handleRestore(id); }}
-            onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
+            onRestore={(id) => { void handleRestore(id); }}
+            onDelete={(id) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
             isTrash={true}
@@ -97,8 +97,8 @@ export default function WorkspaceTrashPage() {
             hasMore={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={fetchNextPage}
-            onToggleStar={(id: string) => { void handleRestore(id); }}
-            onDelete={(id: string) => { void handlePermanentlyDelete(id); }}
+            onRestore={(id) => { void handleRestore(id); }}
+            onDelete={(id) => { void handlePermanentlyDelete(id); }}
             onDownload={handleDownload}
             onFileClick={(item) => setSelectedItem(item)}
             isTrash={true}

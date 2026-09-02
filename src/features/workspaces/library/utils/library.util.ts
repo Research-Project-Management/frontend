@@ -18,7 +18,69 @@ export function getLibraryEntityId(
  */
 export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): string {
   if (!paper) return '';
-  return paper.fileUrl || paper.primaryFile?.url || '';
+  return (
+    paper.fileUrl ||
+    paper.primaryFile?.url ||
+    (paper as any)?.url ||
+    (paper as any)?.attachments?.[0]?.url ||
+    (paper as any)?.attachments?.[0]?.fileUrl ||
+    ''
+  );
+}
+
+/**
+ * Standardizes raw authors or creators into a clean array of author name strings.
+ * Handles string[], delimited strings ("Author A; Author B" / "Author A and Author B"),
+ * object arrays ([{ name: '...' }] or [{ firstName: '...', lastName: '...' }]),
+ * and fallback to creators ([{ creatorType: 'author', name: '...' }]).
+ */
+export function normalizeAuthors(
+  rawAuthors?: any,
+  creators?: Array<{ creatorType?: string; name?: string }> | null,
+): string[] {
+  if (Array.isArray(rawAuthors)) {
+    const result: string[] = [];
+    for (const item of rawAuthors) {
+      if (!item) continue;
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        if (!trimmed) continue;
+        if (trimmed.includes(';') && !trimmed.includes(',')) {
+          const parts = trimmed.split(';').map((s) => s.trim()).filter(Boolean);
+          result.push(...parts);
+        } else {
+          result.push(trimmed);
+        }
+      } else if (typeof item === 'object') {
+        if ('name' in item && typeof item.name === 'string' && item.name.trim()) {
+          result.push(item.name.trim());
+        } else if ('firstName' in item || 'lastName' in item || 'family' in item || 'given' in item) {
+          const first = (item.firstName || item.given || '').trim();
+          const last = (item.lastName || item.family || '').trim();
+          const full = [first, last].filter(Boolean).join(' ');
+          if (full) result.push(full);
+        }
+      }
+    }
+    if (result.length > 0) return result;
+  } else if (typeof rawAuthors === 'string' && rawAuthors.trim()) {
+    const trimmed = rawAuthors.trim();
+    if (trimmed.includes(';') && !trimmed.includes(',')) {
+      return trimmed.split(';').map((s) => s.trim()).filter(Boolean);
+    }
+    return [trimmed];
+  }
+
+  // Fallback to creators array
+  if (Array.isArray(creators) && creators.length > 0) {
+    const fromCreators = creators
+      .filter((c) => !c.creatorType || c.creatorType === 'author' || c.creatorType === 'editor')
+      .map((c) => c.name?.trim())
+      .filter(Boolean) as string[];
+    if (fromCreators.length > 0) return fromCreators;
+  }
+
+  return [];
 }
 
 /**
@@ -30,8 +92,8 @@ export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
     return paper.citationKey.trim();
   }
 
-  const rawFirstAuthor = paper.authors?.[0];
-  const firstAuthor = typeof rawFirstAuthor === 'string' ? rawFirstAuthor : (rawFirstAuthor as any)?.name || '';
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
+  const firstAuthor = authors[0] || '';
   const authorKey = firstAuthor
     ? firstAuthor.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
     : 'ref';
@@ -96,14 +158,15 @@ export function cleanDoi(doi?: string | null): string {
 export function buildBibtexEntry(paper: Partial<Paper> | Partial<ReferenceData>): string {
   const citeKey = getPaperCitationKey(paper as Partial<Paper>);
   const title = paper.title || 'Untitled';
-  const authors = Array.isArray(paper.authors) ? paper.authors.join(' and ') : '';
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
+  const authorStr = authors.length > 0 ? authors.join(' and ') : '';
   const journal = (paper as any).journal || (paper as any).publisher || (paper as any).publicationTitle || '';
   const year = paper.year || '';
   const doi = paper.doi ? cleanDoi(paper.doi) : '';
 
   return `@article{${citeKey},
   title = {${title}},
-  author = {${authors}},
+  author = {${authorStr}},
   journal = {${journal}},
   year = {${year}},
   doi = {${doi}}
@@ -119,7 +182,6 @@ export interface LibraryFilterOptions {
   fromYear?: number;
   toYear?: number;
   itemType?: string;
-  isFavorite?: boolean;
   hasAttachment?: boolean;
 }
 
@@ -135,8 +197,9 @@ export class LibraryFilterEngine {
 
     return papers.filter((paper) => {
       const p = paper as any;
+      const authors = normalizeAuthors(paper.authors, p.creators);
       const inTitle = paper.title?.toLowerCase().includes(q) ?? false;
-      const inAuthors = paper.authors?.some((a) => a.toLowerCase().includes(q)) ?? false;
+      const inAuthors = authors.some((a) => a.toLowerCase().includes(q));
       const inAbstract = paper.abstract?.toLowerCase().includes(q) ?? false;
       const inJournal = (paper.journal || paper.publicationTitle || paper.publisher)?.toLowerCase().includes(q) ?? false;
       const inDoi = paper.doi?.toLowerCase().includes(q) ?? false;
@@ -150,7 +213,7 @@ export class LibraryFilterEngine {
   }
 
   static filter(papers: Paper[], options: LibraryFilterOptions): Paper[] {
-    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, isFavorite, hasAttachment } = options;
+    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
 
     let result = papers;
 
@@ -192,11 +255,6 @@ export class LibraryFilterEngine {
         if (pType !== itemType.toLowerCase()) return false;
       }
 
-      // Favorite
-      if (isFavorite) {
-        if (!paper.isFavorite && !p.starred) return false;
-      }
-
       // Attachment
       if (hasAttachment !== undefined) {
         const hasFile = Boolean(paper.fileUrl || paper.primaryFile?.url || p.hasPdf || (p.attachments && p.attachments.length > 0));
@@ -224,8 +282,8 @@ export class LibraryFilterEngine {
       }
 
       if (field === 'authors') {
-        const a1 = a.authors?.[0] || '';
-        const b1 = b.authors?.[0] || '';
+        const a1 = normalizeAuthors(a.authors, (a as any).creators)[0] || '';
+        const b1 = normalizeAuthors(b.authors, (b as any).creators)[0] || '';
         return a1.localeCompare(b1) * modifier;
       }
 
@@ -345,9 +403,10 @@ export function generateCitationKey(paper: Paper): string {
     return paper.citationKey.trim().replace(/\s+/g, '');
   }
 
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
   let authorPart = 'unknown';
-  if (paper.authors && paper.authors.length > 0) {
-    const firstAuthor = paper.authors[0].trim();
+  if (authors.length > 0) {
+    const firstAuthor = authors[0].trim();
     const parts = firstAuthor.split(/\s+/);
     if (parts.length > 0) {
       authorPart = parts[parts.length - 1].toLowerCase();
@@ -439,10 +498,11 @@ export function unescapeLatexChars(text: string): string {
 export function convertToBibTeX(paper: Paper): string {
   const entryType = getBibTeXEntryType(paper);
   const citationKey = generateCitationKey(paper);
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
 
   const fields: [string, string | undefined][] = [
     ['title', paper.title ? `{${escapeLatexChars(paper.title)}}` : undefined],
-    ['author', paper.authors && paper.authors.length > 0 ? `{${paper.authors.map(escapeLatexChars).join(' and ')}}` : undefined],
+    ['author', authors.length > 0 ? `{${authors.map(escapeLatexChars).join(' and ')}}` : undefined],
     ['journal', paper.journal || paper.publicationTitle ? `{${escapeLatexChars(paper.journal || paper.publicationTitle || '')}}` : undefined],
     ['year', paper.year ? `{${paper.year}}` : undefined],
     ['volume', paper.volume ? `{${paper.volume}}` : undefined],
@@ -760,7 +820,7 @@ export function formatCiteCommand(paper: Partial<Paper>): string {
  * e.g. "Vaswani, A., Shazeer, N., et al. (2017). Attention is all you need. Journal Name, 30, 45-60. https://doi.org/..."
  */
 export function formatApaCitation(paper: Partial<Paper>): string {
-  const authors = paper.authors || [];
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
   let authorStr = 'Unknown Author';
   if (authors.length === 1) {
     authorStr = authors[0];
@@ -793,7 +853,7 @@ export function formatApaCitation(paper: Partial<Paper>): string {
  * e.g. 'A. Vaswani et al., "Attention is all you need," in Adv. Neural Inf. Process. Syst., vol. 30, 2017.'
  */
 export function formatIeeeCitation(paper: Partial<Paper>): string {
-  const authors = paper.authors || [];
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
   let authorStr = 'Unknown Author';
   if (authors.length === 1) {
     authorStr = authors[0];

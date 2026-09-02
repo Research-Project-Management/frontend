@@ -54,7 +54,7 @@ export const DeleteModal = ({
               variant="destructive"
               onClick={onConfirm}
               disabled={isDeleting}
-              className="h-9 px-6 text-[13px] font-bold bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none shadow-none rounded-sm transition-all active:scale-95 cursor-pointer gap-1.5"
+              className="h-9 px-6 text-sm font-bold bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none shadow-none rounded-sm transition-all active:scale-95 cursor-pointer gap-1.5"
             >
               {isDeleting ? "Deleting..." : (
                 <>

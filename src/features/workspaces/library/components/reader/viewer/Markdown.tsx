@@ -67,7 +67,7 @@ const markdownComponents: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="my-2 border-l-2 border-primary/40 bg-muted/30 px-3 py-2 text-foreground/75">
+      <blockquote className="my-2 border-l border-border bg-muted/20 px-3 py-2 text-foreground/80 rounded-r-md">
         {children}
       </blockquote>
     );
@@ -96,7 +96,7 @@ const markdownComponents: Components = {
   },
   th({ children }) {
     return (
-      <th className="border-b border-border px-3 py-2 text-left text-[11px] font-semibold text-muted-foreground">
+      <th className="border-b border-border px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
         {children}
       </th>
     );
@@ -113,7 +113,7 @@ const markdownComponents: Components = {
   },
   code({ className, children }) {
     return (
-      <code className={`${className ?? ""} rounded-md bg-muted px-1.5 py-0.5 font-mono text-[12px] text-primary`}>
+      <code className={`${className ?? ""} rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-primary`}>
         {children}
       </code>
     );
@@ -214,7 +214,7 @@ export function formatInline(text: string): React.ReactNode {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary no-underline transition-colors hover:bg-primary/20"
+          className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary no-underline transition-colors hover:bg-primary/20"
         >
           {linkMatch[1]}
           <ExternalLink className="size-2.5 opacity-70" />
@@ -232,7 +232,7 @@ export function formatInline(text: string): React.ReactNode {
       parts.push(
         <code
           key={`c${key++}`}
-          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[12px] text-primary"
+          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-primary"
         >
           {codeMatch[1]}
         </code>,

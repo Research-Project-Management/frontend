@@ -1,11 +1,13 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { storageKeys } from '../constants/storage.keys';
 import {
+  getHomeFiles,
   getAllFiles,
   getMyFiles,
   getSharedFiles,
   getStarredFiles,
   getTrashedFiles,
+  getStorageUsage,
   createFolder,
   toggleStarItem,
   deleteItem,
@@ -49,6 +51,15 @@ export function useHomeFiles(
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
+    enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
+  });
+}
+
+export function useWorkspaceFiles(workspaceId: string, parentId?: string | null) {
+  return useQuery({
+    queryKey: storageKeys.workspaceFiles(workspaceId, parentId),
+    queryFn: () => getAllFiles(workspaceId, parentId),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });
@@ -101,6 +112,15 @@ export function useTrash(workspaceId: string, params?: FileQueryParams) {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
+    enabled: !!workspaceId,
+    ...STORAGE_QUERY_OPTIONS,
+  });
+}
+
+export function useStorageUsage(workspaceId: string) {
+  return useQuery({
+    queryKey: storageKeys.workspaceUsage(workspaceId),
+    queryFn: () => getStorageUsage(workspaceId),
     enabled: !!workspaceId,
     ...STORAGE_QUERY_OPTIONS,
   });

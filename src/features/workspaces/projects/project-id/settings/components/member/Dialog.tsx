@@ -150,7 +150,7 @@ export function AddMemberDialog({
                         {u.avatar && (
                           <AvatarImage src={u.avatar} className="object-cover" />
                         )}
-                        <AvatarFallback className="text-[10px] bg-muted font-medium">
+                        <AvatarFallback className="text-xs bg-muted font-medium">
                           {(u.name || 'U').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -159,7 +159,7 @@ export function AddMemberDialog({
                         <p className="text-xs font-medium text-foreground truncate">
                           {u.name || 'Unknown'}
                         </p>
-                        <p className="text-[11px] text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {u.email || ''}
                         </p>
                       </div>

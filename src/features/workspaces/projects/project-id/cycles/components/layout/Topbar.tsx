@@ -86,7 +86,7 @@ export default function TopBar({
           onChange={(e) => onSearchChange?.(e.target.value)}
           onBlur={() => !searchQuery && setIsSearchExpanded(false)}
           className={cn(
-            "h-full text-[13px] py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-all pr-8 text-foreground",
+            "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-all pr-8 text-foreground",
             isSearchExpanded || searchQuery ? "opacity-100 pl-0" : "opacity-0 pointer-events-none"
           )}
           autoFocus={isSearchExpanded}
@@ -131,7 +131,7 @@ export default function TopBar({
                   value={optionSearch}
                   onChange={(e) => setOptionSearch(e.target.value)}
                   placeholder="Search..."
-                  className="h-full w-full pl-8 pr-2 text-[13px] bg-transparent outline-none placeholder:text-muted-foreground text-foreground"
+                  className="h-full w-full pl-8 pr-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground text-foreground"
                 />
              </div>
           </div>
@@ -142,7 +142,7 @@ export default function TopBar({
               <div className="px-1 pb-2 border-b border-border">
                 <button
                   onClick={() => setIsStartExpanded(!isStartExpanded)}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-[13px] font-bold text-muted-foreground hover:text-foreground"
+                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
                 >
                   <span>Start date</span>
                   {isStartExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -170,7 +170,7 @@ export default function TopBar({
                             });
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors cursor-pointer",
+                            "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
                             isActive ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
                           )}
                         >
@@ -188,7 +188,7 @@ export default function TopBar({
                       <button
                         onClick={() => setCustomDateType("startDate")}
                         className={cn(
-                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors cursor-pointer",
+                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
                           dateFilters.startDate?.label === "Custom" ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
                         )}
                       >
@@ -211,7 +211,7 @@ export default function TopBar({
               <div className="px-1 mt-2">
                  <button
                   onClick={() => setIsDueExpanded(!isDueExpanded)}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-[13px] font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <span>End date</span>
                   {isDueExpanded ? <ChevronUp className="size-3.5 text-foreground" /> : <ChevronDown className="size-3.5 text-foreground" />}
@@ -239,7 +239,7 @@ export default function TopBar({
                             });
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors cursor-pointer",
+                            "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
                             isActive ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
                           )}
                         >
@@ -257,7 +257,7 @@ export default function TopBar({
                       <button
                         onClick={() => setCustomDateType("dueDate")}
                         className={cn(
-                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-[13px] transition-colors cursor-pointer",
+                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
                           dateFilters.dueDate?.label === "Custom" ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
                         )}
                       >

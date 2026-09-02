@@ -41,7 +41,7 @@ export function Team({ members }: TeamProps) {
               <p className="text-xs font-medium text-foreground truncate">
                 {member.user.name}
               </p>
-              <p className="text-[11px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {formatRole(member.role)}
               </p>
             </div>

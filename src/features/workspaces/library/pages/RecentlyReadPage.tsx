@@ -1,23 +1,23 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { History } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
 import AddLinkModal from '../components/system/AddLinkModal';
 import CreateCollectionModal from '../components/system/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { filterAndSortLibraryPapers } from '../utils/filter.util';
+import { PaperService } from '../services/paper.service';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import type { Paper } from '../types/library.types';
 
 export default function RecentlyReadPage() {
   const { state, actions } = useLibrary();
+  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
-    papers,
-    isLoading,
-    search,
     selectedPaperId,
     selectedPaper,
     selectedCollection,
@@ -30,7 +30,6 @@ export default function RecentlyReadPage() {
   } = state;
 
   const {
-    setSearch,
     setSelectedPaperId,
     setAddLinkOpen,
     handleDirectFilesUpload,
@@ -43,13 +42,21 @@ export default function RecentlyReadPage() {
     handleBatchMovePapers,
   } = actions;
 
-  const recentlyReadPapers = useMemo(() => {
-    return filterAndSortLibraryPapers({
-      papers,
-      searchQuery: search,
-      activeFilter: 'recent-read',
-    });
-  }, [papers, search]);
+  const [search, setSearch] = useState('');
+
+  const { data: viewData, isLoading } = useQuery({
+    queryKey: ['papers', workspaceId, 'view', 'recent', search],
+    queryFn: () =>
+      PaperService.getAll(workspaceId, {
+        view: 'recent',
+        search: search.trim() || undefined,
+      }),
+    enabled: Boolean(workspaceId),
+  });
+
+  const recentlyReadPapers: Paper[] = Array.isArray(viewData?.papers)
+    ? viewData.papers
+    : [];
 
   const handleSelectPaper = (paper: Paper) => {
     const paperId = paper.id;
@@ -61,47 +68,49 @@ export default function RecentlyReadPage() {
   };
 
   return (
-    <div className="flex flex-col h-full min-w-0 flex-1 overflow-hidden">
-      <Topbar
-        title="Recently Read"
-        icon={History}
-        search={search}
-        onSearchChange={setSearch}
-        onDirectFilesUpload={handleDirectFilesUpload}
-        onDirectFolderUpload={handleDirectFolderUpload}
-        onAddCollection={() => setCreateCollectionOpen(true)}
-        onAddLink={() => setAddLinkOpen(true)}
-      />
-
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Central Papers Table */}
-        <PaperTable
-          papers={recentlyReadPapers}
-          collectionMap={collectionMap}
-          collections={collections}
-          isLoading={isLoading}
-          isSearch={Boolean(search.trim())}
-          selectedPaperId={selectedPaperId}
-          onSelectPaper={handleSelectPaper}
-          onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={handleBatchDeletePapers}
-          onBatchMovePapers={handleBatchMovePapers}
-          onClearSearch={() => setSearch('')}
-          onAddPaper={() => setAddLinkOpen(true)}
-          showCollection={true}
+    <div className="flex h-full min-w-0 flex-1 overflow-hidden">
+      {/* Left Main Content Area (Topbar + Table) */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        <Topbar
+          title="Recently Read"
+          icon={History}
+          search={search}
+          onSearchChange={setSearch}
+          onDirectFilesUpload={handleDirectFilesUpload}
+          onDirectFolderUpload={handleDirectFolderUpload}
+          onAddCollection={() => setCreateCollectionOpen(true)}
+          onAddLink={() => setAddLinkOpen(true)}
         />
 
-        {/* Right Inspector Panel */}
-        {selectedPaper && (
-          <InspectorPanel
-            paper={selectedPaper}
-            collection={selectedCollection}
-            workspaceId={workspaceId}
-            onClose={() => setSelectedPaperId(null)}
+        {/* Central Papers Table */}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <PaperTable
+            papers={recentlyReadPapers}
+            collectionMap={collectionMap}
+            collections={collections}
+            isLoading={isLoading}
+            isSearch={Boolean(search.trim())}
+            selectedPaperId={selectedPaperId}
+            onSelectPaper={handleSelectPaper}
+            onDeletePaper={handleDeletePaper}
+            onBatchDeletePapers={handleBatchDeletePapers}
+            onBatchMovePapers={handleBatchMovePapers}
+            onClearSearch={() => setSearch('')}
+            showCollection={true}
+            showLastRead={true}
           />
-        )}
+        </div>
       </div>
 
+      {/* Right Inspector Panel */}
+      <InspectorPanel
+        paper={selectedPaper || null}
+        collection={selectedCollection || null}
+        workspaceId={workspaceId}
+        onClose={() => setSelectedPaperId(null)}
+      />
+
+      {/* Add Link Modal */}
       <AddLinkModal
         open={addLinkOpen}
         onOpenChange={setAddLinkOpen}
@@ -109,12 +118,12 @@ export default function RecentlyReadPage() {
         isPending={isAddingPaper}
       />
 
+      {/* Create Collection Modal */}
       <CreateCollectionModal
         open={createCollectionOpen}
         onOpenChange={setCreateCollectionOpen}
         onSubmit={handleCreateCollection}
         isPending={isCreatingCollection}
-        collections={collections}
       />
     </div>
   );

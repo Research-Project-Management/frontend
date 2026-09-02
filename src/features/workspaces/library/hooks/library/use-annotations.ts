@@ -2,69 +2,119 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryKeys } from '../../services/library.service';
 import {
-  getAnnotations,
-  createAnnotation,
-  deleteAnnotation,
-  extractNotesFromAnnotations,
+  AnnotationService,
+  type CreateAnnotationDTO,
+  type UpdateAnnotationDTO,
 } from '../../services/annotation.service';
 import type { PdfAnnotation } from '../../types/library.types';
 
-export function useAnnotations(workspaceId: string, paperId: string) {
-  return useQuery({
-    queryKey: libraryKeys.annotations(workspaceId, paperId),
-    queryFn: () => getAnnotations(workspaceId, paperId),
-    enabled: Boolean(workspaceId && paperId),
-  });
-}
+export const annotationKeys = {
+  all: ['annotations'] as const,
+  attachment: (workspaceId: string, attachmentId?: string) =>
+    [...annotationKeys.all, workspaceId, attachmentId || 'none'] as const,
+};
 
-export function useCreateAnnotation(workspaceId: string, paperId: string) {
+export function useAnnotations(workspaceId: string, attachmentId?: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (dto: Partial<PdfAnnotation>) =>
-      createAnnotation(workspaceId, paperId, dto),
+  const annotationsQuery = useQuery({
+    queryKey: annotationKeys.attachment(workspaceId, attachmentId),
+    queryFn: () => {
+      if (!attachmentId) return Promise.resolve([]);
+      return AnnotationService.getByAttachment(workspaceId, attachmentId);
+    },
+    enabled: Boolean(workspaceId && attachmentId),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (dto: CreateAnnotationDTO) => {
+      if (!attachmentId) throw new Error('Attachment ID is required');
+      return AnnotationService.create(workspaceId, attachmentId, dto);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: libraryKeys.annotations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
+        queryKey: annotationKeys.attachment(workspaceId, attachmentId),
       });
     },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to create annotation');
+    },
   });
-}
 
-export function useDeleteAnnotation(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (annotationId: string) =>
-      deleteAnnotation(workspaceId, paperId, annotationId),
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      version,
+      dto,
+    }: {
+      id: string;
+      version: number;
+      dto: UpdateAnnotationDTO;
+    }) => {
+      if (!attachmentId) throw new Error('Attachment ID is required');
+      return AnnotationService.update(workspaceId, attachmentId, id, version, dto);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: libraryKeys.annotations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
+        queryKey: annotationKeys.attachment(workspaceId, attachmentId),
       });
     },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update annotation');
+    },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id, version }: { id: string; version?: number }) => {
+      if (!attachmentId) throw new Error('Attachment ID is required');
+      return AnnotationService.delete(workspaceId, attachmentId, id, version);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: annotationKeys.attachment(workspaceId, attachmentId),
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to delete annotation');
+    },
+  });
+
+  return {
+    annotations: (annotationsQuery.data || []) as PdfAnnotation[],
+    isLoading: annotationsQuery.isLoading,
+    isError: annotationsQuery.isError,
+    error: annotationsQuery.error,
+    refetch: annotationsQuery.refetch,
+    createAnnotation: createMutation.mutateAsync,
+    updateAnnotation: (id: string, version: number, dto: UpdateAnnotationDTO) =>
+      updateMutation.mutateAsync({ id, version, dto }),
+    deleteAnnotation: (id: string, version?: number) =>
+      deleteMutation.mutateAsync({ id, version }),
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
 }
 
-export function useExtractNotes(workspaceId: string, paperId: string) {
+export const useCreateAnnotation = (workspaceId: string, attachmentId?: string) => {
+  const { createAnnotation } = useAnnotations(workspaceId, attachmentId);
+  return { mutateAsync: createAnnotation };
+};
+
+export const useDeleteAnnotation = (workspaceId: string, attachmentId?: string) => {
+  const { deleteAnnotation } = useAnnotations(workspaceId, attachmentId);
+  return { mutateAsync: (id: string) => deleteAnnotation(id) };
+};
+
+export const useExtractNotes = (workspaceId: string, paperId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () =>
-      extractNotesFromAnnotations(workspaceId, paperId),
+    mutationFn: () => AnnotationService.extractNotesFromAnnotations(workspaceId, paperId),
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperDetail(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
+        queryKey: ['workspace', workspaceId, 'notes', paperId],
       });
       const count =
         response?.literatureNote?.annotationCount ??
@@ -76,4 +126,4 @@ export function useExtractNotes(workspaceId: string, paperId: string) {
       toast.error(error?.message || 'Failed to extract notes');
     },
   });
-}
+};

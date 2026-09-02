@@ -29,7 +29,7 @@ export default function Sidebar() {
   return (
     <LayoutGroup id={id}>
       <nav
-        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-14 md:flex-col md:justify-start md:gap-1 md:rounded-none md:border-0 md:bg-transparent md:px-1 md:py-3'
+        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-12 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:px-0.5 md:py-4'
       >
         {NAV_ITEMS.map((item) => {
           const Icon = 'icon' in item ? item.icon : null;
@@ -59,22 +59,19 @@ export default function Sidebar() {
               href={fullPath}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'group relative flex w-full cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg py-1 select-none outline-none transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1',
-                isActive
-                  ? 'text-foreground'
-                  : 'text-foreground/80 hover:text-foreground'
+                'group relative flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md py-1 select-none outline-none transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 text-foreground'
               )}
             >
               <div className={cn(
-                'relative flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-200',
-                !isActive && 'group-hover:bg-black/10 dark:group-hover:bg-white/10'
+                'relative flex size-8.5 shrink-0 items-center justify-center rounded-md transition-colors duration-200',
+                !isActive && 'group-hover:bg-black/5 dark:group-hover:bg-white/5'
               )}>
                 {isActive && (
                   <motion.div
                     layoutId={`sidebar-active-${id}`}
-                    className='absolute inset-0 rounded-lg bg-black/10 dark:bg-white/10'
+                    className='absolute inset-0 rounded-md bg-black/10 dark:bg-white/10'
                     initial={false}
-                    transition={{ ease: 'easeOut', duration: 0.2 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
 
@@ -82,10 +79,7 @@ export default function Sidebar() {
                   <img
                     src={imageSrc}
                     alt={item.label}
-                    className={cn(
-                      'relative z-10 size-5 transition-opacity duration-200',
-                      isActive ? 'opacity-100' : 'opacity-90 group-hover:opacity-100'
-                    )}
+                    className='relative z-10 size-5 transition-transform duration-200'
                   />
                 ) : Icon ? (
                   <Icon
@@ -94,7 +88,9 @@ export default function Sidebar() {
                 ) : null}
               </div>
 
-              <span className='relative z-10 max-w-full whitespace-nowrap text-xs font-medium tracking-tight leading-none transition-colors data-[active=true]:font-semibold data-[active=true]:text-foreground text-foreground' data-active={isActive}>
+              <span
+                className='relative z-10 whitespace-nowrap text-center text-xs font-medium tracking-tight leading-none text-foreground select-none'
+              >
                 {item.label}
               </span>
             </Link>

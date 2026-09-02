@@ -14,14 +14,14 @@ const copy = {
 export default function EmptyState({ searchQuery }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-      <div className="w-14 h-14 rounded-lg bg-secondary/60 flex items-center justify-center">
-        <copy.Icon className="h-7 w-7 text-muted-foreground/30" />
+      <div className="size-12 rounded-xl bg-muted/50 border border-border/40 flex items-center justify-center">
+        <copy.Icon className="size-6 text-muted-foreground/50 shrink-0" />
       </div>
-      <p className="text-xl font-semibold tracking-tight text-foreground/90 font-serif">
+      <p className="text-base font-semibold tracking-tight text-foreground">
         {searchQuery ? copy.emptyFiltered : copy.empty}
       </p>
       {!searchQuery && (
-        <p className="text-sm text-muted-foreground/60 mt-1">
+        <p className="text-xs text-muted-foreground">
           {copy.cta}
         </p>
       )}

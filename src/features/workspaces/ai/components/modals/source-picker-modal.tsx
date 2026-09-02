@@ -291,7 +291,7 @@ export function SourcePickerModal({
                           <FileText className="size-3.5 text-primary shrink-0" />
                           <p className="font-medium text-foreground truncate">{paper.title}</p>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           {[compactAuthors(paper), paper.year].filter(Boolean).join(' • ')}
                         </p>
                       </div>

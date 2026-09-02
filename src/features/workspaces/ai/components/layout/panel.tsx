@@ -159,7 +159,7 @@ export function Panel() {
         />
         <FileUp className="size-6 mx-auto mb-2 text-muted-foreground" />
         <p className="text-xs font-medium text-foreground">Upload reference documents</p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">PDF, DOC, TXT, MD, CSV, code files</p>
+        <p className="text-xs text-muted-foreground mt-0.5">PDF, DOC, TXT, MD, CSV, code files</p>
       </div>
 
       {/* Library Link Button */}
@@ -185,7 +185,7 @@ export function Panel() {
                 <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
                 <span className="truncate">{entry.name}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {entry.size ? `${(entry.size / 1024).toFixed(1)} KB` : ''}
               </span>
             </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import type { SortField, SortOrder } from '../../hooks/library/use-papers';
@@ -14,6 +14,7 @@ interface PaperTableHeaderProps {
   isPartiallySelected?: boolean;
   onToggleSelectAll: () => void;
   showCollection?: boolean;
+  showLastRead?: boolean;
 }
 
 interface ColumnDef {
@@ -31,12 +32,21 @@ export default function PaperTableHeader({
   isPartiallySelected,
   onToggleSelectAll,
   showCollection = true,
+  showLastRead = false,
 }: PaperTableHeaderProps) {
   const columns: ColumnDef[] = [
     { field: 'title', label: 'Title', sortable: true, className: 'text-left min-w-[240px] flex-1' },
-    { field: 'authors', label: 'Creator / Authors', sortable: true, className: 'text-left w-[200px] max-w-[240px]' },
-    { field: 'year', label: 'Year', sortable: true, className: 'text-left w-[72px]' },
-    { field: 'journal', label: 'Publication / Venue', sortable: true, className: 'text-left w-[180px] max-w-[220px]' },
+    { field: 'authors', label: 'Creator', sortable: true, className: 'text-left w-[240px] max-w-[320px]' },
+    ...(showLastRead
+      ? ([
+          {
+            field: 'lastReadAt',
+            label: 'Last Read',
+            sortable: true,
+            className: 'text-left w-[200px] max-w-[240px]',
+          },
+        ] as ColumnDef[])
+      : []),
   ];
 
   return (
@@ -61,24 +71,28 @@ export default function PaperTableHeader({
             <th
               key={idx}
               className={cn(
-                'px-3 py-2 text-xs font-medium text-muted-foreground tracking-normal',
+                'px-3 py-2 text-xs font-medium select-none',
                 col.className,
-                col.sortable && 'cursor-pointer hover:text-foreground transition-colors'
+                col.sortable ? 'cursor-pointer text-muted-foreground' : 'text-muted-foreground'
               )}
               onClick={() => col.field && col.sortable && onSort(col.field)}
             >
-              <div className="flex items-center gap-1.5 group">
-                <span className="truncate">{col.label}</span>
-                {col.sortable && (
-                  <span className="shrink-0 text-muted-foreground/40 group-hover:text-foreground transition-colors">
-                    {isSorted ? (
-                      sortOrder === 'asc' ? (
-                        <ArrowUp className="size-3 text-primary" />
-                      ) : (
-                        <ArrowDown className="size-3 text-primary" />
-                      )
+              <div className="inline-flex items-center gap-1.5 group/col">
+                <span
+                  className={cn(
+                    'truncate transition-colors rounded px-1.5 py-0.5 -mx-1.5',
+                    col.sortable && 'hover:text-foreground hover:bg-muted/60',
+                    isSorted && 'text-foreground font-semibold'
+                  )}
+                >
+                  {col.label}
+                </span>
+                {col.sortable && isSorted && (
+                  <span className="shrink-0 text-foreground">
+                    {sortOrder === 'asc' ? (
+                      <ArrowUp className="size-3.5" />
                     ) : (
-                      <ArrowUpDown className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowDown className="size-3.5" />
                     )}
                   </span>
                 )}
@@ -88,7 +102,7 @@ export default function PaperTableHeader({
         })}
 
         {/* Action column space */}
-        <th className="w-16 px-2 py-2" />
+        <th className="w-10 px-2 py-2" />
       </tr>
     </thead>
   );

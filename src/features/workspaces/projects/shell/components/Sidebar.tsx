@@ -64,7 +64,7 @@ const modulesConfig: Record<ProjectModuleKey, { label: string; icon: LucideIcon 
   overview: { label: 'Overview', icon: ChartBarBig },
   pages: { label: 'Pages', icon: PenLine },
   collection: { label: 'Collection', icon: BookOpen },
-  tasks: { label: 'Tasks', icon: KanbanSquare },
+  tasks: { label: 'Work Items', icon: KanbanSquare },
   cycles: { label: 'Cycles', icon: RotateCcw },
   storage: { label: 'Storage', icon: Cloud },
   stickies: { label: 'Stickies', icon: Layers2 },
@@ -199,13 +199,13 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       >
         <div
           className={cn(
-            "group/row flex h-10 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors text-foreground select-none",
-            isProjActive ? "bg-accent/60 font-semibold" : "hover:bg-accent/70 font-medium"
+            "group/row flex h-9.5 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors text-foreground select-none",
+            isProjActive ? "bg-accent font-semibold" : "hover:bg-accent/70 font-medium"
           )}
         >
           <Link
             href={`/${workspaceId}/projects/${projId}/overview`}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-sm text-foreground transition-colors hover:text-foreground outline-none"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left text-sm text-foreground transition-colors hover:text-foreground outline-none"
           >
             <span className="shrink-0 text-base leading-none">{project.avatar || '📁'}</span>
             <span
@@ -342,24 +342,31 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           </div>
         </div>
 
-        <CollapsibleContent className="overflow-hidden">
+        <CollapsibleContent className="overflow-hidden flex flex-col gap-1 mt-1">
           {MODULE_ORDER.filter((k) =>
             projectModules.includes(k) || (k === 'collection' && projectModules.includes('references'))
           ).map((moduleKey) => {
             const mod = modulesConfig[moduleKey];
             if (!mod) return null;
-            const link = `/${workspaceId}/projects/${projId}/${moduleKey}`;
+            const link = moduleKey === 'tasks'
+              ? `/${workspaceId}/projects/${projId}/work-items`
+              : `/${workspaceId}/projects/${projId}/${moduleKey}`;
             const modActive =
-              pathname === link || pathname.startsWith(link + '/');
+              pathname === link ||
+              pathname.startsWith(link + '/') ||
+              (moduleKey === 'tasks' &&
+                (pathname === `/${workspaceId}/projects/${projId}/tasks` ||
+                  pathname.startsWith(`/${workspaceId}/projects/${projId}/tasks/`)));
             return (
               <Link
                 href={link}
                 key={moduleKey}
-                className={`group flex h-9 items-center gap-2 rounded-md pl-8 pr-2.5 text-sm transition-colors ${
+                className={cn(
+                  "group flex h-9.5 items-center gap-2.5 rounded-md pl-6.5 pr-2.5 text-sm transition-colors",
                   modActive
-                    ? 'bg-accent text-foreground font-semibold'
-                    : 'text-foreground font-medium hover:bg-accent/70 hover:text-foreground'
-                }`}
+                    ? "bg-accent text-foreground font-semibold"
+                    : "text-foreground font-medium hover:bg-accent/70 hover:text-foreground"
+                )}
               >
                 <mod.icon className="size-4 shrink-0 text-foreground transition-colors" />
                 <span className="min-w-0 truncate">{mod.label}</span>
@@ -374,9 +381,9 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none">
+    <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-transparent p-2 py-3 select-none">
       {/* Header */}
-      <div className="mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
+      <div className="mb-3 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
         <span>Projects</span>
         <TooltipProvider delayDuration={150}>
           <Tooltip>
@@ -405,7 +412,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               <Link
                 href={item.to}
                 key={item.label}
-                className="group relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70"
+                className="group relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70"
               >
                 {active && (
                   <motion.div
@@ -435,37 +442,46 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <Collapsible
         open={workspaceSectionOpen}
         onOpenChange={setWorkspaceSectionOpen}
-        className="mt-4 select-none group/workspace-header"
+        className="mt-3 select-none group/workspace-header"
       >
-        <div className="flex items-center justify-between h-10 px-2.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent/70 transition-colors">
+        <div className="flex items-center justify-between h-8.5 px-2.5 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
           <CollapsibleTrigger asChild>
-            <button className="flex-1 text-left text-sm font-semibold text-foreground cursor-pointer outline-none">
+            <button className="flex-1 text-left text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer outline-none">
               Workspace
             </button>
           </CollapsibleTrigger>
 
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              title={workspaceSectionOpen ? "Collapse workspace" : "Expand workspace"}
-              className="size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors outline-none"
-            >
-              <ChevronDown
-                className={cn(
-                  "size-4 text-foreground transition-transform duration-200",
-                  workspaceSectionOpen ? "" : "-rotate-90"
-                )}
-              />
-            </button>
-          </CollapsibleTrigger>
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={workspaceSectionOpen ? "Collapse workspace" : "Expand workspace"}
+                    className="size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-colors outline-none"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 text-foreground transition-transform duration-200",
+                        workspaceSectionOpen ? "" : "-rotate-90"
+                      )}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                {workspaceSectionOpen ? "Collapse workspace" : "Expand workspace"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
-        <CollapsibleContent className="overflow-hidden mt-2">
+        <CollapsibleContent className="overflow-hidden mt-1">
           <div className="flex flex-col gap-1">
             {/* Projects Item -> Navigates to Projects Screen */}
             <Link
               href={`/${workspaceId}/projects`}
-              className={`group relative flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors text-foreground ${
+              className={`group relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors text-foreground ${
                 isProjectsManageActive
                   ? 'bg-accent font-semibold'
                   : 'hover:bg-accent/70 font-medium'
@@ -479,7 +495,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             {pinnedArchives && (
               <Link
                 href={`/${workspaceId}/projects/archives`}
-                className={`group relative flex h-10 items-center justify-between rounded-md px-2.5 text-sm transition-colors text-foreground ${
+                className={`group relative flex h-9.5 items-center justify-between rounded-md px-2.5 text-sm transition-colors text-foreground ${
                   isArchivesActive
                     ? 'bg-accent font-semibold'
                     : 'hover:bg-accent/70 font-medium'
@@ -505,7 +521,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`group flex items-center justify-between w-full h-10 px-2.5 rounded-md text-sm transition-colors cursor-pointer ${
+                  className={`group flex items-center justify-between w-full h-9.5 px-2.5 rounded-md text-sm transition-colors cursor-pointer ${
                     isMorePopoverOpen
                       ? 'bg-accent font-semibold text-foreground'
                       : 'text-foreground hover:bg-accent/70 font-medium'
@@ -565,29 +581,38 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <Collapsible
           open={favoritesSectionOpen}
           onOpenChange={setFavoritesSectionOpen}
-          className="mt-4 select-none group/favorites-header"
+          className="mt-3 select-none group/favorites-header"
         >
-          <div className="flex items-center justify-between h-10 px-2.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent/70 transition-colors">
+          <div className="flex items-center justify-between h-8.5 px-2.5 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
             <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-sm font-semibold text-foreground cursor-pointer outline-none">
+              <button className="flex-1 text-left text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer outline-none">
                 Favorites
               </button>
             </CollapsibleTrigger>
-
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                title={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                className="size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors outline-none"
-              >
-                <ChevronDown
-                  className={cn(
-                    "size-4 text-foreground transition-transform duration-200",
-                    favoritesSectionOpen ? "" : "-rotate-90"
-                  )}
-                />
-              </button>
-            </CollapsibleTrigger>
+            
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
+                      className="size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-colors outline-none"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 text-foreground transition-transform duration-200",
+                          favoritesSectionOpen ? "" : "-rotate-90"
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  {favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           <CollapsibleContent className="overflow-hidden mt-1">
@@ -602,17 +627,17 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <Collapsible
         open={projectsSectionOpen}
         onOpenChange={setProjectsSectionOpen}
-        className="mt-4 select-none group/projects-header"
+        className="mt-3 select-none group/projects-header"
       >
-        <div className="flex items-center justify-between h-10 px-2.5 rounded-md text-sm font-semibold text-foreground hover:bg-accent/70 transition-colors">
+        <div className="flex items-center justify-between h-8.5 px-2.5 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
           <CollapsibleTrigger asChild>
-            <button className="flex-1 text-left text-sm font-semibold text-foreground cursor-pointer outline-none">
+            <button className="flex-1 text-left text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer outline-none">
               Projects
             </button>
           </CollapsibleTrigger>
 
           {/* Right Action Icons: Plus (+), Chevron (v) */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             {/* New Project Button with Tooltip */}
             <Dialog open={open} onOpenChange={setOpen}>
               <TooltipProvider delayDuration={150}>
@@ -623,11 +648,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                         type="button"
                         aria-label="Create project"
                         className={cn(
-                          "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 outline-none",
-                          open ? "opacity-100 bg-black/5 dark:bg-white/5" : "opacity-0 group-hover/projects-header:opacity-100 focus:opacity-100"
+                          "size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-all duration-150 outline-none",
+                          open ? "opacity-100 bg-black/8 dark:bg-white/8" : "opacity-0 group-hover/projects-header:opacity-100 focus:opacity-100"
                         )}
                       >
-                        <Plus className="size-4 text-foreground" />
+                        <Plus className="size-3.5 text-foreground" />
                       </button>
                     </DialogTrigger>
                   </TooltipTrigger>
@@ -651,21 +676,30 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               </DialogContent>
             </Dialog>
 
-            {/* Collapse / Expand Toggle Button */}
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                title={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                className="size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors outline-none"
-              >
-                <ChevronDown
-                  className={cn(
-                    "size-4 text-foreground transition-transform duration-200",
-                    projectsSectionOpen ? "" : "-rotate-90"
-                  )}
-                />
-              </button>
-            </CollapsibleTrigger>
+            {/* Collapse / Expand Toggle Button with Tooltip */}
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
+                      className="size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-colors outline-none"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 text-foreground transition-transform duration-200",
+                          projectsSectionOpen ? "" : "-rotate-90"
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6}>
+                  {projectsSectionOpen ? "Collapse projects" : "Expand projects"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 

@@ -77,7 +77,7 @@ export default function OutlineTab() {
             Outline
           </span>
           {outline.length > 0 && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
               {outline.length}
             </span>
           )}
@@ -107,7 +107,7 @@ export default function OutlineTab() {
             >
               <ChevronRight className="size-3 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
               <span className="truncate flex-1">{entry.title}</span>
-              <span className="text-[10px] text-muted-foreground/50 font-mono shrink-0 ml-1">
+              <span className="text-xs text-muted-foreground/50 font-mono shrink-0 ml-1">
                 L{entry.line}
               </span>
             </button>

@@ -52,7 +52,7 @@ export function Lead({ members, leadId, onSelect, disabled }: LeadProps) {
                     {selected.user.avatar && (
                       <AvatarImage src={selected.user.avatar} className="object-cover" />
                     )}
-                    <AvatarFallback className="text-[9px] bg-muted font-medium">
+                    <AvatarFallback className="text-xs bg-muted font-medium">
                       {selected.user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -123,7 +123,7 @@ export function Lead({ members, leadId, onSelect, disabled }: LeadProps) {
                         {m.user.avatar && (
                           <AvatarImage src={m.user.avatar} className="object-cover" />
                         )}
-                        <AvatarFallback className="text-[9px] bg-muted font-medium">
+                        <AvatarFallback className="text-xs bg-muted font-medium">
                           {m.user.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

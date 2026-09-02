@@ -251,7 +251,7 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
         {/* ── Tab Content: Emoji ── */}
         {tab === 'emoji' && (
           <div className="mt-2.5">
-            <div className="text-[11px] font-medium text-muted-foreground pb-1.5 px-0.5">
+            <div className="text-xs font-medium text-muted-foreground pb-1.5 px-0.5">
               Smileys & emotion
             </div>
             <div className="max-h-56 overflow-y-auto grid grid-cols-9 gap-1 p-0.5">
@@ -289,7 +289,7 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
               ))}
             </div>
 
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-0.5">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-0.5">
               <Info className="size-3 shrink-0" />
               <span>Colors will be adjusted to ensure sufficient contrast.</span>
             </div>

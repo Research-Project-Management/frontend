@@ -7,7 +7,7 @@ import { ChevronRight, HardDrive, Home } from 'lucide-react';
 
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
-  useHomeFiles,
+  useWorkspaceFiles,
   useToggleStarItem,
   useDeleteItem,
   useMoveItem,

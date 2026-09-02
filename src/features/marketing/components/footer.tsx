@@ -51,7 +51,7 @@ export default function Footer() {
 
           {/* Product */}
           <nav aria-label='Product links'>
-            <h3 className='text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4'>
+            <h3 className='text-sm font-semibold text-muted-foreground mb-4'>
               Product
             </h3>
             <ul className='space-y-1'>
@@ -63,7 +63,7 @@ export default function Footer() {
 
           {/* Company */}
           <nav aria-label='Company links'>
-            <h3 className='text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4'>
+            <h3 className='text-sm font-semibold text-muted-foreground mb-4'>
               Company
             </h3>
             <ul className='space-y-1'>
@@ -75,7 +75,7 @@ export default function Footer() {
 
           {/* Legal */}
           <nav aria-label='Legal links'>
-            <h3 className='text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4'>
+            <h3 className='text-sm font-semibold text-muted-foreground mb-4'>
               Legal
             </h3>
             <ul className='space-y-1'>

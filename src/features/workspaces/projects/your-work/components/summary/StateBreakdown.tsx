@@ -19,7 +19,7 @@ export function StateBreakdown({
 }: StateBreakdownProps) {
   const effectiveTotal = totalAssigned !== undefined ? totalAssigned : total;
   const workloadStates = [
-    { label: 'Backlog', count: statusBreakdown.backlog || 0, color: 'bg-zinc-400' },
+    { label: 'Backlog', count: statusBreakdown.backlog || 0, color: 'bg-muted-foreground/60' },
     { label: 'Not started', count: statusBreakdown.todo || 0, color: 'bg-blue-600' },
     { label: 'Working on', count: statusBreakdown.doing || 0, color: 'bg-amber-500' },
     { label: 'In review', count: statusBreakdown.review || 0, color: 'bg-yellow-400' },

@@ -101,7 +101,7 @@ export function ImportModal({
               <p className="text-xs font-medium text-foreground">
                 Drag & drop or browse CSV file
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Supported format: .csv
               </p>
             </div>

@@ -225,7 +225,7 @@ export function CoverModal({
               htmlFor="cover-file-dropzone"
               className="relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/80 hover:border-primary/60 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer min-h-[160px]"
             >
-              <div className="absolute top-2 right-2 text-[10px] text-muted-foreground font-medium border border-border/60 px-1.5 py-0.5 rounded bg-background">
+              <div className="absolute top-2 right-2 text-xs text-muted-foreground font-medium border border-border/60 px-1.5 py-0.5 rounded bg-background">
                 Edit
               </div>
 
@@ -253,7 +253,7 @@ export function CoverModal({
               />
             </label>
 
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               File formats supported- .jpeg, .jpg, .png, .webp
             </p>
 

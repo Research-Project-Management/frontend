@@ -85,7 +85,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
             <ChevronLeft className="size-4 text-foreground" />
           </Button>
         </div>
-        <span className="text-[14px] font-bold text-foreground">
+        <span className="text-sm font-bold text-foreground">
           {format(currentMonth, "MMMM yyyy")}
         </span>
         <div className="flex items-center gap-1">
@@ -100,7 +100,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
 
       <div className="grid grid-cols-7 mb-2">
         {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
-          <div key={d} className="text-[10px] font-bold text-muted-foreground text-center uppercase tracking-wider">{d}</div>
+          <div key={d} className="text-xs font-bold text-muted-foreground text-center">{d}</div>
         ))}
       </div>
 
@@ -130,7 +130,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
                 onMouseEnter={() => !isPast && setHoverDate(dateStr)}
                 onMouseLeave={() => setHoverDate(null)}
                 className={`
-                  h-9 w-full flex items-center justify-center text-[13px] transition-all relative z-10
+                  h-9 w-full flex items-center justify-center text-sm transition-all relative z-10
                   text-foreground font-medium
                   ${isStart || isEnd 
                     ? "bg-primary text-primary-foreground font-bold shadow-md rounded-md cursor-pointer" 
@@ -170,7 +170,7 @@ export const Dates = ({ formStart, formEnd, setFormStart, setFormEnd, trigger }:
     <Popover>
       <PopoverTrigger asChild>
         {trigger || (
-          <button className="h-10 rounded-sm border border-border bg-background px-4 text-[15px] font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer">
+          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer">
             <CalendarDays className="size-4 text-foreground" />
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Start date</span>

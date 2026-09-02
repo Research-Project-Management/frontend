@@ -48,7 +48,7 @@ export function AvatarSection({
               referrerPolicy="no-referrer"
             />
           )}
-          <AvatarFallback className="size-full rounded-lg bg-primary text-primary-foreground font-bold text-2xl uppercase">
+          <AvatarFallback className="size-full rounded-lg bg-primary text-primary-foreground font-bold text-2xl">
             {initial}
           </AvatarFallback>
         </Avatar>

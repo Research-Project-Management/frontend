@@ -76,13 +76,13 @@ export function ActivityFeedItem({
           src={activity.user?.avatar || undefined}
           alt={actorName}
         />
-        <AvatarFallback className="rounded-lg text-[11px] font-bold bg-muted">
+        <AvatarFallback className="rounded-lg text-xs font-bold bg-muted">
           {actorName.substring(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-foreground leading-snug">
+        <p className="text-sm text-foreground leading-snug">
           <span className="font-semibold text-foreground mr-1.5">
             {actorName}
           </span>
@@ -110,8 +110,8 @@ export function ActivityFeedItem({
           </span>
           {projectName && (
             <>
-              <span className="text-muted-foreground/40 text-[10px]">•</span>
-              <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[200px]">
+              <span className="text-muted-foreground/40 text-xs">•</span>
+              <span className="text-xs font-medium text-muted-foreground truncate max-w-[200px]">
                 {projectName}
               </span>
             </>

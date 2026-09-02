@@ -8,13 +8,13 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-serif: var(--font-serif), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: var(--font-sans), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --font-weight-extralight: 200;
   --font-weight-light: 300;
-  --font-weight-normal: 405;
+  --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
@@ -26,6 +26,11 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
   --leading-loose: 2;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+  --text-dense: 0.8125rem;
+  --text-dense--line-height: 1.125rem;
 
   --tracking-tighter: -0.05em;
   --tracking-tight: -0.025em;
@@ -240,6 +245,9 @@
   body {
     min-width: 320px;
     min-height: 100%;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    letter-spacing: -0.011em;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -259,69 +267,14 @@
     cursor: pointer;
   }
 
-  h1 {
-    font-size: 1.75rem;
-    line-height: 1.25;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    color: var(--foreground);
-  }
-
-  h2 {
-    font-size: 1.375rem;
-    line-height: 1.3;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--foreground);
-  }
-
-  h3 {
-    font-size: 1.125rem;
-    line-height: 1.4;
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    color: var(--foreground);
-  }
-
-  h4 {
-    font-size: 1rem;
-    line-height: 1.5;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--foreground);
-  }
-
-  h5 {
-    font-size: 0.875rem;
-    line-height: 1.5;
-    font-weight: 500;
-    color: var(--foreground);
-  }
-
-  h6 {
-    font-size: 0.75rem;
-    line-height: 1.5;
-    font-weight: 500;
-    color: var(--muted-foreground);
-  }
-
-  p {
-    font-size: 0.875rem;
-    line-height: 1.5;
-    color: var(--foreground);
-  }
-
-  small {
-    font-size: 0.75rem;
-    line-height: 1.5;
-  }
-
   code,
   kbd,
   samp,
   pre {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-feature-settings: "tnum";
+    font-size: 0.8125rem;
+    letter-spacing: normal;
   }
 
   a {
@@ -350,6 +303,66 @@
    -------------------------------------------------------------------------- */
 
 @layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .type-display {
+    font-size: 2rem;
+    line-height: 2.25rem;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+  }
+
+  .type-h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+  }
+
+  .type-h2 {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  .type-sub {
+    font-size: 0.9375rem;
+    line-height: 1.375rem;
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
+
+  .type-body {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    letter-spacing: -0.011em;
+    font-weight: 400;
+  }
+
+  .type-dense {
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+    letter-spacing: -0.005em;
+    font-weight: 400;
+  }
+
+  .type-caption {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+
+  .type-micro {
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+    letter-spacing: 0.025em;
+    font-weight: 500;
+  }
+
   .flux-container {
     @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10;
   }
@@ -386,23 +399,50 @@ html {
   scroll-behavior: smooth;
 }
 
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 1.5px !important;
+  height: 1.5px !important;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--gray-300);
-  border-radius: 20px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background-color: var(--border) !important;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background-color: oklch(30% 0 0);
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground) !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 1px !important;
+  height: 1px !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border) !important;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground) !important;
 }
 
 .kanban-scrollbar {

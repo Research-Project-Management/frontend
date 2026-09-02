@@ -5,18 +5,31 @@ export type StorageLevel = "workspace" | "project";
 export type StorageItem = {
     id: string;
     filename: string;
+    /** Alias for filename compatibility */
+    name?: string;
     isFolder: boolean;
     size?: number;
     mimeType?: string;
     url?: string;
     thumbnail?: string;
     starred: boolean;
+    /** Alias for starred compatibility */
+    isStarred?: boolean;
     parentId?: string | null;
     parent?: string | null;
+    trashedAt?: string | null;
     metaData?: Record<string, any>;
     sharedWith?: Array<{
-        user: string;
+        id?: string;
+        fileId?: string;
+        userId?: string;
         permission: 'view' | 'edit';
+        user?: {
+            id?: string;
+            name?: string;
+            email?: string;
+            avatar?: string;
+        } | string;
     }>;
     author: {
         id?: string;
@@ -45,6 +58,10 @@ export type StorageResponse = {
     page?: number;
     limit?: number;
     hasMore?: boolean;
+};
+
+export type StorageUsageResponse = {
+    totalBytes: number;
 };
 
 export type UploadFileParams = {

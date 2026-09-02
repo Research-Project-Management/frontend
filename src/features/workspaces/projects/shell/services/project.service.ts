@@ -43,13 +43,12 @@ export const deleteProjectApi = (projectId: string) =>
 
 export const archiveProjectApi = (projectId: string) =>
   apiPut<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}`, {
+    isActive: false,
     isArchived: true,
   });
 
 export const restoreProjectApi = (projectId: string) =>
-  apiPut<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}`, {
-    isArchived: false,
-  });
+  apiPost<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}/restore`);
 
 export const toggleProjectFavoriteApi = (projectId: string, isFavorite: boolean) =>
   apiPut<{ project?: Project; data?: Project } | Project>(`/api/project/${projectId}`, {

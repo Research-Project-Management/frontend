@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import {
-  AlertTriangle,
   Check,
   Info,
   Loader2,
-  RefreshCcw,
+  MessageSquare,
   StickyNote,
+  Highlighter,
   Trash2,
   X,
 } from 'lucide-react';
@@ -16,20 +16,22 @@ import { cn } from '@/shared/lib/utils';
 import type { Paper, Collection } from '../../../types/library.types';
 import type { ReaderPanel } from '../../../types/reader.types';
 import { CopilotDrawer } from '../../copilot/CopilotDrawer';
-import ChatPanel from './ChatPanel';
 import InfoSection from '../../panel/sections/InfoSection';
 import NotesPanel from './NotesPanel';
+import AnnotationsPanel from './AnnotationsPanel';
 
-const PANEL_ICONS: Record<ReaderPanel, React.ReactNode> = {
-  ai: <img src="/Chat.svg" alt="AI" className="size-4" />,
-  details: <Info className="size-4 text-foreground" />,
-  notes: <StickyNote className="size-4 text-foreground" />,
+const PANEL_ICONS: Record<ReaderPanel, React.ComponentType<{ className?: string }>> = {
+  ai: MessageSquare,
+  details: Info,
+  notes: StickyNote,
+  annotations: Highlighter,
 };
 
 const PANEL_TITLES: Record<ReaderPanel, string> = {
-  ai: 'AI',
-  details: 'Details',
+  ai: 'Assistant',
+  details: 'Info',
   notes: 'Notes',
+  annotations: 'Annotations',
 };
 
 // ── Props ────────────────────────────────────────────────────
@@ -72,7 +74,7 @@ export default function Sidebar({
   onResizeMouseDown,
 }: SidebarProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const ragStatus = paper?.ragStatus ?? 'idle';
+  const IconComponent = PANEL_ICONS[activePanel];
 
   return (
     <aside
@@ -82,31 +84,31 @@ export default function Sidebar({
       {/* Resize handle */}
       <div
         className={cn(
-          'absolute left-[-4px] top-0 z-20 hidden h-full w-2 cursor-col-resize items-center justify-center lg:flex',
-          isResizing && 'bg-primary/5',
+          'absolute left-[-3px] top-0 z-20 hidden h-full w-1.5 cursor-col-resize items-center justify-center lg:flex group',
+          isResizing && 'bg-primary/10',
         )}
         onMouseDown={onResizeMouseDown}
       >
         <div
           className={cn(
             'h-full w-px transition-colors',
-            isResizing ? 'bg-primary' : 'bg-transparent hover:bg-primary/40',
+            isResizing ? 'bg-primary' : 'bg-transparent group-hover:bg-border',
           )}
         />
       </div>
 
       {/* Panel header */}
-      <div className="flex h-[53px] shrink-0 items-center justify-between border-b border-border px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3.5 select-none">
         <div className="flex min-w-0 items-center gap-2">
-          {PANEL_ICONS[activePanel]}
-          <h2 className="truncate text-sm font-semibold text-foreground">
+          {IconComponent && <IconComponent className="size-4 text-muted-foreground" />}
+          <h2 className="truncate text-xs font-semibold text-foreground">
             {PANEL_TITLES[activePanel]}
           </h2>
         </div>
         <div className="flex items-center gap-1">
           {activePanel === 'ai' && paper?.ragDocId && (
             showClearConfirm ? (
-              <div className="flex h-7 items-center gap-0.5 rounded-md border border-destructive/20 bg-destructive/10 px-1 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex h-6 items-center gap-0.5 rounded border border-destructive/30 bg-destructive/10 px-1 animate-in fade-in duration-150">
                 <button
                   type="button"
                   onClick={() => {
@@ -114,7 +116,8 @@ export default function Sidebar({
                     setShowClearConfirm(false);
                   }}
                   title="Confirm clear conversation"
-                  className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors"
+                  aria-label="Confirm clear conversation"
+                  className="flex size-4.5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
                 >
                   <Check className="size-3" />
                 </button>
@@ -122,7 +125,8 @@ export default function Sidebar({
                   type="button"
                   onClick={() => setShowClearConfirm(false)}
                   title="Cancel"
-                  className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors"
+                  aria-label="Cancel"
+                  className="flex size-4.5 items-center justify-center rounded text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
                 >
                   <X className="size-3" />
                 </button>
@@ -134,9 +138,9 @@ export default function Sidebar({
                 onClick={() => setShowClearConfirm(true)}
                 title="Clear conversation"
                 aria-label="Clear conversation"
-                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-3.5" />
               </Button>
             )
           )}
@@ -145,34 +149,35 @@ export default function Sidebar({
             size="icon-sm"
             onClick={() => setActivePanel(null)}
             aria-label="Close panel"
+            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
           >
-            <X className="size-4" />
+            <X className="size-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Panel content */}
       <div className="flex-1 overflow-hidden">
-        {/* AI panel */}
+        {/* Assistant panel */}
         <div className={cn('h-full', activePanel !== 'ai' && 'hidden')}>
           {isLoading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-primary/60" />
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : paper ? (
             <CopilotDrawer
               paperId={paper.id}
-              paperTitle={paper.title || 'Paper'}
+              paperTitle={paper.title || 'Document'}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center text-muted-foreground text-xs">
-              No paper selected
+              No document selected
             </div>
           )}
         </div>
 
-        {/* Details panel */}
-        <div className={cn('h-full overflow-y-auto p-4', activePanel !== 'details' && 'hidden')}>
+        {/* Info panel */}
+        <div className={cn('h-full overflow-y-auto p-3.5', activePanel !== 'details' && 'hidden')}>
           {paper ? <InfoSection paper={paper} /> : null}
         </div>
 
@@ -184,6 +189,17 @@ export default function Sidebar({
               workspaceId={workspaceId}
               pendingText={pendingNoteText}
               onClearPendingText={clearPendingNoteText}
+            />
+          ) : null}
+        </div>
+
+        {/* Annotations panel */}
+        <div className={cn('h-full', activePanel !== 'annotations' && 'hidden')}>
+          {paper ? (
+            <AnnotationsPanel
+              paper={paper}
+              workspaceId={workspaceId}
+              attachmentId={paper.attachments?.[0]?.id}
             />
           ) : null}
         </div>

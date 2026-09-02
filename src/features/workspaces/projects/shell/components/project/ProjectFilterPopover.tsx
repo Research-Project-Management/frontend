@@ -309,7 +309,7 @@ export function ProjectFilterPopover({
                         <FilterCheckbox checked={isChecked} />
                         <Avatar className="size-4 shrink-0">
                           {lead.avatar && <AvatarImage src={lead.avatar} alt={displayName} />}
-                          <AvatarFallback className="text-[8px] bg-muted font-medium">
+                          <AvatarFallback className="text-xs bg-muted font-medium">
                             {displayName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -355,7 +355,7 @@ export function ProjectFilterPopover({
                         <FilterCheckbox checked={isChecked} />
                         <Avatar className="size-4 shrink-0">
                           {member.avatar && <AvatarImage src={member.avatar} alt={displayName} />}
-                          <AvatarFallback className="text-[8px] bg-muted font-medium">
+                          <AvatarFallback className="text-xs bg-muted font-medium">
                             {displayName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>

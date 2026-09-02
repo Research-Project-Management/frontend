@@ -1,24 +1,31 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Topbar from '../components/topbar/Topbar';
 import PaperTable from '../components/table/PaperTable';
 import InspectorPanel from '../components/panel/Panel';
 import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
 import { toast } from 'sonner';
 import { useLibrary } from '../hooks/library/use-library';
-import { usePapers } from '../hooks/library/use-papers';
+import { PaperService, paperKeys } from '../services/paper.service';
+import { useLibrarySidebarStore } from '../store/sidebar.store';
 import type { Paper } from '../types/library.types';
 
 export default function TrashPage() {
   const { state, actions } = useLibrary();
+  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
-    papers,
-    isLoading,
-    search,
     selectedPaperId,
     selectedPaper,
     selectedCollection,
@@ -26,29 +33,59 @@ export default function TrashPage() {
     collections,
   } = state;
 
-  const {
-    setSearch,
-    setSelectedPaperId,
-    handleDeletePaper,
-    handleBatchDeletePapers,
-  } = actions;
+  const { setSelectedPaperId } = actions;
 
-  const paperDataService = usePapers({ workspaceId });
+  const [search, setSearch] = useState('');
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
+  const queryClient = useQueryClient();
 
-  const trashPapers = useMemo(() => {
-    return (Array.isArray(papers) ? papers : [])
-      .filter((p: Paper) => Boolean(p.deletedAt))
-      .filter((p: Paper) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          (p.title || '').toLowerCase().includes(q) ||
-          (Array.isArray(p.authors) && p.authors.some((a: string) => a.toLowerCase().includes(q)))
-        );
+  const { data: trashData, isLoading } = useQuery({
+    queryKey: ['papers', workspaceId, 'view', 'trash', search],
+    queryFn: () =>
+      PaperService.getAll(workspaceId, {
+        view: 'trash',
+        search: search.trim() || undefined,
+      }),
+    enabled: Boolean(workspaceId),
+  });
+
+  const trashPapers: Paper[] = Array.isArray(trashData?.papers)
+    ? trashData.papers
+    : [];
+
+  const restoreMutation = useMutation({
+    mutationFn: (paperId: string) => PaperService.restore(workspaceId, paperId),
+    onSuccess: () => {
+      toast.success('Paper restored to library successfully', {
+        id: 'restore-success',
       });
-  }, [papers, search]);
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({
+        queryKey: paperKeys.all(workspaceId),
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to restore paper', {
+        id: 'restore-error',
+      });
+    },
+  });
+
+  const purgeMutation = useMutation({
+    mutationFn: (paperId: string) => PaperService.purge(workspaceId, paperId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['papers'] });
+      queryClient.invalidateQueries({
+        queryKey: paperKeys.all(workspaceId),
+      });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to purge paper', {
+        id: 'purge-error',
+      });
+    },
+  });
 
   const handleSelectPaper = (paper: Paper) => {
     const paperId = paper.id;
@@ -60,25 +97,21 @@ export default function TrashPage() {
   };
 
   const handleRestorePaper = async (paperId: string) => {
-    try {
-      await paperDataService.actions.updatePaper({ paperId, deletedAt: null });
-      toast.success('Paper restored to library successfully', { id: 'restore-success' });
-      await paperDataService.actions.refetchAll();
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to restore paper', { id: 'restore-error' });
-    }
+    await restoreMutation.mutateAsync(paperId);
   };
 
   const handleRestoreAll = async () => {
     try {
       for (const p of trashPapers) {
-        const id = p.id;
-        await paperDataService.actions.updatePaper({ paperId: id, deletedAt: null });
+        await restoreMutation.mutateAsync(p.id);
       }
-      toast.success(`Restored ${trashPapers.length} papers to library`, { id: 'restore-all' });
-      await paperDataService.actions.refetchAll();
+      toast.success(`Restored ${trashPapers.length} papers to library`, {
+        id: 'restore-all',
+      });
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to restore all papers', { id: 'restore-error' });
+      toast.error(err?.message || 'Failed to restore all papers', {
+        id: 'restore-error',
+      });
     }
   };
 
@@ -86,77 +119,78 @@ export default function TrashPage() {
     try {
       setIsPurging(true);
       for (const p of trashPapers) {
-        const id = p.id;
-        await paperDataService.actions.deletePaper({ paperId: id });
+        await purgeMutation.mutateAsync(p.id);
       }
       toast.success('Trash emptied successfully', { id: 'trash-empty' });
       setEmptyTrashDialogOpen(false);
-      await paperDataService.actions.refetchAll();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to empty trash', { id: 'trash-empty-error' });
+      toast.error(err?.message || 'Failed to empty trash', {
+        id: 'trash-empty-error',
+      });
     } finally {
       setIsPurging(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full min-w-0 flex-1 overflow-hidden">
-      <Topbar
-        title="Trash"
-        icon={Trash2}
-        search={search}
-        onSearchChange={setSearch}
-      >
-        {trashPapers.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRestoreAll}
-              className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
-            >
-              <RotateCcw className="size-3.5" />
-              <span>Restore All</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setEmptyTrashDialogOpen(true)}
-              className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
-            >
-              <Trash2 className="size-3.5" />
-              <span>Empty Trash</span>
-            </Button>
-          </div>
-        )}
-      </Topbar>
+    <div className="flex h-full min-w-0 flex-1 overflow-hidden">
+      {/* Left Main Content Area (Topbar + Table) */}
+      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+        <Topbar
+          title="Trash"
+          icon={Trash2}
+          search={search}
+          onSearchChange={setSearch}
+        >
+          {trashPapers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRestoreAll}
+                className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
+              >
+                <RotateCcw className="size-3.5" />
+                <span>Restore All</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setEmptyTrashDialogOpen(true)}
+                className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Empty Trash</span>
+              </Button>
+            </div>
+          )}
+        </Topbar>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Central Papers Table */}
-        <PaperTable
-          papers={trashPapers}
-          collectionMap={collectionMap}
-          collections={collections}
-          isLoading={isLoading}
-          isSearch={Boolean(search.trim())}
-          selectedPaperId={selectedPaperId}
-          onSelectPaper={handleSelectPaper}
-          onDeletePaper={handleDeletePaper}
-          onBatchDeletePapers={handleBatchDeletePapers}
-          onClearSearch={() => setSearch('')}
-          showCollection={true}
-        />
-
-        {/* Right Inspector Panel */}
-        {selectedPaper && (
-          <InspectorPanel
-            paper={selectedPaper}
-            collection={selectedCollection}
-            workspaceId={workspaceId}
-            onClose={() => setSelectedPaperId(null)}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+          <PaperTable
+            papers={trashPapers}
+            collectionMap={collectionMap}
+            collections={collections}
+            isLoading={isLoading}
+            isSearch={Boolean(search.trim())}
+            selectedPaperId={selectedPaperId}
+            onSelectPaper={handleSelectPaper}
+            onDeletePaper={handleRestorePaper}
+            onBatchDeletePapers={() => {}}
+            onClearSearch={() => setSearch('')}
+            showCollection={true}
           />
-        )}
+        </div>
       </div>
+
+      {/* Right Inspector Panel */}
+      <InspectorPanel
+        paper={selectedPaper || null}
+        collection={selectedCollection || null}
+        workspaceId={workspaceId}
+        onClose={() => setSelectedPaperId(null)}
+      />
 
       {/* Empty Trash Confirmation Dialog */}
       <Dialog open={emptyTrashDialogOpen} onOpenChange={setEmptyTrashDialogOpen}>
@@ -172,10 +206,18 @@ export default function TrashPage() {
           </DialogHeader>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setEmptyTrashDialogOpen(false)} disabled={isPurging}>
+            <Button
+              variant="outline"
+              onClick={() => setEmptyTrashDialogOpen(false)}
+              disabled={isPurging}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleConfirmEmptyTrash} disabled={isPurging}>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmEmptyTrash}
+              disabled={isPurging}
+            >
               {isPurging ? 'Purging...' : 'Delete Permanently'}
             </Button>
           </DialogFooter>

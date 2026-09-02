@@ -114,11 +114,11 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <h2 className="text-3xl font-serif font-bold tracking-tight text-foreground leading-tight">
+                <h2 className="text-3xl font-semibold tracking-tight text-foreground leading-tight">
                   {greeting.text}{fullName ? `, ${fullName}` : ""}
                 </h2>
-                <div className="flex items-center gap-2.5 text-sm font-semibold text-muted-foreground mt-1" suppressHydrationWarning>
-                  <span className="text-lg">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mt-1.5" suppressHydrationWarning>
+                  <span className="text-base">
                     {greeting.icon}
                   </span>
                   <span suppressHydrationWarning>{mounted ? format(now, "EEEE, MMMM do, h:mm a") : ""}</span>

@@ -109,18 +109,18 @@ function EntryRow({
       {type === 'warning' && <AlertTriangle className="size-3.5 text-amber-500 shrink-0 mt-0.5" />}
       {type === 'badbox' && <Info className="size-3.5 text-blue-500 shrink-0 mt-0.5" />}
       <div className="flex-1 min-w-0">
-        <p className="text-foreground font-mono text-[11px] leading-snug break-words">
+        <p className="text-foreground font-mono text-xs leading-snug break-words">
           {entry.message}
         </p>
         {(entry.file || entry.line !== undefined) && (
-          <p className="text-[10px] mt-0.5 text-muted-foreground">
+          <p className="text-xs mt-0.5 text-muted-foreground">
             {entry.file && <span className="text-foreground/70">{entry.file}</span>}
             {entry.file && entry.line !== undefined && <span> · </span>}
             {entry.line !== undefined && <span>Line {entry.line}</span>}
           </p>
         )}
         {entry.detail && (
-          <p className="text-muted-foreground/80 text-[10px] mt-0.5 truncate">{entry.detail}</p>
+          <p className="text-muted-foreground/80 text-xs mt-0.5 truncate">{entry.detail}</p>
         )}
       </div>
     </div>
@@ -197,7 +197,7 @@ export default function Logs({ log, onClose }: LogsProps) {
               type="button"
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium border-b-2 shrink-0 transition-colors outline-none',
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 shrink-0 transition-colors outline-none',
                 activeTab === tab.key
                   ? 'border-primary text-foreground font-semibold'
                   : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -207,7 +207,7 @@ export default function Logs({ log, onClose }: LogsProps) {
               {countOf(tab.key) !== null && (
                 <span
                   className={cn(
-                    'px-1 min-w-4 text-center rounded-full text-[10px] font-bold leading-4',
+                    'px-1 min-w-4 text-center rounded-full text-xs font-bold leading-4',
                     badgeClass(tab.key),
                   )}
                 >
@@ -230,7 +230,7 @@ export default function Logs({ log, onClose }: LogsProps) {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {activeTab === 'raw' && (
-          <pre className="p-3 text-foreground/90 font-mono text-[11px] whitespace-pre-wrap leading-5">
+          <pre className="p-3 text-foreground/90 font-mono text-xs whitespace-pre-wrap leading-5">
             {log}
           </pre>
         )}

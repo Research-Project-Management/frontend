@@ -8,8 +8,16 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { X, Check, Copy, RefreshCw, Zap, AlertTriangle } from 'lucide-react';
+import { Check, Copy, RefreshCw, Zap, AlertTriangle } from 'lucide-react';
 import { AiPatchEngine, type AiEditResponse, type AiEditOperation } from '@/features/editor/utils/ai.util';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Badge } from '@/shared/components/ui/badge';
 
 function DiffRow({ label, text, color }: { label: string; text: string; color: 'red' | 'green' }) {
   const lines = text.split('\n');
@@ -26,11 +34,11 @@ function DiffRow({ label, text, color }: { label: string; text: string; color: '
       {lines.map((line, i) => (
         <div key={`${label}-${i}`} className={`flex px-0 ${bgClass}`}>
           <span
-            className={`select-none shrink-0 w-5 text-center text-[10px] border-r border-border/40 mr-2 ${gutterClass}`}
+            className={`select-none shrink-0 w-5 text-center text-xs border-r border-border/40 mr-2 ${gutterClass}`}
           >
             {glyph}
           </span>
-          <span className={`py-px pr-4 whitespace-pre font-mono text-[11px] ${textClass}`}>
+          <span className={`py-px pr-4 whitespace-pre font-mono text-xs ${textClass}`}>
             {line}
           </span>
         </div>
@@ -61,21 +69,21 @@ function EditDiffBlock({
   return (
     <div className="border border-border/60 rounded-lg overflow-hidden mb-3 text-xs bg-background shadow-xs">
       <div className="flex items-center justify-between px-3 py-1.5 bg-secondary/50 border-b border-border/40">
-        <span className="font-mono text-[11px] text-muted-foreground font-medium">
+        <span className="font-mono text-xs text-muted-foreground font-medium">
           Change #{index + 1}: {rangeLabel}
         </span>
         {edit.description && (
-          <span className="text-[11px] text-foreground/70 truncate max-w-[280px]">
+          <span className="text-xs text-foreground/70 truncate max-w-[280px]">
             {edit.description}
           </span>
         )}
       </div>
 
-      <div className="divide-y divide-border/20 font-mono text-[11px]">
+      <div className="divide-y divide-border/20 font-mono text-xs">
         {oldText && <DiffRow label="old" text={oldText} color="red" />}
         {edit.text && <DiffRow label="new" text={edit.text} color="green" />}
         {!oldText && !edit.text && (
-          <div className="px-3 py-2 text-muted-foreground/40 text-[10px]">(empty change)</div>
+          <div className="px-3 py-2 text-muted-foreground/40 text-xs">(empty change)</div>
         )}
       </div>
     </div>
@@ -111,40 +119,23 @@ export function EditPreview({
   const isNoChange = editResponse.intent === 'no_change';
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ai-edit-preview-title"
-      className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200"
-    >
-      <div className="bg-background border border-border rounded-lg shadow-2xl w-[600px] max-w-[94vw] max-h-[85vh] flex flex-col overflow-hidden">
+    <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="w-[600px] max-w-[94vw] max-h-[85vh] p-0 flex flex-col overflow-hidden gap-0" showCloseButton={true}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <DialogHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-border shrink-0 space-y-0">
           <div className="flex items-center gap-2">
             <Zap className="size-4 text-primary" />
-            <span id="ai-edit-preview-title" className="text-sm font-semibold">
+            <DialogTitle className="text-sm font-semibold">
               AI Edit Preview
-            </span>
-            <span
-              className={[
-                'text-[9px] font-semibold px-1.5 py-px rounded-full border',
-                isNoChange
-                  ? 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-                  : 'bg-primary/10 text-primary border-primary/20',
-              ].join(' ')}
+            </DialogTitle>
+            <Badge
+              variant={isNoChange ? "secondary" : "default"}
+              className="text-xs font-medium capitalize"
             >
               {editResponse.intent.replace(/_/g, ' ')}
-            </span>
+            </Badge>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close AI preview"
-            className="p-1 rounded-lg hover:bg-secondary/80 transition-colors outline-none"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* Explanation */}
         <div className="px-4 py-2.5 bg-secondary/20 border-b border-border/40 shrink-0">
@@ -157,12 +148,12 @@ export function EditPreview({
         {safetyWarning && (
           <div className="flex items-start gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 shrink-0">
             <AlertTriangle className="size-3.5 text-primary shrink-0 mt-px" />
-            <p className="text-[11px] text-foreground/80 leading-relaxed">{safetyWarning}</p>
+            <p className="text-xs text-foreground/80 leading-relaxed">{safetyWarning}</p>
           </div>
         )}
 
         {/* Diff view */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="flex-1 overflow-y-auto px-4 py-3 max-h-[50vh]">
           {isNoChange ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground/50">
               <Check className="size-8 text-emerald-500/50" />
@@ -181,49 +172,57 @@ export function EditPreview({
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0 gap-2">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border shrink-0 gap-2 bg-card">
           <div className="flex items-center gap-2">
             {onRegenerate && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={onRegenerate}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-secondary/80 transition-colors text-muted-foreground outline-none"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <RefreshCw className="size-3" />
-                Regenerate
-              </button>
+                <span>Regenerate</span>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-secondary/80 transition-colors text-muted-foreground outline-none"
+              className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
               {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </Button>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onCancel}
-              className="px-4 py-1.5 text-xs rounded-lg border border-border hover:bg-secondary/80 transition-colors outline-none"
+              className="text-xs"
             >
               Cancel
-            </button>
+            </Button>
             {!isNoChange && editResponse.edits.length > 0 && (
-              <button
+              <Button
                 type="button"
+                variant="default"
+                size="sm"
                 onClick={() => onApply(editResponse.edits)}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium outline-none"
+                className="gap-1.5 text-xs font-medium"
               >
                 <Zap className="size-3" />
-                Apply{editResponse.edits.length > 1 ? ` ${editResponse.edits.length} edits` : ''}
-              </button>
+                <span>Apply{editResponse.edits.length > 1 ? ` ${editResponse.edits.length} edits` : ''}</span>
+              </Button>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

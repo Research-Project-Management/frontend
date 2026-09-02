@@ -1,7 +1,7 @@
 'use client';
 
 import { use } from 'react';
-import TaskPage from '@/features/workspaces/projects/project-id/tasks/pages/TaskPage';
+import WorkItemPage from '@/features/workspaces/projects/project-id/work-items/pages/WorkItemPage';
 import { useProjectCycles, deriveStatus } from '@/features/workspaces/projects/project-id/cycles/hooks/use-cycle';
 
 interface Props {
@@ -14,5 +14,5 @@ export default function CycleDetailPage({ params }: Props) {
   const currentCycle = cyclesData?.cycles.find((c: any) => c.id === cycleId);
   const isReadOnly = currentCycle ? deriveStatus(currentCycle) === 'completed' : false;
 
-  return <TaskPage cycleId={cycleId} isReadOnly={isReadOnly} />;
+  return <WorkItemPage cycleId={cycleId} isReadOnly={isReadOnly} />;
 }

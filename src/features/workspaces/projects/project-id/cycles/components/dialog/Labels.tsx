@@ -80,7 +80,7 @@ const LabelSelect = ({
               {editingName && <span className="text-xs font-bold text-white truncate max-w-full drop-shadow-sm">{editingName}</span>}
             </div>
             <div className="space-y-2">
-              <Label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wide">Title</Label>
+              <Label className="text-sm font-semibold text-muted-foreground">Title</Label>
               <Input
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
@@ -90,7 +90,7 @@ const LabelSelect = ({
               />
             </div>
             <div className="space-y-3">
-              <Label className="text-[13px] font-bold text-muted-foreground uppercase tracking-wide">Select a color</Label>
+              <Label className="text-sm font-semibold text-muted-foreground">Select a color</Label>
               <div className="grid grid-cols-5 gap-2">
 
                 {AVAILABLE_LABEL_COLORS.map((item: any) => (
@@ -144,12 +144,12 @@ const LabelSelect = ({
               placeholder="Search labels..." 
               value={labelSearch} 
               onChange={(e) => setLabelSearch(e.target.value)} 
-              className="h-9 border-border bg-background pl-9 text-[15px] shadow-none transition-all focus-visible:ring-1 focus-visible:ring-primary" 
+              className="h-9 border-border bg-background pl-9 text-base shadow-none transition-all focus-visible:ring-1 focus-visible:ring-primary" 
             />
           </div>
         </div>
         <div className="shrink-0 bg-popover px-4 pt-2">
-          <h4 className="text-[13px] font-bold text-muted-foreground uppercase tracking-wide">Labels</h4>
+          <h4 className="text-sm font-semibold text-muted-foreground">Labels</h4>
         </div>
 
         <div 
@@ -190,10 +190,10 @@ const LabelSelect = ({
                 <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Tag className="size-6 text-foreground/40" />
                 </div>
-                <p className="text-[14px] font-medium text-foreground">
+                <p className="text-sm font-medium text-foreground">
                   {labelSearch ? "No labels found" : "No labels yet"}
                 </p>
-                <p className="text-[12px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {labelSearch 
                     ? `We couldn't find any labels matching "${labelSearch}"`
                     : "Create your first label to start organizing."}
@@ -220,7 +220,7 @@ const LabelSelect = ({
     <Popover open={isOpen} onOpenChange={(val) => { setIsOpen(val); if(!val) setView("list"); }}>
       <PopoverTrigger asChild>
         {trigger || (
-          <Button variant="outline" className="h-10 rounded-lg border-border bg-background px-4 text-[14px] font-semibold text-foreground shadow-none hover:bg-muted cursor-pointer"><Tag className="mr-2 h-4 w-4 text-foreground" />Labels</Button>
+          <Button variant="outline" className="h-10 rounded-lg border-border bg-background px-4 text-sm font-semibold text-foreground shadow-none hover:bg-muted cursor-pointer"><Tag className="mr-2 h-4 w-4 text-foreground" />Labels</Button>
         )}
       </PopoverTrigger>
       <PopoverContent
@@ -255,7 +255,7 @@ export const Labels = ({
       trigger={
         <button 
           ref={triggerRef} 
-          className="h-10 rounded-sm border border-border bg-background px-4 text-[15px] font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer"
+          className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer"
         >
           <Tag className="size-4 text-foreground" /> Labels
         </button>

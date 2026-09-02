@@ -1,8 +1,5 @@
 import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-import type {
-  RelatedPaperItem,
-  WorkspaceKnowledgeGraph,
-} from '../types/library.types';
+import type { RelatedPaperItem } from '../types/library.types';
 
 export const RelationService = {
   /**
@@ -34,18 +31,10 @@ export const RelationService = {
     apiDelete<{ message: string }>(
       `/api/library/relations/${encodeURIComponent(workspaceId)}/${encodeURIComponent(paperId)}/link/${encodeURIComponent(targetPaperId)}`,
     ),
-
-  /**
-   * Generate interactive Node-Edge Knowledge Graph for the workspace
-   */
-  getWorkspaceGraph: (workspaceId: string) =>
-    apiGet<WorkspaceKnowledgeGraph>(
-      `/api/library/relations/${encodeURIComponent(workspaceId)}/graph`,
-    ),
 };
 
 // Aliases
 export const getRelatedPapers = RelationService.getRelated;
 export const linkPapers = RelationService.link;
 export const unlinkPapers = RelationService.unlink;
-export const getWorkspaceKnowledgeGraph = RelationService.getWorkspaceGraph;
+

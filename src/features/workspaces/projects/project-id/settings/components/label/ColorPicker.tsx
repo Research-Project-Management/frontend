@@ -105,7 +105,7 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
             maxLength={6}
             onChange={handleHexChange}
             placeholder="HEX"
-            className="w-full text-xs font-mono font-medium text-foreground bg-transparent outline-none uppercase"
+            className="w-full text-xs font-mono font-medium text-foreground bg-transparent outline-none"
           />
         </div>
       </PopoverContent>

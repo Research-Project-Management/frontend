@@ -14,7 +14,7 @@ const MODULES: ModuleDef[] = [
   { id: 'overview',   label: 'Overview',   desc: 'Project dashboard and summary', icon: LayoutDashboard, locked: true },
   { id: 'pages',      label: 'Pages',      desc: 'Collaborative documents and notes', icon: FileText },
   { id: 'collection', label: 'Collection', desc: 'Project papers and bibliography collection', icon: BookOpen },
-  { id: 'tasks',      label: 'Tasks',      desc: 'Issue tracking and work items', icon: CheckSquare },
+  { id: 'tasks',      label: 'Work items', desc: 'Issue tracking and work items', icon: CheckSquare },
   { id: 'cycles',     label: 'Cycles',     desc: 'Sprint-based iteration planning', icon: RefreshCcw },
   { id: 'storage',    label: 'Storage',    desc: 'File storage and attachments', icon: HardDrive },
   { id: 'stickies',   label: 'Stickies',   desc: 'Quick sticky notes', icon: StickyNote },

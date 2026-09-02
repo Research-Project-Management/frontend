@@ -61,8 +61,14 @@ export default function ProfileTab() {
     try {
       const finalUrl = await uploadFile(file, 'workspace/avatars');
       form.setValue('avatar', finalUrl, { shouldDirty: true });
+      const computedName = (
+        form.getValues('displayName')?.trim() ||
+        currentName.trim() ||
+        user?.name ||
+        ''
+      );
       updateProfileMutation.mutate({
-        name: currentName.trim() || user?.name || '',
+        name: computedName,
         avatar: finalUrl,
       });
     } catch (err: unknown) {
@@ -71,8 +77,14 @@ export default function ProfileTab() {
   };
 
   const onSubmit = (values: z.infer<typeof updateProfileSchema>) => {
+    const computedName = (
+      values.displayName?.trim() ||
+      `${values.firstName.trim()} ${values.lastName?.trim() || ''}`.trim() ||
+      user?.name ||
+      ''
+    );
     updateProfileMutation.mutate({
-      name: `${values.firstName.trim()} ${values.lastName?.trim() || ''}`.trim(),
+      name: computedName,
       avatar: values.avatar || null,
     });
   };
@@ -115,7 +127,7 @@ export default function ProfileTab() {
       <AvatarFallback>{String(currentName).substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
     </Avatar>
                 <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
-                  <span className='text-[10px] text-white font-medium'>Upload</span>
+                  <span className='text-xs text-white font-medium'>Upload</span>
                 </div>
               </button>
               <input

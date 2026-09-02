@@ -5,7 +5,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useRegister } from '../hooks/use-register';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
 
 const RegisterPage = () => {
   const {
@@ -36,27 +35,22 @@ const RegisterPage = () => {
   if (user) return null;
 
   return (
-    <div className='flex min-h-screen items-start justify-center bg-background px-4 py-12 sm:py-24'>
-      <div className='mx-auto w-full max-w-sm flex flex-col gap-6'>
-        <div className='flex flex-col items-center gap-4'>
+    <div className='flex min-h-dvh items-center justify-center bg-background px-4 py-8'>
+      <div className='mx-auto w-full max-w-sm flex flex-col gap-5'>
+        <div className='flex flex-col items-center gap-3 text-center'>
           <Link href='/'>
-            <img src='/Flux.svg' alt='Flux' className='w-16 h-16' />
+            <img src='/Flux.svg' alt='Flux' className='w-14 h-14' />
           </Link>
-          <div className='space-y-1.5 text-center'>
-            <h2 className='text-2xl font-bold'>Create your account</h2>
-            <p className='text-muted-foreground'>
-              Join Flux to organize, write, and collaborate on your research.
-            </p>
-          </div>
+          <h2 className='text-2xl font-semibold tracking-tight text-foreground'>Create your account</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-          <div className='flex flex-col gap-1.5'>
-            <Label htmlFor='name'>Full name</Label>
+        <form onSubmit={handleSubmit} className='flex flex-col gap-3.5'>
+          <div className='flex flex-col gap-1'>
             <Input
               id='name'
               type='text'
-              placeholder='Jane Doe'
+              placeholder='Full name'
+              aria-label='Full name'
               className='h-10 rounded-lg'
               {...register('name')}
             />
@@ -65,12 +59,12 @@ const RegisterPage = () => {
             )}
           </div>
 
-          <div className='flex flex-col gap-1.5'>
-            <Label htmlFor='email'>Email address</Label>
+          <div className='flex flex-col gap-1'>
             <Input
               id='email'
               type='email'
-              placeholder='you@example.com'
+              placeholder='Email'
+              aria-label='Email'
               className='h-10 rounded-lg'
               {...register('email')}
             />
@@ -79,13 +73,13 @@ const RegisterPage = () => {
             )}
           </div>
 
-          <div className='flex flex-col gap-1.5'>
-            <Label htmlFor='password'>Password</Label>
+          <div className='flex flex-col gap-1'>
             <div className='relative'>
               <Input
                 id='password'
                 type={showPassword ? 'text' : 'password'}
-                placeholder='••••••••'
+                placeholder='Password'
+                aria-label='Password'
                 className='h-10 pr-10 rounded-lg'
                 {...register('password')}
               />
@@ -103,13 +97,13 @@ const RegisterPage = () => {
             )}
           </div>
 
-          <div className='flex flex-col gap-1.5'>
-            <Label htmlFor='confirmPassword'>Confirm password</Label>
+          <div className='flex flex-col gap-1'>
             <div className='relative'>
               <Input
                 id='confirmPassword'
                 type={showConfirmPassword ? 'text' : 'password'}
-                placeholder='••••••••'
+                placeholder='Confirm password'
+                aria-label='Confirm password'
                 className='h-10 pr-10 rounded-lg'
                 {...register('confirmPassword')}
               />
@@ -135,7 +129,7 @@ const RegisterPage = () => {
 
           <Button
             type='submit'
-            className='w-full h-10 mt-2 rounded-lg cursor-pointer'
+            className='w-full h-10 mt-1 rounded-lg cursor-pointer'
             disabled={isPending}
           >
             {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
@@ -143,7 +137,7 @@ const RegisterPage = () => {
           </Button>
         </form>
 
-        <div className='text-center text-muted-foreground'>
+        <div className='text-center text-sm text-muted-foreground'>
           Already have an account?{' '}
           <Link
             href='/login'
@@ -153,16 +147,7 @@ const RegisterPage = () => {
           </Link>
         </div>
 
-        <div className='relative'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t border-border' />
-          </div>
-          <div className='relative flex justify-center text-[11px] uppercase tracking-wider font-semibold text-muted-foreground'>
-            <span className='bg-background px-2'>Or continue with</span>
-          </div>
-        </div>
-
-        <div className='flex flex-col gap-3 mt-2'>
+        <div className='flex flex-col gap-2.5'>
           <Button
             variant='outline'
             type='button'

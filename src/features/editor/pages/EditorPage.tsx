@@ -89,8 +89,8 @@ function ImagePanel({ asset }: { asset: AssetInfo }) {
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-xs text-muted-foreground shrink-0 bg-secondary/30">
         <FileImage className="size-3.5 text-primary" />
         <span className="font-medium text-foreground truncate">{asset.filename}</span>
-        {ext && <span className="px-1.5 py-0.5 rounded bg-secondary font-mono text-[10px] text-muted-foreground">{ext}</span>}
-        {sizeLabel && <span className="text-[11px] text-muted-foreground/70">{sizeLabel}</span>}
+        {ext && <span className="px-1.5 py-0.5 rounded bg-secondary font-mono text-xs text-muted-foreground">{ext}</span>}
+        {sizeLabel && <span className="text-xs text-muted-foreground/70">{sizeLabel}</span>}
       </div>
       <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-muted/20">
         {asset.url ? (
@@ -482,7 +482,7 @@ function EditorShell() {
             display: showViewer ? undefined : 'none'
           }}
           className={cn(
-            "min-w-0 overflow-hidden bg-muted/20 dark:bg-zinc-950/60 border-l border-border/40",
+            "min-w-0 overflow-hidden bg-muted/20 dark:bg-background/60 border-l border-border/40",
             isDraggingSplitter && "transition-none"
           )}
         >

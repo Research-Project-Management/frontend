@@ -41,6 +41,7 @@ export default function GridView({
   items,
   onToggleStar,
   onDelete,
+  onRestore,
   onDownload,
   onFolderClick,
   onFileClick,
@@ -185,6 +186,7 @@ export default function GridView({
                         item={item}
                         onToggleStar={onToggleStar}
                         onDelete={onDelete}
+                        onRestore={onRestore}
                         onDownload={onDownload}
                         isTrash={isTrash}
                         onMoveToParent={onMoveToParent}
@@ -216,7 +218,7 @@ export default function GridView({
                         />
                       ) : (
                         <div className="size-4 rounded-full bg-muted flex items-center justify-center">
-                          <span className="text-[10px] font-medium">
+                          <span className="text-xs font-medium">
                             {item.author.name?.charAt(0)?.toUpperCase()}
                           </span>
                         </div>

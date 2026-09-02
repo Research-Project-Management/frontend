@@ -79,10 +79,10 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
       )}
     >
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border/70 bg-muted/30">
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-muted/20">
         <div className="flex items-center gap-2 overflow-hidden">
-          <div className="size-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-            <Sparkles className="size-3.5 text-primary animate-pulse" />
+          <div className="size-6 rounded-md bg-muted flex items-center justify-center shrink-0 border border-border/60">
+            <Sparkles className="size-3.5 text-foreground" />
           </div>
           <div className="flex flex-col overflow-hidden">
             <span className="text-xs font-semibold truncate leading-tight">
@@ -98,7 +98,8 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
             type="button"
             onClick={clearMessages}
             title="Clear Chat History"
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            aria-label="Clear chat history"
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -113,8 +114,8 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
         {messages.length === 0 ? (
           <div className="h-full flex flex-col justify-center gap-6 py-4">
             <div className="text-center space-y-1.5 px-2">
-              <div className="size-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-2 text-foreground">
-                <Bot className="size-5" />
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-2 text-foreground border border-border/60">
+                <Bot className="size-5 text-muted-foreground" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">
                 Ask anything about this paper
@@ -140,7 +141,7 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
                   className={cn(
                     'size-6 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold mt-0.5',
                     isUser
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'bg-foreground text-background'
                       : 'bg-muted text-muted-foreground border border-border',
                   )}
                 >
@@ -148,16 +149,16 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
                 </div>
                 <div
                   className={cn(
-                    'p-3 rounded-xl leading-relaxed text-xs space-y-2',
+                    'p-3 rounded-lg leading-relaxed text-xs space-y-2',
                     isUser
-                      ? 'bg-primary text-primary-foreground rounded-tr-none'
-                      : 'bg-card border border-border/80 rounded-tl-none text-foreground/90',
+                      ? 'bg-foreground text-background rounded-tr-none'
+                      : 'bg-muted/30 border border-border rounded-tl-none text-foreground',
                   )}
                 >
                   <div className="whitespace-pre-wrap select-text">
                     {msg.content}
                     {msg.isStreaming && (
-                      <span className="inline-block size-1.5 bg-primary animate-ping rounded-full ml-1" />
+                      <span className="inline-block w-1.5 h-3 bg-primary/70 align-middle ml-1 animate-pulse" />
                     )}
                   </div>
 
@@ -176,7 +177,7 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
 
                   {/* Action Bar for Assistant Message */}
                   {!isUser && !msg.isStreaming && (
-                    <div className="pt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <div className="pt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <button
                         type="button"
                         onClick={() => handleSaveNote(msg.content)}
@@ -195,21 +196,22 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
       </div>
 
       {/* ── Input Box ────────────────────────────────────────────────────── */}
-      <div className="p-3 border-t border-border/70 bg-card/40">
-        <div className="flex items-end gap-1.5 p-1.5 rounded-xl border border-border bg-background focus-within:border-primary/60 transition-all shadow-xs">
+      <div className="p-3 border-t border-border bg-background">
+        <div className="flex items-end gap-1.5 p-1.5 rounded-lg border border-border bg-background focus-within:ring-1 focus-within:ring-ring focus-within:border-border transition-colors">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a question or cite page..."
             rows={1}
-            className="flex-1 resize-none bg-transparent px-2 py-1 text-[12px] outline-none placeholder:text-muted-foreground/60 max-h-28 min-h-[32px]"
+            className="flex-1 resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-muted-foreground/60 max-h-28 min-h-[32px]"
           />
           {isStreaming ? (
             <button
               type="button"
               onClick={stopStreaming}
-              className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors shrink-0 cursor-pointer"
+              aria-label="Stop generating response"
+              className="p-1.5 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <Square className="size-3.5 fill-current" />
             </button>
@@ -218,13 +220,14 @@ export const CopilotDrawer: React.FC<CopilotDrawerProps> = ({
               type="button"
               disabled={!input.trim()}
               onClick={() => sendMessage()}
-              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+              aria-label="Send message"
+              className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <ArrowUp className="size-3.5 stroke-[2.5]" />
             </button>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground/60 text-center mt-1.5">
+        <p className="text-xs text-muted-foreground text-center mt-1.5">
           Press Enter to send • Shift+Enter for new line
         </p>
       </div>

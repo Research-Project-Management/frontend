@@ -3,14 +3,14 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { TaskDetailModal as TaskDialog } from '@/features/workspaces/projects/project-id/tasks/components/modals/task/TaskDetailModal';
+import { WorkItemDetailModal as TaskDialog } from '@/features/workspaces/projects/project-id/work-items/components/modals/work-item/WorkItemDetailModal';
 import {
   useProjectTasks,
   useUpdateTask,
   useDeleteTask,
   useDuplicateTask,
-} from '@/features/workspaces/projects/project-id/tasks/hooks/use-task';
-import type { TaskMutationInput } from '@/features/workspaces/projects/project-id/tasks/types/task.types';
+} from '@/features/workspaces/projects/project-id/work-items/hooks/use-work-item';
+import type { WorkItemMutationInput as TaskMutationInput } from '@/features/workspaces/projects/project-id/work-items/types/work-item.types';
 import { useProjectDetails } from '@/features/workspaces/projects/shell/hooks/use-project';
 
 export interface TaskDialogModalProps {

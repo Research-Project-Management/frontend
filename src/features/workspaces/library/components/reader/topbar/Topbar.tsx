@@ -12,8 +12,8 @@ import {
   PanelRightOpen,
   RefreshCcw,
   StickyNote,
+  Highlighter,
 } from 'lucide-react';
-import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Separator } from '@/shared/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
@@ -21,21 +21,38 @@ import { cn } from '@/shared/lib/utils';
 import type { Paper } from '../../../types/library.types';
 import type { ReaderPanel } from '../../../types/reader.types';
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Status Helpers ──────────────────────────────────────────
 
-const RAG_STYLES: Record<string, string> = {
-  indexed: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  pending: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  failed: 'border-destructive/20 bg-destructive/10 text-destructive',
-  idle: 'border-border bg-muted text-muted-foreground',
-};
+function RagStatusIndicator({ status }: { status: string }) {
+  if (status === 'indexed') {
+    return (
+      <div className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-muted-foreground border border-border/40 bg-muted/20">
+        <span className="size-1.5 rounded-full bg-emerald-500" />
+        <span>Indexed</span>
+      </div>
+    );
+  }
 
-const RAG_LABELS: Record<string, string> = {
-  indexed: 'Indexed',
-  pending: 'Indexing',
-  failed: 'Index failed',
-  idle: 'Not indexed',
-};
+  if (status === 'pending' || status === 'indexing') {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-foreground border border-border/50 bg-muted/40">
+        <Loader2 className="size-3 animate-spin" />
+        <span>Indexing</span>
+      </div>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-foreground border border-border/50 bg-muted/40">
+        <span className="size-1.5 rounded-full bg-muted-foreground" />
+        <span>Index failed</span>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 function PanelButton({
   panel,
@@ -43,6 +60,7 @@ function PanelButton({
   onToggle,
   icon: Icon,
   label,
+  shortcut,
   count,
 }: {
   panel: ReaderPanel;
@@ -50,6 +68,7 @@ function PanelButton({
   onToggle: (panel: ReaderPanel) => void;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  shortcut?: string;
   count?: number;
 }) {
   const active = activePanel === panel;
@@ -61,20 +80,24 @@ function PanelButton({
             type="button"
             onClick={() => onToggle(panel)}
             className={cn(
-              'relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
-              active && 'bg-accent text-foreground font-medium',
+              'relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground cursor-pointer',
+              active && 'bg-background text-foreground shadow-none border border-border/50 font-medium',
             )}
             aria-pressed={active}
+            aria-label={label}
           >
-            <Icon className="size-4" />
+            <Icon className="size-3.5" />
             {count ? (
-              <span className="absolute -right-1 -top-1 min-w-4 rounded-full border border-background bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
+              <span className="absolute -right-1 -top-1 min-w-3.5 h-3.5 flex items-center justify-center rounded-full border border-background bg-primary px-1 text-xs font-semibold text-primary-foreground leading-none">
                 {count}
               </span>
             ) : null}
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">{label}</TooltipContent>
+        <TooltipContent side="bottom" className="text-xs flex items-center gap-1.5">
+          <span>{label}</span>
+          {shortcut && <kbd className="text-xs opacity-60 font-mono">{shortcut}</kbd>}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
@@ -120,14 +143,27 @@ export default function Topbar({
   const ragStatus = paper?.ragStatus ?? 'idle';
 
   return (
-    <header className="flex h-[53px] shrink-0 items-center justify-between border-b border-border bg-background/95 px-3 backdrop-blur">
-      {/* Left: back + title */}
-      <div className="flex min-w-0 flex-1 items-center gap-3 pr-3">
-        <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="Back to library">
-          <ChevronLeft className="size-4" />
-        </Button>
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 select-none">
+      {/* Left: back + paper title & metadata */}
+      <div className="flex min-w-0 flex-1 items-center gap-2 pr-3">
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onBack}
+                aria-label="Back to library"
+                className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Back to library</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-        <div className="min-w-0 max-w-[34vw] sm:max-w-[42vw] lg:max-w-[520px] xl:max-w-[640px]">
+        <div className="min-w-0 max-w-[40vw] md:max-w-[50vw] lg:max-w-[600px]">
           {isEditingTitle && paper ? (
             <input
               value={draftTitle}
@@ -140,90 +176,146 @@ export default function Topbar({
                   setIsEditingTitle(false);
                 }
               }}
-              className="h-7 w-full rounded-md border border-primary/40 bg-background px-2 text-sm font-semibold leading-tight text-foreground outline-none focus:ring-2 focus:ring-primary/10"
+              className="h-6 w-full rounded border border-border bg-background px-1.5 text-xs font-semibold leading-tight text-foreground outline-none focus:ring-1 focus:ring-ring"
               autoFocus
             />
           ) : (
             <h1
-              className="truncate text-sm font-semibold leading-tight text-foreground"
-              title={paper?.title ? `${paper.title} - double click to rename` : undefined}
+              className="truncate text-xs font-semibold leading-tight text-foreground cursor-pointer hover:text-foreground/80 transition-colors"
+              title={paper?.title ? `${paper.title} (Double-click to rename)` : undefined}
               onDoubleClick={() => {
                 if (!paper) return;
                 setDraftTitle(paper.title);
                 setIsEditingTitle(true);
               }}
             >
-              {paper?.title || 'Loading paper...'}
+              {paper?.title || 'Loading document...'}
             </h1>
           )}
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <p className="truncate text-xs text-muted-foreground leading-none mt-0.5">
             {paper?.authors?.length
-              ? paper.authors.join(', ')
-              : paper?.year
-                ? String(paper.year)
-                : 'Reader'}
+              ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ` +${paper.authors.length - 3}` : '')
+              : paper?.publicationTitle || (paper?.year ? String(paper.year) : 'Reference')}
           </p>
         </div>
       </div>
 
-      {/* Right: actions + panels */}
-      <div className="flex shrink-0 items-center gap-2">
-        {paper ? (
-          <Badge
-            variant="outline"
-            className={cn(
-              'h-6 rounded-md px-2 text-xs font-semibold',
-              ragStatus === 'pending' && 'animate-pulse',
-              RAG_STYLES[ragStatus],
-            )}
-          >
-            {ragStatus === 'pending' ? <Loader2 className="size-3 animate-spin" /> : null}
-            {RAG_LABELS[ragStatus]}
-          </Badge>
-        ) : null}
+      {/* Right: actions + panel toggles */}
+      <div className="flex shrink-0 items-center gap-1.5">
+        {/* Status Indicator */}
+        {paper ? <RagStatusIndicator status={ragStatus} /> : null}
 
         {/* Index / Retry button */}
-        {paper && ragStatus !== 'pending' && ragStatus !== 'indexed' ? (
-          <Button variant="outline" size="sm" onClick={onReindex} disabled={isReindexing} className="hidden sm:inline-flex">
-            {isReindexing ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCcw className="size-3.5" />}
-            {ragStatus === 'failed' ? 'Retry index' : 'Index'}
+        {paper && ragStatus !== 'pending' && ragStatus !== 'indexed' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReindex}
+            disabled={isReindexing}
+            className="hidden sm:inline-flex h-7 text-xs font-medium gap-1.5 px-2.5 shadow-none cursor-pointer"
+          >
+            {isReindexing ? <Loader2 className="size-3 animate-spin" /> : <RefreshCcw className="size-3 text-muted-foreground" />}
+            <span>{ragStatus === 'failed' ? 'Retry index' : 'Index'}</span>
           </Button>
-        ) : null}
+        )}
 
-        {/* Download */}
-        {paperUrl ? (
-          <Button variant="ghost" size="icon-sm" asChild>
-            <a href={paperUrl} download={paper?.filename || 'paper.pdf'} title="Download PDF">
-              <Download className="size-4" />
-            </a>
-          </Button>
-        ) : null}
+        {/* Download PDF */}
+        {paperUrl && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="size-7 text-muted-foreground hover:text-foreground cursor-pointer" asChild>
+                  <a href={paperUrl} download={paper?.filename || 'document.pdf'} aria-label="Download document">
+                    <Download className="size-3.5" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">Download document</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
         {/* BibTeX */}
-        {paper ? (
-          <Button variant="ghost" size="icon-sm" onClick={() => setBibtexOpen(true)} title="Export BibTeX">
-            <FileJson className="size-4" />
-          </Button>
-        ) : null}
+        {paper && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setBibtexOpen(true)}
+                  className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Export BibTeX"
+                >
+                  <FileJson className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs flex items-center gap-1">
+                <span>Export BibTeX</span>
+                <kbd className="text-xs opacity-60 font-mono">⌘B</kbd>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
-        <Separator orientation="vertical" className="mx-1 hidden h-5 sm:block" />
+        <Separator orientation="vertical" className="mx-0.5 h-4" />
 
-        {/* Panel toggles */}
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
-          <PanelButton panel="ai" activePanel={activePanel} onToggle={onPanelToggle} icon={MessageSquare} label="AI" />
-          <PanelButton panel="details" activePanel={activePanel} onToggle={onPanelToggle} icon={Info} label="Details" />
-          <PanelButton panel="notes" activePanel={activePanel} onToggle={onPanelToggle} icon={StickyNote} label="Notes" count={paper?.notes?.length} />
+        {/* Segmented panel toggles */}
+        <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
+          <PanelButton
+            panel="ai"
+            activePanel={activePanel}
+            onToggle={onPanelToggle}
+            icon={MessageSquare}
+            label="Assistant"
+            shortcut="⌘⇧A"
+          />
+          <PanelButton
+            panel="details"
+            activePanel={activePanel}
+            onToggle={onPanelToggle}
+            icon={Info}
+            label="Info"
+            shortcut="⌘⇧D"
+          />
+          <PanelButton
+            panel="notes"
+            activePanel={activePanel}
+            onToggle={onPanelToggle}
+            icon={StickyNote}
+            label="Notes"
+            shortcut="⌘⇧N"
+            count={paper?.notes?.length}
+          />
+          <PanelButton
+            panel="annotations"
+            activePanel={activePanel}
+            onToggle={onPanelToggle}
+            icon={Highlighter}
+            label="Annotations"
+            shortcut="⌘⇧H"
+          />
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setActivePanel((current: ReaderPanel | null) => (current ? null : 'details'))}
-
-          aria-label={activePanel ? 'Close panel' : 'Open details'}
-        >
-          {activePanel ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-        </Button>
+        {/* Expand/Collapse sidebar toggle */}
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-7 text-muted-foreground hover:text-foreground cursor-pointer ml-0.5"
+                onClick={() => setActivePanel((current: ReaderPanel | null) => (current ? null : 'details'))}
+                aria-label={activePanel ? 'Close panel' : 'Open details'}
+              >
+                {activePanel ? <PanelRightClose className="size-3.5" /> : <PanelRightOpen className="size-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {activePanel ? 'Close panel (Esc)' : 'Open panel'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </header>
   );

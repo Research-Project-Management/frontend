@@ -34,11 +34,136 @@ export interface IngestPaperDTO {
   citationKey?: string;
 }
 
+const VALID_PAPER_PAYLOAD_KEYS = new Set([
+  'title',
+  'authors',
+  'creators',
+  'year',
+  'doi',
+  'abstract',
+  'abstractNote',
+  'journal',
+  'publisher',
+  'publicationTitle',
+  'publicationDate',
+  'place',
+  'volume',
+  'issue',
+  'section',
+  'partNumber',
+  'partTitle',
+  'pages',
+  'series',
+  'seriesTitle',
+  'seriesText',
+  'seriesNumber',
+  'issn',
+  'isbn',
+  'pmid',
+  'pmcid',
+  'arxivId',
+  'arxiv',
+  'url',
+  'type',
+  'itemType',
+  'date',
+  'accessDate',
+  'accessedAt',
+  'language',
+  'journalAbbr',
+  'journalAbbreviation',
+  'shortTitle',
+  'rights',
+  'license',
+  'citationKey',
+  'libraryCatalog',
+  'archive',
+  'archiveLocation',
+  'callNumber',
+  'extra',
+  'notes',
+  'labels',
+  'keywords',
+  'tags',
+  'fileUrl',
+  'filename',
+  'mimeType',
+  'size',
+  'fileId',
+  'collectionId',
+  'editors',
+  // Specialized Zotero Fields across all 35 item types
+  'edition',
+  'numPages',
+  'numberOfVolumes',
+  'bookTitle',
+  'proceedingsTitle',
+  'conferenceName',
+  'websiteTitle',
+  'websiteType',
+  'university',
+  'institution',
+  'country',
+  'assignee',
+  'issuingAuthority',
+  'patentNumber',
+  'applicationNumber',
+  'reportNumber',
+  'reportType',
+  'thesisType',
+  'genre',
+  'filingDate',
+  'legalStatus',
+  'versionNumber',
+]);
+
+export function sanitizePaperPayload(data: any): Record<string, any> {
+  if (!data || typeof data !== 'object') return {};
+  const cleaned: Record<string, any> = {};
+  for (const key of Object.keys(data)) {
+    if (VALID_PAPER_PAYLOAD_KEYS.has(key) && data[key] !== undefined) {
+      cleaned[key] = data[key];
+    }
+  }
+  return cleaned;
+}
+
 // ── Structured Paper Service ──────────────────────────────────────────────────
 
 export const PaperService = {
-  getAll: (workspaceId: string, params?: { collectionId?: string; search?: string; limit?: number; skip?: number }) =>
-    apiGet<{ papers: Paper[]; total?: number }>(`/api/library/papers/${workspaceId}`, { params }),
+  getAll: (
+    workspaceId: string,
+    params?: {
+      view?: 'all' | 'recent' | 'unfiled' | 'trash';
+      collectionId?: string;
+      tagId?: string;
+      search?: string;
+      limit?: number;
+      skip?: number;
+      cursor?: string;
+    },
+  ) => {
+    if (params?.view) {
+      return apiGet<{
+        success: boolean;
+        data: Paper[];
+        papers?: Paper[];
+        total?: number;
+        meta?: { totalCount: number; hasNextPage: boolean; cursor?: string };
+      }>(
+        `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items`,
+        { params },
+      ).then((res) => ({
+        papers: res.data || res.papers || [],
+        total: res.meta?.totalCount ?? res.total ?? res.data?.length ?? 0,
+        meta: res.meta,
+      }));
+    }
+    return apiGet<{ papers: Paper[]; total?: number }>(
+      `/api/library/papers/${workspaceId}`,
+      { params },
+    );
+  },
 
   getById: (workspaceId: string, paperId: string) =>
     apiGet<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`),
@@ -49,21 +174,41 @@ export const PaperService = {
     ),
 
   getByCollection: (workspaceId: string, collectionId: string, search?: string) =>
-    apiGet<{ collection: Collection; papers: Paper[] }>(
+    apiGet<{ collection?: Collection; papers: Paper[]; items?: Paper[]; data?: Paper[] }>(
       `/api/library/${workspaceId}/collections/${collectionId}/papers`,
       { params: search ? { search } : undefined }
     ),
 
-  create: (workspaceId: string, collectionId: string, data: Partial<Paper>) =>
-    collectionId
-      ? apiPost<{ paper: Paper }>(`/api/library/${workspaceId}/collections/${collectionId}/upload`, { ...data, collectionId })
-      : apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/upload`, data),
+  create: (workspaceId: string, collectionId: string, data: Partial<Paper>) => {
+    const payload = sanitizePaperPayload(data);
+    if (collectionId) {
+      payload.collectionId = collectionId;
+      return apiPost<{ paper: Paper }>(`/api/library/${workspaceId}/collections/${collectionId}/upload`, payload);
+    }
+    return apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/upload`, payload);
+  },
 
   update: (workspaceId: string, paperId: string, data: Partial<Paper>) =>
-    apiPut<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`, data),
+    apiPut<{ paper: Paper }>(`/api/library/papers/${workspaceId}/${paperId}`, sanitizePaperPayload(data)),
 
   delete: (workspaceId: string, paperId: string) =>
     apiDelete(`/api/library/papers/${workspaceId}/${paperId}`),
+
+  restore: (workspaceId: string, paperId: string, expectedVersion?: number) =>
+    apiPost<{ success: boolean; data: Paper }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(paperId)}/restore`,
+      {},
+      {
+        headers: expectedVersion
+          ? { 'if-match': `"${expectedVersion}"` }
+          : undefined,
+      },
+    ),
+
+  purge: (workspaceId: string, paperId: string) =>
+    apiDelete<{ success: boolean; data: { purged: boolean } }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(paperId)}/purge`,
+    ),
 
   ingest: (workspaceId: string, data: IngestPaperDTO) =>
     apiPost<{ paper: Paper }>(`/api/library/papers/${workspaceId}/ingest`, data),
@@ -114,6 +259,8 @@ export const getCollectionPapers = PaperService.getByCollection;
 export const createPaper = PaperService.create;
 export const updatePaper = PaperService.update;
 export const deletePaper = PaperService.delete;
+export const restorePaper = PaperService.restore;
+export const purgePaper = PaperService.purge;
 export const addPaperAttachment = PaperService.addAttachment;
 export const deletePaperAttachment = PaperService.deleteAttachment;
 export const importPaperFromStorage = PaperService.importFromStorage;

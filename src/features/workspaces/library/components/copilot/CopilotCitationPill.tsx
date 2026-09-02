@@ -29,15 +29,15 @@ export const CopilotCitationPill: React.FC<CopilotCitationPillProps> = ({
       onClick={handleClick}
       title={citation.quote ? `Quote: "${citation.quote}"` : `Jump to Page ${citation.pageNumber}`}
       className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium',
-        'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 active:scale-95 transition-all cursor-pointer select-none',
+        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium',
+        'bg-muted/70 text-foreground border border-border/60 hover:bg-muted hover:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-95 transition-colors cursor-pointer select-none',
         className,
       )}
     >
-      <BookOpen className="size-3 text-primary" />
-      <span>p. {citation.pageNumber}</span>
+      <BookOpen className="size-3 text-muted-foreground shrink-0" />
+      <span className="tabular-nums font-mono">p. {citation.pageNumber}</span>
       {citation.section && (
-        <span className="text-[10px] opacity-75 font-normal truncate max-w-24">
+        <span className="text-xs text-muted-foreground font-normal truncate max-w-28">
           ({citation.section})
         </span>
       )}

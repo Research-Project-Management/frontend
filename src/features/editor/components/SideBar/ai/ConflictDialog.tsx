@@ -12,6 +12,14 @@
 import React from 'react';
 import { AlertTriangle, Check, X, RefreshCw } from 'lucide-react';
 import { type ConflictItem } from '@/features/editor/utils/ai.util';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
 
 interface ConflictDialogProps {
   open: boolean;
@@ -28,48 +36,43 @@ export default function ConflictDialog({
   onDiscard,
   onReprompt,
 }: ConflictDialogProps) {
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="conflict-dialog-title"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/60 backdrop-blur-xs p-4"
-    >
-      <div className="w-full max-w-lg rounded-xl border border-destructive/30 bg-card p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-start gap-3">
-          <div className="rounded-full bg-destructive/10 p-2 text-destructive shrink-0">
-            <AlertTriangle className="size-5" />
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onDiscard()}>
+      <DialogContent className="w-full max-w-lg p-5 gap-4" showCloseButton={false}>
+        <DialogHeader className="text-left">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-destructive/10 p-2 text-destructive shrink-0">
+              <AlertTriangle className="size-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-sm font-semibold text-foreground">
+                Concurrent Edit Conflict Detected
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                The main document was modified after this AI suggestion was generated. Applying this patch directly might overwrite recent changes made by another author or background save.
+              </DialogDescription>
+            </div>
           </div>
-          <div>
-            <h3 id="conflict-dialog-title" className="text-sm font-semibold text-foreground">
-              Concurrent Edit Conflict Detected
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              The main document was modified after this AI suggestion was generated. Applying this patch directly might overwrite recent changes made by another author or background save.
-            </p>
-          </div>
-        </div>
+        </DialogHeader>
 
         {/* Conflicting line ranges list */}
         {conflicts.length > 0 && (
           <div className="rounded-lg border border-border/60 bg-muted/20 overflow-hidden text-xs max-h-48 overflow-y-auto">
-            <div className="bg-muted/40 px-3 py-1.5 font-medium text-[11px] text-muted-foreground border-b border-border/40">
+            <div className="bg-muted/40 px-3 py-1.5 font-medium text-xs text-muted-foreground border-b border-border/40">
               Conflicting Line Ranges ({conflicts.length})
             </div>
-            <div className="p-3 space-y-2 font-mono text-[11px]">
+            <div className="p-3 space-y-2 font-mono text-xs">
               {conflicts.map((c, i) => (
                 <div key={i} className="space-y-1">
-                  <div className="text-muted-foreground text-[10px]">
+                  <div className="text-muted-foreground text-xs">
                     Lines {c.startLine}-{c.endLine}:
                   </div>
                   <div className="p-1.5 rounded bg-destructive/10 text-destructive border border-destructive/20 break-all">
-                    <span className="font-sans font-semibold text-[10px] uppercase text-destructive/80 block">Current on Main:</span>
+                    <span className="font-sans font-semibold text-xs text-destructive/80 block">Current on Main:</span>
                     {c.currentText}
                   </div>
                   <div className="p-1.5 rounded bg-muted/60 text-muted-foreground border border-border/40 break-all">
-                    <span className="font-sans font-semibold text-[10px] uppercase text-muted-foreground/80 block">AI Expected:</span>
+                    <span className="font-sans font-semibold text-xs text-muted-foreground/80 block">AI Expected:</span>
                     {c.expectedText}
                   </div>
                 </div>
@@ -80,36 +83,42 @@ export default function ConflictDialog({
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={onDiscard}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted transition-colors outline-none"
+            className="gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <X className="size-3.5" />
             <span>Discard</span>
-          </button>
+          </Button>
 
           {onReprompt && (
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={onReprompt}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors outline-none"
+              className="gap-1.5 text-xs"
             >
               <RefreshCw className="size-3.5" />
               <span>Discard & Re-prompt</span>
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            size="sm"
             onClick={onForceOverwrite}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-xs outline-none"
+            className="gap-1.5 text-xs font-medium"
           >
             <Check className="size-3.5" />
             <span>Force Overwrite</span>
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

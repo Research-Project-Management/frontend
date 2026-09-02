@@ -106,7 +106,7 @@ export function WorklogUsers({
 
                     <Avatar className="size-5 rounded-full border border-border/80 shrink-0">
                       {m.avatar && <AvatarImage src={m.avatar} className="object-cover" />}
-                      <AvatarFallback className="text-[9px] bg-muted font-medium">
+                      <AvatarFallback className="text-xs bg-muted font-medium">
                         {m.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>

@@ -61,21 +61,21 @@ export default function PaperBibtexDialog({
         </DialogHeader>
 
         {/* BibTeX Code Viewer */}
-        <div className="relative group rounded-lg overflow-hidden border border-border/80 bg-zinc-950 dark:bg-zinc-950/80 shadow-inner">
+        <div className="relative group rounded-lg overflow-hidden border border-border/80 bg-muted/40 shadow-none">
           {/* Header toolbar for code block */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 text-zinc-400 select-none">
-            <span className="text-[10px] font-bold uppercase tracking-wider font-mono">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border/60 bg-muted/70 text-muted-foreground select-none">
+            <span className="text-xs font-semibold font-mono">
               BibTeX Format
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 text-[11px] hover:text-zinc-100 transition-colors font-medium bg-zinc-800 hover:bg-zinc-700/80 px-2 py-0.5 rounded border border-zinc-700"
+                className="flex items-center gap-1 text-xs text-foreground hover:text-foreground transition-colors font-medium bg-background hover:bg-muted px-2 py-0.5 rounded border border-border cursor-pointer"
                 title="Copy citation"
               >
                 {copied ? (
                   <>
-                    <Check className="size-3 text-green-400 animate-in zoom-in-50 duration-150" />
+                    <Check className="size-3 text-emerald-500 animate-in zoom-in-50 duration-150" />
                     Copied
                   </>
                 ) : (
@@ -89,7 +89,7 @@ export default function PaperBibtexDialog({
           </div>
           
           {/* Code display */}
-          <pre className="p-4 text-xs font-mono text-zinc-100 overflow-x-auto leading-relaxed select-all max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800">
+          <pre className="p-4 text-xs font-mono text-foreground overflow-x-auto leading-relaxed select-all max-h-72 overflow-y-auto scrollbar-thin">
             <code>{bibTeXString}</code>
           </pre>
         </div>

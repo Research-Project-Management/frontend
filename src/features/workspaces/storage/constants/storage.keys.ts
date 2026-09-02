@@ -5,8 +5,10 @@
 export const storageKeys = {
   all: ['storage'] as const,
   workspace: (workspaceId: string) => [...storageKeys.all, 'workspace', workspaceId] as const,
-  workspaceHomeFiles: (workspaceId: string, parentId?: string | null) =>
-    [...storageKeys.workspace(workspaceId), 'home', parentId ?? 'root'] as const,
+  workspaceHomeFiles: (workspaceId: string) =>
+    [...storageKeys.workspace(workspaceId), 'home'] as const,
+  workspaceFiles: (workspaceId: string, parentId?: string | null) =>
+    [...storageKeys.workspace(workspaceId), 'files', parentId ?? 'root'] as const,
   workspaceMyFiles: (workspaceId: string) =>
     [...storageKeys.workspace(workspaceId), 'my-files'] as const,
   workspaceShared: (workspaceId: string) =>
@@ -15,6 +17,8 @@ export const storageKeys = {
     [...storageKeys.workspace(workspaceId), 'starred'] as const,
   workspaceTrashed: (workspaceId: string) =>
     [...storageKeys.workspace(workspaceId), 'trashed'] as const,
+  workspaceUsage: (workspaceId: string) =>
+    [...storageKeys.workspace(workspaceId), 'usage'] as const,
 
   project: (projectId: string) => [...storageKeys.all, 'project', projectId] as const,
   projectHomeFiles: (projectId: string, parentId?: string | null) =>

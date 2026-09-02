@@ -16,7 +16,15 @@ export default function Topbar() {
   const rawWorkspaceId = params?.workspaceId && params.workspaceId !== 'undefined' ? params.workspaceId : null;
 
   const { workspaces = [] } = useWorkspaces();
-  const currentWorkspace: Workspace | null = workspaces.find((w: Workspace) => w.url === rawWorkspaceId) ?? workspaces[0] ?? null;
+  const currentWorkspace: Workspace | null =
+    workspaces.find(
+      (w: Workspace) =>
+        w.url === rawWorkspaceId ||
+        w.id === rawWorkspaceId ||
+        (w as any).slug === rawWorkspaceId,
+    ) ??
+    workspaces[0] ??
+    null;
 
 
   const workspaceId = rawWorkspaceId ?? currentWorkspace?.url ?? '';
@@ -24,7 +32,7 @@ export default function Topbar() {
   return (
     <nav
       aria-label='Workspace Header Navigation'
-      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-4'
+      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-2'
     >
       {/* Left: Workspace & Project breadcrumb */}
       <div className='flex items-center gap-2 min-w-0 shrink-0'>
@@ -37,7 +45,7 @@ export default function Topbar() {
 
       {/* Center: Search placeholder */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
-        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-foreground/80 shadow-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer'>
+        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-foreground/80 shadow-none transition-colors hover:bg-accent hover:text-foreground cursor-pointer'>
           <Search className='size-3.5 text-foreground' />
           <span className='text-xs text-foreground/80'>Search...</span>
         </button>

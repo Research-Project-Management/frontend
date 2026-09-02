@@ -14,7 +14,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
     <div className="p-6">
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-muted/40 text-muted-foreground border-b border-border text-xs uppercase tracking-wider">
+          <thead className="bg-muted/40 text-muted-foreground border-b border-border text-xs">
             <tr>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Updated</th>

@@ -59,19 +59,19 @@ export default function Switcher({
       <DropdownMenuContent
         align='start'
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className='w-[280px] p-0 rounded-lg overflow-hidden shadow-none border bg-popover'
+        className='w-[300px] p-0 rounded-lg overflow-hidden bg-popover border border-border shadow-none'
         sideOffset={8}
       >
-        {/* Header email */}
-        <div className='px-3 py-2 text-[12px] font-medium text-muted-foreground bg-background'>
+        {/* User email header */}
+        <div className='px-4 pt-3.5 pb-2.5 text-xs font-medium text-muted-foreground bg-background select-none truncate'>
           {user?.email || 'user@example.com'}
         </div>
 
-        {/* Current workspace area */}
-        <div className='bg-muted p-2.5'>
-          <div className='flex items-center justify-between p-1'>
-            <div className='flex items-center gap-2.5'>
-              <Avatar className='size-9 rounded-md font-bold'>
+        {/* Current active workspace */}
+        <div className='bg-muted/70 px-4 py-3.5 border-b border-border/50'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-3 min-w-0'>
+              <Avatar className='size-9 rounded-md font-bold shrink-0'>
                 {currentItem.avatar ? (
                   <AvatarImage
                     src={resolveFileUrl(currentItem.avatar) || undefined}
@@ -79,99 +79,117 @@ export default function Switcher({
                     referrerPolicy="no-referrer"
                   />
                 ) : null}
-                <AvatarFallback className="rounded-md bg-primary text-primary-foreground">
+                <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-bold">
                   {String(currentItem.name).substring(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className='flex flex-col'>
-                <span className='text-[14px] font-semibold text-foreground'>{currentItem.name}</span>
-                <span className='text-[12px] text-muted-foreground'>
+              <div className='flex flex-col min-w-0'>
+                <span className='text-sm font-semibold text-foreground tracking-tight truncate'>{currentItem.name}</span>
+                <span className='text-xs text-muted-foreground mt-0.5 truncate'>
                   Owner • {currentItem.members?.length || 1} Members
                 </span>
               </div>
             </div>
-            <Check className='size-5 text-foreground' />
+            <Check className='size-4 text-foreground shrink-0' />
           </div>
 
-          <div className='flex items-center gap-2 mt-3 px-1'>
+          <div className='flex items-center gap-3 mt-3.5'>
             <Button
               variant='outline'
               size='sm'
-              className='h-7 px-2 bg-background font-medium shadow-none text-xs cursor-pointer'
-              onClick={() => router.push(`/${activeId}/settings`)}
+              className='h-8 flex-1 px-3 bg-background font-medium shadow-none text-xs rounded-md border border-border/60 hover:bg-background hover:border-foreground/30 text-foreground transition-colors cursor-pointer'
+              onClick={() => {
+                setIsOpen(false);
+                router.push(`/${activeId}/settings`);
+              }}
             >
-              <Settings className='mr-1.5 size-3.5 text-foreground' /> Settings
+              <Settings className='mr-2 size-3.5 text-foreground' /> Settings
             </Button>
             <Button
               variant='outline'
               size='sm'
-              className='h-7 px-2 bg-background font-medium shadow-none text-xs cursor-pointer'
-              onClick={() => router.push(`/${activeId}/settings/members`)}
+              className='h-8 flex-1 px-3 bg-background font-medium shadow-none text-xs rounded-md border border-border/60 hover:bg-background hover:border-foreground/30 text-foreground transition-colors cursor-pointer'
+              onClick={() => {
+                setIsOpen(false);
+                router.push(`/${activeId}/settings/members`);
+              }}
             >
-              <UserPlus className='mr-1.5 size-3.5 text-foreground' /> Invite members
+              <UserPlus className='mr-2 size-3.5 text-foreground' /> Invite members
             </Button>
           </div>
         </div>
 
-        {/* Other items */}
-        <div className='p-1 max-h-[240px] overflow-y-auto bg-background flex flex-col gap-0.5'>
-          {items
-            .filter((item: Workspace) => item.id !== currentItem.id)
-            .map((item: Workspace) => (
-              <DropdownMenuItem
-                key={item.id}
-                onClick={() => router.push(`/${item.url}`)}
-                className='px-2 py-1.5 cursor-pointer flex items-center justify-between rounded-md'
-              >
-                <div className='flex items-center gap-2.5'>
-                  <Avatar className='size-8 rounded-md font-bold'>
-                    {item.avatar ? (
-                      <AvatarImage
-                        src={resolveFileUrl(item.avatar) || undefined}
-                        alt={String(item.name)}
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : null}
-                    <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs">
-                      {String(item.name).substring(0, 1).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className='flex flex-col'>
-                    <span className='text-[13px] text-foreground font-medium'>{item.name}</span>
-                    <span className='text-[12px] text-muted-foreground'>
-                      {item.members?.length || 1} Member
-                    </span>
+        {/* Other workspaces */}
+        {items.filter((item: Workspace) => item.id !== currentItem.id).length > 0 && (
+          <div className='p-2 max-h-[200px] overflow-y-auto bg-background flex flex-col gap-1 border-b border-border/50'>
+            {items
+              .filter((item: Workspace) => item.id !== currentItem.id)
+              .map((item: Workspace) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  onClick={() => {
+                    setIsOpen(false);
+                    router.push(`/${item.url}`);
+                  }}
+                  className='px-3 py-2 justify-between cursor-pointer rounded-md'
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <Avatar className='size-7 rounded-md font-bold shrink-0'>
+                      {item.avatar ? (
+                        <AvatarImage
+                          src={resolveFileUrl(item.avatar) || undefined}
+                          alt={String(item.name)}
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : null}
+                      <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-bold">
+                        {String(item.name).substring(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className='flex flex-col min-w-0'>
+                      <span className='text-sm text-foreground font-medium truncate'>{item.name}</span>
+                      <span className='text-xs text-muted-foreground truncate'>
+                        {item.members?.length || 1} Member
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </DropdownMenuItem>
-            ))}
-        </div>
+                </DropdownMenuItem>
+              ))}
+          </div>
+        )}
 
-        <DropdownMenuSeparator className="m-0 bg-border/50" />
-
-        <div className="p-1.5 bg-background">
+        <div className="p-2 bg-background space-y-1">
           <DropdownMenuItem
-            onClick={() => router.push('/create-workspace')}
-            className='px-2.5 py-2 cursor-pointer rounded-md'
+            onClick={() => {
+              setIsOpen(false);
+              router.push('/create-workspace');
+            }}
+            className='px-3 py-2 cursor-pointer rounded-md gap-3'
           >
-            <PlusCircle className='mr-2.5 size-4 text-foreground/80' />
-            <span className="font-medium text-foreground text-[13px]">Create workspace</span>
+            <PlusCircle />
+            <span>Create workspace</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => router.push('/workspace-invites')}
-            className='px-2.5 py-2 cursor-pointer rounded-md'
+            onClick={() => {
+              setIsOpen(false);
+              router.push('/workspace-invites');
+            }}
+            className='px-3 py-2 cursor-pointer rounded-md gap-3'
           >
-            <Mails className='mr-2.5 size-4 text-foreground/80' />
-            <span className="font-medium text-foreground text-[13px]">Workspace invites</span>
+            <Mails />
+            <span>Workspace invites</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            onClick={() => logout()}
-            className='px-2.5 py-2 cursor-pointer rounded-md text-destructive focus:bg-accent focus:text-destructive mt-0.5'
+            onClick={() => {
+              setIsOpen(false);
+              logout();
+            }}
+            className='px-3 py-2 cursor-pointer rounded-md gap-3'
           >
-            <LogOut className='mr-2.5 size-4' />
-            <span className="font-medium text-[13px]">Sign out</span>
+            <LogOut />
+            <span>Sign out</span>
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>

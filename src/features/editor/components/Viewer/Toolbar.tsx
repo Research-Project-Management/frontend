@@ -115,7 +115,7 @@ export function CompileButton({
             ? statusLabel[compileStatus] ?? 'Compiling document…'
             : 'Compile document (Ctrl+Enter)'
         }
-        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary"
       >
         {isRunning ? (
           <Loader2 className="size-3.5 animate-spin" />
@@ -266,7 +266,7 @@ export default function Toolbar({
                 <span>Zoom In (+)</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onResetZoom} className="text-xs">
-                <span className="w-3.5 text-[9px] mr-2 font-mono text-center text-muted-foreground">
+                <span className="w-3.5 text-xs mr-2 font-mono text-center text-muted-foreground">
                   100
                 </span>
                 <span

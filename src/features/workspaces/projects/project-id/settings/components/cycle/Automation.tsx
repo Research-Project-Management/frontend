@@ -35,7 +35,7 @@ export function Automation({
             <div className="text-xs font-semibold text-foreground">
               Auto-advance cycles
             </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+            <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
               Automatically start the next scheduled cycle when the current one ends.
             </div>
           </div>

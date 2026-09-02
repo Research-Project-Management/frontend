@@ -37,9 +37,9 @@ export function Stats({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {/* Total Tasks */}
+      {/* Total Work Items */}
       <div
-        onClick={() => router.push(`/${workspaceId}/projects/${projectId}/tasks`)}
+        onClick={() => router.push(`/${workspaceId}/projects/${projectId}/work-items`)}
         className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
@@ -47,11 +47,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
               <CheckSquare className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Tasks
+            <span className="text-xs font-medium text-muted-foreground">
+              Work Items
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {stats.tasks.total}
           </div>
         </div>
@@ -73,11 +73,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
               <Users className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Team
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {stats.members || project.members.length}
           </div>
         </div>
@@ -85,7 +85,7 @@ export function Stats({
           {(Array.isArray(project?.members) ? project.members : []).slice(0, 5).map((m, i) => (
             <Avatar key={i} className="size-6 border-2 border-background">
               {m?.user?.avatar && <AvatarImage src={m.user.avatar} alt={m?.user?.name || 'User'} />}
-              <AvatarFallback className="text-[9px]">
+              <AvatarFallback className="text-xs">
                 {(m?.user?.name || 'U').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -103,11 +103,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
               <HardDrive className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Files
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {stats.files.count}
           </div>
         </div>
@@ -123,11 +123,11 @@ export function Stats({
             <div className="p-2 rounded-lg bg-muted text-foreground">
               <CalendarDays className="size-4 text-foreground" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs font-medium text-muted-foreground">
               Active Age
             </span>
           </div>
-          <div className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">
             {daysActive}
           </div>
         </div>

@@ -91,7 +91,7 @@ export const DoubleCalendarModal = ({
                 <ChevronLeft className="size-4 text-foreground" />
               </Button>
             </div>
-            <span className="text-[14px] font-bold text-foreground">
+            <span className="text-sm font-bold text-foreground">
               {format(currentMonth, "MMMM yyyy")}
             </span>
             <div className="flex items-center gap-1">
@@ -106,7 +106,7 @@ export const DoubleCalendarModal = ({
 
           <div className="grid grid-cols-7 mb-2">
             {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
-              <div key={d} className="text-[10px] font-bold text-muted-foreground text-center uppercase tracking-wider">{d}</div>
+              <div key={d} className="text-xs font-bold text-muted-foreground text-center">{d}</div>
             ))}
           </div>
 
@@ -135,7 +135,7 @@ export const DoubleCalendarModal = ({
                     onMouseEnter={() => setHoverDate(dateStr)}
                     onMouseLeave={() => setHoverDate(null)}
                     className={`
-                      h-9 w-full flex items-center justify-center text-[13px] transition-all relative z-10
+                      h-9 w-full flex items-center justify-center text-sm transition-all relative z-10
                       ${isCurrentMonth ? "text-foreground" : "text-muted-foreground/40 pointer-events-none"} font-medium
                       ${isStart || isEnd 
                         ? "bg-primary text-primary-foreground font-bold shadow-md rounded-md cursor-pointer" 

@@ -2,30 +2,36 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useUpload } from '@/shared/hooks/use-upload';
 import { usePapers } from './use-papers';
+import { paperKeys } from '../../services/paper.service';
+import { libraryKeys } from '../../services/library.service';
+import {
+  fetchReferenceByDoi,
+  searchReferences,
+  formatCslCitation,
+} from '../../services/reference.service';
+import {
+  getRelatedPapers,
+  linkPapers,
+  unlinkPapers,
+} from '../../services/relation.service';
+import {
+  getDuplicateGroups,
+  mergePapers,
+  getLibraryIntegrityReport,
+} from '../../services/quality.service';
+import { useUnifiedIngest } from './use-unified-ingest';
 import { useCollections } from './use-collections';
-import { useCollection } from './use-collection';
-import { useReferences, useCslCitation } from './use-references';
 import {
   useAnnotations,
   useCreateAnnotation,
   useDeleteAnnotation,
   useExtractNotes,
 } from './use-annotations';
-import {
-  useRelatedPapers,
-  useLinkPapers,
-  useUnlinkPapers,
-  useWorkspaceKnowledgeGraph,
-} from './use-relations';
-import {
-  useDuplicateGroups,
-  useMergePapers,
-  useLibraryIntegrity,
-} from './use-quality';
 import { useAsyncJobStatus } from './use-async-job';
 import { extractMetadata } from '../../utils/library.util';
 import {
@@ -36,6 +42,7 @@ import {
 import type {
   Paper,
   CollectionInput,
+  CslStyle,
 } from '../../types/library.types';
 import type { AddLinkData } from '../../components/system/AddLinkModal';
 
@@ -52,6 +59,7 @@ export function useLibrary() {
 
   const { workspace } = useWorkspace(workspaceSlug!);
   const workspaceId = workspace?.id || workspaceSlug || '';
+  const queryClient = useQueryClient();
 
   // Data Layer Services
   const paperService = usePapers({ workspaceId, collectionId: '' });
@@ -62,7 +70,8 @@ export function useLibrary() {
   const isPapersLoading = paperService.state.isLoadingAll;
   const collectionService = useCollections(workspaceId);
   const collections = collectionService.state.collections;
-  const { uploadFile } = useUpload();
+  const { uploadFile, uploadFileDetailed } = useUpload();
+  const { ingest: ingestUnified } = useUnifiedIngest(workspaceId);
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -129,83 +138,44 @@ export function useLibrary() {
       if (!files.length) return;
       const loadingToastId = toast.loading(`Uploading ${files.length} document(s)...`);
       let successCount = 0;
+      let lastErrorMessage = '';
 
       for (const file of files) {
         try {
-          const fileStorageUrl = await uploadFile(file, {
+          const { fileId } = await uploadFileDetailed(file, {
             prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
 
-          let extractedTitle = file.name.replace(/\.[^/.]+$/, '');
-          let extractedAuthors: string[] = [];
-          let extractedYear: number | null = null;
-          let extractedDoi = '';
-          let extractedAbstract = '';
-          let extractedJournal = '';
-          let extractedPublisher = '';
-          let extractedVolume = '';
-          let extractedIssue = '';
-          let extractedPages = '';
-          let extractedUrl = '';
-          let extractedType = 'journalArticle';
-
-          try {
-            const extracted = await extractMetadata(file);
-            if (extracted.title) extractedTitle = extracted.title;
-            if (extracted.authors && extracted.authors.length > 0)
-              extractedAuthors = extracted.authors;
-            if (extracted.year)
-              extractedYear = parseInt(String(extracted.year), 10) || null;
-            if (extracted.doi) extractedDoi = extracted.doi;
-            if (extracted.abstract) extractedAbstract = extracted.abstract;
-            if (extracted.journal || extracted.publicationTitle)
-              extractedJournal = extracted.journal || extracted.publicationTitle || '';
-            if (extracted.publisher) extractedPublisher = extracted.publisher;
-            if (extracted.volume) extractedVolume = extracted.volume;
-            if (extracted.issue) extractedIssue = extracted.issue;
-            if (extracted.pages) extractedPages = extracted.pages;
-            if (extracted.url) extractedUrl = extracted.url;
-            if (extracted.itemType || extracted.type)
-              extractedType = extracted.itemType || extracted.type || 'journalArticle';
-          } catch {
-            // Fallback to filename
+          if (!fileId) {
+            throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
           }
 
-          await handleAddPaper({
-            title: extractedTitle,
-            authors: extractedAuthors,
-            year: extractedYear,
-            doi: extractedDoi,
-            abstract: extractedAbstract,
-            fileUrl: fileStorageUrl,
+          await ingestUnified({
+            source: 'pdf',
+            fileId,
             filename: file.name,
-            mimeType: file.type || 'application/pdf',
-            size: file.size,
             collectionId: collectionId || undefined,
-            journal: extractedJournal || undefined,
-            publisher: extractedPublisher || undefined,
-            volume: extractedVolume || undefined,
-            issue: extractedIssue || undefined,
-            pages: extractedPages || undefined,
-            url: extractedUrl || undefined,
-            type: extractedType || undefined,
           });
 
           successCount++;
-        } catch (uploadError) {
+        } catch (uploadError: any) {
           console.error(`Failed to upload ${file.name}:`, uploadError);
+          lastErrorMessage = uploadError?.message || `Failed to upload ${file.name}`;
         }
       }
 
       toast.dismiss(loadingToastId);
       if (successCount > 0) {
+        queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: ['papers'] });
+        queryClient.invalidateQueries({ queryKey: ['library'] });
         toast.success(`Successfully uploaded ${successCount} document(s) into library!`);
       } else {
-        toast.error('Failed to upload selected documents.');
+        toast.error(lastErrorMessage || 'Failed to upload selected documents.');
       }
     },
-    [uploadFile, workspaceId, collectionId, handleAddPaper],
+    [uploadFileDetailed, ingestUnified, workspaceId, collectionId, queryClient],
   );
 
   const handleDirectFolderUpload = useCallback(
@@ -215,112 +185,102 @@ export function useLibrary() {
         `Batch importing ${files.length} documents from "${folderName}"...`,
       );
       let successCount = 0;
+      let lastErrorMessage = '';
 
       for (const file of files) {
         try {
-          const fileStorageUrl = await uploadFile(file, {
+          const { fileId } = await uploadFileDetailed(file, {
             prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
 
-          let extractedTitle = file.name.replace(/\.[^/.]+$/, '');
-          let extractedAuthors: string[] = [];
-          let extractedYear: number | null = null;
-          let extractedDoi = '';
-          let extractedAbstract = '';
-          let extractedJournal = '';
-          let extractedPublisher = '';
-          let extractedVolume = '';
-          let extractedIssue = '';
-          let extractedPages = '';
-          let extractedUrl = '';
-          let extractedType = 'journalArticle';
-
-          try {
-            const extracted = await extractMetadata(file);
-            if (extracted.title) extractedTitle = extracted.title;
-            if (extracted.authors && extracted.authors.length > 0)
-              extractedAuthors = extracted.authors;
-            if (extracted.year)
-              extractedYear = parseInt(String(extracted.year), 10) || null;
-            if (extracted.doi) extractedDoi = extracted.doi;
-            if (extracted.abstract) extractedAbstract = extracted.abstract;
-            if (extracted.journal || extracted.publicationTitle)
-              extractedJournal = extracted.journal || extracted.publicationTitle || '';
-            if (extracted.publisher) extractedPublisher = extracted.publisher;
-            if (extracted.volume) extractedVolume = extracted.volume;
-            if (extracted.issue) extractedIssue = extracted.issue;
-            if (extracted.pages) extractedPages = extracted.pages;
-            if (extracted.url) extractedUrl = extracted.url;
-            if (extracted.itemType || extracted.type)
-              extractedType = extracted.itemType || extracted.type || 'journalArticle';
-          } catch {
-            // Fallback to filename
+          if (!fileId) {
+            throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
           }
 
-          await handleAddPaper({
-            title: extractedTitle,
-            authors: extractedAuthors,
-            year: extractedYear,
-            doi: extractedDoi,
-            abstract: extractedAbstract,
-            fileUrl: fileStorageUrl,
+          await ingestUnified({
+            source: 'pdf',
+            fileId,
             filename: file.name,
-            mimeType: file.type || 'application/pdf',
-            size: file.size,
             collectionId: collectionId || undefined,
-            journal: extractedJournal || undefined,
-            publisher: extractedPublisher || undefined,
-            volume: extractedVolume || undefined,
-            issue: extractedIssue || undefined,
-            pages: extractedPages || undefined,
-            url: extractedUrl || undefined,
-            type: extractedType || undefined,
           });
 
           successCount++;
-        } catch (uploadError) {
+        } catch (uploadError: any) {
           console.error(`Failed to upload ${file.name}:`, uploadError);
+          lastErrorMessage = uploadError?.message || `Failed to upload ${file.name}`;
         }
       }
 
       toast.dismiss(loadingToastId);
       if (successCount > 0) {
+        queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: ['papers'] });
+        queryClient.invalidateQueries({ queryKey: ['library'] });
         toast.success(
           `Imported ${successCount}/${files.length} documents from "${folderName}"!`,
         );
       } else {
-        toast.error(`Failed to import documents from "${folderName}".`);
+        toast.error(lastErrorMessage || `Failed to import documents from "${folderName}".`);
       }
     },
-    [uploadFile, workspaceId, collectionId, handleAddPaper],
+    [uploadFileDetailed, ingestUnified, workspaceId, collectionId, queryClient],
   );
 
   const handleAddLinkSubmit = useCallback(
     async (linkData: AddLinkData) => {
-      await handleAddPaper({
-        title: linkData.title,
-        authors: linkData.authors,
-        year: linkData.year,
-        doi: linkData.doi,
-        abstract: linkData.abstract,
-        fileUrl: linkData.fileUrl,
-        filename: linkData.filename,
-        mimeType: linkData.mimeType,
-        size: linkData.size,
-        collectionId: collectionId || undefined,
-        journal: linkData.journal,
-        publisher: linkData.publisher,
-        volume: linkData.volume,
-        issue: linkData.issue,
-        pages: linkData.pages,
-        url: linkData.url,
-        type: linkData.type,
-      });
-      toast.success('Link added to library successfully!');
+      try {
+        const rawInput = (linkData.url || linkData.doi || '').trim();
+        const doiMatch = rawInput.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
+        const isPureDoi = rawInput.startsWith('10.') || (doiMatch && !rawInput.includes('http') && !rawInput.includes('arxiv'));
+
+        if (isPureDoi || linkData.doi) {
+          const doi = linkData.doi || (doiMatch ? doiMatch[1] : rawInput);
+          await ingestUnified({
+            source: 'doi',
+            doi,
+            collectionId: collectionId || undefined,
+            overrides: linkData.title ? { title: linkData.title } : undefined,
+          });
+        } else if (rawInput) {
+          await ingestUnified({
+            source: 'url',
+            url: rawInput,
+            collectionId: collectionId || undefined,
+            overrides: linkData.title ? { title: linkData.title } : undefined,
+          });
+        } else {
+          await handleAddPaper({
+            title: linkData.title || 'Document',
+            authors: linkData.authors || [],
+            year: linkData.year,
+            doi: linkData.doi,
+            abstract: linkData.abstract,
+            fileUrl: linkData.fileUrl || '',
+            filename: linkData.filename || 'document.pdf',
+            mimeType: linkData.mimeType || 'application/pdf',
+            size: linkData.size || 0,
+            collectionId: collectionId || undefined,
+            journal: linkData.journal,
+            publisher: linkData.publisher,
+            volume: linkData.volume,
+            issue: linkData.issue,
+            pages: linkData.pages,
+            url: linkData.url,
+            type: linkData.type,
+          });
+        }
+        queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: ['papers'] });
+        queryClient.invalidateQueries({ queryKey: ['library'] });
+        toast.success('Document added to library successfully!');
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to add document to library');
+      }
     },
-    [collectionId, handleAddPaper],
+    [workspaceId, collectionId, ingestUnified, handleAddPaper, queryClient],
   );
+
 
   const handleCreateCollection = useCallback(
     (collectionData: CollectionInput) => {
@@ -424,26 +384,143 @@ export function useLibrary() {
   };
 }
 
-// ── Re-exports for 100% Backward Compatibility ──────────────────────────────
+// ── Specialized Hooks (Consolidated) ─────────────────────────────────────────
 
-export { useCollection } from './use-collection';
 export { useCollections } from './use-collections';
-export { useReferences, useCslCitation } from './use-references';
 export {
   useAnnotations,
   useCreateAnnotation,
   useDeleteAnnotation,
   useExtractNotes,
 } from './use-annotations';
-export {
-  useRelatedPapers,
-  useLinkPapers,
-  useUnlinkPapers,
-  useWorkspaceKnowledgeGraph,
-} from './use-relations';
-export {
-  useDuplicateGroups,
-  useMergePapers,
-  useLibraryIntegrity,
-} from './use-quality';
 export { useAsyncJobStatus } from './use-async-job';
+
+// ── References & Citation Hooks ──
+
+export function useReferences() {
+  const lookupDoiMutation = useMutation({
+    mutationFn: fetchReferenceByDoi,
+  });
+
+  const searchCrossrefMutation = useMutation({
+    mutationFn: (query: string) => searchReferences(query),
+  });
+
+  return {
+    state: {
+      isLookingUp: lookupDoiMutation.isPending,
+      isSearching: searchCrossrefMutation.isPending,
+    },
+    actions: {
+      lookupDoi: lookupDoiMutation.mutateAsync,
+      searchCrossref: searchCrossrefMutation.mutateAsync,
+    },
+  };
+}
+
+export function useCslCitation(
+  workspaceId: string,
+  paperId: string,
+  style: CslStyle = 'apa',
+  index: number = 1,
+) {
+  return useQuery({
+    queryKey: libraryKeys.citationItem(workspaceId, paperId, style, index),
+    queryFn: () => formatCslCitation(workspaceId, paperId, style, index),
+    enabled: Boolean(workspaceId && paperId),
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+// ── Relation & Knowledge Graph Hooks ──
+
+export function useRelatedPapers(workspaceId: string, paperId: string) {
+  return useQuery({
+    queryKey: libraryKeys.relations(workspaceId, paperId),
+    queryFn: () => getRelatedPapers(workspaceId, paperId),
+    enabled: Boolean(workspaceId && paperId),
+  });
+}
+
+export function useLinkPapers(workspaceId: string, paperId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      targetPaperId,
+      relationType,
+    }: {
+      targetPaperId: string;
+      relationType?: string;
+    }) => linkPapers(workspaceId, paperId, targetPaperId, relationType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: libraryKeys.relations(workspaceId, paperId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
+      });
+      toast.success('Related paper linked');
+    },
+  });
+}
+
+export function useUnlinkPapers(workspaceId: string, paperId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (targetPaperId: string) =>
+      unlinkPapers(workspaceId, paperId, targetPaperId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: libraryKeys.relations(workspaceId, paperId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
+      });
+      toast.success('Related paper unlinked');
+    },
+  });
+}
+
+// ── Quality & Duplicate Hooks ──
+
+export function useDuplicateGroups(workspaceId: string) {
+  return useQuery({
+    queryKey: libraryKeys.duplicates(workspaceId),
+    queryFn: () => getDuplicateGroups(workspaceId),
+    enabled: Boolean(workspaceId),
+  });
+}
+
+export function useMergePapers(workspaceId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      masterPaperId,
+      sourcePaperIds,
+    }: {
+      masterPaperId: string;
+      sourcePaperIds: string[];
+    }) => mergePapers(workspaceId, masterPaperId, sourcePaperIds),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.papers(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.integrity(workspaceId) });
+      const count = response.mergedCount ?? response.data?.mergedCount ?? 1;
+      toast.success(`Merged ${count} duplicate papers into master`);
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || 'Failed to merge papers');
+    },
+  });
+}
+
+export function useLibraryIntegrity(workspaceId: string) {
+  return useQuery({
+    queryKey: libraryKeys.integrity(workspaceId),
+    queryFn: () => getLibraryIntegrityReport(workspaceId),
+    enabled: Boolean(workspaceId),
+  });
+}

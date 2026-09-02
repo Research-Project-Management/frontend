@@ -19,17 +19,19 @@ import {
   ChevronDown,
   Search,
 } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 import {
-  Button,
   Popover,
   PopoverTrigger,
   PopoverContent,
-  Checkbox,
+} from '@/shared/components/ui/popover';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import {
   useStorageFilterStore,

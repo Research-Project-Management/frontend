@@ -16,7 +16,7 @@ export default function NavigationBar() {
   // Navigation matching sidebar
   const navItems = [
     { label: 'Home', to: basePath },
-    { label: 'My Drive', to: `${basePath}/my-files` },
+    { label: 'Files', to: `${basePath}/my-files` },
     { label: 'Shared', to: `${basePath}/shared` },
     { label: 'Starred', to: `${basePath}/starred` },
     { label: 'Trash', to: `${basePath}/trash` },

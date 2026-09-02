@@ -13,7 +13,6 @@ import { authKeys } from '../constants/auth.keys';
 import { loginSchema, type LoginSchema } from '../schemas/auth.schema';
 import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
 import { env } from '@/config/env';
-import { apiGet } from '@/shared/lib/api';
 
 /**
  * Dedicated Hook for LoginPage.
@@ -36,6 +35,16 @@ export const useLogin = () => {
     mutationFn: loginUser,
     onSuccess: (authenticatedUser) => {
       queryClient.setQueryData(authKeys.session(), authenticatedUser);
+
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
+      const redirect = params?.get('redirect');
+      if (redirect && redirect.startsWith('/')) {
+        router.push(redirect);
+        return;
+      }
 
       // Determine routing based on existing workspaces
       fetchAllWorkspaces()
@@ -78,6 +87,16 @@ export const useLogin = () => {
   useEffect(() => {
     let isMounted = true;
     if (!isAuthLoading && user) {
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
+      const redirect = params?.get('redirect');
+      if (redirect && redirect.startsWith('/')) {
+        router.replace(redirect);
+        return;
+      }
+
       fetchAllWorkspaces()
         .then((data) => {
           if (!isMounted) return;

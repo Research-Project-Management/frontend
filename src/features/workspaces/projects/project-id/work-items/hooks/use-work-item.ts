@@ -243,6 +243,87 @@ export const useDeleteLabel = () => {
   });
 };
 
+// ── Column Mutation Hooks ───────────────────────────────────────────────────
+
+export const useAddColumn = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, ...data }: { projectId: string; title: string; accentColor?: string; id?: string }) =>
+      TaskService.addColumn(projectId, data),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: taskKeys.project(vars.projectId) });
+      qc.invalidateQueries({ queryKey: ['project-details', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Column created');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Failed to create column'),
+  });
+};
+
+export const useUpdateColumn = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, columnId, data }: { projectId: string; columnId: string; data: { title?: string; accentColor?: string } }) =>
+      TaskService.updateColumn(projectId, columnId, data),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: taskKeys.project(vars.projectId) });
+      qc.invalidateQueries({ queryKey: ['project-details', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Column updated');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Failed to update column'),
+  });
+};
+
+export const useDeleteColumn = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, columnId, targetColumnId }: { projectId: string; columnId: string; targetColumnId?: string }) =>
+      TaskService.deleteColumn(projectId, columnId, targetColumnId),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: taskKeys.project(vars.projectId) });
+      qc.invalidateQueries({ queryKey: ['project-details', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Column deleted');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Failed to delete column'),
+  });
+};
+
+export const useReorderColumns = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, columns }: { projectId: string; columns: Column[] }) =>
+      TaskService.reorderColumns(projectId, columns),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: taskKeys.project(vars.projectId) });
+      qc.invalidateQueries({ queryKey: ['project-details', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Columns reordered');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Failed to reorder columns'),
+  });
+};
+
+export const useResetColumns = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: string) => TaskService.resetColumns(projectId),
+    onSuccess: (_, projectId) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: taskKeys.project(projectId) });
+      qc.invalidateQueries({ queryKey: ['project-details', projectId] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Columns reset to default');
+    },
+    onError: (e: Error) => toast.error(e.message || 'Failed to reset columns'),
+  });
+};
+
 // ── 5. Main Task Project Hook (useTaskProject) ──────────────────────────────
 
 export interface UseTaskProjectOptions {
@@ -262,6 +343,11 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
   const deleteMut = useDeleteTask();
   const duplicateMut = useDuplicateTask();
   const bulkMut = useBulkUpdateTasks();
+  const addColMut = useAddColumn();
+  const updateColMut = useUpdateColumn();
+  const deleteColMut = useDeleteColumn();
+  const reorderColMut = useReorderColumns();
+  const resetColMut = useResetColumns();
 
   const items = useMemo(() => tasksQ.data?.tasks ?? [], [tasksQ.data?.tasks]);
   const project = useMemo(() => {
@@ -299,8 +385,8 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
     status: {
       isLoading: tasksQ.isLoading || detailsQ.isLoading,
       isError: tasksQ.isError || detailsQ.isError,
-      isSaving: updateMut.isPending || createMut.isPending,
-      isDeleting: deleteMut.isPending,
+      isSaving: updateMut.isPending || createMut.isPending || addColMut.isPending || updateColMut.isPending || deleteColMut.isPending,
+      isDeleting: deleteMut.isPending || deleteColMut.isPending,
       error: tasksQ.error || detailsQ.error,
     },
     isLoading: tasksQ.isLoading || detailsQ.isLoading,
@@ -308,6 +394,7 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
     error: tasksQ.error || detailsQ.error,
     isSavingTask: updateMut.isPending || createMut.isPending,
     isDeletingTask: deleteMut.isPending,
+    isMutatingColumn: addColMut.isPending || updateColMut.isPending || deleteColMut.isPending || reorderColMut.isPending,
   };
 
   const createMutAsync = createMut.mutateAsync;
@@ -315,6 +402,11 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
   const deleteMutAsync = deleteMut.mutateAsync;
   const duplicateMutAsync = duplicateMut.mutateAsync;
   const bulkMutAsync = bulkMut.mutateAsync;
+  const addColAsync = addColMut.mutateAsync;
+  const updateColAsync = updateColMut.mutateAsync;
+  const deleteColAsync = deleteColMut.mutateAsync;
+  const reorderColAsync = reorderColMut.mutateAsync;
+  const resetColAsync = resetColMut.mutateAsync;
   const refetchTasks = tasksQ.refetch;
   const refetchDetails = detailsQ.refetch;
 
@@ -332,6 +424,32 @@ export function useTaskProject({ projectId, cycleId, workspaceId }: UseTaskProje
       refetchTasks();
       refetchDetails();
     }, [refetchTasks, refetchDetails]),
+
+    // Column Actions
+    addColumn: useCallback(
+      (d: { title: string; accentColor?: string; id?: string; projectId?: string }) =>
+        addColAsync({ projectId: d.projectId || projectId, ...d }),
+      [addColAsync, projectId],
+    ),
+    updateColumn: useCallback(
+      (columnId: string, data: { title?: string; accentColor?: string }, targetProjectId?: string) =>
+        updateColAsync({ projectId: targetProjectId || projectId, columnId, data }),
+      [updateColAsync, projectId],
+    ),
+    deleteColumn: useCallback(
+      (columnId: string, targetColumnId?: string, targetProjectId?: string) =>
+        deleteColAsync({ projectId: targetProjectId || projectId, columnId, targetColumnId }),
+      [deleteColAsync, projectId],
+    ),
+    reorderColumns: useCallback(
+      (newColumns: Column[], targetProjectId?: string) =>
+        reorderColAsync({ projectId: targetProjectId || projectId, columns: newColumns }),
+      [reorderColAsync, projectId],
+    ),
+    resetColumns: useCallback(
+      (targetProjectId?: string) => resetColAsync(targetProjectId || projectId),
+      [resetColAsync, projectId],
+    ),
 
     // Aliases
     createTask: useCallback((d: Parameters<typeof createMutAsync>[0]) => createMutAsync(d), [createMutAsync]),
@@ -392,7 +510,6 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
         name: name.trim(),
         color,
         type: type || 'task',
-        projectId,
       });
     } else if (view === 'edit' && editId) {
       await updateLabelMutateAsync({

@@ -58,13 +58,14 @@ export function LabelPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={
-            isOpen
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
-              : actionBtnClass
-          }
+          size="sm"
+          className={cn(
+            'h-6.5 px-2 text-[11px] font-medium rounded-md border border-border/60 bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 cursor-pointer transition-colors shadow-none shrink-0',
+            actionBtnClass,
+            isOpen && 'bg-muted border-border'
+          )}
         >
-          <Tag className="mr-2 h-4 w-4 text-foreground" />
+          <Tag className="size-3 text-foreground" />
           <span>Labels</span>
         </Button>
       </PopoverTrigger>

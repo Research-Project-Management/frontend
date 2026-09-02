@@ -11,6 +11,7 @@ import {
   RefreshCcw,
   Tag,
   Clock,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 import { useProjectDetails, useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
@@ -77,6 +78,7 @@ export default function Sidebar() {
     {
       title: 'Features',
       items: [
+        { id: 'statuses', label: 'Statuses', icon: Layers, to: `${base}/statuses` },
         { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
         { id: 'cycles', label: 'Cycles', icon: RefreshCcw, to: `${base}/cycles` },
         { id: 'labels', label: 'Labels', icon: Tag, to: `${base}/labels` },
@@ -93,7 +95,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="h-full w-60 shrink-0 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none">
+    <aside className="h-full w-60 shrink-0 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none sidebar-scrollbar">
       {/* Back */}
       <div className="mb-1 px-2">
         <Link

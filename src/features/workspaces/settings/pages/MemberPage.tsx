@@ -59,6 +59,7 @@ export default function WorkspaceMemberPage() {
     members,
     invitations,
     filteredMembers,
+    pendingInvites,
     search,
     roleFilter,
     sortField,
@@ -68,6 +69,8 @@ export default function WorkspaceMemberPage() {
     memberToRemove,
     memberToLeave,
     isInviting,
+    isInvitesLoading,
+    isRevokingInvite,
     isRemoving,
     isLeaving,
   } = state;
@@ -258,9 +261,10 @@ export default function WorkspaceMemberPage() {
           {/* ── Pending tab ────────────────────────────────────────────── */}
           {activeTab === 'pending' && (
             <PendingInvites
-              invites={invitations}
+              invites={pendingInvites}
               canManage={canManage}
               onCancelInvite={handleCancelInvite}
+              isLoading={isInvitesLoading}
             />
           )}
 

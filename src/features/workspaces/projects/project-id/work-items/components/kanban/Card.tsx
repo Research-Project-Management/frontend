@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import {
   MoreHorizontal,
   Copy,
@@ -9,6 +8,11 @@ import {
   RotateCcw,
   Trash2,
   Check,
+  CheckSquare,
+  Bug,
+  Sparkles,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
@@ -16,7 +20,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/shared/lib/utils';
-import type { WorkItem, Task } from '../../types/work-item.types';
+import type { Task, TaskIssueType } from '../../types/work-item.types';
+import { ISSUE_TYPE_CONFIG } from '../../types/work-item.types';
+
+const ISSUE_TYPE_ICONS: Record<TaskIssueType, React.ElementType> = {
+  task: CheckSquare,
+  bug: Bug,
+  feature: Sparkles,
+  improvement: TrendingUp,
+  epic: Zap,
+};
 
 import { useCard, type TaskCardLabel } from '../../hooks/use-kanban';
 
@@ -209,21 +222,32 @@ export function CardUI({
         </button>
       ) : null}
 
-      {/* Task Title */}
+      {/* Task Title & Issue Type */}
       <div className="flex items-start gap-1.5">
-        {isDone && (
-          <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        {isDone ? (
+          <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600">
             <Check className="size-2.5 stroke-3" />
           </span>
+        ) : (
+          (() => {
+            const iType = (card.issueType as TaskIssueType) || 'task';
+            const Icon = ISSUE_TYPE_ICONS[iType] || CheckSquare;
+            const config = ISSUE_TYPE_CONFIG[iType] || ISSUE_TYPE_CONFIG.task;
+            return (
+              <span className="mt-0.5 inline-flex shrink-0 items-center" title={config.label}>
+                <Icon className="size-3.5" style={{ color: config.color }} />
+              </span>
+            );
+          })()
         )}
         <div className="min-w-0 flex-1">
           {card.identifier && (
-            <span className="mb-0.5 block text-xs font-semibold text-muted-foreground tracking-tight">
+            <span className="mb-0.5 block text-[11px] font-mono font-semibold text-muted-foreground tracking-tight">
               {card.identifier}
             </span>
           )}
           <h4
-            className={`min-w-0 flex-1 wrap-break-word text-sm font-medium leading-5 tracking-tight pr-6 ${
+            className={`min-w-0 flex-1 wrap-break-word text-[13px] font-medium leading-snug tracking-tight pr-5 ${
               isDone ? 'text-muted-foreground line-through' : 'text-foreground'
             }`}
           >

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useUpload } from '@/shared/hooks/use-upload';
 import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
@@ -63,6 +63,14 @@ export function useTopbar({
     const event = new CustomEvent('open-create-folder');
     window.dispatchEvent(event);
   };
+
+  useEffect(() => {
+    const onTriggerUpload = () => {
+      fileInputRef.current?.click();
+    };
+    window.addEventListener('trigger-upload-file', onTriggerUpload);
+    return () => window.removeEventListener('trigger-upload-file', onTriggerUpload);
+  }, []);
 
   const performSingleFileUpload = useCallback(async (file: File, targetFolder: string | null) => {
     if (!projectId) return;
@@ -161,6 +169,7 @@ export function useTopbar({
     handleClearSearch,
     handleUploadFile,
     handleUploadFolder,
+    handleUploadFiles,
     handleCreateFolder,
     handleFileSelect,
     handleFolderSelect,

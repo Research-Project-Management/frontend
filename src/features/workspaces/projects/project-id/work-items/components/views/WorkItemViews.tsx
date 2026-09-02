@@ -4,6 +4,8 @@ import React from "react";
 import BoardView from "../kanban/Board";
 import ListView from "./ListView";
 import CalendarView from "./CalendarView";
+import TableView from "./TableView";
+import SplitView from "./SplitView";
 import type {
   WorkItem,
   Task,
@@ -31,6 +33,9 @@ export interface WorkItemViewsProps {
   onLeaveCard: (card: WorkItem) => void;
   onRemoveFromCycle?: (card: WorkItem) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
+  onAddColumn?: () => void;
+  onEditColumn?: (column: ColumnType) => void;
+  onDeleteColumn?: (column: ColumnType) => void;
   onAssignExistingTasks?: (taskIds: string[], dueDate: string, quiet?: boolean, startDate?: string | null) => void;
   cycleId?: string;
   isReadOnly?: boolean;
@@ -56,6 +61,9 @@ export function WorkItemViews({
   onLeaveCard,
   onRemoveFromCycle,
   onMoveCard,
+  onAddColumn,
+  onEditColumn,
+  onDeleteColumn,
   onAssignExistingTasks,
   cycleId,
   isReadOnly,
@@ -92,6 +100,9 @@ export function WorkItemViews({
           onLeaveCard={onLeaveCard}
           onRemoveFromCycle={onRemoveFromCycle}
           onMoveCard={onMoveCard}
+          onAddColumn={onAddColumn}
+          onEditColumn={onEditColumn}
+          onDeleteColumn={onDeleteColumn}
           isReadOnly={isReadOnly}
         />
       );
@@ -107,6 +118,46 @@ export function WorkItemViews({
           onOpenCardDetail={onEditCard}
           onAssignExistingTasks={onAssignExistingTasks ?? (() => {})}
           onRemoveFromCycle={cycleId ? onRemoveFromCycle : undefined}
+          isReadOnly={isReadOnly}
+        />
+      );
+
+    case "table":
+      return (
+        <TableView
+          tasks={tasks}
+          columns={columns}
+          currentUserId={currentUserId}
+          currentUserAvatar={currentUserAvatar}
+          projectId={projectId}
+          onAddCard={onAddCard}
+          onEditCard={onEditCard}
+          onDeleteCard={onDeleteCard}
+          onDuplicateCard={onDuplicateCard}
+          onJoinCard={onJoinCard}
+          onLeaveCard={onLeaveCard}
+          onRemoveFromCycle={onRemoveFromCycle}
+          onMoveCard={onMoveCard}
+          isReadOnly={isReadOnly}
+        />
+      );
+
+    case "split":
+      return (
+        <SplitView
+          tasks={tasks}
+          columns={columns}
+          currentUserId={currentUserId}
+          currentUserAvatar={currentUserAvatar}
+          projectId={projectId}
+          onAddCard={onAddCard}
+          onEditCard={onEditCard}
+          onDeleteCard={onDeleteCard}
+          onDuplicateCard={onDuplicateCard}
+          onJoinCard={onJoinCard}
+          onLeaveCard={onLeaveCard}
+          onRemoveFromCycle={onRemoveFromCycle}
+          onMoveCard={onMoveCard}
           isReadOnly={isReadOnly}
         />
       );
@@ -129,6 +180,9 @@ export function WorkItemViews({
           onLeaveCard={onLeaveCard}
           onRemoveFromCycle={onRemoveFromCycle}
           onMoveCard={onMoveCard}
+          onAddColumn={onAddColumn}
+          onEditColumn={onEditColumn}
+          onDeleteColumn={onDeleteColumn}
           cycleId={cycleId}
           isReadOnly={isReadOnly}
         />
@@ -137,5 +191,5 @@ export function WorkItemViews({
 }
 
 export const TaskViews = WorkItemViews;
-export { BoardView, ListView, CalendarView };
+export { BoardView, ListView, CalendarView, TableView, SplitView };
 export default WorkItemViews;

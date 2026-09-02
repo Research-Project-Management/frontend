@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ChevronRight, HardDrive, Home } from 'lucide-react';
+import { ChevronRight, Folder, Home } from 'lucide-react';
 
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
@@ -27,12 +27,13 @@ import {
   navigateBreadcrumbPath,
   canDropIntoFolder,
 } from '../utils/my-files.util';
-import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
+import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
+import { useTopbar } from '../hooks/use-topbar';
 
 export default function WorkspaceMyFilesPage() {
   const router = useRouter();
@@ -44,6 +45,10 @@ export default function WorkspaceMyFilesPage() {
   const folderParam = routeFolderId || searchParams.get('folder');
   const highlightParam = searchParams.get('highlight');
 
+  const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
+  const workspaceId = workspace?.id || workspaceUrl;
+  const rootName = workspace?.name || 'All Files';
+
   const { view } = useViewStore();
   const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const { clearSelection } = useStorageSelectionStore();
@@ -54,11 +59,11 @@ export default function WorkspaceMyFilesPage() {
   const [currentFolder, setCurrentFolder] = useState<string | null>(folderParam || null);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(highlightParam || null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbSegment[]>([
-    { id: null, name: 'My Drive' },
+    { id: null, name: rootName },
   ]);
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
-  const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?.id || workspaceUrl;
+
+  const { handleUploadFiles } = useTopbar({ workspaceId, parentId: currentFolder, searchQuery, onSearchChange: setSearchQuery });
 
   const queryParams: FileQueryParams = useMemo(() => ({
     search: debouncedSearch || undefined,
@@ -98,15 +103,15 @@ export default function WorkspaceMyFilesPage() {
   useEffect(() => {
     if (currentFolder && folderPathData?.path && folderPathData.path.length > 0) {
       setBreadcrumbs([
-        { id: null, name: 'My Drive' },
+        { id: null, name: rootName },
         ...folderPathData.path,
       ]);
     } else if (!currentFolder) {
-      setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+      setBreadcrumbs([{ id: null, name: rootName }]);
     }
-  }, [currentFolder, folderPathData?.path]);
+  }, [currentFolder, folderPathData?.path, rootName]);
 
-  // Navigation
+  // ── Navigation ─────────────────────────────────────────────────────────
   const handleFolderClick = useCallback((folder: StorageItem) => {
     clearSelection();
     setCurrentFolder(folder.id);
@@ -130,7 +135,7 @@ export default function WorkspaceMyFilesPage() {
     handleBreadcrumbNavigate(idx >= 0 ? idx : 0, folderId);
   }, [breadcrumbs, handleBreadcrumbNavigate]);
 
-  // Download
+  // ── Download ───────────────────────────────────────────────────────────
   const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
@@ -140,36 +145,46 @@ export default function WorkspaceMyFilesPage() {
     }
   };
 
-  // Drag-and-drop move
-  const handleDragStart = (item: StorageItem, e: React.DragEvent) => {
+  // ── Drag-and-drop move ─────────────────────────────────────────────────
+  const handleDragStart = useCallback((item: StorageItem) => {
     setDraggingItem(item);
-    e.dataTransfer.setData('text/plain', item.id);
-  };
+  }, []);
 
-  const handleDropOnFolder = async (targetFolder: StorageItem, e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggingItem || !canDropIntoFolder(draggingItem, targetFolder)) return;
+  const handleDropOnFolder = useCallback(
+    async (folder: StorageItem) => {
+      if (!canDropIntoFolder(draggingItem, folder)) return;
+      const itemName = draggingItem!.filename;
+      try {
+        await moveItem({ itemId: draggingItem!.id, parentId: folder.id });
+        toast.success(`Moved "${itemName}" into "${folder.filename}"`);
+      } catch {
+        toast.error(`Failed to move "${itemName}"`);
+      } finally {
+        setDraggingItem(null);
+      }
+    },
+    [draggingItem, moveItem],
+  );
 
-    try {
-      await moveItem({ itemId: draggingItem.id, parentId: targetFolder.id });
-      toast.success(`Moved "${draggingItem.filename}" into "${targetFolder.filename}"`);
-    } catch {
-      toast.error('Failed to move item');
-    } finally {
-      setDraggingItem(null);
-    }
-  };
+  const handleMoveToParent = useCallback(
+    async (item: StorageItem) => {
+      const parentId =
+        breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
+      try {
+        await moveItem({ itemId: item.id, parentId });
+        toast.success(
+          `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : rootName}`,
+        );
+      } catch {
+        toast.error(`Failed to move "${item.filename}"`);
+      }
+    },
+    [breadcrumbs, moveItem, rootName],
+  );
 
-  const handleMoveToParent = async (item: StorageItem) => {
-    const parentFolderId =
-      breadcrumbs.length >= 2 ? breadcrumbs[breadcrumbs.length - 2].id : null;
-    try {
-      await moveItem({ itemId: item.id, parentId: parentFolderId });
-      toast.success(`Moved "${item.filename}" to parent folder`);
-    } catch {
-      toast.error('Failed to move item to parent folder');
-    }
-  };
+  const handleFilesDrop = useCallback((droppedFiles: File[]) => {
+    handleUploadFiles(droppedFiles, currentFolder);
+  }, [handleUploadFiles, currentFolder]);
 
   const viewProps = {
     items: files,
@@ -187,11 +202,13 @@ export default function WorkspaceMyFilesPage() {
     onMoveToParent: currentFolder ? handleMoveToParent : undefined,
   };
 
+  const currentFolderName = breadcrumbs[breadcrumbs.length - 1]?.name || rootName;
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden relative">
       <Topbar
-        title="My Drive"
-        icon={HardDrive}
+        title={rootName}
+        icon={Folder}
         breadcrumbs={breadcrumbs}
         onBreadcrumbNavigate={handleTopBreadcrumbNavigate}
         workspaceId={workspaceId}
@@ -199,24 +216,29 @@ export default function WorkspaceMyFilesPage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {isWorkspaceLoading || (isFilesLoading && !data) ? (
-          <div className="space-y-4">
-            <Skeleton className="h-9 w-full rounded-lg" />
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded" />
-              ))}
+      <StorageDropzoneOverlay
+        onFilesDrop={handleFilesDrop}
+        folderName={currentFolderName}
+      >
+        <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+          {isWorkspaceLoading || (isFilesLoading && !data) ? (
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full rounded-lg" />
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded" />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : !workspaceId ? (
-          <div className="p-6 text-muted-foreground">Workspace not found</div>
-        ) : view === 'list' ? (
-          <ListView {...viewProps} />
-        ) : (
-          <GridView {...viewProps} />
-        )}
-      </div>
+          ) : !workspaceId ? (
+            <div className="p-6 text-muted-foreground">Workspace not found</div>
+          ) : view === 'list' ? (
+            <ListView {...viewProps} />
+          ) : (
+            <GridView {...viewProps} />
+          )}
+        </div>
+      </StorageDropzoneOverlay>
       <BulkActionBar items={files} />
     </div>
   );

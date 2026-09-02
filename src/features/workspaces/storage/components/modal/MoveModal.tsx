@@ -22,9 +22,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Button,
-  Input,
-} from '@/shared/components/ui';
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { getAllFiles as getWorkspaceFiles, createFolder as createWorkspaceFolder } from '@/features/workspaces/storage/services/file.service';

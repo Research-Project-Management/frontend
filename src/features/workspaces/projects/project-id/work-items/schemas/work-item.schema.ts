@@ -5,6 +5,22 @@ import { z } from "zod";
 export const workItemPrioritySchema = z.enum(["urgent", "high", "medium", "low", "none"]);
 export const taskPrioritySchema = workItemPrioritySchema;
 
+export const taskIssueTypeSchema = z.enum(["task", "bug", "feature", "improvement", "epic"]);
+export const workItemIssueTypeSchema = taskIssueTypeSchema;
+
+export const taskRelationTypeSchema = z.enum(["blocks", "blocked_by", "relates_to", "duplicate_of"]);
+export const workItemRelationTypeSchema = taskRelationTypeSchema;
+
+export const taskRelationSchema = z.object({
+  id: z.string(),
+  type: taskRelationTypeSchema,
+  targetTaskId: z.string(),
+  targetTitle: z.string().optional(),
+  targetIdentifier: z.string().optional(),
+  targetColumnId: z.string().optional(),
+});
+export const workItemRelationSchema = taskRelationSchema;
+
 export const workItemRecurrenceSchema = z.enum([
   "none",
   "daily",
@@ -93,6 +109,9 @@ export const workItemSchema = z.object({
   description: z.string(),
   projectId: z.string(),
   columnId: z.string(),
+  issueType: taskIssueTypeSchema.default("task").optional(),
+  storyPoints: z.number().nullable().optional(),
+  relations: z.array(taskRelationSchema).optional(),
   assignee: z
     .object({
       id: z.string(),
@@ -103,12 +122,15 @@ export const workItemSchema = z.object({
     .nullable()
     .optional(),
   assigneeId: z
-    .object({
-      id: z.string(),
-      name: z.string().optional(),
-      avatar: z.string().optional(),
-      email: z.string().optional(),
-    })
+    .union([
+      z.string(),
+      z.object({
+        id: z.string(),
+        name: z.string().optional(),
+        avatar: z.string().optional(),
+        email: z.string().optional(),
+      }),
+    ])
     .nullable()
     .optional(),
   dueDate: z.string().nullable().optional(),
@@ -173,6 +195,9 @@ export const workItemMutationInputSchema = workItemSchema
     content: true,
     description: true,
     columnId: true,
+    issueType: true,
+    storyPoints: true,
+    relations: true,
     labels: true,
     priority: true,
     estimate: true,
@@ -198,6 +223,8 @@ export const columnSchema = z.object({
   id: z.string(),
   title: z.string(),
   accentColor: z.string().optional(),
+  isDefault: z.boolean().optional(),
+  slug: z.string().optional(),
 });
 
 export const columnFormSchema = z.object({

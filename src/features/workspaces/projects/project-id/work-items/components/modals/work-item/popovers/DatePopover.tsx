@@ -8,7 +8,8 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
-import type { TaskRecurrence, TaskReminder, WorkItemRecurrence, WorkItemReminder } from '../../../../types/work-item.types';
+import { cn } from '@/shared/lib/utils';
+import type { TaskRecurrence, TaskReminder } from '../../../../types/work-item.types';
 
 export interface DatePopoverProps {
   open: boolean;
@@ -98,13 +99,14 @@ export function DatePopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={
-            open
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
-              : actionBtnClass
-          }
+          size="sm"
+          className={cn(
+            'h-6.5 px-2 text-[11px] font-medium rounded-md border border-border/60 bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 cursor-pointer transition-colors shadow-none shrink-0',
+            actionBtnClass,
+            open && 'bg-muted border-border'
+          )}
         >
-          <Clock className="mr-2 h-4 w-4 text-foreground" />
+          <Clock className="size-3 text-foreground" />
           <span>Dates</span>
         </Button>
       </PopoverTrigger>

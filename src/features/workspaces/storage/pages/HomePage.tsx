@@ -12,12 +12,11 @@ import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileUrl } from '@/shared/utils/file';
-import { filterHomeFiles } from '../utils/home.util';
-import { applyStorageFilters } from '../utils/filter.util';
 import { BulkActionBar } from '../components/actions/BulkActionBar';
-import { useStorageSelectionStore } from '../store/use-selection-store';
 import Topbar from '../components/layout/Topbar';
+import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { Home } from 'lucide-react';
+import { useTopbar } from '../hooks/use-topbar';
 
 import { useDebounce } from '@/shared/hooks/use-debounce';
 import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
@@ -29,10 +28,11 @@ export default function WorkspaceHomePage() {
   const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
+  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
   
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?.id || workspaceUrl;
+  const { handleUploadFiles } = useTopbar({ workspaceId, searchQuery, onSearchChange: setSearchQuery });
 
   const queryParams: FileQueryParams = useMemo(() => ({
     search: debouncedSearch || undefined,
@@ -88,6 +88,10 @@ export default function WorkspaceHomePage() {
     onFolderClick: (folder: StorageItem) => router.push(`/${workspaceUrl}/storage/my-files/${folder.id}`),
   };
 
+  const handleFilesDrop = useCallback((droppedFiles: File[]) => {
+    handleUploadFiles(droppedFiles, null);
+  }, [handleUploadFiles]);
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden relative">
       <Topbar
@@ -97,24 +101,29 @@ export default function WorkspaceHomePage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {isWorkspaceLoading || (isFilesLoading && !data) ? (
-          <div className="space-y-4">
-            <Skeleton className="h-9 w-full rounded-lg" />
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full rounded" />
-              ))}
+      <StorageDropzoneOverlay
+        onFilesDrop={handleFilesDrop}
+        folderName={workspace?.name || "All workspace files"}
+      >
+        <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+          {isWorkspaceLoading || (isFilesLoading && !data) ? (
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full rounded-lg" />
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded" />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : !workspaceId ? (
-          <div className="p-6 text-muted-foreground">Workspace not found</div>
-        ) : view === 'list' ? (
-          <ListView {...viewProps} />
-        ) : (
-          <GridView {...viewProps} />
-        )}
-      </div>
+          ) : !workspaceId ? (
+            <div className="p-6 text-muted-foreground">Workspace not found</div>
+          ) : view === 'list' ? (
+            <ListView {...viewProps} />
+          ) : (
+            <GridView {...viewProps} />
+          )}
+        </div>
+      </StorageDropzoneOverlay>
       <BulkActionBar items={files} />
     </div>
   );

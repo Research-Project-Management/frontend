@@ -226,7 +226,8 @@ export function WorkItemPage({
 
   const handleJoinCard = (card: TaskType) => {
     if (!currentUser?.id) return;
-    if (card.assigneeId?.id === currentUser.id) return;
+    const currentAssigneeId = typeof card.assigneeId === 'object' ? card.assigneeId?.id : card.assigneeId;
+    if (currentAssigneeId === currentUser.id) return;
 
     projectActions.updateTask({
       taskId: card.id,
@@ -237,7 +238,8 @@ export function WorkItemPage({
 
   const handleLeaveCard = (card: TaskType) => {
     if (!currentUser?.id) return;
-    if (card.assigneeId?.id !== currentUser.id) return;
+    const currentAssigneeId = typeof card.assigneeId === 'object' ? card.assigneeId?.id : card.assigneeId;
+    if (currentAssigneeId !== currentUser.id) return;
 
     projectActions.updateTask({
       taskId: card.id,

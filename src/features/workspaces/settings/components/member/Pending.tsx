@@ -110,6 +110,7 @@ export function PendingInvites({
               <th className="py-3 px-4 w-[20%]">Invited on</th>
               <th className="py-3 px-4 w-[18%]">Expiration</th>
               <th className="py-3 px-4 text-right">Actions</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
             {invites.map((invite) => {

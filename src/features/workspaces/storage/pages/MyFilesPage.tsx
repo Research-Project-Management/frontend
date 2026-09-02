@@ -7,6 +7,7 @@ import { ChevronRight, Folder, Home } from 'lucide-react';
 
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import {
+  useHomeFiles,
   useWorkspaceFiles,
   useToggleStarItem,
   useDeleteItem,
@@ -85,7 +86,7 @@ export default function WorkspaceMyFilesPage() {
   const { mutateAsync: moveItem }         = useMoveItem();
 
   const files = useMemo(
-    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    () => (data?.pages.flatMap((page: any) => page.files || []) || []) as StorageItem[],
     [data?.pages],
   );
 

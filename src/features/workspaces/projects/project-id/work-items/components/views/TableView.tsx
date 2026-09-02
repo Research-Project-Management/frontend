@@ -321,7 +321,9 @@ export function TableView({
               const priorityCfg = PRIORITY_ICONS[priority] || PRIORITY_ICONS.none;
               const PriorityIcon = priorityCfg.icon;
               const isOverdue = TaskHelpers.checkOverdue(task.dueDate);
-              const isCurrentUser = Boolean(currentUserId && task.assigneeId?.id === currentUserId);
+              const assignee = typeof task.assigneeId === 'object' ? task.assigneeId : (task as any).assignee;
+              const assigneeIdStr = assignee?.id || (typeof task.assigneeId === 'string' ? task.assigneeId : null);
+              const isCurrentUser = Boolean(currentUserId && assigneeIdStr === currentUserId);
 
               return (
                 <tr
@@ -421,16 +423,16 @@ export function TableView({
 
                   {/* Assignee */}
                   <td className="px-2.5">
-                    {task.assigneeId ? (
+                    {assignee ? (
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Avatar className="size-4.5 shrink-0">
-                          <AvatarImage src={task.assigneeId.avatar} />
+                          <AvatarImage src={assignee.avatar} />
                           <AvatarFallback className="text-[8px] font-bold">
-                            {TaskHelpers.getInitials(task.assigneeId.name)}
+                            {TaskHelpers.getInitials(assignee.name)}
                           </AvatarFallback>
                         </Avatar>
                         <span className="truncate text-[11px] font-medium text-foreground">
-                          {task.assigneeId.name}
+                          {assignee.name || 'Member'}
                         </span>
                       </div>
                     ) : (

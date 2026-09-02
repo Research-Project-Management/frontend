@@ -106,11 +106,13 @@ export function useTopbar({
     if (Array.isArray(tasks)) {
       for (const t of tasks) {
         if (!t) continue;
-        if (t.assigneeId?.id) {
-          map.set(t.assigneeId.id, {
-            id: t.assigneeId.id,
-            name: t.assigneeId.name || 'Unknown',
-            avatar: t.assigneeId.avatar,
+        const assignee = typeof t.assigneeId === 'object' ? t.assigneeId : (t as any).assignee;
+        const assigneeId = assignee?.id || (typeof t.assigneeId === 'string' ? t.assigneeId : null);
+        if (assigneeId) {
+          map.set(assigneeId, {
+            id: assigneeId,
+            name: assignee?.name || 'Unknown',
+            avatar: assignee?.avatar,
           });
         } else {
           hasUnassigned = true;

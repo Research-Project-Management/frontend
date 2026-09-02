@@ -4,6 +4,7 @@ import React from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Hash, Check, X } from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
 import { STORY_POINT_OPTIONS } from '../../../../types/work-item.types';
 
 interface StoryPointsPopoverProps {

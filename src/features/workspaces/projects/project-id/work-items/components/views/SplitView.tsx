@@ -30,6 +30,7 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { toast } from 'sonner';
+import { cn } from '@/shared/lib/utils';
 import type { Task, Column as ColumnType, TaskPriority, TaskIssueType, TaskMutationInput } from '../../types/work-item.types';
 import { ISSUE_TYPE_CONFIG, resolveTaskColumnId, resolveTaskColumnColor } from '../../types/work-item.types';
 import { TaskHelpers } from '../../utils/work-item.util';
@@ -288,13 +289,15 @@ export function SplitView({
 
                 <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    {task.assigneeId ? (
-                      <span className="truncate max-w-[120px] font-medium text-foreground/80">
-                        {task.assigneeId.name}
-                      </span>
-                    ) : (
-                      <span className="italic opacity-60">Unassigned</span>
-                    )}
+                    {(() => {
+                      const assignee = typeof task.assigneeId === 'object' ? task.assigneeId : (task as any).assignee;
+                      if (!assignee) return <span className="italic opacity-60">Unassigned</span>;
+                      return (
+                        <span className="truncate max-w-[120px] font-medium text-foreground/80">
+                          {assignee.name || 'Member'}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {task.dueDate && (
@@ -447,21 +450,27 @@ export function SplitView({
 
                   {/* Assignee & Dates Summary */}
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    {activeTask.assigneeId ? (
-                      <div className="flex items-center gap-1.5 bg-muted/60 px-2 py-1 rounded-md border border-border/50">
-                        <Avatar className="size-4">
-                          <AvatarImage src={activeTask.assigneeId.avatar} />
-                          <AvatarFallback className="text-[8px] font-bold">
-                            {TaskHelpers.getInitials(activeTask.assigneeId.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold text-foreground">{activeTask.assigneeId.name}</span>
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground italic text-xs bg-muted/30 px-2 py-1 rounded border border-border/40">
-                        No assignee
-                      </div>
-                    )}
+                    {(() => {
+                      const assignee = typeof activeTask.assigneeId === 'object' ? activeTask.assigneeId : (activeTask as any).assignee;
+                      if (!assignee) {
+                        return (
+                          <div className="text-muted-foreground italic text-xs bg-muted/30 px-2 py-1 rounded border border-border/40">
+                            No assignee
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="flex items-center gap-1.5 bg-muted/60 px-2 py-1 rounded-md border border-border/50">
+                          <Avatar className="size-4">
+                            <AvatarImage src={assignee.avatar} />
+                            <AvatarFallback className="text-[8px] font-bold">
+                              {TaskHelpers.getInitials(assignee.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-semibold text-foreground">{assignee.name || 'Member'}</span>
+                        </div>
+                      );
+                    })()}
 
                     {activeTask.dueDate && (
                       <div className="flex items-center gap-1 text-xs bg-muted/60 px-2 py-1 rounded-md border border-border/50">

@@ -14,10 +14,12 @@ export const AddMemberBodySchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
   role: z.enum(WORKSPACE_ROLES),
 });
+export type AddMemberBodyInput = z.infer<typeof AddMemberBodySchema>;
 
 export const UpdateMemberRoleBodySchema = z.object({
   role: z.enum(WORKSPACE_ROLES),
 });
+export type UpdateMemberRoleBodyInput = z.infer<typeof UpdateMemberRoleBodySchema>;
 
 export const InviteMemberRowSchema = z.object({
   email: z.string().email('Invalid email address'),

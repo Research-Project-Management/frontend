@@ -162,7 +162,7 @@ export function ItemActions({
           variant="ghost"
           size="icon"
           className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
-          onClick={() => onToggleStar(item.id)}
+          onClick={() => onToggleStar?.(item.id)}
           title={item.starred ? "Unstar" : "Star"}
         >
           <Star className={`size-3.5 ${item.starred ? "fill-amber-400 text-amber-400" : ""}`} />

@@ -57,7 +57,6 @@ export default function WorkspaceMemberPage() {
     canManage,
     activeTab,
     members,
-    invitations,
     filteredMembers,
     pendingInvites,
     search,

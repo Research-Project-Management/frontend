@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { getQueryClient } from '@/shared/lib/get-query-client';
 
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 if (typeof window !== 'undefined') {
   const isAbortError = (err: unknown): boolean => {
@@ -51,7 +52,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <TooltipProvider delayDuration={300}>
+          {children}
+        </TooltipProvider>
         {process.env.NODE_ENV === 'development' && (
           <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
         )}

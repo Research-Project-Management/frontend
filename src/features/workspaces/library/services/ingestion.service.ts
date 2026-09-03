@@ -1,5 +1,4 @@
 import { apiGet, apiPost } from '@/shared/lib/api';
-import type { AsyncIngestionJob, IngestPaperDTO, Paper } from '../types/library.types';
 import {
   type UnifiedIngestionPayload,
   type UnifiedIngestionResponse,
@@ -56,7 +55,10 @@ export const IngestionService = {
       collectionId?: string;
     },
   ) =>
-    apiPost<{ success: boolean; data: Paper }>(
+    apiPost<{
+      success: boolean;
+      data: { id: string; title: string; doi?: string; year?: number; citationKey?: string };
+    }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/confirm-url`,
       payload,
     ),
@@ -98,8 +100,8 @@ export const IngestionService = {
   /**
    * Retry a failed ingestion run
    */
-  retryRun: async (workspaceId: string, runId: string) => {
-    return apiPost<{
+  retryRun: async (workspaceId: string, runId: string) =>
+    apiPost<{
       success: boolean;
       data: {
         runId: string;
@@ -110,8 +112,7 @@ export const IngestionService = {
     }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/retry/${encodeURIComponent(runId)}`,
       {},
-    );
-  },
+    ),
 
   /**
    * Query IngestionRun status scoped by workspaceId
@@ -123,79 +124,80 @@ export const IngestionService = {
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
     return IngestionRunSnapshotResponseSchema.parse(enveloped);
   },
-
-  /**
-   * Universal Single-document Academic Ingestion Engine (Legacy compatibility wrapper)
-   */
-  ingestDocument: (
-    workspaceId: string,
-    dto: IngestPaperDTO,
-  ) =>
-    apiPost<{
-      id: string;
-      title: string;
-      citationKey: string;
-      sourceType: string;
-      doi?: string;
-      year?: number | null;
-      authors: string[];
-      ragStatus?: string;
-      collectionId?: string | null;
-      fileUrl?: string | null;
-      paper?: Paper;
-    }>('/api/library/ingest', {
-      ...dto,
-      workspaceId,
-    }),
-
-  /**
-   * Async Non-blocking Batch Ingestion with job tracker
-   */
-  createBatchAsync: (
-    workspaceId: string,
-    items: Array<IngestPaperDTO>,
-  ) =>
-    apiPost<{ jobId: string; status: string; total: number }>(
-      '/api/library/ingest/batch-async',
-      {
-        workspaceId,
-        items: items.map((i) => ({ ...i, workspaceId })),
-      },
-    ),
-
-  /**
-   * Poll Async Job Status and item results
-   */
-  getJobStatus: (jobId: string) =>
-    apiGet<AsyncIngestionJob>(
-      `/api/library/ingest/jobs/${encodeURIComponent(jobId)}`,
-    ),
-
-  /**
-   * Sync Batch Ingestion
-   */
-  createBatchSync: (
-    workspaceId: string,
-    items: Array<IngestPaperDTO>,
-  ) =>
-    apiPost<{
-      total: number;
-      successCount: number;
-      failedCount: number;
-      successful: Paper[];
-      failed: Array<{ item: IngestPaperDTO; error: string }>;
-    }>('/api/library/ingest/batch', {
-      workspaceId,
-      items: items.map((i) => ({ ...i, workspaceId })),
-    }),
 };
 
-// Aliases
+// Named re-exports for ergonomic use in hooks
 export const ingestUnified = IngestionService.ingest;
 export const captureUrl = IngestionService.captureUrl;
 export const confirmUrl = IngestionService.confirmUrl;
 export const getIngestionRunStatus = IngestionService.getRunStatus;
-export const ingestDocument = IngestionService.ingestDocument;
-export const createAsyncBatchJob = IngestionService.createBatchAsync;
-export const getAsyncJobStatus = IngestionService.getJobStatus;
-export const createBatchSync = IngestionService.createBatchSync;
+
+// ── Legacy specific-type ingestion methods ────────────────────────────────────
+// These call the named legacy routes (POST /ingestion/doi, /bibtex, /pdf, /start)
+// Prefer IngestionService.ingest() or .submit() for new code.
+
+export const LegacyIngestionService = {
+  /**
+   * Ingest by DOI directly.
+   * Backed by POST /ingestion/doi
+   */
+  ingestDoi: (
+    workspaceId: string,
+    doi: string,
+    options?: { collectionId?: string; idempotencyKey?: string },
+  ) =>
+    apiPost<{ success: boolean; data: any }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/doi`,
+      { doi, ...options },
+    ),
+
+  /**
+   * Ingest raw BibTeX string.
+   * Backed by POST /ingestion/bibtex
+   */
+  ingestBibtex: (
+    workspaceId: string,
+    content: string,
+    options?: { collectionId?: string; idempotencyKey?: string },
+  ) =>
+    apiPost<{ success: boolean; data: any }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/bibtex`,
+      { content, bibtex: content, ...options },
+    ),
+
+  /**
+   * Ingest a PDF file by fileId.
+   * Backed by POST /ingestion/pdf
+   */
+  ingestPdf: (
+    workspaceId: string,
+    fileId: string,
+    options?: { filename?: string; collectionId?: string; overrides?: Record<string, any>; idempotencyKey?: string },
+  ) =>
+    apiPost<{ success: boolean; data: any }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/pdf`,
+      { fileId, ...options },
+    ),
+
+  /**
+   * Start a pre-configured ingestion run.
+   * Backed by POST /ingestion/start
+   */
+  startRun: (
+    workspaceId: string,
+    payload: {
+      source: string;
+      doi?: string;
+      url?: string;
+      fileId?: string;
+      content?: string;
+      collectionId?: string;
+      idempotencyKey?: string;
+      overrides?: Record<string, any>;
+    },
+  ) =>
+    apiPost<{ success: boolean; data: any }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/start`,
+      payload,
+    ),
+};

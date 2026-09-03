@@ -7,12 +7,12 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { usePapers } from '@/features/workspaces/library/hooks/library/use-papers';
+import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/library/use-items';
 import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
-import PaperTable from '@/features/workspaces/library/components/table/PaperTable';
-import Panel from '@/features/workspaces/library/components/panel/Panel';
-import UploadModal from '@/features/workspaces/library/components/system/UploadModal';
-import CreateCollectionModal from '@/features/workspaces/library/components/system/CreateCollectionModal';
+import ItemTable from '@/features/workspaces/library/components/Table';
+import Panel from '@/features/workspaces/library/components/Panel';
+import UploadModal from '@/features/workspaces/library/components/modals/UploadModal';
+import CreateCollectionModal from '@/features/workspaces/library/components/modals/CreateCollectionModal';
 import { convertToBibTeX, filterPapers } from '@/features/workspaces/library/utils/library.util';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
@@ -199,7 +199,7 @@ export default function CollectionPage() {
               </div>
             </div>
           ) : (
-            <PaperTable
+            <ItemTable
               papers={filteredPapers}
               collections={collections}
               isLoading={isLoading}

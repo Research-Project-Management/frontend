@@ -8,7 +8,6 @@ import {
   selectionContextSchema,
 } from '../schemas/reader.schema';
 import type { Paper, Collection, Brand } from './library.types';
-import type { ChatMessage, ChatSession, SourceItem } from './ai.types';
 
 export type AnnotationId = Brand<string, 'AnnotationId'>;
 

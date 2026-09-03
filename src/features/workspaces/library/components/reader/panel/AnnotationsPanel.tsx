@@ -12,13 +12,12 @@ import {
   X,
   FileText,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { useAnnotations } from '@/features/workspaces/library/hooks/library/use-annotations';
-import type { Paper, PdfAnnotation } from '@/features/workspaces/library/types/library.types';
+import type { CatalogItem, PdfAnnotation } from '@/features/workspaces/library/types/library.types';
 
 interface AnnotationsPanelProps {
-  paper: Paper;
+  paper: CatalogItem;
   workspaceId: string;
   attachmentId?: string;
 }
@@ -55,10 +54,7 @@ export default function AnnotationsPanel({
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
-    if (!effectiveAttachmentId) {
-      toast.error('No PDF attachment found for this document');
-      return;
-    }
+    if (!effectiveAttachmentId) return;
     const pageNum = parseInt(newPage, 10) || 1;
     const pageIndex = Math.max(0, pageNum - 1);
 
@@ -73,9 +69,8 @@ export default function AnnotationsPanel({
       setNewQuote('');
       setNewComment('');
       setIsAdding(false);
-      toast.success('Annotation saved');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save annotation');
+    } catch {
+      // Handled in useAnnotations hook
     }
   };
 
@@ -90,9 +85,8 @@ export default function AnnotationsPanel({
       setEditingId(null);
       setEditingComment('');
       setEditingQuote('');
-      toast.success('Annotation updated');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to update annotation');
+    } catch {
+      // Handled in useAnnotations hook
     }
   };
 
@@ -101,9 +95,8 @@ export default function AnnotationsPanel({
     try {
       await deleteAnnotation(anno.id, anno.version);
       setDeletingId(null);
-      toast.success('Annotation deleted');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete annotation');
+    } catch {
+      // Handled in useAnnotations hook
     }
   };
 
@@ -143,7 +136,7 @@ export default function AnnotationsPanel({
                 min="1"
                 value={newPage}
                 onChange={(e) => setNewPage(e.target.value)}
-                className="w-12 h-6 px-1.5 text-xs rounded border border-border bg-background text-center"
+                className="w-12 h-6 px-1.5 text-xs rounded-md border border-border bg-background text-center"
               />
             </div>
           </div>
@@ -152,14 +145,14 @@ export default function AnnotationsPanel({
             value={newQuote}
             onChange={(e) => setNewQuote(e.target.value)}
             rows={2}
-            className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-border placeholder:text-muted-foreground/50"
+            className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-border placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-ring"
           />
           <textarea
             placeholder="Your notes or comments on this quote..."
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             rows={2}
-            className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-border placeholder:text-muted-foreground/50"
+            className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs leading-relaxed outline-none focus:border-border placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-ring"
           />
           <div className="flex justify-end gap-1.5">
             <Button
@@ -178,7 +171,7 @@ export default function AnnotationsPanel({
               size="sm"
               onClick={handleCreate}
               disabled={(!newQuote.trim() && !newComment.trim()) || isBusy}
-              className="h-7 text-xs px-3 font-semibold cursor-pointer"
+              className="h-7 text-xs px-3 font-medium cursor-pointer"
             >
               {isCreating ? <Loader2 className="size-3.5 animate-spin" /> : 'Save'}
             </Button>
@@ -194,10 +187,10 @@ export default function AnnotationsPanel({
           </div>
         ) : annotations.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4">
-            <div className="flex size-11 items-center justify-center rounded-xl border border-border bg-muted/40">
+            <div className="flex size-11 items-center justify-center rounded-md border border-border bg-muted/40">
               <Highlighter className="size-5 text-muted-foreground/60" />
             </div>
-            <p className="mt-3 text-sm font-semibold text-foreground">No annotations yet</p>
+            <p className="mt-3 text-sm font-medium text-foreground">No annotations yet</p>
             <p className="mt-1 max-w-[240px] text-xs leading-relaxed text-muted-foreground">
               Select text in the PDF reader to highlight and attach comments, or click &ldquo;Add&rdquo; above.
             </p>
@@ -214,7 +207,7 @@ export default function AnnotationsPanel({
               return (
                 <li
                   key={anno.id}
-                  className="group relative rounded-xl border border-border bg-card p-3.5 transition-colors hover:border-border/80 space-y-2"
+                  className="group relative rounded-md border border-border bg-card p-3.5 transition-colors hover:border-border/80 space-y-2"
                 >
                   {isEditing ? (
                     <div className="space-y-2">
@@ -223,21 +216,21 @@ export default function AnnotationsPanel({
                         value={editingQuote}
                         onChange={(e) => setEditingQuote(e.target.value)}
                         rows={2}
-                        className="w-full resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none"
+                        className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs outline-none"
                       />
                       <div className="text-xs font-medium text-muted-foreground">Comment:</div>
                       <textarea
                         value={editingComment}
                         onChange={(e) => setEditingComment(e.target.value)}
                         rows={2}
-                        className="w-full resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-xs outline-none"
+                        className="w-full resize-none rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs outline-none"
                       />
                       <div className="flex justify-end gap-1.5 pt-1">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setEditingId(null)}
-                          className="h-7 text-xs px-2.5 cursor-pointer"
+                          className="h-7 text-xs px-2.5 cursor-pointer rounded-md"
                         >
                           Cancel
                         </Button>
@@ -245,7 +238,7 @@ export default function AnnotationsPanel({
                           size="sm"
                           onClick={() => handleSaveEdit(anno)}
                           disabled={isBusy}
-                          className="h-7 text-xs px-3 font-semibold cursor-pointer"
+                          className="h-7 text-xs px-3 font-medium cursor-pointer rounded-md"
                         >
                           {isUpdating ? <Loader2 className="size-3.5 animate-spin" /> : 'Save'}
                         </Button>
@@ -259,18 +252,18 @@ export default function AnnotationsPanel({
                             className="size-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: anno.color || '#ffeb3b' }}
                           />
-                          <span className="text-xs font-mono font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          <span className="text-xs font-mono font-medium px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground">
                             Page {page}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {isDeletingAnno ? (
-                            <div className="flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 p-0.5 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center gap-1 rounded-sm border border-destructive/20 bg-destructive/10 p-0.5 animate-in fade-in zoom-in-95 duration-150">
                               <button
                                 type="button"
                                 onClick={() => handleDelete(anno)}
                                 title="Confirm delete"
-                                className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
+                                className="flex size-5 items-center justify-center rounded-sm text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
                               >
                                 <Check className="size-3" />
                               </button>
@@ -278,7 +271,7 @@ export default function AnnotationsPanel({
                                 type="button"
                                 onClick={() => setDeletingId(null)}
                                 title="Cancel"
-                                className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors cursor-pointer"
+                                className="flex size-5 items-center justify-center rounded-sm text-muted-foreground hover:bg-secondary transition-colors cursor-pointer"
                               >
                                 <X className="size-3" />
                               </button>
@@ -288,7 +281,7 @@ export default function AnnotationsPanel({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-6 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                                className="size-6 rounded-sm text-muted-foreground hover:bg-muted cursor-pointer"
                                 onClick={() => {
                                   setEditingId(anno.id);
                                   setEditingQuote(quote || '');
@@ -301,7 +294,7 @@ export default function AnnotationsPanel({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="size-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                                className="size-6 rounded-sm text-muted-foreground hover:bg-destructive/10 cursor-pointer"
                                 onClick={() => setDeletingId(anno.id)}
                                 title="Delete annotation"
                               >
@@ -334,3 +327,5 @@ export default function AnnotationsPanel({
     </div>
   );
 }
+
+

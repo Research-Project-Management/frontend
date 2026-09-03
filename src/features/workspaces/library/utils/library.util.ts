@@ -1,5 +1,5 @@
-import type { Paper, Collection, Note, ReferenceData } from '../types/library.types';
-import { fetchReferenceByDoi, searchReferences, resolveAcademicQuery } from '../services/reference.service';
+import type { Paper, CatalogItem, Collection, Note, ReferenceData } from '../types/library.types';
+import { fetchReferenceByDoi, searchReferences, resolveAcademicQuery } from '../services/citation.service';
 
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
 
@@ -15,17 +15,90 @@ export function getLibraryEntityId(
 
 /**
  * Extracts the primary PDF or reading file URL from a Paper object.
+ * Strictly resolves canonical binary content URLs (/api/files/:fileId/content)
+ * and avoids falling back to DOI landing page URLs.
  */
 export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): string {
   if (!paper) return '';
-  return (
-    paper.fileUrl ||
-    paper.primaryFile?.url ||
-    (paper as any)?.url ||
-    (paper as any)?.attachments?.[0]?.url ||
-    (paper as any)?.attachments?.[0]?.fileUrl ||
-    ''
-  );
+
+  const normalizeUrl = (url?: string | null, fileId?: string | null): string => {
+    if (fileId) {
+      return `/api/files/${fileId}/content`;
+    }
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (
+      trimmed.startsWith('/api/files/') &&
+      !trimmed.includes('/r2/') &&
+      !trimmed.endsWith('/content')
+    ) {
+      return `${trimmed}/content`;
+    }
+    return trimmed;
+  };
+
+  // 1. Primary file / attachment (priority order: primary_pdf -> application/pdf -> .pdf filename)
+  const attachments: any[] = Array.isArray((paper as any)?.attachments)
+    ? (paper as any).attachments
+    : [];
+
+  const primaryPdfAttachment =
+    attachments.find(
+      (a: any) =>
+        a?.attachmentType === 'primary_pdf' ||
+        a?.type === 'primary_pdf',
+    ) ||
+    attachments.find(
+      (a: any) => a?.mimeType === 'application/pdf',
+    ) ||
+    attachments.find(
+      (a: any) =>
+        a?.fileId &&
+        typeof a?.filename === 'string' &&
+        a.filename.toLowerCase().endsWith('.pdf'),
+    );
+
+  if (primaryPdfAttachment) {
+    const url = normalizeUrl(
+      primaryPdfAttachment.url || primaryPdfAttachment.fileUrl,
+      primaryPdfAttachment.fileId,
+    );
+    if (url) return url;
+  }
+
+  // 2. Direct fileId on paper
+  if ((paper as any)?.fileId) {
+    return `/api/files/${(paper as any).fileId}/content`;
+  }
+
+  // 3. PrimaryFile object
+  if (paper.primaryFile) {
+    const url = normalizeUrl(
+      paper.primaryFile.url,
+      (paper.primaryFile as any).fileId || (paper.primaryFile as any).id,
+    );
+    if (url) return url;
+  }
+
+  // 4. Direct fileUrl on paper
+  if (paper.fileUrl) {
+    const url = normalizeUrl(paper.fileUrl, (paper as any).fileId);
+    if (url) return url;
+  }
+
+  // 5. arXiv fallback: If paper has arxivId, arXiv DOI, arXiv URL, or arXiv filename
+  const arxivMatch =
+    (paper as any)?.arxivId ||
+    paper.doi?.match(/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
+    paper.url?.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
+    (paper as any)?.filename?.match(/^(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?$/i)?.[1];
+
+  if (arxivMatch) {
+    return `https://arxiv.org/pdf/${arxivMatch.replace(/\.pdf$/i, '')}.pdf`;
+  }
+
+  return '';
 }
 
 /**
@@ -36,9 +109,22 @@ export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): stri
  */
 export function normalizeAuthors(
   rawAuthors?: any,
-  creators?: Array<{ creatorType?: string; name?: string }> | null,
+  creators?: Array<{ creatorType?: string; name?: string; fullName?: string; firstName?: string; lastName?: string }> | null,
+  contributors?: any[] | null,
 ): string[] {
-  if (Array.isArray(rawAuthors)) {
+  // If first argument is an object that looks like a paper (has authors/creators/contributors), extract from it
+  if (rawAuthors && typeof rawAuthors === 'object' && !Array.isArray(rawAuthors)) {
+    if ('authors' in rawAuthors || 'creators' in rawAuthors || 'contributors' in rawAuthors) {
+      return normalizeAuthors(
+        rawAuthors.authors,
+        rawAuthors.creators,
+        rawAuthors.contributors,
+      );
+    }
+  }
+
+  // 1. Check rawAuthors array
+  if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
     const result: string[] = [];
     for (const item of rawAuthors) {
       if (!item) continue;
@@ -48,12 +134,16 @@ export function normalizeAuthors(
         if (trimmed.includes(';') && !trimmed.includes(',')) {
           const parts = trimmed.split(';').map((s) => s.trim()).filter(Boolean);
           result.push(...parts);
+        } else if (trimmed.includes(' and ') && !trimmed.includes(',')) {
+          const parts = trimmed.split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
+          result.push(...parts);
         } else {
           result.push(trimmed);
         }
       } else if (typeof item === 'object') {
-        if ('name' in item && typeof item.name === 'string' && item.name.trim()) {
-          result.push(item.name.trim());
+        const fullName = (item.fullName || item.name || '').trim();
+        if (fullName) {
+          result.push(fullName);
         } else if ('firstName' in item || 'lastName' in item || 'family' in item || 'given' in item) {
           const first = (item.firstName || item.given || '').trim();
           const last = (item.lastName || item.family || '').trim();
@@ -68,14 +158,34 @@ export function normalizeAuthors(
     if (trimmed.includes(';') && !trimmed.includes(',')) {
       return trimmed.split(';').map((s) => s.trim()).filter(Boolean);
     }
+    if (trimmed.includes(' and ')) {
+      return trimmed.split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
+    }
     return [trimmed];
   }
 
-  // Fallback to creators array
-  if (Array.isArray(creators) && creators.length > 0) {
-    const fromCreators = creators
-      .filter((c) => !c.creatorType || c.creatorType === 'author' || c.creatorType === 'editor')
-      .map((c) => c.name?.trim())
+  // 2. Fallback to creators or contributors array
+  const creatorList = (Array.isArray(creators) && creators.length > 0)
+    ? creators
+    : (Array.isArray(contributors) && contributors.length > 0)
+    ? contributors
+    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as any).creators))
+    ? (rawAuthors as any).creators
+    : (rawAuthors && typeof rawAuthors === 'object' && Array.isArray((rawAuthors as any).contributors))
+    ? (rawAuthors as any).contributors
+    : [];
+
+  if (creatorList.length > 0) {
+    const fromCreators = creatorList
+      .filter((c: any) => !c.creatorType || c.creatorType === 'author' || c.creatorType === 'editor' || c.creatorType === 'contributor')
+      .map((c: any) => {
+        if (typeof c === 'string') return c.trim();
+        const fullName = (c.fullName || c.name || '').trim();
+        if (fullName) return fullName;
+        const first = (c.firstName || c.given || '').trim();
+        const last = (c.lastName || c.family || '').trim();
+        return [first, last].filter(Boolean).join(' ');
+      })
       .filter(Boolean) as string[];
     if (fromCreators.length > 0) return fromCreators;
   }
@@ -135,9 +245,18 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
       };
     }
 
+    const noteObj = note as any;
+    const contentText =
+      noteObj.content ||
+      noteObj.contentMd ||
+      (typeof noteObj.contentJson === 'string' ? noteObj.contentJson : '') ||
+      '';
+
     return {
       id: note.id || `note-${index}`,
-      content: note.content || '',
+      content: contentText,
+      contentMd: noteObj.contentMd || contentText,
+      contentJson: noteObj.contentJson,
       createdAt: (note as Note).createdAt || new Date().toISOString(),
       updatedAt: (note as Note).updatedAt,
     };
@@ -191,11 +310,11 @@ export interface SortOptions {
 }
 
 export class LibraryFilterEngine {
-  static filterBySearch(papers: Paper[], query: string): Paper[] {
-    if (!query || !query.trim()) return papers;
+  static filterBySearch(items: CatalogItem[], query: string): CatalogItem[] {
+    if (!query || !query.trim()) return items;
     const q = query.toLowerCase().trim();
 
-    return papers.filter((paper) => {
+    return items.filter((paper) => {
       const p = paper as any;
       const authors = normalizeAuthors(paper.authors, p.creators);
       const inTitle = paper.title?.toLowerCase().includes(q) ?? false;
@@ -203,7 +322,7 @@ export class LibraryFilterEngine {
       const inAbstract = paper.abstract?.toLowerCase().includes(q) ?? false;
       const inJournal = (paper.journal || paper.publicationTitle || paper.publisher)?.toLowerCase().includes(q) ?? false;
       const inDoi = paper.doi?.toLowerCase().includes(q) ?? false;
-      const rawTags = p.tags || p.keywords || p.labels || [];
+      const rawTags = p.tags || p.labels || p.keywords || [];
       const inTags = rawTags.some((t: any) =>
         (typeof t === 'string' ? t : t.name || '').toLowerCase().includes(q)
       );
@@ -212,10 +331,10 @@ export class LibraryFilterEngine {
     });
   }
 
-  static filter(papers: Paper[], options: LibraryFilterOptions): Paper[] {
+  static filter(items: CatalogItem[], options: LibraryFilterOptions): CatalogItem[] {
     const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
 
-    let result = papers;
+    let result = items;
 
     if (searchQuery) {
       result = this.filterBySearch(result, searchQuery);
@@ -233,7 +352,7 @@ export class LibraryFilterEngine {
 
       // Tags
       if (selectedTags && selectedTags.length > 0) {
-        const rawTags = p.tags || p.keywords || p.labels || [];
+        const rawTags = p.tags || p.labels || p.keywords || [];
         const paperTags = rawTags.map((t: any) => (typeof t === 'string' ? t.toLowerCase() : t.name?.toLowerCase() || ''));
         const hasAllTags = selectedTags.every((t) => paperTags.includes(t.toLowerCase()));
         if (!hasAllTags) return false;
@@ -266,11 +385,11 @@ export class LibraryFilterEngine {
     });
   }
 
-  static sort(papers: Paper[], options: SortOptions): Paper[] {
+  static sort(items: CatalogItem[], options: SortOptions): CatalogItem[] {
     const { field, direction } = options;
     const modifier = direction === 'desc' ? -1 : 1;
 
-    return [...papers].sort((a, b) => {
+    return [...items].sort((a, b) => {
       if (field === 'year') {
         const yA = typeof a.year === 'number' ? a.year : parseInt(String(a.year || 0), 10);
         const yB = typeof b.year === 'number' ? b.year : parseInt(String(b.year || 0), 10);
@@ -291,7 +410,7 @@ export class LibraryFilterEngine {
     });
   }
 
-  static isDuplicate(paperA: Paper, paperB: Paper): boolean {
+  static isDuplicate(paperA: CatalogItem, paperB: CatalogItem): boolean {
     if (paperA.id && paperB.id && paperA.id === paperB.id) return false;
 
     // Exact DOI match
@@ -311,18 +430,18 @@ export class LibraryFilterEngine {
     return false;
   }
 
-  static findDuplicates(papers: Paper[]): Array<{ original: Paper; duplicates: Paper[] }> {
-    const results: Array<{ original: Paper; duplicates: Paper[] }> = [];
+  static findDuplicates(items: CatalogItem[]): Array<{ original: CatalogItem; duplicates: CatalogItem[] }> {
+    const results: Array<{ original: CatalogItem; duplicates: CatalogItem[] }> = [];
     const visited = new Set<string>();
 
-    for (let i = 0; i < papers.length; i++) {
-      const current = papers[i];
+    for (let i = 0; i < items.length; i++) {
+      const current = items[i];
       const currentId = current.id;
       if (visited.has(currentId)) continue;
 
-      const dupes: Paper[] = [];
-      for (let j = i + 1; j < papers.length; j++) {
-        const other = papers[j];
+      const dupes: CatalogItem[] = [];
+      for (let j = i + 1; j < items.length; j++) {
+        const other = items[j];
         const otherId = other.id;
         if (visited.has(otherId)) continue;
 
@@ -345,20 +464,22 @@ export class LibraryFilterEngine {
   }
 }
 
-export function filterPapers(
-  papers: Paper[],
+export function filterItems(
+  items: CatalogItem[],
   query: string = '',
   collectionId: string | null = null,
   activeTag: string | null = null
-): Paper[] {
-  return LibraryFilterEngine.filter(papers, {
+): CatalogItem[] {
+  return LibraryFilterEngine.filter(items, {
     searchQuery: query,
     collectionId: collectionId,
     selectedTags: activeTag ? [activeTag] : undefined,
   });
 }
 
-export function isPaperInCollection(paper: Paper, collectionId: string): boolean {
+export const filterPapers = filterItems;
+
+export function isPaperInCollection(paper: CatalogItem, collectionId: string): boolean {
   if (!collectionId) return true;
 
   if (paper.collectionId === collectionId) return true;
@@ -378,11 +499,11 @@ export function isPaperInCollection(paper: Paper, collectionId: string): boolean
   return false;
 }
 
-export function getUniqueTags(papers: Paper[]): string[] {
+export function getUniqueTags(items: CatalogItem[]): string[] {
   const tagSet = new Set<string>();
-  for (const paper of papers) {
+  for (const paper of items) {
     const p = paper as any;
-    const rawTags = p.tags || p.keywords || p.labels || [];
+    const rawTags = p.tags || p.labels || [];
     if (Array.isArray(rawTags)) {
       for (const tag of rawTags) {
         if (typeof tag === 'string' && tag.trim()) {
@@ -398,7 +519,7 @@ export function getUniqueTags(papers: Paper[]): string[] {
 
 // ── 5. BibTeX Citation Engine ────────────────────────────────────────────────
 
-export function generateCitationKey(paper: Paper): string {
+export function generateCitationKey(paper: CatalogItem): string {
   if (paper.citationKey && paper.citationKey.trim()) {
     return paper.citationKey.trim().replace(/\s+/g, '');
   }
@@ -495,7 +616,7 @@ export function unescapeLatexChars(text: string): string {
     .replace(/\\textbackslash\{\}/g, '\\');
 }
 
-export function convertToBibTeX(paper: Paper): string {
+export function convertToBibTeX(paper: CatalogItem): string {
   const entryType = getBibTeXEntryType(paper);
   const citationKey = generateCitationKey(paper);
   const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
@@ -608,7 +729,7 @@ export function parseBibTeX(bibtexString: string): Partial<Paper>[] {
   return results;
 }
 
-export function downloadBibTeXFile(paper: Paper, filename?: string): void {
+export function downloadBibTeXFile(paper: CatalogItem, filename?: string): void {
   const content = convertToBibTeX(paper);
   const name = filename || `${generateCitationKey(paper)}.bib`;
   const blob = new Blob([content], { type: 'application/x-bibtex;charset=utf-8;' });
@@ -623,13 +744,13 @@ export function downloadBibTeXFile(paper: Paper, filename?: string): void {
 }
 
 export class BibtexEngine {
-  static convert(paper: Paper): string {
+  static convert(paper: CatalogItem): string {
     return convertToBibTeX(paper);
   }
   static parse(bibtexString: string): Partial<Paper>[] {
     return parseBibTeX(bibtexString);
   }
-  static download(paper: Paper, filename?: string): void {
+  static download(paper: CatalogItem, filename?: string): void {
     downloadBibTeXFile(paper, filename);
   }
 }
@@ -799,8 +920,7 @@ export async function enrichPaperWithCrossref(doi: string): Promise<Partial<PdfM
       abstract: ref.abstract,
       crossrefEnriched: true,
     };
-  } catch (err) {
-    console.warn('Crossref enrichment failed:', err);
+  } catch {
     return {};
   }
 }
@@ -872,4 +992,5 @@ export function formatIeeeCitation(paper: Partial<Paper>): string {
   if (!res.endsWith('.')) res += '.';
   return res;
 }
+
 

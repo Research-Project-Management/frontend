@@ -1,12 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trash2, RotateCcw, ShieldAlert } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Topbar from '../components/topbar/Topbar';
-import PaperTable from '../components/table/PaperTable';
-import InspectorPanel from '../components/panel/Panel';
+import { Trash2, RotateCcw, Loader2 } from 'lucide-react';
+import Topbar from '../components/Topbar';
+import ItemTable from '../components/Table';
+import InspectorPanel from '../components/Panel';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/shared/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -15,120 +19,77 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/shared/components/ui/dialog';
-import { toast } from 'sonner';
 import { useLibrary } from '../hooks/library/use-library';
-import { PaperService, paperKeys } from '../services/paper.service';
-import { useLibrarySidebarStore } from '../store/sidebar.store';
-import type { Paper } from '../types/library.types';
+import { useTrash } from '../hooks/library/use-items';
+import type { CatalogItem } from '../types/library.types';
 
 export default function TrashPage() {
   const { state, actions } = useLibrary();
-  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
-    selectedPaperId,
-    selectedPaper,
+    selectedItemId,
+    selectedItem,
     selectedCollection,
     collectionMap,
     collections,
   } = state;
 
-  const { setSelectedPaperId } = actions;
+  const { setSelectedItemId } = actions;
 
   const [search, setSearch] = useState('');
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
-  const [isPurging, setIsPurging] = useState(false);
-  const queryClient = useQueryClient();
+  const [singlePurgeTarget, setSinglePurgeTarget] = useState<CatalogItem | null>(null);
 
-  const { data: trashData, isLoading } = useQuery({
-    queryKey: ['papers', workspaceId, 'view', 'trash', search],
-    queryFn: () =>
-      PaperService.getAll(workspaceId, {
-        view: 'trash',
-        search: search.trim() || undefined,
-      }),
-    enabled: Boolean(workspaceId),
-  });
+  const {
+    trashItems,
+    isLoading,
+    restoreItem,
+    purgeItem,
+    emptyTrash,
+    isPurging,
+    isEmptyingTrash,
+  } = useTrash(workspaceId);
 
-  const trashPapers: Paper[] = Array.isArray(trashData?.papers)
-    ? trashData.papers
-    : [];
+  const filteredTrashItems = search.trim()
+    ? trashItems.filter((item) =>
+        item.title?.toLowerCase().includes(search.toLowerCase()) ||
+        item.authors?.some((a) => a.toLowerCase().includes(search.toLowerCase())),
+      )
+    : trashItems;
 
-  const restoreMutation = useMutation({
-    mutationFn: (paperId: string) => PaperService.restore(workspaceId, paperId),
-    onSuccess: () => {
-      toast.success('Paper restored to library successfully', {
-        id: 'restore-success',
-      });
-      queryClient.invalidateQueries({ queryKey: ['papers'] });
-      queryClient.invalidateQueries({
-        queryKey: paperKeys.all(workspaceId),
-      });
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to restore paper', {
-        id: 'restore-error',
-      });
-    },
-  });
-
-  const purgeMutation = useMutation({
-    mutationFn: (paperId: string) => PaperService.purge(workspaceId, paperId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['papers'] });
-      queryClient.invalidateQueries({
-        queryKey: paperKeys.all(workspaceId),
-      });
-    },
-    onError: (err: any) => {
-      toast.error(err?.message || 'Failed to purge paper', {
-        id: 'purge-error',
-      });
-    },
-  });
-
-  const handleSelectPaper = (paper: Paper) => {
-    const paperId = paper.id;
-    if (selectedPaperId === paperId) {
-      setSelectedPaperId(null);
+  const handleSelectItem = (item: CatalogItem) => {
+    const itemId = item.id;
+    if (selectedItemId === itemId) {
+      setSelectedItemId(null);
     } else {
-      setSelectedPaperId(paperId);
+      setSelectedItemId(itemId);
     }
   };
 
-  const handleRestorePaper = async (paperId: string) => {
-    await restoreMutation.mutateAsync(paperId);
+  const handleRestoreItem = async (itemId: string) => {
+    await restoreItem(itemId);
   };
 
-  const handleRestoreAll = async () => {
-    try {
-      for (const p of trashPapers) {
-        await restoreMutation.mutateAsync(p.id);
-      }
-      toast.success(`Restored ${trashPapers.length} papers to library`, {
-        id: 'restore-all',
-      });
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to restore all papers', {
-        id: 'restore-error',
-      });
-    }
+  const handlePurgeItem = async (itemId: string) => {
+    await purgeItem(itemId);
+    setSinglePurgeTarget(null);
+  };
+
+  const handleBatchRestoreItems = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => restoreItem(id)));
+  };
+
+  const handleBatchPurgeItems = async (ids: string[]) => {
+    await Promise.all(ids.map((id) => purgeItem(id)));
   };
 
   const handleConfirmEmptyTrash = async () => {
+    if (trashItems.length === 0) return;
     try {
-      setIsPurging(true);
-      for (const p of trashPapers) {
-        await purgeMutation.mutateAsync(p.id);
-      }
-      toast.success('Trash emptied successfully', { id: 'trash-empty' });
+      await emptyTrash();
       setEmptyTrashDialogOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to empty trash', {
-        id: 'trash-empty-error',
-      });
-    } finally {
-      setIsPurging(false);
+    } catch {
+      // Handled in useTrash hook
     }
   };
 
@@ -142,83 +103,164 @@ export default function TrashPage() {
           search={search}
           onSearchChange={setSearch}
         >
-          {trashPapers.length > 0 && (
+          {trashItems.length > 0 && (
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleRestoreAll}
-                className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
-              >
-                <RotateCcw className="size-3.5" />
-                <span>Restore All</span>
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setEmptyTrashDialogOpen(true)}
-                className="h-8 text-xs gap-1.5 cursor-pointer font-medium"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Empty Trash</span>
-              </Button>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEmptyTrashDialogOpen(true)}
+                    className="h-8 text-xs gap-1.5 px-3 cursor-pointer font-medium text-foreground hover:bg-muted border border-border/80 !rounded-md shadow-none"
+                  >
+                    <Trash2 className="size-3.5 text-foreground" />
+                    <span>Empty Trash</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={6} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+                  Permanently delete all items from trash
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </Topbar>
 
-        {/* Central Papers Table */}
+        {/* Central Items Table */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <PaperTable
-            papers={trashPapers}
+          <ItemTable
+            items={filteredTrashItems}
             collectionMap={collectionMap}
             collections={collections}
             isLoading={isLoading}
             isSearch={Boolean(search.trim())}
-            selectedPaperId={selectedPaperId}
-            onSelectPaper={handleSelectPaper}
-            onDeletePaper={handleRestorePaper}
-            onBatchDeletePapers={() => {}}
+            selectedItemId={selectedItemId}
+            onSelectItem={handleSelectItem}
+            onRestoreItem={handleRestoreItem}
+            onPurgeItem={(id) => {
+              const target = trashItems.find((i) => i.id === id);
+              if (target) setSinglePurgeTarget(target);
+              else handlePurgeItem(id);
+            }}
+            onBatchRestoreItems={handleBatchRestoreItems}
+            onBatchPurgeItems={handleBatchPurgeItems}
             onClearSearch={() => setSearch('')}
             showCollection={true}
+            isTrash={true}
           />
         </div>
       </div>
 
       {/* Right Inspector Panel */}
       <InspectorPanel
-        paper={selectedPaper || null}
+        paper={selectedItem || null}
+        item={selectedItem || null}
         collection={selectedCollection || null}
         workspaceId={workspaceId}
-        onClose={() => setSelectedPaperId(null)}
+        onClose={() => setSelectedItemId(null)}
       />
 
       {/* Empty Trash Confirmation Dialog */}
-      <Dialog open={emptyTrashDialogOpen} onOpenChange={setEmptyTrashDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-destructive">
-              <ShieldAlert className="size-5" />
-              <DialogTitle>Permanently Empty Trash?</DialogTitle>
+      <Dialog open={emptyTrashDialogOpen} onOpenChange={isPurging || isEmptyingTrash ? undefined : setEmptyTrashDialogOpen}>
+        <DialogContent
+          className="max-w-[520px] p-6 !rounded-md"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+              <Trash2 className="h-5 w-5" />
             </div>
-            <DialogDescription>
-              Are you sure you want to permanently delete all {trashPapers.length} items from the trash? This action cannot be undone.
-            </DialogDescription>
+
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-semibold text-foreground">
+                Permanently empty trash?
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                Are you sure you want to permanently delete all {trashItems.length} items from the trash? This action cannot be undone.
+              </DialogDescription>
+            </div>
           </DialogHeader>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="mt-6 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setEmptyTrashDialogOpen(false)}
-              disabled={isPurging}
+              disabled={isPurging || isEmptyingTrash}
+              className="cursor-pointer !rounded-md"
             >
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              type="button"
               onClick={handleConfirmEmptyTrash}
-              disabled={isPurging}
+              disabled={isPurging || isEmptyingTrash}
+              className="bg-red-600 text-white hover:bg-red-700 cursor-pointer shadow-none !rounded-md"
             >
-              {isPurging ? 'Purging...' : 'Delete Permanently'}
+              {isPurging || isEmptyingTrash ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Purging...</span>
+                </span>
+              ) : (
+                <span>Delete Permanently</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Single Item Purge Confirmation Dialog */}
+      <Dialog open={Boolean(singlePurgeTarget)} onOpenChange={(open) => !open && setSinglePurgeTarget(null)}>
+        <DialogContent
+          className="max-w-[520px] p-6 !rounded-md"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
+            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+              <Trash2 className="h-5 w-5" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-semibold text-foreground">
+                Permanently delete item?
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                Are you sure you want to permanently delete this item? This action cannot be undone.
+              </DialogDescription>
+
+              {singlePurgeTarget?.title && (
+                <div className="mt-3 px-3 py-2 rounded-md bg-muted/40 border border-border/50 text-xs text-foreground truncate font-normal leading-relaxed">
+                  {singlePurgeTarget.title}
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+
+          <DialogFooter className="mt-6 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSinglePurgeTarget(null)}
+              disabled={isPurging}
+              className="cursor-pointer !rounded-md"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => singlePurgeTarget && handlePurgeItem(singlePurgeTarget.id)}
+              disabled={isPurging}
+              className="bg-red-600 text-white hover:bg-red-700 cursor-pointer shadow-none !rounded-md"
+            >
+              {isPurging ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Deleting...</span>
+                </span>
+              ) : (
+                <span>Delete Permanently</span>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -226,3 +268,4 @@ export default function TrashPage() {
     </div>
   );
 }
+

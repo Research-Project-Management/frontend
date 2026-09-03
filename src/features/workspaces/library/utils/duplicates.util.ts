@@ -1,18 +1,18 @@
-import type { Paper, DuplicateCluster } from '../types/library.types';
+import type { Paper, CatalogItem, DuplicateCluster } from '../types/library.types';
 import { cleanDoi } from './library.util';
 
 export type { DuplicateCluster };
 
 /**
- * Groups duplicate papers into clusters by matching DOI or normalized title.
+ * Groups duplicate items into clusters by matching DOI or normalized title.
  */
-export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
+export function findDuplicateClusters(items: CatalogItem[]): DuplicateCluster[] {
   const clusters: DuplicateCluster[] = [];
   const visited = new Set<string>();
 
   // 1. Group by DOI
   const doiMap = new Map<string, Paper[]>();
-  for (const paper of papers) {
+  for (const paper of items) {
     if (paper.doi && cleanDoi(paper.doi)) {
       const doi = cleanDoi(paper.doi).toLowerCase();
       if (!doiMap.has(doi)) doiMap.set(doi, []);
@@ -27,16 +27,16 @@ export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
       clusters.push({
         id: `doi-${doi}`,
         reason: 'doi',
-        papers: group,
+        items: group,
       });
     }
   });
 
-  // 2. Group unclustered papers by normalized title
-  const remainingPapers = papers.filter((p) => !visited.has(p.id));
+  // 2. Group unclustered items by normalized title
+  const remainingitems = items.filter((p) => !visited.has(p.id));
   const titleMap = new Map<string, Paper[]>();
 
-  for (const paper of remainingPapers) {
+  for (const paper of remainingitems) {
     if (paper.title && paper.title.trim().length > 15) {
       const norm = paper.title.toLowerCase().replace(/[^a-z0-9]/g, '');
       if (!titleMap.has(norm)) titleMap.set(norm, []);
@@ -51,7 +51,7 @@ export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
       clusters.push({
         id: `title-${norm.slice(0, 16)}`,
         reason: 'title',
-        papers: group,
+        items: group,
       });
     }
   });
@@ -62,7 +62,7 @@ export function findDuplicateClusters(papers: Paper[]): DuplicateCluster[] {
 /**
  * Computes a metadata completeness score for a paper (0 to 100).
  */
-export function calculateMergeCompleteness(paper: Paper): number {
+export function calculateMergeCompleteness(paper: CatalogItem): number {
   let score = 0;
   if (paper.title) score += 20;
   if (paper.authors && paper.authors.length > 0) score += 20;
@@ -73,3 +73,4 @@ export function calculateMergeCompleteness(paper: Paper): number {
   if (paper.fileUrl || paper.primaryFile?.url) score += 10;
   return score;
 }
+

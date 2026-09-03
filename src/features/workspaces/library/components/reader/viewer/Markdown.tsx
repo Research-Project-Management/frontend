@@ -45,10 +45,10 @@ const markdownComponents: Components = {
     return <em className="italic">{children}</em>;
   },
   h1({ children }) {
-    return <h2 className="mt-4 mb-2 text-base font-bold text-foreground">{children}</h2>;
+    return <h2 className="mt-4 mb-2 text-base font-semibold text-foreground">{children}</h2>;
   },
   h2({ children }) {
-    return <h3 className="mt-4 mb-1.5 text-sm font-bold text-foreground">{children}</h3>;
+    return <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground">{children}</h3>;
   },
   h3({ children }) {
     return <h4 className="mt-4 mb-1.5 text-sm font-semibold text-foreground">{children}</h4>;
@@ -86,7 +86,7 @@ const markdownComponents: Components = {
   },
   table({ children }) {
     return (
-      <div className="my-3 overflow-x-auto rounded-lg border border-border bg-background">
+      <div className="my-3 overflow-x-auto rounded-md border border-border bg-background">
         <table className="w-full min-w-max border-collapse text-sm">{children}</table>
       </div>
     );
@@ -113,14 +113,14 @@ const markdownComponents: Components = {
   },
   code({ className, children }) {
     return (
-      <code className={`${className ?? ""} rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-primary`}>
+      <code className={`${className ?? ""} rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-primary`}>
         {children}
       </code>
     );
   },
   pre({ children }) {
     return (
-      <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed">
+      <pre className="my-3 overflow-x-auto rounded-md border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed">
         {children}
       </pre>
     );
@@ -214,7 +214,7 @@ export function formatInline(text: string): React.ReactNode {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary no-underline transition-colors hover:bg-primary/20"
+          className="mx-0.5 inline-flex items-center gap-1 rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary no-underline transition-colors hover:bg-primary/20"
         >
           {linkMatch[1]}
           <ExternalLink className="size-2.5 opacity-70" />
@@ -232,7 +232,7 @@ export function formatInline(text: string): React.ReactNode {
       parts.push(
         <code
           key={`c${key++}`}
-          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs text-primary"
+          className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-primary"
         >
           {codeMatch[1]}
         </code>,

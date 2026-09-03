@@ -2,19 +2,16 @@
 
 import React from 'react';
 import { BookOpen, FolderOpen, X, Tag, History, Inbox, Files, Trash2 } from 'lucide-react';
-import Topbar from '../components/topbar/Topbar';
-import PaperTable from '../components/table/PaperTable';
-import InspectorPanel from '../components/panel/Panel';
-import AddLinkModal from '../components/system/AddLinkModal';
-import CreateCollectionModal from '../components/system/CreateCollectionModal';
+import Topbar from '../components/Topbar';
+import ItemTable from '../components/Table';
+import InspectorPanel from '../components/Panel';
+import AddLinkModal from '../components/modals/AddLinkModal';
+import CreateCollectionModal from '../components/modals/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import type { Paper } from '../types/library.types';
-
-import { useLibrarySidebarStore } from '../store/sidebar.store';
+import type { CatalogItem, Paper } from '../types/library.types';
 
 export default function LibraryPage() {
   const { state, actions } = useLibrary();
-  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
     workspaceUrl,
@@ -22,39 +19,39 @@ export default function LibraryPage() {
     search,
     activeTag,
     activeFilter,
-    selectedPaperId,
-    filtered,
-    selectedPaper,
+    selectedItemId,
+    filteredItems,
+    selectedItem,
     selectedCollection,
     collectionMap,
     collections,
     addLinkOpen,
     createCollectionOpen,
-    isAddingPaper,
+    isAddingItem,
     isCreatingCollection,
   } = state;
 
   const {
     setSearch,
-    setSelectedPaperId,
+    setSelectedItemId,
     setAddLinkOpen,
     handleDirectFilesUpload,
     handleDirectFolderUpload,
     handleAddLinkSubmit,
     setCreateCollectionOpen,
     handleCreateCollection,
-    handleDeletePaper,
-    handleBatchDeletePapers,
-    handleBatchMovePapers,
+    handleDeleteItem,
+    handleBatchDeleteItems,
+    handleBatchMoveItems,
     navigate,
   } = actions;
 
-  const handleSelectPaper = (paper: Paper) => {
-    const paperId = paper.id;
-    if (selectedPaperId === paperId) {
-      setSelectedPaperId(null);
+  const handleSelectItem = (item: CatalogItem) => {
+    const itemId = item.id;
+    if (selectedItemId === itemId) {
+      setSelectedItemId(null);
     } else {
-      setSelectedPaperId(paperId);
+      setSelectedItemId(itemId);
     }
   };
 
@@ -79,9 +76,10 @@ export default function LibraryPage() {
   const { title: pageTitle, icon: PageIcon } = getPageInfo();
 
   return (
-    <div className="flex h-full min-w-0 flex-1 overflow-hidden">
-      {/* Left Main Content Area (Topbar + Table) */}
-      <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+    <div className="flex-1 flex overflow-hidden">
+      {/* Central Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
+        {/* Workspace Toolbar */}
         <Topbar
           title={pageTitle}
           icon={PageIcon}
@@ -93,44 +91,48 @@ export default function LibraryPage() {
           onAddLink={activeFilter !== 'trash' ? () => setAddLinkOpen(true) : undefined}
         />
 
-        {/* Active Tag Filter Indicator */}
-        {activeTag && (
-          <div className="px-6 py-2 bg-accent/40 border-b border-border/40 flex items-center justify-between text-xs select-none">
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Filtering by tag:</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent text-foreground font-mono text-micro font-medium border border-border/40">
-                <Tag className="size-3 text-foreground" />
-                {activeTag}
+        {/* Active Filter Chips */}
+        {(activeTag || activeFilter) && (
+          <div className="px-4 py-2 bg-muted/40 border-b border-border/40 flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Filtering by:</span>
+            {activeTag && (
+              <span className="px-2 py-0.5 rounded-sm bg-primary/10 text-primary border border-primary/20 font-medium">
+                Tag: #{activeTag}
               </span>
-            </div>
+            )}
+            {activeFilter && (
+              <span className="px-2 py-0.5 rounded-sm bg-secondary text-secondary-foreground border border-border/50 font-medium capitalize">
+                View: {activeFilter}
+              </span>
+            )}
             <button
               onClick={() => navigate(`/${workspaceUrl}/library`)}
-              className="text-xs text-foreground hover:underline flex items-center gap-1 font-medium cursor-pointer"
+              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline transition-colors focus:outline-none"
             >
               <span>Clear filter</span>
-              <X className="size-3 text-foreground" />
+              <X className="size-3 text-muted-foreground shrink-0" />
             </button>
           </div>
         )}
 
-        {/* Central Papers Table */}
+        {/* Central Items Table */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <PaperTable
-            papers={filtered}
+          <ItemTable
+            items={filteredItems}
             collectionMap={collectionMap}
             collections={collections}
             isLoading={isLoading}
             isSearch={Boolean(search.trim()) || Boolean(activeTag) || Boolean(activeFilter)}
-            selectedPaperId={selectedPaperId}
-            onSelectPaper={handleSelectPaper}
-            onDeletePaper={handleDeletePaper}
-            onBatchDeletePapers={handleBatchDeletePapers}
-            onBatchMovePapers={handleBatchMovePapers}
+            selectedItemId={selectedItemId}
+            onSelectItem={handleSelectItem}
+            onDeleteItem={handleDeleteItem}
+            onBatchDeleteItems={handleBatchDeleteItems}
+            onBatchMoveItems={handleBatchMoveItems}
             onClearSearch={() => {
               setSearch('');
               if (activeTag || activeFilter) navigate(`/${workspaceUrl}/library`);
             }}
-            onAddPaper={() => setAddLinkOpen(true)}
+            onAddItem={() => setAddLinkOpen(true)}
             showCollection={activeFilter !== 'unfiled'}
           />
         </div>
@@ -138,10 +140,11 @@ export default function LibraryPage() {
 
       {/* Right Inspector Panel */}
       <InspectorPanel
-        paper={selectedPaper || null}
+        paper={selectedItem || null}
+        item={selectedItem || null}
         collection={selectedCollection || null}
         workspaceId={workspaceId}
-        onClose={() => setSelectedPaperId(null)}
+        onClose={() => setSelectedItemId(null)}
       />
 
       {/* Dedicated Add Link to File / Identifier Modal */}
@@ -149,7 +152,7 @@ export default function LibraryPage() {
         open={addLinkOpen}
         onOpenChange={setAddLinkOpen}
         onSubmit={handleAddLinkSubmit}
-        isPending={isAddingPaper}
+        isPending={isAddingItem}
       />
 
       {/* Create Collection Modal */}
@@ -163,3 +166,4 @@ export default function LibraryPage() {
     </div>
   );
 }
+

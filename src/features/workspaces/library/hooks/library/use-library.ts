@@ -4,27 +4,23 @@ import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from './use-workspace';
 import { useUpload } from '@/shared/hooks/use-upload';
-import { usePapers } from './use-papers';
-import { paperKeys } from '../../services/paper.service';
-import { libraryKeys } from '../../services/library.service';
+import { useCatalogItems, catalogItemKeys } from './use-items';
 import {
   fetchReferenceByDoi,
   searchReferences,
   formatCslCitation,
-} from '../../services/reference.service';
+} from '../../services/citation.service';
 import {
   getRelatedPapers,
   linkPapers,
   unlinkPapers,
-} from '../../services/relation.service';
-import {
   getDuplicateGroups,
   mergePapers,
   getLibraryIntegrityReport,
-} from '../../services/quality.service';
-import { useUnifiedIngest } from './use-unified-ingest';
+} from '../../services/catalog.service';
+import { useUnifiedIngest } from './use-ingest';
 import { useCollections } from './use-collections';
 import {
   useAnnotations,
@@ -32,10 +28,10 @@ import {
   useDeleteAnnotation,
   useExtractNotes,
 } from './use-annotations';
-import { useAsyncJobStatus } from './use-async-job';
+import { useAsyncJobStatus } from './use-ingest';
 import { extractMetadata } from '../../utils/library.util';
 import {
-  calculateDuplicatePaperIds,
+  calculateDuplicateItemIds,
   filterAndSortLibraryPapers,
   getCollectionWithDescendantIds,
 } from '../../utils/filter.util';
@@ -43,8 +39,51 @@ import type {
   Paper,
   CollectionInput,
   CslStyle,
+  AddLinkData,
+  PaperQueryParams,
 } from '../../types/library.types';
-import type { AddLinkData } from '../../components/system/AddLinkModal';
+
+// ── Canonical Library Query Keys ──────────────────────────────────────────────
+export const libraryKeys = {
+  all: ['library'] as const,
+
+  items: (workspaceId: string) => [...libraryKeys.all, 'items', workspaceId] as const,
+  itemList: (workspaceId: string, filter?: PaperQueryParams) =>
+    [...libraryKeys.items(workspaceId), 'list', filter] as const,
+  itemDetail: (workspaceId: string, itemId: string) =>
+    [...libraryKeys.items(workspaceId), 'detail', itemId] as const,
+  itemBundle: (workspaceId: string, itemId: string) =>
+    [...libraryKeys.items(workspaceId), 'bundle', itemId] as const,
+
+  papers: (workspaceId: string) => [...libraryKeys.all, 'items', workspaceId] as const,
+  paperList: (workspaceId: string, filter?: PaperQueryParams) =>
+    [...libraryKeys.items(workspaceId), 'list', filter] as const,
+  paperDetail: (workspaceId: string, itemId: string) =>
+    [...libraryKeys.items(workspaceId), 'detail', itemId] as const,
+  paperBundle: (workspaceId: string, itemId: string) =>
+    [...libraryKeys.items(workspaceId), 'bundle', itemId] as const,
+
+  collections: (workspaceId: string) =>
+    [...libraryKeys.all, 'collections', workspaceId] as const,
+
+  citations: (workspaceId: string) =>
+    [...libraryKeys.all, 'citations', workspaceId] as const,
+  citationItem: (workspaceId: string, itemId: string, style: CslStyle, index: number = 1) =>
+    [...libraryKeys.citations(workspaceId), itemId, style, index] as const,
+
+  annotations: (workspaceId: string, itemId: string) =>
+    [...libraryKeys.all, 'annotations', workspaceId, itemId] as const,
+
+  relations: (workspaceId: string, itemId: string) =>
+    [...libraryKeys.all, 'relations', workspaceId, itemId] as const,
+
+  duplicates: (workspaceId: string) =>
+    [...libraryKeys.all, 'duplicates', workspaceId] as const,
+  integrity: (workspaceId: string) =>
+    [...libraryKeys.all, 'integrity', workspaceId] as const,
+
+  job: (jobId: string) => [...libraryKeys.all, 'job', jobId] as const,
+};
 
 // ── 1. Unified Main Library View Model Hook ──────────────────────────────────
 
@@ -62,12 +101,12 @@ export function useLibrary() {
   const queryClient = useQueryClient();
 
   // Data Layer Services
-  const paperService = usePapers({ workspaceId, collectionId: '' });
+  const CatalogItemService = useCatalogItems({ workspaceId, collectionId: '' });
   const allPapers = useMemo(
-    () => paperService.state.allPapers ?? [],
-    [paperService.state.allPapers],
+    () => CatalogItemService.state.allPapers ?? [],
+    [CatalogItemService.state.allPapers],
   );
-  const isPapersLoading = paperService.state.isLoadingAll;
+  const isPapersLoading = CatalogItemService.state.isLoadingAll;
   const collectionService = useCollections(workspaceId);
   const collections = collectionService.state.collections;
   const { uploadFile, uploadFileDetailed } = useUpload();
@@ -91,20 +130,20 @@ export function useLibrary() {
   );
 
   const duplicatePaperIds = useMemo(
-    () => calculateDuplicatePaperIds(allPapers),
+    () => calculateDuplicateItemIds(allPapers),
     [allPapers],
   );
 
   const filteredPapers = useMemo(
     () =>
       filterAndSortLibraryPapers({
-        papers: allPapers,
+        items: allPapers,
         searchQuery,
         activeFilter,
         activeTag,
         activeCollectionId: collectionId,
         collectionIds: descendantCollectionIds,
-        duplicatePaperIds,
+        duplicateItemIds: duplicatePaperIds,
       }),
     [allPapers, searchQuery, activeFilter, activeTag, collectionId, descendantCollectionIds, duplicatePaperIds],
   );
@@ -125,7 +164,7 @@ export function useLibrary() {
   );
 
   // Action Handlers
-  const addPaper = paperService.actions.addPaper;
+  const addPaper = CatalogItemService.actions.addPaper;
   const handleAddPaper = useCallback(
     async (paperPayload: Parameters<typeof addPaper>[0]) => {
       return await addPaper(paperPayload);
@@ -156,7 +195,8 @@ export function useLibrary() {
             fileId,
             filename: file.name,
             collectionId: collectionId || undefined,
-          });
+            silent: true,
+          } as any);
 
           successCount++;
         } catch (uploadError: any) {
@@ -165,66 +205,98 @@ export function useLibrary() {
         }
       }
 
-      toast.dismiss(loadingToastId);
       if (successCount > 0) {
-        queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: ['items'] });
         queryClient.invalidateQueries({ queryKey: ['papers'] });
         queryClient.invalidateQueries({ queryKey: ['library'] });
-        toast.success(`Successfully uploaded ${successCount} document(s) into library!`);
+        queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceId) });
+        if (workspaceSlug && workspaceSlug !== workspaceId) {
+          queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceSlug) });
+        }
+        if (collectionId) {
+          queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceId, collectionId) });
+          if (workspaceSlug && workspaceSlug !== workspaceId) {
+            queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceSlug, collectionId) });
+          }
+        }
+        await CatalogItemService.actions.refetchAll();
+        if (collectionId) {
+          await CatalogItemService.actions.refetchCollection();
+        }
+        toast.success('Upload completed', {
+          description: `Added ${successCount} document(s) to library.`,
+          id: loadingToastId,
+        });
       } else {
-        toast.error(lastErrorMessage || 'Failed to upload selected documents.');
+        toast.error('Upload failed', {
+          description: lastErrorMessage || 'Unable to process selected documents.',
+          id: loadingToastId,
+        });
       }
     },
-    [uploadFileDetailed, ingestUnified, workspaceId, collectionId, queryClient],
+    [uploadFileDetailed, ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, CatalogItemService.actions],
   );
 
   const handleDirectFolderUpload = useCallback(
     async (files: File[], folderName: string) => {
       if (!files.length) return;
       const loadingToastId = toast.loading(
-        `Batch importing ${files.length} documents from "${folderName}"...`,
+        `Importing ${files.length} document(s) from "${folderName}"...`,
       );
       let successCount = 0;
       let lastErrorMessage = '';
 
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         try {
-          const { fileId } = await uploadFileDetailed(file, {
+          const uploadRes = await uploadFileDetailed(file, {
             prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
-
-          if (!fileId) {
-            throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
+          if (uploadRes?.fileId) {
+            await ingestUnified({
+              source: 'pdf',
+              fileId: uploadRes.fileId,
+              filename: file.name,
+              collectionId: collectionId ?? undefined,
+              silent: true,
+            } as any);
+            successCount++;
           }
-
-          await ingestUnified({
-            source: 'pdf',
-            fileId,
-            filename: file.name,
-            collectionId: collectionId || undefined,
-          });
-
-          successCount++;
-        } catch (uploadError: any) {
-          console.error(`Failed to upload ${file.name}:`, uploadError);
-          lastErrorMessage = uploadError?.message || `Failed to upload ${file.name}`;
+        } catch (err: any) {
+          lastErrorMessage = err?.message || 'Unknown upload error';
         }
       }
 
-      toast.dismiss(loadingToastId);
       if (successCount > 0) {
-        queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceId) });
+        if (workspaceSlug && workspaceSlug !== workspaceId) {
+          queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceSlug) });
+        }
+        if (collectionId) {
+          queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceId, collectionId) });
+          if (workspaceSlug && workspaceSlug !== workspaceId) {
+            queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceSlug, collectionId) });
+          }
+        }
         queryClient.invalidateQueries({ queryKey: ['papers'] });
         queryClient.invalidateQueries({ queryKey: ['library'] });
-        toast.success(
-          `Imported ${successCount}/${files.length} documents from "${folderName}"!`,
-        );
+        await CatalogItemService.actions.refetchAll();
+        if (collectionId) {
+          await CatalogItemService.actions.refetchCollection();
+        }
+        toast.success('Folder imported', {
+          description: `Added ${successCount} of ${files.length} document(s) from "${folderName}".`,
+          id: loadingToastId,
+        });
       } else {
-        toast.error(lastErrorMessage || `Failed to import documents from "${folderName}".`);
+        toast.error('Import failed', {
+          description: lastErrorMessage || `Failed to import documents from "${folderName}".`,
+          id: loadingToastId,
+        });
       }
     },
-    [uploadFileDetailed, ingestUnified, workspaceId, collectionId, queryClient],
+    [uploadFileDetailed, ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, CatalogItemService.actions],
   );
 
   const handleAddLinkSubmit = useCallback(
@@ -270,23 +342,45 @@ export function useLibrary() {
             type: linkData.type,
           });
         }
-        queryClient.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+        queryClient.invalidateQueries({ queryKey: ['items'] });
+        queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceId) });
+        if (workspaceSlug && workspaceSlug !== workspaceId) {
+          queryClient.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceSlug) });
+        }
+        if (collectionId) {
+          queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceId, collectionId) });
+          if (workspaceSlug && workspaceSlug !== workspaceId) {
+            queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceSlug, collectionId) });
+          }
+        }
         queryClient.invalidateQueries({ queryKey: ['papers'] });
         queryClient.invalidateQueries({ queryKey: ['library'] });
-        toast.success('Document added to library successfully!');
-      } catch (err: any) {
-        toast.error(err?.message || 'Failed to add document to library');
+        await CatalogItemService.actions.refetchAll();
+        if (collectionId) {
+          await CatalogItemService.actions.refetchCollection();
+        }
+      } catch {
+        // Errors already toasted by ingestUnified / handleAddPaper mutations
       }
     },
-    [workspaceId, collectionId, ingestUnified, handleAddPaper, queryClient],
+    [workspaceId, workspaceSlug, collectionId, ingestUnified, handleAddPaper, queryClient, CatalogItemService.actions],
   );
 
 
   const handleCreateCollection = useCallback(
     (collectionData: CollectionInput) => {
-      collectionService.actions.create(collectionData, {
-        onSuccess: () => setIsCreateCollectionModalOpen(false),
-      });
+      const rawParent = collectionData.parentId ?? collectionData.parent ?? null;
+      const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
+      collectionService.actions.create(
+        {
+          ...collectionData,
+          parentId: cleanParentId,
+          parent: cleanParentId,
+        },
+        {
+          onSuccess: () => setIsCreateCollectionModalOpen(false),
+        },
+      );
     },
     [collectionService.actions],
   );
@@ -294,55 +388,63 @@ export function useLibrary() {
   const handleDeletePaper = useCallback(
     (paperId: string) => {
       if (!confirm('Remove this paper?')) return;
-      paperService.actions.deletePaper({ paperId });
+      CatalogItemService.actions.deletePaper({ paperId });
       if (selectedPaperId === paperId) setSelectedPaperId(null);
     },
-    [paperService.actions, selectedPaperId],
+    [CatalogItemService.actions, selectedPaperId],
   );
 
   const handleBatchDeletePapers = useCallback(
     async (paperIds: string[]) => {
       if (!paperIds.length) return;
-      if (!confirm(`Delete ${paperIds.length} selected paper(s)?`)) return;
-      const loadingId = toast.loading(`Deleting ${paperIds.length} paper(s)...`);
+      const loadingId = toast.loading(`Moving ${paperIds.length} item(s) to trash...`, { id: 'batch-trash-action' });
       try {
         await Promise.all(
-          paperIds.map((paperId) => paperService.actions.deletePaper({ paperId })),
+          paperIds.map((paperId) => CatalogItemService.actions.deletePaper({ paperId, silent: true })),
         );
         if (selectedPaperId && paperIds.includes(selectedPaperId)) {
           setSelectedPaperId(null);
         }
-        toast.dismiss(loadingId);
-        toast.success(`Successfully deleted ${paperIds.length} paper(s)`);
+        toast.success('Moved to trash', {
+          description: `${paperIds.length} document(s) moved to trash.`,
+          id: loadingId,
+        });
       } catch (err: any) {
-        toast.dismiss(loadingId);
-        toast.error(err?.message || 'Failed to delete some papers');
+        toast.error('Failed to delete items', {
+          description: err?.message || 'Could not move selected documents to trash.',
+          id: loadingId,
+        });
       }
     },
-    [paperService.actions, selectedPaperId],
+    [CatalogItemService.actions, selectedPaperId],
   );
 
   const handleBatchMovePapers = useCallback(
     async (paperIds: string[], targetCollectionId: string | null) => {
       if (!paperIds.length) return;
-      const loadingId = toast.loading(`Moving ${paperIds.length} paper(s)...`);
+      const loadingId = toast.loading(`Moving ${paperIds.length} item(s)...`, { id: 'batch-move-action' });
       try {
         await Promise.all(
           paperIds.map((paperId) =>
-            paperService.actions.updatePaper({
+            CatalogItemService.actions.updatePaper({
               paperId,
               collectionId: targetCollectionId ?? undefined,
+              silent: true,
             }),
           ),
         );
-        toast.dismiss(loadingId);
-        toast.success(`Successfully moved ${paperIds.length} paper(s)`);
+        toast.success('Documents moved', {
+          description: `Moved ${paperIds.length} item(s) to target collection.`,
+          id: loadingId,
+        });
       } catch (err: any) {
-        toast.dismiss(loadingId);
-        toast.error(err?.message || 'Failed to move some papers');
+        toast.error('Failed to move items', {
+          description: err?.message || 'Could not move selected documents.',
+          id: loadingId,
+        });
       }
     },
-    [paperService.actions],
+    [CatalogItemService.actions],
   );
 
   return {
@@ -350,34 +452,45 @@ export function useLibrary() {
       workspaceId,
       workspaceSlug,
       workspaceUrl: workspaceSlug,
+      items: allPapers,
       papers: allPapers,
       collections,
       isLoading: isPapersLoading,
       search: searchQuery,
       activeTag,
       activeFilter,
+      selectedItemId: selectedPaperId,
       selectedPaperId,
-      filtered: filteredPapers,
+      selectedItem: selectedPaper,
       selectedPaper,
+      filtered: filteredPapers,
+      filteredItems: filteredPapers,
+      filteredPapers,
       selectedCollection,
       collectionMap,
       addLinkOpen: isAddLinkModalOpen,
       createCollectionOpen: isCreateCollectionModalOpen,
-      isAddingPaper: paperService.state.isAdding,
+      isAddingItem: CatalogItemService.state.isAdding,
+      isAddingPaper: CatalogItemService.state.isAdding,
       isCreatingCollection: collectionService.state.isCreating,
     },
     actions: {
       setSearch: setSearchQuery,
+      setSelectedItemId: setSelectedPaperId,
       setSelectedPaperId,
       setAddLinkOpen: setIsAddLinkModalOpen,
       handleDirectFilesUpload,
       handleDirectFolderUpload,
       handleAddLinkSubmit,
       setCreateCollectionOpen: setIsCreateCollectionModalOpen,
+      handleAddItem: handleAddPaper,
       handleAddPaper,
       handleCreateCollection,
+      handleDeleteItem: handleDeletePaper,
       handleDeletePaper,
+      handleBatchDeleteItems: handleBatchDeletePapers,
       handleBatchDeletePapers,
+      handleBatchMoveItems: handleBatchMovePapers,
       handleBatchMovePapers,
       navigate: router.push,
     },
@@ -393,7 +506,7 @@ export {
   useDeleteAnnotation,
   useExtractNotes,
 } from './use-annotations';
-export { useAsyncJobStatus } from './use-async-job';
+export { useAsyncJobStatus } from './use-ingest';
 
 // ── References & Citation Hooks ──
 
@@ -460,7 +573,7 @@ export function useLinkPapers(workspaceId: string, paperId: string) {
       queryClient.invalidateQueries({
         queryKey: libraryKeys.paperBundle(workspaceId, paperId),
       });
-      toast.success('Related paper linked');
+      toast.success('Related paper linked', { id: 'relation-mutation' });
     },
   });
 }
@@ -478,7 +591,7 @@ export function useUnlinkPapers(workspaceId: string, paperId: string) {
       queryClient.invalidateQueries({
         queryKey: libraryKeys.paperBundle(workspaceId, paperId),
       });
-      toast.success('Related paper unlinked');
+      toast.success('Related paper unlinked', { id: 'relation-mutation' });
     },
   });
 }
@@ -504,15 +617,21 @@ export function useMergePapers(workspaceId: string) {
       masterPaperId: string;
       sourcePaperIds: string[];
     }) => mergePapers(workspaceId, masterPaperId, sourcePaperIds),
-    onSuccess: (response) => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.duplicates(workspaceId) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.papers(workspaceId) });
       queryClient.invalidateQueries({ queryKey: libraryKeys.integrity(workspaceId) });
       const count = response.mergedCount ?? response.data?.mergedCount ?? 1;
-      toast.success(`Merged ${count} duplicate papers into master`);
+      toast.success('Duplicates merged', {
+        description: `Consolidated ${count} duplicate record(s) into master. Notes and citations preserved.`,
+        id: 'library-merge',
+      });
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Failed to merge papers');
+      toast.error('Merge failed', {
+        description: error?.message || 'Unable to consolidate duplicate papers.',
+        id: 'library-merge',
+      });
     },
   });
 }
@@ -524,3 +643,7 @@ export function useLibraryIntegrity(workspaceId: string) {
     enabled: Boolean(workspaceId),
   });
 }
+
+
+
+

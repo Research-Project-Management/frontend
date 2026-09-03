@@ -2,68 +2,54 @@
 
 import React, { useState } from 'react';
 import { Inbox } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import Topbar from '../components/topbar/Topbar';
-import PaperTable from '../components/table/PaperTable';
-import InspectorPanel from '../components/panel/Panel';
-import AddLinkModal from '../components/system/AddLinkModal';
-import CreateCollectionModal from '../components/system/CreateCollectionModal';
+import Topbar from '../components/Topbar';
+import ItemTable from '../components/Table';
+import InspectorPanel from '../components/Panel';
+import AddLinkModal from '../components/modals/AddLinkModal';
+import CreateCollectionModal from '../components/modals/CreateCollectionModal';
 import { useLibrary } from '../hooks/library/use-library';
-import { PaperService } from '../services/paper.service';
-import { useLibrarySidebarStore } from '../store/sidebar.store';
-import type { Paper } from '../types/library.types';
+import { useViewItems } from '../hooks/library/use-items';
+import type { CatalogItem } from '../types/library.types';
 
 export default function UnfiledPage() {
   const { state, actions } = useLibrary();
-  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
-    selectedPaperId,
-    selectedPaper,
+    selectedItemId,
+    selectedItem,
     selectedCollection,
     collectionMap,
     collections,
     addLinkOpen,
     createCollectionOpen,
-    isAddingPaper,
+    isAddingItem,
     isCreatingCollection,
   } = state;
 
   const {
-    setSelectedPaperId,
+    setSelectedItemId,
     setAddLinkOpen,
     handleDirectFilesUpload,
     handleDirectFolderUpload,
     handleAddLinkSubmit,
     setCreateCollectionOpen,
     handleCreateCollection,
-    handleDeletePaper,
-    handleBatchDeletePapers,
-    handleBatchMovePapers,
+    handleDeleteItem,
+    handleBatchDeleteItems,
+    handleBatchMoveItems,
   } = actions;
 
   const [search, setSearch] = useState('');
 
-  const { data: viewData, isLoading } = useQuery({
-    queryKey: ['papers', workspaceId, 'view', 'unfiled', search],
-    queryFn: () =>
-      PaperService.getAll(workspaceId, {
-        view: 'unfiled',
-        search: search.trim() || undefined,
-      }),
-    enabled: Boolean(workspaceId),
-  });
+  const { data: viewData, isLoading } = useViewItems(workspaceId, 'unfiled', search);
+  const unfiledItems = Array.isArray(viewData) ? viewData : (viewData as any)?.items || [];
 
-  const unfiledPapers: Paper[] = Array.isArray(viewData?.papers)
-    ? viewData.papers
-    : [];
-
-  const handleSelectPaper = (paper: Paper) => {
-    const paperId = paper.id;
-    if (selectedPaperId === paperId) {
-      setSelectedPaperId(null);
+  const handleSelectItem = (item: CatalogItem) => {
+    const itemId = item.id;
+    if (selectedItemId === itemId) {
+      setSelectedItemId(null);
     } else {
-      setSelectedPaperId(paperId);
+      setSelectedItemId(itemId);
     }
   };
 
@@ -82,19 +68,19 @@ export default function UnfiledPage() {
           onAddLink={() => setAddLinkOpen(true)}
         />
 
-        {/* Central Papers Table */}
+        {/* Central Items Table */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <PaperTable
-            papers={unfiledPapers}
+          <ItemTable
+            items={unfiledItems}
             collectionMap={collectionMap}
             collections={collections}
             isLoading={isLoading}
             isSearch={Boolean(search.trim())}
-            selectedPaperId={selectedPaperId}
-            onSelectPaper={handleSelectPaper}
-            onDeletePaper={handleDeletePaper}
-            onBatchDeletePapers={handleBatchDeletePapers}
-            onBatchMovePapers={handleBatchMovePapers}
+            selectedItemId={selectedItemId}
+            onSelectItem={handleSelectItem}
+            onDeleteItem={handleDeleteItem}
+            onBatchDeleteItems={handleBatchDeleteItems}
+            onBatchMoveItems={handleBatchMoveItems}
             onClearSearch={() => setSearch('')}
             showCollection={false}
           />
@@ -103,10 +89,11 @@ export default function UnfiledPage() {
 
       {/* Right Inspector Panel */}
       <InspectorPanel
-        paper={selectedPaper || null}
+        paper={selectedItem || null}
+        item={selectedItem || null}
         collection={selectedCollection || null}
         workspaceId={workspaceId}
-        onClose={() => setSelectedPaperId(null)}
+        onClose={() => setSelectedItemId(null)}
       />
 
       {/* Add Link Modal */}
@@ -114,7 +101,7 @@ export default function UnfiledPage() {
         open={addLinkOpen}
         onOpenChange={setAddLinkOpen}
         onSubmit={handleAddLinkSubmit}
-        isPending={isAddingPaper}
+        isPending={isAddingItem}
       />
 
       {/* Create Collection Modal */}
@@ -127,3 +114,4 @@ export default function UnfiledPage() {
     </div>
   );
 }
+

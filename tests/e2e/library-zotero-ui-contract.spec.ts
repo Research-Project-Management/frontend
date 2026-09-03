@@ -157,11 +157,11 @@ test.describe('Library & Zotero UI Contract Tests (Gate H)', () => {
       });
     });
 
-    await page.route(`**/api/library/papers*`, async (route) => {
+    await page.route(`**/api/v1/workspaces/*/library/items*`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ success: true, papers: items, total: items.length }),
+        body: JSON.stringify({ success: true, data: { items, total: items.length } }),
       });
     });
 

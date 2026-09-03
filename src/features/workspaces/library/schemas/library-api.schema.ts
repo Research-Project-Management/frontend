@@ -53,21 +53,46 @@ export function createApiResponseSchema<T extends z.ZodTypeAny>(dataSchema: T) {
 
 // Catalog / Items
 export const catalogItemResponseSchema = createApiResponseSchema(paperSchema);
-export const catalogItemListDataSchema = z.object({
-  papers: z.array(paperSchema),
-  total: z.number().optional().default(0),
-  page: z.number().optional().default(1),
-  limit: z.number().optional().default(25),
-  totalPages: z.number().optional().default(1),
-});
+export const catalogItemListDataSchema = z
+  .object({
+    items: z.array(paperSchema).optional(),
+    papers: z.array(paperSchema).optional(),
+    total: z.number().optional().default(0),
+    page: z.number().optional().default(1),
+    limit: z.number().optional().default(25),
+    totalPages: z.number().optional().default(1),
+    pagination: apiMetaSchema.optional(),
+  })
+  .transform((val) => {
+    const list = val.items || val.papers || [];
+    return {
+      items: list,
+      papers: list,
+      total: val.total || (val.pagination?.total ?? list.length),
+      page: val.page,
+      limit: val.limit,
+      totalPages: val.totalPages,
+      pagination: val.pagination,
+    };
+  });
 export const catalogItemListResponseSchema = createApiResponseSchema(catalogItemListDataSchema);
 
 // Collections
 export const collectionResponseSchema = createApiResponseSchema(collectionSchema);
-export const collectionListDataSchema = z.object({
-  collections: z.array(collectionSchema),
-  total: z.number().optional().default(0),
-});
+export const collectionListDataSchema = z
+  .object({
+    collections: z.array(collectionSchema).optional(),
+    items: z.array(collectionSchema).optional(),
+    total: z.number().optional().default(0),
+  })
+  .transform((val) => {
+    const list = val.collections || val.items || [];
+    return {
+      collections: list,
+      items: list,
+      total: val.total || list.length,
+    };
+  });
 export const collectionListResponseSchema = createApiResponseSchema(collectionListDataSchema);
 
 // Attachments

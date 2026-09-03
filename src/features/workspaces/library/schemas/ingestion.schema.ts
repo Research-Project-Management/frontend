@@ -6,6 +6,7 @@ export const DoiIngestionPayloadSchema = z.object({
   collectionId: z.string().optional(),
   overrides: z.record(z.string(), z.unknown()).optional(),
   idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const CreatorOverrideSchema = z.object({
@@ -33,6 +34,7 @@ export const UrlIngestionPayloadSchema = z.object({
     })
     .optional(),
   idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const BibtexIngestionPayloadSchema = z.object({
@@ -41,6 +43,7 @@ export const BibtexIngestionPayloadSchema = z.object({
   bibtex: z.string().optional(),
   collectionId: z.string().optional(),
   idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const PdfIngestionPayloadSchema = z.object({
@@ -50,6 +53,7 @@ export const PdfIngestionPayloadSchema = z.object({
   collectionId: z.string().optional(),
   overrides: z.record(z.string(), z.unknown()).optional(),
   idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const ZoteroIngestionPayloadSchema = z.object({
@@ -59,6 +63,7 @@ export const ZoteroIngestionPayloadSchema = z.object({
   payload: z.unknown(),
   collectionId: z.string().optional(),
   idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const UnifiedIngestionPayloadSchema = z.discriminatedUnion('source', [

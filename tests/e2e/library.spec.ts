@@ -10,10 +10,10 @@ test.beforeAll(() => {
   libraryUrl = `/${testData.workspaceId}/library`;
 });
 
-test.describe('Library & Papers System (Phase 6)', () => {
+test.describe('Library & Catalog Items System', () => {
   test.use({ storageState: 'tests/.auth/owner.json' });
 
-  test('Should perform full Collection, Paper Upload, and Paper Notes operations', async ({ page }) => {
+  test('Should perform full Collection, Item Upload, and Notes operations', async ({ page }) => {
     // Register console and error listeners for debugging
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
     page.on('pageerror', err => console.error('BROWSER ERROR:', err.stack || err.message));
@@ -80,12 +80,14 @@ test.describe('Library & Papers System (Phase 6)', () => {
 
     // Verify Breadcrumb and Empty State
     await expect(page.locator('div:has-text("QA Machine Learning")').first()).toBeVisible();
-    await expect(page.locator('p:has-text("No papers yet")')).toBeVisible();
+    await expect(page.locator('h2:has-text("No papers in")')).toBeVisible();
 
-    // 4. Upload a new Paper
-    console.log('Opening Add Paper Dialog...');
-    const addPaperBtn = page.locator('button:has-text("Add Paper")');
-    await addPaperBtn.click();
+    // 4. Add new item via New dropdown → Add file
+    console.log('Opening Add Item Dialog...');
+    // Click "New" dropdown trigger in Topbar
+    await page.locator('button:has-text("New")').click();
+    // Click "Add file" menu item
+    await page.locator('[role="menuitem"]:has-text("Add file")').click();
 
     // Upload dummy PDF file
     console.log('Uploading sample.pdf...');
@@ -94,23 +96,25 @@ test.describe('Library & Papers System (Phase 6)', () => {
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles('tests/fixtures/sample.pdf');
 
-    // Wait for upload completion (e.g. title is auto-filled)
-    await expect(page.locator('#paper-title')).toHaveValue('sample');
-    await page.locator('#paper-title').fill('Playwright Test Paper');
-    await page.locator('#paper-authors').fill('Playwright, Gemini Antigravity');
-    await page.locator('#paper-year').fill('2026');
+    // Wait for upload completion — title is auto-filled from PDF, then expand metadata
+    await expect(page.locator('#item-title')).toBeVisible({ timeout: 15000 });
+    await page.locator('#item-title').clear();
+    await page.locator('#item-title').fill('Playwright Test Item');
+    await page.locator('#item-authors').clear();
+    await page.locator('#item-authors').fill('Playwright, Gemini Antigravity');
+    await page.locator('#item-year').fill('2026');
 
-    // Click Add Paper button in dialog
-    const submitPaperBtn = page.locator('[role="dialog"] button:has-text("Add Paper")');
-    await expect(submitPaperBtn).toBeEnabled();
-    await submitPaperBtn.click();
+    // Click "Add to Library" submit button in dialog
+    const submitItemBtn = page.locator('[role="dialog"] button:has-text("Add to Library")');
+    await expect(submitItemBtn).toBeEnabled();
+    await submitItemBtn.click();
 
-    // Verify paper appears in list
-    const paperTitleCell = page.locator('table td:has-text("Playwright Test Paper")');
+    // Verify item appears in list
+    const paperTitleCell = page.locator('table td:has-text("Playwright Test Item")');
     await expect(paperTitleCell).toBeVisible({ timeout: 15000 });
 
-    // 5. Navigate to Paper Reader
-    console.log('Navigating to Paper Reader...');
+    // 5. Navigate to Item Reader
+    console.log('Navigating to Item Reader...');
     await paperTitleCell.dblclick();
     // 6. Open Notes panel and verify adding a note
     console.log('Opening Notes sidebar panel...');
@@ -132,6 +136,6 @@ test.describe('Library & Papers System (Phase 6)', () => {
     const savedNoteText = page.locator('p:has-text("This is a test note created by Playwright.")');
     await expect(savedNoteText).toBeVisible({ timeout: 10000 });
 
-    console.log('Library & Papers Phase 6 E2E Test Completed Successfully!');
+    console.log('Library & Catalog Items E2E Test Completed Successfully!');
   });
 });

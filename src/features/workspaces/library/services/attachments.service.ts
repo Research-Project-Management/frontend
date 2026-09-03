@@ -1,4 +1,4 @@
-import { apiGet, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
 
 export interface AttachmentRevisionDto {
   id: string;
@@ -23,29 +23,78 @@ export interface AttachmentDto {
   revisions?: AttachmentRevisionDto[];
 }
 
-export async function getAttachments(workspaceId: string, paperId: string): Promise<AttachmentDto[]> {
+export interface AddRevisionDto {
+  fileId: string;
+  filename?: string;
+  comment?: string;
+}
+
+export async function getAttachments(workspaceId: string, itemId: string): Promise<AttachmentDto[]> {
   const response = await apiGet<{ attachments: AttachmentDto[] }>(
-    `/api/library/papers/${workspaceId}/${paperId}/attachments`,
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
   );
   return response.attachments || [];
 }
 
+/**
+ * Get a single attachment by ID.
+ * Backed by GET /api/v1/workspaces/:workspaceId/library/attachments/:attachmentId
+ */
+export async function getAttachment(
+  workspaceId: string,
+  attachmentId: string,
+): Promise<AttachmentDto> {
+  const response = await apiGet<{ attachment: AttachmentDto }>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}`,
+  );
+  return (response as any).attachment ?? response;
+}
+
 export async function getAttachmentRevisions(
-  _workspaceId: string,
+  workspaceId: string,
   attachmentId: string,
 ): Promise<AttachmentRevisionDto[]> {
   const response = await apiGet<{ revisions: AttachmentRevisionDto[] }>(
-    `/api/library/attachments/${attachmentId}/revisions`,
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
   );
   return response.revisions || [];
 }
 
+/**
+ * Upload a new file revision for an existing attachment.
+ * Backed by POST /api/v1/workspaces/:workspaceId/library/attachments/:attachmentId/revisions
+ */
+export async function addRevision(
+  workspaceId: string,
+  attachmentId: string,
+  dto: AddRevisionDto,
+): Promise<AttachmentRevisionDto> {
+  const response = await apiPost<{ revision: AttachmentRevisionDto }>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/revisions`,
+    dto,
+  );
+  return (response as any).revision ?? response;
+}
+
 export async function deleteAttachment(
-  _workspaceId: string,
+  workspaceId: string,
   attachmentId: string,
 ): Promise<boolean> {
   const response = await apiDelete<{ success: boolean }>(
-    `/api/library/attachments/${attachmentId}`,
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}`,
   );
   return response.success;
 }
+
+export const AttachmentsService = {
+  getAttachments,
+  getAttachment,
+  getAttachmentRevisions,
+  addRevision,
+  deleteAttachment,
+  // Ergonomic aliases
+  list: getAttachments,
+  get: getAttachment,
+  revisions: getAttachmentRevisions,
+  delete: deleteAttachment,
+};

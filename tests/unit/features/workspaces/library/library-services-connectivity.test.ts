@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as api from '@/shared/lib/api';
-import { PaperService } from '@/features/workspaces/library/services/paper.service';
+import { CatalogService as PaperService, CatalogService as CatalogItemService, QualityService, RelationService } from '@/features/workspaces/library/services/catalog.service';
 import { CollectionService } from '@/features/workspaces/library/services/collection.service';
 import { IngestionService } from '@/features/workspaces/library/services/ingestion.service';
 import { NoteService } from '@/features/workspaces/library/services/note.service';
 import { AnnotationService } from '@/features/workspaces/library/services/annotation.service';
-import { QualityService } from '@/features/workspaces/library/services/quality.service';
-import { RelationService } from '@/features/workspaces/library/services/relation.service';
-import { ReferenceService } from '@/features/workspaces/library/services/reference.service';
-import { ItemStateService } from '@/features/workspaces/library/services/item-state.service';
+import { CitationService as ReferenceService } from '@/features/workspaces/library/services/citation.service';
+import { ReadingService as ItemStateService } from '@/features/workspaces/library/services/reading.service';
 
 vi.mock('@/shared/lib/api', () => ({
   apiGet: vi.fn(),
@@ -72,14 +70,14 @@ describe('Library Services Frontend-to-Backend Connectivity', () => {
       vi.mocked(api.apiPatch).mockResolvedValueOnce({ collections: [] });
 
       await CollectionService.getAll(workspaceId);
-      expect(api.apiGet).toHaveBeenCalledWith(`/api/library/${workspaceId}/collections`);
+      expect(api.apiGet).toHaveBeenCalledWith(`/api/v1/workspaces/${workspaceId}/library/collections`);
 
       await CollectionService.create(workspaceId, { name: 'New Col' });
-      expect(api.apiPost).toHaveBeenCalledWith(`/api/library/${workspaceId}/collections`, { name: 'New Col' });
+      expect(api.apiPost).toHaveBeenCalledWith(`/api/v1/workspaces/${workspaceId}/library/collections`, { name: 'New Col' });
 
       await CollectionService.reorder(workspaceId, [{ id: collectionId, parentId: null }]);
       expect(api.apiPatch).toHaveBeenCalledWith(
-        `/api/library/${workspaceId}/collections/reorder`,
+        `/api/v1/workspaces/${workspaceId}/library/collections/reorder`,
         { collections: [{ id: collectionId, parentId: null }] },
       );
     });
@@ -164,7 +162,7 @@ describe('Library Services Frontend-to-Backend Connectivity', () => {
 
       await AnnotationService.extractNotesFromAnnotations(workspaceId, paperId);
       expect(api.apiPost).toHaveBeenCalledWith(
-        `/api/v1/workspaces/${workspaceId}/library/papers/${paperId}/extract-notes`,
+        `/api/v1/workspaces/${workspaceId}/library/items/${paperId}/extract-notes`,
       );
     });
   });

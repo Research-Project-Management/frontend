@@ -12,7 +12,7 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { getCollectionPapers as fetchCollectionPapers } from '@/features/workspaces/library/services/paper.service';
+import { getCollectionPapers as fetchCollectionPapers } from '@/features/workspaces/library/services/catalog.service';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export function useChat() {

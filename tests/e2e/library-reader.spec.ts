@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Library Reader & Annotation Persistence (E2E)', () => {
   const workspaceId = 'test-workspace-e2e';
-  const paperId = 'test-paper-attention-2017';
+  // App Router path is still /papers/[paperId] — route kept until Next.js segment renamed
+  const itemId = 'test-item-attention-2017';
 
   test.beforeEach(async ({ page }) => {
     // Navigate to paper reader view
-    await page.goto(`/workspaces/${workspaceId}/library/papers/${paperId}/reader`);
+    await page.goto(`/workspaces/${workspaceId}/library/papers/${itemId}/reader`);
   });
 
   test('preserves PDF annotations across page reloads', async ({ page }) => {

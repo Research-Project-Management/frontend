@@ -312,7 +312,40 @@ export async function apiFetch<T>(
       (json as Record<string, unknown>).success === true &&
       'data' in json
     ) {
-      return (json as Record<string, unknown>).data as T;
+      const data = (json as Record<string, unknown>).data;
+      const pagination = (json as Record<string, unknown>).pagination;
+      if (pagination && Array.isArray(data)) {
+        try {
+          Object.defineProperty(data, 'pagination', {
+            value: pagination,
+            enumerable: false,
+            writable: true,
+            configurable: true,
+          });
+          Object.defineProperty(data, 'meta', {
+            value: pagination,
+            enumerable: false,
+            writable: true,
+            configurable: true,
+          });
+          Object.defineProperty(data, 'total', {
+            value: (pagination as any).totalCount ?? (pagination as any).total ?? data.length,
+            enumerable: false,
+            writable: true,
+            configurable: true,
+          });
+        } catch {
+          // Safe fallback if array cannot be extended
+        }
+      } else if (pagination && typeof data === 'object' && data !== null) {
+        if (!('pagination' in (data as object))) {
+          (data as any).pagination = pagination;
+        }
+        if (!('meta' in (data as object))) {
+          (data as any).meta = pagination;
+        }
+      }
+      return data as T;
     }
 
     return json as T;
@@ -368,4 +401,4 @@ export const safeApiFetch = <T>(
   );
 };
 
-export { ApiError, isApiError };
+export { ApiError, isApiError, rawFetch as apiRawFetch };

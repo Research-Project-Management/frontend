@@ -1,469 +1,358 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
-  Copy,
-  Check,
-  FileText,
-  Quote,
-  X,
+  Sparkles,
   ArrowUp,
   Square,
-  RotateCcw,
   Trash2,
+  BookmarkPlus,
+  Bot,
+  User,
+  BookOpen,
+  Lightbulb,
+  FunctionSquare,
+  Table2,
+  AlertCircle,
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import type { ChatMessage, SourceItem } from '@/features/workspaces/library/types/ai.types';
-import { useChat } from '@/features/workspaces/library/hooks/reader/use-chat';
-import { renderMarkdown } from '../viewer/Markdown';
+import { useCopilotChat } from '../../../hooks/reader/use-copilot';
+import type { CopilotCitation, QuickPrompt } from '../../../types/copilot.types';
 import { cn } from '@/shared/lib/utils';
-import { useParams } from 'next/navigation';
+import { useLibraryClipboard } from '../../../hooks/library/use-clipboard';
 
-// ── Think-block parser ────────────────────────────────────────────────────────
+// ── Default Quick Prompts ────────────────────────────────────────────────────
 
-function getVisibleAssistantContent(raw: string) {
-  const closeIdx = raw.indexOf('</think>');
-  if (closeIdx !== -1) return raw.slice(closeIdx + 8).trimStart();
-  return raw.replace(/<think>[\s\S]*$/, '').trimStart();
+const DEFAULT_QUICK_PROMPTS: QuickPrompt[] = [
+  {
+    id: 'contributions',
+    title: 'Core Contributions',
+    icon: 'Sparkles',
+    prompt: 'Summarize the 3 main scientific contributions and novel insights of this paper in bullet points with page citations.',
+    description: 'Key takeaways and novelty',
+  },
+  {
+    id: 'methodology',
+    title: 'Explain Methodology',
+    icon: 'FunctionSquare',
+    prompt: 'Explain the core algorithmic methodology, mathematical formulations, and system architecture used in this work.',
+    description: 'Equations & model design',
+  },
+  {
+    id: 'datasets_table',
+    title: 'Extract Datasets & Metrics',
+    icon: 'Table2',
+    prompt: 'Extract all benchmark datasets, evaluation metrics, and comparative baseline results into a Markdown table.',
+    description: 'Benchmarks and accuracy',
+  },
+  {
+    id: 'limitations',
+    title: 'Limitations & Future Work',
+    icon: 'AlertCircle',
+    prompt: 'What are the main experimental limitations, computational constraints, and future research directions mentioned by the authors?',
+    description: 'Constraints and open problems',
+  },
+];
+
+// ── Citation Pill ────────────────────────────────────────────────────────────
+
+function CitationPill({
+  citation,
+  onClick,
+}: {
+  citation: CopilotCitation;
+  onClick?: (pageNumber: number) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        if (onClick) onClick(citation.pageNumber);
+      }}
+      title={citation.quote ? `Quote: "${citation.quote}"` : `Jump to Page ${citation.pageNumber}`}
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-muted text-foreground border border-border hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-95 transition-colors cursor-pointer select-none"
+    >
+      <BookOpen className="size-3 text-foreground shrink-0" />
+      <span className="tabular-nums">p. {citation.pageNumber}</span>
+      {citation.section && (
+        <span className="text-[11px] text-muted-foreground font-normal truncate max-w-28 font-sans">
+          ({citation.section})
+        </span>
+      )}
+    </button>
+  );
 }
 
-// ── Sources ──────────────────────────────────────────────────────────────────
+// ── Quick Prompts ────────────────────────────────────────────────────────────
 
-function SourcesList({ sources }: { sources: SourceItem[] }) {
-  const ragSources = sources.filter((s) => s.source && !s.url);
-  if (!ragSources.length) return null;
+function QuickPromptsView({
+  onSelectPrompt,
+  disabled = false,
+}: {
+  onSelectPrompt: (promptText: string) => void;
+  disabled?: boolean;
+}) {
+  const getIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'Sparkles':
+        return <Sparkles className="size-3.5 text-foreground shrink-0" />;
+      case 'FunctionSquare':
+        return <FunctionSquare className="size-3.5 text-foreground shrink-0" />;
+      case 'Table2':
+        return <Table2 className="size-3.5 text-foreground shrink-0" />;
+      case 'AlertCircle':
+        return <AlertCircle className="size-3.5 text-foreground shrink-0" />;
+      default:
+        return <Lightbulb className="size-3.5 text-foreground shrink-0" />;
+    }
+  };
 
   return (
-    <div className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
-      <p className="text-xs font-semibold text-muted-foreground">
-        Sources
+    <div className="flex flex-col gap-1.5">
+      <p className="text-xs font-medium text-muted-foreground px-1">
+        Quick Academic Starters
       </p>
-      <div className="flex flex-wrap gap-1">
-        {ragSources.map((s, i) =>
-          s.snippet ? (
-            <Popover key={i}>
-              <PopoverTrigger asChild>
-                <button className="inline-flex max-w-48 cursor-pointer items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary transition-colors hover:bg-primary/20">
-                  <FileText className="size-2.5 shrink-0" />
-                  <span className="truncate">{s.source}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                side="top"
-                align="start"
-                onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-72 p-0 text-xs bg-popover"
-              >
-                <div className="flex items-center gap-1.5 border-b border-border bg-muted/45 px-2.5 py-1.5">
-                  <Quote className="size-3 shrink-0 text-primary" />
-                  <span className="truncate text-xs font-semibold text-foreground/80">
-                    {s.source}
-                  </span>
-                </div>
-                <div className="px-2.5 py-2 max-h-40 overflow-y-auto">
-                  <p className="select-text whitespace-pre-wrap text-xs leading-relaxed text-foreground/70">
-                    {s.snippet}
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <span
-              key={i}
-              className="inline-flex max-w-48 items-center gap-1 truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
-            >
-              <FileText className="size-2.5 shrink-0" />
-              <span className="truncate">{s.source}</span>
-            </span>
-          ),
-        )}
+      <div className="grid grid-cols-2 gap-1.5">
+        {DEFAULT_QUICK_PROMPTS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            disabled={disabled}
+            onClick={() => onSelectPrompt(item.prompt)}
+            className="flex flex-col items-start p-2.5 rounded-md border border-border bg-muted/20 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              {getIcon(item.icon)}
+              <span className="text-xs font-medium text-foreground group-hover:text-foreground transition-colors">
+                {item.title}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-1">
+              {item.description}
+            </p>
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-// ── Message bubble ───────────────────────────────────────────────────────────
+// ── Main ChatPanel Component ─────────────────────────────────────────────────
 
-const MessageBubble = React.memo(function MessageBubble({
-  content,
-  role,
-  isStreaming = false,
-  sources,
-}: {
-  content: string;
-  role: 'user' | 'assistant';
-  isStreaming?: boolean;
-  sources?: SourceItem[];
-}) {
-  const [copied, setCopied] = useState(false);
-  const isUser = role === 'user';
+export interface ChatPanelProps {
+  paperId: string;
+  paperTitle: string;
+  onNavigateToPage?: (pageNumber: number) => void;
+  onSaveAsNote?: (noteContent: string) => void;
+  className?: string;
+}
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+export default function ChatPanel({
+  paperId,
+  paperTitle,
+  onNavigateToPage,
+  onSaveAsNote,
+  className,
+}: ChatPanelProps) {
+  const {
+    messages,
+    input,
+    setInput,
+    isStreaming,
+    sendMessage,
+    stopStreaming,
+    clearMessages,
+    handleCitationClick,
+  } = useCopilotChat({
+    paperId,
+    onNavigateToPage,
+  });
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop =
+        scrollContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const { copyToClipboard } = useLibraryClipboard();
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleSaveNote = (content: string) => {
+    if (onSaveAsNote) {
+      onSaveAsNote(content);
+    } else {
+      copyToClipboard(content, 'Copied insight to clipboard');
+    }
   };
 
   return (
     <div
       className={cn(
-        'flex gap-2.5',
-        isUser ? 'justify-end' : 'justify-start',
+        'flex flex-col h-full bg-background border-l border-border/80 text-foreground relative z-20',
+        className,
       )}
     >
-      <div
-        className={cn(
-          'group relative select-text',
-          isUser
-            ? 'max-w-[80%] rounded-lg rounded-br-md bg-primary px-3.5 py-2.5 text-primary-foreground'
-            : 'max-w-[92%] text-foreground',
-        )}
-      >
-        {isUser ? (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
-        ) : (
-          <div>
-            <div
-              className={cn(
-                'prose prose-xs max-w-none text-sm dark:prose-invert',
-                'prose-headings:text-foreground prose-headings:font-semibold',
-                'prose-p:text-foreground/90 prose-p:leading-relaxed',
-                'prose-strong:text-foreground prose-strong:font-semibold',
-                'prose-pre:bg-card prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:overflow-x-auto',
-                'prose-code:text-foreground prose-code:bg-muted prose-code:rounded prose-code:px-1',
-                isStreaming && 'animate-in fade-in duration-150',
-              )}
-            >
-              {renderMarkdown(getVisibleAssistantContent(content))}
-            </div>
-            {sources?.length ? <SourcesList sources={sources} /> : null}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border bg-muted/20">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="size-6 rounded-md bg-muted flex items-center justify-center shrink-0 border border-border">
+            <Sparkles className="size-3.5 text-foreground" />
           </div>
-        )}
-
-        {!isUser && !isStreaming && (
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-xs font-semibold truncate leading-tight text-foreground">
+              AI Assistant
+            </span>
+            <span className="text-xs text-muted-foreground truncate">
+              {paperTitle || 'Active Paper'}
+            </span>
+          </div>
+        </div>
+        {messages.length > 0 && (
           <button
             type="button"
-            onClick={handleCopy}
-            className="mt-2 flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-xs text-muted-foreground/60 transition-colors hover:border-border hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            onClick={clearMessages}
+            title="Clear Chat History"
+            aria-label="Clear chat history"
+            className="p-1.5 rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
-            {copied ? 'Copied' : 'Copy'}
+            <Trash2 className="size-3.5 text-foreground" />
           </button>
         )}
       </div>
-    </div>
-  );
-});
 
-function TypingIndicator() {
-  return (
-    <div className="flex items-center gap-1 px-1 py-1.5">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="size-1.5 rounded-full bg-primary/50"
-          style={{ animation: 'typing-dot 1.4s infinite ease-in-out', animationDelay: `${i * 0.2}s` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Main component ───────────────────────────────────────────────────────────
-
-interface ChatPanelProps {
-  ragDocId: string;
-  paperTitle: string;
-  selectionContext: string;
-  onClearSelectionContext: () => void;
-  showHeader?: boolean;
-  autoFocus?: boolean;
-}
-
-export default function ChatPanel({
-  ragDocId,
-  paperTitle,
-  selectionContext,
-  onClearSelectionContext,
-  showHeader = true,
-  autoFocus = true,
-}: ChatPanelProps) {
-  const { workspaceId } = useParams() as { workspaceId: string };
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const {
-    messages,
-    inputMessage,
-    isStreaming,
-    streamContent,
-    isLoadingHistory,
-    setInputMessage,
-    handleSend,
-    handleStop,
-    handleClearChat,
-  } = useChat({
-    workspaceId,
-    ragDocId,
-    paperTitle,
-    selectionContext,
-    onClearSelectionContext,
-  });
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
-    }
-  }, [inputMessage]);
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamContent]);
-
-  // Focus textarea when selection context arrives
-  useEffect(() => {
-    if (autoFocus && selectionContext && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [autoFocus, selectionContext]);
-
-  // Auto-focus on mount or document changes
-  useEffect(() => {
-    if (!autoFocus) return;
-    const t = setTimeout(() => textareaRef.current?.focus(), 100);
-    return () => clearTimeout(t);
-  }, [autoFocus, ragDocId]);
-
-  useEffect(() => {
-    if (autoFocus) textareaRef.current?.focus();
-  }, [autoFocus]);
-
-  // Re-focus after AI finishes streaming
-  useEffect(() => {
-    if (autoFocus && !isStreaming) textareaRef.current?.focus();
-  }, [autoFocus, isStreaming]);
-
-  // Focus-on-type
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!autoFocus || isStreaming) return;
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          activeEl.getAttribute('contenteditable') === 'true')
-      ) {
-        return;
-      }
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key.length === 1 && e.key !== ' ') textareaRef.current?.focus();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [autoFocus, isStreaming]);
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend(inputMessage);
-    }
-  };
-
-  return (
-    <div className="relative flex h-full flex-col bg-background">
-      <style>{`
-        @keyframes typing-dot {
-          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-          40% { opacity: 1; transform: scale(1.1); }
-        }
-      `}</style>
-
-      {/* Header */}
-      {showHeader && (
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <img src="/Chat.svg" alt="AI" className="size-4" />
-            <span className="text-xs font-semibold text-muted-foreground">
-              AI
-            </span>
-          </div>
-          {showClearConfirm ? (
-            <div className="flex h-8 items-center gap-0.5 rounded-md border border-destructive/20 bg-destructive/10 px-1">
-              <button
-                onClick={() => { handleClearChat(); setShowClearConfirm(false); }}
-                title="Confirm clear conversation"
-                className="flex size-6 items-center justify-center rounded text-destructive hover:bg-destructive/15 transition-colors"
-              >
-                <Check className="size-3.5" />
-              </button>
-              <button
-                onClick={() => setShowClearConfirm(false)}
-                title="Cancel"
-                className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-secondary transition-colors"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                if (messages.length > 0) {
-                  setShowClearConfirm(true);
-                } else {
-                  handleClearChat();
-                }
-              }}
-              title="Clear conversation"
-              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {isLoadingHistory && (
-        <div className="absolute left-0 right-0 top-0 z-10 h-0.5 overflow-hidden">
-          <div className="mx-auto h-full w-3/5 animate-pulse bg-primary/50" />
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
-        {messages.length === 0 && !isStreaming && !isLoadingHistory ? (
-          <div className="flex h-full flex-col items-center justify-center gap-6 px-4">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div className="group flex flex-col items-center">
-                <img
-                  src="/Chat.svg"
-                  alt="AI"
-                  className="mb-2 size-10 transition-transform duration-1000 group-hover:rotate-180"
-                />
-                <p className="text-sm font-semibold">AI Reader</p>
-                <p className="mt-0.5 text-xs text-muted-foreground/60">
-                  Ask about this indexed paper.
-                </p>
+      {/* ── Message Area ─────────────────────────────────────────────────── */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs"
+      >
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col justify-center gap-6 py-4">
+            <div className="text-center space-y-1.5 px-2">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-2 text-foreground border border-border">
+                <Bot className="size-5 text-foreground" />
               </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Ask anything about this paper
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                Grounded academic dialogue with strict page citations, formula explanations, and tabular summaries.
+              </p>
             </div>
-            <div className="w-full space-y-1.5">
-              {['Summarize the key findings', 'Explain the methodology', 'What are the limitations?'].map(
-                (prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => {
-                      setInputMessage(prompt);
-                      textareaRef.current?.focus();
-                    }}
-                    className="group flex w-full items-center gap-2 rounded-lg border border-border/40 bg-secondary/20 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                  >
-                    <span className="shrink-0 text-primary/40 transition-colors group-hover:text-primary">›</span>
-                    <span className="truncate">{prompt}</span>
-                  </button>
-                ),
-              )}
-            </div>
-            <p className="text-center text-xs text-muted-foreground/30">
-              Select text in the PDF to focus the next answer.
-            </p>
+            <QuickPromptsView onSelectPrompt={(p) => sendMessage(p)} />
           </div>
         ) : (
-          <div className="space-y-4 px-3 py-4">
-            {messages.map((msg, i) => (
-              <MessageBubble
-                key={i}
-                content={msg.content}
-                role={msg.role}
-                sources={msg.sources}
-              />
-            ))}
-            {isStreaming && (
-              <div className="flex gap-2.5">
-                <div className="max-w-[92%]">
-                  {streamContent ? (
-                    <MessageBubble content={streamContent} role="assistant" isStreaming={true} />
-                  ) : (
-                    <TypingIndicator />
+          messages.map((msg) => {
+            const isUser = msg.role === 'user';
+            return (
+              <div
+                key={msg.id}
+                className={cn(
+                  'flex gap-2.5 max-w-[95%]',
+                  isUser ? 'ml-auto flex-row-reverse' : 'mr-auto flex-row',
+                )}
+              >
+                <div
+                  className={cn(
+                    'size-6 rounded-full flex items-center justify-center shrink-0 text-xs font-medium mt-0.5',
+                    isUser
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted text-foreground border border-border',
+                  )}
+                >
+                  {isUser ? <User className="size-3.5" /> : <Bot className="size-3.5 text-foreground" />}
+                </div>
+                <div
+                  className={cn(
+                    'p-3 rounded-md leading-relaxed text-xs space-y-2',
+                    isUser
+                      ? 'bg-foreground text-background rounded-tr-none'
+                      : 'bg-card border border-border rounded-tl-none text-foreground',
+                  )}
+                >
+                  <div className="whitespace-pre-wrap select-text">
+                    {msg.content}
+                    {msg.isStreaming && (
+                      <span className="inline-block w-1.5 h-3 bg-primary/70 align-middle ml-1 animate-pulse" />
+                    )}
+                  </div>
+
+                  {/* Citations List */}
+                  {msg.citations && msg.citations.length > 0 && (
+                    <div className="pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
+                      {msg.citations.map((cite, idx) => (
+                        <CitationPill
+                          key={idx}
+                          citation={cite}
+                          onClick={handleCitationClick}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Action Bar for Assistant Message */}
+                  {!isUser && !msg.isStreaming && (
+                    <div className="pt-1 flex items-center gap-2 text-xs text-foreground">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveNote(msg.content)}
+                        className="inline-flex items-center gap-1 hover:text-foreground/80 transition-colors cursor-pointer"
+                      >
+                        <BookmarkPlus className="size-3 text-foreground" />
+                        <span>Save to Notes</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+            );
+          })
         )}
       </div>
 
-      {/* Input area */}
-      <div className="relative shrink-0 border-t border-border/40 px-3 pb-3 pt-2">
-        {/* Selection context chip */}
-        {selectionContext && (
-          <div className="group relative mb-2">
-            <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-border/50 bg-muted/35 px-2.5 py-1.5">
-              <FileText className="size-3 shrink-0 text-primary/60" />
-              <span className="truncate text-xs font-mono text-muted-foreground">
-                selected passage
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground/45">
-                {selectionContext.split(/\s+/).filter(Boolean).length}w
-              </span>
-              <button
-                onClick={onClearSelectionContext}
-                className="ml-auto rounded p-px text-muted-foreground/40 transition-colors hover:text-foreground"
-                title="Clear selected context"
-              >
-                <X className="size-2.5" />
-              </button>
-            </div>
-            <div className="pointer-events-none absolute bottom-full left-0 right-0 z-50 mb-1 hidden group-hover:block">
-              <div className="rounded-lg border border-border bg-popover p-2.5 text-xs font-mono shadow-xl">
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <FileText className="size-3 text-primary/70" />
-                  <span className="text-muted-foreground">Reader selection</span>
-                  <span className="ml-auto text-muted-foreground/40">{selectionContext.length}ch</span>
-                </div>
-                <pre className="max-h-28 overflow-auto whitespace-pre-wrap leading-relaxed text-muted-foreground/70">
-                  {selectionContext}
-                </pre>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="relative rounded-lg border border-border bg-background shadow-none transition-colors focus-within:border-border">
+      {/* ── Input Box ────────────────────────────────────────────────────── */}
+      <div className="p-3 border-t border-border bg-background">
+        <div className="flex items-end gap-1.5 p-1.5 rounded-md border border-border bg-background focus-within:ring-1 focus-within:ring-ring focus-within:border-border transition-colors">
           <textarea
-            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question or cite page..."
             rows={1}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            disabled={isLoadingHistory}
-            placeholder={
-              selectionContext
-                ? 'Ask about the selected text...'
-                : 'Ask AI about this paper...'
-            }
-            className="max-h-[140px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground/50"
+            className="flex-1 resize-none bg-transparent px-2 py-1 text-xs outline-none placeholder:text-muted-foreground/60 max-h-28 min-h-[32px] text-foreground"
           />
-
-          <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-            <span className="font-mono text-xs text-muted-foreground/30">
-              {messages.length > 0 ? `${messages.length} msg` : 'paper chat'}
-            </span>
+          {isStreaming ? (
             <button
               type="button"
-              onClick={isStreaming ? handleStop : () => handleSend(inputMessage)}
-              disabled={(!inputMessage.trim() && !selectionContext && !isStreaming) || isLoadingHistory}
-              aria-label={isStreaming ? 'Stop generating' : 'Send message'}
-              className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              onClick={stopStreaming}
+              aria-label="Stop generating response"
+              className="p-1.5 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {isStreaming ? <Square className="size-3.5" /> : <ArrowUp className="size-4" />}
+              <Square className="size-3.5 fill-current" />
             </button>
-          </div>
+          ) : (
+            <button
+              type="button"
+              disabled={!input.trim()}
+              onClick={() => sendMessage()}
+              aria-label="Send message"
+              className="p-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <ArrowUp className="size-3.5 stroke-[2.5]" />
+            </button>
+          )}
         </div>
+        <p className="text-xs text-muted-foreground text-center mt-1.5">
+          Press Enter to send • Shift+Enter for new line
+        </p>
       </div>
     </div>
   );

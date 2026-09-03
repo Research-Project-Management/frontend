@@ -1,40 +1,56 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { fetchPdfBlob } from '../../services/paper.service';
-import { generateAcademicPdfBlob } from '../../utils/reader.util';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchPdfBlob } from '@/features/workspaces/library/services/catalog.service';
 import { getErrorMessage } from '@/shared/utils/error.util';
 
-export interface PdfFallbackOptions {
-  title?: string;
-  authors?: string[];
-  year?: number | string | null;
-  journal?: string;
-  doi?: string;
-  abstract?: string;
-}
-
-interface UsePdfReturn {
+export interface UsePdfReturn {
   blobUrl: string | null;
   isLoading: boolean;
   error: string | null;
+  retry: () => void;
 }
 
 /**
  * Fetches a PDF via authenticated blob request and manages
- * the resulting object URL lifecycle (create + revoke on unmount).
- * If the remote URL is unreachable, seamlessly generates a valid research paper fallback PDF.
+ * the resulting object URL lifecycle (create + revoke on unmount or retry).
  */
-export function usePdf(url: string | null, fallbackOptions?: PdfFallbackOptions): UsePdfReturn {
+export function usePdf(url: string | null): UsePdfReturn {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const currentBlobUrlRef = useRef<string | null>(null);
+
+  const retry = useCallback(() => {
+    setRetryCount((c) => c + 1);
+  }, []);
 
   useEffect(() => {
-    if (!url) return;
+    // Abort any ongoing fetch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
 
+    // Revoke any previous object URL
+    if (currentBlobUrlRef.current) {
+      URL.revokeObjectURL(currentBlobUrlRef.current);
+      currentBlobUrlRef.current = null;
+    }
+
+    if (!url) {
+      setBlobUrl(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     let active = true;
-    let currentBlobUrl: string | null = null;
 
     async function loadPdf() {
       try {
@@ -42,41 +58,22 @@ export function usePdf(url: string | null, fallbackOptions?: PdfFallbackOptions)
         setError(null);
         setBlobUrl(null);
 
-        let blob: Blob;
-        try {
-          blob = await fetchPdfBlob(url!);
-
-          // Guard against JSON error responses disguised as blobs
-          if (blob.type.includes('application/json') || blob.size < 100) {
-            const text = await blob.text();
-            if (text.trim().startsWith('{')) {
-              const parsed = JSON.parse(text) as Record<string, any>;
-              throw new Error(parsed?.message || parsed?.error || 'Invalid response payload');
-            }
-          }
-        } catch (fetchErr) {
-          // If remote PDF endpoint is unreachable (e.g. mock r2.rpm.local or CORS issue),
-          // generate a clean, valid academic PDF so the reader remains interactive!
-          console.warn('[usePdf] Fetching remote PDF failed, rendering formatted fallback document:', fetchErr);
-          blob = generateAcademicPdfBlob({
-            title: fallbackOptions?.title || 'Academic Research Paper',
-            authors: fallbackOptions?.authors,
-            year: fallbackOptions?.year,
-            journal: fallbackOptions?.journal,
-            doi: fallbackOptions?.doi,
-            abstract: fallbackOptions?.abstract,
-          });
-        }
+        const blob = await fetchPdfBlob(url!, controller.signal);
 
         if (active) {
-          currentBlobUrl = URL.createObjectURL(blob);
-          setBlobUrl(currentBlobUrl);
+          const newObjectUrl = URL.createObjectURL(blob);
+          currentBlobUrlRef.current = newObjectUrl;
+          setBlobUrl(newObjectUrl);
           setIsLoading(false);
         }
       } catch (err: unknown) {
+        if (controller.signal.aborted) {
+          return;
+        }
         if (active) {
-          console.error('PDF load error:', err);
-          setError(getErrorMessage(err) || 'Failed to load PDF file.');
+          console.error('[usePdf] PDF load error:', err);
+          setError(getErrorMessage(err) || 'KhÃ´ng thá»ƒ táº£i tÃ i liá»‡u PDF.');
+          setBlobUrl(null);
           setIsLoading(false);
         }
       }
@@ -86,17 +83,14 @@ export function usePdf(url: string | null, fallbackOptions?: PdfFallbackOptions)
 
     return () => {
       active = false;
-      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      controller.abort();
+      if (currentBlobUrlRef.current) {
+        URL.revokeObjectURL(currentBlobUrlRef.current);
+        currentBlobUrlRef.current = null;
+      }
     };
-  }, [
-    url,
-    fallbackOptions?.title,
-    fallbackOptions?.authors,
-    fallbackOptions?.year,
-    fallbackOptions?.journal,
-    fallbackOptions?.abstract,
-    fallbackOptions?.doi,
-  ]);
+  }, [url, retryCount]);
 
-  return { blobUrl, isLoading, error };
+  return { blobUrl, isLoading, error, retry };
 }
+

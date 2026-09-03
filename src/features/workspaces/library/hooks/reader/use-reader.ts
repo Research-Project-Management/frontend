@@ -4,17 +4,17 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useWorkspace } from '../library/use-workspace';
 
 import { useCollections } from '../library/use-library';
-import { usePapers, usePaper } from '../library/use-papers';
+import { useCatalogItems, useCatalogItem, catalogItemKeys } from '../library/use-items';
 import { usePdf } from './use-pdf';
-import { reindexPaper, paperKeys } from '../../services/paper.service';
-import { UserStateService } from '../../services/user-state.service';
+import { reindexPaper } from '@/features/workspaces/library/services/catalog.service';
+import { ReadingService as ItemStateService, ReadingService as UserStateService } from '../../services/reading.service';
 import { getPaperFileUrl } from '../../utils/library.util';
 import { useLibraryReaderStore } from '../../store/reader.store';
 import type { ReaderPanel } from '../../types/reader.types';
-import type { Paper } from '../../types/library.types';
+import type { CatalogItem } from '../../types/library.types';
 
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
@@ -32,11 +32,11 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const closeReader = useLibraryReaderStore((s) => s.closeReader);
   const effectivePaperId = overridePaperId || storeReadingId || params?.paperId || '';
 
-  const paperQuery = usePaper(workspaceId, effectivePaperId);
+  const paperQuery = useCatalogItem(workspaceId, effectivePaperId);
   const paper = paperQuery.data ?? null;
   const isLoadingPapers = paperQuery.isLoading;
 
-  const { actions: paperActions } = usePapers({ workspaceId, collectionId: '' });
+  const { actions: paperActions } = useCatalogItems({ workspaceId, collectionId: '' });
   const collectionService = useCollections(workspaceId);
   const collections = collectionService.state.collections;
 
@@ -46,19 +46,12 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   );
   const paperCollection = paper?.collectionId ? collectionMap[paper.collectionId] ?? null : null;
   const paperUrl = getPaperFileUrl(paper);
-  const { blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError } = usePdf(
-    paperUrl || null,
-    paper
-      ? {
-          title: paper.title,
-          authors: paper.authors,
-          year: paper.year,
-          journal: paper.journal || paper.publisher,
-          doi: paper.doi,
-          abstract: paper.abstract,
-        }
-      : undefined
-  );
+  const {
+    blobUrl: pdfBlobUrl,
+    isLoading: pdfLoading,
+    error: pdfError,
+    retry: handleRetryPdf,
+  } = usePdf(paperUrl || null);
 
   const [activePanel, setActivePanel] = useState<ReaderPanel | null>(null);
 
@@ -91,7 +84,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   useEffect(() => {
     if (!paper || paper.ragStatus !== 'pending') return;
     const interval = setInterval(() => {
-      qc.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      qc.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceId) });
     }, 5000);
     return () => clearInterval(interval);
   }, [paper, workspaceId, qc]);
@@ -172,12 +165,18 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setIsReindexing(true);
     try {
       await reindexPaper(workspaceId, effectivePaperId);
-      toast.success('AI indexing started');
-      qc.invalidateQueries({ queryKey: paperKeys.all(workspaceId) });
+      toast.success('AI indexing started', {
+        description: 'Extracting semantic embeddings and citation links in background.',
+        id: 'reader-ai-index',
+      });
+      qc.invalidateQueries({ queryKey: catalogItemKeys.all(workspaceId) });
       setActivePanel('ai');
     } catch (err) {
       console.error('Reindex failed:', err);
-      toast.error('Could not start AI indexing');
+      toast.error('Indexing failed', {
+        description: 'Could not start AI indexing. Please try again.',
+        id: 'reader-ai-index',
+      });
     } finally {
       setIsReindexing(false);
     }
@@ -195,14 +194,17 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     const pId = paper.id;
     if (!pId) return;
 
-    paperActions.updatePaper({ paperId: pId, title: nextTitle })
+    paperActions.updatePaper(pId, { title: nextTitle })
       .then(() => {
         setIsEditingTitle(false);
-        toast.success('Paper title updated');
+        toast.success('Paper title updated', { id: 'reader-title-update' });
       })
       .catch(() => {
         setDraftTitle(paper.title);
-        toast.error('Could not update paper title');
+        toast.error('Failed to update title', {
+          description: 'Could not save the new paper title. Please try again.',
+          id: 'reader-title-update',
+        });
       });
   };
 
@@ -257,9 +259,11 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleReindex,
       handleTitleSave,
       handleResizeMouseDown,
+      handleRetryPdf,
       navigate: router.push,
       goBack,
       closeReader,
     },
   };
 }
+

@@ -2,45 +2,44 @@
 
 import React, { useMemo } from 'react';
 import { Files } from 'lucide-react';
-import Topbar from '../components/topbar/Topbar';
-import PaperTable from '../components/table/PaperTable';
-import InspectorPanel from '../components/panel/Panel';
-import AddLinkModal from '../components/system/AddLinkModal';
-import CreateCollectionModal from '../components/system/CreateCollectionModal';
-import MergeDialog from '../components/system/MergeDialog';
+import Topbar from '../components/Topbar';
+import ItemTable from '../components/Table';
+import InspectorPanel from '../components/Panel';
+import AddLinkModal from '../components/modals/AddLinkModal';
+import CreateCollectionModal from '../components/modals/CreateCollectionModal';
+import MergeDialog from '../components/modals/MergeDialog';
+import { Button } from '@/shared/components/ui/button';
 import { useLibrary, useDuplicateGroups, useMergePapers } from '../hooks/library/use-library';
-import { useLibrarySidebarStore } from '../store/sidebar.store';
-import type { Paper } from '../types/library.types';
+import type { CatalogItem } from '../types/library.types';
 
 export default function DuplicatesPage() {
   const { state, actions } = useLibrary();
-  const { setIsInspectorOpen } = useLibrarySidebarStore();
   const {
     workspaceId,
     search,
-    selectedPaperId,
-    selectedPaper,
+    selectedItemId,
+    selectedItem,
     selectedCollection,
     collectionMap,
     collections,
     addLinkOpen,
     createCollectionOpen,
-    isAddingPaper,
+    isAddingItem,
     isCreatingCollection,
   } = state;
 
   const {
     setSearch,
-    setSelectedPaperId,
+    setSelectedItemId,
     setAddLinkOpen,
     handleDirectFilesUpload,
     handleDirectFolderUpload,
     handleAddLinkSubmit,
     setCreateCollectionOpen,
     handleCreateCollection,
-    handleDeletePaper,
-    handleBatchDeletePapers,
-    handleBatchMovePapers,
+    handleDeleteItem,
+    handleBatchDeleteItems,
+    handleBatchMoveItems,
   } = actions;
 
   const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(workspaceId);
@@ -54,11 +53,12 @@ export default function DuplicatesPage() {
     [duplicateData],
   );
 
-  const allDuplicatePapers = useMemo(() => {
-    const list: Paper[] = [];
+  const allDuplicateItems = useMemo(() => {
+    const list: CatalogItem[] = [];
     const seen = new Set<string>();
     for (const group of duplicateGroups) {
-      for (const p of group.papers) {
+      const groupItems = group.items || group.papers || [];
+      for (const p of groupItems) {
         if (!seen.has(p.id)) {
           seen.add(p.id);
           list.push(p);
@@ -68,42 +68,42 @@ export default function DuplicatesPage() {
     return list;
   }, [duplicateGroups]);
 
-  const filteredPapers = useMemo(() => {
-    if (!search.trim()) return allDuplicatePapers;
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return allDuplicateItems;
     const q = search.toLowerCase();
-    return allDuplicatePapers.filter(
+    return allDuplicateItems.filter(
       (p) =>
-        p.title.toLowerCase().includes(q) ||
-        (Array.isArray(p.authors) && p.authors.some((a) => a.toLowerCase().includes(q))) ||
+        p.title?.toLowerCase().includes(q) ||
+        (Array.isArray(p.authors) && p.authors.some((a: any) => (typeof a === 'string' ? a : a.name || '').toLowerCase().includes(q))) ||
         (p.doi && p.doi.toLowerCase().includes(q)),
     );
-  }, [allDuplicatePapers, search]);
+  }, [allDuplicateItems, search]);
 
-  const handleSelectPaper = (paper: Paper) => {
-    const paperId = paper.id;
-    if (selectedPaperId === paperId) {
-      setSelectedPaperId(null);
+  const handleSelectItem = (item: CatalogItem) => {
+    const itemId = item.id;
+    if (selectedItemId === itemId) {
+      setSelectedItemId(null);
     } else {
-      setSelectedPaperId(paperId);
+      setSelectedItemId(itemId);
     }
   };
 
-  const [mergeCluster, setMergeCluster] = React.useState<Paper[] | null>(null);
+  const [mergeCluster, setMergeCluster] = React.useState<CatalogItem[] | null>(null);
   const [mergeDialogOpen, setMergeDialogOpen] = React.useState(false);
 
-  const handleOpenMergeDialog = (clusterPapers: Paper[]) => {
-    if (!clusterPapers || clusterPapers.length < 2) return;
-    setMergeCluster(clusterPapers);
+  const handleOpenMergeDialog = (clusterItems: CatalogItem[]) => {
+    if (!clusterItems || clusterItems.length < 2) return;
+    setMergeCluster(clusterItems);
     setMergeDialogOpen(true);
   };
 
   const handleExecuteMerge = async (
-    masterPaper: Paper,
-    _mergedFields: Partial<Paper>,
+    masterItem: CatalogItem,
+    _mergedFields: Partial<CatalogItem>,
     duplicateIdsToDelete: string[],
   ) => {
     await mergeMutation.mutateAsync({
-      masterPaperId: masterPaper.id,
+      masterPaperId: masterItem.id,
       sourcePaperIds: duplicateIdsToDelete,
     });
   };
@@ -125,26 +125,56 @@ export default function DuplicatesPage() {
 
         {/* Central Duplicate Table */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {duplicateGroups.length > 0 && !isDupLoading && (
+            <div className="px-4 py-2 bg-muted/40 border-b border-border/50 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-medium text-foreground">
+                  {duplicateGroups.length} duplicate {duplicateGroups.length === 1 ? 'cluster' : 'clusters'} detected
+                </span>
+                <span className="text-muted-foreground font-mono">({allDuplicateItems.length} items)</span>
+              </div>
+              <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5">
+                {duplicateGroups.map((group: any, idx: number) => {
+                  const items = group.items || group.papers || [];
+                  if (items.length < 2) return null;
+                  const matchLabel = group.matchType === 'DOI' ? 'DOI' : 'Title';
+                  return (
+                    <Button
+                      key={group.key || idx}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenMergeDialog(items)}
+                      className="h-6.5 px-2 text-[11px] font-medium gap-1.5 cursor-pointer bg-background hover:bg-accent border-border/60 shadow-none"
+                    >
+                      <Files className="size-3 text-muted-foreground" />
+                      <span>Review & Merge #{idx + 1} ({items.length} · {matchLabel})</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {duplicateGroups.length === 0 && !isDupLoading ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
               <Files className="size-12 mb-3 opacity-20" />
               <p className="text-sm font-medium text-foreground">No duplicates detected</p>
               <p className="text-xs text-muted-foreground mt-1">
-                No duplicate papers found by DOI or Title/Author/Year.
+                No duplicate items found by DOI or Title/Author/Year.
               </p>
             </div>
           ) : (
-            <PaperTable
-              papers={filteredPapers}
+            <ItemTable
+              items={filteredItems}
               isLoading={isDupLoading}
               isSearch={Boolean(search.trim())}
-              selectedPaperId={selectedPaperId}
-              onSelectPaper={handleSelectPaper}
-              onDeletePaper={handleDeletePaper}
-              onBatchDeletePapers={handleBatchDeletePapers}
-              onBatchMovePapers={handleBatchMovePapers}
+              selectedItemId={selectedItemId}
+              onSelectItem={handleSelectItem}
+              onDeleteItem={handleDeleteItem}
+              onBatchDeleteItems={handleBatchDeleteItems}
+              onBatchMoveItems={handleBatchMoveItems}
               onClearSearch={() => setSearch('')}
-              onAddPaper={() => setAddLinkOpen(true)}
+              onAddItem={() => setAddLinkOpen(true)}
               collectionMap={collectionMap}
               collections={collections}
             />
@@ -154,17 +184,18 @@ export default function DuplicatesPage() {
 
       {/* Right Inspector Panel */}
       <InspectorPanel
-        paper={selectedPaper || null}
+        paper={selectedItem || null}
+        item={selectedItem || null}
         collection={selectedCollection || null}
         workspaceId={workspaceId}
-        onClose={() => setSelectedPaperId(null)}
+        onClose={() => setSelectedItemId(null)}
       />
 
       <AddLinkModal
         open={addLinkOpen}
         onOpenChange={setAddLinkOpen}
         onSubmit={handleAddLinkSubmit}
-        isPending={isAddingPaper}
+        isPending={isAddingItem}
       />
 
       <CreateCollectionModal
@@ -186,3 +217,4 @@ export default function DuplicatesPage() {
     </div>
   );
 }
+

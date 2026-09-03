@@ -18,7 +18,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { cn } from '@/shared/lib/utils';
 import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
-import { usePapers } from '@/features/workspaces/library/hooks/library/use-papers';
+import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/library/use-items';
 import type { Collection, Paper } from '@/features/workspaces/library/types/library.types';
 
 export interface SourcePickerModalProps {
@@ -96,7 +96,7 @@ export function SourcePickerModal({
 
   const activePapers = useMemo(() => {
     const raw = selectedCollectionId
-      ? papersState.collectionPapers?.papers ?? []
+      ? (Array.isArray(papersState.collectionPapers) ? papersState.collectionPapers : (papersState.collectionPapers as any)?.papers ?? [])
       : papersState.allPapers ?? [];
     return (raw as Paper[]).filter(isIndexedPaper);
   }, [papersState, selectedCollectionId]);

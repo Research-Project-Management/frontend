@@ -8,7 +8,6 @@ import {
   type UpdateAnnotationDTO,
 } from '../../services/annotation.service';
 import type { PdfAnnotation } from '../../types/library.types';
-
 export const annotationKeys = {
   all: ['annotations'] as const,
   attachment: (workspaceId: string, attachmentId?: string) =>
@@ -36,9 +35,10 @@ export function useAnnotations(workspaceId: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.attachment(workspaceId, attachmentId),
       });
+      toast.success('Annotation saved', { id: 'annotation-mutation-toast' });
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Failed to create annotation');
+      toast.error(err?.message || 'Failed to create annotation', { id: 'annotation-mutation-toast' });
     },
   });
 
@@ -59,9 +59,10 @@ export function useAnnotations(workspaceId: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.attachment(workspaceId, attachmentId),
       });
+      toast.success('Annotation updated', { id: 'annotation-mutation-toast' });
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Failed to update annotation');
+      toast.error(err?.message || 'Failed to update annotation', { id: 'annotation-mutation-toast' });
     },
   });
 
@@ -74,26 +75,38 @@ export function useAnnotations(workspaceId: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.attachment(workspaceId, attachmentId),
       });
+      toast.success('Annotation deleted', { id: 'annotation-mutation-toast' });
     },
     onError: (err: any) => {
-      toast.error(err?.message || 'Failed to delete annotation');
+      toast.error(err?.message || 'Failed to delete annotation', { id: 'annotation-mutation-toast' });
     },
   });
 
-  return {
+  const state = {
     annotations: (annotationsQuery.data || []) as PdfAnnotation[],
     isLoading: annotationsQuery.isLoading,
     isError: annotationsQuery.isError,
     error: annotationsQuery.error,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
+
+  const actions = {
     refetch: annotationsQuery.refetch,
     createAnnotation: createMutation.mutateAsync,
     updateAnnotation: (id: string, version: number, dto: UpdateAnnotationDTO) =>
       updateMutation.mutateAsync({ id, version, dto }),
     deleteAnnotation: (id: string, version?: number) =>
       deleteMutation.mutateAsync({ id, version }),
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
+  };
+
+  return {
+    state,
+    actions,
+    // Direct aliases for backwards compatibility
+    ...state,
+    ...actions,
   };
 }
 
@@ -120,10 +133,16 @@ export const useExtractNotes = (workspaceId: string, paperId: string) => {
         response?.literatureNote?.annotationCount ??
         response?.totalExtracted ??
         'all';
-      toast.success(`Synthesized ${count} highlight(s) into Literature Note`);
+      toast.success('Literature note created', {
+        description: `Synthesized ${count} highlight(s) into note.`,
+        id: 'synthesize-note',
+      });
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Failed to extract notes');
+      toast.error('Failed to extract notes', {
+        description: error?.message || 'Could not synthesize highlights.',
+        id: 'synthesize-note',
+      });
     },
   });
 };

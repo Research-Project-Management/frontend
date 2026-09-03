@@ -1,5 +1,4 @@
-import { API_BASE_URL } from '@/config/env';
-import { getAuthToken } from '@/shared/lib/api';
+import { apiRawFetch } from '@/shared/lib/api';
 import type { CopilotMessage, CopilotCitation } from '../types/copilot.types';
 
 export interface StreamPaperOptions {
@@ -20,29 +19,22 @@ export async function* streamPaperCopilotChat(
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
   options?: StreamPaperOptions,
 ): AsyncGenerator<string, void, unknown> {
-  const token = getAuthToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'text/event-stream',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const url = `${API_BASE_URL}/api/ai/rag/papers/${encodeURIComponent(paperId)}/stream`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    credentials: 'include',
-    body: JSON.stringify({
+  const response = await apiRawFetch(
+    `/api/ai/rag/papers/${encodeURIComponent(paperId)}/stream`,
+    'POST',
+    {
       messages,
       selection_context: options?.selection ?? null,
       chat_id: options?.chatId ?? `paper-${paperId}`,
       intent_hint: 'paper_rag_qa',
-    }),
-    signal: options?.signal,
-  });
+    },
+    {
+      headers: {
+        Accept: 'text/event-stream',
+      },
+      signal: options?.signal,
+    },
+  );
 
   if (!response.ok) {
     throw new Error(`AI Copilot streaming failed (${response.status}): ${response.statusText}`);
@@ -97,3 +89,12 @@ export async function* streamPaperCopilotChat(
     reader.releaseLock();
   }
 }
+
+export const streamCopilotChat = streamPaperCopilotChat;
+
+export const CopilotService = {
+  stream: streamCopilotChat,
+  streamChat: streamCopilotChat,
+  streamPaperCopilotChat,
+};
+

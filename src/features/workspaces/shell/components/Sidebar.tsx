@@ -29,7 +29,7 @@ export default function Sidebar() {
   return (
     <LayoutGroup id={id}>
       <nav
-        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-12 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:px-0.5 md:py-4'
+        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:px-0.5 md:py-4'
       >
         {NAV_ITEMS.map((item) => {
           const Icon = 'icon' in item ? item.icon : null;

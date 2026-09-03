@@ -2,13 +2,12 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Loader2, Plus, Edit3, Trash2, Calendar, FileText, Check, X, Tag } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { useNotes } from '@/features/workspaces/library/hooks/library/use-notes';
-import type { Paper, Note } from '@/features/workspaces/library/types/library.types';
+import type { CatalogItem, Note } from '@/features/workspaces/library/types/library.types';
 
 interface NotesPanelProps {
-  paper: Paper;
+  paper: CatalogItem;
   workspaceId: string;
   pendingText?: string;
   onClearPendingText?: () => void;
@@ -126,9 +125,8 @@ export default function NotesPanel({
         contentMd: content,
       });
       setNewNote('');
-      toast.success('Note added');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to add note');
+    } catch {
+      // Handled in useNotes hook
     }
   };
 
@@ -157,9 +155,8 @@ export default function NotesPanel({
       }
       setEditingId(null);
       setEditingText('');
-      toast.success('Note updated');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to update note');
+    } catch {
+      // Handled in useNotes hook
     }
   };
 
@@ -172,9 +169,8 @@ export default function NotesPanel({
         await deleteNote(noteToDelete.id, noteToDelete.version);
       }
       setDeletingId(null);
-      toast.success('Note deleted');
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete note');
+    } catch {
+      // Handled in useNotes hook
     }
   };
 
@@ -217,12 +213,11 @@ export default function NotesPanel({
     <div className="flex h-full flex-col bg-background">
       {/* Add note box */}
       <div className="border-b border-border bg-background p-3.5">
-        <div className="rounded-xl border border-border bg-card p-3 transition-colors focus-within:border-border">
+        <div className="rounded-md border border-border bg-card p-3 transition-colors focus-within:border-border">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-foreground">
+            <label className="text-xs font-medium text-foreground">
               New note
             </label>
-            <span className="text-xs text-muted-foreground/60">⌘+Enter to save</span>
           </div>
           <textarea
             ref={textareaRef}
@@ -231,14 +226,14 @@ export default function NotesPanel({
             onKeyDown={handleNewNoteKeyDown}
             placeholder="Capture thoughts, quotes, or questions while reading..."
             rows={3}
-            className="mt-2 w-full resize-none rounded-md border border-border/60 bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border"
+            className="mt-2 w-full resize-none rounded-md border border-border/60 bg-background px-3 py-2 text-xs leading-relaxed outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border focus-visible:ring-1 focus-visible:ring-ring"
           />
           <div className="mt-2 flex justify-end">
             <Button
               size="sm"
               onClick={handleAddNote}
               disabled={!newNote.trim() || isBusy}
-              className="gap-1.5 h-8 text-xs font-semibold shadow-none cursor-pointer"
+              className="gap-1.5 h-8 text-xs font-medium shadow-none cursor-pointer"
             >
               {isCreating ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -259,10 +254,10 @@ export default function NotesPanel({
           </div>
         ) : displayNotes.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4">
-            <div className="flex size-11 items-center justify-center rounded-xl border border-border bg-muted/40">
+            <div className="flex size-11 items-center justify-center rounded-md border border-border bg-muted/40">
               <FileText className="size-5 text-muted-foreground/60" />
             </div>
-            <p className="mt-3 text-sm font-semibold text-foreground">No notes yet</p>
+            <p className="mt-3 text-sm font-medium text-foreground">No notes yet</p>
             <p className="mt-1 max-w-[220px] text-xs leading-relaxed text-muted-foreground">
               Highlight text in the paper and choose &ldquo;Note&rdquo; or jot down thoughts directly.
             </p>
@@ -277,7 +272,7 @@ export default function NotesPanel({
               return (
                 <li
                   key={note.id}
-                  className="group relative rounded-xl border border-border bg-card p-3.5 transition-colors hover:border-border/80"
+                  className="group relative rounded-md border border-border bg-card p-3.5 transition-colors hover:border-border/80"
                 >
                   {isEditing ? (
                     <div className="space-y-2.5">
@@ -305,7 +300,7 @@ export default function NotesPanel({
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 text-xs px-3 font-semibold cursor-pointer"
+                            className="h-7 text-xs px-3 font-medium cursor-pointer"
                             onClick={handleSaveEdit}
                             disabled={!editingText.trim() || isBusy}
                           >
@@ -323,7 +318,7 @@ export default function NotesPanel({
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1.5 flex-1 min-w-0">
                           {note.title && note.title !== 'Note' && note.title !== 'Untitled Note' && (
-                            <h4 className="text-xs font-semibold text-foreground truncate">
+                            <h4 className="text-xs font-medium text-foreground truncate">
                               {note.title}
                             </h4>
                           )}
@@ -412,3 +407,7 @@ export default function NotesPanel({
     </div>
   );
 }
+
+
+
+

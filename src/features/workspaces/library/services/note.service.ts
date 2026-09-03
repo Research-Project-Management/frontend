@@ -24,7 +24,7 @@ export const NoteService = {
    */
   list: async (workspaceId: string, itemId?: string): Promise<Note[]> => {
     const query = itemId ? `?itemId=${encodeURIComponent(itemId)}` : '';
-    const raw = await apiGet<{ success: boolean; data: Note[] }>(
+    const raw = await apiGet<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes${query}`,
     );
 
@@ -32,14 +32,17 @@ export const NoteService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw?.data || [];
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    return raw?.data || raw?.notes || [];
   },
 
   /**
    * Get single note by id
    */
   get: async (workspaceId: string, id: string): Promise<Note> => {
-    const raw = await apiGet<{ success: boolean; data: Note }>(
+    const raw = await apiGet<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
     );
 
@@ -47,14 +50,14 @@ export const NoteService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw.data;
+    return raw?.data || raw?.note || raw;
   },
 
   /**
    * Create a new canonical Note
    */
   create: async (workspaceId: string, dto: CreateNoteDTO): Promise<Note> => {
-    const raw = await apiPost<{ success: boolean; data: Note }>(
+    const raw = await apiPost<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes`,
       dto,
     );
@@ -63,7 +66,7 @@ export const NoteService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw.data;
+    return raw?.data || raw?.note || raw;
   },
 
   /**
@@ -72,19 +75,21 @@ export const NoteService = {
   update: async (
     workspaceId: string,
     id: string,
-    expectedVersion: number,
+    expectedVersion: number | undefined,
     dto: UpdateNoteDTO,
   ): Promise<Note> => {
-    const raw = await apiPatch<{ success: boolean; data: Note }>(
+    const headers: Record<string, string> = {};
+    if (expectedVersion !== undefined) {
+      headers['If-Match'] = String(expectedVersion);
+    }
+    const raw = await apiPatch<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
       {
         ...dto,
         expectedVersion,
       },
       {
-        headers: {
-          'If-Match': String(expectedVersion),
-        },
+        headers,
       },
     );
 
@@ -92,7 +97,7 @@ export const NoteService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw.data;
+    return raw?.data || raw?.note || raw;
   },
 
   /**
@@ -103,13 +108,23 @@ export const NoteService = {
     id: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
-    const raw = await apiDelete<{ success: boolean; data: { deleted: boolean } }>(
+    const raw = await apiDelete<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
       {
         headers: expectedVersion ? { 'If-Match': String(expectedVersion) } : undefined,
       },
     );
 
-    return raw?.data ?? { deleted: true };
+    if (raw && typeof raw === 'object' && 'deleted' in raw) {
+      return { deleted: Boolean(raw.deleted) };
+    }
+    return raw?.data || { deleted: true };
   },
 };
+
+// Aliases
+export const getNotes = NoteService.list;
+export const getNote = NoteService.get;
+export const createNote = NoteService.create;
+export const updateNote = NoteService.update;
+export const deleteNote = NoteService.delete;

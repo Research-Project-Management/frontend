@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { X, Loader2, AlertTriangle, StickyNote, Copy, Check, Highlighter } from 'lucide-react';
-import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import Toolbar from './Toolbar';
 
@@ -24,6 +23,7 @@ interface ViewerProps {
   filename: string;
   isLoading: boolean;
   error: string | null;
+  onRetry?: () => void;
   onAskAi: (selectedText: string) => void;
   onAddToNote?: (selectedText: string) => void;
   onAnnotate?: (selectedText: string, pageNumber: number) => void;
@@ -34,6 +34,7 @@ export default function Viewer({
   filename,
   isLoading,
   error,
+  onRetry,
   onAskAi,
   onAddToNote,
   onAnnotate,
@@ -171,9 +172,12 @@ export default function Viewer({
 
   const handleCopySelection = () => {
     if (!selectedText) return;
-    navigator.clipboard.writeText(selectedText);
+    try {
+      navigator.clipboard.writeText(selectedText);
+    } catch {
+      // Ignore clipboard write error
+    }
     setCopiedSelection(true);
-    toast.success('Text copied to clipboard');
     setTimeout(() => {
       setCopiedSelection(false);
       setShowFloatingMenu(false);
@@ -199,17 +203,39 @@ export default function Viewer({
         {error || docError ? (
           <div className="flex flex-col items-center justify-center text-center p-10 max-w-md mx-auto mt-20 gap-3">
             <AlertTriangle className="size-9 text-destructive" />
-            <p className="text-sm font-semibold text-foreground">{error || docError}</p>
-            <p className="text-xs text-muted-foreground">
-              Download the paper from the reader header to view it in an external reader.
+            <p className="text-sm font-medium text-foreground">
+              Không thể tải tài liệu
             </p>
+            <p className="text-xs text-muted-foreground">{error || docError}</p>
+            {onRetry && (
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="px-3.5 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors shadow-none cursor-pointer"
+                >
+                  Thử lại
+                </button>
+              </div>
+            )}
           </div>
         ) : !blobUrl ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
-            <Loader2 className="size-7 animate-spin text-primary" />
-            <p className="text-xs text-muted-foreground animate-pulse">
-              Loading document…
-            </p>
+            {isLoading ? (
+              <>
+                <Loader2 className="size-7 animate-spin text-foreground" />
+                <p className="text-xs text-muted-foreground animate-pulse">
+                  Đang tải tài liệu…
+                </p>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="size-7 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Không tìm thấy đường dẫn PDF hợp lệ cho tài liệu này.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <Document
@@ -218,7 +244,7 @@ export default function Viewer({
             onLoadError={onDocumentLoadError}
             loading={
               <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <Loader2 className="size-7 animate-spin text-primary" />
+                <Loader2 className="size-7 animate-spin text-foreground" />
                 <p className="text-xs text-muted-foreground animate-pulse">
                   Rendering pages…
                 </p>
@@ -260,7 +286,7 @@ export default function Viewer({
         {/* Floating AI & Action menu */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-lg border border-border/40 backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-md border border-border/40 backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -321,7 +347,7 @@ export default function Viewer({
               title="Copy selection"
             >
               {copiedSelection ? (
-                <Check className="size-3.5 text-emerald-400" />
+                <Check className="size-3.5 text-background" />
               ) : (
                 <Copy className="size-3.5" />
               )}

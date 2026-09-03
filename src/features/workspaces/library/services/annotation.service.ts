@@ -33,7 +33,7 @@ export const AnnotationService = {
   ): Promise<PdfAnnotation[]> => {
     const query =
       pageIndex !== undefined ? `?pageIndex=${encodeURIComponent(pageIndex)}` : '';
-    const raw = await apiGet<{ success: boolean; data: PdfAnnotation[] }>(
+    const raw = await apiGet<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations${query}`,
     );
 
@@ -41,7 +41,10 @@ export const AnnotationService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw?.data || [];
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    return raw?.data || raw?.annotations || [];
   },
 
   /**
@@ -52,7 +55,7 @@ export const AnnotationService = {
     attachmentId: string,
     dto: CreateAnnotationDTO,
   ): Promise<PdfAnnotation> => {
-    const raw = await apiPost<{ success: boolean; data: PdfAnnotation }>(
+    const raw = await apiPost<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
       dto,
     );
@@ -61,7 +64,7 @@ export const AnnotationService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw.data;
+    return raw?.data || raw?.annotation || raw;
   },
 
   /**
@@ -71,19 +74,21 @@ export const AnnotationService = {
     workspaceId: string,
     attachmentId: string,
     annotationId: string,
-    expectedVersion: number,
+    expectedVersion: number | undefined,
     dto: UpdateAnnotationDTO,
   ): Promise<PdfAnnotation> => {
-    const raw = await apiPatch<{ success: boolean; data: PdfAnnotation }>(
+    const headers: Record<string, string> = {};
+    if (expectedVersion !== undefined) {
+      headers['If-Match'] = String(expectedVersion);
+    }
+    const raw = await apiPatch<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       {
         ...dto,
         expectedVersion,
       },
       {
-        headers: {
-          'If-Match': String(expectedVersion),
-        },
+        headers,
       },
     );
 
@@ -91,7 +96,7 @@ export const AnnotationService = {
     if (parsed.success && parsed.data.success) {
       return parsed.data.data;
     }
-    return raw.data;
+    return raw?.data || raw?.annotation || raw;
   },
 
   /**
@@ -103,35 +108,47 @@ export const AnnotationService = {
     annotationId: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
-    const raw = await apiDelete<{ success: boolean; data: { deleted: boolean } }>(
+    const raw = await apiDelete<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       {
-        headers: expectedVersion
-          ? { 'If-Match': String(expectedVersion) }
-          : undefined,
+        headers: expectedVersion ? { 'If-Match': String(expectedVersion) } : undefined,
       },
     );
 
-    return raw?.data ?? { deleted: true };
+    if (raw && typeof raw === 'object' && 'deleted' in raw) {
+      return { deleted: Boolean(raw.deleted) };
+    }
+    return raw?.data || { deleted: true };
   },
 
   /**
-   * Extract / synthesize literature notes from annotations
+   * Synthesize & extract literature notes from all highlighted passages in document
    */
-  extractNotesFromAnnotations: async (
+  extractNotes: async (
     workspaceId: string,
-    paperId: string,
-  ): Promise<{ success: boolean; totalExtracted?: number; literatureNote?: any }> => {
-    const raw = await apiPost<{ success: boolean; data: any }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/papers/${encodeURIComponent(paperId)}/extract-notes`,
+    itemId: string,
+  ): Promise<{
+    success: boolean;
+    totalExtracted: number;
+    literatureNote?: any;
+    message?: string;
+  }> => {
+    const raw = await apiPost<any>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/extract-notes`,
     );
-    return raw?.data || { success: true };
+    return raw?.data || raw;
   },
+
+  /**
+   * Alias for extractNotes
+   */
+  extractNotesFromAnnotations: (workspaceId: string, itemId: string) =>
+    AnnotationService.extractNotes(workspaceId, itemId),
 };
 
-// Aliases for compatibility
+// Aliases
 export const getAnnotations = AnnotationService.getByAttachment;
 export const createAnnotation = AnnotationService.create;
 export const updateAnnotation = AnnotationService.update;
 export const deleteAnnotation = AnnotationService.delete;
-export const extractNotesFromAnnotations = AnnotationService.extractNotesFromAnnotations;
+export const extractNotesFromAnnotations = AnnotationService.extractNotes;

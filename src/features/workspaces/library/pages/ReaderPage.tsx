@@ -4,9 +4,9 @@ import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AlertTriangle, Loader2, FileText } from 'lucide-react';
 import { useReader } from '../hooks/reader/use-reader';
-import Topbar from '../components/reader/topbar/Topbar';
+import Topbar from '../components/reader/Topbar';
 import Panel from '../components/reader/panel/Panel';
-import BibtexModal from '../components/reader/system/BibtexModal';
+import BibtexModal from '../components/reader/modals/BibtexModal';
 
 const Viewer = dynamic(() => import('../components/reader/viewer/Viewer'), {
   ssr: false,
@@ -58,6 +58,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handleReindex,
     handleTitleSave,
     handleResizeMouseDown,
+    handleRetryPdf,
     goBack,
   } = actions;
 
@@ -136,14 +137,15 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               filename={paper?.filename || 'paper.pdf'}
               isLoading={pdfLoading}
               error={pdfError}
+              onRetry={handleRetryPdf}
               onAskAi={handleAskAi}
               onAddToNote={handleAddToNote}
               onAnnotate={handleAnnotate}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center max-w-lg mx-auto">
-              <div className="size-14 rounded-2xl bg-muted/60 border border-border/80 flex items-center justify-center text-muted-foreground">
-                <FileText className="size-7 text-foreground/70" />
+              <div className="size-14 rounded-md bg-card border border-border flex items-center justify-center text-foreground">
+                <FileText className="size-7 text-foreground" />
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-base font-semibold text-foreground tracking-tight">

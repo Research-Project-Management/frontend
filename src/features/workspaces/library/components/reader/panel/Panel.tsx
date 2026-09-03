@@ -13,10 +13,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import type { Paper, Collection } from '../../../types/library.types';
+import type { CatalogItem, Collection } from '../../../types/library.types';
 import type { ReaderPanel } from '../../../types/reader.types';
-import { CopilotDrawer } from '../../copilot/CopilotDrawer';
-import InfoSection from '../../panel/sections/InfoSection';
+import ChatPanel from './ChatPanel';
+import InfoSection from '../../panel/InfoSection';
 import NotesPanel from './NotesPanel';
 import AnnotationsPanel from './AnnotationsPanel';
 
@@ -37,7 +37,7 @@ const PANEL_TITLES: Record<ReaderPanel, string> = {
 // ── Props ────────────────────────────────────────────────────
 
 interface SidebarProps {
-  paper: Paper | null;
+  paper: CatalogItem | null;
   collection: Collection | null;
   workspaceId: string;
   activePanel: ReaderPanel;
@@ -165,7 +165,7 @@ export default function Sidebar({
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : paper ? (
-            <CopilotDrawer
+            <ChatPanel
               paperId={paper.id}
               paperTitle={paper.title || 'Document'}
             />
@@ -207,3 +207,7 @@ export default function Sidebar({
     </aside>
   );
 }
+
+
+
+

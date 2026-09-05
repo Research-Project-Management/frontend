@@ -11,6 +11,8 @@ export interface SchemaFieldDefinition {
   type: 'text' | 'textarea' | 'date' | 'number' | 'url';
   category?: 'core' | 'venue' | 'publication' | 'identifiers' | 'archive' | 'extra';
   mono?: boolean;
+  /** Canonical semantic field supplied by the Library registry, when applicable. */
+  baseField?: string;
 }
 
 export interface SchemaCreatorTypeDefinition {
@@ -32,6 +34,87 @@ export interface ItemTypeCategoryGroup {
   id: string;
   label: string;
   types: { value: string; label: string }[];
+}
+
+/** Shape returned by the Library item-type registry API. Kept local to this
+ * feature so the UI has one explicit boundary for the backend contract. */
+export interface RegistryItemTypeDefinition {
+  itemType: string;
+  label: string;
+  category: SchemaItemTypeDefinition['category'] | 'special';
+  primaryCreatorType: string;
+  creatorTypes: SchemaCreatorTypeDefinition[];
+  fields: Array<{
+    key: string;
+    label: string;
+    placeholder?: string;
+    type?: SchemaFieldDefinition['type'];
+    category?: SchemaFieldDefinition['category'];
+    mono?: boolean;
+    baseField?: string;
+    order?: number;
+  }>;
+  isBibliographic?: boolean;
+}
+
+const VALID_ITEM_TYPE_CATEGORIES = new Set<SchemaItemTypeDefinition['category']>([
+  'academic', 'books', 'articles', 'legal', 'media', 'documents',
+]);
+const FIELD_TYPES = new Set<SchemaFieldDefinition['type']>([
+  'text', 'textarea', 'date', 'number', 'url',
+]);
+const FIELD_CATEGORIES = new Set<NonNullable<SchemaFieldDefinition['category']>>([
+  'core', 'venue', 'publication', 'identifiers', 'archive', 'extra',
+]);
+
+/**
+ * Converts the server-owned registry to the shape used by the Info panel.
+ * Invalid API entries are ignored, while the caller may still use the local
+ * definitions as an offline fallback.
+ */
+export function mapRegistryItemTypes(value: unknown): SchemaItemTypeDefinition[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((entry): SchemaItemTypeDefinition[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const type = entry as RegistryItemTypeDefinition;
+    if (
+      type.isBibliographic === false ||
+      !type.itemType ||
+      !type.label ||
+      !VALID_ITEM_TYPE_CATEGORIES.has(type.category as SchemaItemTypeDefinition['category'])
+    ) {
+      return [];
+    }
+
+    const fields = Array.isArray(type.fields)
+      ? type.fields
+          .filter((field) => field && typeof field.key === 'string' && field.key.length > 0)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .map((field): SchemaFieldDefinition => ({
+            field: field.key,
+            label: field.label || field.key,
+            placeholder: field.placeholder,
+            type: FIELD_TYPES.has(field.type as SchemaFieldDefinition['type'])
+              ? field.type as SchemaFieldDefinition['type']
+              : 'text',
+            category: FIELD_CATEGORIES.has(field.category as NonNullable<SchemaFieldDefinition['category']>)
+              ? field.category as NonNullable<SchemaFieldDefinition['category']>
+              : undefined,
+            mono: Boolean(field.mono),
+            baseField: field.baseField,
+          }))
+      : [];
+
+    return [{
+      itemType: type.itemType,
+      label: type.label,
+      category: type.category as SchemaItemTypeDefinition['category'],
+      primaryCreatorType: type.primaryCreatorType || 'author',
+      creatorTypes: Array.isArray(type.creatorTypes) ? type.creatorTypes : [],
+      fields,
+    }];
+  });
 }
 
 // ── 1. Global Creator Roles ──────────────────────────────────────────────────
@@ -135,7 +218,6 @@ export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = {
   reporter: { field: 'reporter', label: 'Reporter', type: 'text', category: 'publication', placeholder: 'e.g. U.S., F.3d' },
   reporterVolume: { field: 'reporterVolume', label: 'Reporter Vol.', type: 'text', category: 'publication', placeholder: 'Volume #', mono: true },
   firstPage: { field: 'firstPage', label: 'First Page', type: 'text', category: 'publication', placeholder: 'e.g. 100', mono: true },
-  nameOfAct: { field: 'nameOfAct', label: 'Name of Act', type: 'text', category: 'core', placeholder: 'Full statute title' },
   code: { field: 'code', label: 'Code', type: 'text', category: 'publication', placeholder: 'Statutory code name' },
   codeNumber: { field: 'codeNumber', label: 'Code #', type: 'text', category: 'identifiers', placeholder: 'e.g. 42 U.S.C.', mono: true },
   codeVolume: { field: 'codeVolume', label: 'Code Vol.', type: 'text', category: 'publication', placeholder: 'Volume #', mono: true },
@@ -162,9 +244,10 @@ export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = {
   runningTime: { field: 'runningTime', label: 'Running Time', type: 'text', category: 'publication', placeholder: 'e.g. 1h 45m', mono: true },
   audioRecordingFormat: { field: 'audioRecordingFormat', label: 'Format', type: 'text', category: 'publication', placeholder: 'e.g. CD, Vinyl, MP3' },
   videoRecordingFormat: { field: 'videoRecordingFormat', label: 'Format', type: 'text', category: 'publication', placeholder: 'e.g. DVD, Blu-ray, Web' },
-  audioFileType: { field: 'audioFileType', label: 'File Type', type: 'text', category: 'publication', placeholder: 'e.g. MP3, AAC, FLAC' },
   label: { field: 'label', label: 'Label', type: 'text', category: 'venue', placeholder: 'Record label' },
   podcastType: { field: 'podcastType', label: 'Type', type: 'text', category: 'publication', placeholder: 'e.g. Audio podcast' },
+  repository: { field: 'repository', label: 'Repository', type: 'text', category: 'venue', placeholder: 'e.g. arXiv, bioRxiv' },
+  archiveId: { field: 'archiveId', label: 'Archive ID', type: 'text', category: 'identifiers', placeholder: 'e.g. arXiv:2401.12345', mono: true },
 
   // ── Communication, Arts & Cartography ─────────────────────────────────────
   interviewMedium: { field: 'interviewMedium', label: 'Medium', type: 'text', category: 'publication', placeholder: 'e.g. In-person, Phone, Video' },
@@ -174,7 +257,6 @@ export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = {
   scale: { field: 'scale', label: 'Scale', type: 'text', category: 'publication', placeholder: 'e.g. 1:50,000', mono: true },
   artworkMedium: { field: 'artworkMedium', label: 'Medium', type: 'text', category: 'publication', placeholder: 'e.g. Oil on canvas, Bronze' },
   artworkSize: { field: 'artworkSize', label: 'Artwork Size', type: 'text', category: 'publication', placeholder: 'e.g. 60 x 80 cm', mono: true },
-  subject: { field: 'subject', label: 'Subject', type: 'text', category: 'core', placeholder: 'Email subject line' },
 
   // ── Software, Web & Reference Works ───────────────────────────────────────
   programmingLanguage: { field: 'programmingLanguage', label: 'Language', type: 'text', category: 'publication', placeholder: 'e.g. Python, TypeScript' },
@@ -244,9 +326,10 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     primaryCreatorType: 'author',
     creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'translator'], 'author'),
     fields: buildFields([
-      'genre', 'institution', 'series', 'seriesNumber', 'date',
-      'DOI', 'citationCount', 'arxivId', 'PMID', 'citationKey', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
-      'rights', 'extra'
+      'genre', 'repository', 'archiveId', 'place', 'date', 'series',
+      'seriesNumber', 'DOI', 'citationKey', 'url', 'accessDate',
+      'archive', 'archiveLocation', 'shortTitle', 'language',
+      'libraryCatalog', 'callNumber', 'rights', 'extra'
     ]),
   },
   thesis: {
@@ -441,7 +524,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     primaryCreatorType: 'author',
     creatorTypes: buildCreators(['author', 'contributor'], 'author'),
     fields: buildFields([
-      'nameOfAct', 'code', 'codeNumber', 'publicLawNumber',
+      'code', 'codeNumber', 'publicLawNumber',
       'dateEnacted', 'pages', 'section', 'session', 'history', 'shortTitle', 'url', 'accessDate', 'rights', 'extra'
     ]),
   },
@@ -544,7 +627,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     primaryCreatorType: 'podcaster',
     creatorTypes: buildCreators(['podcaster', 'guest', 'contributor'], 'podcaster'),
     fields: buildFields([
-      'seriesTitle', 'episodeNumber', 'audioFileType',
+      'seriesTitle', 'episodeNumber', 'podcastType',
       'runningTime', 'url', 'accessDate', 'rights', 'extra'
     ]),
   },
@@ -578,7 +661,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     primaryCreatorType: 'author',
     creatorTypes: buildCreators(['author', 'recipient', 'contributor'], 'author'),
     fields: buildFields([
-      'subject', 'date',
+      'date',
       'shortTitle', 'url', 'accessDate', 'rights', 'extra'
     ]),
   },

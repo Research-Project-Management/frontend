@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as api from '@/shared/lib/api';
-import { CatalogService as PaperService, CatalogService as CatalogItemService, QualityService, RelationService } from '@/features/workspaces/library/services/catalog.service';
+import { CatalogItemService as PaperService, CatalogItemService, QualityService, RelationService, sanitizeItemPayload } from '@/features/workspaces/library/services/catalog.service';
 import { CollectionService } from '@/features/workspaces/library/services/collection.service';
 import { IngestionService } from '@/features/workspaces/library/services/ingestion.service';
 import { NoteService } from '@/features/workspaces/library/services/note.service';
@@ -51,9 +51,8 @@ describe('Library Services Frontend-to-Backend Connectivity', () => {
 
       await PaperService.restore(workspaceId, paperId, 2);
       expect(api.apiPost).toHaveBeenCalledWith(
-        `/api/v1/workspaces/${workspaceId}/library/items/${paperId}/restore`,
+        `/api/v1/workspaces/${workspaceId}/library/items/${paperId}/restore?expectedVersion=2`,
         {},
-        { headers: { 'if-match': '"2"' } },
       );
 
       await PaperService.purge(workspaceId, paperId);
@@ -138,8 +137,18 @@ describe('Library Services Frontend-to-Backend Connectivity', () => {
       expect(api.apiPatch).toHaveBeenCalledWith(
         `/api/v1/workspaces/${workspaceId}/library/notes/${noteId}`,
         { title: 'Updated Note', expectedVersion: 1 },
-        { headers: { 'If-Match': '1' } },
       );
+    });
+
+    it('keeps canonical organization and identifier metadata in catalog payloads', () => {
+      expect(sanitizeItemPayload({
+        organization: 'IEEE',
+        identifier: '10.1234/dataset',
+        unsafeClientOnlyKey: 'discard me',
+      })).toEqual({
+        organization: 'IEEE',
+        identifier: '10.1234/dataset',
+      });
     });
   });
 

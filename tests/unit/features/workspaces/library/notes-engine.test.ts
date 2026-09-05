@@ -9,13 +9,18 @@ describe('normalizeNotes Engine', () => {
   });
 
   it('should normalize legacy string notes into Note objects with stable fallback IDs', () => {
+    // String notes get deterministic content-based hash IDs (local-{contentHash})
+    // to avoid collision across re-renders. The hash is derived from the first
+    // 32 chars of the note content, lowercased and stripped of non-alphanumeric chars.
+    // 'Note 1' → 'note1' → id: 'local-note1'
+    // 'Note 2' → 'note2' → id: 'local-note2'
     const raw = ['Note 1', 'Note 2'];
     const result = normalizeNotes(raw);
 
     expect(result).toHaveLength(2);
-    expect(result[0]!.id).toBe('note-0');
+    expect(result[0]!.id).toBe('local-note1');
     expect(result[0]!.content).toBe('Note 1');
-    expect(result[1]!.id).toBe('note-1');
+    expect(result[1]!.id).toBe('local-note2');
     expect(result[1]!.content).toBe('Note 2');
   });
 

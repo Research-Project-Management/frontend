@@ -20,6 +20,59 @@ export const ingestKeys = {
 export function useIngest(workspaceId: string) {
   const queryClient = useQueryClient();
 
+  const invalidateLibrary = () => {
+    queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
+    queryClient.invalidateQueries({ queryKey: ['library', workspaceId] });
+    queryClient.invalidateQueries({ queryKey: ['items'] });
+    queryClient.invalidateQueries({ queryKey: ['papers'] });
+  };
+
+  const monitorRun = async (runId: string, silent?: boolean) => {
+    for (let attempt = 0; attempt < 90; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        const response = await IngestionService.getRunStatus(workspaceId, runId);
+        const snapshot = response?.data || response;
+        const status = String(snapshot?.status || '').toUpperCase();
+
+        if (status === 'READY' || status === 'COMMITTED') {
+          invalidateLibrary();
+          if (!silent) {
+            toast.success('Document added', {
+              description: 'Metadata and attachments are ready in your library.',
+              id: `library-ingestion-${runId}`,
+            });
+          }
+          return;
+        }
+
+        if (status === 'NEEDS_REVIEW') {
+          invalidateLibrary();
+          if (!silent) {
+            toast.warning('Import needs review', {
+              description: 'A possible duplicate needs your decision.',
+              id: `library-ingestion-${runId}`,
+            });
+          }
+          return;
+        }
+
+        if (status === 'FAILED_FINAL' || status === 'FAILED_RETRYABLE') {
+          if (!silent) {
+            toast.error('Ingestion failed', {
+              description: 'The import could not be completed. You can retry it from the activity status.',
+              id: `library-ingestion-${runId}`,
+            });
+          }
+          return;
+        }
+      } catch {
+        // A transient status-poll failure must not turn an accepted import into
+        // a failed import. The next bounded poll retries it.
+      }
+    }
+  };
+
   const ingestMutation = useMutation<
     UnifiedIngestionResponse,
     Error,
@@ -27,15 +80,16 @@ export function useIngest(workspaceId: string) {
   >({
     mutationFn: (payload: UnifiedIngestionPayload) =>
       IngestionService.ingest(workspaceId, payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-      queryClient.invalidateQueries({ queryKey: ['library', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['items'] });
-      queryClient.invalidateQueries({ queryKey: ['papers'] });
+    onSuccess: (data, variables) => {
+      invalidateLibrary();
+      const runId = data?.data?.runId;
+      if (runId) {
+        void monitorRun(runId, Boolean((variables as any)?.silent));
+      }
       if (!(variables as any)?.silent) {
-        toast.success('Document added', {
-          description: 'Added to your library catalog.',
-          id: 'library-ingestion',
+        toast.success('Import started', {
+          description: 'The document is being processed in the background.',
+          id: `library-ingestion-${runId || 'pending'}`,
         });
       }
     },

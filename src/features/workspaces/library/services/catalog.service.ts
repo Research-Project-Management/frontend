@@ -3,19 +3,13 @@ import { API_BASE_URL } from '@/config/env';
 import type {
   Collection,
   CatalogItem,
-  PaperAcademicBundle,
-  PaperAttachment,
+  CatalogItemBundle,
+  ItemAttachment,
   IngestItemDTO,
-  RelatedPaperItem,
+  RelatedItem,
   DuplicateGroup,
-  Paper,
   LibraryIntegrityReport,
 } from "@/features/workspaces/library/types/library.types";
-
-
-// ── Ingestion DTO ─────────────────────────────────────────────────────────────
-/** @deprecated Use IngestItemDTO from library.types */
-export type IngestPaperDTO = IngestItemDTO;
 
 // ── Payload sanitization ──────────────────────────────────────────────────────
 const VALID_ITEM_PAYLOAD_KEYS = new Set([
@@ -48,7 +42,7 @@ const VALID_ITEM_PAYLOAD_KEYS = new Set([
   // Type-specific fields across 37 item types
   'edition', 'numPages', 'numberOfVolumes', 'bookTitle', 'proceedingsTitle',
   'conferenceName', 'eventPlace', 'websiteTitle', 'websiteType',
-  'university', 'institution', 'country',
+  'university', 'institution', 'organization', 'identifier', 'country',
   'assignee', 'issuingAuthority', 'patentNumber', 'applicationNumber',
   'reportNumber', 'reportType', 'thesisType', 'genre', 'filingDate', 'legalStatus',
   'versionNumber', 'blogTitle', 'forumTitle', 'postType', 'presentationType',
@@ -82,7 +76,117 @@ export function sanitizeItemPayload(data: Record<string, unknown>): Record<strin
   }
   return cleaned;
 }
-export const sanitizePaperPayload = sanitizeItemPayload;
+
+export const fetchPdfBlob = async (
+  url: string,
+  signal?: AbortSignal,
+): Promise<Blob> => {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Invalid document URL provided.');
+  }
+
+  let targetUrl = url.trim();
+
+  if (targetUrl.includes('r2.rpm.local')) {
+    const match = targetUrl.match(/\/papers\/[^/?#]+/);
+    targetUrl = match ? match[0] : targetUrl.replace(/^https?:\/\/[^/]+/, '');
+  }
+
+  // Static /papers files are served by Next.js, while API-backed files require
+  // the backend origin and an auth token. Sending either through one generic
+  // API fetcher breaks static preview URLs and leaks auth headers to external
+  // PDFs (which browsers reject during CORS preflight).
+  const isLocalStatic =
+    targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
+  const baseUrl =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost:3000';
+
+  const rawApiBase =
+    typeof API_BASE_URL === 'string' &&
+    API_BASE_URL !== 'undefined' &&
+    API_BASE_URL !== 'null'
+      ? API_BASE_URL.trim()
+      : '';
+
+  let resolvedUrl = targetUrl;
+  let isTrustedOrigin = false;
+  try {
+    if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+      resolvedUrl = targetUrl;
+    } else if (isLocalStatic) {
+      resolvedUrl = targetUrl;
+    } else if (rawApiBase) {
+      const cleanBase = rawApiBase.replace(/\/+$/, '');
+      const cleanPath = targetUrl.replace(/^\/+/, '');
+      resolvedUrl = `${cleanBase}/${cleanPath}`;
+    } else {
+      resolvedUrl = targetUrl;
+    }
+
+    const resolvedOrigin = new URL(resolvedUrl, baseUrl).origin;
+    const apiOrigin = rawApiBase ? new URL(rawApiBase, baseUrl).origin : new URL(baseUrl).origin;
+    isTrustedOrigin =
+      resolvedOrigin === new URL(baseUrl).origin ||
+      resolvedOrigin === apiOrigin ||
+      targetUrl.startsWith('/api/');
+  } catch {
+    isTrustedOrigin = targetUrl.startsWith('/api/');
+  }
+
+  const headers: Record<string, string> = {};
+  const token = getAuthToken();
+  if (token && isTrustedOrigin && !isLocalStatic) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(resolvedUrl, {
+    credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
+    headers,
+    signal,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
+    if (response.status === 403) throw new Error('Forbidden: You do not have permission to view this document.');
+    if (response.status === 404) throw new Error('Not Found: The requested document could not be found.');
+    throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json') || contentType.includes('text/html')) {
+    let errorDetail = '';
+    try {
+      const text = typeof response.text === 'function' ? await response.text() : '';
+      if (text.trim().startsWith('{')) {
+        const parsed = JSON.parse(text) as Record<string, unknown>;
+        errorDetail = (parsed?.message || parsed?.error || text) as string;
+      } else {
+        errorDetail = text.substring(0, 100);
+      }
+    } catch { /* ignore */ }
+    throw new Error(`Invalid PDF response payload: Server returned ${contentType} instead of application/pdf${errorDetail ? ` (${errorDetail})` : ''}`);
+  }
+
+  const blob = await response.blob();
+  if (!blob || blob.size < 5) throw new Error('Empty or invalid document payload received from server.');
+
+  const headerSlice = blob.slice(0, 5);
+  const headerBuffer = await headerSlice.arrayBuffer();
+  const headerBytes = new Uint8Array(headerBuffer);
+  const signature = String.fromCharCode(...headerBytes);
+
+  if (!signature.startsWith('%PDF-') && !signature.startsWith('%PDF')) {
+    if (signature.startsWith('{') || signature.startsWith('<')) {
+      const text = await blob.text().catch(() => '');
+      throw new Error(`Invalid PDF response (Server returned structured text): ${text.substring(0, 100)}`);
+    }
+    throw new Error('Invalid document format: missing %PDF- signature in file header.');
+  }
+
+  return blob;
+};
 
 // ── CatalogItemService ────────────────────────────────────────────────────────
 export const CatalogItemService = {
@@ -128,7 +232,7 @@ export const CatalogItemService = {
     }),
 
   getAcademicBundle: (workspaceId: string, itemId: string) =>
-    apiGet<PaperAcademicBundle>(
+    apiGet<CatalogItemBundle>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/bundle`,
     ),
 
@@ -149,7 +253,7 @@ export const CatalogItemService = {
     }),
 
   create: (workspaceId: string, collectionId: string, data: Partial<CatalogItem>) => {
-    const payload = sanitizePaperPayload(data as Record<string, unknown>);
+    const payload = sanitizeItemPayload(data as Record<string, unknown>);
     if (collectionId) {
       payload.collectionId = collectionId;
     }
@@ -168,15 +272,16 @@ export const CatalogItemService = {
     data: Partial<CatalogItem>,
     expectedVersion?: number,
   ) => {
-    const payload = sanitizePaperPayload(data as Record<string, unknown>);
+    const payload = sanitizeItemPayload(data as Record<string, unknown>);
+    // Send the version in the validated request body instead of an If-Match
+    // header. The backend accepts both forms, while browsers reject the custom
+    // header during CORS preflight because it is not on the allowed-header list.
+    if (expectedVersion !== undefined) {
+      payload.expectedVersion = expectedVersion;
+    }
     const res = await apiPatch<Record<string, unknown>>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}`,
       payload,
-      {
-        headers: expectedVersion !== undefined
-          ? { 'if-match': `"${expectedVersion}"` }
-          : undefined,
-      },
     );
     const item = (res as Record<string, unknown>)?.item || (res as Record<string, unknown>)?.paper || (res as Record<string, unknown>)?.data || res;
     return { item, paper: item, ...(typeof item === 'object' && item !== null ? item : {}), ...res };
@@ -193,15 +298,13 @@ export const CatalogItemService = {
     data: Partial<CatalogItem>,
     expectedVersion?: number,
   ) => {
-    const payload = sanitizePaperPayload(data as Record<string, unknown>);
+    const payload = sanitizeItemPayload(data as Record<string, unknown>);
+    if (expectedVersion !== undefined) {
+      payload.expectedVersion = expectedVersion;
+    }
     const res = await apiPatch<Record<string, unknown>>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}`,
       payload,
-      {
-        headers: expectedVersion !== undefined
-          ? { 'if-match': `"${expectedVersion}"` }
-          : undefined,
-      },
     );
     const item = (res as Record<string, unknown>)?.item || (res as Record<string, unknown>)?.paper || (res as Record<string, unknown>)?.data || res;
     return { item, paper: item, ...(typeof item === 'object' && item !== null ? item : {}), ...res };
@@ -212,19 +315,18 @@ export const CatalogItemService = {
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}`,
     ),
 
-  restore: (workspaceId: string, itemId: string, expectedVersion?: number) =>
-    apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/restore`,
+  restore: (workspaceId: string, itemId: string, expectedVersion?: number) => {
+    const versionQuery = expectedVersion !== undefined
+      ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
+      : '';
+    return apiPost<any>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/restore${versionQuery}`,
       {},
-      {
-        headers: expectedVersion
-          ? { 'if-match': `"${expectedVersion}"` }
-          : undefined,
-      },
     ).then((res) => {
       const item = res?.item || res?.paper || res?.data || res;
       return { success: true, data: item, item, paper: item };
-    }),
+    });
+  },
 
   purge: (workspaceId: string, itemId: string) =>
     apiDelete<{ success: boolean; data: { purged: boolean } }>(
@@ -240,7 +342,7 @@ export const CatalogItemService = {
   addAttachment: (
     workspaceId: string,
     itemId: string,
-    data: Partial<PaperAttachment>
+    data: Partial<ItemAttachment>
   ) =>
     apiPost<{ item: CatalogItem }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
@@ -311,125 +413,11 @@ export const CatalogItemService = {
     fetchPdfBlob(url, signal),
 };
 
-// ── Backwards-compatible Function Aliases ────────────────────────────────────
-/** @deprecated Use CatalogItemService */
-export const PaperService = CatalogItemService;
-export const ingestPaper = CatalogItemService.ingest;
-export const getAllPapers = CatalogItemService.getAll;
-export const getPaperById = CatalogItemService.getById;
-export const getPaperAcademicBundle = CatalogItemService.getAcademicBundle;
-export const getItemTypes = CatalogItemService.getItemTypes;
-export const previewConvertType = CatalogItemService.previewConvertType;
-export const convertPaperType = CatalogItemService.convertType;
-export const getCollectionPapers = CatalogItemService.getByCollection;
-export const createPaper = CatalogItemService.create;
-export const updatePaper = CatalogItemService.update;
-export const deletePaper = CatalogItemService.delete;
-export const restorePaper = CatalogItemService.restore;
-export const purgePaper = CatalogItemService.purge;
-export const addPaperAttachment = CatalogItemService.addAttachment;
-export const deletePaperAttachment = CatalogItemService.deleteAttachment;
-export const importPaperFromStorage = CatalogItemService.importFromStorage;
-export const reindexPaper = CatalogItemService.reindex;
-
-export const fetchPdfBlob = async (
-  url: string,
-  signal?: AbortSignal,
-): Promise<Blob> => {
-  let targetUrl = url;
-
-  if (targetUrl.includes('r2.rpm.local')) {
-    const match = targetUrl.match(/\/papers\/[^/?#]+/);
-    targetUrl = match ? match[0] : targetUrl.replace(/^https?:\/\/[^/]+/, '');
-  }
-
-  const isLocalStatic =
-    targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
-
-  const baseUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : 'http://localhost:3000';
-  const apiOrigin = new URL(API_BASE_URL || baseUrl, baseUrl).origin;
-  const currentOrigin = baseUrl;
-
-  let resolvedUrlString: string;
-  let isSameOrigin = false;
-
-  try {
-    resolvedUrlString = targetUrl.startsWith('http://') || targetUrl.startsWith('https://')
-      ? targetUrl
-      : isLocalStatic
-        ? targetUrl
-        : `${API_BASE_URL}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
-
-    const resolvedParsed = new URL(resolvedUrlString, baseUrl);
-    isSameOrigin =
-      resolvedParsed.origin === currentOrigin ||
-      resolvedParsed.origin === apiOrigin;
-  } catch {
-    resolvedUrlString = targetUrl;
-    isSameOrigin = false;
-  }
-
-  const token = getAuthToken();
-  const headers: Record<string, string> = {};
-  if (token && isSameOrigin && !isLocalStatic) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(resolvedUrlString, {
-    credentials: isSameOrigin && !isLocalStatic ? 'include' : 'same-origin',
-    headers,
-    signal,
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
-    if (response.status === 403) throw new Error('Forbidden: You do not have permission to view this document.');
-    if (response.status === 404) throw new Error('Not Found: The requested document could not be found.');
-    throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
-  }
-
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json') || contentType.includes('text/html')) {
-    let errorDetail = '';
-    try {
-      const text = typeof response.text === 'function' ? await response.text() : '';
-      if (text.trim().startsWith('{')) {
-        const parsed = JSON.parse(text) as Record<string, unknown>;
-        errorDetail = (parsed?.message || parsed?.error || text) as string;
-      } else {
-        errorDetail = text.substring(0, 100);
-      }
-    } catch { /* ignore */ }
-    throw new Error(`Invalid PDF response payload: Server returned ${contentType} instead of application/pdf${errorDetail ? ` (${errorDetail})` : ''}`);
-  }
-
-  const blob = await response.blob();
-  if (!blob || blob.size < 5) throw new Error('Empty or invalid document payload received from server.');
-
-  const headerSlice = blob.slice(0, 5);
-  const headerBuffer = await headerSlice.arrayBuffer();
-  const headerBytes = new Uint8Array(headerBuffer);
-  const signature = String.fromCharCode(...headerBytes);
-
-  if (!signature.startsWith('%PDF-') && !signature.startsWith('%PDF')) {
-    if (signature.startsWith('{') || signature.startsWith('<')) {
-      const text = await blob.text().catch(() => '');
-      throw new Error(`Invalid PDF response (Server returned structured text): ${text.substring(0, 100)}`);
-    }
-    throw new Error('Invalid document format: missing %PDF- signature in file header.');
-  }
-
-  return blob;
-};
-
 // ── Item Relations ────────────────────────────────────────────────────────────
 
 export const RelationService = {
   getRelated: (workspaceId: string, itemId: string) =>
-    apiGet<{ relatedPapers: RelatedPaperItem[]; relatedItems?: RelatedPaperItem[]; total: number }>(
+    apiGet<{ relatedPapers: RelatedItem[]; relatedItems?: RelatedItem[]; total: number }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/relations`,
     ).then((res) => ({
       relatedItems: res.relatedItems || res.relatedPapers || [],
@@ -454,16 +442,9 @@ export const RelationService = {
     ),
 };
 
-export const getRelatedItems = RelationService.getRelated;
-export const getRelatedPapers = RelationService.getRelated;
-export const linkItems = RelationService.link;
-export const linkPapers = RelationService.link;
-export const unlinkItems = RelationService.unlink;
-export const unlinkPapers = RelationService.unlink;
-
 // ── Item Curation & Quality ───────────────────────────────────────────────────
 
-export interface DuplicateCluster {
+export interface RawDuplicateCluster {
   clusterId: string;
   matchReason: string;
   confidence: number;
@@ -478,15 +459,13 @@ export interface DuplicateCluster {
   }>;
 }
 
-export type CanonicalDuplicateCluster = DuplicateCluster;
-
 export const QualityService = {
   getDuplicates: async (workspaceId: string) => {
     const res = await apiGet<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/duplicates`,
     );
 
-    const clusters: DuplicateCluster[] = Array.isArray(res)
+    const clusters: RawDuplicateCluster[] = Array.isArray(res)
       ? res
       : res?.data || res?.clusters || [];
 
@@ -523,11 +502,11 @@ export const QualityService = {
     apiPost<{
       success: boolean;
       data: {
-        masterPaper: Paper;
+        masterPaper: CatalogItem;
         mergedCount: number;
         softDeletedPaperIds: string[];
       };
-      masterPaper?: Paper;
+      masterPaper?: CatalogItem;
       mergedCount?: number;
       softDeletedPaperIds?: string[];
     }>(
@@ -546,15 +525,3 @@ export const QualityService = {
     return res?.data || res;
   },
 };
-
-export const getDuplicateGroups = QualityService.getDuplicates;
-export const mergePapers = QualityService.mergePapers;
-export const mergeItems = QualityService.mergePapers;
-export const getLibraryIntegrityReport = QualityService.getIntegrityReport;
-
-export const CatalogService = {
-  ...CatalogItemService,
-  relations: RelationService,
-  quality: QualityService,
-};
-

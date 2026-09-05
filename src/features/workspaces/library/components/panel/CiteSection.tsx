@@ -18,7 +18,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { useCslCitation } from '@/features/workspaces/library/hooks/library/use-library';
 import type { CatalogItem, CslStyle } from '@/features/workspaces/library/types/library.types';
-import { getPaperCitationKey, normalizeAuthors, cleanDoi } from '@/features/workspaces/library/utils/library.util';
+import { getPaperCitationKey, cleanDoi } from '@/features/workspaces/library/utils/library.util';
 
 export interface CiteSectionProps {
   paper: CatalogItem;
@@ -53,13 +53,7 @@ export const ALL_FORMATS: Array<{ id: CitationFormat; label: string }> = [
 export const PRIMARY_FORMATS = ALL_FORMATS.slice(0, 4);
 export const MORE_FORMATS = ALL_FORMATS.slice(4);
 
-interface ParsedAuthor {
-  given: string;
-  family: string;
-  initials: string;
-}
-
-/** Robust clipboard copy */
+/** Robust clipboard copy � tries modern Clipboard API, falls back to execCommand */
 async function copyToClipboard(text: string): Promise<boolean> {
   if (!text) return false;
   try {
@@ -113,60 +107,17 @@ function downloadFile(filename: string, content: string, mimeType = 'text/plain;
   }
 }
 
-/** Parse an author string into given, family, and initials safely */
-function parseAuthor(name: string): ParsedAuthor {
-  const trimmed = (name || '').trim();
-  if (!trimmed) return { given: '', family: 'Anonymous', initials: 'A.' };
-
-  if (trimmed.includes(',')) {
-    const parts = trimmed.split(',').map((s) => s.trim());
-    const family = parts[0] || 'Anonymous';
-    const given = parts.slice(1).join(' ') || '';
-    const initials = given
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => (w[0] ? `${w[0].toUpperCase()}.` : ''))
-      .filter(Boolean)
-      .join(' ');
-    return { given, family, initials: initials || (family[0] ? `${family[0].toUpperCase()}.` : 'A.') };
-  }
-
-  const parts = trimmed.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) {
-    return { given: '', family: parts[0], initials: '' };
-  }
-
-  const family = parts.pop() || 'Anonymous';
-  const given = parts.join(' ');
-  const initials = parts
-    .map((w) => (w[0] ? `${w[0].toUpperCase()}.` : ''))
-    .filter(Boolean)
-    .join(' ');
-  return { given, family, initials: initials || (family[0] ? `${family[0].toUpperCase()}.` : 'A.') };
-}
-
-/** Clean title string */
-function cleanTitle(title?: string): string {
-  if (!title) return 'Untitled Reference';
-  return title.trim().replace(/[.\s]+$/, '');
-}
-
-/** Sanitize BibTeX string fields */
-function escapeBibtex(val?: string): string {
-  if (!val) return '';
-  return val
-    .replace(/\\/g, '\\\\')
-    .replace(/\{/g, '\\{')
-    .replace(/\}/g, '\\}');
-}
-
-/** Safe sanitizer for CSL HTML outputs */
+/**
+ * Minimal CSL HTML sanitizer � strips only dangerous tags/attributes.
+ * Preserves semantic HTML (<i>, <b>, <a>) used by CSL styles for
+ * italics (journal names), bold (volume), and DOI hyperlinks.
+ */
 function sanitizeCslHtml(html?: string): string {
   if (!html) return '';
   let sanitized = html.replace(/<\s*(script|iframe|object|embed|form|svg|img|style)[^>]*>.*?<\s*\/\s*\1\s*>/gi, '');
   sanitized = sanitized.replace(/<\s*(script|iframe|object|embed|form|svg|img|style)[^>]*\/?\s*>/gi, '');
   sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
-  sanitized = sanitized.replace(/href\s*=\s*["']\s*javascript:[^"']*["']/gi, 'href="#"');
+  sanitized = sanitized.replace(/href\s*=\s*["']\s*javascript:[^"']*/gi, 'href="#"');
   return sanitized;
 }
 
@@ -175,7 +126,6 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
 
-  // Dynamic responsive overflow calculation
   const containerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState<number>(4);
@@ -183,11 +133,9 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const targetWsId = workspaceId || paper?.workspaceId || '';
   const isExportFormat = activeFormat === 'bibtex' || activeFormat === 'ris';
 
-  const currentCslStyle: CslStyle = (
-    ['apa', 'ieee', 'mla', 'chicago', 'harvard', 'nature', 'vancouver'].includes(activeFormat)
-      ? activeFormat
-      : 'apa'
-  ) as CslStyle;
+  // All citation formats are rendered by the backend CSL engine.
+  // This component is a thin display/copy layer with no client-side formatting.
+  const currentCslStyle = activeFormat as CslStyle;
 
   const { data: cslData, isLoading } = useCslCitation(
     targetWsId,
@@ -197,56 +145,18 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
 
   const rawCiteKey = paper ? getPaperCitationKey(paper) : '';
   const citeKey = useMemo(() => {
-    return (rawCiteKey || 'ref2024').replace(/[^a-zA-Z0-9_-]/g, '');
+    return (rawCiteKey || 'ref').replace(/[^a-zA-Z0-9_-]/g, '');
   }, [rawCiteKey]);
 
-  const paperAuthors = paper?.authors;
-  const paperCreators = (paper as any)?.creators;
-  const rawAuthors = useMemo(
-    () => normalizeAuthors(paperAuthors, paperCreators),
-    [paperAuthors, paperCreators],
-  );
-
-  // Cap authors to prevent browser freeze on papers with 1,000+ authors
-  const authors = useMemo(() => rawAuthors.slice(0, 50), [rawAuthors]);
-  const parsedAuthors = useMemo(() => authors.map(parseAuthor), [authors]);
-
-  const year = useMemo(() => {
-    if (!paper) return 'n.d.';
-    if (paper.year && typeof paper.year === 'number' && paper.year > 0) {
-      return String(paper.year);
-    }
-    if (paper.year && typeof paper.year === 'string' && paper.year.trim()) {
-      const match = paper.year.match(/\b(19\d\d|20\d\d)\b/);
-      if (match) return match[1];
-    }
-    if (paper.createdAt) {
-      const d = new Date(paper.createdAt);
-      if (!isNaN(d.getTime())) {
-        const yr = d.getFullYear();
-        if (yr > 1900 && yr < 2100) return String(yr);
-      }
-    }
-    return 'n.d.';
-  }, [paper?.year, paper?.createdAt]);
-
-  const title = useMemo(() => cleanTitle(paper?.title), [paper?.title]);
-  const titleTerminated = useMemo(() => (/[?!]$/.test(title) ? title : `${title}.`), [title]);
-  const journal = String(paper?.journal || paper?.publicationTitle || paper?.publisher || '').trim().replace(/[.\s]+$/, '');
-  const volume = String(paper?.volume || '').trim();
-  const issue = String(paper?.issue || '').trim();
-  const pages = String(paper?.pages || '').trim();
   const rawDoi = String(paper?.doi || '').trim();
   const doi = useMemo(() => (rawDoi ? cleanDoi(rawDoi) : ''), [rawDoi]);
-  const url = String(paper?.url || (doi ? `https://doi.org/${doi}` : '')).trim();
+  void doi; // retained for potential future use in download filename
 
-  // ── Dynamic Overflow Calculation ─────────────────────────────────────────────
   const updateOverflow = useCallback(() => {
     const container = containerRef.current;
     const measure = measureRef.current;
     if (!container || !measure) return;
 
-    // Available width inside container with safe 8px margin to guarantee no right-edge clipping
     const availableWidth = container.clientWidth - 8;
     if (availableWidth <= 0) return;
 
@@ -256,9 +166,8 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
     const itemWidths = children.slice(0, ALL_FORMATS.length).map((el) => el.offsetWidth);
     const moreBtnEl = children[ALL_FORMATS.length];
     const moreBtnWidth = moreBtnEl ? moreBtnEl.offsetWidth : 60;
-    const gap = 4; // gap-1 is 4px
+    const gap = 4;
 
-    // 1. If all items fit completely without needing a More button
     let totalAllWidth = 0;
     for (let i = 0; i < itemWidths.length; i++) {
       totalAllWidth += itemWidths[i] + (i > 0 ? gap : 0);
@@ -269,7 +178,6 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
       return;
     }
 
-    // 2. Otherwise find the maximum number of items that fit with the More button
     let accumulatedWidth = 0;
     let count = 0;
 
@@ -285,7 +193,6 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
       }
     }
 
-    // Keep at least 1 item on the visible tab bar
     setVisibleCount(Math.max(1, count));
   }, []);
 
@@ -308,243 +215,9 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const isMoreFormatActive = moreFormats.some((f) => f.id === activeFormat);
   const activeMoreFormat = moreFormats.find((f) => f.id === activeFormat);
 
-  // ── High-Fidelity Client CSL Fallback Formatters ──────────────────────────────
-  const formattedClientCitation = useMemo(() => {
-    const totalAuth = parsedAuthors.length;
-
-    // 1. APA 7th
-    if (currentCslStyle === 'apa') {
-      let authorStr = '';
-      if (totalAuth === 0) authorStr = 'Anonymous.';
-      else if (totalAuth === 1) authorStr = `${parsedAuthors[0].family}, ${parsedAuthors[0].initials}`.trim();
-      else if (totalAuth === 2) {
-        authorStr = `${parsedAuthors[0].family}, ${parsedAuthors[0].initials}, & ${parsedAuthors[1].family}, ${parsedAuthors[1].initials}`;
-      } else if (totalAuth <= 20) {
-        const list = parsedAuthors.map((a) => `${a.family}, ${a.initials}`);
-        const last = list.pop();
-        authorStr = `${list.join(', ')}, & ${last}`;
-      } else {
-        const list = parsedAuthors.slice(0, 19).map((a) => `${a.family}, ${a.initials}`);
-        const last = parsedAuthors[totalAuth - 1];
-        authorStr = `${list.join(', ')}, ... ${last.family}, ${last.initials}`;
-      }
-
-      const inText =
-        totalAuth === 0
-          ? `(Anonymous, ${year})`
-          : totalAuth === 1
-            ? `(${parsedAuthors[0].family}, ${year})`
-            : totalAuth === 2
-              ? `(${parsedAuthors[0].family} & ${parsedAuthors[1].family}, ${year})`
-              : `(${parsedAuthors[0].family} et al., ${year})`;
-
-      const pubParts: string[] = [];
-      if (journal) pubParts.push(journal);
-      if (volume && issue) pubParts.push(`${volume}(${issue})`);
-      else if (volume) pubParts.push(volume);
-      if (pages) pubParts.push(pages);
-      const pubStr = pubParts.length > 0 ? ` ${pubParts.join(', ')}.` : '';
-      const doiStr = doi ? ` https://doi.org/${doi}` : '';
-
-      const bibliography = `${authorStr} (${year}). ${titleTerminated}${pubStr}${doiStr}`.trim();
-      const bibliographyHtml = `${authorStr} (${year}). ${titleTerminated}${journal ? ` <i>${journal}</i>` : ''}${volume ? `, ${volume}` : ''}${issue ? `(${issue})` : ''}${pages ? `, ${pages}` : ''}.${doi ? ` <a href="https://doi.org/${doi}" target="_blank" rel="noreferrer" class="underline">https://doi.org/${doi}</a>` : ''}`.trim();
-
-      return { inText, bibliography, bibliographyHtml };
-    }
-
-    // 2. IEEE
-    if (currentCslStyle === 'ieee') {
-      const inText = `[1]`;
-      const authorList = parsedAuthors.map((a) => `${a.initials} ${a.family}`.trim());
-      let authorStr = '';
-      if (authorList.length <= 1) authorStr = authorList[0] || 'Anonymous';
-      else if (authorList.length === 2) authorStr = `${authorList[0]} and ${authorList[1]}`;
-      else if (authorList.length <= 6) {
-        const last = authorList.pop();
-        authorStr = `${authorList.join(', ')}, and ${last}`;
-      } else {
-        authorStr = `${authorList[0]} et al.`;
-      }
-
-      const pubParts: string[] = [];
-      if (journal) pubParts.push(journal);
-      if (volume) pubParts.push(`vol. ${volume}`);
-      if (issue) pubParts.push(`no. ${issue}`);
-      if (pages) pubParts.push(`pp. ${pages}`);
-      if (year && year !== 'n.d.') pubParts.push(`${year}`);
-      const pubStr = pubParts.length > 0 ? `, ${pubParts.join(', ')}` : '';
-      const doiStr = doi ? `, doi: ${doi}` : '';
-
-      const bibliography = `${authorStr}, "${title}"${pubStr}${doiStr}.`.trim();
-      const bibliographyHtml = `${authorStr}, "${title},"${journal ? ` <i>${journal}</i>` : ''}${volume ? `, vol. ${volume}` : ''}${issue ? `, no. ${issue}` : ''}${pages ? `, pp. ${pages}` : ''}${year && year !== 'n.d.' ? `, ${year}` : ''}${doi ? `, doi: ${doi}` : ''}.`.trim();
-
-      return { inText, bibliography, bibliographyHtml };
-    }
-
-    // 3. MLA
-    if (currentCslStyle === 'mla') {
-      const firstAuth = parsedAuthors[0] ? `${parsedAuthors[0].family}, ${parsedAuthors[0].given || parsedAuthors[0].initials}` : 'Anonymous';
-      let authorStr = firstAuth;
-      if (totalAuth === 2) {
-        authorStr = `${firstAuth}, and ${parsedAuthors[1].given || parsedAuthors[1].initials} ${parsedAuthors[1].family}`;
-      } else if (totalAuth > 2) {
-        authorStr = `${firstAuth}, et al.`;
-      }
-
-      const inText = totalAuth <= 1 ? `(${parsedAuthors[0]?.family || 'Anonymous'})` : `(${parsedAuthors[0]?.family || 'Anonymous'} et al.)`;
-      const pubParts: string[] = [];
-      if (journal) pubParts.push(`<i>${journal}</i>`);
-      if (volume) pubParts.push(`vol. ${volume}`);
-      if (issue) pubParts.push(`no. ${issue}`);
-      if (year && year !== 'n.d.') pubParts.push(year);
-      if (pages) pubParts.push(`pp. ${pages}`);
-      const pubStr = pubParts.length > 0 ? `, ${pubParts.join(', ')}` : '';
-      const doiStr = doi ? `, https://doi.org/${doi}` : '';
-
-      const bibliography = `${authorStr}. "${title}."${pubParts.length > 0 ? ` ${pubParts.map((p) => p.replace(/<[^>]+>/g, '')).join(', ')}` : ''}${doiStr}.`.trim();
-      const bibliographyHtml = `${authorStr}. "${title}."${pubStr}${doi ? `, <a href="https://doi.org/${doi}" target="_blank" rel="noreferrer" class="underline">https://doi.org/${doi}</a>` : ''}.`.trim();
-
-      return { inText, bibliography, bibliographyHtml };
-    }
-
-    // 4. Chicago
-    if (currentCslStyle === 'chicago') {
-      const firstAuth = parsedAuthors[0] ? `${parsedAuthors[0].family}, ${parsedAuthors[0].given || parsedAuthors[0].initials}` : 'Anonymous';
-      let authorStr = firstAuth;
-      if (totalAuth === 2) {
-        authorStr = `${firstAuth}, and ${parsedAuthors[1].given || parsedAuthors[1].initials} ${parsedAuthors[1].family}`;
-      } else if (totalAuth === 3) {
-        authorStr = `${firstAuth}, ${parsedAuthors[1].given || parsedAuthors[1].initials} ${parsedAuthors[1].family}, and ${parsedAuthors[2].given || parsedAuthors[2].initials} ${parsedAuthors[2].family}`;
-      } else if (totalAuth > 3) {
-        authorStr = `${firstAuth}, et al.`;
-      }
-      const inText = totalAuth <= 1 ? `(${parsedAuthors[0]?.family || 'Anonymous'} ${year})` : totalAuth === 2 ? `(${parsedAuthors[0].family} and ${parsedAuthors[1].family} ${year})` : `(${parsedAuthors[0].family} et al. ${year})`;
-      const pubParts: string[] = [];
-      if (journal) pubParts.push(`"${title}." <i>${journal}</i>`);
-      else pubParts.push(`"${title}."`);
-      if (volume) pubParts.push(volume);
-      if (issue) pubParts.push(`no. ${issue}`);
-      if (year && year !== 'n.d.') pubParts.push(`(${year})`);
-      if (pages) pubParts.push(`: ${pages}`);
-      const pubStr = pubParts.join(' ');
-      const doiStr = doi ? ` https://doi.org/${doi}.` : '.';
-
-      const bibliography = `${authorStr}. ${year}. ${titleTerminated} ${pubParts.map((p) => p.replace(/<[^>]+>/g, '')).join(' ')}${doiStr}`.trim();
-      const bibliographyHtml = `${authorStr}. ${year}. ${pubStr}${doi ? ` <a href="https://doi.org/${doi}" target="_blank" rel="noreferrer" class="underline">https://doi.org/${doi}</a>` : ''}`.trim();
-
-      return { inText, bibliography, bibliographyHtml };
-    }
-
-    // 5. Nature
-    if (currentCslStyle === 'nature') {
-      const inText = `1`;
-      const authorList = parsedAuthors.map((a) => `${a.family}, ${a.initials}`.trim());
-      let authorStr = '';
-      if (authorList.length <= 5) {
-        if (authorList.length <= 1) authorStr = authorList[0] || 'Anonymous';
-        else {
-          const last = authorList.pop();
-          authorStr = `${authorList.join(', ')} & ${last}`;
-        }
-      } else {
-        authorStr = `${authorList[0]} et al.`;
-      }
-
-      const pubParts: string[] = [];
-      if (journal) pubParts.push(journal);
-      if (volume) pubParts.push(volume);
-      if (pages) pubParts.push(pages);
-      const pubStr = pubParts.length > 0 ? ` ${pubParts.join(', ')}` : '';
-
-      const bibliography = `${authorStr} ${titleTerminated} ${pubStr} (${year}).`.trim();
-      const bibliographyHtml = `${authorStr} ${titleTerminated}${journal ? ` <i>${journal}</i>` : ''}${volume ? ` <b>${volume}</b>` : ''}${pages ? `, ${pages}` : ''} (${year}).`.trim();
-
-      return { inText, bibliography, bibliographyHtml };
-    }
-
-    // 6. Vancouver
-    if (currentCslStyle === 'vancouver') {
-      const inText = `(1)`;
-      const authorList = parsedAuthors.map((a) => `${a.family} ${a.initials.replace(/\./g, '')}`.trim());
-      let authorStr = '';
-      if (authorList.length <= 6) {
-        authorStr = authorList.join(', ');
-      } else {
-        authorStr = `${authorList.slice(0, 6).join(', ')}, et al.`;
-      }
-      const pubParts: string[] = [];
-      if (journal) pubParts.push(journal);
-      if (year && year !== 'n.d.') pubParts.push(`${year}`);
-      if (volume && issue) pubParts.push(`${volume}(${issue}):${pages}`);
-      else if (volume) pubParts.push(`${volume}:${pages}`);
-      else if (pages) pubParts.push(pages);
-      const pubStr = pubParts.length > 0 ? `. ${pubParts.join(';')}` : '';
-      const doiStr = doi ? ` doi: ${doi}` : '';
-
-      const bibliography = `${authorStr}. ${title}${pubStr}.${doiStr}`.trim();
-      const bibliographyHtml = `${authorStr}. ${title}.${journal ? ` <i>${journal}</i>` : ''};${year !== 'n.d.' ? year : ''}${volume ? `;${volume}` : ''}${issue ? `(${issue})` : ''}${pages ? `:${pages}` : ''}.${doi ? ` doi: ${doi}` : ''}`.trim();
-
-      return { inText, bibliography, bibliographyHtml };
-    }
-
-    // 7. Harvard & Generic fallback
-    const firstAuth = parsedAuthors[0]?.family || 'Anonymous';
-    const inText = totalAuth <= 1 ? `(${firstAuth}, ${year})` : `(${firstAuth} et al., ${year})`;
-    const authorStr = authors.length > 0 ? authors.join(', ') : 'Anonymous';
-    const pubStr = journal ? ` ${journal}.` : '';
-    const bibliography = `${authorStr} (${year}). ${titleTerminated}${pubStr}`.trim();
-    const bibliographyHtml = `${authorStr} (${year}). ${titleTerminated}${journal ? ` <i>${journal}</i>.` : ''}`.trim();
-
-    return { inText, bibliography, bibliographyHtml };
-  }, [parsedAuthors, authors, currentCslStyle, year, title, titleTerminated, journal, volume, issue, pages, doi]);
-
-  // BibTeX string
-  const bibtexContent = useMemo(() => {
-    const authorStr = parsedAuthors
-      .map((a) => `${a.family}, ${a.given || a.initials}`)
-      .join(' and ') || 'Unknown';
-
-    const fields: string[] = [
-      `  title = {{${escapeBibtex(title)}}}`,
-      `  author = {${escapeBibtex(authorStr)}}`,
-    ];
-    if (journal) fields.push(`  journal = {${escapeBibtex(journal)}}`);
-    if (year && year !== 'n.d.') fields.push(`  year = {${year}}`);
-    if (volume) fields.push(`  volume = {${escapeBibtex(volume)}}`);
-    if (issue) fields.push(`  number = {${escapeBibtex(issue)}}`);
-    if (pages) fields.push(`  pages = {${escapeBibtex(pages)}}`);
-    if (doi) fields.push(`  doi = {${escapeBibtex(doi)}}`);
-    if (url) fields.push(`  url = {${escapeBibtex(url)}}`);
-
-    return `@article{${citeKey},\n${fields.join(',\n')}\n}`;
-  }, [citeKey, title, parsedAuthors, journal, year, volume, issue, pages, doi, url]);
-
-  // RIS string
-  const risContent = useMemo(() => {
-    const lines: string[] = [
-      'TY  - JOUR',
-      `TI  - ${title}`,
-    ];
-    parsedAuthors.forEach((a) => {
-      lines.push(`AU  - ${a.family}, ${a.given || a.initials}`);
-    });
-    if (journal) lines.push(`JO  - ${journal}`);
-    if (year && year !== 'n.d.') lines.push(`PY  - ${year}`);
-    if (volume) lines.push(`VL  - ${volume}`);
-    if (issue) lines.push(`IS  - ${issue}`);
-    if (pages) lines.push(`SP  - ${pages}`);
-    if (doi) lines.push(`DO  - ${doi}`);
-    if (url) lines.push(`UR  - ${url}`);
-    lines.push('ER  - ');
-
-    return lines.join('\n');
-  }, [title, parsedAuthors, journal, year, volume, issue, pages, doi, url]);
-
   const getContentToCopy = useCallback(() => {
-    if (activeFormat === 'bibtex') return bibtexContent;
-    if (activeFormat === 'ris') return risContent;
-    return cslData?.bibliography || formattedClientCitation.bibliography;
-  }, [activeFormat, bibtexContent, risContent, cslData?.bibliography, formattedClientCitation.bibliography]);
+    return cslData?.bibliography || '';
+  }, [cslData?.bibliography]);
 
   const handleCopy = useCallback(async () => {
     const text = getContentToCopy();
@@ -559,7 +232,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   }, [getContentToCopy]);
 
   const handleCopyInText = useCallback(async () => {
-    const text = cslData?.inText || formattedClientCitation.inText;
+    const text = cslData?.inText || '';
     if (!text) return;
     const success = await copyToClipboard(text);
     if (success) {
@@ -569,7 +242,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
     } else {
       toast.error('Failed to copy', { id: 'library-clipboard' });
     }
-  }, [cslData?.inText, formattedClientCitation.inText]);
+  }, [cslData?.inText]);
 
   const handleDownload = useCallback(() => {
     const ext = activeFormat === 'bibtex' ? 'bib' : activeFormat === 'ris' ? 'ris' : 'txt';
@@ -579,15 +252,14 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
     toast.success(`Exported ${filename}`, { id: 'library-clipboard' });
   }, [citeKey, activeFormat, getContentToCopy]);
 
-  // Preferred order: server formatted HTML -> server plain text -> client high-fidelity fallback HTML
   const rawHtml =
     cslData?.bibliographyHtml ||
     cslData?.html ||
     cslData?.bibliography ||
-    formattedClientCitation.bibliographyHtml;
+    '';
 
   const sanitizedHtml = useMemo(() => sanitizeCslHtml(rawHtml), [rawHtml]);
-  const inTextPreview = cslData?.inText || formattedClientCitation.inText;
+  const inTextPreview = cslData?.inText || '';
 
   return (
     <div className="space-y-2 min-w-0 font-sans select-none">
@@ -611,7 +283,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
         </span>
       </div>
 
-      {/* Dynamic Adaptive Format Selection Bar: Shows max fitting items, overflow goes into More ▾ */}
+      {/* Dynamic Adaptive Format Selection Bar */}
       <div
         ref={containerRef}
         className="relative flex items-center gap-1 text-xs w-full overflow-hidden shrink-0"
@@ -635,7 +307,6 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           );
         })}
 
-        {/* More Styles Dropdown (Only rendered if there are overflowing formats) */}
         {moreFormats.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -766,13 +437,9 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
         </TooltipProvider>
 
         <div>
-          {activeFormat === 'bibtex' ? (
+          {activeFormat === 'bibtex' || activeFormat === 'ris' ? (
             <pre className="font-mono text-xs text-foreground whitespace-pre select-text overflow-x-auto leading-relaxed">
-              {bibtexContent}
-            </pre>
-          ) : activeFormat === 'ris' ? (
-            <pre className="font-mono text-xs text-foreground whitespace-pre select-text overflow-x-auto leading-relaxed">
-              {risContent}
+              {cslData?.bibliography || ''}
             </pre>
           ) : (
             <div>

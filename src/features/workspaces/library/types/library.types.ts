@@ -2,9 +2,7 @@ import { z } from 'zod';
 import {
   collectionSchema,
   catalogItemSchema,
-  paperSchema,
   itemAttachmentSchema,
-  paperAttachmentSchema,
   primaryFileSchema,
   provenanceSchema,
   userSchema,
@@ -13,10 +11,8 @@ import {
   cslStyleSchema,
   formattedCitationSchema,
   pdfAnnotationSchema,
-  relatedPaperItemSchema,
   relatedItemSchema,
   catalogItemBundleSchema,
-  paperAcademicBundleSchema,
   duplicateGroupSchema,
   libraryIntegrityReportSchema,
   asyncIngestionJobSchema,
@@ -47,8 +43,6 @@ export type PaperAttachment = ItemAttachment;
 export type PrimaryFile = z.infer<typeof primaryFileSchema>;
 export type Provenance = z.infer<typeof provenanceSchema>;
 export type CatalogItem = z.infer<typeof catalogItemSchema>;
-
-
 export type CslStyle = z.infer<typeof cslStyleSchema>;
 export type FormattedCitation = z.infer<typeof formattedCitationSchema>;
 export type PdfAnnotation = z.infer<typeof pdfAnnotationSchema>;
@@ -57,11 +51,6 @@ export type CatalogItemBundle = z.infer<typeof catalogItemBundleSchema>;
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
 export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
-
-/** @deprecated Use RelatedItem */
-export type RelatedPaperItem = RelatedItem;
-/** @deprecated Use CatalogItemBundle */
-export type PaperAcademicBundle = CatalogItemBundle;
 
 export type { ReferenceData };
 
@@ -127,8 +116,6 @@ export interface IngestItemDTO {
   };
 }
 
-/** @deprecated Use IngestItemDTO */
-export type IngestPaperDTO = IngestItemDTO;
 
 export interface ItemQueryParams {
   collectionId?: string;
@@ -138,8 +125,6 @@ export interface ItemQueryParams {
   skip?: number;
 }
 
-/** @deprecated Use ItemQueryParams */
-export type PaperQueryParams = ItemQueryParams;
 
 export type ItemInput = Partial<CatalogItem>;
 export type CreateItemDTO = Partial<CatalogItem> & { collectionId?: string | null };
@@ -190,9 +175,6 @@ export interface TimeGroupedItems {
   thisWeek: CatalogItem[];
   earlier: CatalogItem[];
 }
-
-/** @deprecated Use TimeGroupedItems */
-export type TimeGroupedPapers = TimeGroupedItems;
 
 export interface RecentlyReadState {
   grouped: TimeGroupedItems;
@@ -277,12 +259,6 @@ export interface MoveToTrashTarget {
   authors?: string[];
 }
 
-export interface CreatorEntry {
-  id: string;
-  name: string;
-  creatorType: string;
-}
-
 export interface SearchDiscoveryParams {
   q?: string;
   itemType?: string;
@@ -305,9 +281,3 @@ export interface SearchFacets {
 // ── Backward Compatibility Aliases ───────────────────────────────────────────
 /** @deprecated Use CatalogItem */
 export type Paper = CatalogItem;
-/** @deprecated Use ItemInput */
-export type PaperInput = ItemInput;
-/** @deprecated Use CreateItemDTO */
-export type CreatePaperDTO = CreateItemDTO;
-/** @deprecated Use UpdateItemDTO */
-export type UpdatePaperDTO = UpdateItemDTO;

@@ -166,3 +166,8 @@ export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
 export type IngestionJobStatusData = z.infer<typeof ingestionJobStatusDataSchema>;
 export type SyncChangeRecord = z.infer<typeof syncChangeSchema>;
 export type SyncChangesData = z.infer<typeof syncChangesDataSchema>;
+
+// ── Canonical Concise Aliases ────────────────────────────────────────────────
+export const jobStatusDataSchema = ingestionJobStatusDataSchema;
+export const jobStatusResponseSchema = ingestionJobStatusResponseSchema;
+export const integrityResponseSchema = integrityReportResponseSchema;

@@ -26,9 +26,9 @@ import { ALL_ITEM_TYPES_FLAT } from '@/features/workspaces/library/schemas/item-
 import {
   useItemTypeConversion,
   type TypeConversionPreview,
-} from '../../hooks/library/use-type-conversion';
+} from '../../hooks/library/use-conversion';
 
-interface TypeConversionDialogProps {
+export interface ConvertModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Accept either prop name for backwards compat */
@@ -47,14 +47,16 @@ function formatValue(val: unknown): string {
   return JSON.stringify(val).slice(0, 60);
 }
 
-export function TypeConversionDialog({
+export type TypeConversionDialogProps = ConvertModalProps;
+
+export function ConvertModal({
   open,
   onOpenChange,
   item,
   paper,
   targetType,
   onSuccess,
-}: TypeConversionDialogProps) {
+}: ConvertModalProps) {
   const currentItem = item || paper;
   const itemId = currentItem?.id || '';
   const itemType = currentItem?.itemType || (currentItem as any)?.type || 'journalArticle';
@@ -361,3 +363,6 @@ export function TypeConversionDialog({
     </Dialog>
   );
 }
+
+export default ConvertModal;
+export { ConvertModal as TypeConversionDialog };

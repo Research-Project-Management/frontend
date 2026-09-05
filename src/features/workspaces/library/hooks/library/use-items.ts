@@ -5,23 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   CatalogItemService,
-  getCollectionPapers,
-  getAllPapers,
-  getPaperById,
-  createPaper,
-  updatePaper,
-  deletePaper,
-  getPaperAcademicBundle,
 } from '../../services/catalog.service';
 import { ReadingService as ItemStateService, type ItemStateData } from '../../services/reading.service';
 import { AnnotationService } from '../../services/annotation.service';
 import { invalidateCollections } from './use-collections';
 import type {
   CatalogItem,
-  Paper,
-  CreatePaperDTO,
-  UpdatePaperDTO,
-  PaperQueryParams,
+  CreateItemDTO,
+  UpdateItemDTO,
+  ItemQueryParams,
 } from '../../types/library.types';
 
 // ── Canonical Query Keys (Self-Managed) ───────────────────────────────────────
@@ -37,7 +29,6 @@ export const itemKeys = {
 };
 
 export const catalogItemKeys = itemKeys;
-export const paperKeys = itemKeys;
 
 // ── View-scoped Items Hook (unfiled, recent, trash, all) ───────────────────────
 /**
@@ -88,7 +79,7 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
 
   const allItemsQuery = useQuery({
     queryKey: itemKeys.all(workspaceId),
-    queryFn: () => getAllPapers(workspaceId),
+    queryFn: () => CatalogItemService.getAll(workspaceId),
     enabled: Boolean(workspaceId),
     select: (data) => {
       if (!data) return { items: [] as CatalogItem[], meta: null };
@@ -102,20 +93,20 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
 
   const itemByIdQuery = useQuery({
     queryKey: itemKeys.byId(workspaceId, activeItemId),
-    queryFn: () => getPaperById(workspaceId, activeItemId),
+    queryFn: () => CatalogItemService.getById(workspaceId, activeItemId),
     enabled: Boolean(workspaceId && activeItemId),
     select: (data) => (data as any)?.paper || (data as any)?.item || data,
   });
 
   const collectionItemsQuery = useQuery({
     queryKey: itemKeys.byCollection(workspaceId, collectionId || ''),
-    queryFn: () => getCollectionPapers(workspaceId, collectionId || ''),
+    queryFn: () => CatalogItemService.getByCollection(workspaceId, collectionId || ''),
     enabled: Boolean(workspaceId && collectionId),
     select: (data) => (data as any)?.papers || (data as any)?.items || [],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreatePaperDTO & { silent?: boolean }) => createPaper(workspaceId, collectionId || '', data),
+    mutationFn: (data: CreateItemDTO & { silent?: boolean }) => CatalogItemService.create(workspaceId, collectionId || '', data),
     onSuccess: (newItem, variables) => {
       const targetCollection = (newItem as any)?.collectionId || collectionId;
       if (targetCollection) {
@@ -143,8 +134,8 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data, expectedVersion, silent }: { id: string; data: UpdatePaperDTO; expectedVersion?: number; silent?: boolean }) => {
-      const res = await updatePaper(workspaceId, id, data, expectedVersion);
+    mutationFn: async ({ id, data, expectedVersion, silent }: { id: string; data: UpdateItemDTO; expectedVersion?: number; silent?: boolean }) => {
+      const res = await CatalogItemService.update(workspaceId, id, data, expectedVersion);
       return { res, silent, id };
     },
     onSuccess: ({ res: updatedItem, silent, id }) => {
@@ -170,10 +161,9 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
     },
   });
 
-
   const deleteMutation = useMutation({
     mutationFn: async ({ id, silent }: { id: string; silent?: boolean }) => {
-      const res = await deletePaper(workspaceId, id);
+      const res = await CatalogItemService.delete(workspaceId, id);
       return { res, silent };
     },
     onSuccess: ({ silent }) => {
@@ -322,6 +312,7 @@ export function useItemTypes(workspaceId?: string) {
   const { data, isLoading } = useQuery({
     queryKey: itemKeys.types(wid),
     queryFn: () => CatalogItemService.getItemTypes(wid),
+    enabled: Boolean(workspaceId),
     staleTime: 1000 * 60 * 60,
   });
 
@@ -407,29 +398,6 @@ export function useItemState(workspaceId: string, itemId?: string | null) {
   };
 }
 
-export const useUserState = useItemState;
-export const useUpdateItemState = (workspaceId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ itemId, data }: { itemId: string; data: any }) =>
-      ItemStateService.updateState(workspaceId, itemId, data),
-    onSuccess: (_, v) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.state(workspaceId, v.itemId) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-    },
-  });
-};
-export const useMarkAsRead = (workspaceId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (itemId: string) => ItemStateService.markAsRead(workspaceId, itemId),
-    onSuccess: (_, itemId) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.state(workspaceId, itemId) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-    },
-  });
-};
-
 // ── 4. Trash Operations Hook ──────────────────────────────────────────────────
 
 export function useTrash(workspaceId: string) {
@@ -439,15 +407,15 @@ export function useTrash(workspaceId: string) {
     queryKey: itemKeys.trash(workspaceId),
     queryFn: () => CatalogItemService.getAll(workspaceId, { view: 'trash' }),
     enabled: Boolean(workspaceId),
+    select: (data): CatalogItem[] => {
+      if (Array.isArray(data?.items)) return data.items;
+      if (Array.isArray((data as any)?.papers)) return (data as any).papers;
+      if (Array.isArray(data)) return data as unknown as CatalogItem[];
+      return [];
+    },
   });
 
-  const trashItems: CatalogItem[] = Array.isArray(trashQuery.data?.items)
-    ? trashQuery.data.items
-    : Array.isArray((trashQuery.data as any)?.papers)
-      ? (trashQuery.data as any).papers
-      : Array.isArray(trashQuery.data)
-        ? (trashQuery.data as any)
-        : [];
+  const trashItems: CatalogItem[] = trashQuery.data ?? [];
 
   const restoreMutation = useMutation({
     mutationFn: (itemId: string) => CatalogItemService.restore(workspaceId, itemId),
@@ -529,97 +497,13 @@ export function useTrash(workspaceId: string) {
   };
 }
 
-// ── 5. Item Type Conversion Hook ─────────────────────────────────────────────
-
-interface UseConvertItemTypeOptions {
-  workspaceId: string;
-  itemId: string;
-  targetType: string;
-  retainUnmapped?: boolean;
-  onSuccess?: (updatedItem: CatalogItem) => void;
-}
-
-/**
- * Legacy hook kept for backwards compat with TypeConversionDialog.
- * New code should use useItemTypeConversion from use-type-conversion.ts.
- */
-export function useConvertItemType({
-  workspaceId,
-  itemId,
-  targetType,
-  retainUnmapped = true,
-  onSuccess,
-}: UseConvertItemTypeOptions) {
-  const queryClient = useQueryClient();
-  const [preview, setPreview] = useState<any>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewErr, setPreviewErr] = useState<Error | null>(null);
-
-  // On-demand preview loader — called by the dialog on open
-  const loadPreview = useCallback(async () => {
-    if (!workspaceId || !itemId || !targetType) { setPreview(null); return; }
-    setIsLoadingPreview(true);
-    setPreviewErr(null);
-    try {
-      const res = await CatalogItemService.previewConvertType(workspaceId, itemId, targetType, retainUnmapped);
-      setPreview((res as any)?.preview ?? (res as any)?.data ?? res);
-    } catch (err: any) {
-      setPreviewErr(err);
-      setPreview(null);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  }, [workspaceId, itemId, targetType, retainUnmapped]);
-
-  const convertMutation = useMutation({
-    mutationFn: async (expectedVersion?: number) => {
-      const res = await CatalogItemService.convertType(
-        workspaceId, itemId, targetType, expectedVersion, retainUnmapped,
-      );
-      return (res?.item || (res as any)?.data || res) as CatalogItem;
-    },
-    onSuccess: (updatedItem) => {
-      toast.success(`Converted item type to ${targetType}`);
-      if (workspaceId) {
-        queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-        queryClient.invalidateQueries({ queryKey: itemKeys.byId(workspaceId, itemId) });
-      }
-      onSuccess?.(updatedItem);
-    },
-    onError: (err: any) => {
-      toast.error('Type conversion failed', {
-        description: err?.message || 'An unexpected error occurred during type conversion.',
-      });
-    },
-  });
-
-  const state = {
-    preview,
-    isLoadingPreview,
-    isSubmitting: convertMutation.isPending,
-    error: previewErr || convertMutation.error,
-  };
-
-  const actions = {
-    loadPreview,
-    convert: convertMutation.mutateAsync,
-  };
-
-  return {
-    state,
-    actions,
-    ...state,
-    ...actions,
-  };
-}
-
-// ── 6. Table Sorting & Selection Hook ───────────────────────────────────────
+// ── 5. Table Sorting & Selection Hook ───────────────────────────────────────
 
 export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt' | 'lastReadAt';
 export type SortOrder = 'asc' | 'desc';
 
 export interface UseItemTableOptions {
-  papers?: Paper[];
+  papers?: CatalogItem[];
   items?: CatalogItem[];
   initialActiveId?: string | null;
   initialSortField?: SortField;
@@ -747,86 +631,3 @@ export function useItemTable({
   };
 }
 
-export const usePaperTable = useItemTable;
-export const useLibraryPapers = (workspaceId: string, query?: PaperQueryParams) => {
-  return useQuery({
-    queryKey: itemKeys.all(workspaceId),
-    queryFn: () => getAllPapers(workspaceId, query),
-    enabled: Boolean(workspaceId),
-  });
-};
-export const useUpdatePaper = (workspaceId: string, paperId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Partial<CatalogItem> & { silent?: boolean }) => updatePaper(workspaceId, paperId, data),
-    onSuccess: (res, variables) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-      queryClient.setQueryData(itemKeys.byId(workspaceId, paperId), res);
-      if (!variables?.silent) {
-        toast.success('Metadata updated', { id: 'item-mutation-toast' });
-      }
-    },
-    onError: (err: any, variables) => {
-      if (!variables?.silent) {
-        toast.error('Failed to update metadata', {
-          description: err?.message || 'Please check your connection and try again.',
-          id: 'item-mutation-toast',
-        });
-      }
-    },
-  });
-};
-export const useDeletePaper = (workspaceId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (paperId: string | { paperId: string; silent?: boolean }) => {
-      const id = typeof paperId === 'string' ? paperId : paperId.paperId;
-      return deletePaper(workspaceId, id);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-      const isSilent = typeof variables === 'object' && variables?.silent;
-      if (!isSilent) {
-        toast.success('Moved to trash', {
-          description: 'You can restore this item from Trash at any time.',
-          id: 'item-mutation-toast',
-        });
-      }
-    },
-    onError: (err: any, variables) => {
-      const isSilent = typeof variables === 'object' && variables?.silent;
-      if (!isSilent) {
-        toast.error('Failed to delete item', {
-          description: err?.message || 'Please try again.',
-          id: 'item-mutation-toast',
-        });
-      }
-    },
-  });
-};
-
-// ── useExtractNotes ───────────────────────────────────────────────────────────
-/**
- * Synthesize literature notes from all highlighted passages in a document.
- * Backed by POST /items/:id/extract-notes
- */
-
-export function useExtractNotes(workspaceId: string) {
-  return useMutation({
-    mutationFn: (itemId: string) =>
-      AnnotationService.extractNotes(workspaceId, itemId),
-    onSuccess: (data) => {
-      const count = data?.totalExtracted ?? 0;
-      toast.success('Notes extracted', {
-        description: count > 0 ? `Synthesized ${count} highlight(s) into literature notes.` : 'Completed extraction from document.',
-        id: 'extract-notes',
-      });
-    },
-    onError: (err: any) => {
-      toast.error('Failed to extract notes', {
-        description: err?.message || 'Please try again.',
-        id: 'extract-notes',
-      });
-    },
-  });
-}

@@ -40,13 +40,21 @@ export const createSticky = async (variables: {
   position?: { x: number; y: number };
   projectId?: string;
 }): Promise<Sticky> => {
-  const res = await apiPost<{ sticky: Partial<Sticky> } | Partial<Sticky>>(`/api/workspace/${variables.workspaceId}/stickies`, variables);
+  const { workspaceId, ...payload } = variables;
+  const res = await apiPost<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
+    `/api/workspace/${workspaceId}/stickies`,
+    payload,
+  );
   const stickyData = res && 'sticky' in res ? res.sticky : res;
   return normalizeSticky(stickyData);
 };
 
 export const updateSticky = async (stickyId: string, updates: Partial<Sticky>): Promise<Sticky> => {
-  const res = await apiPut<{ sticky: Partial<Sticky> } | Partial<Sticky>>(`/api/stickies/${stickyId}`, updates);
+  const { id: _id, workspaceId: _wsId, createdAt: _ca, updatedAt: _ua, ...payload } = updates as any;
+  const res = await apiPut<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
+    `/api/stickies/${stickyId}`,
+    payload,
+  );
   const stickyData = res && 'sticky' in res ? res.sticky : res;
   return normalizeSticky(stickyData);
 };

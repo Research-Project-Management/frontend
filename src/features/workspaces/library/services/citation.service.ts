@@ -5,7 +5,7 @@ import { cleanDoi } from '../utils/library.util';
 
 export type { ReferenceData };
 
-export async function fetchReferenceByDoi(doi: string): Promise<ReferenceData> {
+export async function fetchReferenceByDoi(doi: string): Promise<ReferenceData | null> {
   const normalizedDoi = cleanDoi(doi);
   if (!normalizedDoi) {
     throw new Error('Invalid DOI provided');
@@ -19,14 +19,27 @@ export async function fetchReferenceByDoi(doi: string): Promise<ReferenceData> {
     if ('work' in data && data.work) return data.work;
     if ('data' in data && data.data) return data.data;
     return data as ReferenceData;
-  } catch {
+  } catch (error: any) {
+    if (error?.statusCode === 404 || error?.response?.status === 404) {
+      return null;
+    }
     // Fallback: GET by encoded DOI
-    const fallback = await apiGet<{ work?: ReferenceData; data?: ReferenceData } | ReferenceData>(
-      `/api/v1/workspaces/_/library/citation/doi/${encodeURIComponent(normalizedDoi)}`,
-    );
-    if ('work' in fallback && fallback.work) return fallback.work;
-    if ('data' in fallback && fallback.data) return fallback.data;
-    return fallback as ReferenceData;
+    try {
+      const fallback = await apiGet<{ work?: ReferenceData; data?: ReferenceData } | ReferenceData>(
+        `/api/v1/workspaces/_/library/citation/doi/${encodeURIComponent(normalizedDoi)}`,
+      );
+      if ('work' in fallback && fallback.work) return fallback.work;
+      if ('data' in fallback && fallback.data) return fallback.data;
+      return fallback as ReferenceData;
+    } catch (fallbackError: any) {
+      if (
+        fallbackError?.statusCode === 404 ||
+        fallbackError?.response?.status === 404
+      ) {
+        return null;
+      }
+      throw fallbackError;
+    }
   }
 }
 

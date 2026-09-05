@@ -299,6 +299,7 @@ export default function PaperUploadDialog({
 
     if (mode === 'identifier') {
       await onSubmit({
+        ...resolved,
         title: title.trim() || resolved.title,
         authors: authors
           ? authors.split(',').map((a) => a.trim()).filter(Boolean)
@@ -343,6 +344,7 @@ export default function PaperUploadDialog({
     } else if (mode === 'file') {
       if (!uploadedUrl || !file) return;
       await onSubmit({
+        ...resolved,
         title: title.trim() || resolved.title,
         authors: authors
           ? authors.split(',').map((a) => a.trim()).filter(Boolean)

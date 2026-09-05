@@ -16,7 +16,7 @@ import { CitationService } from '../../services/citation.service';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import type { Collection, CatalogItem, CslStyle } from '../../types/library.types';
 
-interface PaperBatchBarProps {
+export interface BatchBarProps {
   selectedCount: number;
   selectedItems?: CatalogItem[];
   /** @deprecated Use selectedItems */
@@ -29,7 +29,9 @@ interface PaperBatchBarProps {
   isTrash?: boolean;
 }
 
-export default function ItemBatchBar({
+export type PaperBatchBarProps = BatchBarProps;
+
+export function BatchBar({
   selectedCount,
   selectedItems,
   selectedPapers,
@@ -39,7 +41,7 @@ export default function ItemBatchBar({
   onBatchDelete,
   onBatchRestore,
   isTrash = false,
-}: PaperBatchBarProps) {
+}: BatchBarProps) {
   const { copyToClipboard } = useLibraryClipboard();
 
   React.useEffect(() => {
@@ -365,3 +367,6 @@ export default function ItemBatchBar({
     </AnimatePresence>
   );
 }
+
+export default BatchBar;
+export { BatchBar as ItemBatchBar };

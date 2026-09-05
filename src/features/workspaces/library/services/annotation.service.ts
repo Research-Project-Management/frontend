@@ -77,18 +77,11 @@ export const AnnotationService = {
     expectedVersion: number | undefined,
     dto: UpdateAnnotationDTO,
   ): Promise<PdfAnnotation> => {
-    const headers: Record<string, string> = {};
-    if (expectedVersion !== undefined) {
-      headers['If-Match'] = String(expectedVersion);
-    }
     const raw = await apiPatch<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       {
         ...dto,
         expectedVersion,
-      },
-      {
-        headers,
       },
     );
 
@@ -108,11 +101,11 @@ export const AnnotationService = {
     annotationId: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
+    const versionQuery = expectedVersion !== undefined
+      ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
+      : '';
     const raw = await apiDelete<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-      {
-        headers: expectedVersion ? { 'If-Match': String(expectedVersion) } : undefined,
-      },
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}${versionQuery}`,
     );
 
     if (raw && typeof raw === 'object' && 'deleted' in raw) {

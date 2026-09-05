@@ -16,27 +16,39 @@ export default function AbstractSection({
   onUpdatePaper,
   hideHeader = false,
 }: AbstractSectionProps) {
-  const currentAbstract = paper.abstract || (paper as any).abstractNote || '';
+  const getAbstractValue = (p: CatalogItem) => {
+    return (
+      p.abstract ||
+      (p as any).abstractNote ||
+      (p as any).extra?.abstract ||
+      (p as any).metadata?.abstract ||
+      (p as any).description ||
+      ''
+    );
+  };
+
+  const currentAbstract = getAbstractValue(paper);
   const [draft, setDraft] = useState(currentAbstract);
   const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { copyToClipboard } = useLibraryClipboard();
 
   useEffect(() => {
-    setDraft(currentAbstract);
-  }, [paper.id, currentAbstract]);
+    setDraft(getAbstractValue(paper));
+  }, [paper.id, paper.abstract, (paper as any)?.abstractNote]);
 
-  // Auto-resize textarea to fit all content naturally without internal scroll cutoff
+  // Auto-resize textarea to fit content naturally
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.max(textareaRef.current.scrollHeight, 100)}px`;
     }
   }, [draft]);
 
   const commit = () => {
     const trimmed = draft.trim();
-    if (trimmed !== (paper.abstract || (paper as any).abstractNote || '').trim()) {
+    const existing = getAbstractValue(paper).trim();
+    if (trimmed !== existing) {
       if (onUpdatePaper) {
         onUpdatePaper({ abstract: trimmed || undefined, abstractNote: trimmed || undefined } as any);
       }
@@ -44,21 +56,18 @@ export default function AbstractSection({
   };
 
   const handleCopy = () => {
+    if (!draft.trim()) return;
     copyToClipboard(draft.trim(), 'Abstract copied to clipboard');
-    if (draft.trim()) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="space-y-2 text-xs min-w-0">
+    <div className="space-y-2 text-xs min-w-0 font-sans">
       {/* Header bar */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-medium text-foreground">
-            Abstract
-          </h3>
+          <h3 className="text-xs font-medium text-foreground">Abstract</h3>
 
           {draft.trim() && (
             <button
@@ -83,6 +92,7 @@ export default function AbstractSection({
         <textarea
           ref={textareaRef}
           value={draft}
+          placeholder="No abstract available. Click to add abstract..."
           aria-label="Paper abstract summary"
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -93,20 +103,9 @@ export default function AbstractSection({
               textareaRef.current?.blur();
             }
           }}
-          className="w-full bg-transparent rounded-md border border-border/60 focus:border-primary p-2 text-foreground text-xs leading-relaxed outline-none resize-none select-text font-sans focus:outline-none focus-visible:outline-none"
+          className="w-full bg-transparent rounded-md border border-border/60 focus:border-primary p-2 text-foreground text-xs leading-relaxed outline-none resize-none select-text font-sans focus:outline-none focus-visible:outline-none placeholder:text-muted-foreground/60"
         />
-        {draft.trim() && (
-          <div className="flex items-center justify-end text-[11px] font-mono text-foreground select-none">
-            <span>
-              {draft.trim().split(/\s+/).filter(Boolean).length} words • {draft.trim().length} chars
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
-
-
-

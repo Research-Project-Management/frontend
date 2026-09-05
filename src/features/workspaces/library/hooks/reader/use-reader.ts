@@ -9,7 +9,7 @@ import { useWorkspace } from '../library/use-workspace';
 import { useCollections } from '../library/use-library';
 import { useCatalogItems, useCatalogItem, catalogItemKeys } from '../library/use-items';
 import { usePdf } from './use-pdf';
-import { reindexPaper } from '@/features/workspaces/library/services/catalog.service';
+import { CatalogItemService } from '@/features/workspaces/library/services/catalog.service';
 import { ReadingService as ItemStateService, ReadingService as UserStateService } from '../../services/reading.service';
 import { getPaperFileUrl } from '../../utils/library.util';
 import { useLibraryReaderStore } from '../../store/reader.store';
@@ -164,7 +164,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     if (!workspaceId || !effectivePaperId) return;
     setIsReindexing(true);
     try {
-      await reindexPaper(workspaceId, effectivePaperId);
+      await CatalogItemService.reindex(workspaceId, effectivePaperId);
       toast.success('AI indexing started', {
         description: 'Extracting semantic embeddings and citation links in background.',
         id: 'reader-ai-index',

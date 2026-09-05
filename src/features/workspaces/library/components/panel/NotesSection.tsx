@@ -234,7 +234,7 @@ export default function NotesSection({
             <div
               key={n.id}
               onClick={() => handleStartEdit(n)}
-              className="group/note flex items-center justify-between gap-2 px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-xs cursor-pointer select-none min-w-0"
+              className="group/note flex items-center justify-between gap-2 px-2 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-xs cursor-pointer select-none min-w-0"
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <div className="size-4 shrink-0 flex items-center justify-center">

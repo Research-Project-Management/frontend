@@ -9,7 +9,6 @@ import {
   FolderTree,
   Folder,
   FolderPlus,
-  Landmark,
   Tag,
   Network,
   Quote,
@@ -23,30 +22,33 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from '@/shared/components/ui/dropdown-menu';
+import dynamic from 'next/dynamic';
 import InfoSection from './panel/InfoSection';
 import AbstractSection from './panel/AbstractSection';
 import CollectionsSection from './panel/CollectionsSection';
 import NotesSection from './panel/NotesSection';
 import TagsSection from './panel/TagsSection';
 import CiteSection from './panel/CiteSection';
-import AttachmentsSection from './panel/AttachmentsSection';
 import RelatedSection from './panel/RelatedSection';
+
+const AttachmentsSection = dynamic(() => import('./panel/AttachmentsSection'), {
+  ssr: false,
+});
 import CreateCollectionModal from './modals/CreateCollectionModal';
 import { useItems as usePapers } from '../hooks/library/use-items';
+import { CatalogItemService } from '../services/catalog.service';
 import { useCollections } from '../hooks/library/use-collections';
 import { useAttachments } from '../hooks/library/use-attachments';
 import { useNotes } from '../hooks/library/use-notes';
-import { useRelatedPapers } from '../hooks/library/use-library';
+import { useRelations } from '../hooks/library/use-relations';
 import { useLibraryClipboard } from '../hooks/library/use-clipboard';
 import { useLibrarySidebarStore, type InspectorSectionId } from '../store/sidebar.store';
-import { normalizeNotes, convertToBibTeX, generateCitationKey, getPaperFileUrl } from '../utils/library.util';
+import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperCitationKey, getPaperFileUrl } from '../utils/library.util';
 import { ALL_ITEM_TYPES_FLAT } from '../schemas/item-type.schema';
 import { cn } from '@/shared/lib/utils';
 import { useUpload } from '@/shared/hooks/use-upload';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { apiPost, apiDelete } from '@/shared/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import DeleteModal, { type DeleteModalConfig } from './modals/DeleteModal';
@@ -68,69 +70,6 @@ interface SectionDefinition {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-interface CollectionNode extends Collection {
-  children?: CollectionNode[];
-}
-
-function buildCollectionTree(items: Collection[]): CollectionNode[] {
-  const map = new Map<string, CollectionNode>();
-  const roots: CollectionNode[] = [];
-
-  items.forEach((item) => {
-    map.set(item.id, { ...item, children: [] });
-  });
-
-  items.forEach((item) => {
-    const parentId = item.parentId || (item as any).parent;
-    if (parentId && map.has(parentId)) {
-      map.get(parentId)!.children!.push(map.get(item.id)!);
-    } else {
-      roots.push(map.get(item.id)!);
-    }
-  });
-
-  return roots;
-}
-
-function renderCollectionMenuItem(
-  node: CollectionNode,
-  onSelect: (id: string, name: string) => void
-) {
-  const hasChildren = node.children && node.children.length > 0;
-
-  if (hasChildren) {
-    return (
-      <DropdownMenuSub key={node.id}>
-        <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground text-xs">
-          <Folder className="size-4 text-foreground shrink-0" />
-          <span className="truncate flex-1">{node.name}</span>
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="w-52 p-1 rounded-md border border-border/70 shadow-md bg-popover text-popover-foreground text-xs font-sans">
-          <DropdownMenuItem
-            onClick={() => onSelect(node.id, node.name)}
-            className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground font-medium text-xs"
-          >
-            <Folder className="size-4 text-foreground shrink-0" />
-            <span className="truncate flex-1">{node.name} (Select)</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1" />
-          {node.children!.map((child) => renderCollectionMenuItem(child, onSelect))}
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-    );
-  }
-
-  return (
-    <DropdownMenuItem
-      key={node.id}
-      onClick={() => onSelect(node.id, node.name)}
-      className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground text-xs"
-    >
-      <Folder className="size-4 text-foreground shrink-0" />
-      <span className="truncate flex-1">{node.name}</span>
-    </DropdownMenuItem>
-  );
-}
 
 const SECTIONS_CONFIG: SectionDefinition[] = [
   { id: 'info', label: 'Info', icon: Info },
@@ -187,55 +126,60 @@ function InspectorSectionHeader({
         paper && !isOpen ? "hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer" : "cursor-default"
       )}
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+      <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Icon className="size-4 text-foreground shrink-0" />
         </div>
         <span className="truncate text-[13px] text-foreground font-sans font-medium tracking-tight">
-          {label}
+          {label}{count !== undefined && count > 0 && <span className="text-[11px] font-normal text-muted-foreground font-mono tabular-nums ml-1">({count})</span>}
         </span>
-        {count !== undefined && count > 0 && (
-          <span className="text-xs font-normal text-foreground font-mono tabular-nums shrink-0 ml-0.5">
-            ({count})
-          </span>
-        )}
       </div>
 
       <div className="flex items-center gap-0.5 shrink-0">
         {customAddAction ? (
           customAddAction
         ) : hasAdd ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (paper) {
-                onAdd?.(id, e);
-              }
-            }}
-            className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
-            aria-label={`Add ${label}`}
-          >
-            <Plus className="size-3.5 text-foreground shrink-0" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (paper) {
+                    onAdd?.(id, e);
+                  }
+                }}
+                className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
+                aria-label={`Add ${label}`}
+              >
+                <Plus className="size-3.5 text-foreground shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Add {label}</TooltipContent>
+          </Tooltip>
         ) : null}
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(id);
-          }}
-          className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
-          aria-label={isOpen ? `Collapse ${label}` : `Expand ${label}`}
-        >
-          <ChevronDown
-            className={cn(
-              "size-3.5 text-foreground shrink-0",
-              paper && isOpen && "rotate-180"
-            )}
-          />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(id);
+              }}
+              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
+              aria-label={isOpen ? `Collapse ${label}` : `Expand ${label}`}
+            >
+              <ChevronDown
+                className={cn(
+                  "size-3.5 text-foreground shrink-0",
+                  paper && isOpen && "rotate-180"
+                )}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">{isOpen ? `Collapse ${label}` : `Expand ${label}`}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
@@ -293,8 +237,11 @@ export default function InspectorPanel({
   workspaceId,
   onClose,
 }: InspectorPanelProps) {
-  const paper = propPaper || propItem || null;
-  const targetWsId = paper?.workspaceId || workspaceId || '';
+  const incomingPaper = propPaper || propItem || null;
+  const targetWsId = incomingPaper?.workspaceId || workspaceId || '';
+  const [paper, setPaper] = useState<CatalogItem | null>(incomingPaper);
+  const latestPaperRef = useRef<CatalogItem | null>(incomingPaper);
+  const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
   const paperService = usePapers({ workspaceId: targetWsId });
   const collectionsState = useCollections(targetWsId);
   const collections = collectionsState?.state?.collections || [];
@@ -310,20 +257,8 @@ export default function InspectorPanel({
   } = useLibrarySidebarStore();
 
   const [collapsedSections, setCollapsedSections] = useState<Record<SectionId, boolean>>(DEFAULT_COLLAPSED_SECTIONS);
-  const [visibleSections, setVisibleSections] = useState<Record<SectionId, boolean>>({
-    info: true,
-    abstract: true,
-    files: true,
-    notes: true,
-    collections: true,
-    tags: true,
-    relations: true,
-    cite: true,
-  });
 
-  const isSectionVisible = (sectionId: SectionId) => {
-    return visibleSections[sectionId] !== false;
-  };
+  const isSectionVisible = (sectionId: SectionId) => !collapsedSections[sectionId];
 
   const [activeSectionId, setActiveSectionId] = useState<SectionId>('info');
   const [isAddRelatedOpen, setIsAddRelatedOpen] = useState(false);
@@ -331,13 +266,69 @@ export default function InspectorPanel({
   const [forceAddingNote, setForceAddingNote] = useState(false);
   const [forceAddingTag, setForceAddingTag] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [isPaperVerified, setIsPaperVerified] = useState(false);
   const [deleteModalConfig, setDeleteModalConfig] = useState<DeleteModalConfig | null>(null);
   const attachFileInputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { uploadFile, uploadFileDetailed } = useUpload();
   const { copyToClipboard } = useLibraryClipboard();
-  const { add: addAttachment } = useAttachments(targetWsId, paper?.id || '');
+  const verifiedPaperId = isPaperVerified ? paper?.id || '' : '';
+  const { add: addAttachment } = useAttachments(targetWsId, verifiedPaperId);
+
+  // Table rows can be stale after another mutation. Keep the panel on the
+  // newest server version so optimistic locking never reuses an old version.
+  useEffect(() => {
+    if (!incomingPaper) {
+      latestPaperRef.current = null;
+      setPaper(null);
+      return;
+    }
+
+    setPaper((current) => {
+      const shouldReplace =
+        !current ||
+        current.id !== incomingPaper.id ||
+        (incomingPaper.version ?? -1) >= (current.version ?? -1);
+      const next = shouldReplace ? incomingPaper : current;
+      latestPaperRef.current = next;
+      return next;
+    });
+  }, [incomingPaper]);
+
+  useEffect(() => {
+    if (!incomingPaper?.id || !targetWsId) return;
+
+    setIsPaperVerified(false);
+    let cancelled = false;
+    void CatalogItemService.getById(targetWsId, incomingPaper.id)
+      .then((response) => {
+        if (cancelled) return;
+        const latest = (response as any)?.item || (response as any)?.paper || response;
+        if (!latest?.id) return;
+
+        setPaper((current) => {
+          if (current && current.id === latest.id && (current.version ?? -1) > (latest.version ?? -1)) {
+            return current;
+          }
+          latestPaperRef.current = latest;
+          return latest;
+        });
+        setIsPaperVerified(latest.id === incomingPaper.id);
+      })
+      .catch((error: any) => {
+        setIsPaperVerified(false);
+        if (error?.statusCode === 404 && !cancelled) {
+          onClose?.();
+        }
+        // The item already rendered from the table remains usable; mutations
+        // surface their own actionable errors through the existing toast.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [incomingPaper?.id, targetWsId, onClose]);
 
   // Nếu user chưa chọn paper nào, panel không tự động mở và tự động đóng nếu đang mở
   useEffect(() => {
@@ -489,15 +480,56 @@ export default function InspectorPanel({
     }
   };
 
-  const paperId = paper?.id;
-
   const handleUpdatePaper = (data: Partial<CatalogItem>) => {
-    if (!paperId) return;
-    paperService.actions.updatePaper({
-      paperId,
-      ...data,
-      expectedVersion: paper?.version,
-    });
+    const requestedItemId = latestPaperRef.current?.id;
+    if (!requestedItemId) return;
+
+    updateQueueRef.current = updateQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const currentPaper = latestPaperRef.current;
+        if (!currentPaper?.id || currentPaper.id !== requestedItemId) return;
+
+        // Type conversion already returns the persisted item. Do not issue a
+        // second update that would increment its version again.
+        if ((data as any).id === currentPaper.id && (data as any).version !== undefined) {
+          latestPaperRef.current = { ...currentPaper, ...data };
+          setPaper((current) =>
+            current?.id === currentPaper.id ? { ...current, ...data } : current,
+          );
+          return;
+        }
+
+        const result = await paperService.actions.updatePaper({
+          paperId: currentPaper.id,
+          ...data,
+          expectedVersion: currentPaper.version,
+        });
+        const response = (result as any)?.res ?? result;
+        const updated = response?.item || response?.paper || response;
+        if (!updated?.id) return;
+
+        latestPaperRef.current = { ...currentPaper, ...updated };
+        setPaper((current) =>
+          current?.id === updated.id ? { ...current, ...updated } : current,
+        );
+      })
+      .catch(async () => {
+        const currentPaper = latestPaperRef.current;
+        if (!currentPaper?.id || currentPaper.id !== requestedItemId || !targetWsId) return;
+
+        try {
+          const response = await CatalogItemService.getById(targetWsId, currentPaper.id);
+          const latest = (response as any)?.item || (response as any)?.paper || response;
+          if (!latest?.id) return;
+          latestPaperRef.current = latest;
+          setPaper((current) =>
+            current?.id === latest.id ? latest : current,
+          );
+        } catch {
+          // The mutation hook already reports the original error to the user.
+        }
+      });
   };
 
 
@@ -549,21 +581,11 @@ export default function InspectorPanel({
     return normalizeNotes(paper?.notes).length;
   }, [canonicalNotes, paper?.notes]);
 
-  const tagsList = useMemo(() => {
-    if (!paper) return [];
-    const directTags = Array.isArray(paper.tags) ? paper.tags : [];
-    const directLabels = Array.isArray(paper.labels) ? paper.labels : [];
-    const directKeywords = Array.isArray(paper.keywords) ? paper.keywords : [];
-    const itemTags = Array.isArray((paper as any).itemTags)
-      ? (paper as any).itemTags.map((it: any) => it.tag?.name || it.name).filter(Boolean)
-      : [];
-    const merged = [...directTags, ...directLabels, ...directKeywords, ...itemTags].filter(Boolean);
-    return Array.from(new Set(merged.map((t) => (typeof t === 'string' ? t.trim() : (t as any).name?.trim()))));
-  }, [paper]);
+  const tagsList = useMemo(() => normalizeTags(paper), [paper]);
   const tagsCount = tagsList.length;
 
-  const relationsQuery = useRelatedPapers(workspaceId, paperId || '');
-  const relationsCount = relationsQuery.data?.total || relationsQuery.data?.relatedPapers?.length || 0;
+  const { total: relationsTotal } = useRelations(workspaceId, verifiedPaperId);
+  const relationsCount = relationsTotal || 0;
 
   const itemTypeLabel = useMemo(() => {
     if (!paper?.itemType) return 'Journal Article';
@@ -573,76 +595,34 @@ export default function InspectorPanel({
 
   const citeKey = useMemo(() => {
     if (!paper) return '';
-    return generateCitationKey(paper);
+    return getPaperCitationKey(paper);
   }, [paper]);
 
-  // Hide or show section completely when clicking right panel bar icon
   const handleSectionIconClick = (sectionId: SectionId) => {
-    if (!paper) return; // Nếu user chưa chọn paper nào -> hoàn toàn không thể tương tác!
+    if (!paper) return;
 
     setActiveSectionId(sectionId);
     setActiveInspectorTab(sectionId);
 
-    // If panel drawer is closed:
+    // If panel is closed: open it and ensure section is expanded & visible
     if (!isInspectorOpen) {
       setIsInspectorOpen(true);
-      // Mở panel drawer và đảm bảo section này hiện hoàn toàn
-      setVisibleSections((prev) => ({
-        ...prev,
-        [sectionId]: true,
-      }));
-      setCollapsedSections((prev) => ({
-        ...prev,
-        [sectionId]: false,
-      }));
-      const scrollToTarget = () => {
+      setCollapsedSections((prev) => ({ ...prev, [sectionId]: false }));
+      setTimeout(() => {
         const el = document.getElementById(`inspector-section-${sectionId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      };
-      setTimeout(scrollToTarget, 80);
-      setTimeout(scrollToTarget, 180);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
       return;
     }
 
-    // If panel drawer is already open: toggle complete visibility (ẩn hoặc hiện section hoàn toàn)
-    const currentlyVisible = isSectionVisible(sectionId);
-    if (currentlyVisible) {
-      if (!isSectionOpen(sectionId)) {
-        // Section đang đóng -> mở ra và cuộn tới
-        setCollapsedSections((prev) => ({
-          ...prev,
-          [sectionId]: false,
-        }));
-        setTimeout(() => {
-          const el = document.getElementById(`inspector-section-${sectionId}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }, 50);
-      } else {
-        // Section đang mở -> ẩn hoàn toàn khỏi drawer
-        setVisibleSections((prev) => ({
-          ...prev,
-          [sectionId]: false,
-        }));
-      }
-    } else {
-      // Hiện hoàn toàn section trong drawer và cuộn tới
-      setVisibleSections((prev) => ({
-        ...prev,
-        [sectionId]: true,
-      }));
-      setCollapsedSections((prev) => ({
-        ...prev,
-        [sectionId]: false,
-      }));
+    // If panel is already open: toggle collapsed state
+    const isCurrentlyOpen = !collapsedSections[sectionId];
+    setCollapsedSections((prev) => ({ ...prev, [sectionId]: isCurrentlyOpen }));
+
+    if (!isCurrentlyOpen) {
       setTimeout(() => {
         const el = document.getElementById(`inspector-section-${sectionId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
     }
   };
@@ -733,7 +713,7 @@ export default function InspectorPanel({
                   onAdd={handleAddClick}
                 />
                 {paper && isSectionOpen('abstract') && (
-                  <div className="p-1 bg-background">
+                  <div className="p-2 bg-background">
                     <AbstractSection paper={paper} onUpdatePaper={handleUpdatePaper} hideHeader />
                   </div>
                 )}
@@ -755,7 +735,7 @@ export default function InspectorPanel({
                   onAdd={handleAddClick}
                 />
                 {paper && isSectionOpen('files') && filesCount > 0 && (
-                  <div className="p-1 bg-background">
+                  <div className="p-2 bg-background">
                     <AttachmentsSection
                       paper={paper}
                       workspaceId={workspaceId}
@@ -783,7 +763,7 @@ export default function InspectorPanel({
                   onAdd={handleAddClick}
                 />
                 {paper && isSectionOpen('notes') && (
-                  <div className="p-1 bg-background">
+                  <div className="p-2 bg-background">
                     <NotesSection
                       paper={{ ...paper, workspaceId: targetWsId }}
                       onUpdatePaper={handleUpdatePaper}
@@ -843,24 +823,29 @@ export default function InspectorPanel({
                             }}
                             className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground"
                           >
-                            <FolderPlus className="size-4 text-foreground shrink-0" />
-                            <span className="font-medium text-foreground">New Collection...</span>
+                            <FolderPlus className="size-3.5 text-foreground" />
+                            <span>Create Collection</span>
                           </DropdownMenuItem>
-
-                          {collections.length > 0 && <DropdownMenuSeparator className="my-1" />}
-
-                          {buildCollectionTree(collections).map((col) =>
-                            renderCollectionMenuItem(col, (colId) => {
-                              handleUpdatePaper({ collectionId: colId });
-                            })
-                          )}
+                          <DropdownMenuSeparator />
+                          {collections.map((col) => (
+                            <DropdownMenuItem
+                              key={col.id}
+                              onClick={() => {
+                                handleUpdatePaper({ collectionId: col.id });
+                              }}
+                              className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground"
+                            >
+                              <Folder className="size-3.5 text-foreground" />
+                              <span className="truncate">{col.name}</span>
+                            </DropdownMenuItem>
+                          ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : null
                   }
                 />
                 {paper && isSectionOpen('collections') && (
-                  <div className="bg-background">
+                  <div className="p-2 bg-background">
                     <CollectionsSection
                       paper={paper}
                       workspaceId={workspaceId}
@@ -887,7 +872,7 @@ export default function InspectorPanel({
                   onAdd={handleAddClick}
                 />
                 {paper && isSectionOpen('tags') && (
-                  <div className="bg-background">
+                  <div className="p-2 bg-background">
                     <TagsSection
                       paper={paper}
                       onUpdatePaper={handleUpdatePaper}
@@ -915,7 +900,7 @@ export default function InspectorPanel({
                   onAdd={handleAddClick}
                 />
                 {paper && isSectionOpen('relations') && relationsCount > 0 && (
-                  <div className="p-1 bg-background">
+                  <div className="p-2 bg-background">
                     <RelatedSection
                       paper={paper}
                       workspaceId={workspaceId}
@@ -943,7 +928,7 @@ export default function InspectorPanel({
                 />
                 {paper && isSectionOpen('cite') && (
                   <div className="p-1 bg-background">
-                    <CiteSection paper={paper} workspaceId={workspaceId} />
+                    <CiteSection paper={paper} workspaceId={isPaperVerified ? workspaceId : ''} />
                   </div>
                 )}
               </div>
@@ -1027,17 +1012,6 @@ export default function InspectorPanel({
         />
       )}
 
-      {/* Add Related Paper Modal Controller */}
-      {paper && isAddRelatedOpen && (
-        <RelatedSection
-          paper={paper}
-          workspaceId={workspaceId}
-          hideHeader
-          isAddOpen={isAddRelatedOpen}
-          onAddOpenChange={setIsAddRelatedOpen}
-        />
-      )}
-
       {/* Hidden file input for Attachments + button */}
       <input
         type="file"
@@ -1049,10 +1023,3 @@ export default function InspectorPanel({
     </div>
   );
 }
-
-
-
-
-
-
-

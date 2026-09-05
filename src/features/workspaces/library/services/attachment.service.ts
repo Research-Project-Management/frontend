@@ -98,3 +98,5 @@ export const AttachmentsService = {
   revisions: getAttachmentRevisions,
   delete: deleteAttachment,
 };
+
+export const AttachmentService = AttachmentsService;

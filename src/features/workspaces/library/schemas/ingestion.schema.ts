@@ -109,6 +109,7 @@ export const IngestionRunSnapshotDataSchema = z.object({
   totalItems: z.number().optional().default(1),
   processedItems: z.number().optional().default(0),
   failedItems: z.number().optional().default(0),
+  itemId: z.string().optional(),
   startedAt: z.string().optional().default(() => new Date().toISOString()),
   completedAt: z.string().nullable().optional(),
 });
@@ -141,3 +142,13 @@ export const UrlCapturePreviewResponseSchema = z.object({
 export type UrlCapturePreviewResponse = z.infer<
   typeof UrlCapturePreviewResponseSchema
 >;
+
+// ── Canonical Concise Aliases ────────────────────────────────────────────────
+export const bibtexPayloadSchema = BibtexIngestionPayloadSchema;
+export const pdfPayloadSchema = PdfIngestionPayloadSchema;
+export const zoteroPayloadSchema = ZoteroIngestionPayloadSchema;
+export const ingestPayloadSchema = UnifiedIngestionPayloadSchema;
+export const ingestResponseSchema = UnifiedIngestionResponseSchema;
+export const runSnapshotDataSchema = IngestionRunSnapshotDataSchema;
+export const runSnapshotResponseSchema = IngestionRunSnapshotResponseSchema;
+export const urlPreviewResponseSchema = UrlCapturePreviewResponseSchema;

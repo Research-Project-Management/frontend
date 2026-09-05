@@ -20,7 +20,7 @@ export function useWorkspace(explicitWorkspaceId?: string) {
     queryFn: async () => {
       if (!rawId) return null;
       try {
-        const res = await apiGet<any>(`/api/v1/workspaces/${encodeURIComponent(rawId)}`);
+        const res = await apiGet<any>(`/api/workspaces/${encodeURIComponent(rawId)}`);
         return (res?.workspace || res?.data?.workspace || (res?.id ? res : null)) as LibraryWorkspace | null;
       } catch {
         return null;

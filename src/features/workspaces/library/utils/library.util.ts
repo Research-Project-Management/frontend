@@ -1,6 +1,18 @@
 import type { Paper, CatalogItem, Collection, Note, ReferenceData } from '../types/library.types';
 import { fetchReferenceByDoi, searchReferences, resolveAcademicQuery } from '../services/citation.service';
 
+// ── Institution keyword list (mirrored from backend creator-parser.util.ts) ───
+const INSTITUTION_KEYWORDS = [
+  'organization','organizations','organisation','organisations','association','associations',
+  'institute','institutes','institution','institutions','university','universities',
+  'laboratory','laboratories','collab','collaboration','collaborations','group','team',
+  'consortium','network','department','departments','agency','agencies','center','centers',
+  'centre','centres','foundation','corporation','inc','llc','ltd','hospital','hospitals',
+  'openai','google','microsoft','meta','deepmind','anthropic','mit','cern','nasa','who','ieee','acm',
+];
+
+const PREFIX_PARTICLES = new Set(['von','van','de','del','der','da','di','du','la','le']);
+
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
 
 /**
@@ -102,6 +114,85 @@ export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): stri
 }
 
 /**
+ * Splits a composite string of authors separated by ';', ' and ', ' & ', or newlines.
+ * Logic is canonical with backend creator-parser.util.ts#splitAuthorString.
+ */
+export function splitAuthorString(input: string): string[] {
+  if (!input || !input.trim()) return [];
+  const trimmed = input.trim();
+  const lines = trimmed
+    .split(/\r?\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const result: string[] = [];
+
+  for (const line of lines) {
+    if (line.includes(';')) {
+      result.push(...line.split(';').map((s) => s.trim()).filter(Boolean));
+    } else if (/\s+and\s+/i.test(line)) {
+      result.push(
+        ...line.split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean),
+      );
+    } else if (/\s+&\s+/.test(line)) {
+      result.push(
+        ...line.split(/\s+&\s+/).map((s) => s.trim()).filter(Boolean),
+      );
+    } else if ((line.match(/,/g) || []).length >= 2) {
+      // Multiple commas → treat as a list of names (e.g. "Smith, J., Jones, M.")
+      result.push(
+        ...line.split(',').map((s) => s.trim()).filter(Boolean),
+      );
+    } else {
+      result.push(line);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Parses a single author name into structured fields.
+ * Handles institutions, "LastName, FirstName", "FirstName LastName", particles (von/van/de), mononyms.
+ * Canonical with backend creator-parser.util.ts#parseCreatorString.
+ */
+export function parseCreatorName(rawName: string): { firstName: string; lastName: string; fullName: string } {
+  const trimmed = (rawName || '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) return { firstName: '', lastName: '', fullName: '' };
+
+  const lower = trimmed.toLowerCase();
+  const isInstitution = INSTITUTION_KEYWORDS.some((kw) =>
+    new RegExp(`\\b${kw}\\b`, 'i').test(lower),
+  );
+  if (isInstitution) return { firstName: '', lastName: trimmed, fullName: trimmed };
+
+  // Comma-separated: "LastName, FirstName MiddleName"
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map((p) => p.trim());
+    const lastName = parts[0] || '';
+    const firstName = parts.slice(1).join(' ') || '';
+    const fullName = firstName ? `${firstName} ${lastName}` : lastName;
+    return { firstName, lastName, fullName };
+  }
+
+  // Space-separated: "FirstName [Middle...] LastName"
+  const tokens = trimmed.split(' ');
+  if (tokens.length === 1) return { firstName: '', lastName: tokens[0], fullName: tokens[0] };
+
+  // Handle prefix particles: "Johann von Neumann"
+  let splitIndex = tokens.length - 1;
+  if (tokens.length >= 3 && PREFIX_PARTICLES.has(tokens[tokens.length - 2].toLowerCase())) {
+    splitIndex = tokens.length - 2;
+    if (tokens.length >= 4 && PREFIX_PARTICLES.has(tokens[tokens.length - 3].toLowerCase())) {
+      splitIndex = tokens.length - 3;
+    }
+  }
+
+  const lastName = tokens.slice(splitIndex).join(' ');
+  const firstName = tokens.slice(0, splitIndex).join(' ');
+  return { firstName, lastName, fullName: trimmed };
+}
+
+/**
  * Standardizes raw authors or creators into a clean array of author name strings.
  * Handles string[], delimited strings ("Author A; Author B" / "Author A and Author B"),
  * object arrays ([{ name: '...' }] or [{ firstName: '...', lastName: '...' }]),
@@ -129,21 +220,11 @@ export function normalizeAuthors(
     for (const item of rawAuthors) {
       if (!item) continue;
       if (typeof item === 'string') {
-        const trimmed = item.trim();
-        if (!trimmed) continue;
-        if (trimmed.includes(';') && !trimmed.includes(',')) {
-          const parts = trimmed.split(';').map((s) => s.trim()).filter(Boolean);
-          result.push(...parts);
-        } else if (trimmed.includes(' and ') && !trimmed.includes(',')) {
-          const parts = trimmed.split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
-          result.push(...parts);
-        } else {
-          result.push(trimmed);
-        }
+        result.push(...splitAuthorString(item));
       } else if (typeof item === 'object') {
         const fullName = (item.fullName || item.name || '').trim();
         if (fullName) {
-          result.push(fullName);
+          result.push(...splitAuthorString(fullName));
         } else if ('firstName' in item || 'lastName' in item || 'family' in item || 'given' in item) {
           const first = (item.firstName || item.given || '').trim();
           const last = (item.lastName || item.family || '').trim();
@@ -154,14 +235,7 @@ export function normalizeAuthors(
     }
     if (result.length > 0) return result;
   } else if (typeof rawAuthors === 'string' && rawAuthors.trim()) {
-    const trimmed = rawAuthors.trim();
-    if (trimmed.includes(';') && !trimmed.includes(',')) {
-      return trimmed.split(';').map((s) => s.trim()).filter(Boolean);
-    }
-    if (trimmed.includes(' and ')) {
-      return trimmed.split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
-    }
-    return [trimmed];
+    return splitAuthorString(rawAuthors);
   }
 
   // 2. Fallback to creators or contributors array
@@ -176,17 +250,26 @@ export function normalizeAuthors(
     : [];
 
   if (creatorList.length > 0) {
-    const fromCreators = creatorList
-      .filter((c: any) => !c.creatorType || c.creatorType === 'author' || c.creatorType === 'editor' || c.creatorType === 'contributor')
-      .map((c: any) => {
-        if (typeof c === 'string') return c.trim();
-        const fullName = (c.fullName || c.name || '').trim();
-        if (fullName) return fullName;
+    const fromCreators: string[] = [];
+    for (const c of creatorList) {
+      if (!c) continue;
+      if (typeof c === 'string') {
+        fromCreators.push(...splitAuthorString(c));
+        continue;
+      }
+      if (c.creatorType && c.creatorType !== 'author' && c.creatorType !== 'editor' && c.creatorType !== 'contributor') {
+        continue;
+      }
+      const fullName = (c.fullName || c.name || '').trim();
+      if (fullName) {
+        fromCreators.push(...splitAuthorString(fullName));
+      } else {
         const first = (c.firstName || c.given || '').trim();
         const last = (c.lastName || c.family || '').trim();
-        return [first, last].filter(Boolean).join(' ');
-      })
-      .filter(Boolean) as string[];
+        const full = [first, last].filter(Boolean).join(' ');
+        if (full) fromCreators.push(full);
+      }
+    }
     if (fromCreators.length > 0) return fromCreators;
   }
 
@@ -194,10 +277,24 @@ export function normalizeAuthors(
 }
 
 /**
+ * Formats a list of author names into a standard compact academic display string.
+ * - 0 authors: "—"
+ * - 1 author: "Author 1"
+ * - 2 authors: "Author 1 & Author 2"
+ * - 3+ authors: "Author 1 et al."
+ */
+export function formatCreatorCompact(authors?: string[] | null): string {
+  if (!authors || authors.length === 0) return '—';
+  if (authors.length === 1) return authors[0];
+  if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
+  return `${authors[0]} et al.`;
+}
+
+/**
  * Generates or extracts a standardized citation key for BibTeX/LaTeX (e.g. "vaswani2017attention").
  */
 export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
-  if (!paper) return 'ref2024paper';
+  if (!paper) return 'refpaper';
   if (paper.citationKey && typeof paper.citationKey === 'string' && paper.citationKey.trim().length > 0) {
     return paper.citationKey.trim();
   }
@@ -208,7 +305,7 @@ export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
     ? firstAuthor.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
     : 'ref';
 
-  const yearKey = paper.year ? String(paper.year).slice(-4) : '2024';
+  const yearKey = paper.year ? String(paper.year).slice(-4) : '';
 
   const titleWord = paper.title && typeof paper.title === 'string'
     ? paper.title
@@ -218,7 +315,31 @@ export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
         .find((w: string) => !['a', 'an', 'the', 'on', 'in', 'for', 'of', 'and', 'with', 'via'].includes(w)) || 'paper'
     : 'paper';
 
-  return `${authorKey || 'ref'}${yearKey || '2024'}${titleWord || 'paper'}`;
+  return `${authorKey || 'ref'}${yearKey}${titleWord || 'paper'}`;
+}
+
+/**
+ * Normalizes all tag-like fields on a paper into a deduped, trimmed string array.
+ * Merges: tags, labels, keywords, itemTags (Zotero-style join table).
+ * Use this everywhere instead of duplicating the 4-source merge pattern.
+ */
+export function normalizeTags(paper: Partial<CatalogItem> | null | undefined): string[] {
+  if (!paper) return [];
+  const raw: unknown[] = [
+    ...(Array.isArray(paper.tags) ? paper.tags : []),
+    ...(Array.isArray((paper as any).labels) ? (paper as any).labels : []),
+    ...(Array.isArray(paper.keywords) ? paper.keywords : []),
+    ...(Array.isArray((paper as any).itemTags)
+      ? (paper as any).itemTags.map((it: any) => it?.tag?.name ?? it?.name ?? '')
+      : []),
+  ];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const t of raw) {
+    const s = (typeof t === 'string' ? t : (t as any)?.name ?? '').trim();
+    if (s && !seen.has(s)) { seen.add(s); result.push(s); }
+  }
+  return result;
 }
 
 // ── 2. Notes Normalization ───────────────────────────────────────────────────
@@ -238,8 +359,11 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
 
   return notes.map((note, index) => {
     if (typeof note === 'string') {
+      // String-only notes have no server-assigned ID; use a deterministic
+      // content-based hash to avoid collisions across re-renders.
+      const contentHash = note.trim().slice(0, 32).replace(/[^a-z0-9]/gi, '').toLowerCase() || index.toString();
       return {
-        id: `note-${index}`,
+        id: `local-${contentHash}`,
         content: note,
         createdAt: new Date().toISOString(),
       };
@@ -272,24 +396,6 @@ export function cleanDoi(doi?: string | null): string {
     .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
     .replace(/^doi:\s*/i, '')
     .trim();
-}
-
-export function buildBibtexEntry(paper: Partial<Paper> | Partial<ReferenceData>): string {
-  const citeKey = getPaperCitationKey(paper as Partial<Paper>);
-  const title = paper.title || 'Untitled';
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  const authorStr = authors.length > 0 ? authors.join(' and ') : '';
-  const journal = (paper as any).journal || (paper as any).publisher || (paper as any).publicationTitle || '';
-  const year = paper.year || '';
-  const doi = paper.doi ? cleanDoi(paper.doi) : '';
-
-  return `@article{${citeKey},
-  title = {${title}},
-  author = {${authorStr}},
-  journal = {${journal}},
-  year = {${year}},
-  doi = {${doi}}
-}`;
 }
 
 // ── 4. Library Filter Engine ─────────────────────────────────────────────────
@@ -518,242 +624,7 @@ export function getUniqueTags(items: CatalogItem[]): string[] {
 }
 
 // ── 5. BibTeX Citation Engine ────────────────────────────────────────────────
-
-export function generateCitationKey(paper: CatalogItem): string {
-  if (paper.citationKey && paper.citationKey.trim()) {
-    return paper.citationKey.trim().replace(/\s+/g, '');
-  }
-
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  let authorPart = 'unknown';
-  if (authors.length > 0) {
-    const firstAuthor = authors[0].trim();
-    const parts = firstAuthor.split(/\s+/);
-    if (parts.length > 0) {
-      authorPart = parts[parts.length - 1].toLowerCase();
-    }
-  }
-  authorPart = authorPart.replace(/[^a-z0-9]/gi, '');
-
-  const yearPart = paper.year ? String(paper.year) : '';
-
-  let titlePart = '';
-  if (paper.title) {
-    const titleWords = paper.title.trim().split(/\s+/);
-    for (const word of titleWords) {
-      const cleanWord = word.replace(/[^a-z0-9]/gi, '').toLowerCase();
-      if (cleanWord) {
-        titlePart = cleanWord;
-        break;
-      }
-    }
-  }
-
-  return `${authorPart}${yearPart}${titlePart}` || `item${paper.id || 'ref'}`;
-}
-
-export function getBibTeXEntryType(paper: Partial<Paper>): string {
-  const itemType = (paper.itemType || (paper as any).type || '').toLowerCase();
-  switch (itemType) {
-    case 'book':
-    case 'booksection':
-      return 'book';
-    case 'conferencepaper':
-    case 'proceedings':
-    case 'inproceedings':
-      return 'inproceedings';
-    case 'thesis':
-    case 'phdthesis':
-    case 'mastersthesis':
-      return 'phdthesis';
-    case 'techreport':
-    case 'report':
-      return 'techreport';
-    case 'webpage':
-    case 'website':
-    case 'dataset':
-    case 'software':
-    case 'misc':
-      return 'misc';
-    case 'journalarticle':
-    case 'article':
-    case 'preprint':
-    default:
-      if (itemType && !['journalarticle', 'article', 'preprint'].includes(itemType) && !paper.journal && !paper.publicationTitle) {
-        return 'misc';
-      }
-      return 'article';
-  }
-}
-
-export function escapeLatexChars(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/\$/g, '\\$')
-    .replace(/#/g, '\\#')
-    .replace(/_/g, '\\_')
-    .replace(/\{/g, '\\{')
-    .replace(/\}/g, '\\}')
-    .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\^/g, '\\textasciicircum{}');
-}
-
-export function unescapeLatexChars(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/\\&/g, '&')
-    .replace(/\\%/g, '%')
-    .replace(/\\\$/g, '$')
-    .replace(/\\#/g, '#')
-    .replace(/\\_/g, '_')
-    .replace(/\\\{/g, '{')
-    .replace(/\\\}/g, '}')
-    .replace(/\\textasciitilde\{\}/g, '~')
-    .replace(/\\textasciicircum\{\}/g, '^')
-    .replace(/\\textbackslash\{\}/g, '\\');
-}
-
-export function convertToBibTeX(paper: CatalogItem): string {
-  const entryType = getBibTeXEntryType(paper);
-  const citationKey = generateCitationKey(paper);
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-
-  const fields: [string, string | undefined][] = [
-    ['title', paper.title ? `{${escapeLatexChars(paper.title)}}` : undefined],
-    ['author', authors.length > 0 ? `{${authors.map(escapeLatexChars).join(' and ')}}` : undefined],
-    ['journal', paper.journal || paper.publicationTitle ? `{${escapeLatexChars(paper.journal || paper.publicationTitle || '')}}` : undefined],
-    ['year', paper.year ? `{${paper.year}}` : undefined],
-    ['volume', paper.volume ? `{${paper.volume}}` : undefined],
-    ['number', paper.issue ? `{${paper.issue}}` : undefined],
-    ['pages', paper.pages ? `{${paper.pages}}` : undefined],
-    ['publisher', paper.publisher ? `{${escapeLatexChars(paper.publisher)}}` : undefined],
-    ['doi', paper.doi ? `{${paper.doi}}` : undefined],
-    ['url', paper.url ? `{${paper.url}}` : undefined],
-    ['abstract', paper.abstract ? `{${escapeLatexChars(paper.abstract)}}` : undefined],
-    ['issn', paper.issn ? `{${paper.issn}}` : undefined],
-    ['isbn', paper.isbn ? `{${paper.isbn}}` : undefined],
-  ];
-
-  const fieldLines = fields
-    .filter(([, val]) => val !== undefined && val !== '{}')
-    .map(([key, val]) => `  ${key} = ${val}`)
-    .join(',\n');
-
-  return `@${entryType}{${citationKey},\n${fieldLines}\n}`;
-}
-
-function parseSingleBibTeXEntry(entryBlock: string): Partial<Paper> | null {
-  const typeKeyMatch = entryBlock.match(/@(\w+)\s*\{\s*([^,]+),/);
-  if (!typeKeyMatch) return null;
-
-  const result: Partial<Paper> = {
-    itemType: typeKeyMatch[1].toLowerCase(),
-    citationKey: typeKeyMatch[2].trim(),
-  };
-
-  const fieldRegex = /(\w+)\s*=\s*(?:\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}|"([^"]*)"|(\d+))/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = fieldRegex.exec(entryBlock)) !== null) {
-    const key = match[1].toLowerCase();
-    const rawVal = match[2] ?? match[3] ?? match[4] ?? '';
-    const val = unescapeLatexChars(rawVal.trim());
-
-    switch (key) {
-      case 'title':
-        result.title = val;
-        break;
-      case 'author':
-        result.authors = val.split(/\s+and\s+/i).map((a) => a.trim()).filter(Boolean);
-        break;
-      case 'journal':
-      case 'journaltitle':
-      case 'booktitle':
-        result.journal = val;
-        result.publicationTitle = val;
-        break;
-      case 'year':
-      case 'date':
-        result.year = parseInt(val, 10) || val;
-        break;
-      case 'volume':
-        result.volume = val;
-        break;
-      case 'number':
-      case 'issue':
-        result.issue = val;
-        break;
-      case 'pages':
-        result.pages = val;
-        break;
-      case 'publisher':
-        result.publisher = val;
-        break;
-      case 'doi':
-        result.doi = cleanDoi(val);
-        break;
-      case 'url':
-        result.url = val;
-        break;
-      case 'abstract':
-        result.abstract = val;
-        break;
-      case 'issn':
-        result.issn = val;
-        break;
-      case 'isbn':
-        result.isbn = val;
-        break;
-    }
-  }
-
-  return result;
-}
-
-export function parseBibTeX(bibtexString: string): Partial<Paper>[] {
-  if (!bibtexString || !bibtexString.trim()) return [];
-
-  const rawEntries = bibtexString.split(/(?=@\w+\s*\{)/g);
-  const results: Partial<Paper>[] = [];
-
-  for (const raw of rawEntries) {
-    if (raw.trim().startsWith('@')) {
-      const parsed = parseSingleBibTeXEntry(raw);
-      if (parsed) results.push(parsed);
-    }
-  }
-
-  return results;
-}
-
-export function downloadBibTeXFile(paper: CatalogItem, filename?: string): void {
-  const content = convertToBibTeX(paper);
-  const name = filename || `${generateCitationKey(paper)}.bib`;
-  const blob = new Blob([content], { type: 'application/x-bibtex;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-export class BibtexEngine {
-  static convert(paper: CatalogItem): string {
-    return convertToBibTeX(paper);
-  }
-  static parse(bibtexString: string): Partial<Paper>[] {
-    return parseBibTeX(bibtexString);
-  }
-  static download(paper: CatalogItem, filename?: string): void {
-    downloadBibTeXFile(paper, filename);
-  }
-}
+export * from './bibtex.util';
 
 // ── 6. DOI & CrossRef Metadata Engine ────────────────────────────────────────
 
@@ -766,7 +637,7 @@ export type PdfMetadata = {
   creationDate?: string;
   modDate?: string;
   pageCount?: number;
-  keywords?: string;
+  keywords?: string[];
   doi?: string;
   journal?: string;
   publisher?: string;
@@ -801,7 +672,8 @@ export const ARXIV_REGEX = /\b(?:arXiv:\s*)?(\d{4}\.\d{4,5}(?:v\d+)?)\b/i;
 
 export function extractDoiFromText(text: string): string | null {
   if (!text) return null;
-  const match = text.match(DOI_REGEX);
+  const sanitized = text.replace(/\.pdf$/i, '');
+  const match = sanitized.match(DOI_REGEX);
   if (!match) return null;
   return match[1].replace(/[.,;:)\]]+$/, '');
 }
@@ -831,14 +703,17 @@ export class DoiMetadataEngine {
 }
 
 export async function extractMetadata(file: File): Promise<PdfMetadata> {
-  const cleanTitle = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim();
-  const metadata: PdfMetadata = {
-    title: cleanTitle,
-    extraFields: {},
-  };
-
   let detectedDoi = extractDoiFromText(file.name);
   let detectedArxiv = extractArxivId(file.name);
+  const rawTitle = file.name.replace(/\.pdf$/i, '').trim();
+  const cleanTitle = detectedDoi && rawTitle.includes(detectedDoi)
+    ? rawTitle
+    : rawTitle.replace(/[-_]/g, ' ').trim();
+  const metadata: PdfMetadata = {
+    title: cleanTitle,
+    doi: detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined,
+    extraFields: {},
+  };
 
   // If no identifier in filename, inspect first 128KB of PDF buffer to find embedded DOI or arXiv ID
   if (!detectedDoi && !detectedArxiv && file.size > 0) {
@@ -860,37 +735,38 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
       if (res && res.metadata && res.metadata.title) {
         const ref = res.metadata;
         return {
+          // Keep the provider record intact; only add aliases used by the
+          // upload form so metadata fields are not silently discarded.
+          ...ref,
           title: ref.title || cleanTitle,
-          authors: ref.authors?.length ? ref.authors : undefined,
-          author: ref.authors?.[0],
-          journal: ref.journal || ref.publisher,
-          publicationTitle: ref.journal || ref.publisher,
-          publisher: ref.publisher,
-          year: ref.year ? Number(ref.year) : undefined,
-          volume: ref.volume,
-          issue: ref.issue,
-          pages: ref.pages,
+          authors: ref.authors?.length ? ref.authors : metadata.authors,
+          author: ref.authors?.[0] || metadata.author,
+          keywords: ref.keywords,
+          journal: ref.journal || ref.publicationTitle || ref.publisher,
+          publicationTitle:
+            ref.publicationTitle || ref.journal || ref.publisher,
           doi: ref.doi || (detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined),
           url: ref.url || (ref.doi ? `https://doi.org/${ref.doi}` : undefined),
-          abstract: ref.abstract,
           type: ref.itemType || ref.type || 'journalArticle',
           itemType: ref.itemType || ref.type || 'journalArticle',
           crossrefEnriched: true,
           extraFields: {
+            ...(metadata.extraFields || {}),
+            ...(ref.extraFields || {}),
             provider: res.provider,
             queryType: res.queryType,
           },
         };
       }
-    } catch {
-      // Fallback to direct DOI lookup if DOI was detected
+    } catch (error) {
+      // Provider misses (especially CrossRef 404) must not abort file upload.
+      // Try the direct DOI path only when a DOI was actually detected, and
+      // always degrade to filename/identifier metadata if it also misses.
       if (detectedDoi) {
-        try {
-          const enriched = await enrichPaperWithCrossref(detectedDoi);
-          return { ...metadata, ...enriched };
-        } catch {
-          // ignore
-        }
+        const enriched = await enrichPaperWithCrossref(detectedDoi).catch(
+          () => ({}),
+        );
+        return { ...metadata, ...enriched };
       }
     }
   }
@@ -953,8 +829,9 @@ export function formatApaCitation(paper: Partial<Paper>): string {
   const yearStr = paper.year ? `(${paper.year})` : '(n.d.)';
   const titleStr = paper.title ? `${paper.title.replace(/\.$/, '')}.` : 'Untitled.';
   const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
-  let venueStr = venue ? `_${venue}_` : '';
-  if (paper.volume) venueStr += `, _${paper.volume}_`;
+  // Plain-text APA: italics are conveyed by surrounding spaces, not markdown underscores
+  let venueStr = venue ? `${venue}` : '';
+  if (paper.volume) venueStr += `, ${paper.volume}`;
   if (paper.issue) venueStr += `(${paper.issue})`;
   if (paper.pages) venueStr += `, ${paper.pages}`;
   if (venueStr) venueStr += '.';
@@ -983,7 +860,8 @@ export function formatIeeeCitation(paper: Partial<Paper>): string {
 
   const titleStr = paper.title ? `"${paper.title.replace(/\.$/, '')},"` : '"Untitled,"';
   const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
-  const venueStr = venue ? `in _${venue}_` : '';
+  // Plain-text IEEE: no markdown italic; format "in Journal Name"
+  const venueStr = venue ? `in ${venue}` : '';
   const volStr = paper.volume ? `vol. ${paper.volume}` : '';
   const yearStr = paper.year ? `${paper.year}` : '';
 
@@ -992,5 +870,3 @@ export function formatIeeeCitation(paper: Partial<Paper>): string {
   if (!res.endsWith('.')) res += '.';
   return res;
 }
-
-

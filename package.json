@@ -55,6 +55,7 @@
     "emoji-picker-react": "^4.19.1",
     "es-toolkit": "^1.51.0",
     "framer-motion": "^13.0.0",
+    "geist": "^1.7.2",
     "input-otp": "^1.4.2",
     "katex": "^0.18.3",
     "lucide-react": "^1.31.0",
@@ -108,7 +109,11 @@
   },
   "pnpm": {
     "overrides": {
-      "pdfjs-dist": "5.4.296"
+      "pdfjs-dist": "5.4.296",
+      "dompurify": "^3.4.13",
+      "vite": "^7.3.5",
+      "@tiptap/core": "^3.30.4",
+      "esbuild": "^0.28.1"
     }
   }
 }

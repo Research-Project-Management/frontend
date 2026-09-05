@@ -48,7 +48,7 @@ import { EditorEventBus } from "@/features/editor/utils/editor.util";
 const FluxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 );
-import { CatalogItemService as PaperService } from '@/features/workspaces/library/services/catalog.service';
+import { CatalogItemService } from '@/features/workspaces/library/services/catalog.service';
 import { generateCitationKey } from '@/features/workspaces/library/utils/library.util';
 import Format from "./Format";
 
@@ -617,7 +617,7 @@ export default function Editor({ page }: EditorProps) {
         if (!wsId) return { suggestions: [] };
 
         try {
-          const res = await PaperService.getAll(wsId, { limit: 100 });
+          const res = await CatalogItemService.getAll(wsId, { limit: 100 });
           const papers: any[] = Array.isArray(res) ? res : (res as any)?.papers || [];
 
           const word = model.getWordUntilPosition(position);

@@ -18,5 +18,6 @@ export const createSticky = async (variables: {
   color?: string;
   position?: { x: number; y: number };
 }) => {
-  return apiPost(`/api/workspace/${variables.workspaceId}/stickies`, variables);
+  const { workspaceId, ...payload } = variables;
+  return apiPost(`/api/workspace/${workspaceId}/stickies`, payload);
 };

@@ -29,7 +29,8 @@ import type { CatalogItem, PaperAttachment } from '@/features/workspaces/library
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
-// Configure worker matching exact react-pdf bundled pdfjs-dist version
+// Use the application-hosted worker. Preview must remain available when a
+// browser blocks third-party scripts or the machine has no Internet access.
 if (
   typeof window !== 'undefined' &&
   pdfjs &&
@@ -51,7 +52,12 @@ interface PdfPagePreviewProps {
 }
 
 function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
-  const { blobUrl: pdfBlobUrl, isLoading: pdfLoading } = usePdf(paperUrl || null);
+  const {
+    blobUrl: pdfBlobUrl,
+    isLoading: pdfLoading,
+    error: pdfError,
+    retry: retryPdf,
+  } = usePdf(paperUrl || null);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);
@@ -78,7 +84,12 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
       onClick={onOpenReader}
       className="relative w-full rounded-md border border-border/60 bg-white dark:bg-zinc-950 overflow-hidden shadow-none flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
     >
-      {pdfBlobUrl ? (
+      {pdfLoading ? (
+        <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin text-foreground" />
+          <span className="text-xs font-medium">Loading document...</span>
+        </div>
+      ) : pdfBlobUrl ? (
         <Document
           file={pdfBlobUrl}
           onLoadSuccess={({ numPages: total }) => {
@@ -104,14 +115,19 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
             renderTextLayer={false}
           />
         </Document>
-      ) : pdfLoading ? (
-        <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin text-foreground" />
-          <span className="text-xs font-medium">Loading document...</span>
-        </div>
       ) : (
-        <div className="h-60 flex items-center justify-center text-xs text-muted-foreground">
-          <span>Preview unavailable</span>
+        <div className="h-60 flex flex-col items-center justify-center gap-2 px-4 text-center text-xs text-muted-foreground">
+          <span>{pdfError || 'Preview unavailable'}</span>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              retryPdf();
+            }}
+            className="h-7 px-2.5 rounded-md border border-border/60 text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+          >
+            Retry preview
+          </button>
         </div>
       )}
 
@@ -164,22 +180,6 @@ const PdfPagePreview = dynamic(
   }
 );
 
-interface FilesSectionProps {
-  paper: CatalogItem;
-  workspaceId?: string;
-  hideHeader?: boolean;
-  onAddAttachment?: () => void;
-  isUploading?: boolean;
-}
-
-function formatSize(bytes?: number): string {
-  if (!bytes) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/** Inline version history panel shown inside attachment dropdown */
 function AttachmentRevisions({
   workspaceId,
   attachmentId,
@@ -187,66 +187,66 @@ function AttachmentRevisions({
   workspaceId: string;
   attachmentId: string;
 }) {
-  const { data, isLoading } = useAttachmentRevisions(workspaceId, attachmentId);
-  const revisions: any[] = (data as any)?.revisions ?? (Array.isArray(data) ? data : []);
+  const { data: revisionsData, isLoading } = useAttachmentRevisions(workspaceId, attachmentId);
+  const revisions = Array.isArray(revisionsData) ? revisionsData : [];
 
   if (isLoading) {
     return (
-      <div className="px-2 py-1.5 text-[10px] text-muted-foreground animate-pulse">
-        Loading versions...
+      <div className="p-2 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+        <Loader2 className="size-3 animate-spin text-foreground" />
+        <span>Loading history...</span>
       </div>
     );
   }
-  if (!revisions.length) {
-    return (
-      <div className="px-2 py-1.5 text-[10px] text-muted-foreground">
-        No version history
-      </div>
-    );
+
+  if (!revisions || revisions.length === 0) {
+    return null;
   }
+
   return (
-    <div className="px-2 py-1 space-y-0.5">
-      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
-        Versions ({revisions.length})
-      </p>
-      {revisions.map((rev: any, i: number) => (
-        <a
-          key={rev.id ?? i}
-          href={rev.fileUrl || rev.url || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-between text-[11px] text-foreground hover:underline py-0.5"
-        >
-          <span className="truncate max-w-[120px]">
-            v{revisions.length - i} — {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : 'Unknown date'}
-          </span>
-          <ExternalLink className="size-2.5 text-muted-foreground shrink-0 ml-1" />
-        </a>
-      ))}
+    <div className="p-2 space-y-1 text-xs">
+      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+        Revision History
+      </div>
+      <div className="space-y-1 max-h-32 overflow-y-auto">
+        {revisions.map((rev: any) => (
+          <div
+            key={rev.id || rev.version}
+            className="flex items-center justify-between p-1 rounded hover:bg-muted text-xs"
+          >
+            <span className="font-mono text-[11px]">v{rev.version}</span>
+            <span className="text-muted-foreground text-[10px]">
+              {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : ''}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
+interface AttachmentsSectionProps {
+  paper: CatalogItem;
+  workspaceId?: string;
+  onAddAttachment?: () => void;
+  isUploading?: boolean;
+  hideHeader?: boolean;
+}
+
 export default function AttachmentsSection({
   paper,
+  workspaceId,
   hideHeader = false,
-  onAddAttachment,
-  isUploading = false,
-}: FilesSectionProps) {
-  const router = useRouter();
+}: AttachmentsSectionProps) {
+  const router = RouterHookWrapper();
   const params = useParams();
-  const rawWorkspaceId = (params?.workspaceId as string) || paper.workspaceId || '';
+  const rawWorkspaceId = (workspaceId || (params as any)?.workspaceId || 'ws-default') as string;
 
+  const rawAttachments = paper.attachments || (paper as any).files || [];
   const paperUrl = getPaperFileUrl(paper);
 
-  const rawAttachments: PaperAttachment[] = Array.isArray(paper.attachments)
-    ? paper.attachments
-    : [];
-
   const otherAttachments = useMemo(() => {
-    return rawAttachments.filter((att: any) => {
-      const attUrl = att.fileUrl || att.url;
-      if (paperUrl && attUrl && attUrl === paperUrl) return false;
+    return rawAttachments.filter((att: PaperAttachment | any) => {
       if (att.attachmentType === 'primary_pdf' || att.type === 'primary_pdf') return false;
       if (paper.filename && (att.filename === paper.filename || att.name === paper.filename)) return false;
       return true;
@@ -283,7 +283,7 @@ export default function AttachmentsSection({
         </div>
       )}
 
-      {/* PDF Page Preview Card (Client-only with SSR disabled) */}
+      {/* PDF Page Preview Card */}
       {paperUrl ? (
         <PdfPagePreview
           paper={paper}
@@ -297,7 +297,7 @@ export default function AttachmentsSection({
 
         {/* Primary PDF Row */}
         {paperUrl ? (
-          <div className="flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60">
+          <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60">
             <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
               <div className="size-4 shrink-0 flex items-center justify-center">
                 <FileText className="size-4 text-foreground shrink-0" />
@@ -344,13 +344,13 @@ export default function AttachmentsSection({
           </div>
         ) : null}
 
-        {/* Other Attachments — with revision history */}
+        {/* Other Attachments */}
         {otherAttachments.map((att: any) => {
           const downloadUrl = att.fileUrl || att.url;
           return (
             <div
               key={att.id}
-              className="flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60"
+              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60"
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
                 <div className="size-4 shrink-0 flex items-center justify-center">
@@ -410,4 +410,15 @@ export default function AttachmentsSection({
       </div>
     </div>
   );
+}
+
+function RouterHookWrapper() {
+  return useRouter();
+}
+
+function formatSize(bytes?: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

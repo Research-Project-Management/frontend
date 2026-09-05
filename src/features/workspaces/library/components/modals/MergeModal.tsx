@@ -16,7 +16,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Files, Check, Loader2 } from 'lucide-react';
 import type { CatalogItem } from '../../types/library.types';
 
-interface MergeDialogProps {
+export interface MergeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   duplicates: CatalogItem[];
@@ -27,12 +27,14 @@ interface MergeDialogProps {
   ) => Promise<void>;
 }
 
-export default function MergeDialog({
+export type MergeDialogProps = MergeModalProps;
+
+export function MergeModal({
   open,
   onOpenChange,
   duplicates = [],
   onMerge,
-}: MergeDialogProps) {
+}: MergeModalProps) {
   const [selectedMasterId, setSelectedMasterId] = useState<string>(
     duplicates[0]?.id || '',
   );
@@ -150,5 +152,8 @@ export default function MergeDialog({
     </Dialog>
   );
 }
+
+export default MergeModal;
+export { MergeModal as MergeDialog };
 
 

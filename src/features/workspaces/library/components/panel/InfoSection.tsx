@@ -15,10 +15,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
-import { normalizeAuthors, cleanDoi, extractArxivId } from '@/features/workspaces/library/utils/library.util';
+import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId } from '@/features/workspaces/library/utils/library.util';
 import {
-  ALL_ITEM_TYPES_FLAT,
+  LIBRARY_ITEM_TYPES,
   getItemTypeDefinition,
+  mapRegistryItemTypes,
   ALL_CREATOR_TYPES,
   SchemaFieldDefinition,
   SchemaItemTypeDefinition,
@@ -29,14 +30,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { TypeConversionDialog } from '../modals/TypeConversionDialog';
-import { useItemTypeConversion } from '@/features/workspaces/library/hooks/library/use-type-conversion';
+import ConvertModal from '../modals/ConvertModal';
 import { useLibraryClipboard } from '@/features/workspaces/library/hooks/library/use-clipboard';
+import { useItemTypes } from '@/features/workspaces/library/hooks/library/use-items';
+import { useConversion } from '@/features/workspaces/library/hooks/library/use-conversion';
 
 interface InfoSectionProps {
   paper: CatalogItem;
   onUpdatePaper?: (data: Partial<CatalogItem>) => void;
 }
+
+/** Fields backed by first-class CatalogItem columns. All other registry fields
+ * are persisted through extraFields, which survives registry additions without
+ * another frontend allow-list change. */
+const DIRECT_METADATA_FIELDS = new Set([
+  'publisher', 'place', 'volume', 'issue', 'section', 'partNumber', 'partTitle',
+  'pages', 'series', 'seriesTitle', 'seriesText', 'issn', 'isbn', 'url', 'type',
+  'language', 'shortTitle', 'archive', 'archiveLocation', 'callNumber',
+  'publicationDate', 'libraryCatalog',
+]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
 function isValidValue(val?: any): boolean {
@@ -101,7 +113,8 @@ export interface CreatorEntry {
 function parseCreators(paper: CatalogItem): CreatorEntry[] {
   const rawCreators = (paper as any).creators || (paper as any).contributors;
   if (Array.isArray(rawCreators) && rawCreators.length > 0) {
-    const parsed = rawCreators.map((c: any) => {
+    const parsed: CreatorEntry[] = [];
+    for (const c of rawCreators) {
       const creatorType = c.creatorType || 'author';
       let name = cleanValue(c.name || c.fullName);
       const firstName = cleanValue(c.firstName || c.given);
@@ -109,13 +122,24 @@ function parseCreators(paper: CatalogItem): CreatorEntry[] {
       if (!name && (firstName || lastName)) {
         name = [lastName, firstName].filter(Boolean).join(', ');
       }
-      return {
-        creatorType,
-        name: name || '',
-        firstName,
-        lastName,
-      };
-    });
+
+      if (name) {
+        const parts = splitAuthorString(name);
+        for (const p of parts) {
+          parsed.push({
+            creatorType,
+            name: p,
+          });
+        }
+      } else {
+        parsed.push({
+          creatorType,
+          name: '',
+          firstName,
+          lastName,
+        });
+      }
+    }
     if (parsed.length > 0) return parsed;
   }
 
@@ -273,15 +297,30 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   const [targetConversionType, setTargetConversionType] = useState<string>('');
   const [isCheckingType, setIsCheckingType] = useState(false);
   const authorInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const MAX_COLLAPSED_AUTHORS = 4;
+  const MAX_COLLAPSED_AUTHORS = 5;
 
   const currentItemType = paper.itemType || 'journalArticle';
   const workspaceId = (paper as any).workspaceId || '';
 
-  const { previewAsync, convertAsync } = useItemTypeConversion(workspaceId);
+  const { previewAsync, convertAsync } = useConversion(workspaceId);
+  const { types: registryItemTypes } = useItemTypes(workspaceId || undefined);
+  const itemTypeDefinitions = useMemo(() => {
+    const serverDefinitions = mapRegistryItemTypes(registryItemTypes);
+    return serverDefinitions.length > 0
+      ? serverDefinitions
+      : Object.values(LIBRARY_ITEM_TYPES);
+  }, [registryItemTypes]);
+  const selectableItemTypes = useMemo(
+    () => itemTypeDefinitions
+      .map(({ itemType, label }) => ({ value: itemType, label }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [itemTypeDefinitions],
+  );
   const typeDefinition: SchemaItemTypeDefinition = useMemo(
-    () => getItemTypeDefinition(currentItemType) || getItemTypeDefinition('journalArticle')!,
-    [currentItemType],
+    () => itemTypeDefinitions.find((type) => type.itemType === currentItemType)
+      || getItemTypeDefinition(currentItemType)
+      || getItemTypeDefinition('journalArticle')!,
+    [currentItemType, itemTypeDefinitions],
   );
 
   const creatorTypesList = useMemo(() => {
@@ -311,7 +350,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   }, [paper, paperId, paperCreators, paperContributors, paperAuthors]);
 
   const visibleCreators = useMemo(() => {
-    if (isAuthorsExpanded || localCreators.length <= MAX_COLLAPSED_AUTHORS + 1) {
+    if (isAuthorsExpanded || localCreators.length <= MAX_COLLAPSED_AUTHORS) {
       return localCreators;
     }
     return localCreators.slice(0, MAX_COLLAPSED_AUTHORS);
@@ -426,7 +465,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.place);
       }
       if (fieldKey === 'genre') {
-        return cleanValue(p.genre || p.type);
+        return cleanValue(p.genre || p.type || p.itemType);
       }
       if (fieldKey === 'issn') {
         return cleanValue(p.issn);
@@ -441,10 +480,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.callNumber);
       }
       if (fieldKey === 'archive') {
-        return cleanValue(p.archive);
+        return cleanValue(p.archive || p.extraFields?.repository);
       }
       if (fieldKey === 'archiveLocation') {
-        return cleanValue(p.archiveLocation);
+        return cleanValue(p.archiveLocation || p.extraFields?.archiveId);
       }
       if (fieldKey === 'libraryCatalog') {
         return cleanValue(p.libraryCatalog);
@@ -462,7 +501,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         return cleanValue(p.conferenceName || p.proceedingsTitle || p.publicationTitle || p.extraFields?.conferenceName);
       }
       if (fieldKey === 'university' || fieldKey === 'institution') {
-        return cleanValue(p.university || p.institution || p.publisher || p.extraFields?.university || p.extraFields?.institution);
+        return cleanValue(p.university || p.institution || p.extraFields?.university || p.extraFields?.institution);
       }
       if (fieldKey === 'websiteTitle') {
         return cleanValue(p.websiteTitle || p.publicationTitle || p.extraFields?.websiteTitle);
@@ -496,7 +535,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       handleFieldChange('journalAbbr', val || undefined);
       handleFieldChange('journalAbbreviation', val || undefined);
     } else if (key === 'accessDate' || key === 'accessedAt') {
-      handleFieldChange('accessDate', val || undefined);
+      handleFieldChange('accessedAt', val || undefined);
     } else if (key === 'pmid' || key === 'PMID') {
       handleFieldChange('pmid', val || undefined);
     } else if (key === 'pmcid' || key === 'PMCID') {
@@ -514,8 +553,15 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       handleFieldChange('abstractNote', val || undefined);
     } else if (key === 'citationKey' || key === 'citeKey') {
       handleFieldChange('citationKey', val || undefined);
+    } else if (DIRECT_METADATA_FIELDS.has(key)) {
+      // Keep an empty string for first-class columns so clearing a field is a
+      // real update rather than an omitted PATCH property.
+      handleFieldChange(key, val);
     } else {
-      handleFieldChange(key, val || undefined);
+      // Do not send arbitrary registry keys as top-level DTO properties. The
+      // backend stores these in its JSON metadata bag and projects them back to
+      // the item, so new registry fields work without a client release.
+      handleFieldChange('extraFields', { [key]: val || null });
     }
   };
 
@@ -552,13 +598,13 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     <Loader2 className="size-3 animate-spin text-foreground" />
                   ) : null}
                   <span className="truncate">
-                    {ALL_ITEM_TYPES_FLAT.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
+                    {selectableItemTypes.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
                   </span>
                 </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="max-h-[360px] min-w-[210px] overflow-y-auto p-1 rounded-md shadow-none border border-border/60 bg-popover text-popover-foreground space-y-0.5">
-              {ALL_ITEM_TYPES_FLAT.map((t) => {
+              {selectableItemTypes.map((t) => {
                 const isSelected = t.value === currentItemType;
                 return (
                   <DropdownMenuItem
@@ -609,11 +655,6 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
               })}
             </DropdownMenuContent>
           </DropdownMenu>
-          {paper.provenance?.isOpenAccess && (
-            <span className="text-[11px] font-mono shrink-0 font-medium select-none px-1.5 py-0.5 rounded-md bg-muted/70 text-foreground border border-border/60">
-              Open Access
-            </span>
-          )}
         </div>
       </div>
 
@@ -708,8 +749,22 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     value={creator.name}
                     aria-label={`Creator ${idx + 1}`}
                     onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes(';') || /\s+and\s+/i.test(val) || val.includes('\n')) {
+                        const parts = splitAuthorString(val);
+                        if (parts.length > 1) {
+                          const updated = [...localCreators];
+                          const newEntries = parts.map((p) => ({
+                            creatorType: updated[idx]?.creatorType || 'author',
+                            name: p,
+                          }));
+                          updated.splice(idx, 1, ...newEntries);
+                          setLocalCreators(updated);
+                          return;
+                        }
+                      }
                       const updated = [...localCreators];
-                      updated[idx] = { ...updated[idx], name: e.target.value };
+                      updated[idx] = { ...updated[idx], name: val };
                       setLocalCreators(updated);
                     }}
                     onBlur={() => {
@@ -751,24 +806,24 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
               </div>
             ))}
 
-            {localCreators.length > MAX_COLLAPSED_AUTHORS + 1 && (
+            {localCreators.length > MAX_COLLAPSED_AUTHORS && (
               <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center pt-0.5">
                 <span />
                 <button
                   type="button"
                   onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
-                  className="flex items-center gap-1 text-[12px] text-foreground font-normal cursor-pointer py-0.5 hover:underline focus-visible:outline-none rounded-md"
+                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground font-medium cursor-pointer py-1 px-1 -ml-1 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline-none rounded-md w-fit transition-colors select-none"
                   aria-expanded={isAuthorsExpanded}
                 >
                   {isAuthorsExpanded ? (
                     <>
-                      <ChevronUp className="size-3 text-foreground" aria-hidden="true" />
+                      <ChevronUp className="size-3.5" aria-hidden="true" />
                       <span>Show less</span>
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="size-3 text-foreground" aria-hidden="true" />
-                      <span>Show more</span>
+                      <ChevronDown className="size-3.5" aria-hidden="true" />
+                      <span>Show {localCreators.length - MAX_COLLAPSED_AUTHORS} more authors</span>
                     </>
                   )}
                 </button>
@@ -972,7 +1027,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       )}
 
       {/* Item Type Conversion Modal */}
-      <TypeConversionDialog
+      <ConvertModal
         open={isConversionDialogOpen}
         onOpenChange={setIsConversionDialogOpen}
         paper={paper}
@@ -984,8 +1039,3 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     </div>
   );
 }
-
-
-
-
-

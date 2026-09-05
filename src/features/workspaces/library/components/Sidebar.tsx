@@ -34,7 +34,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import CreateCollectionModal from './modals/CreateCollectionModal';
-import MoveToTrashModal, { type MoveToTrashTarget } from './modals/MoveToTrashModal';
+import TrashModal, { type MoveToTrashTarget } from './modals/TrashModal';
 import type { Collection, CollectionInput } from '@/features/workspaces/library/types/library.types';
 
 // ── Tree Builder ──────────────────────────────────────────────────────────────
@@ -161,12 +161,7 @@ function CollectionNode({
           </div>
         ) : (
           <div
-            className={cn(
-              'group/node relative z-10 flex h-9.5 w-full items-center gap-2.5 rounded-md pr-2 transition-colors cursor-pointer select-none text-sm text-foreground',
-              isActive
-                ? 'font-semibold'
-                : 'hover:bg-accent/70 font-medium'
-            )}
+            className="group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-2 transition-colors cursor-pointer select-none text-dense font-medium text-foreground tracking-tight hover:bg-accent/60"
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             {hasChildren ? (
@@ -188,20 +183,15 @@ function CollectionNode({
 
             <Link
               href={to}
-              className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none"
+              className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none text-foreground"
             >
               {hasChildren && effectiveIsOpen ? (
-                <FolderOpen className="size-4 shrink-0 text-foreground transition-colors" />
+                <FolderOpen className="size-4 shrink-0 text-foreground" />
               ) : (
-                <Folder className="size-4 shrink-0 text-foreground transition-colors" />
+                <Folder className="size-4 shrink-0 text-foreground" />
               )}
 
-              <span
-                className={cn(
-                  'flex-1 min-w-0 truncate text-sm text-foreground',
-                  isActive ? 'font-semibold' : 'font-medium'
-                )}
-              >
+              <span className="flex-1 min-w-0 truncate text-dense font-medium text-foreground tracking-tight">
                 {node.name}
               </span>
             </Link>
@@ -638,31 +628,46 @@ export default function LibrarySideBar() {
 
             <div className="flex items-center gap-0.5 shrink-0">
               {/* Search collections toggle button */}
-              <button
-                onClick={expandSearch}
-                className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
-                aria-label="Search collections"
-              >
-                <Search className="size-4 text-foreground shrink-0" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={expandSearch}
+                    className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
+                    aria-label="Search collections"
+                  >
+                    <Search className="size-4 text-foreground shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Search collections</TooltipContent>
+              </Tooltip>
 
               {/* New collection button */}
-              <button
-                onClick={openCreateRoot}
-                className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
-                aria-label="New collection"
-              >
-                <FolderPlus className="size-4 text-foreground shrink-0" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={openCreateRoot}
+                    className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
+                    aria-label="New collection"
+                  >
+                    <FolderPlus className="size-4 text-foreground shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">New collection</TooltipContent>
+              </Tooltip>
 
               {/* Toggle / Collapse Sidebar Button */}
-              <button
-                onClick={toggle}
-                aria-label="Toggle sidebar"
-                className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
-              >
-                <PanelLeft className="size-4 text-foreground shrink-0" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={toggle}
+                    aria-label="Toggle sidebar"
+                    className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
+                  >
+                    <PanelLeft className="size-4 text-foreground shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Collapse sidebar</TooltipContent>
+              </Tooltip>
             </div>
           </>
         )}
@@ -678,10 +683,7 @@ export default function LibrarySideBar() {
           <div className="relative group/root flex items-center w-full">
             <Link
               href={basePath}
-              className={cn(
-                'group/item relative flex h-9.5 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-foreground transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pr-8',
-                isLibraryActive ? 'font-semibold' : 'font-medium'
-              )}
+              className="group/item relative flex h-8 w-full items-center gap-2 rounded-md px-2.5 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pr-8"
             >
               {isLibraryActive && (
                 <motion.div
@@ -692,7 +694,7 @@ export default function LibrarySideBar() {
                 />
               )}
               <Library className="relative z-10 size-4 shrink-0 text-foreground" />
-              <span className={cn('relative z-10 min-w-0 truncate flex-1 text-foreground', isLibraryActive ? 'font-semibold' : 'font-medium')}>
+              <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
                 My Library
               </span>
             </Link>
@@ -721,10 +723,7 @@ export default function LibrarySideBar() {
               {/* 1. Recently Read (First item in My Library) */}
               <Link
                 href={`${basePath}/recently-read`}
-                className={cn(
-                  'group/item relative flex h-9.5 items-center gap-2.5 rounded-md pr-2 text-sm text-foreground transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6',
-                  isRecentReadActive ? 'font-semibold' : 'font-medium'
-                )}
+                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
               >
                 {isRecentReadActive && (
                   <motion.div
@@ -735,7 +734,7 @@ export default function LibrarySideBar() {
                   />
                 )}
                 <History className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className={cn('relative z-10 min-w-0 truncate flex-1 text-foreground', isRecentReadActive ? 'font-semibold' : 'font-medium')}>
+                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
                   Recently Read
                 </span>
               </Link>
@@ -760,10 +759,7 @@ export default function LibrarySideBar() {
               {/* 2. Duplicate Items */}
               <Link
                 href={`${basePath}/duplicates`}
-                className={cn(
-                  'group/item relative flex h-9.5 items-center gap-2.5 rounded-md pr-2 text-sm text-foreground transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6',
-                  isDuplicatesActive ? 'font-semibold' : 'font-medium'
-                )}
+                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
               >
                 {isDuplicatesActive && (
                   <motion.div
@@ -774,7 +770,7 @@ export default function LibrarySideBar() {
                   />
                 )}
                 <Files className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className={cn('relative z-10 min-w-0 truncate flex-1 text-foreground', isDuplicatesActive ? 'font-semibold' : 'font-medium')}>
+                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
                   Duplicate Items
                 </span>
               </Link>
@@ -782,10 +778,7 @@ export default function LibrarySideBar() {
               {/* 3. Unfiled Items */}
               <Link
                 href={`${basePath}/unfiled`}
-                className={cn(
-                  'group/item relative flex h-9.5 items-center gap-2.5 rounded-md pr-2 text-sm text-foreground transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6',
-                  isUnfiledActive ? 'font-semibold' : 'font-medium'
-                )}
+                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
               >
                 {isUnfiledActive && (
                   <motion.div
@@ -796,7 +789,7 @@ export default function LibrarySideBar() {
                   />
                 )}
                 <Inbox className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className={cn('relative z-10 min-w-0 truncate flex-1 text-foreground', isUnfiledActive ? 'font-semibold' : 'font-medium')}>
+                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
                   Unfiled Items
                 </span>
               </Link>
@@ -804,10 +797,7 @@ export default function LibrarySideBar() {
               {/* 4. Trash */}
               <Link
                 href={`${basePath}/trash`}
-                className={cn(
-                  'group/item relative flex h-9.5 items-center gap-2.5 rounded-md pr-2 text-sm text-foreground transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6',
-                  isTrashActive ? 'font-semibold' : 'font-medium'
-                )}
+                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
               >
                 {isTrashActive && (
                   <motion.div
@@ -818,7 +808,7 @@ export default function LibrarySideBar() {
                   />
                 )}
                 <Trash2 className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className={cn('relative z-10 min-w-0 truncate flex-1 text-foreground', isTrashActive ? 'font-semibold' : 'font-medium')}>
+                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
                   Trash
                 </span>
               </Link>
@@ -867,7 +857,7 @@ export default function LibrarySideBar() {
         defaultParentId={createParentId}
       />
 
-      <MoveToTrashModal
+      <TrashModal
         open={isTrashOpen}
         onOpenChange={setIsTrashOpen}
         target={trashTarget}

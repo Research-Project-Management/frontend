@@ -78,18 +78,11 @@ export const NoteService = {
     expectedVersion: number | undefined,
     dto: UpdateNoteDTO,
   ): Promise<Note> => {
-    const headers: Record<string, string> = {};
-    if (expectedVersion !== undefined) {
-      headers['If-Match'] = String(expectedVersion);
-    }
     const raw = await apiPatch<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
       {
         ...dto,
         expectedVersion,
-      },
-      {
-        headers,
       },
     );
 
@@ -108,11 +101,11 @@ export const NoteService = {
     id: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
+    const versionQuery = expectedVersion !== undefined
+      ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
+      : '';
     const raw = await apiDelete<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}`,
-      {
-        headers: expectedVersion ? { 'If-Match': String(expectedVersion) } : undefined,
-      },
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/notes/${encodeURIComponent(id)}${versionQuery}`,
     );
 
     if (raw && typeof raw === 'object' && 'deleted' in raw) {

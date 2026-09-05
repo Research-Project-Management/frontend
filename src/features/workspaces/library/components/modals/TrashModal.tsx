@@ -22,7 +22,7 @@ export interface MoveToTrashTarget {
   items?: Array<{ id: string; title: string }>;
 }
 
-export interface MoveToTrashModalProps {
+export interface TrashModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   target: MoveToTrashTarget | null;
@@ -31,14 +31,16 @@ export interface MoveToTrashModalProps {
   buttonVariant?: 'blue' | 'red' | 'primary' | 'destructive';
 }
 
-export default function MoveToTrashModal({
+export type MoveToTrashModalProps = TrashModalProps;
+
+export function TrashModal({
   open,
   onOpenChange,
   target,
   onConfirm,
   isPending = false,
   buttonVariant = 'red',
-}: MoveToTrashModalProps) {
+}: TrashModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!target) return null;
@@ -143,4 +145,7 @@ export default function MoveToTrashModal({
     </Dialog>
   );
 }
+
+export default TrashModal;
+export { TrashModal as MoveToTrashModal };
 

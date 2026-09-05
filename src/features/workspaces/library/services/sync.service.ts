@@ -12,13 +12,19 @@ export const SyncService = {
    */
   pull: (workspaceId: string, sinceSeq: bigint = 0n, limit = 100) =>
     apiGet<{
-      items: Array<{
+      changes: Array<{
         entityType: string;
         entityId: string;
         action: 'create' | 'update' | 'delete';
         version: number;
         seq: string;
         data?: any;
+      }>;
+      tombstones: Array<{
+        entityType: string;
+        entityId: string;
+        seq: string | null;
+        deletedAt: string;
       }>;
       latestSeq: string;
       hasMore: boolean;
@@ -40,7 +46,7 @@ export const SyncService = {
       data?: any;
     }>,
   ) =>
-    apiPost<{ applied: number }>(
+    apiPost<{ applied: Array<{ entityId: string; action: string; seq?: string }> }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/sync/push`,
       { mutations },
     ),

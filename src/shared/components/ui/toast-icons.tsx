@@ -16,6 +16,11 @@ export interface ToastIconProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: number;
 }
 
+export interface ToastSvgProps extends React.SVGProps<SVGSVGElement> {
+  className?: string;
+  size?: number;
+}
+
 /**
  * Plane.so Success Icon (Circular green badge with crisp white checkmark)
  */
@@ -123,7 +128,7 @@ export function ToastInfoIcon({ className, size = 16, ...props }: ToastIconProps
 /**
  * Plane.so Circular Loading Spinner (Neutral zinc circular bar spinner)
  */
-export function ToastLoadingIcon({ className, size = 16, ...props }: ToastIconProps) {
+export function ToastLoadingIcon({ className, size = 16, ...props }: ToastSvgProps) {
   return (
     <svg
       className={`size-4 animate-spin text-zinc-500 dark:text-zinc-400 shrink-0 ${className || ''}`}
@@ -144,7 +149,7 @@ export function ToastLoadingIcon({ className, size = 16, ...props }: ToastIconPr
 /**
  * Plane.so Close Icon (Subtle neutral X icon with precise hover transition)
  */
-export function ToastCloseIcon({ className, size = 14, ...props }: ToastIconProps) {
+export function ToastCloseIcon({ className, size = 14, ...props }: ToastSvgProps) {
   return (
     <svg
       className={`size-3.5 stroke-[1.8] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 ${className || ''}`}

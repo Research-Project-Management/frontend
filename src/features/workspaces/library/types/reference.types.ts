@@ -1,4 +1,5 @@
 export type ReferenceData = {
+  extraFields: {};
   title: string;
   authors: string[];
   editors?: string[];

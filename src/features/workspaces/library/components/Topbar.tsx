@@ -24,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 export interface BreadcrumbItem {
   id?: string;
@@ -125,13 +126,18 @@ export default function Topbar({
       {/* Left Section: Title or Breadcrumbs */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
         {!isOpen && (
-          <button
-            onClick={toggle}
-            aria-label="Expand sidebar"
-            className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none mr-0.5 shrink-0"
-          >
-            <PanelLeft className="size-4 shrink-0 text-foreground" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggle}
+                aria-label="Expand sidebar"
+                className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none mr-0.5 shrink-0"
+              >
+                <PanelLeft className="size-4 shrink-0 text-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Expand sidebar</TooltipContent>
+          </Tooltip>
         )}
 
         {breadcrumbs && breadcrumbs.length > 0 ? (

@@ -14,16 +14,27 @@ export * from '../schemas/ingestion.schema';
 
 export const IngestionService = {
   /**
-   * Canonical Unified Ingestion endpoint (/api/v1/workspaces/:workspaceId/library/ingestion)
+   * Submits work to the durable ingestion pipeline and returns immediately.
+   * Long-running provider and PDF work is observed through the run-status API.
    */
   ingest: async (workspaceId: string, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
     const validatedPayload = UnifiedIngestionPayloadSchema.parse(payload);
+    const submission = toSubmission(validatedPayload);
     const res = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion`,
-      validatedPayload,
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
+      submission,
+      { timeout: 5000 },
     );
-    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-    return UnifiedIngestionResponseSchema.parse(enveloped);
+    const accepted = res && typeof res === 'object' && 'data' in res ? res.data : res;
+    return UnifiedIngestionResponseSchema.parse({
+      success: true,
+      data: {
+        runId: accepted.runId,
+        status: accepted.status,
+        itemId: accepted.existingItemId,
+        deduplicated: accepted.deduplicated,
+      },
+    });
   },
 
   /**
@@ -71,6 +82,8 @@ export const IngestionService = {
     payload: {
       kind: 'IDENTIFIER' | 'RECORD' | 'URL' | 'FILE' | 'CONNECTOR';
       identifierType?: 'DOI' | 'ARXIV' | 'PMID' | 'ISBN';
+      value?: string;
+      /** @deprecated Use value; retained for callers during migration. */
       identifierValue?: string;
       rawRecord?: string;
       recordFormat?: 'BIBTEX' | 'RIS';
@@ -81,6 +94,8 @@ export const IngestionService = {
       idempotencyKey?: string;
     },
   ) => {
+    const { identifierValue, value, ...rest } = payload;
+    const resolvedValue = value ?? identifierValue;
     return apiPost<{
       success: boolean;
       data: {
@@ -93,7 +108,11 @@ export const IngestionService = {
       };
     }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
-      payload,
+      {
+        ...rest,
+        value: resolvedValue,
+        identifierValue: resolvedValue,
+      },
     );
   },
 
@@ -125,6 +144,53 @@ export const IngestionService = {
     return IngestionRunSnapshotResponseSchema.parse(enveloped);
   },
 };
+
+function toSubmission(payload: UnifiedIngestionPayload) {
+  const common = {
+    collectionIds: payload.collectionId ? [payload.collectionId] : undefined,
+    overrides: 'overrides' in payload ? payload.overrides : undefined,
+    idempotencyKey: payload.idempotencyKey,
+  };
+
+  switch (payload.source) {
+    case 'doi':
+      return {
+        ...common,
+        kind: 'IDENTIFIER' as const,
+        identifierType: 'DOI' as const,
+        value: payload.doi,
+      };
+    case 'bibtex':
+      return {
+        ...common,
+        kind: 'RECORD' as const,
+        format: 'BIBTEX' as const,
+        content: payload.content || payload.bibtex || '',
+      };
+    case 'url':
+      return {
+        ...common,
+        kind: 'URL' as const,
+        url: payload.url,
+        previewToken: payload.previewToken,
+      };
+    case 'pdf':
+      return {
+        ...common,
+        kind: 'FILE' as const,
+        fileId: payload.fileId,
+        filename: payload.filename,
+      };
+    case 'zotero':
+      return {
+        ...common,
+        kind: 'CONNECTOR' as const,
+        connectionId: payload.connectionId,
+        externalObjectId: payload.externalItemKey,
+        externalVersion: '1',
+      };
+  }
+}
 
 // Named re-exports for ergonomic use in hooks
 export const ingestUnified = IngestionService.ingest;

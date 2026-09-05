@@ -108,7 +108,7 @@ function buildUrl(path: string, params?: RequestOptions['params']): string {
 
 // ─── 5. Core Fetch Implementation ─────────────────────────────────────────────
 
-async function rawFetch(
+export async function rawFetch(
   path: string,
   method: string,
   body?: unknown,

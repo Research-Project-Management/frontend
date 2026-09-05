@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { FileText, Plus, X, ExternalLink, Loader2 } from 'lucide-react';
-import { useRelatedPapers, useLinkPapers, useUnlinkPapers } from '@/features/workspaces/library/hooks/library/use-library';
-import { useLibraryPapers } from '@/features/workspaces/library/hooks/library/use-items';
+import { useRelations } from '@/features/workspaces/library/hooks/library/use-relations';
+import { useViewItems } from '@/features/workspaces/library/hooks/library/use-items';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
-import type { CatalogItem, RelatedPaperItem } from '@/features/workspaces/library/types/library.types';
+import type { CatalogItem, RelatedItem } from '@/features/workspaces/library/types/library.types';
 import { cn } from '@/shared/lib/utils';
 
 interface RelatedSectionProps {
@@ -29,11 +29,8 @@ export default function RelatedSection({
   onAddOpenChange,
 }: RelatedSectionProps) {
   const targetWsId = workspaceId || paper.workspaceId || '';
-  const { data: relatedData, isLoading } = useRelatedPapers(targetWsId, paper.id || '');
-  const { data: allPapersData } = useLibraryPapers(targetWsId);
-
-  const linkMutation = useLinkPapers(targetWsId, paper.id || '');
-  const unlinkMutation = useUnlinkPapers(targetWsId, paper.id || '');
+  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(targetWsId, paper.id || '');
+  const { data: allItemsRes } = useViewItems(targetWsId, 'all');
 
   const [internalAddOpen, setInternalAddOpen] = useState(false);
   const isModalOpen = isAddOpen !== undefined ? isAddOpen : internalAddOpen;
@@ -48,8 +45,8 @@ export default function RelatedSection({
   const [selectedTargetId, setSelectedTargetId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const relatedList: RelatedPaperItem[] = relatedData?.relatedPapers || [];
-  const availableItems = (allPapersData?.papers || []).filter(
+  const relatedList: RelatedItem[] = relatedItems;
+  const availableItems = (allItemsRes?.items || []).filter(
     (targetItem: CatalogItem) =>
       targetItem.id !== paper.id &&
       !relatedList.some((rel) => rel.id === targetItem.id) &&
@@ -60,14 +57,14 @@ export default function RelatedSection({
 
   const handleLink = async () => {
     if (!selectedTargetId) return;
-    await linkMutation.mutateAsync({ targetPaperId: selectedTargetId, relationType: 'related' });
+    await link({ targetItemId: selectedTargetId, relationType: 'related' });
     setSelectedTargetId('');
     setSearchQuery('');
     setModalOpen(false);
   };
 
   const handleUnlink = async (targetId: string) => {
-    await unlinkMutation.mutateAsync(targetId);
+    await unlink({ targetItemId: targetId });
   };
 
   if (!isLoading && relatedList.length === 0) {
@@ -99,7 +96,7 @@ export default function RelatedSection({
           {relatedList.map((item) => (
             <div
               key={item.id}
-              className="p-2.5 hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-between gap-2.5 group cursor-pointer"
+              className="px-2 py-1.5 hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-between gap-2.5 group cursor-pointer"
               onClick={() => onSelectPaper?.(item.id)}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -217,11 +214,11 @@ export default function RelatedSection({
               <Button
                 size="sm"
                 variant="default"
-                disabled={!selectedTargetId || linkMutation.isPending}
+                disabled={!selectedTargetId || isLinking}
                 onClick={handleLink}
                 className="h-8 px-4 text-xs cursor-pointer font-medium rounded-md"
               >
-                {linkMutation.isPending ? 'Adding...' : 'Confirm'}
+                {isLinking ? 'Adding...' : 'Confirm'}
               </Button>
             </div>
           </div>

@@ -3,11 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
+  AttachmentService,
   AttachmentsService,
   type AttachmentDto,
-} from '../../services/attachments.service';
+} from '../../services/attachment.service';
 import { CatalogItemService } from '../../services/catalog.service';
-import type { PaperAttachment } from '../../types/library.types';
+import type { ItemAttachment, PaperAttachment } from '../../types/library.types';
 
 // ── Query Keys ────────────────────────────────────────────────────────────────
 export const attachmentKeys = {

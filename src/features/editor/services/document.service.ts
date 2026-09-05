@@ -37,10 +37,9 @@ export const documentService = {
 
   deletePage: (pageId: string) => apiDelete<void>(`/api/pages/${pageId}`),
 
-  updateTitle: async (pageId: string, title: string, oldTitle?: string) => {
+  updateTitle: async (pageId: string, title: string, _oldTitle?: string) => {
     const res = await apiPut<{ page: Page }>(`/api/pages/${pageId}`, {
       title,
-      _oldTitle: oldTitle,
     });
     return res.page;
   },

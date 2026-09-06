@@ -33,7 +33,7 @@ export const workItemKeys = {
   cycles: (projectId: string) => ['cycles', projectId] as const,
   comments: (taskId: string) => ['task-comments', taskId] as const,
   activity: (taskId: string) => ['task-activity', taskId] as const,
-  labels: (wsId: string, type?: string, projId?: string) => ['labels', wsId, type, projId] as const,
+  labels: (workspaceId: string, type?: string, projectId?: string) => ['labels', workspaceId, type, projectId] as const,
 };
 
 export const taskKeys = workItemKeys;
@@ -408,10 +408,10 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
 
   const remove = useCallback(
     async (labelId?: string) => {
-      const targetId = labelId || editId;
-      if (!targetId) return;
-      await deleteLabelMutateAsync(targetId);
-      if (editId === targetId) {
+      const targetLabelId = labelId || editId;
+      if (!targetLabelId) return;
+      await deleteLabelMutateAsync(targetLabelId);
+      if (editId === targetLabelId) {
         setView('list');
         setName('');
         setEditId(null);

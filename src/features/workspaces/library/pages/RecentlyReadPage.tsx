@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,8 +33,8 @@ import InspectorPanel from '../components/Panel';
 import AddLinkModal from '../components/modals/AddLinkModal';
 import CreateCollectionModal from '../components/modals/CreateCollectionModal';
 import BatchBar from '../components/table/BatchBar';
-import { useLibrary } from '../hooks/library/use-library';
-import { useViewItems, useItemTable, type SortField } from '../hooks/library/use-items';
+import { useLibrary } from '../hooks/use-library';
+import { useViewItems, useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
 import { cn } from '@/shared/lib/utils';
 import type { CatalogItem } from '../types/library.types';

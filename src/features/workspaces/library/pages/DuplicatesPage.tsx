@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -36,9 +36,9 @@ import AddLinkModal from '../components/modals/AddLinkModal';
 import CreateCollectionModal from '../components/modals/CreateCollectionModal';
 import MergeModal from '../components/modals/MergeModal';
 import BatchBar from '../components/table/BatchBar';
-import { useLibrary } from '../hooks/library/use-library';
-import { useDuplicateGroups, useMergePapers } from '../hooks/library/use-curation';
-import { useItemTable, type SortField } from '../hooks/library/use-items';
+import { useLibrary } from '../hooks/use-library';
+import { useDuplicateGroups, useMergePapers } from '../hooks/use-curation';
+import { useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
 import { cn } from '@/shared/lib/utils';
 import type { CatalogItem } from '../types/library.types';
@@ -434,8 +434,8 @@ export default function DuplicatesPage() {
             selectedItems={sortedItems.filter((i) => selectedIds.has(i.id))}
             collections={collections}
             onClearSelection={clearSelection}
-            onBatchMove={handleBatchMoveItems ? (colId) => {
-              handleBatchMoveItems(Array.from(selectedIds), colId);
+            onBatchMove={handleBatchMoveItems ? (collectionId) => {
+              handleBatchMoveItems(Array.from(selectedIds), collectionId);
               clearSelection();
             } : undefined}
             onBatchDelete={handleDeleteItem ? () => {

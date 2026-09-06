@@ -1,5 +1,203 @@
 import type { CatalogItem } from '../types/library.types';
-import { filterItems } from './library.util';
+import { normalizeAuthors, cleanDoi } from './library.util';
+import { getDuplicateIds } from './duplicates.util';
+
+export { getDuplicateIds };
+
+export interface LibraryFilterOptions {
+  searchQuery?: string;
+  collectionId?: string | null;
+  selectedTags?: string[];
+  fromYear?: number;
+  toYear?: number;
+  itemType?: string;
+  hasAttachment?: boolean;
+}
+
+export interface SortOptions {
+  field: 'title' | 'year' | 'authors' | 'journal' | 'createdAt' | string;
+  direction: 'asc' | 'desc';
+}
+
+export function isPaperInCollection(paper: CatalogItem, collectionId: string): boolean {
+  if (!collectionId) return true;
+  if (paper.collectionId === collectionId) return true;
+
+  const p = paper as { collections?: Array<string | { id?: string }>; collectionIds?: string[] };
+  if (Array.isArray(p.collections)) {
+    return p.collections.some((c) => (typeof c === 'string' ? c === collectionId : c?.id === collectionId));
+  }
+  if (Array.isArray(p.collectionIds)) {
+    return p.collectionIds.includes(collectionId);
+  }
+  return false;
+}
+
+export class LibraryFilterEngine {
+  static filterBySearch(items: CatalogItem[], query: string): CatalogItem[] {
+    if (!query || !query.trim()) return items;
+    const q = query.toLowerCase().trim();
+
+    return items.filter((paper) => {
+      const p = paper as { creators?: Array<{ name?: string }>; tags?: unknown[]; labels?: unknown[]; keywords?: unknown[] };
+      const authors = normalizeAuthors(paper.authors, p.creators);
+      const inTitle = paper.title?.toLowerCase().includes(q) ?? false;
+      const inAuthors = authors.some((a) => a.toLowerCase().includes(q));
+      const inAbstract = paper.abstract?.toLowerCase().includes(q) ?? false;
+      const inJournal = (paper.journal || paper.publicationTitle || paper.publisher)?.toLowerCase().includes(q) ?? false;
+      const inDoi = paper.doi?.toLowerCase().includes(q) ?? false;
+      const rawTags = p.tags || p.labels || p.keywords || [];
+      const inTags = rawTags.some((t) =>
+        (typeof t === 'string' ? t : (t as { name?: string })?.name || '').toLowerCase().includes(q)
+      );
+
+      return inTitle || inAuthors || inAbstract || inJournal || inDoi || inTags;
+    });
+  }
+
+  static filter(items: CatalogItem[], options: LibraryFilterOptions): CatalogItem[] {
+    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
+
+    let result = items;
+    if (searchQuery) {
+      result = this.filterBySearch(result, searchQuery);
+    }
+
+    return result.filter((paper) => {
+      const p = paper as { creators?: unknown[]; tags?: unknown[]; labels?: unknown[]; keywords?: unknown[]; type?: string; hasPdf?: boolean; attachments?: unknown[] };
+
+      if (collectionId !== undefined && collectionId !== null) {
+        if (!isPaperInCollection(paper, collectionId)) {
+          return false;
+        }
+      }
+
+      if (selectedTags && selectedTags.length > 0) {
+        const rawTags = p.tags || p.labels || p.keywords || [];
+        const paperTags = rawTags.map((t) =>
+          (typeof t === 'string' ? t.toLowerCase() : (t as { name?: string })?.name?.toLowerCase() || '')
+        );
+        const hasAllTags = selectedTags.every((t) => paperTags.includes(t.toLowerCase()));
+        if (!hasAllTags) return false;
+      }
+
+      if (fromYear !== undefined && fromYear !== null) {
+        const pYear = typeof paper.year === 'number' ? paper.year : parseInt(String(paper.year || 0), 10);
+        if (pYear && pYear < fromYear) return false;
+      }
+      if (toYear !== undefined && toYear !== null) {
+        const pYear = typeof paper.year === 'number' ? paper.year : parseInt(String(paper.year || 0), 10);
+        if (pYear && pYear > toYear) return false;
+      }
+
+      if (itemType && itemType !== 'all') {
+        const pType = (paper.itemType || p.type || '').toLowerCase();
+        if (pType !== itemType.toLowerCase()) return false;
+      }
+
+      if (hasAttachment !== undefined) {
+        const hasFile = Boolean(paper.fileUrl || paper.primaryFile?.url || p.hasPdf || (p.attachments && p.attachments.length > 0));
+        if (hasAttachment && !hasFile) return false;
+        if (!hasAttachment && hasFile) return false;
+      }
+
+      return true;
+    });
+  }
+
+  static sort(items: CatalogItem[], options: SortOptions): CatalogItem[] {
+    const { field, direction } = options;
+    const modifier = direction === 'desc' ? -1 : 1;
+
+    return [...items].sort((a, b) => {
+      if (field === 'year') {
+        const yA = typeof a.year === 'number' ? a.year : parseInt(String(a.year || 0), 10);
+        const yB = typeof b.year === 'number' ? b.year : parseInt(String(b.year || 0), 10);
+        return (yA - yB) * modifier;
+      }
+
+      if (field === 'title') {
+        return (a.title || '').localeCompare(b.title || '') * modifier;
+      }
+
+      if (field === 'authors') {
+        const aCreators = (a as { creators?: Array<{ name?: string }> }).creators;
+        const bCreators = (b as { creators?: Array<{ name?: string }> }).creators;
+        const a1 = normalizeAuthors(a.authors, aCreators)[0] || '';
+        const b1 = normalizeAuthors(b.authors, bCreators)[0] || '';
+        return a1.localeCompare(b1) * modifier;
+      }
+
+      return 0;
+    });
+  }
+
+  static isDuplicate(paperA: CatalogItem, paperB: CatalogItem): boolean {
+    if (paperA.id && paperB.id && paperA.id === paperB.id) return false;
+
+    if (paperA.doi && paperB.doi) {
+      const cleanA = cleanDoi(paperA.doi)?.toLowerCase();
+      const cleanB = cleanDoi(paperB.doi)?.toLowerCase();
+      if (cleanA && cleanA === cleanB) return true;
+    }
+
+    if (paperA.title && paperB.title) {
+      const normA = paperA.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normB = paperB.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normA.length > 15 && normA === normB) return true;
+    }
+
+    return false;
+  }
+
+  static findDuplicates(items: CatalogItem[]): Array<{ original: CatalogItem; duplicates: CatalogItem[] }> {
+    const results: Array<{ original: CatalogItem; duplicates: CatalogItem[] }> = [];
+    const visited = new Set<string>();
+
+    for (let i = 0; i < items.length; i++) {
+      const current = items[i];
+      const currentId = current.id;
+      if (visited.has(currentId)) continue;
+
+      const dupes: CatalogItem[] = [];
+      for (let j = i + 1; j < items.length; j++) {
+        const other = items[j];
+        const otherId = other.id;
+        if (visited.has(otherId)) continue;
+
+        if (this.isDuplicate(current, other)) {
+          dupes.push(other);
+          visited.add(otherId);
+        }
+      }
+
+      if (dupes.length > 0) {
+        visited.add(currentId);
+        results.push({
+          original: current,
+          duplicates: dupes,
+        });
+      }
+    }
+
+    return results;
+  }
+}
+
+export function filterItems(
+  items: CatalogItem[],
+  query: string = '',
+  collectionId: string | null = null,
+  activeTag: string | null = null
+): CatalogItem[] {
+  return LibraryFilterEngine.filter(items, {
+    searchQuery: query,
+    collectionId,
+    selectedTags: activeTag ? [activeTag] : undefined,
+  });
+}
+
+export const filterPapers = filterItems;
 
 export interface FilterItemsOptions {
   items: CatalogItem[];
@@ -13,9 +211,6 @@ export interface FilterItemsOptions {
 
 export type FilterPapersOptions = FilterItemsOptions;
 
-/**
- * Calculates a Set of collection IDs including the target collection and all its recursive descendants.
- */
 export function getDescendantIds(
   collectionId: string,
   collections: { id: string; parentId?: string | null }[],
@@ -34,50 +229,6 @@ export function getDescendantIds(
   return result;
 }
 
-/**
- * Calculates a Set of Item IDs that are duplicate candidates based on matching DOI or normalized Title.
- */
-export function getDuplicateIds(items: CatalogItem[]): Set<string> {
-  const doiMap = new Map<string, string[]>();
-  const titleMap = new Map<string, string[]>();
-
-  for (const item of items) {
-    if (item.deletedAt) continue;
-    const itemId = item.id;
-
-    if (item.doi && item.doi.trim()) {
-      const normDoi = item.doi.trim().toLowerCase();
-      const group = doiMap.get(normDoi) || [];
-      doiMap.set(normDoi, [...group, itemId]);
-    }
-
-    if (item.title && item.title.trim()) {
-      const normTitle = item.title.trim().toLowerCase();
-      const group = titleMap.get(normTitle) || [];
-      titleMap.set(normTitle, [...group, itemId]);
-    }
-  }
-
-  const duplicates = new Set<string>();
-
-  for (const ids of doiMap.values()) {
-    if (ids.length > 1) {
-      for (const id of ids) duplicates.add(id);
-    }
-  }
-
-  for (const ids of titleMap.values()) {
-    if (ids.length > 1) {
-      for (const id of ids) duplicates.add(id);
-    }
-  }
-
-  return duplicates;
-}
-
-/**
- * Filters and sorts library items based on active filter, collection, tag, search query, and duplicates.
- */
 export function sortFilterItems({
   items,
   searchQuery = '',
@@ -89,14 +240,12 @@ export function sortFilterItems({
 }: FilterItemsOptions): CatalogItem[] {
   let result = items;
 
-  // 1. Filter out trash unless currently viewing the Trash view
   if (activeFilter === 'trash') {
     result = result.filter((item) => Boolean(item.deletedAt));
   } else {
     result = result.filter((item) => !item.deletedAt);
   }
 
-  // 2. Filter by Collection if activeCollectionId is provided
   if (activeCollectionId) {
     if (collectionIds && collectionIds.size > 0) {
       result = result.filter(
@@ -109,7 +258,6 @@ export function sortFilterItems({
     }
   }
 
-  // 3. Apply smart view filters
   if (activeFilter === 'recent-read') {
     const accessed = result.filter((item) => Boolean(item.accessedAt));
     if (accessed.length > 0) {
@@ -127,12 +275,10 @@ export function sortFilterItems({
     result = result.filter((item) => duplicateItemIds.has(item.id));
   }
 
-  // 4. Apply tag filter
   if (activeTag) {
     result = result.filter((item) => item.labels?.includes(activeTag));
   }
 
-  // 5. Apply search keyword query
   if (searchQuery.trim()) {
     result = filterItems(result, searchQuery);
   }
@@ -140,13 +286,8 @@ export function sortFilterItems({
   return result;
 }
 
-// ── Consolidated Smart View Utilities ────────────────────────────────────────
-
 const TRASH_RETENTION_DAYS = 30;
 
-/**
- * Calculates remaining days before a trashed item is automatically purged.
- */
 export function getDaysUntilPurge(deletedAt?: string | null): number {
   if (!deletedAt) return TRASH_RETENTION_DAYS;
   const deletedTime = new Date(deletedAt).getTime();
@@ -155,42 +296,27 @@ export function getDaysUntilPurge(deletedAt?: string | null): number {
   return Math.max(0, TRASH_RETENTION_DAYS - elapsedDays);
 }
 
-/**
- * Checks if a trashed item has exceeded the 30-day retention window.
- */
 export function isExpiredTrash(deletedAt?: string | null): boolean {
   return getDaysUntilPurge(deletedAt) === 0;
 }
 
-/**
- * Filters items marked as in trash.
- */
 export function filterTrash(items: CatalogItem[]): CatalogItem[] {
-  return items.filter((p) => Boolean(p.deletedAt || (p as any).isTrash || (p as any).isInTrash));
+  return items.filter((p) => Boolean(p.deletedAt || (p as { isTrash?: boolean }).isTrash));
 }
 
-/**
- * Checks if an item is unfiled (not assigned to any collection).
- */
 export function isUnfiled(item: CatalogItem): boolean {
-  if (item.deletedAt || (item as any).isTrash || (item as any).isInTrash) return false;
+  if (item.deletedAt || (item as { isTrash?: boolean }).isTrash) return false;
   if (item.collectionId) return false;
-  const p = item as any;
+  const p = item as { collections?: unknown[]; collectionIds?: unknown[] };
   if (Array.isArray(p.collections) && p.collections.length > 0) return false;
   if (Array.isArray(p.collectionIds) && p.collectionIds.length > 0) return false;
   return true;
 }
 
-/**
- * Filters items that are not assigned to any collection.
- */
 export function filterUnfiled(items: CatalogItem[]): CatalogItem[] {
   return items.filter(isUnfiled);
 }
 
-/**
- * Groups recently accessed items into temporal buckets (Today, Yesterday, This Week, Earlier).
- */
 export function groupByTime(items: CatalogItem[]): {
   today: CatalogItem[];
   yesterday: CatalogItem[];
@@ -210,7 +336,7 @@ export function groupByTime(items: CatalogItem[]): {
   };
 
   const getTimestamp = (item: CatalogItem) => {
-    const p = item as any;
+    const p = item as { accessedAt?: string; lastOpenedAt?: string; updatedAt?: string; createdAt?: string };
     return new Date(p.accessedAt || p.lastOpenedAt || p.updatedAt || p.createdAt || 0).getTime();
   };
 
@@ -232,9 +358,6 @@ export function groupByTime(items: CatalogItem[]): {
   return result;
 }
 
-/**
- * Formats a timestamp into a human-friendly relative reading label.
- */
 export function formatSessionDate(dateString?: string | null): string {
   if (!dateString) return 'Not opened yet';
   const date = new Date(dateString);
@@ -247,21 +370,3 @@ export function formatSessionDate(dateString?: string | null): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
-
-// ── Backwards-compatible Function Aliases ─────────────────────────────────────
-export const getCollectionWithDescendantIds = getDescendantIds;
-export const calculateduplicateItemIds = getDuplicateIds;
-export const calculateDuplicateItemIds = getDuplicateIds;
-export const calculateDuplicatePaperIds = getDuplicateIds;
-export const filterAndSortLibraryitems = sortFilterItems;
-export const filterAndSortLibraryItems = sortFilterItems;
-export const filterAndSortLibraryPapers = sortFilterItems;
-export const filterTrashitems = filterTrash;
-export const filterTrashItems = filterTrash;
-export const filterTrashPapers = filterTrash;
-export const isUnfiledPaper = isUnfiled;
-export const filterUnfileditems = filterUnfiled;
-export const filterUnfiledItems = filterUnfiled;
-export const filterUnfiledPapers = filterUnfiled;
-export const groupRecentlyReadByTime = groupByTime;
-export const formatReadingSession = formatSessionDate;

@@ -46,7 +46,7 @@ export type CardMetadataItem = {
 export interface UseKanbanOptions {
   tasks: Task[];
   columns: Column[];
-  onMoveCard?: (cardId: string, targetColId: string) => void;
+  onMoveCard?: (cardId: string, targetColumnId: string) => void;
   isReadOnly?: boolean;
 }
 
@@ -66,7 +66,7 @@ export function useKanban({
   });
   const sensors = useSensors(mouseSensor, touchSensor);
 
-  const validColIds = useMemo(() => {
+  const validColumnIds = useMemo(() => {
     return new Set(
       columns
         .map((c) => resolveTaskColumnId(c))
@@ -77,8 +77,8 @@ export function useKanban({
   const tasksByColumn = useMemo(() => {
     const map = new Map<string, Task[]>();
     for (const col of columns) {
-      const colId = resolveTaskColumnId(col);
-      if (colId) map.set(colId, []);
+      const columnId = resolveTaskColumnId(col);
+      if (columnId) map.set(columnId, []);
     }
     for (const task of tasks) {
       if (!task.columnId) continue;
@@ -106,24 +106,24 @@ export function useKanban({
       const activeTaskId = String(active.id);
       const overId = String(over.id);
 
-      let targetColId: string | null = null;
-      if (validColIds.has(overId)) {
-        targetColId = overId;
+      let targetColumnId: string | null = null;
+      if (validColumnIds.has(overId)) {
+        targetColumnId = overId;
       } else {
         const overTask = tasks.find((t) => t.id === overId);
-        if (overTask?.columnId && validColIds.has(overTask.columnId)) {
-          targetColId = overTask.columnId;
+        if (overTask?.columnId && validColumnIds.has(overTask.columnId)) {
+          targetColumnId = overTask.columnId;
         }
       }
 
-      if (!targetColId) return;
+      if (!targetColumnId) return;
 
       const currentTask = tasks.find((t) => t.id === activeTaskId);
-      if (currentTask && currentTask.columnId !== targetColId) {
-        onMoveCard?.(activeTaskId, targetColId);
+      if (currentTask && currentTask.columnId !== targetColumnId) {
+        onMoveCard?.(activeTaskId, targetColumnId);
       }
     },
-    [tasks, validColIds, onMoveCard, isReadOnly],
+    [tasks, validColumnIds, onMoveCard, isReadOnly],
   );
 
   const dragCancel = useCallback(() => {
@@ -131,15 +131,15 @@ export function useKanban({
   }, []);
 
   const moveTask = useCallback(
-    (taskId: string, targetColId: string) => {
-      if (isReadOnly || !validColIds.has(targetColId)) return;
-      onMoveCard?.(taskId, targetColId);
+    (taskId: string, targetColumnId: string) => {
+      if (isReadOnly || !validColumnIds.has(targetColumnId)) return;
+      onMoveCard?.(taskId, targetColumnId);
     },
-    [isReadOnly, validColIds, onMoveCard],
+    [isReadOnly, validColumnIds, onMoveCard],
   );
 
   const getColTasks = useCallback(
-    (colId: string) => tasksByColumn.get(colId) ?? [],
+    (columnId: string) => tasksByColumn.get(columnId) ?? [],
     [tasksByColumn],
   );
 
@@ -234,7 +234,7 @@ export function useCard({
     const raw = (card as any).assignee || (typeof card.assigneeId === 'object' ? card.assigneeId : null);
     if (!raw) return null;
     return {
-      id: raw.id || raw._id || (typeof card.assigneeId === 'string' ? card.assigneeId : ''),
+      id: raw.id || (typeof card.assigneeId === 'string' ? card.assigneeId : ''),
       name: raw.name || '',
       avatar: raw.avatar || undefined,
     };

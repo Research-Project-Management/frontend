@@ -98,18 +98,18 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   }
 
   public setRefreshToken(refreshToken: string): void {
-    if (!this.isBrowser()) return;
+    if (!this.isBrowser() || !refreshToken) return;
     try {
       window.localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
     } catch {
       // Ignore private browsing quota errors
     }
-    setCookieValue(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, SEVEN_DAYS_SECONDS * 4); // 30 days for refresh
+    setCookieValue(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, SEVEN_DAYS_SECONDS);
   }
 
   public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
     this.setAccessToken(tokens.accessToken);
-    if (tokens.refreshToken !== undefined) {
+    if (tokens.refreshToken) {
       this.setRefreshToken(tokens.refreshToken);
     }
   }
@@ -129,38 +129,44 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   }
 }
 
-// ─── 4. In-Memory Adapter (SSR & Testing Runtime) ─────────────────────────────
+// ─── 4. In-Memory Adapter (Preferred Secure In-Memory Strategy) ───────────────
 
 export class InMemoryTokenAdapter implements TokenStorageAdapter {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
 
   public getAccessToken(): string | null {
     return this.accessToken;
   }
 
   public getRefreshToken(): string | null {
-    return this.refreshToken;
+    // Refresh token is managed strictly via HttpOnly cookies
+    return null;
   }
 
   public setAccessToken(accessToken: string): void {
     this.accessToken = accessToken;
   }
 
-  public setRefreshToken(refreshToken: string): void {
-    this.refreshToken = refreshToken;
+  public setRefreshToken(_refreshToken: string): void {
+    // No-op: refresh token is strictly HttpOnly
   }
 
   public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
     this.accessToken = tokens.accessToken;
-    if (tokens.refreshToken !== undefined) {
-      this.refreshToken = tokens.refreshToken;
-    }
   }
 
   public clearTokens(): void {
     this.accessToken = null;
-    this.refreshToken = null;
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
+        window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      } catch {}
+      deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
+      deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
+    }
   }
 }
 
@@ -169,8 +175,12 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
 export class TokenStorage {
   private adapter: TokenStorageAdapter;
 
-  constructor(adapter?: TokenStorageAdapter) {
-    this.adapter = adapter ?? new LocalStorageTokenAdapter();
+  constructor(tokenStorageAdapter?: TokenStorageAdapter) {
+    this.adapter =
+      tokenStorageAdapter ??
+      (typeof window !== 'undefined'
+        ? new LocalStorageTokenAdapter()
+        : new InMemoryTokenAdapter());
   }
 
   public setAdapter(adapter: TokenStorageAdapter): void {

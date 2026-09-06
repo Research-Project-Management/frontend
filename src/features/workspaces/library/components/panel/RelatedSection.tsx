@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { FileText, Plus, X, ExternalLink, Loader2 } from 'lucide-react';
-import { useRelations } from '@/features/workspaces/library/hooks/library/use-relations';
-import { useViewItems } from '@/features/workspaces/library/hooks/library/use-items';
+import { useRelations } from '@/features/workspaces/library/hooks/use-relations';
+import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog';
 import type { CatalogItem, RelatedItem } from '@/features/workspaces/library/types/library.types';
@@ -28,9 +28,9 @@ export default function RelatedSection({
   isAddOpen,
   onAddOpenChange,
 }: RelatedSectionProps) {
-  const targetWsId = workspaceId || paper.workspaceId || '';
-  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(targetWsId, paper.id || '');
-  const { data: allItemsRes } = useViewItems(targetWsId, 'all');
+  const activeWorkspaceId = workspaceId || paper.workspaceId || '';
+  const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(activeWorkspaceId, paper.id || '');
+  const { data: allItemsRes } = useViewItems(activeWorkspaceId, 'all');
 
   const [internalAddOpen, setInternalAddOpen] = useState(false);
   const isModalOpen = isAddOpen !== undefined ? isAddOpen : internalAddOpen;
@@ -63,8 +63,8 @@ export default function RelatedSection({
     setModalOpen(false);
   };
 
-  const handleUnlink = async (targetId: string) => {
-    await unlink({ targetItemId: targetId });
+  const handleUnlink = async (targetItemId: string) => {
+    await unlink({ targetItemId });
   };
 
   if (!isLoading && relatedList.length === 0) {

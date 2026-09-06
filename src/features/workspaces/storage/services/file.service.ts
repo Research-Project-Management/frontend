@@ -36,15 +36,30 @@ export const getTrashedFiles = (workspaceId: string) =>
 export const getStorageUsage = (workspaceId: string) =>
     apiGet<{ totalBytes: number }>(`/api/files/workspace/${workspaceId}/usage`);
 
+interface UploadBlobOptions {
+    workspaceId?: string;
+    projectId?: string;
+    pageId?: string;
+    onProgress?: (progress: number) => void;
+}
+
 const uploadBlobWithPresigned = async (
     blob: Blob,
     fileName: string,
-    onProgress?: (progress: number) => void
+    options?: UploadBlobOptions | ((progress: number) => void)
 ): Promise<{ url: string; path: string }> => {
+    const onProgress = typeof options === 'function' ? options : options?.onProgress;
+    const workspaceId = typeof options === 'object' ? options?.workspaceId : undefined;
+    const projectId = typeof options === 'object' ? options?.projectId : undefined;
+    const pageId = typeof options === 'object' ? options?.pageId : undefined;
+
     try {
         const presignRes = await apiPost<{ signedUrl: string; path: string; url: string }>("/api/files/presign", {
             filename: fileName,
             mimeType: blob.type || "application/octet-stream",
+            workspaceId,
+            projectId,
+            pageId,
         });
 
         if (presignRes?.signedUrl) {
@@ -147,7 +162,10 @@ export const uploadFile = async (
         ? (p: number) => params.onProgress!(Math.round(p * 0.9))
         : undefined;
 
-    const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName, onMainFileProgress);
+    const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName, {
+        workspaceId: params.workspaceId,
+        onProgress: onMainFileProgress,
+    });
     const uploadUrl = uploadPath.startsWith("http") ? uploadPath : `${API_BASE_URL}${uploadPath}`;
 
     let thumbnailUrl;
@@ -155,7 +173,9 @@ export const uploadFile = async (
         const thumbnailBlob = await generateThumbnail(file);
         if (thumbnailBlob) {
             const thumbName = `workspace/${params.workspaceId}/${Date.now()}-thumb.jpg`;
-            const { url: thumbPath } = await uploadBlobWithPresigned(thumbnailBlob, thumbName);
+            const { url: thumbPath } = await uploadBlobWithPresigned(thumbnailBlob, thumbName, {
+                workspaceId: params.workspaceId,
+            });
             thumbnailUrl = thumbPath.startsWith("http") ? thumbPath : `${API_BASE_URL}${thumbPath}`;
         }
     }
@@ -176,7 +196,7 @@ export const uploadFile = async (
 
 export const uploadGenericFile = async (file: File, workspaceId: string): Promise<string> => {
     const fileName = `avatars/${workspaceId}-${Date.now()}`;
-    const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName);
+    const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName, { workspaceId });
     return uploadPath.startsWith("http") ? uploadPath : `${API_BASE_URL}${uploadPath}`;
 };
 

@@ -15,15 +15,6 @@ const PREFIX_PARTICLES = new Set(['von','van','de','del','der','da','di','du','l
 
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
 
-/**
- * Extracts the standardized ID from any entity.
- */
-export function getLibraryEntityId(
-  entity?: { id?: string } | null | undefined
-): string {
-  if (!entity) return '';
-  return entity.id || '';
-}
 
 /**
  * Extracts the primary PDF or reading file URL from a Paper object.
@@ -291,34 +282,6 @@ export function formatCreatorCompact(authors?: string[] | null): string {
 }
 
 /**
- * Generates or extracts a standardized citation key for BibTeX/LaTeX (e.g. "vaswani2017attention").
- */
-export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
-  if (!paper) return 'refpaper';
-  if (paper.citationKey && typeof paper.citationKey === 'string' && paper.citationKey.trim().length > 0) {
-    return paper.citationKey.trim();
-  }
-
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  const firstAuthor = authors[0] || '';
-  const authorKey = firstAuthor
-    ? firstAuthor.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
-    : 'ref';
-
-  const yearKey = paper.year ? String(paper.year).slice(-4) : '';
-
-  const titleWord = paper.title && typeof paper.title === 'string'
-    ? paper.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .split(/\s+/)
-        .find((w: string) => !['a', 'an', 'the', 'on', 'in', 'for', 'of', 'and', 'with', 'via'].includes(w)) || 'paper'
-    : 'paper';
-
-  return `${authorKey || 'ref'}${yearKey}${titleWord || 'paper'}`;
-}
-
-/**
  * Normalizes all tag-like fields on a paper into a deduped, trimmed string array.
  * Merges: tags, labels, keywords, itemTags (Zotero-style join table).
  * Use this everywhere instead of duplicating the 4-source merge pattern.
@@ -389,242 +352,101 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
 
 // ── 3. DOI & Citation Helpers ────────────────────────────────────────────────
 
+export function trimUnmatchedClosingBrackets(str: string): string {
+  let s = str;
+  const pairs: Array<[string, string]> = [[')', '('], [']', '['], ['}', '{'], ['>', '<']];
+  for (const [closeChar, openChar] of pairs) {
+    while (
+      s.endsWith(closeChar) &&
+      (s.match(new RegExp(`\\${closeChar}`, 'g')) || []).length >
+      (s.match(new RegExp(`\\${openChar}`, 'g')) || []).length
+    ) {
+      s = s.slice(0, -1);
+    }
+  }
+  return s;
+}
+
 export function cleanDoi(doi?: string | null): string {
   if (!doi || typeof doi !== 'string') return '';
-  return doi
-    .trim()
-    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
-    .replace(/^doi:\s*/i, '')
-    .trim();
+  let clean = doi.trim();
+
+  // Nature article URL: nature.com/articles/<slug>
+  const natureMatch = clean.match(
+    /^https?:\/\/(?:www\.)?nature\.com\/articles\/([a-z0-9._-]+)(?:[?#].*)?$/i,
+  );
+  if (natureMatch && natureMatch[1]) return `10.1038/${natureMatch[1]}`;
+
+  // Zenodo record URL: zenodo.org/records/<id>
+  const zenodoMatch = clean.match(
+    /^https?:\/\/zenodo\.org\/records?\/(\d+)(?:[?#].*)?$/i,
+  );
+  if (zenodoMatch && zenodoMatch[1]) return `10.5281/zenodo.${zenodoMatch[1]}`;
+
+  // BioRxiv / MedRxiv preprint URL
+  const biorxivMatch = clean.match(
+    /^https?:\/\/(?:www\.)?(?:biorxiv|medrxiv)\.org\/content\/(10\.\d{4,9}\/[^?#\s]+?)(?:v\d+)?(?:\.full|\.abstract|\.pdf)?(?:[?#].*)?$/i,
+  );
+  if (biorxivMatch && biorxivMatch[1]) return biorxivMatch[1].replace(/v\d+$/, '');
+
+  // PLOS article URL
+  const plosMatch = clean.match(
+    /^https?:\/\/journals\.plos\.org\/[^/]+\/article\?(?:[^#]*&)?id=(10\.\d{4,9}\/[^&#\s]+)/i,
+  );
+  if (plosMatch && plosMatch[1]) return decodeURIComponent(plosMatch[1]);
+
+  // Embedded /doi/ or /article/ in publisher URLs
+  const embeddedMatch = clean.match(
+    /^https?:\/\/[^/]+(?:\/[^/]+)*\/(?:doi\/|article\/)(?:abs\/|full\/|epdf\/|pdf\/)?(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)(?:[?#].*)?$/i,
+  );
+  if (embeddedMatch && embeddedMatch[1]) {
+    clean = embeddedMatch[1];
+  } else {
+    clean = clean.replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '');
+  }
+
+  const embedded = clean.match(/10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+/);
+  let s = (embedded ? embedded[0] : clean).replace(/[.,;:]+$/, '');
+  s = trimUnmatchedClosingBrackets(s).replace(/[.,;:]+$/, '');
+  return s.startsWith('10.') ? s : '';
 }
 
 // ── 4. Library Filter Engine ─────────────────────────────────────────────────
 
-export interface LibraryFilterOptions {
-  searchQuery?: string;
-  collectionId?: string | null;
-  selectedTags?: string[];
-  fromYear?: number;
-  toYear?: number;
-  itemType?: string;
-  hasAttachment?: boolean;
-}
-
-export interface SortOptions {
-  field: 'title' | 'year' | 'authors' | 'journal' | 'createdAt' | string;
-  direction: 'asc' | 'desc';
-}
-
-export class LibraryFilterEngine {
-  static filterBySearch(items: CatalogItem[], query: string): CatalogItem[] {
-    if (!query || !query.trim()) return items;
-    const q = query.toLowerCase().trim();
-
-    return items.filter((paper) => {
-      const p = paper as any;
-      const authors = normalizeAuthors(paper.authors, p.creators);
-      const inTitle = paper.title?.toLowerCase().includes(q) ?? false;
-      const inAuthors = authors.some((a) => a.toLowerCase().includes(q));
-      const inAbstract = paper.abstract?.toLowerCase().includes(q) ?? false;
-      const inJournal = (paper.journal || paper.publicationTitle || paper.publisher)?.toLowerCase().includes(q) ?? false;
-      const inDoi = paper.doi?.toLowerCase().includes(q) ?? false;
-      const rawTags = p.tags || p.labels || p.keywords || [];
-      const inTags = rawTags.some((t: any) =>
-        (typeof t === 'string' ? t : t.name || '').toLowerCase().includes(q)
-      );
-
-      return inTitle || inAuthors || inAbstract || inJournal || inDoi || inTags;
-    });
-  }
-
-  static filter(items: CatalogItem[], options: LibraryFilterOptions): CatalogItem[] {
-    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
-
-    let result = items;
-
-    if (searchQuery) {
-      result = this.filterBySearch(result, searchQuery);
-    }
-
-    return result.filter((paper) => {
-      const p = paper as any;
-
-      // Collection
-      if (collectionId !== undefined && collectionId !== null) {
-        if (!isPaperInCollection(paper, collectionId)) {
-          return false;
-        }
-      }
-
-      // Tags
-      if (selectedTags && selectedTags.length > 0) {
-        const rawTags = p.tags || p.labels || p.keywords || [];
-        const paperTags = rawTags.map((t: any) => (typeof t === 'string' ? t.toLowerCase() : t.name?.toLowerCase() || ''));
-        const hasAllTags = selectedTags.every((t) => paperTags.includes(t.toLowerCase()));
-        if (!hasAllTags) return false;
-      }
-
-      // Year Range
-      if (fromYear !== undefined && fromYear !== null) {
-        const pYear = typeof paper.year === 'number' ? paper.year : parseInt(String(paper.year || 0), 10);
-        if (pYear && pYear < fromYear) return false;
-      }
-      if (toYear !== undefined && toYear !== null) {
-        const pYear = typeof paper.year === 'number' ? paper.year : parseInt(String(paper.year || 0), 10);
-        if (pYear && pYear > toYear) return false;
-      }
-
-      // Item Type
-      if (itemType && itemType !== 'all') {
-        const pType = (paper.itemType || (paper as any).type || '').toLowerCase();
-        if (pType !== itemType.toLowerCase()) return false;
-      }
-
-      // Attachment
-      if (hasAttachment !== undefined) {
-        const hasFile = Boolean(paper.fileUrl || paper.primaryFile?.url || p.hasPdf || (p.attachments && p.attachments.length > 0));
-        if (hasAttachment && !hasFile) return false;
-        if (!hasAttachment && hasFile) return false;
-      }
-
-      return true;
-    });
-  }
-
-  static sort(items: CatalogItem[], options: SortOptions): CatalogItem[] {
-    const { field, direction } = options;
-    const modifier = direction === 'desc' ? -1 : 1;
-
-    return [...items].sort((a, b) => {
-      if (field === 'year') {
-        const yA = typeof a.year === 'number' ? a.year : parseInt(String(a.year || 0), 10);
-        const yB = typeof b.year === 'number' ? b.year : parseInt(String(b.year || 0), 10);
-        return (yA - yB) * modifier;
-      }
-
-      if (field === 'title') {
-        return (a.title || '').localeCompare(b.title || '') * modifier;
-      }
-
-      if (field === 'authors') {
-        const a1 = normalizeAuthors(a.authors, (a as any).creators)[0] || '';
-        const b1 = normalizeAuthors(b.authors, (b as any).creators)[0] || '';
-        return a1.localeCompare(b1) * modifier;
-      }
-
-      return 0;
-    });
-  }
-
-  static isDuplicate(paperA: CatalogItem, paperB: CatalogItem): boolean {
-    if (paperA.id && paperB.id && paperA.id === paperB.id) return false;
-
-    // Exact DOI match
-    if (paperA.doi && paperB.doi) {
-      const cleanA = cleanDoi(paperA.doi).toLowerCase();
-      const cleanB = cleanDoi(paperB.doi).toLowerCase();
-      if (cleanA && cleanA === cleanB) return true;
-    }
-
-    // Normalized title match
-    if (paperA.title && paperB.title) {
-      const normA = paperA.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const normB = paperB.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (normA.length > 15 && normA === normB) return true;
-    }
-
-    return false;
-  }
-
-  static findDuplicates(items: CatalogItem[]): Array<{ original: CatalogItem; duplicates: CatalogItem[] }> {
-    const results: Array<{ original: CatalogItem; duplicates: CatalogItem[] }> = [];
-    const visited = new Set<string>();
-
-    for (let i = 0; i < items.length; i++) {
-      const current = items[i];
-      const currentId = current.id;
-      if (visited.has(currentId)) continue;
-
-      const dupes: CatalogItem[] = [];
-      for (let j = i + 1; j < items.length; j++) {
-        const other = items[j];
-        const otherId = other.id;
-        if (visited.has(otherId)) continue;
-
-        if (this.isDuplicate(current, other)) {
-          dupes.push(other);
-          visited.add(otherId);
-        }
-      }
-
-      if (dupes.length > 0) {
-        visited.add(currentId);
-        results.push({
-          original: current,
-          duplicates: dupes,
-        });
-      }
-    }
-
-    return results;
-  }
-}
-
-export function filterItems(
-  items: CatalogItem[],
-  query: string = '',
-  collectionId: string | null = null,
-  activeTag: string | null = null
-): CatalogItem[] {
-  return LibraryFilterEngine.filter(items, {
-    searchQuery: query,
-    collectionId: collectionId,
-    selectedTags: activeTag ? [activeTag] : undefined,
-  });
-}
-
-export const filterPapers = filterItems;
-
-export function isPaperInCollection(paper: CatalogItem, collectionId: string): boolean {
-  if (!collectionId) return true;
-
-  if (paper.collectionId === collectionId) return true;
-
-  const p = paper as any;
-  if (Array.isArray(p.collections)) {
-    return p.collections.some((c: any) => {
-      if (typeof c === 'string') return c === collectionId;
-      return c.id === collectionId;
-    });
-  }
-
-  if (Array.isArray(p.collectionIds)) {
-    return p.collectionIds.includes(collectionId);
-  }
-
-  return false;
-}
+export {
+  LibraryFilterEngine,
+  filterItems,
+  filterPapers,
+  isPaperInCollection,
+  type LibraryFilterOptions,
+  type SortOptions,
+} from './filter.util';
 
 export function getUniqueTags(items: CatalogItem[]): string[] {
   const tagSet = new Set<string>();
   for (const paper of items) {
-    const p = paper as any;
-    const rawTags = p.tags || p.labels || [];
-    if (Array.isArray(rawTags)) {
-      for (const tag of rawTags) {
-        if (typeof tag === 'string' && tag.trim()) {
-          tagSet.add(tag.trim());
-        } else if (tag && typeof tag === 'object' && 'name' in tag && tag.name) {
-          tagSet.add(tag.name.trim());
-        }
-      }
+    for (const tag of normalizeTags(paper)) {
+      tagSet.add(tag);
     }
   }
   return Array.from(tagSet).sort();
 }
 
 // ── 5. BibTeX Citation Engine ────────────────────────────────────────────────
-export * from './bibtex.util';
+export {
+  generateCitationKey,
+  getPaperCitationKey,
+  getBibTeXEntryType,
+  escapeLatexChars,
+  unescapeLatexChars,
+  convertToBibTeX,
+  parseBibTeX,
+  downloadBibTeXFile,
+  BibtexEngine,
+  formatCiteCommand,
+  formatApaCitation,
+  formatIeeeCitation,
+} from './bibtex.util';
 
 // ── 6. DOI & CrossRef Metadata Engine ────────────────────────────────────────
 
@@ -667,15 +489,20 @@ export type PdfMetadata = {
   keywordsList?: string[];
 };
 
-export const DOI_REGEX = /\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/;
+export const DOI_REGEX = /\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)\b/;
 export const ARXIV_REGEX = /\b(?:arXiv:\s*)?(\d{4}\.\d{4,5}(?:v\d+)?)\b/i;
 
 export function extractDoiFromText(text: string): string | null {
   if (!text) return null;
   const sanitized = text.replace(/\.pdf$/i, '');
+
   const match = sanitized.match(DOI_REGEX);
-  if (!match) return null;
-  return match[1].replace(/[.,;:)\]]+$/, '');
+  if (!match) {
+    const cleaned = cleanDoi(sanitized);
+    return cleaned || null;
+  }
+  let s = match[1].replace(/[.,;:]+$/, '');
+  return trimUnmatchedClosingBrackets(s).replace(/[.,;:]+$/, '');
 }
 
 export function normalizeDoi(doi?: string | null): string | null {
@@ -725,6 +552,34 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
     } catch {
       // ignore
     }
+
+    if (!detectedDoi && !detectedArxiv && typeof window !== 'undefined') {
+      try {
+        const { previewServices } = await import('@/features/workspaces/storage/services/preview.service');
+        const arrayBuffer = await file.arrayBuffer();
+        const previewRes = await previewServices.extractMetadata(arrayBuffer);
+        if (previewRes?.doi) {
+          detectedDoi = previewRes.doi;
+        }
+        if (
+          previewRes?.metadata?.title &&
+          (!cleanTitle ||
+            cleanTitle.length < 5 ||
+            /^(document|paper|untitled)/i.test(cleanTitle))
+        ) {
+          metadata.title = previewRes.metadata.title;
+        }
+        if (
+          previewRes?.metadata?.author &&
+          (!metadata.authors || metadata.authors.length === 0)
+        ) {
+          metadata.authors = [previewRes.metadata.author];
+          metadata.author = previewRes.metadata.author;
+        }
+      } catch {
+        // ignore preview extraction errors
+      }
+    }
   }
 
   const queryCandidate = detectedDoi || detectedArxiv || (cleanTitle.length > 5 ? cleanTitle : '');
@@ -732,8 +587,8 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
   if (queryCandidate) {
     try {
       const res = await resolveAcademicQuery(queryCandidate);
-      if (res && res.metadata && res.metadata.title) {
-        const ref = res.metadata;
+      const ref = res?.metadata || (res as any)?.work || (res as any)?.data;
+      if (ref && ref.title) {
         return {
           // Keep the provider record intact; only add aliases used by the
           // upload form so metadata fields are not silently discarded.
@@ -758,11 +613,10 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
           },
         };
       }
-    } catch (error) {
+    } catch {
       // Provider misses (especially CrossRef 404) must not abort file upload.
-      // Try the direct DOI path only when a DOI was actually detected, and
-      // always degrade to filename/identifier metadata if it also misses.
-      if (detectedDoi) {
+      // Try the direct DOI path only when a DOI was detected and differed from queryCandidate.
+      if (detectedDoi && queryCandidate !== detectedDoi) {
         const enriched = await enrichPaperWithCrossref(detectedDoi).catch(
           () => ({}),
         );
@@ -776,24 +630,44 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
 
 export async function enrichPaperWithCrossref(doi: string): Promise<Partial<PdfMetadata>> {
   try {
-    const clean = normalizeDoi(doi);
+    const clean = normalizeDoi(doi) || doi.trim();
     if (!clean) return {};
-    const ref = await fetchReferenceByDoi(clean);
-    if (!ref) return {};
+    const res = await resolveAcademicQuery(clean);
+    const ref = res?.metadata || (res as any)?.work || (res as any)?.data;
+    if (ref && ref.title) {
+      return {
+        ...ref,
+        title: ref.title,
+        authors: ref.authors,
+        author: ref.authors?.[0],
+        journal: ref.journal || ref.publicationTitle || ref.publisher,
+        publicationTitle: ref.publicationTitle || ref.journal || ref.publisher,
+        year: ref.year,
+        volume: ref.volume,
+        issue: ref.issue,
+        pages: ref.pages,
+        doi: ref.doi || clean,
+        url: ref.url,
+        abstract: ref.abstract,
+        crossrefEnriched: true,
+      };
+    }
+    const fallback = await fetchReferenceByDoi(clean);
+    if (!fallback) return {};
 
     return {
-      title: ref.title,
-      authors: ref.authors,
-      author: ref.authors?.[0],
-      journal: ref.journal || ref.publisher,
-      publicationTitle: ref.journal || ref.publisher,
-      year: ref.year,
-      volume: ref.volume,
-      issue: ref.issue,
-      pages: ref.pages,
-      doi: ref.doi,
-      url: ref.url,
-      abstract: ref.abstract,
+      title: fallback.title,
+      authors: fallback.authors,
+      author: fallback.authors?.[0],
+      journal: fallback.journal || fallback.publisher,
+      publicationTitle: fallback.journal || fallback.publisher,
+      year: fallback.year,
+      volume: fallback.volume,
+      issue: fallback.issue,
+      pages: fallback.pages,
+      doi: fallback.doi,
+      url: fallback.url,
+      abstract: fallback.abstract,
       crossrefEnriched: true,
     };
   } catch {
@@ -801,72 +675,203 @@ export async function enrichPaperWithCrossref(doi: string): Promise<Partial<PdfM
   }
 }
 
-// ── 7. Formatted Citations (APA, IEEE, LaTeX \cite) ───────────────────────────
+// ── 4. Extra Metadata Sanitization & Zotero Formatting ────────────────────────
 
 /**
- * Returns LaTeX cite command (e.g. \cite{vaswani2017attention})
+ * Internal keys, duplicate fields, and telemetry flags that should never be displayed in the user-facing Extra field.
+ * Items like citation count, arXiv ID, repository, and comments are already displayed in dedicated schema fields or the Notes tab.
  */
-export function formatCiteCommand(paper: Partial<Paper>): string {
-  const key = getPaperCitationKey(paper);
-  return `\\cite{${key}}`;
-}
+const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
+  'provider',
+  'querytype',
+  'provenance',
+  'crossrefenriched',
+  'crossref_enriched',
+  'author',
+  'authors',
+  'creators',
+  'contributors',
+  'title',
+  'doi',
+  'url',
+  'abstract',
+  'abstractnote',
+  'rawextra',
+  '_rawextra',
+  'fileurl',
+  'pdfurl',
+  'storageid',
+  'citationcount',
+  'citations',
+  'archiveid',
+  'arxivid',
+  'arxiv',
+  'repository',
+  'comment',
+  'comments',
+]);
 
 /**
- * Formats a paper reference in APA 7th style
- * e.g. "Vaswani, A., Shazeer, N., et al. (2017). Attention is all you need. Journal Name, 30, 45-60. https://doi.org/..."
+ * Canonical key mappings to standard human-readable academic labels (Zotero Extra style).
  */
-export function formatApaCitation(paper: Partial<Paper>): string {
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  let authorStr = 'Unknown Author';
-  if (authors.length === 1) {
-    authorStr = authors[0];
-  } else if (authors.length === 2) {
-    authorStr = `${authors[0]} & ${authors[1]}`;
-  } else if (authors.length > 2) {
-    authorStr = `${authors[0]} et al.`;
+const CANONICAL_EXTRA_LABEL_MAP: Readonly<Record<string, string>> = {
+  pmid: 'PMID',
+  pmcid: 'PMCID',
+  mrnumber: 'MR Number',
+  zblnumber: 'Zbl Number',
+};
+
+/**
+ * Formats and sanitizes raw extra metadata into clean, human-readable Zotero-style lines (Key: Value).
+ * Strips out internal system telemetry, pipeline provenance, duplicate fields that are already displayed
+ * in standard fields (such as Citations and arXiv ID), author comments (which are displayed in the Notes tab),
+ * and removes redundant "Open Access:" label prefix leaving direct URLs clean for user reading.
+ */
+export function formatAndSanitizeExtraMetadata(
+  rawExtraMetadata?: string | null,
+  additionalExtraFields?: Record<string, unknown> | null,
+  associatedPaperItem?: Partial<CatalogItem> | null,
+): string {
+  const mergedMetadataRecord: Record<string, unknown> = {};
+
+  if (rawExtraMetadata && typeof rawExtraMetadata === 'string') {
+    const trimmedExtraMetadata = rawExtraMetadata.trim();
+    if (trimmedExtraMetadata.startsWith('{')) {
+      try {
+        const parsedMetadataRecord: unknown = JSON.parse(trimmedExtraMetadata);
+        if (
+          typeof parsedMetadataRecord === 'object' &&
+          parsedMetadataRecord !== null &&
+          !Array.isArray(parsedMetadataRecord)
+        ) {
+          Object.assign(
+            mergedMetadataRecord,
+            parsedMetadataRecord as Record<string, unknown>,
+          );
+        }
+      } catch (caughtError) {
+        // Not valid JSON, process as plain text lines below
+      }
+    } else if (trimmedExtraMetadata) {
+      // Plain text multi-line (e.g. Zotero style "Key: Value")
+      const rawLines = trimmedExtraMetadata.split(/\r?\n/);
+      for (const singleLine of rawLines) {
+        let trimmedLine = singleLine.trim();
+        if (!trimmedLine) {
+          continue;
+        }
+
+        // If line is a Comment line, discard it as it is already displayed in the Notes tab
+        if (/^comments?:\s*/i.test(trimmedLine)) {
+          continue;
+        }
+
+        // If line is just "Open Access:" or "Open Access", discard it
+        if (/^open\s*access:?$/i.test(trimmedLine)) {
+          continue;
+        }
+
+        // If line starts with "Open Access: <url>", strip the prefix and keep the url directly
+        if (/^open\s*access:\s*https?:\/\//i.test(trimmedLine)) {
+          trimmedLine = trimmedLine.replace(/^open\s*access:\s*/i, '');
+        }
+
+        const colonIndex = trimmedLine.indexOf(':');
+        // Handle "Key: Value" lines, but avoid splitting URLs like "https://..."
+        if (colonIndex > 0 && !trimmedLine.startsWith('http://') && !trimmedLine.startsWith('https://')) {
+          const lineKey = trimmedLine.slice(0, colonIndex).trim();
+          const lineValue = trimmedLine.slice(colonIndex + 1).trim();
+          mergedMetadataRecord[lineKey] = lineValue;
+        } else {
+          mergedMetadataRecord[trimmedLine] = true;
+        }
+      }
+    }
   }
 
-  const yearStr = paper.year ? `(${paper.year})` : '(n.d.)';
-  const titleStr = paper.title ? `${paper.title.replace(/\.$/, '')}.` : 'Untitled.';
-  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
-  // Plain-text APA: italics are conveyed by surrounding spaces, not markdown underscores
-  let venueStr = venue ? `${venue}` : '';
-  if (paper.volume) venueStr += `, ${paper.volume}`;
-  if (paper.issue) venueStr += `(${paper.issue})`;
-  if (paper.pages) venueStr += `, ${paper.pages}`;
-  if (venueStr) venueStr += '.';
-
-  const doiOrUrl = paper.doi
-    ? `https://doi.org/${cleanDoi(paper.doi)}`
-    : paper.url || '';
-
-  return [authorStr, yearStr, titleStr, venueStr, doiOrUrl]
-    .filter(Boolean)
-    .join(' ');
-}
-
-/**
- * Formats a paper reference in IEEE style
- * e.g. 'A. Vaswani et al., "Attention is all you need," in Adv. Neural Inf. Process. Syst., vol. 30, 2017.'
- */
-export function formatIeeeCitation(paper: Partial<Paper>): string {
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  let authorStr = 'Unknown Author';
-  if (authors.length === 1) {
-    authorStr = authors[0];
-  } else if (authors.length > 1) {
-    authorStr = `${authors[0]} et al.`;
+  if (
+    additionalExtraFields &&
+    typeof additionalExtraFields === 'object' &&
+    !Array.isArray(additionalExtraFields)
+  ) {
+    for (const [metadataKey, metadataValue] of Object.entries(
+      additionalExtraFields,
+    )) {
+      if (
+        metadataValue !== null &&
+        metadataValue !== undefined &&
+        mergedMetadataRecord[metadataKey] === undefined
+      ) {
+        mergedMetadataRecord[metadataKey] = metadataValue;
+      }
+    }
   }
 
-  const titleStr = paper.title ? `"${paper.title.replace(/\.$/, '')},"` : '"Untitled,"';
-  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
-  // Plain-text IEEE: no markdown italic; format "in Journal Name"
-  const venueStr = venue ? `in ${venue}` : '';
-  const volStr = paper.volume ? `vol. ${paper.volume}` : '';
-  const yearStr = paper.year ? `${paper.year}` : '';
+  const paperUrl = associatedPaperItem?.url?.trim();
+  const paperFileUrl = associatedPaperItem?.fileUrl?.trim();
+  const formattedMetadataLines: string[] = [];
 
-  const parts = [authorStr, titleStr, venueStr, volStr, yearStr].filter(Boolean);
-  let res = parts.join(', ');
-  if (!res.endsWith('.')) res += '.';
-  return res;
+  for (const [metadataKey, metadataValue] of Object.entries(
+    mergedMetadataRecord,
+  )) {
+    if (metadataValue === null || metadataValue === undefined) {
+      continue;
+    }
+
+    const normalizedKey = metadataKey.toLowerCase().replace(/[-_]/g, '');
+
+    // Skip telemetry or fields already displayed in dedicated inputs (Citations, arXiv, etc.)
+    if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normalizedKey)) {
+      continue;
+    }
+
+    // Ignore nested complex objects
+    if (typeof metadataValue === 'object') {
+      continue;
+    }
+
+    // Open Access PDF URL: do not repeat "Open Access:", just output the URL directly
+    if (normalizedKey === 'openaccesspdfurl' || normalizedKey === 'openaccess') {
+      const openAccessUrl = String(metadataValue).trim();
+      if (
+        openAccessUrl &&
+        openAccessUrl !== paperUrl &&
+        openAccessUrl !== paperFileUrl
+      ) {
+        formattedMetadataLines.push(openAccessUrl);
+      }
+      continue;
+    }
+
+    // If boolean flag from plain line (e.g. standalone URL or standalone line)
+    if (typeof metadataValue === 'boolean' && metadataValue) {
+      // Discard dangling "Open Access:" lines
+      if (/^open\s*access:?$/i.test(metadataKey)) {
+        continue;
+      }
+      const cleanedKey = metadataKey.replace(/^open\s*access:\s*/i, '').trim();
+      if (cleanedKey && cleanedKey !== paperUrl && cleanedKey !== paperFileUrl) {
+        formattedMetadataLines.push(cleanedKey);
+      }
+      continue;
+    }
+
+    const stringValue = String(metadataValue).trim();
+    if (!stringValue) {
+      continue;
+    }
+
+    // If string value is already the same as paper url or file url, avoid duplicating
+    if (stringValue === paperUrl || stringValue === paperFileUrl) {
+      continue;
+    }
+
+    const displayLabel =
+      CANONICAL_EXTRA_LABEL_MAP[normalizedKey] || metadataKey;
+
+    formattedMetadataLines.push(`${displayLabel}: ${stringValue}`);
+  }
+
+  return formattedMetadataLines.join('\n');
 }
+

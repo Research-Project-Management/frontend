@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { Library, Folder, X } from 'lucide-react';
-import { useCatalogItems } from '@/features/workspaces/library/hooks/library/use-items';
-import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
+import { useCatalogItems } from '@/features/workspaces/library/hooks/use-items';
+import { useCollections } from '@/features/workspaces/library/hooks/use-library';
 import type { CatalogItem, Collection } from '@/features/workspaces/library/types/library.types';
 
 interface CollectionsSectionProps {
@@ -21,13 +21,13 @@ export default function CollectionsSection({
   const { actions } = useCatalogItems({ workspaceId });
   const { updatePaper } = actions;
   const { state: colState } = useCollections(workspaceId);
-  const collections: Collection[] = colState.collections ?? [];
+  const collections = colState.collections;
 
   const activeCollectionId = paper.collectionId;
 
   // Build the path of collections from root to current item's collection
   const collectionPathNodes = React.useMemo(() => {
-    if (!activeCollectionId || collections.length === 0) return [];
+    if (!activeCollectionId || !collections || collections.length === 0) return [];
 
     const path: Collection[] = [];
     let currId: string | null = activeCollectionId;
@@ -46,9 +46,9 @@ export default function CollectionsSection({
     return path;
   }, [activeCollectionId, collections]);
 
-  const handleMoveCollection = (targetId: string | null) => {
+  const handleMoveCollection = (destinationCollectionId: string | null) => {
     if (paper.id) {
-      updatePaper(paper.id, { collectionId: targetId });
+      updatePaper(paper.id, { collectionId: destinationCollectionId });
     }
   };
 

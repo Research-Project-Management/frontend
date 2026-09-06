@@ -5,29 +5,75 @@ import { cleanDoi } from '../utils/library.util';
 
 export type { ReferenceData };
 
-export async function fetchReferenceByDoi(doi: string): Promise<ReferenceData | null> {
+export async function fetchReferenceByDoi(
+  doi: string,
+  workspaceId?: string,
+): Promise<ReferenceData | null> {
   const normalizedDoi = cleanDoi(doi);
   if (!normalizedDoi) {
     throw new Error('Invalid DOI provided');
   }
 
-  try {
-    const data = await apiPost<{ work?: ReferenceData; data?: ReferenceData } | ReferenceData>(
-      `/api/v1/workspaces/_/library/citation/resolve`,
-      { doi: normalizedDoi },
+  let resolvedWorkspaceId = workspaceId;
+  if (!resolvedWorkspaceId && typeof window !== 'undefined') {
+    const workspacePathMatch = window.location.pathname.match(
+      /^\/([0-9a-fA-F-]{36}|[a-zA-Z0-9_-]+)/,
     );
-    if ('work' in data && data.work) return data.work;
-    if ('data' in data && data.data) return data.data;
-    return data as ReferenceData;
+    if (
+      workspacePathMatch &&
+      workspacePathMatch[1] &&
+      !['login', 'signup', 'auth', 'settings', 'api'].includes(workspacePathMatch[1])
+    ) {
+      resolvedWorkspaceId = workspacePathMatch[1];
+    }
+  }
+
+  const resolveUrl =
+    resolvedWorkspaceId &&
+    resolvedWorkspaceId !== '_' &&
+    resolvedWorkspaceId !== 'global'
+      ? `/api/v1/workspaces/${encodeURIComponent(resolvedWorkspaceId)}/library/citation/resolve`
+      : `/api/v1/library/citation/resolve`;
+
+  try {
+    const referenceResponse = await apiPost<{
+      work?: ReferenceData;
+      data?: ReferenceData;
+      metadata?: ReferenceData;
+      found?: boolean;
+    } | ReferenceData>(
+      resolveUrl,
+      { doi: normalizedDoi },
+      { silent: true },
+    );
+    if ('found' in referenceResponse && referenceResponse.found === false) return null;
+    if ('metadata' in referenceResponse && referenceResponse.metadata) return referenceResponse.metadata;
+    if ('work' in referenceResponse && referenceResponse.work) return referenceResponse.work;
+    if ('data' in referenceResponse && referenceResponse.data) return referenceResponse.data;
+    return referenceResponse as ReferenceData;
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.response?.status === 404) {
       return null;
     }
     // Fallback: GET by encoded DOI
     try {
-      const fallback = await apiGet<{ work?: ReferenceData; data?: ReferenceData } | ReferenceData>(
-        `/api/v1/workspaces/_/library/citation/doi/${encodeURIComponent(normalizedDoi)}`,
+      const doiUrl =
+        resolvedWorkspaceId &&
+        resolvedWorkspaceId !== '_' &&
+        resolvedWorkspaceId !== 'global'
+          ? `/api/v1/workspaces/${encodeURIComponent(resolvedWorkspaceId)}/library/citation/doi/${encodeURIComponent(normalizedDoi)}`
+          : `/api/v1/library/citation/doi/${encodeURIComponent(normalizedDoi)}`;
+      const fallback = await apiGet<{
+        work?: ReferenceData;
+        data?: ReferenceData;
+        metadata?: ReferenceData;
+        found?: boolean;
+      } | ReferenceData>(
+        doiUrl,
+        { silent: true },
       );
+      if ('found' in fallback && fallback.found === false) return null;
+      if ('metadata' in fallback && fallback.metadata) return fallback.metadata;
       if ('work' in fallback && fallback.work) return fallback.work;
       if ('data' in fallback && fallback.data) return fallback.data;
       return fallback as ReferenceData;
@@ -136,16 +182,83 @@ export const CitationService = {
   /**
    * Multi-source Academic Query Resolver (DOI, arXiv, PubMed PMID, URL, Title)
    */
-  resolve: (query: string, workspaceId?: string) =>
-    apiPost<{
-      query: string;
-      queryType: string;
-      provider: string;
-      metadata: ReferenceData;
-    }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId || '_')}/library/citation/resolve`,
-      { query },
-    ),
+  resolve: async (query: string, workspaceId?: string) => {
+    try {
+      let resolvedWorkspaceIdentifier = workspaceId;
+      if (!resolvedWorkspaceIdentifier && typeof window !== 'undefined') {
+        const workspacePathMatch = window.location.pathname.match(
+          /^\/([0-9a-fA-F-]{36}|[a-zA-Z0-9_-]+)/,
+        );
+        if (
+          workspacePathMatch &&
+          workspacePathMatch[1] &&
+          !['login', 'signup', 'auth', 'settings', 'api'].includes(workspacePathMatch[1])
+        ) {
+          resolvedWorkspaceIdentifier = workspacePathMatch[1];
+        }
+      }
+
+      const resolveUrl =
+        resolvedWorkspaceIdentifier &&
+        resolvedWorkspaceIdentifier !== '_' &&
+        resolvedWorkspaceIdentifier !== 'global'
+          ? `/api/v1/workspaces/${encodeURIComponent(resolvedWorkspaceIdentifier)}/library/citation/resolve`
+          : `/api/v1/library/citation/resolve`;
+      const resolutionResponse = await apiPost<{
+        query?: string;
+        queryType?: string;
+        provider?: string;
+        metadata?: ReferenceData | null;
+        work?: ReferenceData | null;
+        data?: ReferenceData | null;
+        found?: boolean;
+      }>(
+        resolveUrl,
+        { query },
+        { silent: true },
+      );
+
+      const metadata =
+        resolutionResponse?.metadata ||
+        resolutionResponse?.work ||
+        resolutionResponse?.data ||
+        (resolutionResponse?.found === false ? null : (resolutionResponse as unknown as ReferenceData));
+
+      const hasValidMeta = Boolean(
+        metadata &&
+          typeof metadata === 'object' &&
+          ('title' in metadata ||
+            'doi' in metadata ||
+            'arxivId' in metadata ||
+            'pmid' in metadata ||
+            'pmcid' in metadata ||
+            'isbn' in metadata),
+      );
+
+      return {
+        query: resolutionResponse?.query || query,
+        queryType: resolutionResponse?.queryType || 'unknown',
+        provider: resolutionResponse?.provider || 'CrossRef',
+        metadata: hasValidMeta ? metadata : null,
+        found: hasValidMeta,
+      };
+    } catch (caughtError: any) {
+      if (
+        caughtError?.statusCode === 404 ||
+        caughtError?.status === 404 ||
+        caughtError?.statusCode === 400
+      ) {
+        return {
+          query,
+          queryType: 'unknown',
+          provider: 'CrossRef',
+          metadata: null,
+          found: false,
+        };
+      }
+      throw caughtError;
+    }
+  },
 
   /**
    * Format Item metadata into CSL Citation (APA, IEEE, Nature, Harvard, Chicago, MLA, Vancouver)

@@ -74,3 +74,18 @@ export function getCompletenessScore(item: CatalogItem): number {
 
 export const calculateMergeCompleteness = getCompletenessScore;
 export const findDuplicates = findDuplicateClusters;
+
+/**
+ * Calculates a Set of Item IDs that are duplicate candidates.
+ */
+export function getDuplicateIds(items: CatalogItem[]): Set<string> {
+  const clusters = findDuplicateClusters(items.filter((item) => !item.deletedAt));
+  const duplicates = new Set<string>();
+  for (const cluster of clusters) {
+    for (const item of cluster.items) {
+      duplicates.add(item.id);
+    }
+  }
+  return duplicates;
+}
+

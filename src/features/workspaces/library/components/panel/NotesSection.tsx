@@ -5,7 +5,7 @@ import { MinusCircle, Plus } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { normalizeNotes, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
-import { useNotes } from '@/features/workspaces/library/hooks/library/use-notes';
+import { useNotes } from '@/features/workspaces/library/hooks/use-notes';
 import { cn } from '@/shared/lib/utils';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
@@ -79,51 +79,100 @@ export default function NotesSection({
 
   const notes: NormalizedNote[] = useMemo(() => {
     if (canonicalNotes && canonicalNotes.length > 0) {
-      return canonicalNotes.map((n: any) => ({
-        id: n.id,
-        content: n.contentMd || n.content || '',
-        createdAt: n.createdAt,
-        updatedAt: n.updatedAt,
+      return canonicalNotes.map((noteItem: any) => ({
+        id: noteItem.id,
+        content: noteItem.contentMd || noteItem.content || '',
+        createdAt: noteItem.createdAt,
+        updatedAt: noteItem.updatedAt,
       }));
     }
-    return normalizeNotes(paper.notes);
-  }, [canonicalNotes, paper.notes]);
+    const normalizedExistingNotes = normalizeNotes(paper.notes);
+    if (normalizedExistingNotes.length > 0) {
+      return normalizedExistingNotes;
+    }
+
+    // If no notes exist yet, surface author or arXiv comment from extra metadata as an initial imported note (Zotero convention)
+    const potentialCommentText =
+      (paper.extraFields?.comment as string) ||
+      (typeof paper.extra === 'string' && paper.extra.includes('"comment"')
+        ? (() => {
+            try {
+              const parsedExtraPayload: unknown = JSON.parse(paper.extra);
+              if (
+                typeof parsedExtraPayload === 'object' &&
+                parsedExtraPayload !== null &&
+                'comment' in parsedExtraPayload
+              ) {
+                return String((parsedExtraPayload as Record<string, unknown>).comment);
+              }
+              return null;
+            } catch (caughtError) {
+              return null;
+            }
+          })()
+        : null);
+
+    if (typeof potentialCommentText === 'string' && potentialCommentText.trim()) {
+      return [
+        {
+          id: `imported-comment-${paper.id}`,
+          content: `Comment: ${potentialCommentText.trim()}`,
+          createdAt: paper.createdAt || new Date().toISOString(),
+        },
+      ];
+    }
+
+    return [];
+  }, [
+    canonicalNotes,
+    paper.notes,
+    paper.extraFields,
+    paper.extra,
+    paper.id,
+    paper.createdAt,
+  ]);
 
   const handleSaveNewNote = async () => {
-    const trimmed = newNoteContent.trim();
-    if (!trimmed) return;
+    const trimmedContent = newNoteContent.trim();
+    if (!trimmedContent) return;
 
     if (paper.workspaceId) {
       try {
-        await createNote({ itemId: paper.id, contentMd: trimmed });
-      } catch {
-        if (onAddNote) onAddNote(trimmed);
+        await createNote({ itemId: paper.id, contentMd: trimmedContent });
+      } catch (caughtError) {
+        if (onAddNote) onAddNote(trimmedContent);
       }
     } else if (onAddNote) {
-      onAddNote(trimmed);
+      onAddNote(trimmedContent);
     }
     setNewNoteContent('');
     setIsAdding(false);
   };
 
-  const handleStartEdit = (n: NormalizedNote) => {
-    setEditingNoteId(n.id);
-    setEditingContent(n.content);
+  const handleStartEdit = (selectedNote: NormalizedNote) => {
+    setEditingNoteId(selectedNote.id);
+    setEditingContent(selectedNote.content);
   };
 
   const handleSaveEdit = async (noteId: string) => {
-    const trimmed = editingContent.trim();
-    if (!trimmed) return;
+    const trimmedContent = editingContent.trim();
+    if (!trimmedContent) return;
 
-    const target = canonicalNotes.find((n) => n.id === noteId);
-    if (target && paper.workspaceId) {
+    const targetNote = canonicalNotes.find((singleNote) => singleNote.id === noteId);
+    if (targetNote && paper.workspaceId) {
       try {
-        await updateNote(noteId, target.version || 1, { contentMd: trimmed });
-      } catch {
-        if (onUpdateNote) onUpdateNote(noteId, trimmed);
+        await updateNote(noteId, targetNote.version || 1, { contentMd: trimmedContent });
+      } catch (caughtError) {
+        if (onUpdateNote) onUpdateNote(noteId, trimmedContent);
+      }
+    } else if (paper.workspaceId) {
+      try {
+        await createNote({ itemId: paper.id, contentMd: trimmedContent });
+      } catch (caughtError) {
+        if (onAddNote) onAddNote(trimmedContent);
       }
     } else if (onUpdateNote) {
-      onUpdateNote(noteId, trimmed);
+      onUpdateNote(noteId, trimmedContent);
     }
     setEditingNoteId(null);
     setEditingContent('');

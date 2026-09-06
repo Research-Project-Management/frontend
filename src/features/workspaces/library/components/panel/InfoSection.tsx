@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
-import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId } from '@/features/workspaces/library/utils/library.util';
+import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId, formatAndSanitizeExtraMetadata } from '@/features/workspaces/library/utils/library.util';
 import {
   LIBRARY_ITEM_TYPES,
   getItemTypeDefinition,
@@ -31,9 +31,10 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import ConvertModal from '../modals/ConvertModal';
-import { useLibraryClipboard } from '@/features/workspaces/library/hooks/library/use-clipboard';
-import { useItemTypes } from '@/features/workspaces/library/hooks/library/use-items';
-import { useConversion } from '@/features/workspaces/library/hooks/library/use-conversion';
+import { toast } from 'sonner';
+import { copyToClipboard as copyText } from '@/shared/lib/clipboard';
+import { useItemTypes } from '@/features/workspaces/library/hooks/use-items';
+import { useConversion } from '@/features/workspaces/library/hooks/use-conversion';
 
 interface InfoSectionProps {
   paper: CatalogItem;
@@ -363,12 +364,19 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     }
   }, [focusAuthorIndex, localCreators]);
 
-  const { copyToClipboard: copyWithToast } = useLibraryClipboard();
-
-  const copyToClipboard = (text: string, label: string) => {
-    copyWithToast(text, `Copied ${label}`);
-    setCopiedKey(label);
-    setTimeout(() => setCopiedKey(null), 1500);
+  const copyToClipboard = async (text: string, label: string) => {
+    if (!text || !text.trim()) {
+      toast.error('Nothing to copy', { id: 'library-clipboard' });
+      return;
+    }
+    const ok = await copyText(text);
+    if (ok) {
+      toast.success(`Copied ${label}`, { id: 'library-clipboard' });
+      setCopiedKey(label);
+      setTimeout(() => setCopiedKey(null), 1500);
+    } else {
+      toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
+    }
   };
 
   const handleFieldChange = (field: keyof CatalogItem | string, value: any) => {
@@ -577,6 +585,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         f.field !== 'dateModified',
     );
   }, [typeDefinition]);
+
+  const formattedExtraMetadata = useMemo(() => {
+    return formatAndSanitizeExtraMetadata(paper.extra, paper.extraFields, paper);
+  }, [paper.extra, paper.extraFields, paper]);
 
   return (
     <div className="space-y-0.5 select-text font-sans antialiased">
@@ -856,9 +868,9 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 mono={fieldDef.mono}
               />
 
-              {/* Citations Provider Badge / Quick Action */}
+              {/* Citations Provider Quick Action */}
               {isCitations && rawVal && (
-                <div className="invisible group-hover:visible flex items-center gap-1 shrink-0">
+                <div className="invisible group-hover:visible flex items-center shrink-0">
                   <a
                     href={
                       displayDoi
@@ -867,11 +879,11 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     }
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="inline-flex items-center gap-1 text-[11px] text-foreground bg-muted/60 hover:bg-black/5 dark:hover:bg-white/5 px-1.5 py-0.5 rounded-md border border-border/40 select-none"
-                    aria-label="View citations on OpenAlex"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    aria-label="View citations on OpenAlex in new tab"
+                    title="View citations on OpenAlex"
                   >
-                    <span>OpenAlex</span>
-                    <ExternalLink className="size-2.5 text-foreground" aria-hidden="true" />
+                    <ExternalLink className="size-3.5 text-foreground" aria-hidden="true" />
                   </a>
                 </div>
               )}
@@ -989,15 +1001,19 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       )}
 
       {/* Extra Field */}
-      {isValidValue(paper.extra) && (
-        <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-          <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate" id="label-extra">
+      {isValidValue(formattedExtraMetadata) && (
+        <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">
+          <span
+            className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate pt-1"
+            id="label-extra"
+          >
             Extra
           </span>
-          <InlineField
-            value={cleanValue(paper.extra)}
+          <InlineTextarea
+            value={formattedExtraMetadata}
             ariaLabel="Extra"
-            onSave={(val) => handleFieldChange('extra', val || undefined)}
+            rows={Math.min(4, Math.max(1, formattedExtraMetadata.split('\n').length))}
+            onSave={(savedValue) => handleFieldChange('extra', savedValue || undefined)}
           />
         </div>
       )}

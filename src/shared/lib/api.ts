@@ -38,46 +38,73 @@ export {
   hasAuthToken,
 };
 
-// ─── 2. Deduplicated Silent Refresh ───────────────────────────────────────────
+interface RefreshTokenResult {
+  readonly success: boolean;
+  readonly accessToken: string | null;
+  readonly isSessionInvalid: boolean;
+}
 
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<RefreshTokenResult> | null = null;
 
-async function silentRefresh(): Promise<string | null> {
-  const rt = getRefreshToken();
-  if (!rt) return null;
-
+async function silentRefresh(): Promise<RefreshTokenResult> {
   try {
-    const url = `${API_BASE_URL}/auth/refresh`;
-    const res = await fetch(url, {
+    const refreshEndpointUrl = `${API_BASE_URL}/auth/refresh`;
+    const storedRefreshToken = getRefreshToken();
+    const requestPayload = storedRefreshToken
+      ? JSON.stringify({ refreshToken: storedRefreshToken })
+      : JSON.stringify({});
+
+    const refreshResponse = await fetch(refreshEndpointUrl, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: rt }),
+      body: requestPayload,
     });
 
-    if (!res.ok) return null;
+    if (!refreshResponse.ok) {
+      const isSessionInvalid =
+        refreshResponse.status === 401 ||
+        refreshResponse.status === 403 ||
+        refreshResponse.status === 400;
+      return {
+        success: false,
+        accessToken: null,
+        isSessionInvalid,
+      };
+    }
 
-    const data = (await res.json()) as {
+    const refreshData = (await refreshResponse.json()) as {
       accessToken?: string;
+      token?: string;
       refreshToken?: string;
     };
 
-    if (data.accessToken) {
-      setAuthToken(data.accessToken);
-      if (data.refreshToken) {
-        setRefreshToken(data.refreshToken);
-      }
-      return data.accessToken;
+    const newAccessToken = refreshData.accessToken || refreshData.token;
+    if (newAccessToken) {
+      setTokens(newAccessToken, refreshData.refreshToken);
+      return {
+        success: true,
+        accessToken: newAccessToken,
+        isSessionInvalid: false,
+      };
     }
 
-    return null;
-  } catch (error) {
-    logger.warn('Silent refresh failed with network error', { error });
-    return null;
+    return {
+      success: false,
+      accessToken: null,
+      isSessionInvalid: true,
+    };
+  } catch (caughtError: unknown) {
+    logger.warn('Silent refresh failed with network error', { error: caughtError });
+    return {
+      success: false,
+      accessToken: null,
+      isSessionInvalid: false,
+    };
   }
 }
 
-function tryRefresh(): Promise<string | null> {
+function tryRefresh(): Promise<RefreshTokenResult> {
   if (!refreshPromise) {
     refreshPromise = silentRefresh().finally(() => {
       refreshPromise = null;
@@ -218,29 +245,34 @@ export async function apiFetch<T>(
       path.includes('/auth/oauth/exchange');
 
     if (response.status === 401 && !isUnauthenticatedAuthEndpoint) {
-      const newToken = await tryRefresh();
+      const refreshResult = await tryRefresh();
 
-      if (newToken) {
+      if (refreshResult.success && refreshResult.accessToken) {
         try {
           response = await rawFetch(path, normalizedMethod, body, options);
-        } catch (err: unknown) {
-          if ((err as Error)?.name === 'AbortError') {
-            throw err;
+        } catch (caughtRetryError: unknown) {
+          if ((caughtRetryError as Error)?.name === 'AbortError') {
+            throw caughtRetryError;
           }
           const apiError = new ApiError({
-            message: err instanceof Error ? err.message : 'Network error: Failed to fetch',
+            message:
+              caughtRetryError instanceof Error
+                ? caughtRetryError.message
+                : 'Network error: Failed to fetch',
             statusCode: 0,
           });
           logger.error(`Network Error on retry: [${normalizedMethod}] ${path}`, apiError);
           throw apiError;
         }
-      } else {
+      } else if (refreshResult.isSessionInvalid) {
         removeAuthToken();
 
         if (typeof window !== 'undefined') {
           const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/'];
           const isPublicPath = publicPaths.some(
-            (p) => window.location.pathname === p || window.location.pathname.startsWith(p + '/'),
+            (publicPath) =>
+              window.location.pathname === publicPath ||
+              window.location.pathname.startsWith(publicPath + '/'),
           );
           if (!isPublicPath) {
             window.location.href = '/login';
@@ -285,7 +317,17 @@ export async function apiFetch<T>(
         code: errorCode,
       });
 
-      if (response.status === 401) {
+      if (options?.silent) {
+        logger.debug(`API Request rejected (silent): [${normalizedMethod}] ${path}`, {
+          statusCode: response.status,
+          message: errorMessage,
+        });
+      } else if (response.status === 404) {
+        logger.warn(`Resource not found (404): [${normalizedMethod}] ${path}`, {
+          statusCode: response.status,
+          message: errorMessage,
+        });
+      } else if (response.status === 401) {
         logger.warn(`Authentication required: [${normalizedMethod}] ${path}`, {
           statusCode: response.status,
           message: errorMessage,

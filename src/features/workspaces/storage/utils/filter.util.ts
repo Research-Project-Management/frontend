@@ -63,12 +63,12 @@ export function applyStorageFilters(
           !item.metaData?.projectId
       );
     } else {
-      const pId = options.projectFilter;
+      const targetFilterProjectId = options.projectFilter;
       result = result.filter(
         (item) =>
-          item.linkedTo?.entityId === pId ||
-          item.project?.id === pId ||
-          item.metaData?.projectId === pId
+          item.linkedTo?.entityId === targetFilterProjectId ||
+          item.project?.id === targetFilterProjectId ||
+          item.metaData?.projectId === targetFilterProjectId
       );
     }
   }

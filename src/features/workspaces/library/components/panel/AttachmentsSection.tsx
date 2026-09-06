@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -22,8 +22,8 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { getPaperFileUrl } from '@/features/workspaces/library/utils/library.util';
-import { usePdf } from '@/features/workspaces/library/hooks/reader/use-pdf';
-import { useAttachmentRevisions } from '@/features/workspaces/library/hooks/library/use-attachments';
+import { usePdf } from '@/features/workspaces/reader/hooks/use-pdf';
+import { useAttachmentRevisions } from '@/features/workspaces/library/hooks/use-attachments';
 import type { CatalogItem, PaperAttachment } from '@/features/workspaces/library/types/library.types';
 
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -233,6 +233,8 @@ interface AttachmentsSectionProps {
   hideHeader?: boolean;
 }
 
+const EMPTY_ATTACHMENTS: PaperAttachment[] = [];
+
 export default function AttachmentsSection({
   paper,
   workspaceId,
@@ -242,7 +244,7 @@ export default function AttachmentsSection({
   const params = useParams();
   const rawWorkspaceId = (workspaceId || (params as any)?.workspaceId || 'ws-default') as string;
 
-  const rawAttachments = paper.attachments || (paper as any).files || [];
+  const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
 
   const otherAttachments = useMemo(() => {
@@ -251,7 +253,7 @@ export default function AttachmentsSection({
       if (paper.filename && (att.filename === paper.filename || att.name === paper.filename)) return false;
       return true;
     });
-  }, [rawAttachments, paperUrl, paper.filename]);
+  }, [rawAttachments, paper.filename]);
 
   const handleOpenReader = () => {
     if (!paper.id) return;

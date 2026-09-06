@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -26,7 +26,7 @@ import { ALL_ITEM_TYPES_FLAT } from '@/features/workspaces/library/schemas/item-
 import {
   useItemTypeConversion,
   type TypeConversionPreview,
-} from '../../hooks/library/use-conversion';
+} from '../../hooks/use-conversion';
 
 export interface ConvertModalProps {
   open: boolean;

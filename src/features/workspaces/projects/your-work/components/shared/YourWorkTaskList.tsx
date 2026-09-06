@@ -90,9 +90,9 @@ export function YourWorkTaskList({
   const groups = useMemo(() => {
     const map = new Map<string, any[]>();
     tasks.forEach((task) => {
-      const colId = task.columnId || 'todo';
-      if (!map.has(colId)) map.set(colId, []);
-      map.get(colId)!.push(task);
+      const columnId = task.columnId || 'todo';
+      if (!map.has(columnId)) map.set(columnId, []);
+      map.get(columnId)!.push(task);
     });
 
     const order = ['backlog', 'todo', 'doing', 'review', 'done', 'cancelled'];

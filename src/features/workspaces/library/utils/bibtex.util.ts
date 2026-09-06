@@ -1,5 +1,5 @@
-﻿import type { Paper, CatalogItem } from '../types/library.types';
-import { normalizeAuthors, getPaperCitationKey, cleanDoi } from './library.util';
+import type { Paper, CatalogItem } from '../types/library.types';
+import { normalizeAuthors, cleanDoi } from './library.util';
 
 // ── BibTeX Citation Engine ────────────────────────────────────────────────────
 
@@ -7,7 +7,8 @@ import { normalizeAuthors, getPaperCitationKey, cleanDoi } from './library.util'
  * Generates a BibTeX-standard citation key.
  * Format: LastName + Year + FirstSignificantTitleWord (e.g. "he2016deep").
  */
-export function generateCitationKey(paper: Partial<Paper> | CatalogItem): string {
+export function generateCitationKey(paper?: Partial<Paper> | CatalogItem | null): string {
+  if (!paper) return 'refpaper';
   if (paper.citationKey && paper.citationKey.trim()) {
     return paper.citationKey.trim().replace(/\s+/g, '');
   }
@@ -214,4 +215,70 @@ export class BibtexEngine {
   static download(paper: CatalogItem, filename?: string): void {
     downloadBibTeXFile(paper, filename);
   }
+}
+
+export const getPaperCitationKey = generateCitationKey;
+
+/**
+ * Returns LaTeX cite command (e.g. \cite{vaswani2017attention})
+ */
+export function formatCiteCommand(paper: Partial<Paper>): string {
+  const key = generateCitationKey(paper);
+  return `\\cite{${key}}`;
+}
+
+/**
+ * Formats a paper reference in APA 7th style
+ */
+export function formatApaCitation(paper: Partial<Paper>): string {
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
+  let authorStr = 'Unknown Author';
+  if (authors.length === 1) {
+    authorStr = authors[0];
+  } else if (authors.length === 2) {
+    authorStr = `${authors[0]} & ${authors[1]}`;
+  } else if (authors.length > 2) {
+    authorStr = `${authors[0]} et al.`;
+  }
+
+  const yearStr = paper.year ? `(${paper.year})` : '(n.d.)';
+  const titleStr = paper.title ? `${paper.title.replace(/\.$/, '')}.` : 'Untitled.';
+  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
+  let venueStr = venue ? `${venue}` : '';
+  if (paper.volume) venueStr += `, ${paper.volume}`;
+  if (paper.issue) venueStr += `(${paper.issue})`;
+  if (paper.pages) venueStr += `, ${paper.pages}`;
+  if (venueStr) venueStr += '.';
+
+  const doiOrUrl = paper.doi
+    ? `https://doi.org/${cleanDoi(paper.doi)}`
+    : paper.url || '';
+
+  return [authorStr, yearStr, titleStr, venueStr, doiOrUrl]
+    .filter(Boolean)
+    .join(' ');
+}
+
+/**
+ * Formats a paper reference in IEEE style
+ */
+export function formatIeeeCitation(paper: Partial<Paper>): string {
+  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
+  let authorStr = 'Unknown Author';
+  if (authors.length === 1) {
+    authorStr = authors[0];
+  } else if (authors.length > 1) {
+    authorStr = `${authors[0]} et al.`;
+  }
+
+  const titleStr = paper.title ? `"${paper.title.replace(/\.$/, '')},"` : '"Untitled,"';
+  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
+  const venueStr = venue ? `in ${venue}` : '';
+  const volStr = paper.volume ? `vol. ${paper.volume}` : '';
+  const yearStr = paper.year ? `${paper.year}` : '';
+
+  const parts = [authorStr, titleStr, venueStr, volStr, yearStr].filter(Boolean);
+  let res = parts.join(', ');
+  if (!res.endsWith('.')) res += '.';
+  return res;
 }

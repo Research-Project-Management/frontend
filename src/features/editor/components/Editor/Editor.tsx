@@ -613,11 +613,11 @@ export default function Editor({ page }: EditorProps) {
           return { suggestions: [] };
         }
 
-        const wsId = workspaceIdRef.current;
-        if (!wsId) return { suggestions: [] };
+        const currentWorkspaceId = workspaceIdRef.current;
+        if (!currentWorkspaceId) return { suggestions: [] };
 
         try {
-          const res = await CatalogItemService.getAll(wsId, { limit: 100 });
+          const res = await CatalogItemService.getAll(currentWorkspaceId, { limit: 100 });
           const papers: any[] = Array.isArray(res) ? res : (res as any)?.papers || [];
 
           const word = model.getWordUntilPosition(position);

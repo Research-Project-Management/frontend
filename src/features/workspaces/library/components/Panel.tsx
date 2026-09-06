@@ -36,18 +36,19 @@ const AttachmentsSection = dynamic(() => import('./panel/AttachmentsSection'), {
   ssr: false,
 });
 import CreateCollectionModal from './modals/CreateCollectionModal';
-import { useItems as usePapers } from '../hooks/library/use-items';
+import { useItems as usePapers } from '../hooks/use-items';
 import { CatalogItemService } from '../services/catalog.service';
-import { useCollections } from '../hooks/library/use-collections';
-import { useAttachments } from '../hooks/library/use-attachments';
-import { useNotes } from '../hooks/library/use-notes';
-import { useRelations } from '../hooks/library/use-relations';
-import { useLibraryClipboard } from '../hooks/library/use-clipboard';
+import { useCollections } from '../hooks/use-collections';
+import { useAttachments } from '../hooks/use-attachments';
+import { useNotes } from '../hooks/use-notes';
+import { useRelations } from '../hooks/use-relations';
 import { useLibrarySidebarStore, type InspectorSectionId } from '../store/sidebar.store';
 import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperCitationKey, getPaperFileUrl } from '../utils/library.util';
 import { ALL_ITEM_TYPES_FLAT } from '../schemas/item-type.schema';
 import { cn } from '@/shared/lib/utils';
 import { useUpload } from '@/shared/hooks/use-upload';
+import { toast } from 'sonner';
+import { copyToClipboard } from '@/shared/lib/clipboard';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { apiPost, apiDelete } from '@/shared/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
@@ -238,14 +239,14 @@ export default function InspectorPanel({
   onClose,
 }: InspectorPanelProps) {
   const incomingPaper = propPaper || propItem || null;
-  const targetWsId = incomingPaper?.workspaceId || workspaceId || '';
+  const activeWorkspaceId = incomingPaper?.workspaceId || workspaceId || '';
   const [paper, setPaper] = useState<CatalogItem | null>(incomingPaper);
   const latestPaperRef = useRef<CatalogItem | null>(incomingPaper);
   const updateQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const paperService = usePapers({ workspaceId: targetWsId });
-  const collectionsState = useCollections(targetWsId);
+  const paperService = usePapers({ workspaceId: activeWorkspaceId });
+  const collectionsState = useCollections(activeWorkspaceId);
   const collections = collectionsState?.state?.collections || [];
-  const { notes: canonicalNotes, deleteNote } = useNotes(targetWsId, paper?.id);
+  const { notes: canonicalNotes, deleteNote } = useNotes(activeWorkspaceId, paper?.id);
 
   const {
     isInspectorOpen,
@@ -272,9 +273,8 @@ export default function InspectorPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { uploadFile, uploadFileDetailed } = useUpload();
-  const { copyToClipboard } = useLibraryClipboard();
   const verifiedPaperId = isPaperVerified ? paper?.id || '' : '';
-  const { add: addAttachment } = useAttachments(targetWsId, verifiedPaperId);
+  const { add: addAttachment } = useAttachments(activeWorkspaceId, verifiedPaperId);
 
   // Table rows can be stale after another mutation. Keep the panel on the
   // newest server version so optimistic locking never reuses an old version.
@@ -297,11 +297,11 @@ export default function InspectorPanel({
   }, [incomingPaper]);
 
   useEffect(() => {
-    if (!incomingPaper?.id || !targetWsId) return;
+    if (!incomingPaper?.id || !activeWorkspaceId) return;
 
     setIsPaperVerified(false);
     let cancelled = false;
-    void CatalogItemService.getById(targetWsId, incomingPaper.id)
+    void CatalogItemService.getById(activeWorkspaceId, incomingPaper.id)
       .then((response) => {
         if (cancelled) return;
         const latest = (response as any)?.item || (response as any)?.paper || response;
@@ -328,7 +328,7 @@ export default function InspectorPanel({
     return () => {
       cancelled = true;
     };
-  }, [incomingPaper?.id, targetWsId, onClose]);
+  }, [incomingPaper?.id, activeWorkspaceId, onClose]);
 
   // Nếu user chưa chọn paper nào, panel không tự động mở và tự động đóng nếu đang mở
   useEffect(() => {
@@ -516,10 +516,10 @@ export default function InspectorPanel({
       })
       .catch(async () => {
         const currentPaper = latestPaperRef.current;
-        if (!currentPaper?.id || currentPaper.id !== requestedItemId || !targetWsId) return;
+        if (!currentPaper?.id || currentPaper.id !== requestedItemId || !activeWorkspaceId) return;
 
         try {
-          const response = await CatalogItemService.getById(targetWsId, currentPaper.id);
+          const response = await CatalogItemService.getById(activeWorkspaceId, currentPaper.id);
           const latest = (response as any)?.item || (response as any)?.paper || response;
           if (!latest?.id) return;
           latestPaperRef.current = latest;
@@ -555,10 +555,15 @@ export default function InspectorPanel({
     }
   };
 
-  const handleCopyCitation = () => {
+  const handleCopyCitation = async () => {
     if (!paper) return;
     const bib = convertToBibTeX(paper);
-    copyToClipboard(bib, 'BibTeX citation copied to clipboard');
+    const ok = await copyToClipboard(bib);
+    if (ok) {
+      toast.success('BibTeX citation copied to clipboard', { id: 'library-clipboard' });
+    } else {
+      toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
+    }
   };
 
   // Section Counts
@@ -765,7 +770,7 @@ export default function InspectorPanel({
                 {paper && isSectionOpen('notes') && (
                   <div className="p-2 bg-background">
                     <NotesSection
-                      paper={{ ...paper, workspaceId: targetWsId }}
+                      paper={{ ...paper, workspaceId: activeWorkspaceId }}
                       onUpdatePaper={handleUpdatePaper}
                       hideHeader
                       forceAdding={forceAddingNote}
@@ -777,7 +782,7 @@ export default function InspectorPanel({
                           itemName: note.content,
                           confirmLabel: 'Move to trash',
                           onConfirm: async () => {
-                            if (targetWsId) {
+                            if (activeWorkspaceId) {
                               await deleteNote(note.id).catch(() => {});
                             }
                             setDeleteModalConfig(null);

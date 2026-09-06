@@ -3,7 +3,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw } from 'lucide-react';
-import { useLibraryClipboard } from '../../hooks/library/use-clipboard';
+import { toast } from 'sonner';
+import { copyToClipboard } from '@/shared/lib/clipboard';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -42,7 +43,18 @@ export function BatchBar({
   onBatchRestore,
   isTrash = false,
 }: BatchBarProps) {
-  const { copyToClipboard } = useLibraryClipboard();
+  const copyWithToast = async (text: string, label: string = 'Copied to clipboard') => {
+    if (!text || !text.trim()) {
+      toast.error('Nothing to copy', { id: 'library-clipboard' });
+      return;
+    }
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      toast.success(label, { id: 'library-clipboard' });
+    } else {
+      toast.error('Failed to copy to clipboard', { id: 'library-clipboard' });
+    }
+  };
 
   React.useEffect(() => {
     if (selectedCount === 0) return;
@@ -64,21 +76,21 @@ export function BatchBar({
     if (style === 'latex') {
       const keys = resolvedItems.map((p) => generateCitationKey(p)).filter(Boolean);
       const citeCmd = `\\cite{${keys.join(', ')}}`;
-      copyToClipboard(citeCmd, `Copied ${citeCmd} to clipboard`);
+      await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
       return;
     }
 
-    const wsId = resolvedItems[0]?.workspaceId || '';
+    const workspaceId = resolvedItems[0]?.workspaceId || '';
     const itemIds = resolvedItems.map((p) => p.id).filter(Boolean);
-    if (wsId && itemIds.length > 0) {
+    if (workspaceId && itemIds.length > 0) {
       try {
-        const res = await CitationService.batchFormat(wsId, itemIds, style);
+        const res = await CitationService.batchFormat(workspaceId, itemIds, style);
         const text = res.citations
           .map((c) => c.citation?.bibliography)
           .filter(Boolean)
           .join('\n\n');
         if (text) {
-          copyToClipboard(
+          await copyWithToast(
             text,
             `Copied ${itemIds.length} citations (${style.toUpperCase()}) to clipboard`,
           );
@@ -90,12 +102,12 @@ export function BatchBar({
     }
     const keys = resolvedItems.map((p) => generateCitationKey(p)).filter(Boolean);
     const citeCmd = `\\cite{${keys.join(', ')}}`;
-    copyToClipboard(citeCmd, `Copied ${citeCmd} to clipboard`);
+    await copyWithToast(citeCmd, `Copied ${citeCmd} to clipboard`);
   };
 
-  const handleExportAllBibtex = () => {
+  const handleExportAllBibtex = async () => {
     const bibtexEntries = resolvedItems.map((p) => convertToBibTeX(p)).join('\n\n');
-    copyToClipboard(bibtexEntries, `Copied BibTeX for ${selectedCount} papers to clipboard`);
+    await copyWithToast(bibtexEntries, `Copied BibTeX for ${selectedCount} papers to clipboard`);
   };
 
   const handleDownloadBibFile = () => {

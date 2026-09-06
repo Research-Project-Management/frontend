@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState } from 'react';
 import {
@@ -17,8 +17,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { cn } from '@/shared/lib/utils';
-import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
-import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/library/use-items';
+import { useCollections } from '@/features/workspaces/library/hooks/use-library';
+import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/use-items';
 import type { Collection, Paper } from '@/features/workspaces/library/types/library.types';
 
 export interface SourcePickerModalProps {

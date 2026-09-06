@@ -16,7 +16,7 @@ import {
   TooltipContent,
   TooltipProvider,
 } from '@/shared/components/ui/tooltip';
-import { useCslCitation } from '@/features/workspaces/library/hooks/library/use-library';
+import { useCslCitation } from '@/features/workspaces/library/hooks/use-library';
 import type { CatalogItem, CslStyle } from '@/features/workspaces/library/types/library.types';
 import { getPaperCitationKey, cleanDoi } from '@/features/workspaces/library/utils/library.util';
 
@@ -53,7 +53,7 @@ export const ALL_FORMATS: Array<{ id: CitationFormat; label: string }> = [
 export const PRIMARY_FORMATS = ALL_FORMATS.slice(0, 4);
 export const MORE_FORMATS = ALL_FORMATS.slice(4);
 
-/** Robust clipboard copy — tries modern Clipboard API, falls back to execCommand */
+/** Robust clipboard copy â€” tries modern Clipboard API, falls back to execCommand */
 async function copyToClipboard(text: string): Promise<boolean> {
   if (!text) return false;
   try {
@@ -107,18 +107,30 @@ function downloadFile(filename: string, content: string, mimeType = 'text/plain;
   }
 }
 
+import DOMPurify from 'dompurify';
+
 /**
- * Minimal CSL HTML sanitizer — strips only dangerous tags/attributes.
- * Preserves semantic HTML (<i>, <b>, <a>) used by CSL styles for
- * italics (journal names), bold (volume), and DOI hyperlinks.
+ * Robust CSL HTML sanitizer powered by DOMPurify.
+ * Strictly whitelists semantic markup (i, b, em, strong, span, a, div)
+ * and safe attributes (href, class) required for citation styling while
+ * neutralizing any XSS payloads, inline script injection, or javascript: URIs.
  */
 function sanitizeCslHtml(html?: string): string {
   if (!html) return '';
-  let sanitized = html.replace(/<\s*(script|iframe|object|embed|form|svg|img|style)[^>]*>.*?<\s*\/\s*\1\s*>/gi, '');
-  sanitized = sanitized.replace(/<\s*(script|iframe|object|embed|form|svg|img|style)[^>]*\/?\s*>/gi, '');
-  sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
-  sanitized = sanitized.replace(/href\s*=\s*["']\s*javascript:[^"']*/gi, 'href="#"');
-  return sanitized;
+  if (typeof window === 'undefined') return '';
+
+  const purify = typeof DOMPurify.sanitize === 'function'
+    ? DOMPurify
+    : typeof DOMPurify === 'function'
+      ? (DOMPurify as unknown as (win: Window) => typeof DOMPurify)(window)
+      : null;
+
+  if (!purify || typeof purify.sanitize !== 'function') return '';
+
+  return purify.sanitize(html, {
+    ALLOWED_TAGS: ['i', 'b', 'em', 'strong', 'span', 'a', 'div', 'p', 'sub', 'sup'],
+    ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+  });
 }
 
 export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
@@ -130,7 +142,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState<number>(4);
 
-  const targetWsId = workspaceId || paper?.workspaceId || '';
+  const activeWorkspaceId = workspaceId || paper?.workspaceId || '';
   const isExportFormat = activeFormat === 'bibtex' || activeFormat === 'ris';
 
   // All citation formats are rendered by the backend CSL engine.
@@ -138,7 +150,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
   const currentCslStyle = activeFormat as CslStyle;
 
   const { data: cslData, isLoading } = useCslCitation(
-    targetWsId,
+    activeWorkspaceId,
     paper?.id || '',
     currentCslStyle,
   );

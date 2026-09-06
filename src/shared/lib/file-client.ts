@@ -194,8 +194,8 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
       const parts = prefix.split('/').filter(Boolean);
       if (parts.length >= 2) {
         if (parts.includes('library')) {
-          const wsId = parts.find((p) => p !== 'library') || parts[0];
-          formData.append('workspaceId', wsId);
+          const extractedWorkspaceId = parts.find((p) => p !== 'library') || parts[0];
+          formData.append('workspaceId', extractedWorkspaceId);
           formData.append('source', 'library');
         } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
           formData.append('workspaceId', parts[1]);
@@ -299,8 +299,8 @@ export function uploadFileWithDetails(
       const parts = prefix.split('/').filter(Boolean);
       if (parts.length >= 2) {
         if (parts.includes('library')) {
-          const wsId = parts.find((p) => p !== 'library') || parts[0];
-          formData.append('workspaceId', wsId);
+          const extractedWorkspaceId = parts.find((p) => p !== 'library') || parts[0];
+          formData.append('workspaceId', extractedWorkspaceId);
           formData.append('source', 'library');
         } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
           formData.append('workspaceId', parts[1]);

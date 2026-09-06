@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import {
@@ -35,7 +35,7 @@ import {
   extractMetadata,
   extractDoiFromText,
 } from '@/features/workspaces/library/utils/library.util';
-import { useResolveIdentifier } from '@/features/workspaces/library/hooks/library/use-ingest';
+import { useResolveIdentifier } from '@/features/workspaces/library/hooks/use-ingest';
 import { toast } from 'sonner';
 import { Badge } from '@/shared/components/ui/badge';
 
@@ -194,9 +194,9 @@ export default function PaperUploadDialog({
   };
 
   // 1. Magic Wand / Identifier Resolution
-  const handleResolveIdentifier = async () => {
-    const trimmed = identifierInput.trim();
-    if (!trimmed) return;
+  const handleResolveIdentifier = async (customInput?: string) => {
+    const trimmed = (customInput ?? identifierInput).trim();
+    if (!trimmed) return null;
 
     try {
       const res = await resolve({ query: trimmed });
@@ -215,6 +215,7 @@ export default function PaperUploadDialog({
         if (meta.issue) setIssue(meta.issue);
         if (meta.pages) setPages(meta.pages);
         if (meta.itemType) setItemType(meta.itemType);
+        return meta;
       } else {
         // Fallback to DOI
         const extractedDoi = extractDoiFromText(trimmed) || (trimmed.startsWith('10.') ? trimmed : '');
@@ -228,13 +229,14 @@ export default function PaperUploadDialog({
             if (meta.journal) setJournal(meta.journal);
             if (meta.doi) setDoi(meta.doi || extractedDoi);
             if (meta.abstract) setAbstract(meta.abstract);
-            return;
+            return meta;
           }
         }
       }
     } catch {
       // Handled by resolve / resolveDoi mutation hooks
     }
+    return null;
   };
 
   // 2. Single File Upload
@@ -294,13 +296,23 @@ export default function PaperUploadDialog({
 
   // 3. Submit handler
   const handleSubmit = async () => {
-    if (mode !== 'folder' && !title.trim()) return;
-    const resolved = resolvedMeta || {};
+    let resolved = resolvedMeta || {};
+    let currentTitle = title.trim();
+
+    if (mode === 'identifier' && !currentTitle && identifierInput.trim()) {
+      const meta = await handleResolveIdentifier();
+      if (meta && meta.title) {
+        resolved = meta;
+        currentTitle = meta.title;
+      }
+    }
+
+    if (mode !== 'folder' && !currentTitle) return;
 
     if (mode === 'identifier') {
       await onSubmit({
         ...resolved,
-        title: title.trim() || resolved.title,
+        title: currentTitle || resolved.title,
         authors: authors
           ? authors.split(',').map((a) => a.trim()).filter(Boolean)
           : (resolved.authors || []),
@@ -481,7 +493,7 @@ export default function PaperUploadDialog({
 
   const canSubmit =
     mode === 'identifier'
-      ? Boolean(title.trim()) && !isPending && !isResolving
+      ? (Boolean(title.trim()) || Boolean(identifierInput.trim())) && !isPending && !isResolving
       : mode === 'file'
       ? Boolean(uploadedUrl) && Boolean(title.trim()) && !uploading && !isPending
       : folderFiles.length > 0 && !isFolderUploading;
@@ -546,17 +558,19 @@ export default function PaperUploadDialog({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-foreground">
-                    Identifier (DOI / arXiv / PubMed)
+                    Identifier (DOI / arXiv / PubMed / ISBN / URL)
                   </Label>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap">
                     <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5 rounded-sm">DOI</Badge>
                     <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5 rounded-sm">arXiv</Badge>
                     <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5 rounded-sm">PMID</Badge>
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5 rounded-sm">ISBN</Badge>
+                    <Badge variant="outline" className="text-xs font-mono px-1.5 py-0 h-4.5 rounded-sm">URL</Badge>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="e.g. 10.1145/... or arXiv:1706.03762 or PMID:31234567"
+                    placeholder="Paste DOI, URL (Nature, arXiv, Science, ACM...), PMID, or ISBN..."
                     value={identifierInput}
                     onChange={(e) => setIdentifierInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleResolveIdentifier()}
@@ -566,7 +580,7 @@ export default function PaperUploadDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleResolveIdentifier}
+                    onClick={() => handleResolveIdentifier()}
                     disabled={!identifierInput.trim() || isResolving}
                     className="h-9 px-3 text-xs gap-1.5 cursor-pointer shrink-0 rounded-md border-border/60"
                   >
@@ -587,16 +601,19 @@ export default function PaperUploadDialog({
                     <h4 className="font-medium text-foreground text-xs leading-snug">
                       {title}
                     </h4>
-                    {doi && (
+                    {(doi || resolvedMeta?.arxivId || resolvedMeta?.pmid || resolvedMeta?.pmcid || resolvedMeta?.isbn) && (
                       <Badge variant="outline" className="text-xs font-mono shrink-0 rounded-sm">
-                        {doi}
+                        {doi ? `DOI: ${doi}` : resolvedMeta?.arxivId ? `arXiv:${resolvedMeta.arxivId}` : resolvedMeta?.pmid ? `PMID:${resolvedMeta.pmid}` : resolvedMeta?.pmcid ? `PMC:${resolvedMeta.pmcid}` : `ISBN:${resolvedMeta.isbn}`}
                       </Badge>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     <span>{authors || 'Unknown Authors'}</span>
                     {year && <span>• ({year})</span>}
                     {journal && <span>• {journal}</span>}
+                    {resolvedMeta?.citationCount !== undefined && resolvedMeta?.citationCount !== null && (
+                      <span>• {Number(resolvedMeta.citationCount).toLocaleString()} citations</span>
+                    )}
                   </div>
                   {abstract && (
                     <p className="text-xs text-foreground/80 line-clamp-3 leading-relaxed">

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import {
@@ -41,8 +41,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/shared/components/ui/dialog';
-import { useLibrary } from '../hooks/library/use-library';
-import { useTrash, useItemTable, type SortField } from '../hooks/library/use-items';
+import { useLibrary } from '../hooks/use-library';
+import { useTrash, useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
 import { cn } from '@/shared/lib/utils';
 import type { CatalogItem } from '../types/library.types';

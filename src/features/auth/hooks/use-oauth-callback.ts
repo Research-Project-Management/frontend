@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { authKeys } from '../constants/auth.keys';
 import type { AuthUser } from '../types/auth.types';
 import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
-import { apiGet, apiPost, setTokens, setAuthToken } from '@/shared/lib/api';
+import { apiPost, setAuthToken } from '@/shared/lib/api';
 import { getErrorMessage } from '@/shared/utils/error.util';
 
 interface OAuthExchangeResponse {
@@ -35,8 +35,6 @@ export const useOAuthCallback = () => {
 
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
-      const token = urlParams.get('accessToken') || urlParams.get('token');
-      const refreshToken = urlParams.get('refreshToken');
       const error = urlParams.get('error');
 
       if (error) {
@@ -49,37 +47,20 @@ export const useOAuthCallback = () => {
         return;
       }
 
+      if (!code) {
+        toast.error('No authorization code received. Direct token passing via URL is disallowed.');
+        router.replace('/login');
+        return;
+      }
+
       try {
-        let authUser: AuthUser;
+        // Exchange single-use code via POST body (HttpOnly refresh cookie is set automatically)
+        const exchangeData = await apiPost<OAuthExchangeResponse>('/auth/oauth/exchange', {
+          code,
+        });
 
-        // 1. Preferred Secure Flow: Exchange single-use code via POST body
-        if (code) {
-          const exchangeData = await apiPost<OAuthExchangeResponse>('/auth/oauth/exchange', {
-            code,
-          });
-
-          if (exchangeData.refreshToken) {
-            setTokens(exchangeData.accessToken, exchangeData.refreshToken);
-          } else {
-            setAuthToken(exchangeData.accessToken);
-          }
-
-          authUser = exchangeData.user;
-        } else if (token) {
-          // Fallback legacy URL params
-          if (refreshToken) {
-            setTokens(token, refreshToken);
-          } else {
-            setAuthToken(token);
-          }
-
-          const userData = await apiGet<{ user: AuthUser }>('/auth/user');
-          authUser = userData.user;
-        } else {
-          toast.error('No authorization code or token received');
-          router.replace('/login');
-          return;
-        }
+        setAuthToken(exchangeData.accessToken);
+        const authUser = exchangeData.user;
 
         // 2. Seed query cache
         queryClient.setQueryData(authKeys.session(), authUser);

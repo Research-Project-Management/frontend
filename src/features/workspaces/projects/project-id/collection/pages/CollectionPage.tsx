@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -14,13 +14,13 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/library/use-items';
-import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
+import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/use-items';
+import { useCollections } from '@/features/workspaces/library/hooks/use-library';
 import Panel from '@/features/workspaces/library/components/Panel';
 import UploadModal from '@/features/workspaces/library/components/modals/UploadModal';
 import CreateCollectionModal from '@/features/workspaces/library/components/modals/CreateCollectionModal';
 import { convertToBibTeX, filterPapers, formatCreatorCompact } from '@/features/workspaces/library/utils/library.util';
-import { useItemTable } from '@/features/workspaces/library/hooks/library/use-items';
+import { useItemTable } from '@/features/workspaces/library/hooks/use-items';
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 export default function CollectionPage() {

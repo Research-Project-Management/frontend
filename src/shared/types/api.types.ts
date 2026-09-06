@@ -78,4 +78,5 @@ export type RequestOptions = Omit<RequestInit, 'method' | 'body'> & {
   params?: Record<string, string | number | boolean | undefined | null>;
   timeout?: number;
   idempotencyKey?: string;
+  silent?: boolean;
 };

@@ -9,12 +9,12 @@ export function normalizeProjectMembers(rawMembers: any[], fallbackCreatedAt?: s
   if (!Array.isArray(rawMembers)) return [];
   return rawMembers.map((m) => {
     const u = m.user || {};
-    const uId = u.id || m.userId || '';
+    const memberUserId = u.id || m.userId || '';
     return {
-      id: m.id || uId,
-      userId: uId,
+      id: m.id || memberUserId,
+      userId: memberUserId,
       user: {
-        id: uId,
+        id: memberUserId,
         name: u.name || 'Unknown User',
         email: u.email || '',
         avatar: u.avatar || '',

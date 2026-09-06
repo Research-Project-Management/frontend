@@ -695,8 +695,8 @@ export default function ListView({
     if (columns.some((col) => resolveTaskColumnId(col) === overId)) {
       return overId;
     }
-    for (const [colId, tasks] of tasksByColumnId.entries()) {
-      if (tasks.some(t => t.id === overId)) return colId;
+    for (const [columnId, tasks] of tasksByColumnId.entries()) {
+      if (tasks.some(t => t.id === overId)) return columnId;
     }
     return null;
   }, [columns, tasksByColumnId]);

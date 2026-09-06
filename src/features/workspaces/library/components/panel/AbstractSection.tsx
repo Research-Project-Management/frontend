@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { useLibraryClipboard } from '@/features/workspaces/library/hooks/library/use-clipboard';
+import { toast } from 'sonner';
+import { useCopyToClipboard } from '@/shared/hooks/use-copy-to-clipboard';
 import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
 
 interface AbstractSectionProps {
@@ -11,31 +12,36 @@ interface AbstractSectionProps {
   hideHeader?: boolean;
 }
 
+function getAbstractValue(p: CatalogItem): string {
+  const item = p as CatalogItem & {
+    abstractNote?: string;
+    extra?: { abstract?: string };
+    metadata?: { abstract?: string };
+    description?: string;
+  };
+  return (
+    item.abstract ||
+    item.abstractNote ||
+    item.extra?.abstract ||
+    item.metadata?.abstract ||
+    item.description ||
+    ''
+  );
+}
+
 export default function AbstractSection({
   paper,
   onUpdatePaper,
   hideHeader = false,
 }: AbstractSectionProps) {
-  const getAbstractValue = (p: CatalogItem) => {
-    return (
-      p.abstract ||
-      (p as any).abstractNote ||
-      (p as any).extra?.abstract ||
-      (p as any).metadata?.abstract ||
-      (p as any).description ||
-      ''
-    );
-  };
-
   const currentAbstract = getAbstractValue(paper);
   const [draft, setDraft] = useState(currentAbstract);
-  const [copied, setCopied] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { copyToClipboard } = useLibraryClipboard();
+  const { copy, isCopied } = useCopyToClipboard();
 
   useEffect(() => {
-    setDraft(getAbstractValue(paper));
-  }, [paper.id, paper.abstract, (paper as any)?.abstractNote]);
+    setDraft(currentAbstract);
+  }, [currentAbstract]);
 
   // Auto-resize textarea to fit content naturally
   useEffect(() => {
@@ -55,11 +61,12 @@ export default function AbstractSection({
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!draft.trim()) return;
-    copyToClipboard(draft.trim(), 'Abstract copied to clipboard');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copy(draft.trim());
+    if (ok) {
+      toast.success('Abstract copied to clipboard', { id: 'library-clipboard' });
+    }
   };
 
   return (
@@ -76,12 +83,12 @@ export default function AbstractSection({
               className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
               aria-label="Copy abstract"
             >
-              {copied ? (
+              {isCopied ? (
                 <Check className="size-3 text-foreground" />
               ) : (
                 <Copy className="size-3 text-foreground" />
               )}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <span>{isCopied ? 'Copied' : 'Copy'}</span>
             </button>
           )}
         </div>

@@ -23,7 +23,7 @@ export const IngestionService = {
     const res = await apiPost<any>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
       submission,
-      { timeout: 5000 },
+      { timeout: 30000 },
     );
     const accepted = res && typeof res === 'object' && 'data' in res ? res.data : res;
     return UnifiedIngestionResponseSchema.parse({

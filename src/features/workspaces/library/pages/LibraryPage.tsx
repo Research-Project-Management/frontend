@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,8 +38,8 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
-import { useLibrary } from '../hooks/library/use-library';
-import { useItemTable, type SortField } from '../hooks/library/use-items';
+import { useLibrary } from '../hooks/use-library';
+import { useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
 import { cn } from '@/shared/lib/utils';
 import type { CatalogItem } from '../types/library.types';
@@ -486,8 +486,8 @@ export default function LibraryPage() {
             selectedItems={sortedItems.filter((i) => selectedIds.has(i.id))}
             collections={collections}
             onClearSelection={clearSelection}
-            onBatchMove={handleBatchMoveItems ? (colId) => {
-              handleBatchMoveItems(Array.from(selectedIds), colId);
+            onBatchMove={handleBatchMoveItems ? (collectionId) => {
+              handleBatchMoveItems(Array.from(selectedIds), collectionId);
               clearSelection();
             } : undefined}
             onBatchDelete={handleInitiateBatchTrash}

@@ -206,13 +206,13 @@ export default function TopBar({
                   </div>
                 ) : (
                   filteredProjects.map((project: any) => {
-                    const pId = project.id;
-                    const isSelected = projectFilter.includes(pId);
+                    const mappedProjectId = project.id;
+                    const isSelected = projectFilter.includes(mappedProjectId);
                     return (
                       <button
-                        key={pId}
+                        key={mappedProjectId}
                         type="button"
-                        onClick={() => toggleProject(pId)}
+                        onClick={() => toggleProject(mappedProjectId)}
                         className={cn(
                           "w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs transition-colors text-left cursor-pointer",
                           isSelected

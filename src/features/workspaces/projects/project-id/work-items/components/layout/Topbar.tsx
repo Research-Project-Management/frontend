@@ -334,14 +334,14 @@ export function Topbar({
                   </span>
                   <div className="space-y-1 max-h-36 overflow-y-auto">
                     {columns.map((col) => {
-                      const colId = resolveTaskColumnId(col);
-                      const isSelected = selectedColumnIds.includes(colId);
-                      const color = resolveTaskColumnColor(colId, col.accentColor);
+                      const columnId = resolveTaskColumnId(col);
+                      const isSelected = selectedColumnIds.includes(columnId);
+                      const color = resolveTaskColumnColor(columnId, col.accentColor);
                       return (
                         <button
-                          key={colId}
+                          key={columnId}
                           type="button"
-                          onClick={() => toggleColumnFilter(colId)}
+                          onClick={() => toggleColumnFilter(columnId)}
                           className={cn(
                             'w-full flex items-center justify-between px-2 py-1.5 rounded-sm text-xs transition-colors text-left cursor-pointer',
                             isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground',

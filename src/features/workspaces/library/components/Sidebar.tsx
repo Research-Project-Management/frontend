@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState, useMemo, useRef, useCallback, useEffect } from 'react';
@@ -26,9 +26,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/shared/lib/utils';
-import { useWorkspace } from '@/features/workspaces/library/hooks/library/use-workspace';
-import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
-import { useCatalogItems } from '@/features/workspaces/library/hooks/library/use-items';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useCollections } from '@/features/workspaces/library/hooks/use-library';
+import { useCatalogItems } from '@/features/workspaces/library/hooks/use-items';
 import { useLibrarySidebarStore } from '@/features/workspaces/library/store/sidebar.store';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { Input } from '@/shared/components/ui/input';
@@ -501,8 +501,8 @@ export default function LibrarySideBar() {
   const [trashTarget, setTrashTarget] = useState<MoveToTrashTarget | null>(null);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
 
-  const startRename = (colId: string, name: string) => {
-    setRenamingId(colId);
+  const startRename = (collectionId: string, name: string) => {
+    setRenamingId(collectionId);
     setRenameValue(name);
   };
 

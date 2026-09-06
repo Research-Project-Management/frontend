@@ -35,10 +35,10 @@ export function useCreateWorkspace() {
 
     onSuccess: (response: any) => {
       const workspace = response.workspace || response;
-      const wsId = workspace.id;
+      const newWorkspaceId = workspace.id;
       queryClient.setQueriesData({ queryKey: workspaceKeys.all }, (current: unknown) => {
         if (Array.isArray(current)) {
-          const exists = current.some((w: { id?: string }) => w.id === wsId);
+          const exists = current.some((w: { id?: string }) => w.id === newWorkspaceId);
           return exists ? current : [workspace, ...current];
         }
         return current;

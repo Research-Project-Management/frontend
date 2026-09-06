@@ -270,12 +270,24 @@ export type CrossrefWork = {
   extra?: string;
 };
 
-export async function fetchLookupDoi(doi: string) {
-  return apiGet<{ work: CrossrefWork }>(`/api/library/references/doi/${encodeURIComponent(doi)}`);
+export async function fetchLookupDoi(doi: string, workspaceId?: string) {
+  const cleanDoi = encodeURIComponent(doi);
+  if (workspaceId) {
+    return apiGet<{ work: CrossrefWork }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/doi/${cleanDoi}`
+    );
+  }
+  return apiGet<{ work: CrossrefWork }>(`/api/library/references/doi/${cleanDoi}`);
 }
 
-export async function fetchSearchCrossref(query: string, rows = 1) {
+export async function fetchSearchCrossref(query: string, rows = 1, workspaceId?: string) {
+  const cleanQuery = encodeURIComponent(query);
+  if (workspaceId) {
+    return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/crossref/search?query=${cleanQuery}&rows=${rows}`
+    );
+  }
   return apiGet<{ works: CrossrefWork[]; totalResults: number }>(
-    `/api/library/references/crossref/search?query=${encodeURIComponent(query)}&rows=${rows}`
+    `/api/library/references/crossref/search?query=${cleanQuery}&rows=${rows}`
   );
 }

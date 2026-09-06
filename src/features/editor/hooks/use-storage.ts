@@ -92,9 +92,9 @@ export function useEditorStorage(pageId: string | null | undefined, parentId?: s
 
   const renameMutation = useMutation({
     mutationFn: (variables: { itemId?: string; fileId?: string; newName?: string; name?: string }) => {
-      const targetId = variables.itemId || variables.fileId || '';
+      const targetStorageId = variables.itemId || variables.fileId || '';
       const nextName = variables.newName || variables.name || '';
-      return EditorStorageService.renameItem(targetId, nextName);
+      return EditorStorageService.renameItem(targetStorageId, nextName);
     },
     onSuccess: () => {
       if (pageId) {

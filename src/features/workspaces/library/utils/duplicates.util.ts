@@ -1,5 +1,5 @@
 import type { CatalogItem, DuplicateCluster } from '../types/library.types';
-import { cleanDoi } from './library.util';
+import { cleanDoi } from './author-doi.util';
 
 export type { DuplicateCluster };
 

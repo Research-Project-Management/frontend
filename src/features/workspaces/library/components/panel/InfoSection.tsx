@@ -693,13 +693,15 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         f.field !== 'abstract' &&
         f.field !== 'extra' &&
         f.field !== 'dateAdded' &&
-        f.field !== 'dateModified',
+        f.field !== 'dateModified' &&
+        f.field !== 'citationKey' &&
+        f.field !== 'citeKey',
     );
   }, [typeDefinition]);
 
   const formattedExtraMetadata = useMemo(() => {
     return formatAndSanitizeExtraMetadata(paper.extra, paper.extraFields, paper);
-  }, [paper.extra, paper.extraFields, paper]);
+  }, [paper]);
 
   return (
     <div className="space-y-0.5 select-text font-sans antialiased">
@@ -1115,25 +1117,25 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         );
       })}
 
-      {/* Cite Key */}
-      {isValidValue(paper.citationKey) && (
-        <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
-          <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate" id="label-citekey">
-            Cite Key
-          </span>
-          <div className="flex items-center gap-1 min-w-0">
-            <InlineField
-              value={cleanValue(paper.citationKey)}
-              ariaLabel="BibTeX Citation Key"
-              onSave={(val) => handleFieldChange('citationKey', val || undefined)}
-              mono
-            />
+      {/* Citation Key */}
+      <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
+        <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate" id="label-citationkey" title="Citation Key">
+          Citation Key
+        </span>
+        <div className="flex items-center gap-1 min-w-0">
+          <InlineField
+            value={cleanValue(paper.citationKey || generateCitationKey(paper))}
+            ariaLabel="BibTeX Citation Key"
+            onSave={(val) => handleFieldChange('citationKey', val || undefined)}
+            mono
+          />
+          {isValidValue(paper.citationKey || generateCitationKey(paper)) && (
             <div className="invisible group-hover:visible flex items-center shrink-0">
               <button
                 type="button"
-                onClick={() => copyToClipboard(`\\cite{${paper.citationKey}}`, 'Citation Key')}
+                onClick={() => copyToClipboard(`\\cite{${paper.citationKey || generateCitationKey(paper)}}`, 'Citation Key')}
                 className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer focus-visible:outline-none"
-                aria-label={`Copy citation key \\cite{${paper.citationKey}}`}
+                aria-label={`Copy citation key \\cite{${paper.citationKey || generateCitationKey(paper)}}`}
               >
                 {copiedKey === 'Citation Key' ? (
                   <CheckCircle2 className="size-3.5 text-foreground" aria-hidden="true" />
@@ -1142,9 +1144,9 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 )}
               </button>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Extra Field - Always available like native Zotero */}
       <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">

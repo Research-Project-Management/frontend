@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -76,12 +76,18 @@ export function ProjectsPage() {
     createdDate: 'all',
   });
   const [sortBy, setSortBy] = useState<ProjectSortOption>('updated');
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('flux:projects-view-mode') as ViewMode) || 'grid';
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('flux:projects-view-mode') as ViewMode | null;
+      if (saved === 'grid' || saved === 'list') {
+        setViewMode(saved);
+      }
+    } catch {
+      // Fallback in environments without localStorage access
     }
-    return 'grid';
-  });
+  }, []);
 
   const { projects: rawProjects = [], isLoading, isError } = useProjects(workspaceId);
   const archiveProjectMutation = useArchiveProject();

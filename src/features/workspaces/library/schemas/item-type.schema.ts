@@ -300,7 +300,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'editor', 'translator', 'reviewedAuthor', 'contributor'], 'author'),
     fields: buildFields([
       'publicationTitle', 'volume', 'issue', 'pages', 'date',
-      'series', 'seriesTitle', 'seriesText', 'journalAbbreviation', 'DOI', 'citationCount', 'citationKey', 'ISSN', 'PMID', 'PMCID', 'arxivId',
+      'series', 'seriesText', 'journalAbbreviation', 'DOI', 'citationCount', 'citationKey', 'ISSN', 'PMID', 'PMCID', 'arxivId',
       'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
@@ -327,7 +327,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     fields: buildFields([
       'genre', 'repository', 'archiveId', 'place', 'date', 'series',
       'seriesNumber', 'DOI', 'citationCount', 'citationKey', 'url', 'accessDate',
-      'archive', 'archiveLocation', 'shortTitle', 'language',
+      'shortTitle', 'language',
       'libraryCatalog', 'callNumber', 'rights', 'extra'
     ]),
   },

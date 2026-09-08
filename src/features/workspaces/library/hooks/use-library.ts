@@ -13,7 +13,6 @@ import {
 import { useUnifiedIngest } from './use-ingest';
 import { useCollections } from './use-collections';
 import { useAsyncJobStatus } from './use-ingest';
-import { extractMetadata } from '../utils/library.util';
 import {
   getDescendantIds,
   getDuplicateIds,
@@ -86,6 +85,43 @@ function invalidateLibraryItems(
       queryClient.invalidateQueries({ queryKey: catalogItemKeys.byCollection(workspaceSlug, collectionId) });
     }
   }
+}
+
+/**
+ * Executes file uploads with a controlled concurrency pool to prevent saturating
+ * the browser network stack or Fastify upload limits, while reporting item progress.
+ */
+async function uploadFilesWithConcurrency(
+  files: File[],
+  concurrencyLimit: number,
+  onUploadItem: (file: File, completedCount: number) => Promise<void>,
+): Promise<{ successCount: number; lastErrorMessage: string }> {
+  let successCount = 0;
+  let completedCount = 0;
+  let lastErrorMessage = '';
+  let cursor = 0;
+
+  const workers = Array.from(
+    { length: Math.min(concurrencyLimit, files.length) },
+    async () => {
+      while (cursor < files.length) {
+        const index = cursor++;
+        const file = files[index];
+        try {
+          await onUploadItem(file, completedCount + 1);
+          successCount++;
+        } catch (err: any) {
+          lastErrorMessage = err?.message || `Failed to upload ${file.name}`;
+          console.error(`Upload error for ${file.name}:`, err);
+        } finally {
+          completedCount++;
+        }
+      }
+    },
+  );
+
+  await Promise.all(workers);
+  return { successCount, lastErrorMessage };
 }
 
 // ── 1. Unified Main Library View Model Hook ──────────────────────────────────
@@ -179,11 +215,15 @@ export function useLibrary() {
     async (files: File[]) => {
       if (!files.length) return;
       const loadingToastId = toast.loading(`Uploading ${files.length} document(s)...`);
-      let successCount = 0;
-      let lastErrorMessage = '';
 
-      for (const file of files) {
-        try {
+      const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
+        files,
+        3,
+        async (file, count) => {
+          toast.loading(`Uploading document ${count} of ${files.length}...`, {
+            id: loadingToastId,
+          });
+
           const { fileId } = await uploadFileDetailed(file, {
             prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
@@ -193,30 +233,20 @@ export function useLibrary() {
             throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
           }
 
-          const extractedMetadata = await extractMetadata(file).catch(() => ({
-            title: file.name.replace(/\.pdf$/i, ''),
-          }));
-
           await ingestUnified({
             source: 'pdf',
             fileId,
             filename: file.name,
             collectionId: collectionId || undefined,
-            overrides: extractedMetadata as Record<string, unknown>,
             silent: true,
           } as any);
-
-          successCount++;
-        } catch (uploadError: any) {
-          console.error(`Failed to upload ${file.name}:`, uploadError);
-          lastErrorMessage = uploadError?.message || `Failed to upload ${file.name}`;
-        }
-      }
+        },
+      );
 
       if (successCount > 0) {
         invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
         toast.success('Import submitted', {
-          description: `${successCount} document(s) are being processed and will appear when ready.`,
+          description: `${successCount} of ${files.length} document(s) uploaded. Ingestion pipeline is extracting metadata in background.`,
           id: loadingToastId,
         });
       } else {
@@ -235,39 +265,39 @@ export function useLibrary() {
       const loadingToastId = toast.loading(
         `Importing ${files.length} document(s) from "${folderName}"...`,
       );
-      let successCount = 0;
-      let lastErrorMessage = '';
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        try {
+      const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
+        files,
+        3,
+        async (file, count) => {
+          toast.loading(
+            `Importing from "${folderName}": ${count} of ${files.length}...`,
+            { id: loadingToastId },
+          );
+
           const uploadRes = await uploadFileDetailed(file, {
             prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
-          if (uploadRes?.fileId) {
-            const extractedMetadata = await extractMetadata(file).catch(() => ({
-              title: file.name.replace(/\.pdf$/i, ''),
-            }));
-            await ingestUnified({
-              source: 'pdf',
-              fileId: uploadRes.fileId,
-              filename: file.name,
-              collectionId: collectionId ?? undefined,
-              overrides: extractedMetadata as Record<string, unknown>,
-              silent: true,
-            } as any);
-            successCount++;
+
+          if (!uploadRes?.fileId) {
+            throw new Error(`Upload failed for ${file.name}`);
           }
-        } catch (err: any) {
-          lastErrorMessage = err?.message || 'Unknown upload error';
-        }
-      }
+
+          await ingestUnified({
+            source: 'pdf',
+            fileId: uploadRes.fileId,
+            filename: file.name,
+            collectionId: collectionId ?? undefined,
+            silent: true,
+          } as any);
+        },
+      );
 
       if (successCount > 0) {
         invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
         toast.success('Folder import submitted', {
-          description: `${successCount} of ${files.length} document(s) are being processed and will appear when ready.`,
+          description: `${successCount} of ${files.length} document(s) uploaded and queued for processing.`,
           id: loadingToastId,
         });
       } else {

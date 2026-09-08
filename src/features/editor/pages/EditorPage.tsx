@@ -7,10 +7,10 @@ import { FileImage, AlertCircle, FileCode2, LayoutGrid } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
 
-import SideBar, { type SidebarTab } from '../components/SideBar/SideBar';
+import SideBar, { type SidebarTab } from '../components/sidebar/SideBar';
 import Topbar from '../components/topbar/Topbar';
 import Setting from '../components/topbar/settings/Setting';
-import Tabs from '../components/Editor/Tabs';
+import Tabs from '../components/editor/Tabs';
 
 import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { resolveFileUrl } from '@/features/editor/utils/editor.util';
@@ -18,8 +18,8 @@ import { useActiveDocument } from '@/features/editor/hooks/use-page';
 import type { AssetInfo } from '@/features/editor/store/page.store';
 import { cn } from '@/shared/lib/utils';
 
-const Editor = dynamic(() => import('../components/Editor/Editor'), { ssr: false });
-const Viewer = dynamic(() => import('../components/Viewer/Viewer'), { ssr: false });
+const Editor = dynamic(() => import('../components/editor/Editor'), { ssr: false });
+const Viewer = dynamic(() => import('../components/viewer/Viewer'), { ssr: false });
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

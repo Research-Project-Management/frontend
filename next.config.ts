@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: false,
   poweredByHeader: false,
   compress: true,
@@ -56,10 +57,6 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  typescript: {
-    ignoreBuildErrors: process.env.SKIP_BUILD_STRICT === 'true',
-  },
-
   async headers() {
     return [
       {
@@ -97,7 +94,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data: https:",
               "font-src 'self' data: https:",
-              "connect-src 'self' blob: data: http://localhost:* http://160.250.128.108:* https: ws: wss: ws://160.250.128.108:*",
+              "connect-src 'self' blob: data: http://localhost:* https: ws: wss:",
               "frame-src 'self' blob: https:",
               "worker-src 'self' blob:",
               "object-src 'none'",

@@ -71,18 +71,17 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   }
 
   public getRefreshToken(): string | null {
-    if (!this.isBrowser()) {
-      return getCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
+    // Security: Refresh tokens are strictly managed via HttpOnly cookies by the browser.
+    // Clean up any legacy exposed tokens if found in localStorage or client cookies.
+    if (this.isBrowser()) {
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      } catch {
+        // Ignore private browsing errors
+      }
+      deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
     }
-    try {
-      return (
-        window.localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) ||
-        getCookieValue(STORAGE_KEYS.REFRESH_TOKEN) ||
-        null
-      );
-    } catch {
-      return getCookieValue(STORAGE_KEYS.REFRESH_TOKEN) || null;
-    }
+    return null;
   }
 
   public setAccessToken(accessToken: string): void {
@@ -97,14 +96,16 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
     setCookieValue(STORAGE_KEYS.LEGACY_TOKEN, accessToken, SEVEN_DAYS_SECONDS);
   }
 
-  public setRefreshToken(refreshToken: string): void {
-    if (!this.isBrowser() || !refreshToken) return;
+  public setRefreshToken(_refreshToken: string): void {
+    // Security: Refresh token is strictly stored in HttpOnly cookies by the backend.
+    // Never persist refresh token in localStorage or client-accessible cookies.
+    if (!this.isBrowser()) return;
     try {
-      window.localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     } catch {
-      // Ignore private browsing quota errors
+      // Ignore private browsing errors
     }
-    setCookieValue(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, SEVEN_DAYS_SECONDS);
+    deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
   }
 
   public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {

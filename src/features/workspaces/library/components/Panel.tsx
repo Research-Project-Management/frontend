@@ -43,7 +43,7 @@ import { useAttachments } from '../hooks/use-attachments';
 import { useNotes } from '../hooks/use-notes';
 import { useRelations } from '../hooks/use-relations';
 import { useLibrarySidebarStore, type InspectorSectionId } from '../store/sidebar.store';
-import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperCitationKey, getPaperFileUrl } from '../utils/library.util';
+import { normalizeNotes, normalizeTags, convertToBibTeX, getPaperFileUrl } from '../utils/library.util';
 import { ALL_ITEM_TYPES_FLAT } from '../schemas/item-type.schema';
 import { cn } from '@/shared/lib/utils';
 import { useUpload } from '@/shared/hooks/use-upload';
@@ -597,11 +597,6 @@ export default function InspectorPanel({
     const found = (ALL_ITEM_TYPES_FLAT as any[]).find((t: any) => t.value === paper.itemType);
     return found?.label || paper.itemType;
   }, [paper?.itemType]);
-
-  const citeKey = useMemo(() => {
-    if (!paper) return '';
-    return getPaperCitationKey(paper);
-  }, [paper]);
 
   const handleSectionIconClick = (sectionId: SectionId) => {
     if (!paper) return;

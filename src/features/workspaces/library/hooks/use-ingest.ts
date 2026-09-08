@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ export function useIngest(workspaceId: string) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       try {
         const response = await IngestionService.getRunStatus(workspaceId, runId);
-        const snapshot = response?.data || response;
+        const snapshot: any = (response as any)?.data || response;
         const status = String(snapshot?.status || '').toUpperCase();
 
         if (status === 'READY' || status === 'COMMITTED') {
@@ -48,22 +48,20 @@ export function useIngest(workspaceId: string) {
 
         if (status === 'NEEDS_REVIEW') {
           invalidateLibrary();
-          if (!silent) {
-            toast.warning('Import needs review', {
-              description: 'A possible duplicate needs your decision.',
-              id: `library-ingestion-${runId}`,
-            });
-          }
+          const docTitle = snapshot?.inputParams?.payload?.filename || 'A document';
+          toast.warning('Import needs review', {
+            description: `"${docTitle}" has a possible duplicate in your library and needs review.`,
+            id: `library-ingestion-${runId}`,
+          });
           return;
         }
 
         if (status === 'FAILED_FINAL' || status === 'FAILED_RETRYABLE') {
-          if (!silent) {
-            toast.error('Ingestion failed', {
-              description: 'The import could not be completed. You can retry it from the activity status.',
-              id: `library-ingestion-${runId}`,
-            });
-          }
+          const docTitle = snapshot?.inputParams?.payload?.filename || 'Document';
+          toast.error('Ingestion failed', {
+            description: `"${docTitle}" could not be processed: ${snapshot?.lastError || 'Pipeline error'}.`,
+            id: `library-ingestion-${runId}`,
+          });
           return;
         }
       } catch {

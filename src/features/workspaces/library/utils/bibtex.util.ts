@@ -1,5 +1,5 @@
 import type { Paper, CatalogItem } from '../types/library.types';
-import { normalizeAuthors, cleanDoi } from './library.util';
+import { normalizeAuthors, cleanDoi } from './author-doi.util';
 
 // ── BibTeX Citation Engine ────────────────────────────────────────────────────
 

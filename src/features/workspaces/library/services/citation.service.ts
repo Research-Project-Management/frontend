@@ -1,6 +1,6 @@
 import { apiGet, apiPost } from '@/shared/lib/api';
 import type { FormattedCitation, CslStyle, ReferenceData } from '../types/library.types';
-import { cleanDoi } from '../utils/library.util';
+import { cleanDoi } from '../utils/author-doi.util';
 
 export type { ReferenceData };
 

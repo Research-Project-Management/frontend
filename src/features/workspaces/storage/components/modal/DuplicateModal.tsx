@@ -60,7 +60,7 @@ export default function DuplicateModal({
 
           <RadioGroup
             value={uploadMode}
-            onValueChange={(value) => setUploadMode(value as UploadMode)}
+            onValueChange={(selectedUploadMode: string) => setUploadMode(selectedUploadMode as UploadMode)}
             className="flex flex-col gap-3"
           >
             {/* Replace Option */}

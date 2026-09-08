@@ -1,114 +1,219 @@
-import type { Paper, Collection, Note, ReferenceData } from '../types/library.types';
-import { fetchReferenceByDoi, searchReferences, resolveAcademicQuery } from '../services/reference.service';
+import type { Paper, CatalogItem, Collection, Note, ReferenceData } from '../types/library.types';
+import { resolveAcademicQuery, fetchReferenceByDoi } from '../services/citation.service';
+import {
+  INSTITUTION_KEYWORDS,
+  PREFIX_PARTICLES,
+  splitAuthorString,
+  parseCreatorName,
+  normalizeAuthors,
+  formatCreatorCompact,
+  trimUnmatchedClosingBrackets,
+  cleanDoi,
+} from './author-doi.util';
+
+export {
+  INSTITUTION_KEYWORDS,
+  PREFIX_PARTICLES,
+  splitAuthorString,
+  parseCreatorName,
+  normalizeAuthors,
+  formatCreatorCompact,
+  trimUnmatchedClosingBrackets,
+  cleanDoi,
+};
 
 // ── 1. ID & Key Resolution ───────────────────────────────────────────────────
 
-/**
- * Extracts the standardized ID from any entity.
- */
-export function getLibraryEntityId(
-  entity?: { id?: string } | null | undefined
-): string {
-  if (!entity) return '';
-  return entity.id || '';
-}
 
 /**
  * Extracts the primary PDF or reading file URL from a Paper object.
+ * Strictly resolves canonical binary content URLs (/api/files/:fileId/content)
+ * and avoids falling back to DOI landing page URLs.
  */
 export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): string {
   if (!paper) return '';
-  return (
-    paper.fileUrl ||
-    paper.primaryFile?.url ||
-    (paper as any)?.url ||
-    (paper as any)?.attachments?.[0]?.url ||
-    (paper as any)?.attachments?.[0]?.fileUrl ||
-    ''
-  );
+
+  const normalizeUrl = (url?: string | null, fileId?: string | null): string => {
+    if (fileId) {
+      return `/api/files/${fileId}/content`;
+    }
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (
+      trimmed.startsWith('/api/files/') &&
+      !trimmed.includes('/r2/') &&
+      !trimmed.endsWith('/content')
+    ) {
+      return `${trimmed}/content`;
+    }
+    return trimmed;
+  };
+
+  // 1. Primary file / attachment (priority order: primary_pdf -> application/pdf -> .pdf filename)
+  const attachments: any[] = Array.isArray((paper as any)?.attachments)
+    ? (paper as any).attachments
+    : [];
+
+  const primaryPdfAttachment =
+    attachments.find(
+      (a: any) =>
+        a?.attachmentType === 'primary_pdf' ||
+        a?.type === 'primary_pdf',
+    ) ||
+    attachments.find(
+      (a: any) => a?.mimeType === 'application/pdf',
+    ) ||
+    attachments.find(
+      (a: any) =>
+        a?.fileId &&
+        typeof a?.filename === 'string' &&
+        a.filename.toLowerCase().endsWith('.pdf'),
+    );
+
+  if (primaryPdfAttachment) {
+    const url = normalizeUrl(
+      primaryPdfAttachment.url || primaryPdfAttachment.fileUrl,
+      primaryPdfAttachment.fileId,
+    );
+    if (url) return url;
+  }
+
+  // 2. Direct fileId on paper
+  if ((paper as any)?.fileId) {
+    return `/api/files/${(paper as any).fileId}/content`;
+  }
+
+  // 3. PrimaryFile object
+  if (paper.primaryFile) {
+    const url = normalizeUrl(
+      paper.primaryFile.url,
+      (paper.primaryFile as any).fileId || (paper.primaryFile as any).id,
+    );
+    if (url) return url;
+  }
+
+  // 4. Direct fileUrl on paper
+  if (paper.fileUrl) {
+    const url = normalizeUrl(paper.fileUrl, (paper as any).fileId);
+    if (url) return url;
+  }
+
+  // 5. arXiv fallback: If paper has arxivId, arXiv DOI, arXiv URL, or arXiv filename
+  const arxivMatch =
+    (paper as any)?.arxivId ||
+    paper.doi?.match(/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
+    paper.url?.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
+    (paper as any)?.filename?.match(/^(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?$/i)?.[1];
+
+  if (arxivMatch) {
+    return `https://arxiv.org/pdf/${arxivMatch.replace(/\.pdf$/i, '')}.pdf`;
+  }
+
+  return '';
+}
+
+// ── Academic Tag Normalizer Constants ───────────────────────────────────────
+const ARXIV_CATEGORY_MAP: Record<string, string> = {
+  'cs.ai': 'Computer Science - Artificial Intelligence',
+  'cs.cl': 'Computer Science - Computation and Language',
+  'cs.cv': 'Computer Science - Computer Vision and Pattern Recognition',
+  'cs.lg': 'Computer Science - Machine Learning',
+  'cs.ne': 'Computer Science - Neural and Evolutionary Computing',
+  'cs.ro': 'Computer Science - Robotics',
+  'stat.ml': 'Statistics - Machine Learning',
+  'math.oc': 'Mathematics - Optimization and Control',
+};
+
+const SCIENTIFIC_ACRONYMS = new Set([
+  'AI', 'ML', 'NLP', 'CV', 'CNN', 'RNN', 'LSTM', 'GAN', 'BERT', 'LLM', 'COCO',
+  'YOLO', 'RESNET', 'VGG', 'SVM', 'RL', 'API', 'GPU', 'CPU', 'TPU', 'DNA', 'RNA', 'SGD', 'ADAM',
+]);
+
+const NOISE_TAG_WORDS = new Set([
+  'undefined', 'null', 'n/a', 'na', 'none', 'unknown',
+  'introduction', 'conclusion', 'background', 'paper', 'article',
+]);
+
+function cleanSingleFrontendTag(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  let str = raw
+    .replace(/â€“|â€”/g, '-')
+    .replace(/â€™|â€˜/g, "'")
+    .replace(/â€œ|â€ /g, '"')
+    .replace(/\uFFFD/g, '')
+    .trim();
+
+  const lower = str.toLowerCase();
+  if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
+  if (NOISE_TAG_WORDS.has(lower)) return null;
+
+  str = str
+    .replace(/\s*\([^)]*(?:\)|$)/g, '')
+    .replace(/^(?:keywords?|index terms|categories|subject)[:—\-\s]+/i, '')
+    .replace(/^#+/, '')
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/\.$/, '')
+    .trim();
+
+  if (str.length < 2 || str.length > 60 || /^\d+$/.test(str)) return null;
+  if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
+
+  return str
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (SCIENTIFIC_ACRONYMS.has(upper)) return upper;
+      if (word.includes('-')) {
+        return word
+          .split('-')
+          .map((part) => {
+            const partUpper = part.toUpperCase();
+            if (SCIENTIFIC_ACRONYMS.has(partUpper)) return partUpper;
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+          })
+          .join('-');
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
 }
 
 /**
- * Standardizes raw authors or creators into a clean array of author name strings.
- * Handles string[], delimited strings ("Author A; Author B" / "Author A and Author B"),
- * object arrays ([{ name: '...' }] or [{ firstName: '...', lastName: '...' }]),
- * and fallback to creators ([{ creatorType: 'author', name: '...' }]).
+ * Normalizes all tag-like fields on a paper into a deduped, trimmed, clean
+ * academic string array.
+ * Cleans mojibake, strips Wikipedia disambiguation suffixes, maps arXiv taxonomy codes,
+ * and formats with Title Case and preserved acronyms.
  */
-export function normalizeAuthors(
-  rawAuthors?: any,
-  creators?: Array<{ creatorType?: string; name?: string }> | null,
-): string[] {
-  if (Array.isArray(rawAuthors)) {
-    const result: string[] = [];
-    for (const item of rawAuthors) {
-      if (!item) continue;
-      if (typeof item === 'string') {
-        const trimmed = item.trim();
-        if (!trimmed) continue;
-        if (trimmed.includes(';') && !trimmed.includes(',')) {
-          const parts = trimmed.split(';').map((s) => s.trim()).filter(Boolean);
-          result.push(...parts);
-        } else {
-          result.push(trimmed);
-        }
-      } else if (typeof item === 'object') {
-        if ('name' in item && typeof item.name === 'string' && item.name.trim()) {
-          result.push(item.name.trim());
-        } else if ('firstName' in item || 'lastName' in item || 'family' in item || 'given' in item) {
-          const first = (item.firstName || item.given || '').trim();
-          const last = (item.lastName || item.family || '').trim();
-          const full = [first, last].filter(Boolean).join(' ');
-          if (full) result.push(full);
+export function normalizeTags(paper: Partial<CatalogItem> | null | undefined): string[] {
+  if (!paper) return [];
+  const raw: unknown[] = [
+    ...(Array.isArray(paper.tags) ? paper.tags : []),
+    ...(Array.isArray((paper as any).labels) ? (paper as any).labels : []),
+    ...(Array.isArray(paper.keywords) ? paper.keywords : []),
+    ...(Array.isArray((paper as any).itemTags)
+      ? (paper as any).itemTags.map((it: any) => it?.tag?.name ?? it?.name ?? '')
+      : []),
+  ];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const t of raw) {
+    const s = typeof t === 'string' ? t : (t as any)?.name ?? '';
+    if (!s) continue;
+    const parts = s.split(/[,;\n\r|•·]/).map((p: string) => p.trim()).filter(Boolean);
+    for (const part of parts) {
+      const cleaned = cleanSingleFrontendTag(part);
+      if (cleaned) {
+        const lowerKey = cleaned.toLowerCase();
+        if (!seen.has(lowerKey)) {
+          seen.add(lowerKey);
+          result.push(cleaned);
         }
       }
     }
-    if (result.length > 0) return result;
-  } else if (typeof rawAuthors === 'string' && rawAuthors.trim()) {
-    const trimmed = rawAuthors.trim();
-    if (trimmed.includes(';') && !trimmed.includes(',')) {
-      return trimmed.split(';').map((s) => s.trim()).filter(Boolean);
-    }
-    return [trimmed];
   }
-
-  // Fallback to creators array
-  if (Array.isArray(creators) && creators.length > 0) {
-    const fromCreators = creators
-      .filter((c) => !c.creatorType || c.creatorType === 'author' || c.creatorType === 'editor')
-      .map((c) => c.name?.trim())
-      .filter(Boolean) as string[];
-    if (fromCreators.length > 0) return fromCreators;
-  }
-
-  return [];
-}
-
-/**
- * Generates or extracts a standardized citation key for BibTeX/LaTeX (e.g. "vaswani2017attention").
- */
-export function getPaperCitationKey(paper?: Partial<Paper> | null): string {
-  if (!paper) return 'ref2024paper';
-  if (paper.citationKey && typeof paper.citationKey === 'string' && paper.citationKey.trim().length > 0) {
-    return paper.citationKey.trim();
-  }
-
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  const firstAuthor = authors[0] || '';
-  const authorKey = firstAuthor
-    ? firstAuthor.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
-    : 'ref';
-
-  const yearKey = paper.year ? String(paper.year).slice(-4) : '2024';
-
-  const titleWord = paper.title && typeof paper.title === 'string'
-    ? paper.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .split(/\s+/)
-        .find((w: string) => !['a', 'an', 'the', 'on', 'in', 'for', 'of', 'and', 'with', 'via'].includes(w)) || 'paper'
-    : 'paper';
-
-  return `${authorKey || 'ref'}${yearKey || '2024'}${titleWord || 'paper'}`;
+  return result;
 }
 
 // ── 2. Notes Normalization ───────────────────────────────────────────────────
@@ -128,511 +233,74 @@ export function normalizeNotes(notes?: Array<string | Note | { id?: string; cont
 
   return notes.map((note, index) => {
     if (typeof note === 'string') {
+      // String-only notes have no server-assigned ID; use a deterministic
+      // content-based hash to avoid collisions across re-renders.
+      const contentHash = note.trim().slice(0, 32).replace(/[^a-z0-9]/gi, '').toLowerCase() || index.toString();
       return {
-        id: `note-${index}`,
+        id: `local-${contentHash}`,
         content: note,
         createdAt: new Date().toISOString(),
       };
     }
 
+    const noteObj = note as any;
+    const rawContent =
+      noteObj.content ||
+      noteObj.contentMd ||
+      (typeof noteObj.contentJson === 'string' ? noteObj.contentJson : '') ||
+      '';
+    // Strip HTML tags for clean card preview if note originated from Zotero HTML (<p>...</p>)
+    const cleanPreview = /<\/?[a-z][\s\S]*>/i.test(rawContent)
+      ? rawContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+      : rawContent;
+
     return {
       id: note.id || `note-${index}`,
-      content: note.content || '',
+      content: cleanPreview,
+      contentMd: noteObj.contentMd || rawContent,
+      contentJson: noteObj.contentJson,
       createdAt: (note as Note).createdAt || new Date().toISOString(),
       updatedAt: (note as Note).updatedAt,
     };
   });
 }
 
-// ── 3. DOI & Citation Helpers ────────────────────────────────────────────────
-
-export function cleanDoi(doi?: string | null): string {
-  if (!doi || typeof doi !== 'string') return '';
-  return doi
-    .trim()
-    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
-    .replace(/^doi:\s*/i, '')
-    .trim();
-}
-
-export function buildBibtexEntry(paper: Partial<Paper> | Partial<ReferenceData>): string {
-  const citeKey = getPaperCitationKey(paper as Partial<Paper>);
-  const title = paper.title || 'Untitled';
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  const authorStr = authors.length > 0 ? authors.join(' and ') : '';
-  const journal = (paper as any).journal || (paper as any).publisher || (paper as any).publicationTitle || '';
-  const year = paper.year || '';
-  const doi = paper.doi ? cleanDoi(paper.doi) : '';
-
-  return `@article{${citeKey},
-  title = {${title}},
-  author = {${authorStr}},
-  journal = {${journal}},
-  year = {${year}},
-  doi = {${doi}}
-}`;
-}
-
 // ── 4. Library Filter Engine ─────────────────────────────────────────────────
 
-export interface LibraryFilterOptions {
-  searchQuery?: string;
-  collectionId?: string | null;
-  selectedTags?: string[];
-  fromYear?: number;
-  toYear?: number;
-  itemType?: string;
-  hasAttachment?: boolean;
-}
+export {
+  LibraryFilterEngine,
+  filterItems,
+  filterPapers,
+  isPaperInCollection,
+  type LibraryFilterOptions,
+  type SortOptions,
+} from './filter.util';
 
-export interface SortOptions {
-  field: 'title' | 'year' | 'authors' | 'journal' | 'createdAt' | string;
-  direction: 'asc' | 'desc';
-}
-
-export class LibraryFilterEngine {
-  static filterBySearch(papers: Paper[], query: string): Paper[] {
-    if (!query || !query.trim()) return papers;
-    const q = query.toLowerCase().trim();
-
-    return papers.filter((paper) => {
-      const p = paper as any;
-      const authors = normalizeAuthors(paper.authors, p.creators);
-      const inTitle = paper.title?.toLowerCase().includes(q) ?? false;
-      const inAuthors = authors.some((a) => a.toLowerCase().includes(q));
-      const inAbstract = paper.abstract?.toLowerCase().includes(q) ?? false;
-      const inJournal = (paper.journal || paper.publicationTitle || paper.publisher)?.toLowerCase().includes(q) ?? false;
-      const inDoi = paper.doi?.toLowerCase().includes(q) ?? false;
-      const rawTags = p.tags || p.keywords || p.labels || [];
-      const inTags = rawTags.some((t: any) =>
-        (typeof t === 'string' ? t : t.name || '').toLowerCase().includes(q)
-      );
-
-      return inTitle || inAuthors || inAbstract || inJournal || inDoi || inTags;
-    });
-  }
-
-  static filter(papers: Paper[], options: LibraryFilterOptions): Paper[] {
-    const { searchQuery, collectionId, selectedTags, fromYear, toYear, itemType, hasAttachment } = options;
-
-    let result = papers;
-
-    if (searchQuery) {
-      result = this.filterBySearch(result, searchQuery);
-    }
-
-    return result.filter((paper) => {
-      const p = paper as any;
-
-      // Collection
-      if (collectionId !== undefined && collectionId !== null) {
-        if (!isPaperInCollection(paper, collectionId)) {
-          return false;
-        }
-      }
-
-      // Tags
-      if (selectedTags && selectedTags.length > 0) {
-        const rawTags = p.tags || p.keywords || p.labels || [];
-        const paperTags = rawTags.map((t: any) => (typeof t === 'string' ? t.toLowerCase() : t.name?.toLowerCase() || ''));
-        const hasAllTags = selectedTags.every((t) => paperTags.includes(t.toLowerCase()));
-        if (!hasAllTags) return false;
-      }
-
-      // Year Range
-      if (fromYear !== undefined && fromYear !== null) {
-        const pYear = typeof paper.year === 'number' ? paper.year : parseInt(String(paper.year || 0), 10);
-        if (pYear && pYear < fromYear) return false;
-      }
-      if (toYear !== undefined && toYear !== null) {
-        const pYear = typeof paper.year === 'number' ? paper.year : parseInt(String(paper.year || 0), 10);
-        if (pYear && pYear > toYear) return false;
-      }
-
-      // Item Type
-      if (itemType && itemType !== 'all') {
-        const pType = (paper.itemType || (paper as any).type || '').toLowerCase();
-        if (pType !== itemType.toLowerCase()) return false;
-      }
-
-      // Attachment
-      if (hasAttachment !== undefined) {
-        const hasFile = Boolean(paper.fileUrl || paper.primaryFile?.url || p.hasPdf || (p.attachments && p.attachments.length > 0));
-        if (hasAttachment && !hasFile) return false;
-        if (!hasAttachment && hasFile) return false;
-      }
-
-      return true;
-    });
-  }
-
-  static sort(papers: Paper[], options: SortOptions): Paper[] {
-    const { field, direction } = options;
-    const modifier = direction === 'desc' ? -1 : 1;
-
-    return [...papers].sort((a, b) => {
-      if (field === 'year') {
-        const yA = typeof a.year === 'number' ? a.year : parseInt(String(a.year || 0), 10);
-        const yB = typeof b.year === 'number' ? b.year : parseInt(String(b.year || 0), 10);
-        return (yA - yB) * modifier;
-      }
-
-      if (field === 'title') {
-        return (a.title || '').localeCompare(b.title || '') * modifier;
-      }
-
-      if (field === 'authors') {
-        const a1 = normalizeAuthors(a.authors, (a as any).creators)[0] || '';
-        const b1 = normalizeAuthors(b.authors, (b as any).creators)[0] || '';
-        return a1.localeCompare(b1) * modifier;
-      }
-
-      return 0;
-    });
-  }
-
-  static isDuplicate(paperA: Paper, paperB: Paper): boolean {
-    if (paperA.id && paperB.id && paperA.id === paperB.id) return false;
-
-    // Exact DOI match
-    if (paperA.doi && paperB.doi) {
-      const cleanA = cleanDoi(paperA.doi).toLowerCase();
-      const cleanB = cleanDoi(paperB.doi).toLowerCase();
-      if (cleanA && cleanA === cleanB) return true;
-    }
-
-    // Normalized title match
-    if (paperA.title && paperB.title) {
-      const normA = paperA.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const normB = paperB.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (normA.length > 15 && normA === normB) return true;
-    }
-
-    return false;
-  }
-
-  static findDuplicates(papers: Paper[]): Array<{ original: Paper; duplicates: Paper[] }> {
-    const results: Array<{ original: Paper; duplicates: Paper[] }> = [];
-    const visited = new Set<string>();
-
-    for (let i = 0; i < papers.length; i++) {
-      const current = papers[i];
-      const currentId = current.id;
-      if (visited.has(currentId)) continue;
-
-      const dupes: Paper[] = [];
-      for (let j = i + 1; j < papers.length; j++) {
-        const other = papers[j];
-        const otherId = other.id;
-        if (visited.has(otherId)) continue;
-
-        if (this.isDuplicate(current, other)) {
-          dupes.push(other);
-          visited.add(otherId);
-        }
-      }
-
-      if (dupes.length > 0) {
-        visited.add(currentId);
-        results.push({
-          original: current,
-          duplicates: dupes,
-        });
-      }
-    }
-
-    return results;
-  }
-}
-
-export function filterPapers(
-  papers: Paper[],
-  query: string = '',
-  collectionId: string | null = null,
-  activeTag: string | null = null
-): Paper[] {
-  return LibraryFilterEngine.filter(papers, {
-    searchQuery: query,
-    collectionId: collectionId,
-    selectedTags: activeTag ? [activeTag] : undefined,
-  });
-}
-
-export function isPaperInCollection(paper: Paper, collectionId: string): boolean {
-  if (!collectionId) return true;
-
-  if (paper.collectionId === collectionId) return true;
-
-  const p = paper as any;
-  if (Array.isArray(p.collections)) {
-    return p.collections.some((c: any) => {
-      if (typeof c === 'string') return c === collectionId;
-      return c.id === collectionId;
-    });
-  }
-
-  if (Array.isArray(p.collectionIds)) {
-    return p.collectionIds.includes(collectionId);
-  }
-
-  return false;
-}
-
-export function getUniqueTags(papers: Paper[]): string[] {
+export function getUniqueTags(items: CatalogItem[]): string[] {
   const tagSet = new Set<string>();
-  for (const paper of papers) {
-    const p = paper as any;
-    const rawTags = p.tags || p.keywords || p.labels || [];
-    if (Array.isArray(rawTags)) {
-      for (const tag of rawTags) {
-        if (typeof tag === 'string' && tag.trim()) {
-          tagSet.add(tag.trim());
-        } else if (tag && typeof tag === 'object' && 'name' in tag && tag.name) {
-          tagSet.add(tag.name.trim());
-        }
-      }
+  for (const paper of items) {
+    for (const tag of normalizeTags(paper)) {
+      tagSet.add(tag);
     }
   }
   return Array.from(tagSet).sort();
 }
 
 // ── 5. BibTeX Citation Engine ────────────────────────────────────────────────
-
-export function generateCitationKey(paper: Paper): string {
-  if (paper.citationKey && paper.citationKey.trim()) {
-    return paper.citationKey.trim().replace(/\s+/g, '');
-  }
-
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  let authorPart = 'unknown';
-  if (authors.length > 0) {
-    const firstAuthor = authors[0].trim();
-    const parts = firstAuthor.split(/\s+/);
-    if (parts.length > 0) {
-      authorPart = parts[parts.length - 1].toLowerCase();
-    }
-  }
-  authorPart = authorPart.replace(/[^a-z0-9]/gi, '');
-
-  const yearPart = paper.year ? String(paper.year) : '';
-
-  let titlePart = '';
-  if (paper.title) {
-    const titleWords = paper.title.trim().split(/\s+/);
-    for (const word of titleWords) {
-      const cleanWord = word.replace(/[^a-z0-9]/gi, '').toLowerCase();
-      if (cleanWord) {
-        titlePart = cleanWord;
-        break;
-      }
-    }
-  }
-
-  return `${authorPart}${yearPart}${titlePart}` || `item${paper.id || 'ref'}`;
-}
-
-export function getBibTeXEntryType(paper: Partial<Paper>): string {
-  const itemType = (paper.itemType || (paper as any).type || '').toLowerCase();
-  switch (itemType) {
-    case 'book':
-    case 'booksection':
-      return 'book';
-    case 'conferencepaper':
-    case 'proceedings':
-    case 'inproceedings':
-      return 'inproceedings';
-    case 'thesis':
-    case 'phdthesis':
-    case 'mastersthesis':
-      return 'phdthesis';
-    case 'techreport':
-    case 'report':
-      return 'techreport';
-    case 'webpage':
-    case 'website':
-    case 'dataset':
-    case 'software':
-    case 'misc':
-      return 'misc';
-    case 'journalarticle':
-    case 'article':
-    case 'preprint':
-    default:
-      if (itemType && !['journalarticle', 'article', 'preprint'].includes(itemType) && !paper.journal && !paper.publicationTitle) {
-        return 'misc';
-      }
-      return 'article';
-  }
-}
-
-export function escapeLatexChars(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/\\/g, '\\textbackslash{}')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/\$/g, '\\$')
-    .replace(/#/g, '\\#')
-    .replace(/_/g, '\\_')
-    .replace(/\{/g, '\\{')
-    .replace(/\}/g, '\\}')
-    .replace(/~/g, '\\textasciitilde{}')
-    .replace(/\^/g, '\\textasciicircum{}');
-}
-
-export function unescapeLatexChars(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/\\&/g, '&')
-    .replace(/\\%/g, '%')
-    .replace(/\\\$/g, '$')
-    .replace(/\\#/g, '#')
-    .replace(/\\_/g, '_')
-    .replace(/\\\{/g, '{')
-    .replace(/\\\}/g, '}')
-    .replace(/\\textasciitilde\{\}/g, '~')
-    .replace(/\\textasciicircum\{\}/g, '^')
-    .replace(/\\textbackslash\{\}/g, '\\');
-}
-
-export function convertToBibTeX(paper: Paper): string {
-  const entryType = getBibTeXEntryType(paper);
-  const citationKey = generateCitationKey(paper);
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-
-  const fields: [string, string | undefined][] = [
-    ['title', paper.title ? `{${escapeLatexChars(paper.title)}}` : undefined],
-    ['author', authors.length > 0 ? `{${authors.map(escapeLatexChars).join(' and ')}}` : undefined],
-    ['journal', paper.journal || paper.publicationTitle ? `{${escapeLatexChars(paper.journal || paper.publicationTitle || '')}}` : undefined],
-    ['year', paper.year ? `{${paper.year}}` : undefined],
-    ['volume', paper.volume ? `{${paper.volume}}` : undefined],
-    ['number', paper.issue ? `{${paper.issue}}` : undefined],
-    ['pages', paper.pages ? `{${paper.pages}}` : undefined],
-    ['publisher', paper.publisher ? `{${escapeLatexChars(paper.publisher)}}` : undefined],
-    ['doi', paper.doi ? `{${paper.doi}}` : undefined],
-    ['url', paper.url ? `{${paper.url}}` : undefined],
-    ['abstract', paper.abstract ? `{${escapeLatexChars(paper.abstract)}}` : undefined],
-    ['issn', paper.issn ? `{${paper.issn}}` : undefined],
-    ['isbn', paper.isbn ? `{${paper.isbn}}` : undefined],
-  ];
-
-  const fieldLines = fields
-    .filter(([, val]) => val !== undefined && val !== '{}')
-    .map(([key, val]) => `  ${key} = ${val}`)
-    .join(',\n');
-
-  return `@${entryType}{${citationKey},\n${fieldLines}\n}`;
-}
-
-function parseSingleBibTeXEntry(entryBlock: string): Partial<Paper> | null {
-  const typeKeyMatch = entryBlock.match(/@(\w+)\s*\{\s*([^,]+),/);
-  if (!typeKeyMatch) return null;
-
-  const result: Partial<Paper> = {
-    itemType: typeKeyMatch[1].toLowerCase(),
-    citationKey: typeKeyMatch[2].trim(),
-  };
-
-  const fieldRegex = /(\w+)\s*=\s*(?:\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}|"([^"]*)"|(\d+))/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = fieldRegex.exec(entryBlock)) !== null) {
-    const key = match[1].toLowerCase();
-    const rawVal = match[2] ?? match[3] ?? match[4] ?? '';
-    const val = unescapeLatexChars(rawVal.trim());
-
-    switch (key) {
-      case 'title':
-        result.title = val;
-        break;
-      case 'author':
-        result.authors = val.split(/\s+and\s+/i).map((a) => a.trim()).filter(Boolean);
-        break;
-      case 'journal':
-      case 'journaltitle':
-      case 'booktitle':
-        result.journal = val;
-        result.publicationTitle = val;
-        break;
-      case 'year':
-      case 'date':
-        result.year = parseInt(val, 10) || val;
-        break;
-      case 'volume':
-        result.volume = val;
-        break;
-      case 'number':
-      case 'issue':
-        result.issue = val;
-        break;
-      case 'pages':
-        result.pages = val;
-        break;
-      case 'publisher':
-        result.publisher = val;
-        break;
-      case 'doi':
-        result.doi = cleanDoi(val);
-        break;
-      case 'url':
-        result.url = val;
-        break;
-      case 'abstract':
-        result.abstract = val;
-        break;
-      case 'issn':
-        result.issn = val;
-        break;
-      case 'isbn':
-        result.isbn = val;
-        break;
-    }
-  }
-
-  return result;
-}
-
-export function parseBibTeX(bibtexString: string): Partial<Paper>[] {
-  if (!bibtexString || !bibtexString.trim()) return [];
-
-  const rawEntries = bibtexString.split(/(?=@\w+\s*\{)/g);
-  const results: Partial<Paper>[] = [];
-
-  for (const raw of rawEntries) {
-    if (raw.trim().startsWith('@')) {
-      const parsed = parseSingleBibTeXEntry(raw);
-      if (parsed) results.push(parsed);
-    }
-  }
-
-  return results;
-}
-
-export function downloadBibTeXFile(paper: Paper, filename?: string): void {
-  const content = convertToBibTeX(paper);
-  const name = filename || `${generateCitationKey(paper)}.bib`;
-  const blob = new Blob([content], { type: 'application/x-bibtex;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-export class BibtexEngine {
-  static convert(paper: Paper): string {
-    return convertToBibTeX(paper);
-  }
-  static parse(bibtexString: string): Partial<Paper>[] {
-    return parseBibTeX(bibtexString);
-  }
-  static download(paper: Paper, filename?: string): void {
-    downloadBibTeXFile(paper, filename);
-  }
-}
+export {
+  generateCitationKey,
+  getPaperCitationKey,
+  getBibTeXEntryType,
+  escapeLatexChars,
+  unescapeLatexChars,
+  convertToBibTeX,
+  parseBibTeX,
+  downloadBibTeXFile,
+  BibtexEngine,
+  formatCiteCommand,
+  formatApaCitation,
+  formatIeeeCitation,
+} from './bibtex.util';
 
 // ── 6. DOI & CrossRef Metadata Engine ────────────────────────────────────────
 
@@ -645,7 +313,7 @@ export type PdfMetadata = {
   creationDate?: string;
   modDate?: string;
   pageCount?: number;
-  keywords?: string;
+  keywords?: string[];
   doi?: string;
   journal?: string;
   publisher?: string;
@@ -675,14 +343,20 @@ export type PdfMetadata = {
   keywordsList?: string[];
 };
 
-export const DOI_REGEX = /\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/;
+export const DOI_REGEX = /\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)\b/;
 export const ARXIV_REGEX = /\b(?:arXiv:\s*)?(\d{4}\.\d{4,5}(?:v\d+)?)\b/i;
 
 export function extractDoiFromText(text: string): string | null {
   if (!text) return null;
-  const match = text.match(DOI_REGEX);
-  if (!match) return null;
-  return match[1].replace(/[.,;:)\]]+$/, '');
+  const sanitized = text.replace(/\.pdf$/i, '');
+
+  const match = sanitized.match(DOI_REGEX);
+  if (!match) {
+    const cleaned = cleanDoi(sanitized);
+    return cleaned || null;
+  }
+  let s = match[1].replace(/[.,;:]+$/, '');
+  return trimUnmatchedClosingBrackets(s).replace(/[.,;:]+$/, '');
 }
 
 export function normalizeDoi(doi?: string | null): string | null {
@@ -710,14 +384,17 @@ export class DoiMetadataEngine {
 }
 
 export async function extractMetadata(file: File): Promise<PdfMetadata> {
-  const cleanTitle = file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ').trim();
-  const metadata: PdfMetadata = {
-    title: cleanTitle,
-    extraFields: {},
-  };
-
   let detectedDoi = extractDoiFromText(file.name);
   let detectedArxiv = extractArxivId(file.name);
+  const rawTitle = file.name.replace(/\.pdf$/i, '').trim();
+  const cleanTitle = detectedDoi && rawTitle.includes(detectedDoi)
+    ? rawTitle
+    : rawTitle.replace(/[-_]/g, ' ').trim();
+  const metadata: PdfMetadata = {
+    title: cleanTitle,
+    doi: detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined,
+    extraFields: {},
+  };
 
   // If no identifier in filename, inspect first 128KB of PDF buffer to find embedded DOI or arXiv ID
   if (!detectedDoi && !detectedArxiv && file.size > 0) {
@@ -729,6 +406,34 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
     } catch {
       // ignore
     }
+
+    if (!detectedDoi && !detectedArxiv && typeof window !== 'undefined') {
+      try {
+        const { previewServices } = await import('@/features/workspaces/storage/services/preview.service');
+        const arrayBuffer = await file.arrayBuffer();
+        const previewRes = await previewServices.extractMetadata(arrayBuffer);
+        if (previewRes?.doi) {
+          detectedDoi = previewRes.doi;
+        }
+        if (
+          previewRes?.metadata?.title &&
+          (!cleanTitle ||
+            cleanTitle.length < 5 ||
+            /^(document|paper|untitled)/i.test(cleanTitle))
+        ) {
+          metadata.title = previewRes.metadata.title;
+        }
+        if (
+          previewRes?.metadata?.author &&
+          (!metadata.authors || metadata.authors.length === 0)
+        ) {
+          metadata.authors = [previewRes.metadata.author];
+          metadata.author = previewRes.metadata.author;
+        }
+      } catch {
+        // ignore preview extraction errors
+      }
+    }
   }
 
   const queryCandidate = detectedDoi || detectedArxiv || (cleanTitle.length > 5 ? cleanTitle : '');
@@ -736,40 +441,40 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
   if (queryCandidate) {
     try {
       const res = await resolveAcademicQuery(queryCandidate);
-      if (res && res.metadata && res.metadata.title) {
-        const ref = res.metadata;
+      const ref = res?.metadata || (res as any)?.work || (res as any)?.data;
+      if (ref && ref.title) {
         return {
+          // Keep the provider record intact; only add aliases used by the
+          // upload form so metadata fields are not silently discarded.
+          ...ref,
           title: ref.title || cleanTitle,
-          authors: ref.authors?.length ? ref.authors : undefined,
-          author: ref.authors?.[0],
-          journal: ref.journal || ref.publisher,
-          publicationTitle: ref.journal || ref.publisher,
-          publisher: ref.publisher,
-          year: ref.year ? Number(ref.year) : undefined,
-          volume: ref.volume,
-          issue: ref.issue,
-          pages: ref.pages,
+          authors: ref.authors?.length ? ref.authors : metadata.authors,
+          author: ref.authors?.[0] || metadata.author,
+          keywords: ref.keywords,
+          journal: ref.journal || ref.publicationTitle || ref.publisher,
+          publicationTitle:
+            ref.publicationTitle || ref.journal || ref.publisher,
           doi: ref.doi || (detectedDoi ? normalizeDoi(detectedDoi) ?? undefined : undefined),
           url: ref.url || (ref.doi ? `https://doi.org/${ref.doi}` : undefined),
-          abstract: ref.abstract,
           type: ref.itemType || ref.type || 'journalArticle',
           itemType: ref.itemType || ref.type || 'journalArticle',
           crossrefEnriched: true,
           extraFields: {
+            ...(metadata.extraFields || {}),
+            ...(ref.extraFields || {}),
             provider: res.provider,
             queryType: res.queryType,
           },
         };
       }
     } catch {
-      // Fallback to direct DOI lookup if DOI was detected
-      if (detectedDoi) {
-        try {
-          const enriched = await enrichPaperWithCrossref(detectedDoi);
-          return { ...metadata, ...enriched };
-        } catch {
-          // ignore
-        }
+      // Provider misses (especially CrossRef 404) must not abort file upload.
+      // Try the direct DOI path only when a DOI was detected and differed from queryCandidate.
+      if (detectedDoi && queryCandidate !== detectedDoi) {
+        const enriched = await enrichPaperWithCrossref(detectedDoi).catch(
+          () => ({}),
+        );
+        return { ...metadata, ...enriched };
       }
     }
   }
@@ -779,97 +484,298 @@ export async function extractMetadata(file: File): Promise<PdfMetadata> {
 
 export async function enrichPaperWithCrossref(doi: string): Promise<Partial<PdfMetadata>> {
   try {
-    const clean = normalizeDoi(doi);
+    const clean = normalizeDoi(doi) || doi.trim();
     if (!clean) return {};
-    const ref = await fetchReferenceByDoi(clean);
-    if (!ref) return {};
+    const res = await resolveAcademicQuery(clean);
+    const ref = res?.metadata || (res as any)?.work || (res as any)?.data;
+    if (ref && ref.title) {
+      return {
+        ...ref,
+        title: ref.title,
+        authors: ref.authors,
+        author: ref.authors?.[0],
+        journal: ref.journal || ref.publicationTitle || ref.publisher,
+        publicationTitle: ref.publicationTitle || ref.journal || ref.publisher,
+        year: ref.year,
+        volume: ref.volume,
+        issue: ref.issue,
+        pages: ref.pages,
+        doi: ref.doi || clean,
+        url: ref.url,
+        abstract: ref.abstract,
+        crossrefEnriched: true,
+      };
+    }
+    const fallback = await fetchReferenceByDoi(clean);
+    if (!fallback) return {};
 
     return {
-      title: ref.title,
-      authors: ref.authors,
-      author: ref.authors?.[0],
-      journal: ref.journal || ref.publisher,
-      publicationTitle: ref.journal || ref.publisher,
-      year: ref.year,
-      volume: ref.volume,
-      issue: ref.issue,
-      pages: ref.pages,
-      doi: ref.doi,
-      url: ref.url,
-      abstract: ref.abstract,
+      title: fallback.title,
+      authors: fallback.authors,
+      author: fallback.authors?.[0],
+      journal: fallback.journal || fallback.publisher,
+      publicationTitle: fallback.journal || fallback.publisher,
+      year: fallback.year,
+      volume: fallback.volume,
+      issue: fallback.issue,
+      pages: fallback.pages,
+      doi: fallback.doi,
+      url: fallback.url,
+      abstract: fallback.abstract,
       crossrefEnriched: true,
     };
-  } catch (err) {
-    console.warn('Crossref enrichment failed:', err);
+  } catch {
     return {};
   }
 }
 
-// ── 7. Formatted Citations (APA, IEEE, LaTeX \cite) ───────────────────────────
+// ── 4. Extra Metadata Sanitization & Zotero Formatting ────────────────────────
 
 /**
- * Returns LaTeX cite command (e.g. \cite{vaswani2017attention})
+ * Internal keys, duplicate fields, and telemetry flags that should never be displayed in the user-facing Extra field.
+ * Items like citation count, arXiv ID, repository, and comments are already displayed in dedicated schema fields or the Notes tab.
  */
-export function formatCiteCommand(paper: Partial<Paper>): string {
-  const key = getPaperCitationKey(paper);
-  return `\\cite{${key}}`;
-}
+const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
+  'provider',
+  'querytype',
+  'provenance',
+  'crossrefenriched',
+  'crossref_enriched',
+  'author',
+  'authors',
+  'creators',
+  'contributors',
+  'title',
+  'doi',
+  'url',
+  'abstract',
+  'abstractnote',
+  'rawextra',
+  '_rawextra',
+  'fileurl',
+  'pdfurl',
+  'storageid',
+  'citationcount',
+  'citations',
+  'archiveid',
+  'arxivid',
+  'arxiv',
+  'repository',
+  'comment',
+  'comments',
+  'tldr',
+  'referencecount',
+  'references',
+  'influentialcitationcount',
+  'influentialcitations',
+  'corpusid',
+  's2paperid',
+  'openaccesspdfurl',
+  'openaccess',
+]);
 
 /**
- * Formats a paper reference in APA 7th style
- * e.g. "Vaswani, A., Shazeer, N., et al. (2017). Attention is all you need. Journal Name, 30, 45-60. https://doi.org/..."
+ * Sanitizes and formats Extra metadata for display.
+ * In Zotero, the Extra field contains pure text / custom variables without
+ * artificial headings or redundant labels prepended.
+ *
+ * This function preserves genuine user content, strips out redundant duplicate fields
+ * (such as Title which is already displayed in the main Title field, Cite Key, Open Access URLs),
+ * and eliminates internal telemetry.
  */
-export function formatApaCitation(paper: Partial<Paper>): string {
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  let authorStr = 'Unknown Author';
-  if (authors.length === 1) {
-    authorStr = authors[0];
-  } else if (authors.length === 2) {
-    authorStr = `${authors[0]} & ${authors[1]}`;
-  } else if (authors.length > 2) {
-    authorStr = `${authors[0]} et al.`;
+export function formatAndSanitizeExtraMetadata(
+  rawExtraMetadata?: string | null,
+  additionalExtraFields?: Record<string, unknown> | null,
+  associatedPaperItem?: Partial<CatalogItem> | null,
+): string {
+  if (!rawExtraMetadata || typeof rawExtraMetadata !== 'string') {
+    return '';
   }
 
-  const yearStr = paper.year ? `(${paper.year})` : '(n.d.)';
-  const titleStr = paper.title ? `${paper.title.replace(/\.$/, '')}.` : 'Untitled.';
-  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
-  let venueStr = venue ? `_${venue}_` : '';
-  if (paper.volume) venueStr += `, _${paper.volume}_`;
-  if (paper.issue) venueStr += `(${paper.issue})`;
-  if (paper.pages) venueStr += `, ${paper.pages}`;
-  if (venueStr) venueStr += '.';
+  const trimmed = rawExtraMetadata.trim();
+  if (!trimmed) {
+    return '';
+  }
 
-  const doiOrUrl = paper.doi
-    ? `https://doi.org/${cleanDoi(paper.doi)}`
-    : paper.url || '';
+  let textContent = trimmed;
 
-  return [authorStr, yearStr, titleStr, venueStr, doiOrUrl]
-    .filter(Boolean)
-    .join(' ');
+  // If rawExtraMetadata is a JSON object string (e.g. from backend serialization)
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const record = parsed as Record<string, unknown>;
+        if (typeof record._rawExtra === 'string') {
+          textContent = record._rawExtra.trim();
+        } else {
+          // If JSON contains genuine unmapped custom user properties (not telemetry or schema fields)
+          const customLines: string[] = [];
+          for (const [key, value] of Object.entries(parsed)) {
+            const normKey = key.toLowerCase().replace(/[-_]/g, '');
+            if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normKey)) continue;
+            if (value === null || value === undefined) continue;
+            if (typeof value === 'object') continue;
+            const strVal = String(value).trim();
+            if (!strVal) continue;
+            customLines.push(`${key}: ${strVal}`);
+          }
+          textContent = customLines.join('\n');
+        }
+      }
+    } catch {
+      // Not valid JSON, process as plain text directly
+    }
+  }
+
+  if (!textContent) {
+    return '';
+  }
+
+  const paperTitle = associatedPaperItem?.title?.trim().toLowerCase();
+  const paperUrl = associatedPaperItem?.url?.trim();
+  const paperFileUrl = associatedPaperItem?.fileUrl?.trim();
+  const paperOaUrl = associatedPaperItem?.openAccessPdfUrl?.trim();
+  const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
+
+  const lines = textContent.split(/\r?\n/);
+  const sanitizedLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+
+    // 1. Filter out redundant title lines (Title is already shown at the top of the form)
+    const titleMatch = trimmedLine.match(/^title:\s*(.+)$/i);
+    if (titleMatch) {
+      const lineTitle = titleMatch[1].trim().toLowerCase();
+      if (!paperTitle || lineTitle === paperTitle) {
+        continue;
+      }
+    }
+
+    // 2. Filter out duplicate citation key lines (Citation Key has its own dedicated field)
+    const citeKeyMatch = trimmedLine.match(/^(?:citation\s*key|cite\s*key|citekey):\s*(.+)$/i);
+    if (citeKeyMatch) {
+      const lineKey = citeKeyMatch[1].trim().toLowerCase();
+      if (!paperCiteKey || lineKey === paperCiteKey) {
+        continue;
+      }
+    }
+
+    // 3. Filter out Open Access notices / PDF download URLs (managed under Attachments)
+    if (/^open\s*access:?/i.test(trimmedLine)) {
+      continue;
+    }
+    if (
+      trimmedLine === paperOaUrl ||
+      trimmedLine === paperFileUrl ||
+      trimmedLine === paperUrl
+    ) {
+      continue;
+    }
+
+    // 4. Filter out Comments (managed in Notes tab)
+    if (/^comments?:\s*/i.test(trimmedLine)) {
+      continue;
+    }
+
+    // 5. Filter out TLDR (Semantic Scholar AI summary removed)
+    if (/^tl;?dr:\s*/i.test(trimmedLine)) {
+      continue;
+    }
+
+    // 6. Filter out internal telemetry keys
+    const colonIdx = trimmedLine.indexOf(':');
+    if (colonIdx > 0 && !trimmedLine.startsWith('http://') && !trimmedLine.startsWith('https://')) {
+      const k = trimmedLine.slice(0, colonIdx).trim().toLowerCase().replace(/[-_]/g, '');
+      if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(k)) {
+        continue;
+      }
+    }
+
+    // Preserve the clean content line as-is (no artificial label/title prepended!)
+    sanitizedLines.push(trimmedLine);
+  }
+
+  return sanitizedLines.join('\n');
 }
 
 /**
- * Formats a paper reference in IEEE style
- * e.g. 'A. Vaswani et al., "Attention is all you need," in Adv. Neural Inf. Process. Syst., vol. 30, 2017.'
+ * Sanitizes and normalizes an academic paper abstract for display and storage.
+ * 1. Decodes HTML entities and strips XML/HTML tags.
+ * 2. Strips leading "Abstract", "ABSTRACT", "Summary" prefixes.
+ * 3. Removes repeated year extraction artifacts (e.g. "(2012)(2013)(2014)(2015)(2016)(2017).").
+ * 4. Removes trailing author contribution, copyright, and index terms noise.
+ * 5. Unwraps single hard line-breaks within paragraphs while preserving double-newline paragraph separation.
+ * 6. Fixes hyphenated words broken across line wraps ("stochas- tic" -> "stochastic").
  */
-export function formatIeeeCitation(paper: Partial<Paper>): string {
-  const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
-  let authorStr = 'Unknown Author';
-  if (authors.length === 1) {
-    authorStr = authors[0];
-  } else if (authors.length > 1) {
-    authorStr = `${authors[0]} et al.`;
-  }
+export function cleanAbstractText(text?: string | null): string {
+  if (!text || typeof text !== 'string') return '';
 
-  const titleStr = paper.title ? `"${paper.title.replace(/\.$/, '')},"` : '"Untitled,"';
-  const venue = paper.journal || paper.publicationTitle || paper.publisher || '';
-  const venueStr = venue ? `in _${venue}_` : '';
-  const volStr = paper.volume ? `vol. ${paper.volume}` : '';
-  const yearStr = paper.year ? `${paper.year}` : '';
+  let cleaned = text.replace(/<[^>]+>/g, ' ');
+  // Decode common HTML entities
+  cleaned = cleaned
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
 
-  const parts = [authorStr, titleStr, venueStr, volStr, yearStr].filter(Boolean);
-  let res = parts.join(', ');
-  if (!res.endsWith('.')) res += '.';
-  return res;
+  // Strip stray LaTeX braces
+  cleaned = cleaned.replace(/\\(?:textbf|textit|emph|underline|text)\{([^}]+)\}/g, '$1');
+
+  // 1. Remove leading "Abstract" or "ABSTRACT" headings
+  cleaned = cleaned.replace(/^(?:abstract|summary|résumé)\s*[:.—\-–\u2014\u2013]?\s*/i, '');
+  cleaned = cleaned.replace(/^(?:abstract|summary|résumé)\s*\r?\n+/i, '');
+
+  // 2. Remove repeated parenthesized / bracketed year-chain extraction artifacts
+  // e.g. "(2012)(2013)(2014)(2015)(2016)(2017)."
+  cleaned = cleaned.replace(/(?:\((?:19|20)\d{2}\)\s*){2,}\.?/g, '');
+  cleaned = cleaned.replace(/(?:\[(?:19|20)\d{2}\]\s*){2,}\.?/g, '');
+  cleaned = cleaned.replace(/\((?:(?:19|20)\d{2}[,\s;]*){3,}\)\.?/g, '');
+
+  // 3. Remove trailing author contribution / footnote noise
+  cleaned = cleaned.replace(
+    /(?:(?:\n\s*|\.\s+|\s+)[*†‡§\d]*\s*(?:Equal contribution|Corresponding author|Correspondence to|Author ordering|Listing order|These authors contributed equally|Work performed while|Supported in part by|This work was supported by)[\s\S]*$)/i,
+    '.',
+  );
+
+  // 4. Remove trailing publication metadata or index terms
+  cleaned = cleaned.replace(
+    /(?:\n\s*|\s+)(?:ACM Reference [Ff]ormat|Index Terms|Keywords|Key words|Additional Key Words and Phrases)[—:\-\s]+[\s\S]*$/i,
+    '',
+  );
+
+  // 5. Remove trailing IEEE/ACM copyright banners
+  cleaned = cleaned.replace(
+    /(?:\n\s*|\.\s+|\s+)(?:Copyright\s*(?:\(c\)|©)?\s*(?:19|20)\d{2}|©\s*(?:19|20)\d{2}\s*IEEE)[\s\S]*$/i,
+    '',
+  );
+  cleaned = cleaned.replace(
+    /(?:\n\s*|\s+)\b\d{4}-\d{3}[\dX]\s*(?:\(c\)|©)?\s*\d{4}\s*IEEE[\s\S]*$/i,
+    '',
+  );
+
+  // 6. Normalize paragraphs & unwrap hard line-breaks within each paragraph
+  const rawParagraphs = cleaned.split(/\r?\n\s*\r?\n/);
+  const normalizedParagraphs = rawParagraphs
+    .map((paragraph) => {
+      // Fix hyphenation across breaks (e.g., "stochas- tic" -> "stochastic")
+      let p = paragraph.replace(/([a-zA-Z]{2,})-\s*\r?\n\s*([a-zA-Z]{2,})/g, '$1$2');
+      // Collapse single newlines into a single space
+      p = p.replace(/\r?\n/g, ' ');
+      // Collapse multiple whitespace
+      p = p.replace(/\s+/g, ' ').trim();
+      // Clean spacing before punctuation
+      p = p.replace(/\s+([.,;:!?])/g, '$1');
+      // Clean duplicate periods (excluding ellipsis)
+      p = p.replace(/\.\s*\.(?!\.)/g, '.');
+      return p;
+    })
+    .filter((p) => p.length > 0);
+
+  return normalizedParagraphs.join('\n\n').trim();
 }
+
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useMemo } from 'react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useUpload } from '@/shared/hooks/use-upload';
 import { useUpdateProfile } from '../hooks/use-profile';
@@ -9,10 +9,10 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avat
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { getErrorMessage } from '@/shared/utils/error.util';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch, type Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { updateProfileSchema } from '../schemas/profile.schema';
-import * as z from 'zod';
+import type { UpdateProfileFormValues } from '../types/profile.types';
 import {
   Form,
   FormControl,
@@ -22,13 +22,46 @@ import {
   FormMessage,
 } from '@/shared/components/ui/form';
 
+interface ProfileAvatarDisplayProps {
+  control: Control<UpdateProfileFormValues>;
+  fallbackName: string;
+}
+
+function ProfileAvatarDisplay({ control, fallbackName }: ProfileAvatarDisplayProps) {
+  const avatar = useWatch({ control, name: 'avatar' });
+  const firstName = useWatch({ control, name: 'firstName' });
+  const lastName = useWatch({ control, name: 'lastName' });
+  const currentName = `${firstName || ''} ${lastName || ''}`.trim() || fallbackName;
+  const initials = currentName.substring(0, 2).toUpperCase() || 'U';
+
+  return (
+    <Avatar className='size-20 rounded-full bg-background text-2xl font-semibold'>
+      {avatar ? <AvatarImage src={avatar} alt={currentName} referrerPolicy="no-referrer" /> : null}
+      <AvatarFallback>{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
+
 export default function ProfileTab() {
   const { user, isLoading } = useAuth();
   const { uploadFile, isUploading } = useUpload();
   const fileRef = useRef<HTMLInputElement>(null);
   const updateProfileMutation = useUpdateProfile();
 
-  const form = useForm<z.infer<typeof updateProfileSchema>>({
+  const userProfileValues = useMemo(() => {
+    if (!user) return undefined;
+    const parts = (user.name || '').split(' ');
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return {
+      firstName,
+      lastName,
+      displayName: user.name || '',
+      avatar: user.avatar || '',
+    };
+  }, [user]);
+
+  const form = useForm<UpdateProfileFormValues>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
       firstName: '',
@@ -36,34 +69,21 @@ export default function ProfileTab() {
       displayName: '',
       avatar: '',
     },
+    values: userProfileValues,
+    resetOptions: {
+      keepDirtyValues: true,
+    },
   });
-
-  useEffect(() => {
-    if (user) {
-      const parts = (user.name || '').split(' ');
-      const firstName = parts[0] || '';
-      const lastName = parts.slice(1).join(' ') || '';
-      form.reset({
-        firstName,
-        lastName,
-        displayName: user.name || '',
-        avatar: user.avatar || '',
-      });
-    }
-  }, [user, form]);
-
-  const currentAvatar = form.watch('avatar');
-  const currentFirstName = form.watch('firstName');
-  const currentLastName = form.watch('lastName');
-  const currentName = `${currentFirstName} ${currentLastName || ''}`.trim();
 
   const handleAvatarUpload = async (file: File) => {
     try {
       const finalUrl = await uploadFile(file, 'workspace/avatars');
       form.setValue('avatar', finalUrl, { shouldDirty: true });
+      const currentValues = form.getValues();
+      const currentName = `${currentValues.firstName || ''} ${currentValues.lastName || ''}`.trim();
       const computedName = (
-        form.getValues('displayName')?.trim() ||
-        currentName.trim() ||
+        currentValues.displayName?.trim() ||
+        currentName ||
         user?.name ||
         ''
       );
@@ -76,7 +96,7 @@ export default function ProfileTab() {
     }
   };
 
-  const onSubmit = (values: z.infer<typeof updateProfileSchema>) => {
+  const onSubmit = (values: UpdateProfileFormValues) => {
     const computedName = (
       values.displayName?.trim() ||
       `${values.firstName.trim()} ${values.lastName?.trim() || ''}`.trim() ||
@@ -122,10 +142,7 @@ export default function ProfileTab() {
                 disabled={isUploading || updateProfileMutation.isPending}
                 className='relative group overflow-hidden rounded-full ring-4 ring-background bg-background transition-transform hover:scale-105 active:scale-95 cursor-pointer'
               >
-                <Avatar className='size-20 rounded-full bg-background text-2xl font-semibold'>
-      {currentAvatar ? <AvatarImage src={currentAvatar} alt={String(currentName)} referrerPolicy="no-referrer" /> : null}
-      <AvatarFallback>{String(currentName).substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
-    </Avatar>
+                <ProfileAvatarDisplay control={form.control} fallbackName={user.name || ''} />
                 <div className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'>
                   <span className='text-xs text-white font-medium'>Upload</span>
                 </div>

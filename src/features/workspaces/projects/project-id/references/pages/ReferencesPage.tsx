@@ -2,20 +2,27 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { BookOpen, Search, Download, Plus, Library } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, BookOpen, Search, Download, Plus, Library, MoreVertical, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { usePapers } from '@/features/workspaces/library/hooks/library/use-papers';
-import { useCollections } from '@/features/workspaces/library/hooks/library/use-library';
-import PaperTable from '@/features/workspaces/library/components/table/PaperTable';
-import Panel from '@/features/workspaces/library/components/panel/Panel';
-import UploadModal from '@/features/workspaces/library/components/system/UploadModal';
-import CreateCollectionModal from '@/features/workspaces/library/components/system/CreateCollectionModal';
-import { convertToBibTeX, filterPapers } from '@/features/workspaces/library/utils/library.util';
-import type { Paper } from '@/features/workspaces/library/types/library.types';
-
+import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/use-items';
+import { useCollections } from '@/features/workspaces/library/hooks/use-library';
+import Panel from '@/features/workspaces/library/components/Panel';
+import UploadModal from '@/features/workspaces/library/components/modals/UploadModal';
+import { convertToBibTeX, filterPapers, formatCreatorCompact } from '@/features/workspaces/library/utils/library.util';
+import { useItemTable } from '@/features/workspaces/library/hooks/use-items';
+import CreateCollectionModal from '@/features/workspaces/library/components/modals/CreateCollectionModal';
+import type { CollectionFormValues } from '@/features/workspaces/library/schemas/library.schema';
+import type { CatalogItem, Paper } from '@/features/workspaces/library/types/library.types';
 export default function ReferencesPage() {
   const params = useParams<{ workspaceId: string; projectId: string }>();
   const workspaceUrl = params?.workspaceId || '';
@@ -103,32 +110,32 @@ export default function ReferencesPage() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Top Header */}
-      <header className="flex items-center justify-between border-b border-border/50 bg-background px-6 h-14 shrink-0 select-none">
+      <header className="flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-md px-4 h-12 shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
-          <BookOpen className="size-4.5 text-foreground shrink-0" />
-          <h1 className="text-base font-semibold tracking-tight text-foreground truncate">
+          <BookOpen className="size-4 text-foreground shrink-0" />
+          <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {project?.name ? `${project.name} References` : 'Project References'}
           </h1>
-          <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded-full bg-muted/60">
+          <span className="text-xs font-mono text-foreground px-2 py-0.5 rounded-full bg-muted/60">
             {filteredPapers.length} {filteredPapers.length === 1 ? 'item' : 'items'}
           </span>
         </div>
 
         {/* Search & Action Buttons */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Search */}
-          <div className="relative flex items-center w-48 sm:w-56 h-8 rounded-md border border-border/50 bg-background/60 hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <div className="relative flex items-center w-48 sm:w-56 h-8 rounded-md border border-border/50 bg-background hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground/80 pointer-events-none" />
             <input
               placeholder="Search references..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-full text-xs py-0 bg-transparent focus:outline-none border-none shadow-none w-full placeholder:text-muted-foreground/60 pl-8 pr-7"
+              className="h-full text-xs py-0 bg-transparent focus:outline-none border-none shadow-none w-full placeholder:text-muted-foreground/60 pl-8 pr-7 text-foreground"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                className="absolute right-2 text-foreground hover:text-foreground cursor-pointer"
                 aria-label="Clear search"
               >
                 <Plus className="size-3.5 rotate-45" />
@@ -199,18 +206,15 @@ export default function ReferencesPage() {
               </div>
             </div>
           ) : (
-            <PaperTable
-              papers={filteredPapers}
+            <ReferencesTable
+              items={filteredPapers}
               collections={collections}
-              isLoading={isLoading}
-              isSearch={Boolean(search.trim())}
-              selectedPaperId={selectedPaperId}
-              onSelectPaper={handleSelectPaper}
-              onDeletePaper={handleDeletePaper}
-              onBatchDeletePapers={handleBatchDeletePapers}
-              onBatchMovePapers={handleBatchMovePapers}
-              onClearSearch={() => setSearch('')}
-              onAddPaper={() => handleOpenUpload('file')}
+              selectedItemId={selectedPaperId}
+              onSelectItem={handleSelectPaper}
+              onDeleteItem={handleDeletePaper}
+              onBatchDeleteItems={handleBatchDeletePapers}
+              onBatchMoveItems={handleBatchMovePapers}
+              onOpenItem={(itemId) => router.push(`/${workspaceUrl}/library/papers/${itemId}`)}
             />
           )}
         </main>
@@ -245,12 +249,177 @@ export default function ReferencesPage() {
         open={createColOpen}
         onOpenChange={setCreateColOpen}
         collections={collections}
-        onSubmit={async (data) => {
+        onSubmit={async (data: CollectionFormValues) => {
           await collectionService.actions.createAsync(data);
           setCreateColOpen(false);
         }}
         isPending={collectionService.state.isCreating}
       />
+    </div>
+  );
+}
+
+interface ReferencesTableProps {
+  items: Paper[];
+  collections: { id: string; name: string }[];
+  selectedItemId: string | null;
+  onSelectItem: (item: Paper) => void;
+  onDeleteItem: (itemId: string) => void;
+  onBatchDeleteItems: (itemIds: string[]) => void;
+  onBatchMoveItems: (itemIds: string[], collectionId: string | null) => void;
+  onOpenItem: (itemId: string) => void;
+}
+
+function ReferencesTable({
+  items,
+  collections,
+  selectedItemId,
+  onSelectItem,
+  onDeleteItem,
+  onBatchDeleteItems,
+  onBatchMoveItems,
+  onOpenItem,
+}: ReferencesTableProps) {
+  const {
+    sortedItems,
+    sortField,
+    sortOrder,
+    handleSort,
+    selectedIds,
+    isAllSelected,
+    isPartiallySelected,
+    toggleSelectAll,
+    toggleSelect,
+    clearSelection,
+  } = useItemTable({ items, initialSortField: 'createdAt', initialSortOrder: 'desc' });
+
+  const selectedItemIds: string[] = Array.from(selectedIds);
+  const [hasUserSorted, setHasUserSorted] = useState(false);
+
+  const onColumnSort = (field: 'title' | 'authors') => {
+    setHasUserSorted(true);
+    handleSort(field);
+  };
+
+  return (
+    <div className="overflow-hidden rounded-md border border-border/60 bg-background">
+      <div className="max-h-full overflow-auto">
+        <table className="w-full table-fixed border-collapse text-left type-dense">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-6/12" />
+            <col className="w-6/12" />
+            <col className="w-10" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-background">
+            <tr className="h-9 border-b border-border/60 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
+              <th className="w-10 px-2.5 text-center">
+                <Checkbox
+                  checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all references"
+                />
+              </th>
+              {(['title', 'authors'] as const).map((field) => (
+                <th key={field} className="group/th px-3.5 py-2 font-normal text-foreground">
+                  <button
+                    type="button"
+                    onClick={() => onColumnSort(field)}
+                    className="inline-flex items-center rounded-sm text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+                  >
+                    <span>{field === 'title' ? 'Title' : 'Creator'}</span>
+                    {hasUserSorted && sortField === field && (
+                      <span className="shrink-0 ml-1.5 inline-flex items-center text-foreground">
+                        {sortOrder === 'desc' ? (
+                          <ArrowDown className="size-3.5 text-foreground" />
+                        ) : (
+                          <ArrowUp className="size-3.5 text-foreground" />
+                        )}
+                      </span>
+                    )}
+                  </button>
+                </th>
+              ))}
+              <th className="w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/30">
+            {(sortedItems as Paper[]).map((item: Paper) => (
+              <tr
+                key={item.id}
+                onClick={() => onSelectItem(item)}
+                onDoubleClick={() => onOpenItem(item.id)}
+                className={item.id === selectedItemId ? 'h-9 bg-muted/60 cursor-pointer' : 'h-9 hover:bg-muted/40 cursor-pointer'}
+              >
+                <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(event) => event.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds.has(item.id)}
+                    onCheckedChange={() => toggleSelect(item.id)}
+                    aria-label={`Select ${item.title || 'reference'}`}
+                  />
+                </td>
+                <td className="max-w-0 px-3.5 py-1.5 align-middle text-foreground">
+                  <span className="block truncate type-dense font-normal text-foreground">
+                    {item.title || 'Untitled item'}
+                  </span>
+                </td>
+                <td className="w-72 px-3.5 py-1.5 align-middle text-foreground">
+                  <span className="block truncate type-dense font-normal text-foreground">
+                    {formatCreatorCompact(item.authors)}
+                  </span>
+                </td>
+                <td className="w-10 px-2 py-1.5 align-middle text-right" onClick={(event) => event.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" aria-label="Reference actions" className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer">
+                        <MoreVertical className="size-4 text-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="text-xs">
+                      <DropdownMenuItem onClick={() => onOpenItem(item.id)} className="text-foreground focus:bg-muted cursor-pointer">
+                        Open in reader
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onDeleteItem(item.id)} className="text-foreground focus:bg-muted cursor-pointer">
+                        <Trash2 className="size-3.5 text-foreground" /> Move to trash
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {selectedItemIds.length > 0 && (
+        <div className="flex items-center justify-between border-t border-border/60 px-3 py-2 text-xs">
+          <span className="text-foreground font-medium">{selectedItemIds.length} selected</span>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="rounded-md px-2 py-1 text-foreground hover:bg-muted border border-border text-xs cursor-pointer">
+                  Move to
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="text-xs">
+                <DropdownMenuItem onClick={() => onBatchMoveItems(selectedItemIds, null)} className="text-foreground focus:bg-muted cursor-pointer">
+                  My Library
+                </DropdownMenuItem>
+                {collections.map((collection) => (
+                  <DropdownMenuItem key={collection.id} onClick={() => onBatchMoveItems(selectedItemIds, collection.id)} className="text-foreground focus:bg-muted cursor-pointer">
+                    {collection.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button type="button" onClick={() => onBatchDeleteItems(selectedItemIds)} className="rounded-md px-2 py-1 text-foreground hover:bg-muted border border-border text-xs cursor-pointer">
+              Move to trash
+            </button>
+            <button type="button" onClick={clearSelection} className="rounded-md px-2 py-1 text-foreground hover:bg-muted text-xs cursor-pointer">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

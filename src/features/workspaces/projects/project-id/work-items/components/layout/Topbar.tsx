@@ -146,19 +146,19 @@ export function Topbar({
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border/50 bg-background/80 px-6 h-14 backdrop-blur-md sticky top-0 z-10 shrink-0',
+        'flex items-center justify-between border-b border-border/50 bg-background/80 px-4 h-12 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
         className,
       )}
     >
       {/* Left: Title & Project/Cycle Context */}
       <div className="flex items-center gap-2 min-w-0">
-        <HeaderIcon className="size-4 text-foreground/80 shrink-0" />
+        <HeaderIcon className="size-4 text-foreground shrink-0" />
         <div className="flex items-center gap-2 min-w-0">
           <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {currentCycle ? currentCycle.name : (project?.name || title)}
           </h1>
           {count !== undefined && (
-            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
+            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-foreground">
               {count}
             </span>
           )}
@@ -169,10 +169,10 @@ export function Topbar({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-1.5 py-1 rounded-sm hover:bg-muted transition-colors cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-foreground hover:bg-muted px-1.5 py-1 rounded-sm transition-colors cursor-pointer"
                 >
                   <span>Switch Cycle</span>
-                  <ChevronDown className="size-3" />
+                  <ChevronDown className="size-3 text-foreground" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52">
@@ -239,10 +239,10 @@ export function Topbar({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
               aria-label="Clear search"
             >
-              <Plus className="size-3.5 rotate-45" />
+              <Plus className="size-3.5 rotate-45 text-foreground" />
             </button>
           )}
         </div>
@@ -301,7 +301,7 @@ export function Topbar({
                   >
                     <ListFilter className="size-4 text-foreground" strokeWidth={2.2} />
                     {hasActiveFilters && (
-                      <span className="absolute -top-1 -right-1 size-4 flex items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                      <span className="absolute -top-1 -right-1 size-4 flex items-center justify-center rounded-full bg-primary text-[10px] font-medium tabular-nums text-primary-foreground">
                         {totalActiveFilters}
                       </span>
                     )}
@@ -338,14 +338,14 @@ export function Topbar({
                   </span>
                   <div className="space-y-1 max-h-36 overflow-y-auto">
                     {columns.map((col) => {
-                      const colId = resolveTaskColumnId(col);
-                      const isSelected = selectedColumnIds.includes(colId);
-                      const color = resolveTaskColumnColor(colId, col.accentColor);
+                      const columnId = resolveTaskColumnId(col);
+                      const isSelected = selectedColumnIds.includes(columnId);
+                      const color = resolveTaskColumnColor(columnId, col.accentColor);
                       return (
                         <button
-                          key={colId}
+                          key={columnId}
                           type="button"
-                          onClick={() => toggleColumnFilter(colId)}
+                          onClick={() => toggleColumnFilter(columnId)}
                           className={cn(
                             'w-full flex items-center justify-between px-2 py-1.5 rounded-sm text-xs transition-colors text-left cursor-pointer',
                             isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground',
@@ -394,7 +394,7 @@ export function Topbar({
                                 </AvatarFallback>
                               </Avatar>
                             ) : (
-                              <div className="size-4.5 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">
+                              <div className="size-4.5 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
                                 {(user.name || 'U').slice(0, 1)}
                               </div>
                             )}

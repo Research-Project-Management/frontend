@@ -87,12 +87,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const id = useId();
 
   // Pinned items state (persisted)
-  const [pinnedArchives, setPinnedArchives] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('sidebar_pinned_archives') === 'true';
-    }
-    return false;
-  });
+  const [pinnedArchives, setPinnedArchives] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const togglePinArchives = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -128,24 +124,29 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // ── Expanded projects (persisted) ──────────────────────────────────────────
 
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebar_expanded_projects');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return new Set<string>(parsed.filter((item): item is string => typeof item === 'string'));
-          }
-        } catch {}
-      }
-    }
-    return new Set<string>();
-  });
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => new Set<string>());
 
   useEffect(() => {
+    setIsMounted(true);
+    const savedPin = localStorage.getItem('sidebar_pinned_archives');
+    if (savedPin === 'true') {
+      setPinnedArchives(true);
+    }
+    const saved = localStorage.getItem('sidebar_expanded_projects');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setExpandedProjects(new Set<string>(parsed.filter((item): item is string => typeof item === 'string')));
+        }
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
     localStorage.setItem('sidebar_expanded_projects', JSON.stringify(Array.from(expandedProjects)));
-  }, [expandedProjects]);
+  }, [expandedProjects, isMounted]);
 
   // Auto-expand active project on navigation
   useEffect(() => {
@@ -199,19 +200,21 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       >
         <div
           className={cn(
-            "group/row flex h-9.5 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors text-foreground select-none",
-            isProjActive ? "bg-accent font-semibold" : "hover:bg-accent/70 font-medium"
+            "group/row flex h-8 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors select-none outline-none",
+            isProjActive
+              ? "bg-muted text-foreground font-medium"
+              : "text-foreground hover:bg-muted font-normal"
           )}
         >
           <Link
             href={`/${workspaceId}/projects/${projId}/overview`}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left text-sm text-foreground transition-colors hover:text-foreground outline-none"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-13 transition-colors outline-none"
           >
-            <span className="shrink-0 text-base leading-none">{project.avatar || '📁'}</span>
+            <span className="shrink-0 text-sm leading-none">{project.avatar || '📁'}</span>
             <span
               className={cn(
-                "min-w-0 truncate text-sm",
-                isProjActive ? "font-semibold text-foreground" : "text-foreground"
+                "min-w-0 truncate text-13 tracking-tight text-foreground",
+                isProjActive ? "font-medium" : "font-normal"
               )}
             >
               {project.name}
@@ -227,7 +230,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   type="button"
                   aria-label="Project options"
                   className={cn(
-                    "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 outline-none",
+                    "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-muted transition-all duration-150 outline-none",
                     "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 focus:opacity-100"
                   )}
                   onClick={(e) => e.stopPropagation()}
@@ -251,7 +254,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                       "size-4 shrink-0 transition-colors",
                       isFavorited
                         ? "fill-amber-400 text-amber-400"
-                        : "text-foreground/80"
+                        : "text-foreground"
                     )}
                   />
                   <span>
@@ -270,7 +273,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     href={`/${workspaceId}/projects/${projId}/settings`}
                     className="flex items-center gap-2.5 w-full"
                   >
-                    <Share2 className="size-4 text-foreground/80 shrink-0" />
+                    <Share2 className="size-4 text-foreground shrink-0" />
                     <span>Publish project</span>
                   </Link>
                 </DropdownMenuItem>
@@ -287,7 +290,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   }}
                   className="cursor-pointer text-sm font-medium flex items-center gap-2.5 px-2.5 py-2 rounded-lg"
                 >
-                  <Link2 className="size-4 text-foreground/80 shrink-0" />
+                  <Link2 className="size-4 text-foreground shrink-0" />
                   <span>Copy link</span>
                 </DropdownMenuItem>
 
@@ -300,7 +303,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     href={`/${workspaceId}/projects/archives`}
                     className="flex items-center gap-2.5 w-full"
                   >
-                    <Archive className="size-4 text-foreground/80 shrink-0" />
+                    <Archive className="size-4 text-foreground shrink-0" />
                     <span>Archives</span>
                   </Link>
                 </DropdownMenuItem>
@@ -314,7 +317,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     href={`/${workspaceId}/projects/${projId}/settings`}
                     className="flex items-center gap-2.5 w-full"
                   >
-                    <Settings className="size-4 text-foreground/80 shrink-0" />
+                    <Settings className="size-4 text-foreground shrink-0" />
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
@@ -327,7 +330,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 type="button"
                 aria-label={isOpen ? "Collapse project" : "Expand project"}
                 className={cn(
-                  "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 outline-none",
+                  "size-7 flex items-center justify-center rounded-md cursor-pointer text-foreground hover:bg-muted transition-all duration-150 outline-none",
                   "opacity-0 group-hover/row:opacity-100 focus:opacity-100"
                 )}
               >
@@ -362,14 +365,14 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 href={link}
                 key={moduleKey}
                 className={cn(
-                  "group flex h-9.5 items-center gap-2.5 rounded-md pl-6.5 pr-2.5 text-sm transition-colors",
+                  "group flex h-8 items-center gap-2 rounded-md pl-6 pr-2.5 text-13 leading-5 transition-colors outline-none",
                   modActive
-                    ? "bg-accent text-foreground font-semibold"
-                    : "text-foreground font-medium hover:bg-accent/70 hover:text-foreground"
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground font-normal hover:bg-muted"
                 )}
               >
-                <mod.icon className="size-4 shrink-0 text-foreground transition-colors" />
-                <span className="min-w-0 truncate">{mod.label}</span>
+                <mod.icon className="size-3.5 shrink-0 text-foreground" />
+                <span className="min-w-0 truncate tracking-tight">{mod.label}</span>
               </Link>
             );
           })}
@@ -383,7 +386,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   return (
     <aside className="h-full w-60 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none sidebar-scrollbar">
       {/* Header */}
-      <div className="mb-3 px-2 flex items-center justify-between font-semibold text-lg text-foreground">
+      <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground">
         <span>Projects</span>
         <TooltipProvider delayDuration={150}>
           <Tooltip>
@@ -391,9 +394,9 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               <button
                 onClick={onToggle}
                 aria-label="Toggle sidebar"
-                className="rounded-md p-1.5 text-foreground hover:bg-muted/80 cursor-pointer transition-colors outline-none"
+                className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
               >
-                <PanelLeft className="size-4.5 text-foreground" />
+                <PanelLeft className="size-4 text-foreground" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={6}>
@@ -412,24 +415,25 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               <Link
                 href={item.to}
                 key={item.label}
-                className="group relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70"
+                className={cn(
+                  "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
+                  active
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
               >
                 {active && (
                   <motion.div
                     layoutId={`sb-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-accent"
+                    className="absolute inset-0 rounded-md bg-muted"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-                <item.icon className="relative z-10 size-4 shrink-0 text-foreground transition-colors" />
-                <span
-                  className={`relative z-10 min-w-0 truncate text-sm transition-colors text-foreground ${
-                    active
-                      ? 'font-semibold'
-                      : 'font-medium'
-                  }`}
-                >
+                <item.icon
+                  className="relative z-10 size-4 shrink-0 text-foreground"
+                />
+                <span className="relative z-10 min-w-0 truncate tracking-tight">
                   {item.label}
                 </span>
               </Link>
@@ -442,11 +446,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <Collapsible
         open={workspaceSectionOpen}
         onOpenChange={setWorkspaceSectionOpen}
-        className="mt-3 select-none group/workspace-header"
+        className="mt-4 select-none"
       >
-        <div className="flex items-center justify-between h-8.5 px-2.5 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+        <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
           <CollapsibleTrigger asChild>
-            <button className="flex-1 text-left text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer outline-none">
+            <button className="flex-1 text-left text-13 font-medium text-inherit group-hover:text-foreground cursor-pointer outline-none transition-colors duration-200">
               Workspace
             </button>
           </CollapsibleTrigger>
@@ -458,11 +462,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   <button
                     type="button"
                     aria-label={workspaceSectionOpen ? "Collapse workspace" : "Expand workspace"}
-                    className="size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-colors outline-none"
+                    className="size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground group-hover:text-foreground/80 hover:!text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none"
                   >
                     <ChevronDown
                       className={cn(
-                        "size-3.5 text-foreground transition-transform duration-200",
+                        "size-3.5 text-inherit transition-transform duration-200",
                         workspaceSectionOpen ? "" : "-rotate-90"
                       )}
                     />
@@ -481,35 +485,37 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             {/* Projects Item -> Navigates to Projects Screen */}
             <Link
               href={`/${workspaceId}/projects`}
-              className={`group relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors text-foreground ${
+              className={cn(
+                "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
                 isProjectsManageActive
-                  ? 'bg-accent font-semibold'
-                  : 'hover:bg-accent/70 font-medium'
-              }`}
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-foreground hover:bg-muted font-normal"
+              )}
             >
-              <Briefcase className="size-4 shrink-0 text-foreground transition-colors" />
-              <span className="min-w-0 truncate text-sm">Projects</span>
+              <Briefcase className="size-4 shrink-0 text-foreground" />
+              <span className="min-w-0 truncate tracking-tight">Projects</span>
             </Link>
 
             {/* Pinned Archives */}
             {pinnedArchives && (
               <Link
                 href={`/${workspaceId}/projects/archives`}
-                className={`group relative flex h-9.5 items-center justify-between rounded-md px-2.5 text-sm transition-colors text-foreground ${
+                className={cn(
+                  "group relative flex h-8 items-center justify-between rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
                   isArchivesActive
-                    ? 'bg-accent font-semibold'
-                    : 'hover:bg-accent/70 font-medium'
-                }`}
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
               >
                 <div className="flex items-center gap-2.5">
-                  <Archive className="size-4 shrink-0 text-foreground transition-colors" />
-                  <span className="min-w-0 truncate text-sm">Archives</span>
+                  <Archive className="size-4 shrink-0 text-foreground" />
+                  <span className="min-w-0 truncate tracking-tight">Archives</span>
                 </div>
                 <button
                   type="button"
                   onClick={togglePinArchives}
                   title="Unpin from workspace"
-                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-foreground transition-opacity cursor-pointer"
+                  className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-foreground transition-all cursor-pointer"
                 >
                   <PinOff className="size-3.5 text-foreground" />
                 </button>
@@ -521,15 +527,16 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`group flex items-center justify-between w-full h-9.5 px-2.5 rounded-md text-sm transition-colors cursor-pointer ${
+                  className={cn(
+                    "group flex items-center justify-between w-full h-8 px-2.5 rounded-md text-13 leading-5 transition-colors cursor-pointer outline-none",
                     isMorePopoverOpen
-                      ? 'bg-accent font-semibold text-foreground'
-                      : 'text-foreground hover:bg-accent/70 font-medium'
-                  }`}
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-foreground hover:bg-muted font-normal"
+                  )}
                 >
                   <div className="flex items-center gap-2.5">
-                    <MoreHorizontal className="size-4 shrink-0 text-foreground transition-colors" />
-                    <span className="text-sm">{isMorePopoverOpen ? 'Hide' : 'More'}</span>
+                    <MoreHorizontal className="size-4 shrink-0 text-foreground" />
+                    <span className="tracking-tight">{isMorePopoverOpen ? 'Hide' : 'More'}</span>
                   </div>
                 </button>
               </PopoverTrigger>
@@ -547,8 +554,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     onClick={() => setIsMorePopoverOpen(false)}
                     className={`group flex items-center justify-between h-9 rounded-lg px-2.5 text-sm transition-colors ${
                       isArchivesActive
-                        ? 'bg-accent font-semibold text-foreground'
-                        : 'hover:bg-accent text-foreground'
+                        ? 'bg-muted font-medium text-foreground'
+                        : 'hover:bg-muted text-foreground'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -560,7 +567,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                       type="button"
                       onClick={togglePinArchives}
                       title={pinnedArchives ? 'Unpin from workspace' : 'Pin to workspace'}
-                      className="p-1 rounded hover:bg-muted/80 text-foreground cursor-pointer transition-colors"
+                      className="p-1 rounded hover:bg-muted text-foreground cursor-pointer transition-colors"
                     >
                       <Pin
                         className={`size-3.5 text-foreground ${
@@ -581,11 +588,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <Collapsible
           open={favoritesSectionOpen}
           onOpenChange={setFavoritesSectionOpen}
-          className="mt-3 select-none group/favorites-header"
+          className="mt-4 select-none"
         >
-          <div className="flex items-center justify-between h-8.5 px-2.5 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+          <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
             <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer outline-none">
+              <button className="flex-1 text-left text-13 font-medium text-inherit group-hover:text-foreground cursor-pointer outline-none transition-colors duration-200">
                 Favorites
               </button>
             </CollapsibleTrigger>
@@ -597,11 +604,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     <button
                       type="button"
                       aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                      className="size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-colors outline-none"
+                      className="size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground group-hover:text-foreground/80 hover:!text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none"
                     >
                       <ChevronDown
                         className={cn(
-                          "size-3.5 text-foreground transition-transform duration-200",
+                          "size-3.5 text-inherit transition-transform duration-200",
                           favoritesSectionOpen ? "" : "-rotate-90"
                         )}
                       />
@@ -627,17 +634,17 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <Collapsible
         open={projectsSectionOpen}
         onOpenChange={setProjectsSectionOpen}
-        className="mt-3 select-none group/projects-header"
+        className="mt-4 select-none"
       >
-        <div className="flex items-center justify-between h-8.5 px-2.5 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+        <div className="group flex items-center justify-between h-8 px-2.5 rounded-md text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-200 cursor-pointer">
           <CollapsibleTrigger asChild>
-            <button className="flex-1 text-left text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer outline-none">
+            <button className="flex-1 text-left text-13 font-medium text-inherit group-hover:text-foreground cursor-pointer outline-none transition-colors duration-200">
               Projects
             </button>
           </CollapsibleTrigger>
 
           {/* Right Action Icons: Plus (+), Chevron (v) */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {/* New Project Button with Tooltip */}
             <Dialog open={open} onOpenChange={setOpen}>
               <TooltipProvider delayDuration={150}>
@@ -648,11 +655,13 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                         type="button"
                         aria-label="Create project"
                         className={cn(
-                          "size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-all duration-150 outline-none",
-                          open ? "opacity-100 bg-black/8 dark:bg-white/8" : "opacity-0 group-hover/projects-header:opacity-100 focus:opacity-100"
+                          "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground group-hover:text-foreground/80 hover:!text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none",
+                          open
+                            ? "opacity-100 bg-sidebar-accent !text-foreground"
+                            : "opacity-0 group-hover:opacity-100 focus:opacity-100"
                         )}
                       >
-                        <Plus className="size-3.5 text-foreground" />
+                        <Plus className="size-3.5 text-inherit" />
                       </button>
                     </DialogTrigger>
                   </TooltipTrigger>
@@ -684,11 +693,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     <button
                       type="button"
                       aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                      className="size-5.5 flex items-center justify-center rounded cursor-pointer text-foreground hover:bg-black/8 dark:hover:bg-white/8 transition-colors outline-none"
+                      className="size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground group-hover:text-foreground/80 hover:!text-foreground hover:bg-sidebar-accent transition-all duration-150 active:scale-95 outline-none"
                     >
                       <ChevronDown
                         className={cn(
-                          "size-3.5 text-foreground transition-transform duration-200",
+                          "size-3.5 text-inherit transition-transform duration-200",
                           projectsSectionOpen ? "" : "-rotate-90"
                         )}
                       />
@@ -715,7 +724,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             )}
 
             {!isLoading && (!projects || projects.length === 0) && (
-              <p className="px-2.5 py-3 text-xs text-muted-foreground/70">
+              <p className="px-2.5 py-3 text-xs text-muted-foreground">
                 No projects found
               </p>
             )}

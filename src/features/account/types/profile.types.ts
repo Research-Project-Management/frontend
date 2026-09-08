@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { updateProfileSchema } from '../schemas/profile.schema';
 
+export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>;
+
 export interface UpdateProfilePayload {
   name: string;
   avatar?: string | null;

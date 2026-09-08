@@ -36,12 +36,12 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </div>
       </div>
 
-      <div className='flex flex-col gap-6 px-3 py-2'>
+      <div className='flex flex-col gap-3 px-3 py-2'>
         {/* Your Profile Section */}
         <div>
-          <h3 className='mb-1.5 px-2.5 text-sm font-semibold text-muted-foreground select-none'>
+          <div className='px-2 pb-1.5 pt-1 text-[11px] font-semibold text-foreground select-none'>
             Your profile
-          </h3>
+          </div>
           <nav className='flex flex-col gap-1'>
             <SidebarItem
               icon={<User className='size-4 text-foreground shrink-0' />}
@@ -90,14 +90,14 @@ function SidebarItem({
     <button
       onClick={onClick}
       className={cn(
-        'flex h-9.5 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors outline-none cursor-pointer text-foreground',
+        'group flex h-8 w-full items-center gap-1.5 rounded-md px-2.5 text-[13px] leading-5 transition-colors outline-none cursor-pointer text-foreground',
         active
-          ? 'bg-accent font-semibold'
-          : 'font-medium hover:bg-accent/70'
+          ? 'bg-muted font-medium'
+          : 'font-normal hover:bg-muted/70'
       )}
     >
       {icon}
-      <span>{label}</span>
+      <span className='truncate tracking-tight'>{label}</span>
     </button>
   );
 }

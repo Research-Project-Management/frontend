@@ -8,34 +8,62 @@
    -------------------------------------------------------------------------- */
 
 @theme {
-  --font-sans: var(--font-sans), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-heading: var(--font-sans), "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-body: var(--font-sans), "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-sans: var(--font-sans), "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-code: var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --font-weight-extralight: 200;
+  /* Plane.so Font Weights */
   --font-weight-light: 300;
-  --font-weight-normal: 400;
+  --font-weight-regular: 450;
+  --font-weight-normal: 450;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --font-weight-extrabold: 800;
+  --font-weight-heavy: 800;
 
+  /* Plane.so Golden Line Heights */
   --leading-none: 1;
-  --leading-tight: 1.25;
-  --leading-snug: 1.375;
-  --leading-normal: 1.5;
+  --leading-tight: 1.2;
+  --leading-snug: 1.3;
+  --leading-normal: 1.54;
+  --leading-body: 1.54;
   --leading-relaxed: 1.625;
   --leading-loose: 2;
 
+  /* Plane.so 13-Step Font Size Scale */
+  --text-9: 0.5625rem;
+  --text-10: 0.625rem;
+  --text-11: 0.6875rem;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-18: 1.125rem;
+  --text-20: 1.25rem;
+  --text-24: 1.5rem;
+  --text-28: 1.75rem;
+  --text-32: 2rem;
+  --text-40: 2.5rem;
+
+  /* Legacy Scale Aliases for Compatibility */
   --text-micro: 0.6875rem;
   --text-micro--line-height: 1rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
   --text-dense: 0.8125rem;
   --text-dense--line-height: 1.125rem;
+  --text-sub: 0.9375rem;
+  --text-sub--line-height: 1.375rem;
 
-  --tracking-tighter: -0.05em;
-  --tracking-tight: -0.025em;
+  /* Plane.so Letter Spacing */
+  --tracking-extra-tight: -0.004em;
+  --tracking-tight: -0.002em;
   --tracking-normal: 0em;
-  --tracking-wide: 0.025em;
+  --tracking-default: 0em;
+  --tracking-wide: 0.002em;
   --tracking-wider: 0.05em;
   --tracking-widest: 0.1em;
 
@@ -44,6 +72,19 @@
 
   --animate-smooth-pulse: smooth-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-shimmer: shimmer 2s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   GLOBAL TEXT RENDERING (Plane.so official)
+   -------------------------------------------------------------------------- */
+* {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  font-variant-ligatures: none;
+  -webkit-font-variant-ligatures: none;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
 }
 
 @keyframes smooth-pulse {
@@ -103,6 +144,7 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
@@ -158,7 +200,7 @@
   --primary-foreground: var(--gray-0);
   --secondary: var(--gray-50);
   --secondary-foreground: var(--gray-800);
-  --muted: var(--gray-50);
+  --muted: var(--gray-100);
   --muted-foreground: var(--gray-500);
   --accent: var(--gray-50);
   --accent-foreground: var(--gray-700);
@@ -173,12 +215,13 @@
   --chart-4: oklch(0.828 0.189 84);
   --chart-5: oklch(0.769 0.188 70);
 
-  --sidebar: var(--gray-25);
+  --sidebar: oklch(95.43% 0.001 230.67);
   --sidebar-foreground: var(--gray-800);
   --sidebar-primary: var(--blue-500);
   --sidebar-primary-foreground: var(--gray-0);
-  --sidebar-accent: var(--gray-100);
-  --sidebar-accent-foreground: var(--gray-700);
+  --sidebar-hover: oklch(91% 0 0);
+  --sidebar-accent: oklch(86% 0 0);
+  --sidebar-accent-foreground: var(--gray-900);
   --sidebar-border: var(--gray-200);
   --sidebar-ring: var(--blue-500);
 
@@ -217,13 +260,14 @@
   --chart-4: oklch(0.627 0.265 304);
   --chart-5: oklch(0.645 0.246 16);
 
-  --sidebar: oklch(13% 0 0);
+  --sidebar: oklch(19.32% 0.002 230.81);
   --sidebar-foreground: oklch(92% 0 0);
   --sidebar-primary: var(--blue-500);
   --sidebar-primary-foreground: oklch(100% 0 0);
-  --sidebar-accent: oklch(20% 0 0);
-  --sidebar-accent-foreground: oklch(72% 0 0);
-  --sidebar-border: oklch(22% 0 0);
+  --sidebar-hover: oklch(24% 0.002 230.81);
+  --sidebar-accent: oklch(28% 0.002 230.81);
+  --sidebar-accent-foreground: oklch(95% 0 0);
+  --sidebar-border: oklch(26% 0 0);
   --sidebar-ring: var(--blue-500);
 
   --shadow-2xs: none;
@@ -267,6 +311,36 @@
     cursor: pointer;
   }
 
+  h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+  }
+
+  h2 {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 0.9375rem;
+    line-height: 1.375rem;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    letter-spacing: -0.011em;
+    font-weight: 600;
+  }
+
   code,
   kbd,
   samp,
@@ -278,6 +352,7 @@
   }
 
   a {
+    color: inherit;
     text-decoration: none;
   }
 
@@ -395,8 +470,61 @@
    5. COMPONENTS & OVERRIDES
    -------------------------------------------------------------------------- */
 
-html {
-  scroll-behavior: smooth;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--leading-normal);
+    letter-spacing: -0.011em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  }
+
+  h1 {
+    font-size: var(--text-32);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-default);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  h2 {
+    font-size: var(--text-28);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-default);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  h3 {
+    font-size: var(--text-24);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-default);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  h4 {
+    font-size: var(--text-20);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-default);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  h5 {
+    font-size: var(--text-18);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-default);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  h6 {
+    font-size: var(--text-16);
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-default);
+    font-weight: var(--font-weight-semibold);
+  }
 }
 
 ::-webkit-scrollbar-button {
@@ -601,8 +729,427 @@ html {
   -webkit-text-fill-color: transparent !important;
 }
 
+/* --------------------------------------------------------------------------
+   7. SONNER TOAST PRECISION STYLING
+   Plane.so (@plane/propel) Toast Design Tokens & Flat Elevation Model
+   -------------------------------------------------------------------------- */
+
+[data-sonner-toaster] {
+  position: fixed !important;
+  right: 16px !important;
+  bottom: 16px !important;
+  left: auto !important;
+  top: auto !important;
+  width: 350px !important;
+  max-width: calc(100vw - 32px) !important;
+  box-sizing: border-box !important;
+  z-index: 999999999 !important;
+  --normal-bg: #ffffff;
+  --normal-border: var(--border);
+  --normal-text: #09090b;
+  --toast-icon-margin-start: 0px !important;
+  --toast-icon-margin-end: 0px !important;
+  --toast-svg-margin-start: 0px !important;
+  --toast-svg-margin-end: 0px !important;
+  --toast-close-button-start: unset !important;
+  --toast-close-button-end: 10px !important;
+  --toast-close-button-transform: none !important;
+}
+
+[data-sonner-toaster][data-x-position="right"] {
+  right: 16px !important;
+  left: auto !important;
+}
+
+[data-sonner-toaster][data-y-position="bottom"] {
+  bottom: 16px !important;
+  top: auto !important;
+}
+
 [data-sonner-toaster] [data-sonner-toast] {
-  font-family: var(--font-sans);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 4px 12px oklch(0% 0 0 / 0.08);
+  font-family: var(--font-sans) !important;
+  border-radius: 8px !important; /* Plane rounded-lg */
+  /* Plane shadow-raised-200 / Flat SaaS Elevation */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  background: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid var(--border) !important; /* Plane border-subtle: strictly neutral */
+  padding: 12px 32px 12px 14px !important;
+  min-height: 42px !important;
+  width: 350px !important; /* Plane w-[350px] */
+  min-width: 350px !important;
+  max-width: 350px !important;
+  right: 0 !important;
+  left: auto !important;
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: flex-start !important; /* Lock icons strictly to line 1 */
+  gap: 10px !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Left status icon container: locked to line 1 of title (midpoint = 21px) */
+[data-sonner-toaster] [data-sonner-toast] [data-icon] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 !important;
+  margin-top: 1px !important; /* 12px top pad + 1px + 8px = 21px midpoint */
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-icon] svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+}
+
+/* Content typography */
+[data-sonner-toaster] [data-sonner-toast] [data-content] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: #09090b !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  line-height: 18px !important; /* 12px top pad + 9px = 21px midpoint */
+  letter-spacing: -0.011em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: #71717a !important; /* Neutral Zinc-500 gray */
+  font-size: 12px !important;
+  line-height: 16px !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Close button - pinned to line 1 on the top right (midpoint = 21px) */
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 12px !important; /* 12px top + 9px = 21px midpoint */
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  background: transparent !important;
+  color: #a1a1aa !important;
+  border: none !important;
+  border-radius: 4px !important;
+  width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease !important;
+  z-index: 10 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast]:hover [data-close-button] {
+  opacity: 1 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #09090b !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: var(--foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--foreground) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] svg {
+  width: 12px !important;
+  height: 12px !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Action and Cancel Buttons inside Toast */
+[data-sonner-toaster] [data-sonner-toast] [data-button] {
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, opacity 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  margin-top: 6px !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-action] {
+  background: #09090b !important;
+  color: #ffffff !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-action]:hover {
+  background: #27272a !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-cancel] {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #71717a !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-cancel]:hover {
+  background: rgba(0, 0, 0, 0.09) !important;
+  color: #09090b !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-action] {
+  background: #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-action]:hover {
+  background: #ffffff !important;
+}
+
+[data-sonner-toaster][data-x-position="right"] {
+  right: 16px !important;
+  left: auto !important;
+}
+
+[data-sonner-toaster][data-y-position="bottom"] {
+  bottom: 16px !important;
+  top: auto !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  font-family: var(--font-sans) !important;
+  border-radius: 8px !important; /* Plane rounded-lg */
+  /* Plane shadow-raised-200 / Flat SaaS Elevation */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  background: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid var(--border) !important; /* Plane border-subtle: strictly neutral */
+  padding: 12px 32px 12px 14px !important;
+  min-height: 42px !important;
+  width: 350px !important; /* Plane w-[350px] */
+  min-width: 350px !important;
+  max-width: 350px !important;
+  right: 0 !important;
+  left: auto !important;
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: flex-start !important; /* Lock icons strictly to line 1 */
+  gap: 10px !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Left status icon container: locked to line 1 of title (midpoint = 21px) */
+[data-sonner-toaster] [data-sonner-toast] [data-icon] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 !important;
+  margin-top: 1px !important; /* 12px top pad + 1px + 8px = 21px midpoint */
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-icon] svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+}
+
+/* Content typography */
+[data-sonner-toaster] [data-sonner-toast] [data-content] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: #09090b !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  line-height: 18px !important; /* 12px top pad + 9px = 21px midpoint */
+  letter-spacing: -0.011em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: #71717a !important; /* Neutral Zinc-500 gray */
+  font-size: 12px !important;
+  line-height: 16px !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Close button - pinned to line 1 on the top right (midpoint = 21px) */
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 12px !important; /* 12px top + 9px = 21px midpoint */
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  background: transparent !important;
+  color: #a1a1aa !important;
+  border: none !important;
+  border-radius: 4px !important;
+  width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease !important;
+  z-index: 10 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast]:hover [data-close-button] {
+  opacity: 1 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #09090b !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: var(--foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--foreground) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] svg {
+  width: 12px !important;
+  height: 12px !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Action and Cancel Buttons inside Toast */
+[data-sonner-toaster] [data-sonner-toast] [data-button] {
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, opacity 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  margin-top: 6px !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-action] {
+  background: #09090b !important;
+  color: #ffffff !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-action]:hover {
+  background: #27272a !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-cancel] {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #71717a !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-cancel]:hover {
+  background: rgba(0, 0, 0, 0.09) !important;
+  color: #09090b !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-action] {
+  background: #f4f4f5 !important;
+  color: #09090b !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-action]:hover {
+  background: #ffffff !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-cancel] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-cancel]:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: var(--foreground) !important;
 }

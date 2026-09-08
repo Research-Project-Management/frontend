@@ -32,7 +32,7 @@ export default function Topbar() {
   return (
     <nav
       aria-label='Workspace Header Navigation'
-      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-2'
+      className='flex h-12 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-2 select-none'
     >
       {/* Left: Workspace & Project breadcrumb */}
       <div className='flex items-center gap-2 min-w-0 shrink-0'>
@@ -43,11 +43,14 @@ export default function Topbar() {
         />
       </div>
 
-      {/* Center: Search placeholder */}
+      {/* Center: Search placeholder (clean without shortcut keys) */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
-        <button className='flex h-7 w-full items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 text-xs text-foreground/80 shadow-none transition-colors hover:bg-accent hover:text-foreground cursor-pointer'>
-          <Search className='size-3.5 text-foreground' />
-          <span className='text-xs text-foreground/80'>Search...</span>
+        <button
+          type='button'
+          className='group flex h-8 w-full items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 text-[13px] text-muted-foreground shadow-none transition-colors hover:border-foreground/20 hover:bg-accent/50 hover:text-foreground cursor-pointer outline-none'
+        >
+          <Search className='size-3.5 text-foreground/80 group-hover:text-foreground transition-colors shrink-0' />
+          <span className='text-[13px] text-muted-foreground group-hover:text-foreground transition-colors truncate'>Search...</span>
         </button>
       </div>
 
@@ -58,7 +61,7 @@ export default function Topbar() {
             <TooltipTrigger asChild>
               <button
                 type='button'
-                className='flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent cursor-pointer outline-none'
+                className='group flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/60 cursor-pointer outline-none'
                 aria-label='Inbox'
               >
                 <Mail className='size-4 text-foreground' />

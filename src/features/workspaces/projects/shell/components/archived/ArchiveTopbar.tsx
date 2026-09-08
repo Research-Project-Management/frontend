@@ -7,7 +7,6 @@ import {
   X,
 } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
-import { useHotkeys } from '@/shared/hooks/use-hotkeys';
 import { cn } from '@/shared/lib/utils';
 import { ArchiveFilterPopover } from './ArchiveFilterPopover';
 import type { Project } from '../../types/project.types';
@@ -41,15 +40,9 @@ export function ArchiveTopbar({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(Boolean(searchQuery));
 
-  // Shortcut key handling: '/' or 'Cmd/Ctrl+K' focuses search input
-  useHotkeys(['/', 'mod+k'], () => {
-    setIsSearchExpanded(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  });
-
   return (
     <header
-      className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Icon & Title */}

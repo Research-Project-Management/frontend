@@ -97,13 +97,13 @@ export default function Sidebar() {
   return (
     <aside className="h-full w-60 shrink-0 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none sidebar-scrollbar">
       {/* Back */}
-      <div className="mb-1 px-2">
+      <div className="mb-2 px-1">
         <Link
           href={`/${workspaceId}/projects/${projectId}/overview`}
-          className="group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-muted-foreground hover:bg-accent/70 hover:text-foreground transition-colors"
+          className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] leading-5 font-normal text-foreground hover:bg-muted/70 transition-colors"
         >
-          <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
-          <span>Project settings</span>
+          <ArrowLeft className="size-4 shrink-0 text-foreground transition-transform group-hover:-translate-x-0.5" />
+          <span className="tracking-tight">Project settings</span>
         </Link>
       </div>
 
@@ -117,7 +117,7 @@ export default function Sidebar() {
       />
 
       {/* Nav groups */}
-      <div className="mt-2 flex flex-col gap-4">
+      <div className="mt-3 flex flex-col gap-3.5">
         {navGroups.map((group) => (
           <GroupSection key={group.title} group={group} isItemActive={isItemActive} />
         ))}
@@ -137,7 +137,7 @@ function GroupSection({
 }) {
   return (
     <div>
-      <div className="px-2.5 pb-1.5 pt-1 text-sm font-semibold text-muted-foreground select-none">
+      <div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted-foreground select-none">
         {group.title}
       </div>
       <nav className="flex flex-col gap-1">
@@ -149,14 +149,16 @@ function GroupSection({
               key={item.id}
               href={item.to}
               className={cn(
-                'group flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors',
+                'group flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] leading-5 transition-colors outline-none',
                 active
-                  ? 'bg-accent text-foreground font-semibold'
-                  : 'text-foreground font-medium hover:bg-accent/70 hover:text-foreground',
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-foreground hover:bg-muted/70 font-normal',
               )}
             >
-              <Icon className="size-4 shrink-0 text-foreground transition-colors" />
-              <span className="min-w-0 truncate">{item.label}</span>
+              <Icon
+                className="size-4 shrink-0 text-foreground"
+              />
+              <span className="min-w-0 truncate tracking-tight">{item.label}</span>
             </Link>
           );
         })}

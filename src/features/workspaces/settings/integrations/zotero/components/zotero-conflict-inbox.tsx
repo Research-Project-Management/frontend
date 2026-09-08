@@ -108,7 +108,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
       {/* Header & Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div>
-          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+          <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
             <Inbox className="size-5 text-primary" />
             Sync Conflict & Pending Push Inbox
           </h3>

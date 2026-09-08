@@ -2,20 +2,25 @@
   "name": "rpm",
   "private": true,
   "scripts": {
+    "predev": "node scripts/setup-dev.mjs",
     "dev": "next dev --webpack --port 2915",
     "dev:turbo": "next dev --turbopack --port 2915",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start --port 2915",
-    "postinstall": "node -e \"const fs = require('fs'); const src = fs.existsSync('node_modules/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs') ? 'node_modules/react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs' : 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs'; fs.copyFileSync(src, 'public/pdf.worker.min.mjs');\"",
-    "clean": "node -e \"fs.rmSync('.next', {recursive: true, force: true})\"",
+    "postinstall": "node scripts/postinstall.mjs",
+    "clean": "node -e \"require('fs').rmSync('.next', {recursive:true,force:true}); require('fs').rmSync('C:/flux-next-cache', {recursive:true,force:true});\" && echo cleaned",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "codebase:sync": "node ../.agents/scripts/sync-codebase.mjs frontend"
+    "codebase:sync": "node ../.agents/scripts/sync-codebase.mjs frontend",
+    "audit:dry": "npx --yes jscpd --threshold 5 src",
+    "audit:circular": "npx --yes madge --circular --extensions ts,tsx src",
+    "audit:deadcode": "npx --yes knip",
+    "audit:security": "pnpm audit",
+    "audit:quality": "pnpm typecheck && pnpm audit:circular && pnpm audit:dry"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -51,10 +56,12 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
+    "dompurify": "^3.2.4",
     "embla-carousel-react": "^8.6.0",
     "emoji-picker-react": "^4.19.1",
     "es-toolkit": "^1.51.0",
     "framer-motion": "^13.0.0",
+    "geist": "^1.7.2",
     "input-otp": "^1.4.2",
     "katex": "^0.18.3",
     "lucide-react": "^1.31.0",
@@ -104,11 +111,16 @@
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.67.0",
+    "vite": "^7.3.6",
     "vitest": "^4.1.10"
   },
   "pnpm": {
     "overrides": {
-      "pdfjs-dist": "5.4.296"
+      "pdfjs-dist": "5.4.296",
+      "dompurify": "^3.4.13",
+      "vite": "^7.3.5",
+      "@tiptap/core": "^3.30.4",
+      "esbuild": "^0.28.1"
     }
   }
 }

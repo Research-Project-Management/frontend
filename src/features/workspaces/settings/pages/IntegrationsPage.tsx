@@ -36,7 +36,7 @@ export default function IntegrationsPage() {
       <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-12 py-8 md:py-10">
         <div className="w-full max-w-5xl mx-auto space-y-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Workspace Integrations</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Workspace Integrations</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Configure external integrations, reference managers, and bidirectional synchronization pipelines.
             </p>

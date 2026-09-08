@@ -84,7 +84,7 @@ export function TaskAttachments({
       <div className="mt-10">
         <div className="mb-4 flex items-center gap-2">
           <Paperclip className="size-4 text-muted-foreground" />
-          <h3 className="text-base font-bold text-foreground">Attachments</h3>
+          <h3 className="text-base font-semibold text-foreground">Attachments</h3>
         </div>
         <div className="space-y-3 pl-1">
           {attachments.map((item) => (
@@ -197,7 +197,7 @@ export function TaskAttachments({
         <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-lg font-bold text-foreground">
+              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
                 Rename attachment
               </DialogTitle>
               <DialogDescription className="text-sm leading-6 text-muted-foreground">

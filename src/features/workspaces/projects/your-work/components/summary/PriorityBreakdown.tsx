@@ -60,7 +60,7 @@ export function PriorityBreakdown({
                       {p.label}
                     </span>
                   </div>
-                  <p className="text-lg font-bold text-foreground">{count}</p>
+                  <p className="text-lg font-semibold tabular-nums tracking-tight text-foreground">{count}</p>
                 </div>
               );
             })}

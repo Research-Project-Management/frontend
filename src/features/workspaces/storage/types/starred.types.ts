@@ -1,4 +1,4 @@
-import type { StorageItem } from './storage.types';
+import type { StorageItem } from './storage-item.types';
 
 export type StarredSortBy = 'name' | 'date' | 'size' | 'type';
 

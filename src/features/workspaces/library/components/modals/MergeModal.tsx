@@ -1,0 +1,159 @@
+'use client';
+
+import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/shared/components/ui/dialog';
+import { Button } from '@/shared/components/ui/button';
+import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
+import { Label } from '@/shared/components/ui/label';
+import { Badge } from '@/shared/components/ui/badge';
+import { Files, Check, Loader2 } from 'lucide-react';
+import type { CatalogItem } from '../../types/library.types';
+
+export interface MergeModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  duplicates: CatalogItem[];
+  onMerge: (
+    masterPaper: CatalogItem,
+    mergedFields: Partial<CatalogItem>,
+    duplicateIdsToDelete: string[],
+  ) => Promise<void>;
+}
+
+export type MergeDialogProps = MergeModalProps;
+
+export function MergeModal({
+  open,
+  onOpenChange,
+  duplicates = [],
+  onMerge,
+}: MergeModalProps) {
+  const [selectedMasterId, setSelectedMasterId] = useState<string>(
+    duplicates[0]?.id || '',
+  );
+  const [isMerging, setIsMerging] = useState(false);
+
+  const masterPaper = duplicates.find((p) => p.id === selectedMasterId) || duplicates[0];
+
+  const handleConfirmMerge = async () => {
+    if (!masterPaper) return;
+    setIsMerging(true);
+    try {
+      const duplicateIdsToDelete = duplicates
+        .filter((p) => p.id !== masterPaper.id)
+        .map((p) => p.id);
+      await onMerge(masterPaper, {}, duplicateIdsToDelete);
+      onOpenChange(false);
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border/60 shadow-none rounded-md">
+        <DialogHeader>
+          <div className="flex items-center gap-2 text-foreground">
+            <Files className="size-5 text-foreground shrink-0" />
+            <DialogTitle className="text-base font-medium text-foreground">Merge Duplicate Papers</DialogTitle>
+          </div>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Select the primary master paper to keep. All notes, attachments, and metadata from other records will be merged into this paper, and duplicate entries will be cleaned up.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <Label className="text-xs font-medium text-muted-foreground">
+            Select Primary (Master) Record:
+          </Label>
+
+          <RadioGroup
+            value={selectedMasterId || duplicates[0]?.id}
+            onValueChange={setSelectedMasterId}
+            className="space-y-2.5"
+          >
+            {duplicates.map((paper) => {
+              const isSelected = (selectedMasterId || duplicates[0]?.id) === paper.id;
+              return (
+                <div
+                  key={paper.id}
+                  onClick={() => setSelectedMasterId(paper.id)}
+                  className={`flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'border-border/60 bg-muted/60 shadow-none'
+                      : 'border-border/40 hover:border-border/60 hover:bg-muted/30'
+                  }`}
+                >
+                  <RadioGroupItem value={paper.id} id={`paper-${paper.id}`} className="mt-0.5" />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label
+                        htmlFor={`paper-${paper.id}`}
+                        className="font-medium text-xs text-foreground cursor-pointer line-clamp-2"
+                      >
+                        {paper.title || 'Untitled Item'}
+                      </Label>
+                      {isSelected && (
+                        <Badge variant="secondary" className="text-xs h-5 px-2 shrink-0 font-medium rounded-sm">
+                          Master
+                        </Badge>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground truncate">
+                      {Array.isArray(paper.authors) ? paper.authors.join(', ') : 'Unknown Authors'}
+                      {paper.year ? ` (${paper.year})` : ''}
+                    </p>
+
+                    {paper.doi && (
+                      <p className="text-xs text-muted-foreground font-mono truncate">
+                        DOI: {paper.doi}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </RadioGroup>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isMerging}
+            className="text-foreground rounded-md border-border/60"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleConfirmMerge}
+            disabled={isMerging || !masterPaper}
+            className="gap-1.5 rounded-md"
+          >
+            {isMerging ? (
+              <Loader2 className="size-4 animate-spin text-background" />
+            ) : (
+              <Check className="size-4 text-background" />
+            )}
+            <span>{isMerging ? 'Merging...' : 'Confirm & Merge Records'}</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default MergeModal;
+export { MergeModal as MergeDialog };
+
+

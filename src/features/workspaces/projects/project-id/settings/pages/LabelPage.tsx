@@ -89,7 +89,7 @@ export default function LabelPage() {
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Labels</h1>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Labels</h1>
           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
             <span>Labels help you group and filter work items in this project.</span>
             <a

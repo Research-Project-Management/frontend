@@ -85,7 +85,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
             <ChevronLeft className="size-4 text-foreground" />
           </Button>
         </div>
-        <span className="text-sm font-bold text-foreground">
+        <span className="text-sm font-semibold text-foreground">
           {format(currentMonth, "MMMM yyyy")}
         </span>
         <div className="flex items-center gap-1">
@@ -100,7 +100,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
 
       <div className="grid grid-cols-7 mb-2">
         {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
-          <div key={d} className="text-xs font-bold text-muted-foreground text-center">{d}</div>
+          <div key={d} className="text-xs font-medium text-muted-foreground text-center">{d}</div>
         ))}
       </div>
 
@@ -133,7 +133,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
                   h-9 w-full flex items-center justify-center text-sm transition-all relative z-10
                   text-foreground font-medium
                   ${isStart || isEnd 
-                    ? "bg-primary text-primary-foreground font-bold shadow-md rounded-md cursor-pointer" 
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs rounded-md cursor-pointer" 
                     : (!isPast ? "cursor-pointer hover:bg-muted rounded-md" : "!cursor-default opacity-40")
                   }
                   ${inRange ? "!rounded-none !bg-primary/15 !text-primary" : ""}

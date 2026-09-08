@@ -68,20 +68,20 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border/50 bg-background/80 px-4 h-11 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
+        'flex items-center justify-between border-b border-border/50 bg-background/80 px-4 h-12 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
         className
       )}
     >
       <div className="flex items-center gap-1.5 min-w-0 max-w-[55vw]">
         {breadcrumbs && breadcrumbs.length > 1 ? (
           <div className="flex items-center gap-1 min-w-0 overflow-x-auto py-1">
-            {Icon && <Icon className="size-4 text-foreground/80 shrink-0 mr-1" />}
+            {Icon && <Icon className="size-4 text-foreground shrink-0 mr-1" />}
             {breadcrumbs.map((segment, index) => {
               const isLast = index === breadcrumbs.length - 1;
               return (
                 <div key={segment.id || `root-${index}`} className="flex items-center gap-1 min-w-0 shrink-0">
                   {index > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground/60 shrink-0" />
+                    <ChevronRight className="size-3.5 text-foreground/50 shrink-0" />
                   )}
                   <button
                     onClick={() => onBreadcrumbNavigate?.(segment.id)}
@@ -90,7 +90,7 @@ export default function Topbar({
                       "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded px-1 py-0.5",
                       isLast
                         ? "font-semibold text-foreground cursor-default"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
+                        : "text-foreground hover:bg-muted/80 cursor-pointer font-normal"
                     )}
                     title={segment.name}
                   >
@@ -102,7 +102,7 @@ export default function Topbar({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            {Icon && <Icon className="size-4 text-foreground/80" />}
+            {Icon && <Icon className="size-4 text-foreground" />}
             <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
               {title || 'All Files'}
             </h1>

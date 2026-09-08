@@ -1,56 +1,108 @@
 import { z } from 'zod';
 import {
   collectionSchema,
-  paperSchema,
-  paperAttachmentSchema,
+  catalogItemSchema,
+  itemAttachmentSchema,
   primaryFileSchema,
   provenanceSchema,
   userSchema,
+  creatorCreditSchema,
   noteSchema,
   cslStyleSchema,
   formattedCitationSchema,
   pdfAnnotationSchema,
-  relatedPaperItemSchema,
-  paperAcademicBundleSchema,
+  relatedItemSchema,
+  catalogItemBundleSchema,
   duplicateGroupSchema,
   libraryIntegrityReportSchema,
   asyncIngestionJobSchema,
 } from '../schemas/library.schema';
-import type { ReferenceData } from './reference.types';
 
 // ── Matt Pocock Branded Types ────────────────────────────────────────────────
 declare const __brand: unique symbol;
 export type Brand<T, B> = T & { readonly [__brand]: B };
 
+/** @deprecated Use CatalogItemId */
 export type PaperId = Brand<string, 'PaperId'>;
+export type CatalogItemId = Brand<string, 'CatalogItemId'>;
 export type CollectionId = Brand<string, 'CollectionId'>;
 export type NoteId = Brand<string, 'NoteId'>;
 export type TagId = Brand<string, 'TagId'>;
 export type WorkspaceId = Brand<string, 'WorkspaceId'>;
 
-// ── Derived Schema Types ──────────────────────────────────────────────────────
+// ── Derived Schema Types ────────────────────────────────────────────────────
 
 export type User = z.infer<typeof userSchema>;
+export type CreatorCredit = z.infer<typeof creatorCreditSchema>;
 export type Note = z.infer<typeof noteSchema>;
 export type Collection = z.infer<typeof collectionSchema>;
-export type PaperAttachment = z.infer<typeof paperAttachmentSchema>;
+export type ItemAttachment = z.infer<typeof itemAttachmentSchema>;
 export type PrimaryFile = z.infer<typeof primaryFileSchema>;
 export type Provenance = z.infer<typeof provenanceSchema>;
-export type Paper = z.infer<typeof paperSchema>;
-
+export type CatalogItem = z.infer<typeof catalogItemSchema>;
 export type CslStyle = z.infer<typeof cslStyleSchema>;
 export type FormattedCitation = z.infer<typeof formattedCitationSchema>;
 export type PdfAnnotation = z.infer<typeof pdfAnnotationSchema>;
-export type RelatedPaperItem = z.infer<typeof relatedPaperItemSchema>;
-export type PaperAcademicBundle = z.infer<typeof paperAcademicBundleSchema>;
+export type RelatedItem = z.infer<typeof relatedItemSchema>;
+export type CatalogItemBundle = z.infer<typeof catalogItemBundleSchema>;
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
 export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
 
+export type ReferenceData = {
+  extraFields?: Record<string, any>;
+  title: string;
+  authors?: string[];
+  creators?: Array<{
+    creatorType?: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+  }>;
+  editors?: string[];
+  doi?: string;
+  arxivId?: string;
+  pmid?: string;
+  pmcid?: string;
+  journal?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
+  publisher?: string;
+  place?: string;
+  issn?: string;
+  isbn?: string;
+  volume?: string;
+  issue?: string;
+  section?: string;
+  partNumber?: string;
+  partTitle?: string;
+  pages?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesText?: string;
+  year?: number | string;
+  type?: string;
+  itemType?: string;
+  abstract?: string;
+  url?: string;
+  openAccessPdfUrl?: string;
+  isOpenAccess?: boolean;
+  citationCount?: number | string | null;
+  score?: number;
+  language?: string;
+  journalAbbr?: string;
+  shortTitle?: string;
+  rights?: string;
+  license?: string;
+  libraryCatalog?: string;
+  keywords?: string[];
+  tags?: string[];
+  fieldsOfStudy?: string[];
+  provenance?: any;
+  extra?: string;
+};
 
-export type { ReferenceData };
-
-// ── DTOs & Mutation Inputs ────────────────────────────────────────────────────
+// ── DTOs & Mutation Inputs ───────────────────────────────────────────────────
 
 export interface CollectionInput {
   name: string;
@@ -58,6 +110,7 @@ export interface CollectionInput {
   color?: string;
   icon?: string;
   parent?: string | null;
+  parentId?: string | null;
 }
 
 export type CreateCollectionDTO = CollectionInput;
@@ -68,9 +121,10 @@ export interface UpdateCollectionDTO {
   color?: string;
   icon?: string;
   parent?: string | null;
+  parentId?: string | null;
 }
 
-export interface IngestPaperDTO {
+export interface IngestItemDTO {
   source?: 'upload' | 'storage' | 'identifier' | 'doi' | 'bibtex' | 'ris' | 'manual';
   sourceType?: 'DOI' | 'IDENTIFIER' | 'BIBTEX' | 'RIS' | 'PDF' | 'STORAGE' | 'MANUAL';
   workspaceId?: string;
@@ -99,7 +153,7 @@ export interface IngestPaperDTO {
   abstract?: string;
   itemType?: string;
   tags?: string[];
-  notes?: any[];
+  notes?: Record<string, unknown>[];
   citationKey?: string;
   primaryFile?: {
     fileId?: string | null;
@@ -110,7 +164,8 @@ export interface IngestPaperDTO {
   };
 }
 
-export interface PaperQueryParams {
+
+export interface ItemQueryParams {
   collectionId?: string;
   search?: string;
   smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
@@ -118,24 +173,25 @@ export interface PaperQueryParams {
   skip?: number;
 }
 
-export type PaperInput = Partial<Paper>;
-export type CreatePaperDTO = Partial<Paper> & { collectionId?: string | null };
-export type UpdatePaperDTO = Partial<Paper>;
+
+export type ItemInput = Partial<CatalogItem>;
+export type CreateItemDTO = Partial<CatalogItem> & { collectionId?: string | null };
+export type UpdateItemDTO = Partial<CatalogItem>;
 
 export type Result<T> = { success: true; data: T } | { success: false; error: string };
 
-// ── Library Sub-View States & Types ──────────────────────────────────────────
+// ── Library Sub-View States & Types ─────────────────────────────────────────
 
 // 1. Duplicates
 export interface DuplicateCluster {
   id: string;
   reason: 'doi' | 'title';
-  papers: Paper[];
+  items: CatalogItem[];
 }
 
 export interface MergeStrategy {
-  primaryPaperId: string;
-  keepFields?: Partial<Record<keyof Paper, string>>;
+  primaryItemId: string;
+  keepFields?: Partial<Record<keyof CatalogItem, string>>;
   deleteDuplicatesAfterMerge: boolean;
 }
 
@@ -147,37 +203,129 @@ export interface DuplicatesState {
 
 // 2. Trash
 export interface TrashItem {
-  paper: Paper;
+  item: CatalogItem;
   deletedAt: string;
   daysRemaining: number;
   isExpired: boolean;
 }
 
 export interface TrashState {
-  papers: Paper[];
-  selectedPaperIds: string[];
+  items: CatalogItem[];
+  selectedItemIds: string[];
   isRestoring: boolean;
   isPurging: boolean;
 }
 
 // 3. Recently Read
-export interface TimeGroupedPapers {
-  today: Paper[];
-  yesterday: Paper[];
-  thisWeek: Paper[];
-  earlier: Paper[];
+export interface TimeGroupedItems {
+  today: CatalogItem[];
+  yesterday: CatalogItem[];
+  thisWeek: CatalogItem[];
+  earlier: CatalogItem[];
 }
 
 export interface RecentlyReadState {
-  grouped: TimeGroupedPapers;
+  grouped: TimeGroupedItems;
   totalCount: number;
   isLoading: boolean;
 }
 
-// 5. Unfiled
+// 4. Unfiled
 export interface UnfiledState {
-  papers: Paper[];
-  selectedPaperIds: string[];
+  items: CatalogItem[];
+  selectedItemIds: string[];
   targetCollectionId: string | null;
   isMoving: boolean;
 }
+
+// ── Domain UI Interaction Types ─────────────────────────────────────────────
+
+export interface AddLinkData {
+  url: string;
+  title?: string;
+  fileUrl?: string;
+  filename?: string;
+  mimeType?: string;
+  size?: number;
+  [key: string]: any;
+}
+
+export interface PaperUploadData {
+  title: string;
+  authors: string[];
+  year: number | null;
+  doi: string;
+  abstract: string;
+  fileUrl: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  journal?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
+  publisher?: string;
+  place?: string;
+  keywords?: string[];
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  section?: string;
+  partNumber?: string;
+  partTitle?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesText?: string;
+  issn?: string;
+  isbn?: string;
+  url?: string;
+  type?: string;
+  itemType?: string;
+  date?: string;
+  language?: string;
+  rights?: string;
+  shortTitle?: string;
+  citationKey?: string;
+  edition?: string;
+  bookTitle?: string;
+  proceedingsTitle?: string;
+  conferenceName?: string;
+  institution?: string;
+  university?: string;
+  reportNumber?: string;
+  reportType?: string;
+  patentNumber?: string;
+  assignee?: string;
+  filingDate?: string;
+  extraFields?: Record<string, any>;
+  [key: string]: any;
+}
+
+export interface MoveToTrashTarget {
+  id: string;
+  title: string;
+  year?: number | null;
+  authors?: string[];
+}
+
+export interface SearchDiscoveryParams {
+  q?: string;
+  itemType?: string;
+  collectionId?: string;
+  tagId?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  sortBy?: 'relevance' | 'dateAdded' | 'year' | 'title';
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  cursor?: string;
+}
+
+export interface SearchFacets {
+  itemTypes: Record<string, number>;
+  years: Record<string, number>;
+  tags: Record<string, number>;
+}
+
+// ── Backward Compatibility Aliases ───────────────────────────────────────────
+/** @deprecated Use CatalogItem */
+export type Paper = CatalogItem;

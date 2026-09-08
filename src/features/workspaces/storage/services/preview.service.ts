@@ -196,13 +196,13 @@ export const previewServices = {
 
   async getCollections(workspaceId: string) {
     return apiGet<{ collections: Array<{ id: string; name: string; color?: string; icon?: string }> }>(
-      `/api/library/${workspaceId}/collections`
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/collections`
     );
   },
 
   async ingestPaper(workspaceId: string, data: Record<string, unknown>) {
-    return apiPost<{ message?: string; paper?: unknown }>(
-      `/api/library/papers/${workspaceId}/ingest`,
+    return apiPost<{ message?: string; paper?: unknown; item?: unknown }>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion`,
       data
     );
   },

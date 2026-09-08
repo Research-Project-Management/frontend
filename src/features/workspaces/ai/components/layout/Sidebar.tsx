@@ -201,12 +201,12 @@ export function Sidebar() {
   return (
     <aside className="w-60 shrink-0 h-full border-r border-border/60 bg-sidebar flex flex-col overflow-hidden select-none">
       {/* Header */}
-      <div className="p-3 border-b border-border/40 flex items-center justify-between gap-2">
+      <div className="p-2.5 border-b border-border/40 flex items-center justify-between gap-2">
         <button
           onClick={() => workspaceId && router.push(`/${workspaceId}/ai`)}
-          className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/15 text-primary text-xs font-medium transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 h-8 rounded-md border border-border/60 bg-background hover:bg-muted text-foreground text-[13px] font-medium transition-colors shadow-none cursor-pointer outline-none"
         >
-          <SquarePen className="size-3.5" />
+          <SquarePen className="size-3.5 text-foreground" />
           <span>New Chat</span>
         </button>
 
@@ -215,9 +215,9 @@ export function Sidebar() {
             <button
               onClick={handleClearMemory}
               disabled={isClearingMemory}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+              className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted/70 transition-colors cursor-pointer outline-none"
             >
-              <RotateCcw className={`size-3.5 ${isClearingMemory ? 'animate-spin' : ''}`} />
+              <RotateCcw className={`size-3.5 text-foreground ${isClearingMemory ? 'animate-spin' : ''}`} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
@@ -227,21 +227,21 @@ export function Sidebar() {
       </div>
 
       {/* Search */}
-      <div className="p-2.5 space-y-2 border-b border-border/40">
+      <div className="p-2.5 border-b border-border/40">
         <div className="relative">
-          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/80" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full h-8 pl-8 pr-2.5 rounded-lg bg-secondary/40 border border-border/40 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+            className="w-full h-8 pl-8 pr-2.5 rounded-md bg-background border border-border/60 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:border-border transition-colors text-foreground"
           />
         </div>
       </div>
 
       {/* Sessions list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-3">
+      <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
         {loading ? (
           <div className="p-4 text-center text-xs text-muted-foreground">Loading history…</div>
         ) : filtered.length === 0 ? (
@@ -259,18 +259,18 @@ export function Sidebar() {
                 <div key={pid} className="space-y-1">
                   <button
                     onClick={() => handleToggleCollapse(pid)}
-                    className="w-full flex items-center justify-between px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer select-none transition-colors"
                   >
                     <span className="truncate">{pName}</span>
                     <ChevronDown
-                      className={`size-3 text-muted-foreground/60 transition-transform ${
+                      className={`size-3 text-muted-foreground transition-transform ${
                         isCollapsed ? '-rotate-90' : ''
                       }`}
                     />
                   </button>
 
                   {!isCollapsed && (
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       {grp.chats.map((chat) => {
                         const isActive = activeChatId === chat.id;
                         const isEditing = editingId === chat.id;
@@ -282,13 +282,13 @@ export function Sidebar() {
                               workspaceId && router.push(`/${workspaceId}/ai/${chat.id}`)
                             }
                             className={cn(
-                              'group relative flex h-9.5 items-center justify-between gap-2.5 px-2.5 rounded-md text-sm cursor-pointer transition-colors',
+                              'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-[13px] leading-5 cursor-pointer transition-colors outline-none',
                               isActive
-                                ? 'bg-accent text-foreground font-semibold'
-                                : 'text-foreground font-medium hover:bg-accent/70',
+                                ? 'bg-muted text-foreground font-medium'
+                                : 'text-foreground hover:bg-muted/70 font-normal',
                             )}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
                               <MessageSquare className="size-4 shrink-0 text-foreground" />
                               {isEditing ? (
                                 <input
@@ -304,7 +304,7 @@ export function Sidebar() {
                                   className="w-full bg-background px-1.5 py-0.5 text-xs rounded border border-primary focus:outline-none text-foreground"
                                 />
                               ) : (
-                                <span className="truncate">{chat.title || 'Untitled'}</span>
+                                <span className="truncate tracking-tight">{chat.title || 'Untitled'}</span>
                               )}
                             </div>
 

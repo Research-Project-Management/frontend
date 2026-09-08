@@ -222,7 +222,7 @@ export function GeneralBanner({
           </IconPicker>
 
           <div className="min-w-0 text-white drop-shadow-sm">
-            <h2 className="text-base font-bold truncate leading-tight tracking-tight">
+            <h2 className="text-base font-semibold truncate leading-tight tracking-tight">
               {name || 'Untitled project'}
             </h2>
             <p className="text-xs text-white/85 font-medium mt-0.5 tracking-wide">

@@ -7,6 +7,7 @@ import {
   getAuthToken,
   getRefreshToken,
 } from '@/shared/lib/api';
+import { fixMojibake } from '@/shared/utils/format';
 import type {
   AuthUser,
   LoginPayload,
@@ -20,8 +21,7 @@ import type {
  * Authenticates user credentials, stores access/refresh tokens, and returns user profile.
  */
 export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
-  const data = await apiPost<{
-    user: AuthUser;
+  const data = await apiPost<AuthUser & {
     accessToken?: string;
     token?: string;
     refreshToken?: string;
@@ -30,7 +30,10 @@ export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
   if (data.accessToken || data.token) {
     setTokens(data.accessToken || data.token!, data.refreshToken || '');
   }
-  return data.user;
+  if (data.name) {
+    data.name = fixMojibake(data.name);
+  }
+  return data;
 };
 
 /**
@@ -42,7 +45,13 @@ export const getUser = async (): Promise<AuthUser | null> => {
 
   try {
     const data = await apiGet<{ user: AuthUser }>('/auth/user');
-    return data?.user ?? null;
+    if (data?.user) {
+      if (data.user.name) {
+        data.user.name = fixMojibake(data.user.name);
+      }
+      return data.user;
+    }
+    return null;
   } catch (err: unknown) {
     return null;
   }

@@ -17,6 +17,8 @@ export const collectionSchema = z.object({
   parentId: z.string().nullable().optional(),
   parent: z.string().nullable().optional(),
   createdBy: userSchema.optional(),
+  itemCount: z.number().optional().default(0),
+  itemsCount: z.number().optional().default(0),
   paperCount: z.number().optional().default(0),
   papersCount: z.number().optional().default(0),
   createdAt: z.string().optional().default(''),
@@ -28,7 +30,7 @@ export const noteSchema = z.object({
   workspaceId: z.string().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().optional().default('Untitled Note'),
-  contentJson: z.any().optional(),
+  contentJson: z.record(z.string(), z.unknown()).optional(),
   contentMd: z.string().optional().default(''),
   content: z.string().optional().default(''),
   tags: z.array(z.string()).optional().default([]),
@@ -38,7 +40,17 @@ export const noteSchema = z.object({
   updatedAt: z.string().optional().default(''),
 });
 
-export const paperAttachmentSchema = z.object({
+export const noteResponseSchema = z.object({
+  success: z.boolean(),
+  data: noteSchema,
+});
+
+export const noteListResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.array(noteSchema),
+});
+
+export const itemAttachmentSchema = z.object({
   id: z.string().optional().default(''),
   fileId: z.string().nullable().optional(),
   filename: z.string().optional().default(''),
@@ -64,8 +76,12 @@ export const provenanceSchema = z.object({
     'PubMed',
     'OpenLibrary',
     'SemanticScholar',
+    'OpenAlex',
     'Unpaywall',
+    'DataCite',
+    'doi.org/DataCite',
     'LocalPDFExtraction',
+    'AcademicMetadata',
   ]),
   resolvedAt: z.string(),
   canonicalId: z.string(),
@@ -76,9 +92,19 @@ export const provenanceSchema = z.object({
   openAccessPdfUrl: z.string().optional(),
 });
 
-export const paperSchema = z.object({
+export const creatorCreditSchema = z.object({
+  id: z.string().optional(),
+  orderIndex: z.number().optional().default(0),
+  creatorType: z.string().optional().default('author'),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  fullName: z.string().optional().default(''),
+  name: z.string().optional(),
+});
+
+export const catalogItemSchema = z.object({
   id: z.string().optional().default(''),
-  title: z.string().optional().default('Untitled Paper'),
+  title: z.string().optional().default('Untitled Item'),
   authors: z.array(z.string()).optional().default([]),
   year: z.union([z.number(), z.string()]).nullish(),
   doi: z.string().optional().default(''),
@@ -101,6 +127,7 @@ export const paperSchema = z.object({
   series: z.string().optional(),
   seriesTitle: z.string().optional(),
   seriesText: z.string().optional(),
+  seriesNumber: z.string().optional(),
   issn: z.string().optional().default(''),
   isbn: z.string().optional().default(''),
   arxivId: z.string().optional(),
@@ -114,10 +141,13 @@ export const paperSchema = z.object({
   rights: z.string().optional().default(''),
   license: z.string().optional(),
   citationKey: z.string().optional().default(''),
+  citationCount: z.union([z.number(), z.string()]).nullish(),
+  referenceCount: z.union([z.number(), z.string()]).nullish(),
+  openAccessPdfUrl: z.string().nullish(),
+  date: z.string().optional(),
   edition: z.string().optional(),
   numPages: z.string().optional(),
   numberOfVolumes: z.string().optional(),
-  seriesNumber: z.string().optional(),
   bookTitle: z.string().optional(),
   proceedingsTitle: z.string().optional(),
   conferenceName: z.string().optional(),
@@ -143,20 +173,45 @@ export const paperSchema = z.object({
   callNumber: z.string().optional(),
   accessedAt: z.string().nullish(),
   extra: z.string().optional().default(''),
-  creators: z.array(z.any()).optional(),
+  extraFields: z.record(z.string(), z.unknown()).optional().default({}),
+  // Structured creator/author arrays
+  creators: z.array(creatorCreditSchema).optional().default([]),
+  // Raw relations returned by the API (backend includes these)
+  contributors: z.array(z.any()).optional().default([]),
+  itemTags: z.array(z.object({
+    tag: z.object({ id: z.string(), name: z.string(), color: z.string().optional() }).optional(),
+    tagId: z.string().optional(),
+    catalogItemId: z.string().optional(),
+  })).optional().default([]),
+  collectionIds: z.array(z.string()).optional().default([]),
+  collections: z.array(z.any()).optional().default([]),
+  // Notes
   notes: z.array(noteSchema).optional().default([]),
+  notesList: z.array(noteSchema).optional().default([]),
+  // File info
   primaryFile: primaryFileSchema.nullish(),
-  attachments: z.array(paperAttachmentSchema).optional().default([]),
+  attachments: z.array(itemAttachmentSchema).optional().default([]),
   fileUrl: z.string().optional().default(''),
   filename: z.string().optional().default(''),
   mimeType: z.string().optional().default(''),
   size: z.number().optional().default(0),
   labels: z.array(z.string()).optional().default([]),
+  tags: z.array(z.string()).optional().default([]),
+  crossrefEnriched: z.boolean().optional().default(false),
   ragDocId: z.string().nullish(),
   ragStatus: z.enum(['none', 'pending', 'indexing', 'indexed', 'failed']).nullish(),
   ragIndexedAt: z.string().nullish(),
   ragError: z.string().optional().default(''),
   ragAttempts: z.number().optional().default(0),
+  // Raw identifiers array returned by BE (DOI, arXiv, PMID, etc.)
+  identifiers: z.array(z.object({
+    id: z.string().optional(),
+    type: z.string(),
+    value: z.string(),
+    canonicalUri: z.string().optional(),
+  })).optional().default([]),
+  // User state fields (flattened by mapFlattenedState on BE)
+  rating: z.number().optional().default(0),
   workspaceId: z.string().optional().default(''),
   collectionId: z.string().nullish(),
   uploadedBy: userSchema.optional(),
@@ -165,6 +220,7 @@ export const paperSchema = z.object({
   updatedAt: z.string().optional().default(''),
   lastReadAt: z.string().nullish(),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
+  version: z.number().optional().default(1),
   provenance: provenanceSchema.nullish(),
 });
 
@@ -177,13 +233,18 @@ export const cslStyleSchema = z.enum([
   'chicago',
   'mla',
   'vancouver',
+  'bibtex',
+  'ris',
 ]);
 
 export const formattedCitationSchema = z.object({
-  style: cslStyleSchema,
+  style: cslStyleSchema.optional(),
+  styleId: z.string().optional(),
   inText: z.string(),
   bibliography: z.string(),
-  html: z.string(),
+  html: z.string().optional(),
+  bibliographyHtml: z.string().optional(),
+  source: z.enum(['publisher', 'csl-engine']).optional(),
 });
 
 // ── PDF Annotation Schemas ──────────────────────────────────────────────────
@@ -208,7 +269,7 @@ export const pdfAnnotationSchema = z.object({
   quoteText: z.string().nullable().optional(),
   text: z.string().nullable().optional(),
   comment: z.string().nullable().optional(),
-  rectCoords: z.any().optional(),
+  rectCoords: z.record(z.string(), z.unknown()).optional(),
   rect: z
     .object({
       x1: z.number(),
@@ -222,7 +283,7 @@ export const pdfAnnotationSchema = z.object({
   updatedAt: z.string().optional().default(''),
 });
 
-// ── Related Paper Schemas ───────────────────────────────────────────────────
+// ── Related Item Schemas ────────────────────────────────────────────────────
 export const relationTypeSchema = z.enum([
   'related',
   'extends',
@@ -242,11 +303,12 @@ export const relatedPaperItemSchema = z.object({
   symmetric: z.boolean().default(true),
   linkedAt: z.string(),
 });
-
+export const relatedItemSchema = relatedPaperItemSchema;
 
 // ── Unified Academic Bundle Schema ──────────────────────────────────────────
-export const paperAcademicBundleSchema = z.object({
-  paper: paperSchema,
+export const catalogItemBundleSchema = z.object({
+  item: catalogItemSchema.optional(),
+  paper: catalogItemSchema.optional(),
   citationApa: formattedCitationSchema,
   citationIeee: formattedCitationSchema,
   annotations: z.array(pdfAnnotationSchema),
@@ -254,13 +316,16 @@ export const paperAcademicBundleSchema = z.object({
   relatedPapers: z.array(relatedPaperItemSchema),
   totalRelatedPapers: z.number(),
 });
+/** @deprecated Use catalogItemBundleSchema */
+export const paperAcademicBundleSchema = catalogItemBundleSchema;
 
 // ── Quality & Duplicate Detection Schemas ───────────────────────────────────
 export const duplicateGroupSchema = z.object({
   matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR']),
   confidence: z.enum(['high', 'medium']),
   key: z.string(),
-  papers: z.array(paperSchema),
+  papers: z.array(catalogItemSchema),
+  items: z.array(catalogItemSchema).optional(),
 });
 
 export const libraryIntegrityReportSchema = z.object({
@@ -303,7 +368,7 @@ export const asyncIngestionJobSchema = z.object({
   ),
   failed: z.array(
     z.object({
-      item: z.any(),
+      item: z.record(z.string(), z.unknown()),
       error: z.string(),
     }),
   ),
@@ -342,6 +407,8 @@ export const collectionFormSchema = z.object({
   description: z.string(),
   color: z.string(),
   parent: z.string().nullable().optional(),
+  parentId: z.string().nullable().optional(),
 });
 
 export type CollectionFormValues = z.infer<typeof collectionFormSchema>;
+

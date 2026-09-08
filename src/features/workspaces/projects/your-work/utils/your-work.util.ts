@@ -35,13 +35,13 @@ export function getTaskProjectId(task: any): string | null {
     return task.projectId;
   }
   if (typeof task.projectId === 'object' && task.projectId !== null) {
-    const pId = task.projectId.id;
-    if (pId) return pId;
+    const projectId = task.projectId.id;
+    if (projectId) return projectId;
   }
   if (task.project) {
     if (typeof task.project === 'string') return task.project;
-    const pId = task.project.id;
-    if (pId) return pId;
+    const projectId = task.project.id;
+    if (projectId) return projectId;
   }
   return null;
 }

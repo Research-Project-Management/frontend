@@ -148,8 +148,8 @@ export function useTopbar({
     return result.filter((t: any) => {
       if (safeCols.length && !safeCols.includes(t?.columnId)) return false;
       if (safeUsers.length) {
-        const uId = t?.assigneeId?.id ?? '__unassigned__';
-        if (!safeUsers.includes(uId)) return false;
+        const assigneeUserId = t?.assigneeId?.id ?? '__unassigned__';
+        if (!safeUsers.includes(assigneeUserId)) return false;
       }
       return true;
     });
@@ -255,8 +255,8 @@ export function useTopbar({
   );
 
   const selectCycle = useCallback(
-    (cId: string) => {
-      router.push(`/${workspaceId}/projects/${projectId}/cycles/${cId}`);
+    (cycleId: string) => {
+      router.push(`/${workspaceId}/projects/${projectId}/cycles/${cycleId}`);
       setCycleSearch('');
     },
     [router, workspaceId, projectId],

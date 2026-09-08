@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 
-const getStickyId = (sticky: Sticky): string => String(sticky.id || (sticky as any)._id || '');
+const getStickyId = (sticky: Sticky): string => String(sticky.id || '');
 
 export const useCard = (options?: { search?: string; projectId?: string }) => {
   const params = useParams() as { workspaceId?: string; id?: string };

@@ -1,5 +1,4 @@
 import { apiGet, apiPost } from '@/shared/lib/api';
-import type { AsyncIngestionJob, IngestPaperDTO, Paper } from '../types/library.types';
 import {
   type UnifiedIngestionPayload,
   type UnifiedIngestionResponse,
@@ -15,16 +14,27 @@ export * from '../schemas/ingestion.schema';
 
 export const IngestionService = {
   /**
-   * Canonical Unified Ingestion endpoint (/api/v1/workspaces/:workspaceId/library/ingestion)
+   * Submits work to the durable ingestion pipeline and returns immediately.
+   * Long-running provider and PDF work is observed through the run-status API.
    */
   ingest: async (workspaceId: string, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
     const validatedPayload = UnifiedIngestionPayloadSchema.parse(payload);
+    const submission = toSubmission(validatedPayload);
     const res = await apiPost<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion`,
-      validatedPayload,
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
+      submission,
+      { timeout: 30000 },
     );
-    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-    return UnifiedIngestionResponseSchema.parse(enveloped);
+    const accepted = res && typeof res === 'object' && 'data' in res ? res.data : res;
+    return UnifiedIngestionResponseSchema.parse({
+      success: true,
+      data: {
+        runId: accepted.runId,
+        status: accepted.status,
+        itemId: accepted.existingItemId,
+        deduplicated: accepted.deduplicated,
+      },
+    });
   },
 
   /**
@@ -56,7 +66,10 @@ export const IngestionService = {
       collectionId?: string;
     },
   ) =>
-    apiPost<{ success: boolean; data: Paper }>(
+    apiPost<{
+      success: boolean;
+      data: { id: string; title: string; doi?: string; year?: number; citationKey?: string };
+    }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/confirm-url`,
       payload,
     ),
@@ -69,6 +82,8 @@ export const IngestionService = {
     payload: {
       kind: 'IDENTIFIER' | 'RECORD' | 'URL' | 'FILE' | 'CONNECTOR';
       identifierType?: 'DOI' | 'ARXIV' | 'PMID' | 'ISBN';
+      value?: string;
+      /** @deprecated Use value; retained for callers during migration. */
       identifierValue?: string;
       rawRecord?: string;
       recordFormat?: 'BIBTEX' | 'RIS';
@@ -79,6 +94,8 @@ export const IngestionService = {
       idempotencyKey?: string;
     },
   ) => {
+    const { identifierValue, value, ...rest } = payload;
+    const resolvedValue = value ?? identifierValue;
     return apiPost<{
       success: boolean;
       data: {
@@ -91,15 +108,19 @@ export const IngestionService = {
       };
     }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/submit`,
-      payload,
+      {
+        ...rest,
+        value: resolvedValue,
+        identifierValue: resolvedValue,
+      },
     );
   },
 
   /**
    * Retry a failed ingestion run
    */
-  retryRun: async (workspaceId: string, runId: string) => {
-    return apiPost<{
+  retryRun: async (workspaceId: string, runId: string) =>
+    apiPost<{
       success: boolean;
       data: {
         runId: string;
@@ -110,8 +131,7 @@ export const IngestionService = {
     }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/retry/${encodeURIComponent(runId)}`,
       {},
-    );
-  },
+    ),
 
   /**
    * Query IngestionRun status scoped by workspaceId
@@ -123,79 +143,59 @@ export const IngestionService = {
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
     return IngestionRunSnapshotResponseSchema.parse(enveloped);
   },
-
-  /**
-   * Universal Single-document Academic Ingestion Engine (Legacy compatibility wrapper)
-   */
-  ingestDocument: (
-    workspaceId: string,
-    dto: IngestPaperDTO,
-  ) =>
-    apiPost<{
-      id: string;
-      title: string;
-      citationKey: string;
-      sourceType: string;
-      doi?: string;
-      year?: number | null;
-      authors: string[];
-      ragStatus?: string;
-      collectionId?: string | null;
-      fileUrl?: string | null;
-      paper?: Paper;
-    }>('/api/library/ingest', {
-      ...dto,
-      workspaceId,
-    }),
-
-  /**
-   * Async Non-blocking Batch Ingestion with job tracker
-   */
-  createBatchAsync: (
-    workspaceId: string,
-    items: Array<IngestPaperDTO>,
-  ) =>
-    apiPost<{ jobId: string; status: string; total: number }>(
-      '/api/library/ingest/batch-async',
-      {
-        workspaceId,
-        items: items.map((i) => ({ ...i, workspaceId })),
-      },
-    ),
-
-  /**
-   * Poll Async Job Status and item results
-   */
-  getJobStatus: (jobId: string) =>
-    apiGet<AsyncIngestionJob>(
-      `/api/library/ingest/jobs/${encodeURIComponent(jobId)}`,
-    ),
-
-  /**
-   * Sync Batch Ingestion
-   */
-  createBatchSync: (
-    workspaceId: string,
-    items: Array<IngestPaperDTO>,
-  ) =>
-    apiPost<{
-      total: number;
-      successCount: number;
-      failedCount: number;
-      successful: Paper[];
-      failed: Array<{ item: IngestPaperDTO; error: string }>;
-    }>('/api/library/ingest/batch', {
-      workspaceId,
-      items: items.map((i) => ({ ...i, workspaceId })),
-    }),
 };
 
-// Aliases
+function toSubmission(payload: UnifiedIngestionPayload) {
+  const common = {
+    collectionIds: payload.collectionId ? [payload.collectionId] : undefined,
+    overrides: 'overrides' in payload ? payload.overrides : undefined,
+    idempotencyKey: payload.idempotencyKey,
+  };
+
+  switch (payload.source) {
+    case 'doi':
+      return {
+        ...common,
+        kind: 'IDENTIFIER' as const,
+        identifierType: 'DOI' as const,
+        value: payload.doi,
+      };
+    case 'bibtex':
+      return {
+        ...common,
+        kind: 'RECORD' as const,
+        format: 'BIBTEX' as const,
+        content: payload.content || payload.bibtex || '',
+      };
+    case 'url':
+      return {
+        ...common,
+        kind: 'URL' as const,
+        url: payload.url,
+        previewToken: payload.previewToken,
+      };
+    case 'pdf':
+      return {
+        ...common,
+        kind: 'FILE' as const,
+        fileId: payload.fileId,
+        filename: payload.filename,
+      };
+    case 'zotero':
+      return {
+        ...common,
+        kind: 'CONNECTOR' as const,
+        connectionId: payload.connectionId,
+        externalObjectId: payload.externalItemKey,
+        externalVersion: '1',
+      };
+  }
+}
+
+// Named re-exports for ergonomic use in hooks
 export const ingestUnified = IngestionService.ingest;
 export const captureUrl = IngestionService.captureUrl;
 export const confirmUrl = IngestionService.confirmUrl;
 export const getIngestionRunStatus = IngestionService.getRunStatus;
-export const ingestDocument = IngestionService.ingestDocument;
-export const createAsyncBatchJob = IngestionService.createBatchAsync;
-export const getAsyncJobStatus = IngestionService.getJobStatus;
-export const createBatchSync = IngestionService.createBatchSync;
+
+

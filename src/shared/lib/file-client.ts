@@ -193,9 +193,9 @@ export function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
     if (prefix) {
       const parts = prefix.split('/').filter(Boolean);
       if (parts.length >= 2) {
-        if (parts[1] === 'library' || parts[0] === 'library') {
-          const wsId = parts[1] === 'library' ? parts[0] : parts[1];
-          formData.append('workspaceId', wsId);
+        if (parts.includes('library')) {
+          const extractedWorkspaceId = parts.find((p) => p !== 'library') || parts[0];
+          formData.append('workspaceId', extractedWorkspaceId);
           formData.append('source', 'library');
         } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
           formData.append('workspaceId', parts[1]);
@@ -298,9 +298,9 @@ export function uploadFileWithDetails(
     if (prefix) {
       const parts = prefix.split('/').filter(Boolean);
       if (parts.length >= 2) {
-        if (parts[1] === 'library' || parts[0] === 'library') {
-          const wsId = parts[1] === 'library' ? parts[0] : parts[1];
-          formData.append('workspaceId', wsId);
+        if (parts.includes('library')) {
+          const extractedWorkspaceId = parts.find((p) => p !== 'library') || parts[0];
+          formData.append('workspaceId', extractedWorkspaceId);
           formData.append('source', 'library');
         } else if (parts[0] === 'workspace' && parts[1] !== 'avatars') {
           formData.append('workspaceId', parts[1]);

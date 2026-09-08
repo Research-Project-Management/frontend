@@ -118,11 +118,11 @@ export default function LibraryPopover({
             </p>
           ) : (
             collections.map((collection) => {
-              const cId = collection.id;
+              const targetCollectionId = collection.id;
               return (
                 <button
-                  key={cId}
-                  onClick={() => setCollectionId(cId || '')}
+                  key={targetCollectionId}
+                  onClick={() => setCollectionId(targetCollectionId || '')}
                   className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent cursor-pointer"
                 >
                   <FolderOpen
@@ -132,7 +132,7 @@ export default function LibraryPopover({
                   <span className="min-w-0 flex-1 truncate text-xs font-medium">
                     {collection.name}
                   </span>
-                  {collectionId === cId && (
+                  {collectionId === targetCollectionId && (
                     <Check className="size-3.5 text-foreground" />
                   )}
                 </button>

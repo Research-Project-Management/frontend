@@ -71,18 +71,17 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   }
 
   public getRefreshToken(): string | null {
-    if (!this.isBrowser()) {
-      return getCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
+    // Security: Refresh tokens are strictly managed via HttpOnly cookies by the browser.
+    // Clean up any legacy exposed tokens if found in localStorage or client cookies.
+    if (this.isBrowser()) {
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      } catch {
+        // Ignore private browsing errors
+      }
+      deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
     }
-    try {
-      return (
-        window.localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) ||
-        getCookieValue(STORAGE_KEYS.REFRESH_TOKEN) ||
-        null
-      );
-    } catch {
-      return getCookieValue(STORAGE_KEYS.REFRESH_TOKEN) || null;
-    }
+    return null;
   }
 
   public setAccessToken(accessToken: string): void {
@@ -97,19 +96,21 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
     setCookieValue(STORAGE_KEYS.LEGACY_TOKEN, accessToken, SEVEN_DAYS_SECONDS);
   }
 
-  public setRefreshToken(refreshToken: string): void {
+  public setRefreshToken(_refreshToken: string): void {
+    // Security: Refresh token is strictly stored in HttpOnly cookies by the backend.
+    // Never persist refresh token in localStorage or client-accessible cookies.
     if (!this.isBrowser()) return;
     try {
-      window.localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     } catch {
-      // Ignore private browsing quota errors
+      // Ignore private browsing errors
     }
-    setCookieValue(STORAGE_KEYS.REFRESH_TOKEN, refreshToken, SEVEN_DAYS_SECONDS * 4); // 30 days for refresh
+    deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
   }
 
   public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
     this.setAccessToken(tokens.accessToken);
-    if (tokens.refreshToken !== undefined) {
+    if (tokens.refreshToken) {
       this.setRefreshToken(tokens.refreshToken);
     }
   }
@@ -129,38 +130,44 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
   }
 }
 
-// ─── 4. In-Memory Adapter (SSR & Testing Runtime) ─────────────────────────────
+// ─── 4. In-Memory Adapter (Preferred Secure In-Memory Strategy) ───────────────
 
 export class InMemoryTokenAdapter implements TokenStorageAdapter {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
 
   public getAccessToken(): string | null {
     return this.accessToken;
   }
 
   public getRefreshToken(): string | null {
-    return this.refreshToken;
+    // Refresh token is managed strictly via HttpOnly cookies
+    return null;
   }
 
   public setAccessToken(accessToken: string): void {
     this.accessToken = accessToken;
   }
 
-  public setRefreshToken(refreshToken: string): void {
-    this.refreshToken = refreshToken;
+  public setRefreshToken(_refreshToken: string): void {
+    // No-op: refresh token is strictly HttpOnly
   }
 
   public setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
     this.accessToken = tokens.accessToken;
-    if (tokens.refreshToken !== undefined) {
-      this.refreshToken = tokens.refreshToken;
-    }
   }
 
   public clearTokens(): void {
     this.accessToken = null;
-    this.refreshToken = null;
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
+        window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+      } catch {}
+      deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
+      deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
+      deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);
+    }
   }
 }
 
@@ -169,8 +176,12 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
 export class TokenStorage {
   private adapter: TokenStorageAdapter;
 
-  constructor(adapter?: TokenStorageAdapter) {
-    this.adapter = adapter ?? new LocalStorageTokenAdapter();
+  constructor(tokenStorageAdapter?: TokenStorageAdapter) {
+    this.adapter =
+      tokenStorageAdapter ??
+      (typeof window !== 'undefined'
+        ? new LocalStorageTokenAdapter()
+        : new InMemoryTokenAdapter());
   }
 
   public setAdapter(adapter: TokenStorageAdapter): void {

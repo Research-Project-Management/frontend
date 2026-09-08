@@ -83,29 +83,29 @@ export function MemberPopover({
             </h4>
             <div className="space-y-1">
               {filteredMembers.map((m: any) => {
-                const uId = m.user?.id || m.userId || m.id;
+                const memberUserId = m.user?.id || m.userId || m.id;
                 const uName = m.user?.name || m.name || 'Member';
                 const uAvatar = m.user?.avatar || m.avatar;
                 const fallback = uName.charAt(0).toUpperCase();
 
                 return (
                   <button
-                    key={uId}
+                    key={memberUserId}
                     onClick={() => {
-                      setAssigneeId(uId === assigneeId ? null : uId);
+                      setAssigneeId(memberUserId === assigneeId ? null : memberUserId);
                       onOpenChange(false);
                     }}
                     className={cn(
                       'w-full flex items-center gap-3 px-2 py-1.5 rounded-sm transition-colors hover:bg-accent/50 text-left cursor-pointer',
-                      assigneeId === uId && 'bg-accent/50 ring-1 ring-zinc-300',
+                      assigneeId === memberUserId && 'bg-accent/50 ring-1 ring-zinc-300',
                     )}
                   >
                     <Avatar className="size-6">
                       <AvatarImage src={uAvatar} />
-                      <AvatarFallback className="text-xs font-bold">{fallback}</AvatarFallback>
+                      <AvatarFallback className="text-xs font-medium">{fallback}</AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground flex-1 truncate">{uName}</span>
-                    {assigneeId === uId && <Check className="size-4 text-foreground" />}
+                    {assigneeId === memberUserId && <Check className="size-4 text-foreground" />}
                   </button>
                 );
               })}

@@ -90,9 +90,9 @@ export function YourWorkTaskList({
   const groups = useMemo(() => {
     const map = new Map<string, any[]>();
     tasks.forEach((task) => {
-      const colId = task.columnId || 'todo';
-      if (!map.has(colId)) map.set(colId, []);
-      map.get(colId)!.push(task);
+      const columnId = task.columnId || 'todo';
+      if (!map.has(columnId)) map.set(columnId, []);
+      map.get(columnId)!.push(task);
     });
 
     const order = ['backlog', 'todo', 'doing', 'review', 'done', 'cancelled'];
@@ -167,7 +167,7 @@ export function YourWorkTaskList({
                     className="size-2 rounded-full shrink-0"
                     style={{ backgroundColor: group.color }}
                   />
-                  <span className="text-xs font-bold text-foreground">
+                  <span className="text-xs font-semibold text-foreground">
                     {group.label}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-semibold">
@@ -218,7 +218,7 @@ export function YourWorkTaskList({
                       >
                         <div className="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
                           {task.identifier && (
-                            <span className="text-xs font-bold text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/80 shrink-0">
+                            <span className="text-xs font-medium font-mono text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/80 shrink-0">
                               {task.identifier}
                             </span>
                           )}
@@ -297,7 +297,7 @@ export function YourWorkTaskList({
                                 src={assigneeObj.avatar || undefined}
                                 alt={assigneeObj.name || 'Assignee'}
                               />
-                              <AvatarFallback className="text-xs font-bold bg-muted">
+                              <AvatarFallback className="text-xs font-medium bg-muted">
                                 {assigneeObj.name?.charAt(0) || 'U'}
                               </AvatarFallback>
                             </Avatar>

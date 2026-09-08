@@ -35,8 +35,8 @@ export function AddMemberDialog({
 
   const available = workspaceMembers.filter((m) => {
     const u = m.user || {};
-    const uId = u.id || m.userId;
-    if (!uId || existingMemberIds.has(uId)) return false;
+    const memberUserId = u.id || m.userId;
+    if (!memberUserId || existingMemberIds.has(memberUserId)) return false;
 
     const q = search.toLowerCase().trim();
     if (!q) return true;
@@ -121,14 +121,14 @@ export function AddMemberDialog({
             ) : (
               available.map((m) => {
                 const u = m.user || {};
-                const uId = u.id || m.userId;
-                const isSelected = selectedUserIds.includes(uId);
+                const memberUserId = u.id || m.userId;
+                const isSelected = selectedUserIds.includes(memberUserId);
 
                 return (
                   <button
-                    key={uId}
+                    key={memberUserId}
                     type="button"
-                    onClick={() => toggleUser(uId)}
+                    onClick={() => toggleUser(memberUserId)}
                     className={cn(
                       'w-full flex items-center justify-between p-2.5 transition-colors cursor-pointer text-left',
                       isSelected ? 'bg-accent/60' : 'hover:bg-muted/40'

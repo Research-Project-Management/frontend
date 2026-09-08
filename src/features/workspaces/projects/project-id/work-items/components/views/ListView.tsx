@@ -327,7 +327,7 @@ const TaskRowContent = ({
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
-          <AvatarFallback className="text-xs font-bold bg-muted text-muted-foreground">
+          <AvatarFallback className="text-[10px] font-medium bg-muted text-muted-foreground">
             {assignee.name?.charAt(0) || 'U'}
           </AvatarFallback>
         </Avatar>
@@ -810,8 +810,8 @@ export default function ListView({
     if (columns.some((col) => resolveTaskColumnId(col) === overId)) {
       return overId;
     }
-    for (const [colId, tasks] of tasksByColumnId.entries()) {
-      if (tasks.some(t => t.id === overId)) return colId;
+    for (const [columnId, tasks] of tasksByColumnId.entries()) {
+      if (tasks.some(t => t.id === overId)) return columnId;
     }
     return null;
   }, [columns, tasksByColumnId]);

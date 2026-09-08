@@ -67,7 +67,7 @@ export function OverviewCards({
                 <p className="text-xs text-muted-foreground font-medium">
                   {card.label}
                 </p>
-                <p className="text-2xl font-bold text-foreground mt-0.5">
+                <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground mt-0.5">
                   {isLoading ? '-' : card.count}
                 </p>
               </div>

@@ -8,7 +8,12 @@ const envSchema = z.object({
   // Client Environment (Accessible in browser & server, prefixed with NEXT_PUBLIC_)
   NEXT_PUBLIC_API_URL: z
     .string()
-    .url('NEXT_PUBLIC_API_URL must be a valid URL')
+    .refine(
+      (v) => !v || v === '' || v.startsWith('/') || /^https?:\/\//i.test(v),
+      {
+        message: 'NEXT_PUBLIC_API_URL must be a valid URL, relative path, or empty',
+      },
+    )
     .default('http://localhost:3000'),
   NEXT_PUBLIC_APP_NAME: z.string().default('Flux'),
   NEXT_PUBLIC_ENABLE_ANALYTICS: z
@@ -17,6 +22,7 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
 
   // Server Environment (Node.js runtime only)
+  INTERNAL_API_URL: z.string().url().optional(),
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
@@ -27,6 +33,7 @@ const parseEnv = () => {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
     NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS || 'false',
+    INTERNAL_API_URL: process.env.INTERNAL_API_URL,
     NODE_ENV: process.env.NODE_ENV || 'development',
   };
 

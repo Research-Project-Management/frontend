@@ -32,7 +32,7 @@ export default function Footer() {
               aria-label='Flux home'
             >
               <img src='/Flux.svg' className='h-8 w-auto object-contain' alt='' aria-hidden='true' />
-              <span className='font-bold text-lg tracking-tight'>Flux</span>
+              <span className='font-semibold text-lg tracking-tight'>Flux</span>
             </Link>
             <p className='text-base text-muted-foreground leading-relaxed'>
               The collaborative research workspace for modern teams.

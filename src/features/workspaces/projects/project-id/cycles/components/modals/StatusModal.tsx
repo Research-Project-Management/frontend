@@ -132,9 +132,9 @@ export const StatusModal = ({
                             </SelectTrigger>
                             <SelectContent>
                               {availableCycles.map((c) => {
-                                const cId = c.id || '';
+                                const targetCycleId = c.id || '';
                                 return (
-                                  <SelectItem key={cId} value={cId} className="text-xs">
+                                  <SelectItem key={targetCycleId} value={targetCycleId} className="text-xs">
                                     {c.name}
                                   </SelectItem>
                                 );

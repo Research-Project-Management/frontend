@@ -559,7 +559,7 @@ export function mergeCrossrefMetadata(
   return merged;
 }
 
-export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadata> {
+export async function extractPdfMetadataFromFile(file: File, workspaceId?: string): Promise<PdfMetadata> {
   const meta: PdfMetadata = {};
 
   try {
@@ -627,7 +627,7 @@ export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadat
 
     if (meta.doi) {
       try {
-        const res = await fetchLookupDoi(meta.doi);
+        const res = await fetchLookupDoi(meta.doi, workspaceId);
         if (res && res.work) {
           return mergeCrossrefMetadata(meta, res.work);
         }
@@ -640,7 +640,7 @@ export async function extractPdfMetadataFromFile(file: File): Promise<PdfMetadat
       const titleToSearch = meta.title || file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
       if (titleToSearch && titleToSearch.length > 5) {
         try {
-          const res = await fetchSearchCrossref(titleToSearch);
+          const res = await fetchSearchCrossref(titleToSearch, 1, workspaceId);
           if (res && res.works && res.works.length > 0) {
             return mergeCrossrefMetadata(meta, res.works[0]);
           }

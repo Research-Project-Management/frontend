@@ -40,10 +40,10 @@ const markdownComponents: Components = {
     return <em className="italic">{children}</em>;
   },
   h1({ children }) {
-    return <h2 className="mt-4 mb-2 text-base font-bold text-foreground">{children}</h2>;
+    return <h2 className="mt-4 mb-2 text-base font-semibold text-foreground">{children}</h2>;
   },
   h2({ children }) {
-    return <h3 className="mt-4 mb-1.5 text-sm font-bold text-foreground">{children}</h3>;
+    return <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground">{children}</h3>;
   },
   h3({ children }) {
     return <h4 className="mt-4 mb-1.5 text-sm font-semibold text-foreground">{children}</h4>;

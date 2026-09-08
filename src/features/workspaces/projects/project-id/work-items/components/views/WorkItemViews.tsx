@@ -72,8 +72,8 @@ export function WorkItemViews({
     if (tasksByColumnId) return tasksByColumnId;
     const map = new Map<string, Task[]>();
     for (const column of columns) {
-      const colId = column.id ?? "";
-      map.set(colId, []);
+      const columnId = column.id ?? "";
+      map.set(columnId, []);
     }
     for (const task of tasks) {
       const list = map.get(task.columnId) ?? [];

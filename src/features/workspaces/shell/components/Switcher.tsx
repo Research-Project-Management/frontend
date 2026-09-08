@@ -32,9 +32,9 @@ export default function Switcher({
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger
         aria-label={`Current Item: ${currentItem.name}`}
-        className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 outline-none transition-colors hover:bg-accent data-[state=open]:bg-accent'
+        className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none transition-colors hover:bg-accent/60 data-[state=open]:bg-accent/80'
       >
-        <Avatar className='size-7 rounded-md font-medium'>
+        <Avatar className='size-5.5 rounded-md font-semibold'>
           {currentItem.avatar ? (
             <AvatarImage
               src={resolveFileUrl(currentItem.avatar) || undefined}
@@ -42,17 +42,17 @@ export default function Switcher({
               referrerPolicy="no-referrer"
             />
           ) : null}
-          <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-sm">
+          <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-[11px] font-semibold">
             {String(currentItem.name).substring(0, 1).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <span className='max-w-[140px] truncate text-base font-medium tracking-tight text-foreground sm:max-w-[180px]'>
+        <span className='max-w-[140px] truncate text-[13px] font-semibold tracking-tight text-foreground sm:max-w-[180px]'>
           {currentItem.name}
         </span>
         {isOpen ? (
-          <ChevronUp className='size-5 text-muted-foreground' strokeWidth={2.5} />
+          <ChevronUp className='size-3.5 text-foreground transition-colors' strokeWidth={2} />
         ) : (
-          <ChevronDown className='size-5 text-muted-foreground' strokeWidth={2.5} />
+          <ChevronDown className='size-3.5 text-foreground transition-colors' strokeWidth={2} />
         )}
       </DropdownMenuTrigger>
 
@@ -71,7 +71,7 @@ export default function Switcher({
         <div className='bg-muted/70 px-4 py-3.5 border-b border-border/50'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3 min-w-0'>
-              <Avatar className='size-9 rounded-md font-bold shrink-0'>
+              <Avatar className='size-9 rounded-md font-medium shrink-0'>
                 {currentItem.avatar ? (
                   <AvatarImage
                     src={resolveFileUrl(currentItem.avatar) || undefined}
@@ -79,7 +79,7 @@ export default function Switcher({
                     referrerPolicy="no-referrer"
                   />
                 ) : null}
-                <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-bold">
+                <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-medium">
                   {String(currentItem.name).substring(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -134,7 +134,7 @@ export default function Switcher({
                   className='px-3 py-2 justify-between cursor-pointer rounded-md'
                 >
                   <div className='flex items-center gap-3 min-w-0'>
-                    <Avatar className='size-7 rounded-md font-bold shrink-0'>
+                    <Avatar className='size-7 rounded-md font-medium shrink-0'>
                       {item.avatar ? (
                         <AvatarImage
                           src={resolveFileUrl(item.avatar) || undefined}
@@ -142,7 +142,7 @@ export default function Switcher({
                           referrerPolicy="no-referrer"
                         />
                       ) : null}
-                      <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-bold">
+                      <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-medium">
                         {String(item.name).substring(0, 1).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>

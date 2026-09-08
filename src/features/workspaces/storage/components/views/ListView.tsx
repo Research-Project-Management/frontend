@@ -319,7 +319,7 @@ export default function ListView({
   return (
     <div className="rounded-lg overflow-hidden select-none">
       {/* Header - Google Drive style */}
-      <div className="grid grid-cols-12 gap-3 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 select-none">
+      <div className="grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border/50 select-none">
         <div className="col-span-5 flex items-center gap-3">
           {!isReadOnly && (
             <button

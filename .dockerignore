@@ -10,3 +10,9 @@ pnpm-debug.log*
 .DS_Store
 *.pem
 README.md
+.agents
+.github
+playwright-report
+tests
+coverage
+*.log

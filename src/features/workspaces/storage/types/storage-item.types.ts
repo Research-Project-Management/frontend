@@ -54,6 +54,10 @@ export type StorageResponse = {
     files?: StorageItem[];
     project?: { id: string; name: string };
     yourRole?: string;
+    total?: number;
+    page?: number;
+    limit?: number;
+    hasMore?: boolean;
 };
 
 export type StorageUsageResponse = {

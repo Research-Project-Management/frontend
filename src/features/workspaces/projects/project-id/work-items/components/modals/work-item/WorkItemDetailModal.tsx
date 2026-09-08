@@ -831,11 +831,7 @@ export function WorkItemDetailModal({
                 placeholder="Issue title"
                 autoFocus
                 disabled={isReadOnly}
-<<<<<<< HEAD
                 className="w-full text-base sm:text-lg font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
-=======
-                className="w-full text-2xl font-semibold tracking-tight text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-1 -m-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
->>>>>>> origin/main
               />
 
               {/* Description */}
@@ -882,11 +878,7 @@ export function WorkItemDetailModal({
                     {selectedLabelsList.map((l: any) => (
                       <span
                         key={l.id}
-<<<<<<< HEAD
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white shadow-xs"
-=======
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium text-white shadow-xs"
->>>>>>> origin/main
                         style={{ backgroundColor: l.color }}
                       >
                         {l.name}

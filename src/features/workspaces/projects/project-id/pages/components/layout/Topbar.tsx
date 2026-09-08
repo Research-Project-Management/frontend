@@ -1,6 +1,7 @@
 import React from 'react';
 import { PenLine, Search, LayoutGrid, List, Plus } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { cn } from '@/shared/lib/utils';
 
 export interface TopbarProps {
   viewMode: 'grid' | 'list';
@@ -15,32 +16,32 @@ export function Topbar({ viewMode, setViewMode, onCreateClick }: TopbarProps) {
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2.5">
-        <PenLine className="size-4 text-foreground" />
+        <PenLine className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold text-foreground tracking-tight">Pages</h1>
       </div>
       <div className="flex items-center gap-2.5">
-        <Button variant="ghost" size="icon" aria-label="Search pages" className="size-8 text-foreground hover:bg-accent">
-          <Search className="size-4 text-foreground" />
+        <Button variant="ghost" size="icon" aria-label="Search pages" className="size-8 text-foreground hover:bg-muted cursor-pointer">
+          <Search className="size-4 text-foreground shrink-0" />
         </Button>
 
-        <div className="flex items-center rounded-md border border-border/60 p-0.5 bg-muted/40">
+        <div className="flex items-center rounded-md border border-border p-0.5 bg-muted">
           <Button
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
             size="icon"
             aria-label="Grid view"
-            className={`h-7 w-7 rounded-sm ${viewMode === 'grid' ? 'bg-background text-foreground shadow-xs' : 'text-foreground/70 hover:text-foreground'}`}
+            className={cn('h-7 w-7 rounded-sm', viewMode === 'grid' ? 'bg-background text-foreground' : 'text-foreground hover:bg-muted')}
             onClick={() => setViewMode('grid')}
           >
-            <LayoutGrid className="size-3.5" />
+            <LayoutGrid className="size-3.5 shrink-0" />
           </Button>
           <Button
             variant={viewMode === 'list' ? 'secondary' : 'ghost'}
             size="icon"
             aria-label="List view"
-            className={`h-7 w-7 rounded-sm ${viewMode === 'list' ? 'bg-background text-foreground shadow-xs' : 'text-foreground/70 hover:text-foreground'}`}
+            className={cn('h-7 w-7 rounded-sm', viewMode === 'list' ? 'bg-background text-foreground' : 'text-foreground hover:bg-muted')}
             onClick={() => setViewMode('list')}
           >
-            <List className="size-3.5" />
+            <List className="size-3.5 shrink-0" />
           </Button>
         </div>
 
@@ -49,7 +50,7 @@ export function Topbar({ viewMode, setViewMode, onCreateClick }: TopbarProps) {
           className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 ml-2"
           onClick={onCreateClick}
         >
-          <Plus className="mr-2 size-4" />
+          <Plus className="mr-2 size-4 shrink-0" />
           Add Document
         </Button>
       </div>

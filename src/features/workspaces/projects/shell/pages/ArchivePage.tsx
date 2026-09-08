@@ -24,7 +24,7 @@ import type { Project } from '../types/project.types';
 function ArchiveCardSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-card overflow-hidden h-48 animate-pulse">
-      <div className="h-24 bg-muted/40" />
+      <div className="h-24 bg-muted" />
       <div className="pt-6 px-4 pb-4 space-y-2.5">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/3" />
@@ -145,7 +145,7 @@ export function ArchivePage() {
           <div className="flex flex-col items-center justify-center py-28 text-center select-none animate-in fade-in duration-300">
             <div className="relative mb-3 flex items-center justify-center">
               <div className="absolute inset-0 size-16 rounded-full bg-foreground/[0.03] blur-xl -z-10" />
-              <Archive className="size-10 stroke-[1.25] text-muted-foreground/35" />
+              <Archive className="size-10 stroke-[1.25] text-muted-foreground/35 shrink-0" />
             </div>
             <div className="space-y-1 max-w-sm px-4 mb-3">
               <h3 className="text-sm font-medium text-foreground tracking-tight">No matching archived projects</h3>
@@ -166,7 +166,7 @@ export function ArchivePage() {
                   createdDate: 'all',
                 });
               }}
-              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer h-7 px-2.5"
+              className="text-xs text-foreground cursor-pointer h-7 px-2.5"
             >
               Clear filters
             </Button>

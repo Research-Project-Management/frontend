@@ -52,12 +52,12 @@ export function MemberFilter({
     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
       {/* ── Search Input ── */}
       <div className="relative w-48 sm:w-56">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
         <Input
           placeholder="Search..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-8 pl-8 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none"
+          className="h-8 pl-8 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none"
         />
       </div>
 
@@ -67,17 +67,17 @@ export function MemberFilter({
           <button
             type="button"
             className={cn(
-              'h-8 px-2.5 rounded-lg border border-border/80 bg-background',
-              'text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none shrink-0',
+              'h-8 px-2.5 rounded-md border border-border bg-background',
+              'text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0',
               hasActiveFilters
-                ? 'border-foreground/30 text-foreground bg-muted/30'
-                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                ? 'border-foreground/30 text-foreground bg-muted'
+                : 'text-muted-foreground hover:bg-muted',
             )}
           >
             <span>Filters</span>
             {/* Active badge */}
             {hasActiveFilters && (
-              <span className="size-4 rounded-full bg-foreground text-background text-[10px] font-medium tabular-nums flex items-center justify-center leading-none">
+              <span className="size-4 rounded-full bg-foreground text-background text-10 font-medium tabular-nums flex items-center justify-center leading-none">
                 {roleFilter.length}
               </span>
             )}
@@ -87,7 +87,7 @@ export function MemberFilter({
 
         <DropdownMenuContent
           align="end"
-          className="w-44 p-1.5 rounded-lg text-xs"
+          className="w-44 p-1.5 rounded-md text-xs"
           onInteractOutside={() => setOpen(false)}
           onEscapeKeyDown={() => setOpen(false)}
         >
@@ -108,17 +108,17 @@ export function MemberFilter({
                 className={cn(
                   'w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs transition-colors text-left',
                   checked ? 'text-foreground' : 'text-muted-foreground',
-                  'hover:bg-accent hover:text-foreground cursor-pointer',
+                  'hover:bg-muted cursor-pointer',
                 )}
               >
                 {/* Checkbox */}
                 <span
                   className={cn(
-                    'size-3.5 rounded-[3px] border flex items-center justify-center shrink-0 transition-colors',
+                    'size-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-colors',
                     checked ? 'bg-primary border-primary' : 'border-border bg-background',
                   )}
                 >
-                  {checked && <Check className="size-2.5 text-primary-foreground stroke-[3]" />}
+                  {checked && <Check className="size-2.5 text-primary-foreground stroke-[3] shrink-0" />}
                 </span>
                 <span>{label}</span>
               </button>
@@ -133,7 +133,7 @@ export function MemberFilter({
           variant="outline"
           size="sm"
           onClick={onOpenImport}
-          className="h-8 px-3 text-xs font-medium rounded-lg border-border/80 hover:bg-muted/50 cursor-pointer shrink-0"
+          className="h-8 px-3 text-xs font-medium rounded-lg border-border hover:bg-muted cursor-pointer shrink-0"
         >
           Import
         </Button>
@@ -144,7 +144,7 @@ export function MemberFilter({
         <Button
           size="sm"
           onClick={onAddMember}
-          className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs shrink-0"
+          className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-none shrink-0"
         >
           Add member
         </Button>

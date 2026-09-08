@@ -488,14 +488,17 @@ export function useProjects(workspaceId?: string): UseProjectsReturn {
     ]
   );
 
-  return {
-    state,
-    actions,
-    projects: projectsList,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    refetch: query.refetch,
-  };
+  return useMemo(
+    () => ({
+      state,
+      actions,
+      projects: projectsList,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      refetch: query.refetch,
+    }),
+    [state, actions, projectsList, query.isLoading, query.isError, query.refetch]
+  );
 }
 
 export const useWorkspaceProjects = useProjects;
@@ -606,14 +609,17 @@ export function useProject(
     ]
   );
 
-  return {
-    state,
-    actions,
-    data: query.data,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    refetch: query.refetch,
-  };
+  return useMemo(
+    () => ({
+      state,
+      actions,
+      data: query.data,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      refetch: query.refetch,
+    }),
+    [state, actions, query.data, query.isLoading, query.isError, query.refetch]
+  );
 }
 
 export const useProjectDetails = useProject;
@@ -686,13 +692,16 @@ export function useProjectMembers(projectId: string): UseProjectMembersReturn {
     [projectId, memberQueryRefetch, memberAddMutAsync, memberRoleMutAsync, memberRemoveMutAsync]
   );
 
-  return {
-    state,
-    actions,
-    members,
-    data: members,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    refetch: query.refetch,
-  };
+  return useMemo(
+    () => ({
+      state,
+      actions,
+      members,
+      data: members,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      refetch: query.refetch,
+    }),
+    [state, actions, members, query.isLoading, query.isError, query.refetch]
+  );
 }

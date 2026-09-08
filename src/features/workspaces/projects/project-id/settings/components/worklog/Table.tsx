@@ -14,11 +14,11 @@ interface WorklogTableProps {
 
 export function WorklogTable({ logs, onDelete }: WorklogTableProps) {
   return (
-    <div className="rounded-lg border border-border/80 overflow-hidden bg-background">
+    <div className="rounded-lg border border-border overflow-hidden bg-background">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground">
+            <tr className="border-b border-border bg-muted text-muted-foreground">
               <th className="py-2.5 px-4 font-medium">User</th>
               <th className="py-2.5 px-4 font-medium">Task / Activity</th>
               <th className="py-2.5 px-4 font-medium">Hours</th>
@@ -29,11 +29,11 @@ export function WorklogTable({ logs, onDelete }: WorklogTableProps) {
           </thead>
           <tbody className="divide-y divide-border/60">
             {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-muted/20 transition-colors group">
+              <tr key={log.id} className="hover:bg-muted transition-colors group">
                 {/* User */}
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar className="size-6 rounded-full border border-border/80 shrink-0">
+                    <Avatar className="size-6 rounded-full border border-border shrink-0">
                       {log.user.avatar && (
                         <AvatarImage src={log.user.avatar} className="object-cover" />
                       )}
@@ -75,10 +75,10 @@ export function WorklogTable({ logs, onDelete }: WorklogTableProps) {
                     variant="ghost"
                     size="icon"
                     onClick={() => onDelete(log.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
                     title="Delete log"
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-3.5 shrink-0" />
                   </Button>
                 </td>
               </tr>

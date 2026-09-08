@@ -80,10 +80,10 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
   };
 
   return (
-    <div className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md hover:border-border min-w-0">
+    <div className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden transition-all duration-200 hover:border-border min-w-0">
       {/* Banner / Cover Header */}
       <div className={cn('relative h-24 w-full bg-gradient-to-tr overflow-hidden', bannerClass)}>
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[0.5px]" />
+        <div className="absolute inset-0 bg-background/20 backdrop-blur-[0.5px]" />
 
         {/* Favorite & Options Quick Actions */}
         <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
@@ -93,23 +93,23 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
             className={cn(
               'size-7 rounded-md flex items-center justify-center transition-all cursor-pointer',
               favorited
-                ? 'text-amber-400 bg-black/30 backdrop-blur-xs'
-                : 'text-white/70 hover:text-white hover:bg-black/30 opacity-0 group-hover:opacity-100 backdrop-blur-xs'
+                ? 'text-warning bg-muted backdrop-blur-xs'
+                : 'text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 backdrop-blur-xs'
             )}
             title={favorited ? 'Remove from favorites' : 'Add to favorites'}
           >
-            <Star className={cn('size-3.5', favorited && 'fill-amber-400')} />
+            <Star className={cn('size-3.5 shrink-0', favorited && 'fill-warning')} />
           </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="size-7 rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-black/30 transition-all opacity-0 group-hover:opacity-100 cursor-pointer backdrop-blur-xs"
+                className="size-7 rounded-md flex items-center justify-center text-foreground hover:bg-muted transition-all opacity-0 group-hover:opacity-100 cursor-pointer backdrop-blur-xs"
                 title="Project options"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="size-4" />
+                <MoreHorizontal className="size-4 shrink-0" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 p-1 text-xs">
@@ -117,7 +117,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
                 onClick={handleCopyLink}
                 className="cursor-pointer font-medium flex items-center gap-2"
               >
-                <Link2 className="size-3.5" />
+                <Link2 className="size-3.5 shrink-0" />
                 <span>Copy link</span>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer font-medium">
@@ -125,15 +125,15 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
                   href={`/${workspaceId}/projects/${projectId}/settings`}
                   className="flex items-center gap-2 w-full"
                 >
-                  <Settings className="size-3.5" />
+                  <Settings className="size-3.5 shrink-0" />
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleArchive}
-                className="cursor-pointer font-medium text-amber-600 dark:text-amber-400 flex items-center gap-2"
+                className="cursor-pointer font-medium text-warning flex items-center gap-2"
               >
-                <Archive className="size-3.5" />
+                <Archive className="size-3.5 shrink-0" />
                 <span>Archive project</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -142,7 +142,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
       </div>
 
       {/* Avatar Icon Badge (overlapping banner bottom) */}
-      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border shadow-xs flex items-center justify-center text-xl shrink-0">
+      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center text-xl shrink-0">
         {project.avatar ? (
           <span>{project.avatar}</span>
         ) : (
@@ -162,7 +162,7 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
             >
               {project.name}
             </Link>
-            <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
+            <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted border border-border shrink-0">
               {projectKey}
             </span>
           </div>
@@ -177,17 +177,17 @@ export function Card({ project, workspaceId, onArchive }: CardProps) {
         </div>
 
         {/* Card Footer Info: Visibility & Members/Lead */}
-        <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground min-w-0">
+        <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground min-w-0">
           {/* Left: Visibility */}
           <div className="flex items-center gap-1.5 shrink-0">
             {isPrivate ? (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                <Lock className="size-3" />
+                <Lock className="size-3 shrink-0" />
                 <span>Private</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                <Globe className="size-3" />
+                <Globe className="size-3 shrink-0" />
                 <span>Public</span>
               </span>
             )}

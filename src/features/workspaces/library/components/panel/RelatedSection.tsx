@@ -85,18 +85,18 @@ export default function RelatedSection({
       {/* Loading state */}
       {isLoading && (
         <div className="p-4 text-center text-muted-foreground space-y-1.5 flex flex-col items-center justify-center">
-          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
           <p className="text-xs">Loading related items...</p>
         </div>
       )}
 
       {/* Relations list */}
       {!isLoading && relatedList.length > 0 && (
-        <div className="divide-y divide-border/30 border border-border/60 rounded-md overflow-hidden bg-transparent">
+        <div className="divide-y divide-border/30 border border-border rounded-md overflow-hidden bg-transparent">
           {relatedList.map((item) => (
             <div
               key={item.id}
-              className="px-2 py-1.5 hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-between gap-2.5 group cursor-pointer"
+              className="px-2 py-1.5 hover:bg-muted flex items-center justify-between gap-2.5 group cursor-pointer"
               onClick={() => onSelectPaper?.(item.id)}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -121,20 +121,20 @@ export default function RelatedSection({
                     href={`https://doi.org/${item.doi}`}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="p-1 rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                    className="p-1 rounded-md text-foreground hover:bg-muted cursor-pointer"
                     aria-label="Open DOI"
                   >
-                    <ExternalLink className="size-3.5 text-foreground" />
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" />
                   </a>
                 )}
 
                 <button
                   type="button"
                   onClick={() => handleUnlink(item.id)}
-                  className="p-1 rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 invisible group-hover:visible cursor-pointer"
+                  className="p-1 rounded-md text-foreground hover:bg-muted invisible group-hover:visible cursor-pointer"
                   aria-label="Remove relation"
                 >
-                  <X className="size-3.5 text-foreground" />
+                  <X className="size-3.5 text-foreground shrink-0" />
                 </button>
               </div>
             </div>
@@ -161,11 +161,11 @@ export default function RelatedSection({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search library items..."
-              className="w-full px-3 py-1.5 text-xs bg-muted/20 text-foreground rounded-md border border-border/60 focus:border-primary outline-none focus:outline-none focus-visible:outline-none"
+              className="w-full px-3 py-1.5 text-xs bg-muted text-foreground rounded-md border border-border focus:border-primary outline-none focus:outline-none focus-visible:outline-none"
             />
 
             {/* Paper options select / list */}
-            <div className="max-h-48 overflow-y-auto space-y-1 border border-border/60 rounded-md p-1 bg-muted/10">
+            <div className="max-h-48 overflow-y-auto space-y-1 border border-border rounded-md p-1 bg-muted">
               {availableItems.length === 0 ? (
                 <p className="text-xs text-foreground text-center py-4">
                   No other items available to link
@@ -181,8 +181,8 @@ export default function RelatedSection({
                       className={cn(
                         'w-full text-left px-2.5 py-1.5 rounded-md text-xs flex items-center justify-between gap-2 cursor-pointer',
                         isSelected
-                          ? 'bg-black/10 dark:bg-white/10 text-foreground font-medium'
-                          : 'text-foreground hover:bg-black/5 dark:hover:bg-white/5',
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-foreground hover:bg-muted',
                       )}
                     >
                       <span className="truncate flex-1">{targetItem.title || 'Untitled'}</span>

@@ -24,7 +24,7 @@ export function DangerZone({ onDeleteClick }: DangerZoneProps) {
           type="button"
           variant="destructive"
           onClick={onDeleteClick}
-          className="shrink-0 transition-colors hover:bg-red-700 cursor-pointer"
+          className="shrink-0 transition-colors hover:bg-destructive cursor-pointer"
         >
           Delete
         </Button>

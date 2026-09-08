@@ -1,4 +1,5 @@
 import type { Project } from '../types/project.types';
+import { searchProjects } from './projects-page.util';
 
 export const ARCHIVE_BANNER_GRADIENTS = [
   'from-slate-700 via-zinc-800 to-neutral-900',
@@ -32,15 +33,5 @@ export function filterArchivedProjects(projects: Project[]): Project[] {
  * Searches archived projects by keyword.
  */
 export function searchArchivedProjects(projects: Project[], query: string): Project[] {
-  if (!Array.isArray(projects)) return [];
-  if (!query || !query.trim()) return projects;
-
-  const q = query.trim().toLowerCase();
-  return projects.filter(
-    (p) =>
-      p.name?.toLowerCase().includes(q) ||
-      p.description?.toLowerCase().includes(q) ||
-      ((p as any).identifier && (p as any).identifier.toLowerCase().includes(q)) ||
-      ((p as any).key && (p as any).key.toLowerCase().includes(q))
-  );
+  return searchProjects(projects, query);
 }

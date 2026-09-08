@@ -40,8 +40,15 @@ export function getErrorMessage(error: unknown): string {
   return 'An unexpected error occurred';
 }
 
+function formatErrorResult<E>(error: unknown, mapError?: (err: unknown) => E): Err<E> {
+  const formatted = mapError
+    ? mapError(error)
+    : ((error instanceof Error ? error : new Error(getErrorMessage(error))) as unknown as E);
+  return Err(formatted);
+}
+
 /**
- * Safely executes an async Promise, returning a Result<T, E>.
+ * Safely executes a promise, returning a Result<T, E>.
  * Never throws an unhandled rejection.
  */
 export async function tryCatch<T, E = Error>(
@@ -52,10 +59,7 @@ export async function tryCatch<T, E = Error>(
     const data = await promise;
     return Ok(data);
   } catch (error) {
-    const formatted = mapError
-      ? mapError(error)
-      : ((error instanceof Error ? error : new Error(getErrorMessage(error))) as unknown as E);
-    return Err(formatted);
+    return formatErrorResult(error, mapError);
   }
 }
 
@@ -70,10 +74,7 @@ export function tryCatchSync<T, E = Error>(
   try {
     return Ok(fn());
   } catch (error) {
-    const formatted = mapError
-      ? mapError(error)
-      : ((error instanceof Error ? error : new Error(getErrorMessage(error))) as unknown as E);
-    return Err(formatted);
+    return formatErrorResult(error, mapError);
   }
 }
 

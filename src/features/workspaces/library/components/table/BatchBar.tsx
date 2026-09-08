@@ -130,10 +130,10 @@ export function BatchBar({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border/80 rounded-md select-none shadow-none"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border rounded-md select-none shadow-none"
       >
         {/* Selection Count */}
-        <div className="flex items-center gap-1.5 pr-2.5 border-r border-border/60">
+        <div className="flex items-center gap-1.5 pr-2.5 border-r border-border">
           <span className="text-xs font-medium text-foreground whitespace-nowrap">
             <span className="font-mono tabular-nums">{selectedCount}</span> selected
           </span>
@@ -150,12 +150,12 @@ export function BatchBar({
                     size="sm"
                     className="h-7 px-2.5 gap-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none"
                   >
-                    <FolderInput className="size-3.5 text-foreground" />
+                    <FolderInput className="size-3.5 text-foreground shrink-0" />
                     <span>Move to</span>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
                 Move selected items to collection
               </TooltipContent>
             </Tooltip>
@@ -163,11 +163,11 @@ export function BatchBar({
               align="center"
               sideOffset={8}
               onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-52 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
+              className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5"
             >
               <DropdownMenuItem
                 onClick={() => onBatchMove(null)}
-                className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <Library className="size-4 text-foreground shrink-0" />
                 <span>My Library</span>
@@ -176,7 +176,7 @@ export function BatchBar({
                 <DropdownMenuItem
                   key={c.id}
                   onClick={() => onBatchMove(c.id)}
-                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                  className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <Folder className="size-4 text-foreground shrink-0" />
                   <span className="truncate">{c.name}</span>
@@ -202,7 +202,7 @@ export function BatchBar({
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+            <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
               Copy formatted citations (APA, IEEE, MLA...)
             </TooltipContent>
           </Tooltip>
@@ -210,53 +210,53 @@ export function BatchBar({
             align="center"
             side="top"
             sideOffset={8}
-            className="w-48 p-1 bg-popover/95 backdrop-blur-md border border-border/80 rounded-md shadow-none"
+            className="w-48 p-1 bg-popover/95 backdrop-blur-md border border-border rounded-md shadow-none"
           >
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('apa')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>APA (7th Edition)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('ieee')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>IEEE Style</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('mla')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>MLA (9th Edition)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('chicago')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>Chicago (Author-Date)</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('nature')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>Nature</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('harvard')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>Harvard</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('vancouver')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <span>Vancouver</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('latex')}
-              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none font-mono text-[11px]"
+              className="h-8 gap-2 px-2.5 text-xs cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary font-mono text-11"
             >
               <span>LaTeX (\cite&#123;...&#125;)</span>
             </DropdownMenuItem>
@@ -276,7 +276,7 @@ export function BatchBar({
               <span>Copy BibTeX</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+          <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
             Copy BibTeX entries to clipboard
           </TooltipContent>
         </Tooltip>
@@ -294,7 +294,7 @@ export function BatchBar({
               <span>Download .bib</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+          <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
             Download BibTeX (.bib) file
           </TooltipContent>
         </Tooltip>
@@ -315,7 +315,7 @@ export function BatchBar({
                     <span>Restore</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
                   Restore selected items to library
                 </TooltipContent>
               </Tooltip>
@@ -333,7 +333,7 @@ export function BatchBar({
                     <span>Delete permanently</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+                <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
                   Permanently delete selected items
                 </TooltipContent>
               </Tooltip>
@@ -353,7 +353,7 @@ export function BatchBar({
                   <span>Move to trash</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+              <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
                 Move selected items to trash
               </TooltipContent>
             </Tooltip>
@@ -368,10 +368,10 @@ export function BatchBar({
               className="flex size-6 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer ml-0.5"
               aria-label="Clear selection"
             >
-              <X className="size-3.5 text-foreground" />
+              <X className="size-3.5 text-foreground shrink-0" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+          <TooltipContent side="top" sideOffset={8} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
             Clear selection (Esc)
           </TooltipContent>
         </Tooltip>

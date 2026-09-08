@@ -122,6 +122,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -130,7 +131,14 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
@@ -149,6 +157,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-xs: var(--shadow-xs);
 }
 
 /* --------------------------------------------------------------------------
@@ -197,6 +207,7 @@
   --popover: var(--gray-0);
   --popover-foreground: var(--gray-800);
   --primary: var(--blue-500);
+  --primary-hover: var(--blue-600);
   --primary-foreground: var(--gray-0);
   --secondary: var(--gray-50);
   --secondary-foreground: var(--gray-800);
@@ -205,7 +216,14 @@
   --accent: var(--gray-50);
   --accent-foreground: var(--gray-700);
   --destructive: var(--red-500);
+  --destructive-hover: var(--red-600);
+  --destructive-foreground: var(--gray-0);
+  --success: oklch(62% 0.17 145);
+  --success-foreground: var(--gray-0);
+  --warning: oklch(75% 0.16 75);
+  --warning-foreground: var(--gray-900);
   --border: var(--gray-200);
+  --border-hover: var(--gray-400);
   --input: var(--gray-200);
   --ring: var(--blue-500);
 
@@ -226,7 +244,7 @@
   --sidebar-ring: var(--blue-500);
 
   --shadow-2xs: none;
-  --shadow-xs: none;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.06);
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
@@ -242,6 +260,7 @@
   --popover: oklch(14% 0 0);
   --popover-foreground: oklch(92% 0 0);
   --primary: var(--blue-500);
+  --primary-hover: oklch(62% 0.178 265);
   --primary-foreground: oklch(100% 0 0);
   --secondary: oklch(17% 0 0);
   --secondary-foreground: oklch(92% 0 0);
@@ -250,7 +269,14 @@
   --accent: oklch(17% 0 0);
   --accent-foreground: oklch(72% 0 0);
   --destructive: oklch(64% 0.210 25);
+  --destructive-hover: oklch(56% 0.210 25);
+  --destructive-foreground: oklch(100% 0 0);
+  --success: oklch(68% 0.16 145);
+  --success-foreground: oklch(100% 0 0);
+  --warning: oklch(75% 0.16 75);
+  --warning-foreground: oklch(15% 0.05 75);
   --border: oklch(22% 0 0);
+  --border-hover: oklch(32% 0 0);
   --input: oklch(22% 0 0 / 70%);
   --ring: var(--blue-500);
 
@@ -271,7 +297,7 @@
   --sidebar-ring: var(--blue-500);
 
   --shadow-2xs: none;
-  --shadow-xs: none;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.35);
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
@@ -443,7 +469,7 @@
   }
 
   .flux-panel {
-    @apply rounded-lg border border-border bg-card shadow-sm;
+    @apply rounded-md border border-border bg-card shadow-none;
   }
 
   .flux-section {
@@ -912,5 +938,13 @@
 .dark [data-sonner-toaster] [data-sonner-toast] [data-cancel]:hover {
   background: rgba(255, 255, 255, 0.14) !important;
   color: var(--foreground) !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 

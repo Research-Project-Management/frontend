@@ -75,14 +75,14 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
   };
 
   return (
-    <div className="p-4 w-[320px] bg-popover rounded-sm shadow-2xl border border-border animate-in fade-in zoom-in-95 duration-200">
+    <div className="p-4 w-[320px] bg-popover rounded-sm border border-border animate-in fade-in zoom-in-95 duration-200">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted transition-colors cursor-pointer" onClick={() => setCurrentMonth(subYears(currentMonth, 1))} aria-label="Previous year">
-            <ChevronsLeft className="size-4 text-foreground" />
+            <ChevronsLeft className="size-4 text-foreground shrink-0" />
           </Button>
           <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted transition-colors cursor-pointer" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="Previous month">
-            <ChevronLeft className="size-4 text-foreground" />
+            <ChevronLeft className="size-4 text-foreground shrink-0" />
           </Button>
         </div>
         <span className="text-sm font-semibold text-foreground">
@@ -90,10 +90,10 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
         </span>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted transition-colors cursor-pointer" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="Next month">
-            <ChevronRight className="size-4 text-foreground" />
+            <ChevronRight className="size-4 text-foreground shrink-0" />
           </Button>
           <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted transition-colors cursor-pointer" onClick={() => setCurrentMonth(addYears(currentMonth, 1))} aria-label="Next year">
-            <ChevronsRight className="size-4 text-foreground" />
+            <ChevronsRight className="size-4 text-foreground shrink-0" />
           </Button>
         </div>
       </div>
@@ -124,7 +124,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
           }
 
           return (
-            <div key={i} className="relative py-[2px]">
+            <div key={i} className="relative py-0.5">
               <button
                 onClick={() => handleDateClick(day)}
                 onMouseEnter={() => !isPast && setHoverDate(dateStr)}
@@ -133,7 +133,7 @@ const CycleCalendar = ({ selectedStart, selectedEnd, onSelectStart, onSelectEnd 
                   h-9 w-full flex items-center justify-center text-sm transition-all relative z-10
                   text-foreground font-medium
                   ${isStart || isEnd 
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs rounded-md cursor-pointer" 
+                    ? "bg-primary text-primary-foreground font-semibold  rounded-md cursor-pointer" 
                     : (!isPast ? "cursor-pointer hover:bg-muted rounded-md" : "!cursor-default opacity-40")
                   }
                   ${inRange ? "!rounded-none !bg-primary/15 !text-primary" : ""}
@@ -170,11 +170,11 @@ export const Dates = ({ formStart, formEnd, setFormStart, setFormEnd, trigger }:
     <Popover>
       <PopoverTrigger asChild>
         {trigger || (
-          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer">
-            <CalendarDays className="size-4 text-foreground" />
+          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
+            <CalendarDays className="size-4 text-foreground shrink-0" />
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Start date</span>
-              <ArrowRight className="size-3 text-muted-foreground" />
+              <ArrowRight className="size-3 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground">End date</span>
             </div>
           </button>

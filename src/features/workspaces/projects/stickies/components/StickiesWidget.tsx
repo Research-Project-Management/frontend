@@ -28,7 +28,7 @@ function MiniCard({
   return (
     <Link
       href={`/${workspaceUrl}/stickies`}
-      className='group relative flex flex-col rounded-lg border border-black/10 dark:border-white/10 overflow-hidden hover:-translate-y-0.5 transition-transform duration-200'
+      className='group relative flex flex-col rounded-lg border border-border overflow-hidden hover:-translate-y-0.5 transition-transform duration-200'
       style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
     >
       <div className='h-1.5 w-full shrink-0' style={accentStyle} />
@@ -61,13 +61,13 @@ function AddCard({
     <button
       onClick={onClick}
       disabled={disabled}
-      className='flex flex-col items-center justify-center gap-1.5 p-3 rounded-md border border-dashed border-border hover:bg-secondary/40 transition-colors cursor-pointer disabled:opacity-50 min-h-[90px]'
+      className='flex flex-col items-center justify-center gap-1.5 p-3 rounded-md border border-dashed border-border hover:bg-muted transition-colors cursor-pointer disabled:opacity-50 min-h-[90px]'
     >
       {disabled ? (
-        <Loader2 className='size-4 animate-spin text-muted-foreground' />
+        <Loader2 className='size-4 animate-spin text-muted-foreground shrink-0' />
       ) : (
         <>
-          <Plus className='size-4 text-muted-foreground' />
+          <Plus className='size-4 text-muted-foreground shrink-0' />
           <span className='text-xs font-medium text-muted-foreground'>Add note</span>
         </>
       )}
@@ -105,10 +105,10 @@ export function StickiesWidget() {
   const viewAllAction = notes.length > 0 && (
     <Link
       href={`/${workspaceId}/stickies`}
-      className='flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors'
+      className='flex items-center gap-1 text-xs text-foreground transition-colors'
     >
       View all
-      <ArrowRight className='size-3' />
+      <ArrowRight className='size-3 shrink-0' />
     </Link>
   );
 
@@ -116,7 +116,7 @@ export function StickiesWidget() {
     <>
       {isLoading ? (
         <div className='flex items-center gap-2 py-4 text-sm text-muted-foreground'>
-          <Loader2 className='size-4 animate-spin' />
+          <Loader2 className='size-4 animate-spin shrink-0' />
           Loading...
         </div>
       ) : (

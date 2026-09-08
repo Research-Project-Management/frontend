@@ -143,9 +143,9 @@ export default function RecentlyReadPage() {
     return (
       <span className="shrink-0 ml-1.5 inline-flex items-center text-foreground">
         {sortOrder === 'desc' ? (
-          <ArrowDown className="size-3.5 text-foreground" />
+          <ArrowDown className="size-3.5 text-foreground shrink-0" />
         ) : (
-          <ArrowUp className="size-3.5 text-foreground" />
+          <ArrowUp className="size-3.5 text-foreground shrink-0" />
         )}
       </span>
     );
@@ -171,7 +171,7 @@ export default function RecentlyReadPage() {
           {isLoading && recentlyReadItems.length === 0 ? (
             <div className="p-4 space-y-2">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-border/40">
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-border">
                   <Skeleton className="size-4 rounded-md" />
                   <Skeleton className="h-4 flex-1 max-w-[360px]" />
                   <Skeleton className="h-4 w-48" />
@@ -181,8 +181,8 @@ export default function RecentlyReadPage() {
             </div>
           ) : recentlyReadItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 h-full min-h-[300px] text-center p-8 select-none">
-              <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-                <History className="size-6 text-foreground" />
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <History className="size-6 text-foreground shrink-0" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">No recently read references</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -210,7 +210,7 @@ export default function RecentlyReadPage() {
                   <col className="w-4/12" />
                   <col className="w-10" />
                 </colgroup>
-                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border/60 select-none">
+                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border select-none">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
                     <th className="w-10 px-2.5 py-1.5 text-center align-middle">
                       <Checkbox
@@ -265,8 +265,8 @@ export default function RecentlyReadPage() {
                             onClick={(e) => handleRowClick(e, paper)}
                             onDoubleClick={(e) => handleRowDoubleClick(e, paper)}
                             className={cn(
-                              'group h-9 transition-colors cursor-pointer border-b border-border/30',
-                              isSelected ? 'bg-muted/80' : isActive ? 'bg-muted/50' : 'hover:bg-muted/30',
+                              'group h-9 transition-colors cursor-pointer border-b border-border',
+                              isSelected ? 'bg-muted' : isActive ? 'bg-muted' : 'hover:bg-muted',
                             )}
                           >
                             <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
@@ -303,23 +303,23 @@ export default function RecentlyReadPage() {
                                   <DropdownMenuTrigger asChild>
                                     <button
                                       type="button"
-                                      className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none touch-manipulation"
+                                      className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary touch-manipulation"
                                       aria-label="More actions"
                                     >
-                                      <MoreVertical className="size-4 text-foreground" />
+                                      <MoreVertical className="size-4 text-foreground shrink-0" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
+                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <BookOpen className="size-3.5 text-foreground shrink-0" />
                                       <span>Open in Reader</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleSelectItem(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <Quote className="size-3.5 text-foreground shrink-0" />
                                       <span>Cite</span>
@@ -327,7 +327,7 @@ export default function RecentlyReadPage() {
                                     {handleDeleteItem && (
                                       <DropdownMenuItem
                                         onClick={() => handleDeleteItem(paper.id)}
-                                        className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                        className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                       >
                                         <Trash2 className="size-3.5 text-foreground shrink-0" />
                                         <span>Move to Trash</span>
@@ -341,11 +341,11 @@ export default function RecentlyReadPage() {
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48 text-xs font-sans">
                           <ContextMenuItem onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)} className="gap-2">
-                            <BookOpen className="size-3.5" />
+                            <BookOpen className="size-3.5 shrink-0" />
                             <span>Open in Reader</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleSelectItem(paper)} className="gap-2">
-                            <Quote className="size-3.5" />
+                            <Quote className="size-3.5 shrink-0" />
                             <span>Cite</span>
                           </ContextMenuItem>
                         </ContextMenuContent>

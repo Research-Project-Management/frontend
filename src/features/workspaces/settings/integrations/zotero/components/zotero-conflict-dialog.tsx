@@ -121,7 +121,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
       <DialogContent className="max-w-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto" showCloseButton={true}>
         <DialogHeader className="border-b pb-3 text-left space-y-1">
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="size-5 text-amber-500 shrink-0" />
+            <AlertTriangle className="size-5 text-warning shrink-0" />
             <div>
               <DialogTitle className="text-base font-semibold text-foreground">
                 Resolve 3-Way Sync Conflict
@@ -140,7 +140,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
         )}
 
         {/* Quick Batch Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/40 p-2.5 rounded-lg text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-muted p-2.5 rounded-lg text-xs">
           <span className="text-muted-foreground font-medium">Quick Resolutions:</span>
           <div className="flex items-center gap-2">
             <Button
@@ -176,7 +176,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
             return (
               <div
                 key={c.field}
-                className="p-3.5 rounded-lg bg-muted/20 border space-y-2.5"
+                className="p-3.5 rounded-lg bg-muted border space-y-2.5"
               >
                 <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
                   <span>Field: <strong className="text-primary">{c.field}</strong></span>
@@ -202,12 +202,12 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
                     className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                       isLocalChosen
                         ? 'border-primary bg-primary/10 text-foreground font-medium ring-1 ring-primary'
-                        : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
+                        : 'border-border bg-background hover:bg-muted text-muted-foreground'
                     }`}
                   >
                     <div className="flex items-center justify-between font-semibold mb-1">
                       <span>Flux (Local)</span>
-                      {isLocalChosen && <Check className="size-3.5 text-primary" />}
+                      {isLocalChosen && <Check className="size-3.5 text-primary shrink-0" />}
                     </div>
                     <div className="truncate">{String(c.localValue ?? '')}</div>
                   </div>
@@ -226,12 +226,12 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
                     className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring ${
                       isRemoteChosen
                         ? 'border-primary bg-primary/10 text-foreground font-medium ring-1 ring-primary'
-                        : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
+                        : 'border-border bg-background hover:bg-muted text-muted-foreground'
                     }`}
                   >
                     <div className="flex items-center justify-between font-semibold mb-1">
                       <span>Zotero (Remote)</span>
-                      {isRemoteChosen && <Check className="size-3.5 text-primary" />}
+                      {isRemoteChosen && <Check className="size-3.5 text-primary shrink-0" />}
                     </div>
                     <div className="truncate">{String(c.remoteValue ?? '')}</div>
                   </div>
@@ -257,7 +257,7 @@ export const ZoteroConflictDialog: React.FC<ZoteroConflictDialogProps> = ({
             Cancel
           </Button>
           <Button size="sm" onClick={handleResolve} disabled={isSubmitting} className="gap-1.5 font-medium">
-            {isSubmitting ? <RefreshCw className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+            {isSubmitting ? <RefreshCw className="size-3.5 animate-spin shrink-0" /> : <Check className="size-3.5 shrink-0" />}
             {isSubmitting ? 'Resolving Conflict...' : 'Apply & Sync to Zotero'}
           </Button>
         </DialogFooter>

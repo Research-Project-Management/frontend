@@ -31,10 +31,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function normalizePriority(priority?: string) {
   const value = (priority || 'none').toLowerCase();
-  if (value === 'urgent') return { label: 'Urgent', className: 'bg-red-500/10 text-red-600' };
-  if (value === 'high') return { label: 'High', className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400' };
-  if (value === 'medium') return { label: 'Medium', className: 'bg-sky-500/10 text-sky-700 dark:text-sky-400' };
-  if (value === 'low') return { label: 'Low', className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' };
+  if (value === 'urgent') return { label: 'Urgent', className: 'bg-destructive/10 text-destructive' };
+  if (value === 'high') return { label: 'High', className: 'bg-warning/10 text-warning' };
+  if (value === 'medium') return { label: 'Medium', className: 'bg-primary/10 text-primary' };
+  if (value === 'low') return { label: 'Low', className: 'bg-success/10 text-success' };
   return { label: 'None', className: 'bg-muted text-muted-foreground' };
 }
 
@@ -160,7 +160,7 @@ export function ResponseWidgets({ widgets }: { widgets?: ResponseWidget[] }) {
 
 function MetricSummaryCard({ widget }: { widget: Extract<ResponseWidget, { type: 'metric_summary' }> }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/60 p-4 shadow-sm">
+    <div className="rounded-md border border-border bg-card/60 p-4 ">
       <h4 className="text-xs font-semibold text-muted-foreground">{widget.title}</h4>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {widget.metrics.map((metric, i) => (
@@ -176,8 +176,8 @@ function MetricSummaryCard({ widget }: { widget: Extract<ResponseWidget, { type:
 
 function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 'task_overview' }> }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-3">
+    <div className="rounded-md border border-border bg-card p-4 ">
+      <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
         <div>
           <h4 className="text-sm font-semibold text-foreground">{widget.title}</h4>
           {widget.subtitle && <p className="text-xs text-muted-foreground mt-0.5">{widget.subtitle}</p>}
@@ -193,14 +193,14 @@ function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 
         {widget.groups.map((group, groupIdx) => (
           <div key={groupIdx} className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground/80">{group.label}</p>
-            <div className="divide-y divide-border/30 rounded-lg border border-border/40 bg-secondary/20">
+            <div className="divide-y divide-border/30 rounded-lg border border-border bg-secondary/20">
               {group.tasks.map((task, taskIdx) => {
                 const priority = normalizePriority(task.priority);
                 return (
                   <div key={task.id || taskIdx} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
                     <div className="flex items-center gap-2 min-w-0">
                       {task.completed ? (
-                        <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+                        <CheckCircle2 className="size-3.5 text-success shrink-0" />
                       ) : (
                         <CircleDot className="size-3.5 text-muted-foreground/60 shrink-0" />
                       )}
@@ -217,13 +217,13 @@ function TaskOverviewCard({ widget }: { widget: Extract<ResponseWidget, { type: 
                       )}
                       {task.assignee && (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <UserRound className="size-3" />
+                          <UserRound className="size-3 shrink-0" />
                           {task.assignee}
                         </span>
                       )}
                       {task.dueDate && (
-                        <span className={`inline-flex items-center gap-1 text-xs ${task.isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
-                          <Clock3 className="size-3" />
+                        <span className={`inline-flex items-center gap-1 text-xs ${task.isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                          <Clock3 className="size-3 shrink-0" />
                           {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
                       )}
@@ -253,13 +253,13 @@ function StatBadge({
 }) {
   const toneClasses = {
     default: 'bg-muted text-muted-foreground',
-    good: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    warn: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    good: 'bg-success/10 text-success',
+    warn: 'bg-warning/10 text-warning',
   };
 
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${toneClasses[tone]}`}>
-      <Icon className="size-3" />
+      <Icon className="size-3 shrink-0" />
       {label}
     </span>
   );

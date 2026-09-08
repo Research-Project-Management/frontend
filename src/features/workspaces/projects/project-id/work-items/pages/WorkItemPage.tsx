@@ -337,7 +337,7 @@ export function WorkItemPage({
         {isCycleEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <KanbanSquare className="w-8 h-8 text-primary" />
+              <KanbanSquare className="w-8 h-8 text-primary shrink-0" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">
               No work items in this cycle
@@ -352,7 +352,7 @@ export function WorkItemPage({
                 onClick={() => setModal({ type: 'add-existing' })}
                 className="gap-2 rounded-sm"
               >
-                <ArrowRightLeft className="w-4 h-4" />
+                <ArrowRightLeft className="w-4 h-4 shrink-0" />
                 <span>Add Existing Work Items</span>
               </Button>
               <Button
@@ -363,7 +363,7 @@ export function WorkItemPage({
                 }}
                 className="gap-2 rounded-sm"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Create Work Item</span>
               </Button>
             </div>

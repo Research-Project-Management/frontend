@@ -47,10 +47,10 @@ export default function DocumentNavDrawer({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedTableId, setExpandedTableId] = useState<string | null>(null);
 
-  const sections = fulltext?.sections || [];
-  const figures = fulltext?.figures || [];
-  const tables = fulltext?.tables || [];
-  const formulas = fulltext?.formulas || [];
+  const sections = useMemo(() => fulltext?.sections || [], [fulltext?.sections]);
+  const figures = useMemo(() => fulltext?.figures || [], [fulltext?.figures]);
+  const tables = useMemo(() => fulltext?.tables || [], [fulltext?.tables]);
+  const formulas = useMemo(() => fulltext?.formulas || [], [fulltext?.formulas]);
 
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return sections;
@@ -61,7 +61,7 @@ export default function DocumentNavDrawer({
         s.num.toLowerCase().includes(q) ||
         s.imradCategory?.toLowerCase().includes(q),
     );
-  }, [fulltext?.sections, searchQuery]);
+  }, [sections, searchQuery]);
 
   const filteredFigures = useMemo(() => {
     if (!searchQuery.trim()) return figures;
@@ -71,7 +71,7 @@ export default function DocumentNavDrawer({
         f.label.toLowerCase().includes(q) ||
         f.caption.toLowerCase().includes(q),
     );
-  }, [fulltext?.figures, searchQuery]);
+  }, [figures, searchQuery]);
 
   const filteredTables = useMemo(() => {
     if (!searchQuery.trim()) return tables;
@@ -81,7 +81,7 @@ export default function DocumentNavDrawer({
         t.label.toLowerCase().includes(q) ||
         t.caption.toLowerCase().includes(q),
     );
-  }, [fulltext?.tables, searchQuery]);
+  }, [tables, searchQuery]);
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return formulas;
@@ -91,24 +91,24 @@ export default function DocumentNavDrawer({
         f.text.toLowerCase().includes(q) ||
         (f.label && f.label.toLowerCase().includes(q)),
     );
-  }, [fulltext?.formulas, searchQuery]);
+  }, [formulas, searchQuery]);
 
   if (!isOpen) return null;
 
   const getImradBadgeVariant = (category?: string) => {
     switch (category) {
       case 'introduction':
-        return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+        return 'bg-primary/10 text-primary border-primary/20';
       case 'methods':
-        return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+        return 'bg-muted text-foreground border-border';
       case 'results':
-        return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+        return 'bg-success/10 text-success border-success/20';
       case 'discussion':
-        return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+        return 'bg-warning/10 text-warning border-warning/20';
       case 'conclusion':
-        return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20';
+        return 'bg-muted text-muted-foreground border-border';
       default:
-        return 'bg-muted text-muted-foreground border-border/50';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 
@@ -128,11 +128,11 @@ export default function DocumentNavDrawer({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer"
+          className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer"
           onClick={onClose}
           aria-label="Close outline drawer"
         >
-          <X className="size-3.5" />
+          <X className="size-3.5 shrink-0" />
         </Button>
       </div>
 
@@ -145,12 +145,12 @@ export default function DocumentNavDrawer({
             'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'outline'
               ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <ListTree className="size-3.5" />
+          <ListTree className="size-3.5 shrink-0" />
           <span>Outline</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground">
             ({sections.length})
           </span>
         </button>
@@ -162,12 +162,12 @@ export default function DocumentNavDrawer({
             'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'figures'
               ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <ImageIcon className="size-3.5" />
+          <ImageIcon className="size-3.5 shrink-0" />
           <span>Figures</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground">
             ({figures.length})
           </span>
         </button>
@@ -179,12 +179,12 @@ export default function DocumentNavDrawer({
             'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'tables'
               ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <Table2 className="size-3.5" />
+          <Table2 className="size-3.5 shrink-0" />
           <span>Tables</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground">
             ({tables.length})
           </span>
         </button>
@@ -196,34 +196,34 @@ export default function DocumentNavDrawer({
             'relative flex items-center gap-1.5 h-full px-2 text-xs font-medium transition-colors cursor-pointer border-b-2',
             activeTab === 'formulas'
               ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              : 'border-transparent text-foreground hover:bg-muted',
           )}
         >
-          <Sigma className="size-3.5" />
+          <Sigma className="size-3.5 shrink-0" />
           <span>Math</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-10 font-mono text-muted-foreground">
             ({formulas.length})
           </span>
         </button>
       </div>
 
       {/* Filter / Search bar */}
-      <div className="p-2 border-b border-border/70 bg-card">
+      <div className="p-2 border-b border-border bg-card">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Filter ${activeTab}...`}
-            className="h-7 pl-8 text-xs bg-background border-border/70 rounded-sm focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-7 pl-8 text-xs bg-background border-border rounded-sm focus-visible:ring-1 focus-visible:ring-primary"
           />
           {searchQuery ? (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground"
             >
-              <X className="size-3" />
+              <X className="size-3 shrink-0" />
             </button>
           ) : null}
         </div>
@@ -258,13 +258,13 @@ export default function DocumentNavDrawer({
                     'w-full text-left p-2 rounded-sm transition-colors flex items-start justify-between gap-2 group cursor-pointer border border-transparent',
                     isCurrent
                       ? 'bg-primary/10 border-primary/20 text-foreground'
-                      : 'hover:bg-muted/60 text-foreground',
+                      : 'hover:bg-muted text-foreground',
                   )}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       {sec.num ? (
-                        <span className="font-mono text-[11px] font-semibold text-primary shrink-0">
+                        <span className="font-mono text-11 font-semibold text-primary shrink-0">
                           {sec.num}
                         </span>
                       ) : null}
@@ -277,7 +277,7 @@ export default function DocumentNavDrawer({
                       {sec.imradCategory && sec.imradCategory !== 'other' ? (
                         <span
                           className={cn(
-                            'text-[10px] font-mono px-1 py-0.2 rounded border uppercase tracking-wider',
+                            'text-10 font-mono px-1 py-0.5 rounded border tracking-wide',
                             getImradBadgeVariant(sec.imradCategory),
                           )}
                         >
@@ -285,14 +285,14 @@ export default function DocumentNavDrawer({
                         </span>
                       ) : null}
                       {sec.paragraphs && sec.paragraphs.length > 0 ? (
-                        <span className="text-[10px] text-muted-foreground font-mono">
+                        <span className="text-10 text-muted-foreground font-mono">
                           {sec.paragraphs.length} {sec.paragraphs.length === 1 ? 'para' : 'paras'}
                         </span>
                       ) : null}
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0 self-center tabular-nums">
+                  <span className="text-10 font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0 self-center tabular-nums">
                     p. {sec.page}
                   </span>
                 </button>
@@ -317,21 +317,21 @@ export default function DocumentNavDrawer({
                   key={fig.id}
                   className={cn(
                     'p-2.5 rounded-sm border transition-colors space-y-1.5',
-                    isCurrent ? 'bg-primary/5 border-primary/30' : 'bg-background border-border/70 hover:border-border',
+                    isCurrent ? 'bg-primary/5 border-primary/30' : 'bg-background border-border hover:border-border',
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <ImageIcon className="size-3.5 text-primary" />
+                      <ImageIcon className="size-3.5 text-primary shrink-0" />
                       {fig.label || `Figure`}
                     </span>
                     <button
                       type="button"
                       onClick={() => onJumpToPage(fig.page, fig.coords)}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-primary hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-11 font-mono text-primary hover:underline cursor-pointer"
                     >
                       <span>p. {fig.page}</span>
-                      <ExternalLink className="size-3" />
+                      <ExternalLink className="size-3 shrink-0" />
                     </button>
                   </div>
                   {fig.caption ? (
@@ -364,21 +364,21 @@ export default function DocumentNavDrawer({
                   key={tab.id}
                   className={cn(
                     'p-2.5 rounded-sm border transition-colors space-y-2',
-                    isCurrent ? 'bg-primary/5 border-primary/30' : 'bg-background border-border/70 hover:border-border',
+                    isCurrent ? 'bg-primary/5 border-primary/30' : 'bg-background border-border hover:border-border',
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Table2 className="size-3.5 text-primary" />
+                      <Table2 className="size-3.5 text-primary shrink-0" />
                       {tab.label || `Table`}
                     </span>
                     <button
                       type="button"
                       onClick={() => onJumpToPage(tab.page, tab.coords)}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-primary hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-11 font-mono text-primary hover:underline cursor-pointer"
                     >
                       <span>p. {tab.page}</span>
-                      <ExternalLink className="size-3" />
+                      <ExternalLink className="size-3 shrink-0" />
                     </button>
                   </div>
 
@@ -393,19 +393,19 @@ export default function DocumentNavDrawer({
                       <button
                         type="button"
                         onClick={() => setExpandedTableId(isExpanded ? null : tab.id)}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="inline-flex items-center gap-1 text-11 font-medium text-foreground cursor-pointer"
                       >
-                        {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+                        {isExpanded ? <ChevronDown className="size-3 shrink-0" /> : <ChevronRight className="size-3 shrink-0" />}
                         <span>{isExpanded ? 'Hide Data Matrix' : 'Preview Data Matrix'}</span>
-                        <span className="font-mono text-[10px]">({tab.rows?.length} rows)</span>
+                        <span className="font-mono text-10">({tab.rows?.length} rows)</span>
                       </button>
 
                       {isExpanded ? (
-                        <div className="mt-2 overflow-x-auto border border-border/60 rounded-sm bg-muted/20 text-[11px]">
+                        <div className="mt-2 overflow-x-auto border border-border rounded-sm bg-muted text-11">
                           <table className="w-full border-collapse text-left">
                             {tab.headers && tab.headers.length > 0 ? (
                               <thead>
-                                <tr className="border-b border-border/70 bg-muted/60">
+                                <tr className="border-b border-border bg-muted">
                                   {tab.headers.map((h, idx) => (
                                     <th key={idx} className="p-1.5 font-semibold text-foreground">
                                       {h}
@@ -416,7 +416,7 @@ export default function DocumentNavDrawer({
                             ) : null}
                             <tbody>
                               {tab.rows?.map((row, rIdx) => (
-                                <tr key={rIdx} className="border-b border-border/30 hover:bg-muted/40">
+                                <tr key={rIdx} className="border-b border-border hover:bg-muted">
                                   {row.map((cell, cIdx) => (
                                     <td key={cIdx} className="p-1.5 text-muted-foreground">
                                       {cell}
@@ -452,23 +452,23 @@ export default function DocumentNavDrawer({
                   key={form.id}
                   className={cn(
                     'p-2.5 rounded-sm border transition-colors space-y-1.5',
-                    isCurrent ? 'bg-primary/5 border-primary/30' : 'bg-background border-border/70 hover:border-border',
+                    isCurrent ? 'bg-primary/5 border-primary/30' : 'bg-background border-border hover:border-border',
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono font-semibold text-primary">
+                    <span className="text-11 font-mono font-semibold text-primary">
                       {form.label ? `Eq. ${form.label}` : form.id}
                     </span>
                     <button
                       type="button"
                       onClick={() => onJumpToPage(form.page, form.coords)}
-                      className="inline-flex items-center gap-1 text-[11px] font-mono text-primary hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-11 font-mono text-primary hover:underline cursor-pointer"
                     >
                       <span>p. {form.page}</span>
-                      <ExternalLink className="size-3" />
+                      <ExternalLink className="size-3 shrink-0" />
                     </button>
                   </div>
-                  <div className="p-2 bg-muted/40 rounded border border-border/50 font-mono text-[11px] text-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                  <div className="p-2 bg-muted rounded border border-border font-mono text-11 text-foreground leading-relaxed overflow-x-auto whitespace-pre-wrap">
                     {form.text}
                   </div>
                 </div>

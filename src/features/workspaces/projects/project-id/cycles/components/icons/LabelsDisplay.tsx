@@ -50,10 +50,10 @@ export function LabelsDisplay({
         <div
           key={label.id}
           data-chip-idx={i}
-          className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-xs font-semibold text-white shadow-sm"
+          className="inline-flex h-7 shrink-0 items-center rounded-sm px-2.5 text-xs font-semibold text-white "
           style={{ backgroundColor: label.color }}
         >
-          <span className="whitespace-nowrap drop-shadow-sm">{label.name}</span>
+          <span className="whitespace-nowrap ">{label.name}</span>
         </div>
       ))}
 
@@ -66,8 +66,8 @@ export function LabelsDisplay({
 
       {/* Add button */}
       {showAddButton && (
-        <div className="size-7 shrink-0 rounded-full bg-muted text-foreground flex items-center justify-center hover:bg-muted/80 transition-colors">
-          <Plus className="size-3" />
+        <div className="size-7 shrink-0 rounded-full bg-muted text-foreground flex items-center justify-center hover:bg-muted transition-colors">
+          <Plus className="size-3 shrink-0" />
         </div>
       )}
     </button>

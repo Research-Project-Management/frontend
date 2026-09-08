@@ -21,20 +21,20 @@ export function Item({ mod, active, disabled, onToggle }: ItemProps) {
         'flex items-center justify-between gap-4 rounded-lg border p-4 transition-colors',
         active
           ? 'border-border bg-card'
-          : 'border-transparent bg-muted/40',
+          : 'border-transparent bg-muted',
         mod.locked && 'opacity-70',
       )}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div
           className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-lg',
+            'flex size-9 shrink-0 items-center justify-center rounded-md',
             active
               ? 'bg-muted text-foreground'
-              : 'bg-muted/60 text-muted-foreground',
+              : 'bg-muted text-muted-foreground',
           )}
         >
-          <Icon className="size-4" />
+          <Icon className="size-4 shrink-0" />
         </div>
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground leading-tight">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Folder, FileText, Video, Music, Archive, Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { downloadFileUrl } from '@/shared/utils/file';
 import type { FileType, StorageItem } from '../types/storage.types';
 
 export function getFileType(item: StorageItem): FileType {
@@ -112,4 +113,13 @@ export function formatDate(dateString: string): string {
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
   return date.toLocaleDateString();
+}
+
+export async function downloadStorageItem(item: StorageItem): Promise<void> {
+  if (!item.url) return;
+  try {
+    await downloadFileUrl(item.url, item.filename);
+  } catch {
+    window.open(item.url, '_blank');
+  }
 }

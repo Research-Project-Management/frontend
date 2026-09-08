@@ -47,9 +47,13 @@ interface InfoSectionProps {
  * another frontend allow-list change. */
 const DIRECT_METADATA_FIELDS = new Set([
   'publisher', 'place', 'volume', 'issue', 'section', 'partNumber', 'partTitle',
-  'pages', 'series', 'seriesTitle', 'seriesText', 'issn', 'isbn', 'url', 'type',
-  'language', 'shortTitle', 'archive', 'archiveLocation', 'callNumber',
-  'publicationDate', 'libraryCatalog', 'journalAbbr',
+  'pages', 'series', 'seriesTitle', 'seriesText', 'seriesNumber', 'issn', 'ISSN',
+  'isbn', 'ISBN', 'url', 'type', 'language', 'shortTitle', 'archive', 'archiveLocation',
+  'callNumber', 'publicationDate', 'date', 'libraryCatalog', 'journalAbbr',
+  'journalAbbreviation', 'doi', 'DOI', 'pmid', 'PMID', 'pmcid', 'PMCID', 'arxivId',
+  'archiveId', 'archiveID', 'citationCount', 'referenceCount', 'openAccessPdfUrl',
+  'rights', 'license', 'citationKey', 'citeKey', 'abstract', 'abstractNote',
+  'publicationTitle', 'journal', 'accessedAt', 'accessDate',
 ]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
@@ -260,8 +264,8 @@ function InlineField({
         }
       }}
       className={cn(
-        'w-full h-7 bg-transparent text-foreground px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-[12px] leading-[18px] font-normal truncate focus:outline-none focus-visible:outline-none font-sans',
-        mono && 'font-mono text-[11.5px] tabular-nums tracking-normal',
+        'w-full h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-12 leading-normal font-normal truncate focus:outline-none focus-visible:outline-none font-sans',
+        mono && 'font-mono text-11 tabular-nums tracking-normal',
         className,
       )}
     />
@@ -339,7 +343,7 @@ function InlineTextarea({
         }
       }}
       className={cn(
-        'w-full min-h-[28px] bg-transparent text-foreground px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-[12px] leading-[18px] font-normal resize-none overflow-hidden focus:outline-none focus-visible:outline-none break-words [overflow-wrap:anywhere] whitespace-pre-wrap font-sans',
+        'w-full min-h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-12 leading-normal font-normal resize-none overflow-hidden focus:outline-none focus-visible:outline-none break-words [overflow-wrap:anywhere] whitespace-pre-wrap font-sans',
         className,
       )}
     />
@@ -517,7 +521,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     }
   };
 
-  const displayDoi = cleanDoi(paper.doi);
+  const displayDoi = cleanDoi(paper.doi || (paper as any).DOI);
   const isPublicUrl = paper.url && paper.url.startsWith('http') && !paper.url.includes('/api/files/');
 
   /**
@@ -526,100 +530,118 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   const getFieldValue = useCallback(
     (fieldKey: string): string => {
       const p = paper as any;
-      if (fieldKey === 'date') {
-        return cleanValue(p.publicationDate || (p.year ? String(p.year) : ''));
+      const keyLower = fieldKey.toLowerCase();
+
+      if (keyLower === 'date' || keyLower === 'publicationdate') {
+        return cleanValue(p.publicationDate || (p.year ? String(p.year) : '') || p.date);
       }
-      if (fieldKey === 'publicationTitle' || fieldKey === 'journal') {
+      if (keyLower === 'publicationtitle' || keyLower === 'journal') {
         return cleanValue(p.publicationTitle || p.journal);
       }
-      if (fieldKey === 'journalAbbreviation' || fieldKey === 'journalAbbr') {
+      if (keyLower === 'journalabbreviation' || keyLower === 'journalabbr') {
         return cleanValue(p.journalAbbr || p.journalAbbreviation);
       }
-      if (fieldKey === 'accessDate' || fieldKey === 'accessedAt') {
+      if (keyLower === 'accessdate' || keyLower === 'accessedat') {
         return cleanValue(p.accessDate || (p.accessedAt ? formatAuditDate(p.accessedAt) : ''));
       }
-      if (fieldKey === 'doi' || fieldKey === 'DOI') {
-        return displayDoi;
+      if (keyLower === 'doi') {
+        return cleanValue(displayDoi || p.doi || p.DOI);
       }
-      if (fieldKey === 'pmid' || fieldKey === 'PMID') {
+      if (keyLower === 'pmid') {
         return cleanValue(p.pmid || p.PMID);
       }
-      if (fieldKey === 'pmcid' || fieldKey === 'PMCID') {
+      if (keyLower === 'pmcid') {
         return cleanValue(p.pmcid || p.PMCID);
       }
-      if (fieldKey === 'arxivId' || fieldKey === 'arXivId' || fieldKey === 'arxiv') {
-        return cleanValue(p.arxivId || p.arXivId || p.arxiv || extractArxivId(p.url) || extractArxivId(p.callNumber));
+      if (keyLower === 'issn') {
+        return cleanValue(p.issn || p.ISSN);
       }
-      if (fieldKey === 'citationKey' || fieldKey === 'citeKey') {
+      if (keyLower === 'isbn') {
+        return cleanValue(p.isbn || p.ISBN);
+      }
+      if (keyLower === 'archiveid' || keyLower === 'arxivid' || keyLower === 'arxiv') {
+        const raw = cleanValue(
+          p.archiveId ||
+          p.archiveID ||
+          p.arxivId ||
+          p.extraFields?.archiveId ||
+          p.extraFields?.archiveID ||
+          p.extraFields?.arxivId ||
+          extractArxivId(p.url) ||
+          extractArxivId(p.callNumber),
+        );
+        if (!raw) return '';
+        const clean = raw
+          .replace(/^arxiv:\s*/i, '')
+          .replace(/\s*\[.*?\]\s*$/, '')
+          .replace(/v\d+$/i, '')
+          .trim();
+        return p.itemType === 'preprint' && clean ? `arXiv:${clean}` : clean;
+      }
+      if (keyLower === 'citationkey' || keyLower === 'citekey') {
         return cleanValue(p.citationKey || generateCitationKey(p));
       }
-      if (fieldKey === 'series' || fieldKey === 'seriesTitle') {
+      if (keyLower === 'series' || keyLower === 'seriestitle') {
         return cleanValue(p.series || p.seriesTitle);
       }
-      if (fieldKey === 'seriesNumber' || fieldKey === 'seriesText') {
+      if (keyLower === 'seriesnumber' || keyLower === 'seriestext') {
         return cleanValue(p.seriesNumber || p.seriesText);
       }
-      if (fieldKey === 'rights' || fieldKey === 'license') {
+      if (keyLower === 'rights' || keyLower === 'license') {
         return cleanValue(p.rights || p.license);
       }
-      if (fieldKey === 'publisher') {
+      if (keyLower === 'publisher') {
         return cleanValue(p.publisher);
       }
-      if (fieldKey === 'place') {
+      if (keyLower === 'place') {
         return cleanValue(p.place);
       }
-      if (fieldKey === 'genre') {
+      if (keyLower === 'genre') {
         return cleanValue(p.genre || p.type || p.itemType);
       }
-      if (fieldKey === 'issn') {
-        return cleanValue(p.issn);
-      }
-      if (fieldKey === 'isbn') {
-        return cleanValue(p.isbn);
-      }
-      if (fieldKey === 'language') {
+      if (keyLower === 'language') {
         return cleanValue(p.language);
       }
-      if (fieldKey === 'callNumber') {
+      if (keyLower === 'callnumber') {
         return cleanValue(p.callNumber);
       }
-      if (fieldKey === 'archive') {
+      if (keyLower === 'archive') {
         return cleanValue(p.archive || p.extraFields?.repository);
       }
-      if (fieldKey === 'archiveLocation') {
+      if (keyLower === 'archivelocation') {
         return cleanValue(p.archiveLocation || p.extraFields?.archiveId);
       }
-      if (fieldKey === 'libraryCatalog') {
+      if (keyLower === 'librarycatalog') {
         return cleanValue(p.libraryCatalog);
       }
-      if (fieldKey === 'abstractNote' || fieldKey === 'abstract') {
+      if (keyLower === 'abstractnote' || keyLower === 'abstract') {
         return cleanValue(p.abstract || p.abstractNote);
       }
-      if (fieldKey === 'bookTitle') {
+      if (keyLower === 'booktitle') {
         return cleanValue(p.bookTitle || p.publicationTitle || p.journal || p.extraFields?.bookTitle);
       }
-      if (fieldKey === 'proceedingsTitle') {
+      if (keyLower === 'proceedingstitle') {
         return cleanValue(p.proceedingsTitle || p.publicationTitle || p.extraFields?.proceedingsTitle);
       }
-      if (fieldKey === 'conferenceName') {
+      if (keyLower === 'conferencename') {
         return cleanValue(p.conferenceName || p.proceedingsTitle || p.publicationTitle || p.extraFields?.conferenceName);
       }
-      if (fieldKey === 'university' || fieldKey === 'institution') {
+      if (keyLower === 'university' || keyLower === 'institution') {
         return cleanValue(p.university || p.institution || p.extraFields?.university || p.extraFields?.institution);
       }
-      if (fieldKey === 'websiteTitle') {
+      if (keyLower === 'websitetitle') {
         return cleanValue(p.websiteTitle || p.publicationTitle || p.extraFields?.websiteTitle);
       }
-      if (fieldKey === 'websiteType' || fieldKey === 'thesisType' || fieldKey === 'reportType') {
+      if (keyLower === 'websitetype' || keyLower === 'thesistype' || keyLower === 'reporttype') {
         return cleanValue(p[fieldKey] || p.type || p.genre || p.extraFields?.[fieldKey]);
       }
-      if (fieldKey === 'country') {
+      if (keyLower === 'country') {
         return cleanValue(p.country || p.place || p.extraFields?.country);
       }
-      if (fieldKey === 'citationCount') {
+      if (keyLower === 'citationcount') {
         const currentCitationCount =
-          paper.citationCount ??
-          (paper.extraFields as Record<string, unknown> | undefined)?.citationCount;
+          p.citationCount ??
+          (p.extraFields as Record<string, unknown> | undefined)?.citationCount;
         return cleanValue(currentCitationCount);
       }
       return cleanValue(p[fieldKey] ?? p.extraFields?.[fieldKey] ?? p.customFields?.[fieldKey]);
@@ -632,61 +654,74 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
    */
   const saveFieldValue = (fieldDef: SchemaFieldDefinition, val: string) => {
     const key = fieldDef.field;
-    if (key === 'date') {
+    const keyLower = key.toLowerCase();
+
+    if (keyLower === 'date' || keyLower === 'publicationdate') {
       const parsedYear = parseInt(val, 10);
       handleFieldChange('year', isNaN(parsedYear) || parsedYear === 0 ? undefined : parsedYear);
-      handleFieldChange('publicationDate', val || undefined);
-    } else if (key === 'doi' || key === 'DOI') {
-      handleFieldChange('doi', cleanDoi(val) || undefined);
-    } else if (key === 'publicationTitle' || key === 'journal') {
-      handleFieldChange('publicationTitle', val || undefined);
-      handleFieldChange('journal', val || undefined);
-    } else if (key === 'journalAbbreviation' || key === 'journalAbbr') {
-      handleFieldChange('journalAbbr', val || undefined);
-      handleFieldChange('journalAbbreviation', val || undefined);
-    } else if (key === 'accessDate' || key === 'accessedAt') {
-      handleFieldChange('accessedAt', val || undefined);
-    } else if (key === 'pmid' || key === 'PMID') {
-      handleFieldChange('pmid', val || undefined);
-    } else if (key === 'pmcid' || key === 'PMCID') {
-      handleFieldChange('pmcid', val || undefined);
-    } else if (key === 'arxivId' || key === 'arXivId') {
-      handleFieldChange('arxivId', val || undefined);
-    } else if (key === 'rights' || key === 'license') {
-      handleFieldChange('rights', val || undefined);
-      handleFieldChange('license', val || undefined);
-    } else if (key === 'citationCount') {
+      handleFieldChange('publicationDate', val || '');
+      handleFieldChange('date', val || '');
+    } else if (keyLower === 'doi') {
+      const cleaned = cleanDoi(val);
+      handleFieldChange('doi', cleaned || '');
+      handleFieldChange('DOI', cleaned || '');
+    } else if (keyLower === 'isbn') {
+      handleFieldChange('isbn', val || '');
+      handleFieldChange('ISBN', val || '');
+    } else if (keyLower === 'issn') {
+      handleFieldChange('issn', val || '');
+      handleFieldChange('ISSN', val || '');
+    } else if (keyLower === 'pmid') {
+      handleFieldChange('pmid', val || '');
+      handleFieldChange('PMID', val || '');
+    } else if (keyLower === 'pmcid') {
+      handleFieldChange('pmcid', val || '');
+      handleFieldChange('PMCID', val || '');
+    } else if (keyLower === 'archiveid' || keyLower === 'arxivid') {
+      const cleanVal = val.replace(/\s*\[.*?\]\s*$/, '').trim();
+      const rawArxiv = cleanVal.replace(/^arxiv:\s*/i, '');
+      handleFieldChange('arxivId', rawArxiv || '');
+      handleFieldChange('archiveId', cleanVal || '');
+      handleFieldChange('archiveID', cleanVal || '');
+    } else if (keyLower === 'publicationtitle' || keyLower === 'journal') {
+      handleFieldChange('publicationTitle', val || '');
+      handleFieldChange('journal', val || '');
+    } else if (keyLower === 'journalabbreviation' || keyLower === 'journalabbr') {
+      handleFieldChange('journalAbbr', val || '');
+      handleFieldChange('journalAbbreviation', val || '');
+    } else if (keyLower === 'accessdate' || keyLower === 'accessedat') {
+      handleFieldChange('accessedAt', val || '');
+      handleFieldChange('accessDate', val || '');
+    } else if (keyLower === 'rights' || keyLower === 'license') {
+      handleFieldChange('rights', val || '');
+      handleFieldChange('license', val || '');
+    } else if (keyLower === 'citationkey' || keyLower === 'citekey') {
+      handleFieldChange('citationKey', val || '');
+    } else if (keyLower === 'abstractnote' || keyLower === 'abstract') {
+      handleFieldChange('abstract', val || '');
+      handleFieldChange('abstractNote', val || '');
+    } else if (keyLower === 'citationcount') {
       const parsedCitationCount = parseInt(val.replace(/,/g, ''), 10);
-      const validCitationCount = isNaN(parsedCitationCount) ? undefined : parsedCitationCount;
+      const validCitationCount = isNaN(parsedCitationCount) ? null : parsedCitationCount;
       if (onUpdatePaper) {
         onUpdatePaper({
           citationCount: validCitationCount,
           extraFields: {
             ...(paper.extraFields as Record<string, unknown> | undefined),
-            citationCount: validCitationCount ?? null,
+            citationCount: validCitationCount,
           },
         });
       }
-    } else if (key === 'abstractNote' || key === 'abstract') {
-      handleFieldChange('abstract', val || undefined);
-      handleFieldChange('abstractNote', val || undefined);
-    } else if (key === 'citationKey' || key === 'citeKey') {
-      handleFieldChange('citationKey', val || undefined);
-    } else if (DIRECT_METADATA_FIELDS.has(key)) {
-      // Keep an empty string for first-class columns so clearing a field is a
-      // real update rather than an omitted PATCH property.
+    } else if (DIRECT_METADATA_FIELDS.has(key) || DIRECT_METADATA_FIELDS.has(keyLower)) {
       handleFieldChange(key, val);
     } else {
-      // Do not send arbitrary registry keys as top-level DTO properties. The
-      // backend stores these in its JSON metadata bag and projects them back to
-      // the item, so new registry fields work without a client release.
       handleFieldChange('extraFields', { [key]: val || null });
     }
   };
 
   // Render all schema fields for the selected item type in registry order
   const dynamicFields = useMemo(() => {
-    return (typeDefinition?.fields || []).filter(
+    const raw = (typeDefinition?.fields || []).filter(
       (f: SchemaFieldDefinition) =>
         f.field !== 'title' &&
         f.field !== 'abstractNote' &&
@@ -695,9 +730,40 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         f.field !== 'dateAdded' &&
         f.field !== 'dateModified' &&
         f.field !== 'citationKey' &&
-        f.field !== 'citeKey',
+        f.field !== 'citeKey' &&
+        f.field !== 'rights' &&
+        f.field !== 'license',
     );
-  }, [typeDefinition]);
+    const academicTypes = new Set([
+      'journalArticle',
+      'preprint',
+      'conferencePaper',
+      'thesis',
+      'report',
+      'dataset',
+      'book',
+      'bookSection',
+    ]);
+    if (
+      academicTypes.has(currentItemType) &&
+      !raw.some((f) => f.field.toLowerCase() === 'citationcount')
+    ) {
+      const doiIdx = raw.findIndex((f) => f.field.toLowerCase() === 'doi');
+      const citationDef: SchemaFieldDefinition = {
+        field: 'citationCount',
+        label: 'Citations',
+        type: 'number',
+        category: 'identifiers',
+        mono: true,
+      };
+      if (doiIdx >= 0) {
+        raw.splice(doiIdx + 1, 0, citationDef);
+      } else {
+        raw.push(citationDef);
+      }
+    }
+    return raw;
+  }, [typeDefinition, currentItemType]);
 
   const formattedExtraMetadata = useMemo(() => {
     return formatAndSanitizeExtraMetadata(paper.extra, paper.extraFields, paper);
@@ -707,7 +773,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     <div className="space-y-0.5 select-text font-sans antialiased">
       {/* Item Type Selector */}
       <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-        <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate" id="label-item-type">
+        <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate" id="label-item-type">
           Item Type
         </span>
         <div className="flex items-center gap-1.5 min-w-0">
@@ -715,12 +781,12 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="w-full h-7 text-left px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-black/5 dark:data-[state=open]:bg-white/5 text-[12px] leading-[18px] font-normal text-foreground bg-transparent cursor-pointer outline-none select-none truncate flex items-center justify-between"
+                className="w-full h-7 text-left px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary data-[state=open]:border-primary data-[state=open]:bg-muted text-12 leading-normal font-normal text-foreground bg-transparent cursor-pointer outline-none select-none truncate flex items-center justify-between"
                 aria-label="Item Type"
               >
                 <div className="flex items-center gap-1.5 truncate">
                   {isCheckingType ? (
-                    <Loader2 className="size-3 animate-spin text-foreground" />
+                    <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
                   ) : null}
                   <span className="truncate">
                     {selectableItemTypes.find((t) => t.value === currentItemType)?.label || typeDefinition.label || currentItemType}
@@ -728,7 +794,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-[360px] min-w-[210px] overflow-y-auto p-1 rounded-md shadow-none border border-border/60 bg-popover text-popover-foreground space-y-0.5">
+            <DropdownMenuContent align="start" className="max-h-[360px] min-w-[210px] overflow-y-auto p-1 rounded-md shadow-none border border-border bg-popover text-popover-foreground space-y-0.5">
               {selectableItemTypes.map((t) => {
                 const isSelected = t.value === currentItemType;
                 return (
@@ -744,12 +810,13 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                           retainUnmappedInExtra: true,
                         });
                         if (!prev.hasLoss) {
-                          // Lossless: convert immediately without dialog
+                          // Lossless: convert immediately without dialog and without notification
                           const result = await convertAsync({
                             itemId: paper.id,
                             targetType: t.value,
                             expectedVersion: (paper as any).version,
                             retainUnmappedInExtra: true,
+                            silent: true,
                           });
                           const updated = (result as any)?.item ?? (result as any)?.data ?? result;
                           onUpdatePaper?.(updated);
@@ -767,8 +834,8 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                       }
                     }}
                     className={cn(
-                      'flex items-center gap-2.5 h-7 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5',
-                      isSelected && 'bg-black/10 dark:bg-white/10 font-medium',
+                      'flex items-center gap-2.5 h-7 px-2.5 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
+                      isSelected && 'bg-muted text-foreground font-medium',
                     )}
                   >
                     <span className="w-2.5 text-center text-xs font-normal text-foreground shrink-0 select-none">
@@ -785,14 +852,14 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
 
       {/* Title */}
       <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">
-        <span className="text-muted-foreground text-right font-normal select-none pr-2 pt-[5px] text-[12px] leading-[18px] whitespace-nowrap" id="label-title">
+        <span className="text-muted-foreground text-right font-normal select-none pr-2 pt-1 text-12 leading-normal whitespace-nowrap" id="label-title">
           Title
         </span>
         <InlineTextarea
           value={cleanValue(paper.title)}
           ariaLabel="Item Title"
           onSave={(val) => handleFieldChange('title', val || undefined)}
-          className="font-normal text-foreground text-[12px] leading-[18px]"
+          className="font-normal text-foreground text-12 leading-normal"
           rows={1}
         />
       </div>
@@ -801,7 +868,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       <div className="py-0.5 space-y-0.5">
         {localCreators.length === 0 ? (
           <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-            <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate">
+            <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate">
               {typeDefinition.creatorTypes[0]?.label || 'Author'}
             </span>
             <input
@@ -848,7 +915,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                   (keyboardEvent.target as HTMLInputElement).blur();
                 }
               }}
-              className="flex-1 h-7 bg-transparent px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-[12px] leading-[18px] outline-none min-w-0 font-normal font-sans"
+              className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
             />
           </div>
         ) : (
@@ -861,7 +928,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="w-full h-7 flex items-center justify-end pr-2 rounded-md text-[12px] leading-[18px] font-normal text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
+                        className="w-full h-7 flex items-center justify-end pr-2 rounded-md text-12 leading-normal font-normal text-muted-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
                         aria-label={`Change role for creator ${creatorIndex + 1}`}
                       >
                         <span className="truncate">
@@ -869,14 +936,14 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         </span>
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[140px] p-1 rounded-md shadow-none border border-border/60 bg-popover text-popover-foreground space-y-0.5">
+                    <DropdownMenuContent align="start" className="min-w-[140px] p-1 rounded-md shadow-none border border-border bg-popover text-popover-foreground space-y-0.5">
                       {creatorTypesList.map((creatorTypeItem) => (
                         <DropdownMenuItem
                           key={creatorTypeItem.creatorType}
                           onClick={() => handleUpdateCreatorType(creatorIndex, creatorTypeItem.creatorType)}
                           className={cn(
-                            'flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5',
-                            creatorEntry.creatorType === creatorTypeItem.creatorType && 'bg-black/10 dark:bg-white/10 font-medium',
+                            'flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted',
+                            creatorEntry.creatorType === creatorTypeItem.creatorType && 'bg-muted text-foreground font-medium',
                           )}
                         >
                           <span className="text-foreground">{creatorTypeItem.label}</span>
@@ -938,27 +1005,27 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                         handleAddCreator(creatorIndex);
                       }
                     }}
-                    className="flex-1 h-7 bg-transparent px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-[12px] leading-[18px] outline-none min-w-0 font-normal font-sans"
+                    className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
                   />
                   {/* Action Buttons (Add / Remove) */}
                   <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleAddCreator(creatorIndex)}
-                      className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                      className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                       aria-label="Add creator below"
                     >
-                      <Plus className="size-3.5 text-foreground" aria-hidden="true" />
+                      <Plus className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                     </button>
 
                     {localCreators.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveCreator(creatorIndex)}
-                        className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                        className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                         aria-label="Remove creator"
                       >
-                        <Minus className="size-3.5 text-foreground" aria-hidden="true" />
+                        <Minus className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -972,17 +1039,17 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 <button
                   type="button"
                   onClick={() => setIsAuthorsExpanded(!isAuthorsExpanded)}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground font-medium cursor-pointer py-1 px-1 -ml-1 hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline-none rounded-md w-fit transition-colors select-none"
+                  className="flex items-center gap-1.5 text-12 text-foreground font-medium cursor-pointer py-1 px-1 -ml-1 hover:bg-muted focus-visible:outline-none rounded-md w-fit transition-colors select-none"
                   aria-expanded={isAuthorsExpanded}
                 >
                   {isAuthorsExpanded ? (
                     <>
-                      <ChevronUp className="size-3.5" aria-hidden="true" />
+                      <ChevronUp className="size-3.5 shrink-0" aria-hidden="true" />
                       <span>Show less</span>
                     </>
                   ) : (
                     <>
-                      <ChevronDown className="size-3.5" aria-hidden="true" />
+                      <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
                       <span>Show {localCreators.length - MAX_COLLAPSED_AUTHORS} more authors</span>
                     </>
                   )}
@@ -1005,7 +1072,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
 
         return (
           <div key={fieldDef.field} className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
-            <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate" title={fieldDef.label}>
+            <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate" title={fieldDef.label}>
               {fieldDef.label}
             </span>
             <div className="flex items-center gap-1 min-w-0">
@@ -1027,11 +1094,11 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     }
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                     aria-label="View citations on OpenAlex in new tab"
                     title="View citations on OpenAlex"
                   >
-                    <ExternalLink className="size-3.5 text-foreground" aria-hidden="true" />
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                   </a>
                 </div>
               )}
@@ -1043,22 +1110,22 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     href={`https://doi.org/${displayDoi}`}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                     aria-label="Open DOI link in new tab"
                   >
-                    <ExternalLink className="size-3.5 text-foreground" aria-hidden="true" />
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                   </a>
 
                   <button
                     type="button"
                     onClick={() => copyToClipboard(displayDoi, 'DOI')}
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                     aria-label="Copy DOI"
                   >
                     {copiedKey === 'DOI' ? (
-                      <CheckCircle2 className="size-3.5 text-foreground" aria-hidden="true" />
+                      <CheckCircle2 className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                     ) : (
-                      <Copy className="size-3.5 text-foreground" aria-hidden="true" />
+                      <Copy className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -1071,10 +1138,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     href={val.startsWith('http') ? val : `https://${val}`}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                     aria-label="Open URL in new tab"
                   >
-                    <ExternalLink className="size-3.5 text-foreground" aria-hidden="true" />
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                   </a>
                 </div>
               )}
@@ -1090,10 +1157,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     }
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                     aria-label={`Open in PubMed ${fieldDef.field.toUpperCase()} in new tab`}
                   >
-                    <ExternalLink className="size-3.5 text-foreground" aria-hidden="true" />
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                   </a>
                 </div>
               )}
@@ -1105,10 +1172,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     href={`https://arxiv.org/abs/${encodeURIComponent(val.replace(/^arxiv:/i, ''))}`}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer focus-visible:outline-none"
                     aria-label="Open in arXiv in new tab"
                   >
-                    <ExternalLink className="size-3.5 text-foreground" aria-hidden="true" />
+                    <ExternalLink className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                   </a>
                 </div>
               )}
@@ -1119,7 +1186,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
 
       {/* Citation Key */}
       <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
-        <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate" id="label-citationkey" title="Citation Key">
+        <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate" id="label-citationkey" title="Citation Key">
           Citation Key
         </span>
         <div className="flex items-center gap-1 min-w-0">
@@ -1134,13 +1201,13 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
               <button
                 type="button"
                 onClick={() => copyToClipboard(`\\cite{${paper.citationKey || generateCitationKey(paper)}}`, 'Citation Key')}
-                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer focus-visible:outline-none"
+                className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none"
                 aria-label={`Copy citation key \\cite{${paper.citationKey || generateCitationKey(paper)}}`}
               >
                 {copiedKey === 'Citation Key' ? (
-                  <CheckCircle2 className="size-3.5 text-foreground" aria-hidden="true" />
+                  <CheckCircle2 className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                 ) : (
-                  <Copy className="size-3.5 text-foreground" aria-hidden="true" />
+                  <Copy className="size-3.5 text-foreground shrink-0" aria-hidden="true" />
                 )}
               </button>
             </div>
@@ -1148,10 +1215,30 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         </div>
       </div>
 
+      {/* License (Rights in Zotero schema, labeled License) */}
+      <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
+        <span
+          className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate"
+          id="label-rights"
+        >
+          License
+        </span>
+        <InlineField
+          value={cleanValue(
+            paper.rights ??
+            paper.license ??
+            (paper.extraFields?.rights as string) ??
+            (paper.extraFields?.license as string)
+          )}
+          ariaLabel="License"
+          onSave={(val) => handleFieldChange('rights', val || undefined)}
+        />
+      </div>
+
       {/* Extra Field - Always available like native Zotero */}
       <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">
         <span
-          className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate pt-1"
+          className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate pt-1"
           id="label-extra"
         >
           Extra
@@ -1167,10 +1254,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       {/* Date Added */}
       {isValidValue(paper.createdAt) && (
         <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-          <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate">
+          <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate">
             Date Added
           </span>
-          <span className="text-foreground text-[12px] leading-[18px] px-2 py-[4px] select-text truncate font-normal h-7 flex items-center font-sans">
+          <span className="text-foreground text-12 leading-normal px-2 py-1 select-text truncate font-normal h-7 flex items-center font-sans">
             {formatAuditDate(paper.createdAt)}
           </span>
         </div>
@@ -1179,10 +1266,10 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       {/* Modified */}
       {isValidValue(paper.updatedAt) && (
         <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
-          <span className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate">
+          <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate">
             Modified
           </span>
-          <span className="text-foreground text-[12px] leading-[18px] px-2 py-[4px] select-text truncate font-normal h-7 flex items-center font-sans">
+          <span className="text-foreground text-12 leading-normal px-2 py-1 select-text truncate font-normal h-7 flex items-center font-sans">
             {formatAuditDate(paper.updatedAt)}
           </span>
         </div>

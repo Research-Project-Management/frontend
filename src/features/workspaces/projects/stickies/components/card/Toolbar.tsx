@@ -44,7 +44,7 @@ export default function Toolbar({
   const isDeleteOpen = activeModal === "delete";
 
   return (
-    <div className="h-10 px-4 flex items-center justify-between bg-black/5 dark:bg-white/10 border-t border-black/5 dark:border-white/10 rounded-b-lg">
+    <div className="h-10 px-4 flex items-center justify-between bg-muted border-t border-border rounded-b-lg">
       <div className="relative flex items-center gap-1.5">
         <ColorModal 
           sticky={sticky} 

@@ -32,7 +32,7 @@ export function NoteIcon({ className = 'size-3.5' }: { className?: string }) {
       <path
         d="M3.5 2.5h6l3 3V13.5a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"
         fill="white"
-        className="dark:fill-zinc-900"
+        className="dark:fill-background"
       />
       <path d="M9.5 2.5V5.5H12.5" />
       <line x1="3" y1="2.5" x2="9.5" y2="2.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -197,14 +197,14 @@ export default function NotesSection({
 
       {/* Add New Note Box */}
       {isAdding && (
-        <div className="space-y-1.5 p-2 bg-muted/20 rounded-md border border-border/60 text-xs mb-1.5">
+        <div className="space-y-1.5 p-2 bg-muted rounded-md border border-border text-xs mb-1.5">
           <Textarea
             autoFocus
             placeholder="Write a note..."
             value={newNoteContent}
             onChange={(e) => setNewNoteContent(e.target.value)}
             rows={2}
-            className="text-xs resize-none w-full max-h-36 overflow-y-auto focus:border-primary border-border/40 bg-transparent rounded-md"
+            className="text-xs resize-none w-full max-h-36 overflow-y-auto focus:border-primary border-border bg-transparent rounded-md"
           />
           <div className="flex items-center justify-end gap-1.5">
             <Button
@@ -235,9 +235,9 @@ export default function NotesSection({
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs text-foreground hover:bg-black/5 dark:hover:bg-white/5 rounded-md border border-dashed border-border/60 cursor-pointer"
+          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 text-xs text-foreground hover:bg-muted rounded-md border border-dashed border-border cursor-pointer"
         >
-          <Plus className="size-3.5 text-foreground" />
+          <Plus className="size-3.5 text-foreground shrink-0" />
           <span>Add note or comment...</span>
         </button>
       )}
@@ -249,20 +249,20 @@ export default function NotesSection({
 
           if (isEditing) {
             return (
-              <div key={n.id} className="space-y-1.5 p-2 bg-muted/20 rounded-md border border-border/60 text-xs">
+              <div key={n.id} className="space-y-1.5 p-2 bg-muted rounded-md border border-border text-xs">
                 <Textarea
                   autoFocus
                   value={editingContent}
                   onChange={(e) => setEditingContent(e.target.value)}
                   rows={2}
-                  className="text-xs resize-none w-full max-h-36 overflow-y-auto focus:border-primary border-border/40 bg-transparent rounded-md"
+                  className="text-xs resize-none w-full max-h-36 overflow-y-auto focus:border-primary border-border bg-transparent rounded-md"
                 />
                 <div className="flex justify-end gap-1.5">
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={handleCancelEdit}
-                    className="h-6 px-2 text-xs rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                    className="h-6 px-2 text-xs rounded-md cursor-pointer text-foreground hover:bg-muted"
                   >
                     Cancel
                   </Button>
@@ -283,7 +283,7 @@ export default function NotesSection({
             <div
               key={n.id}
               onClick={() => handleStartEdit(n)}
-              className="group/note flex items-center justify-between gap-2 px-2 py-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-xs cursor-pointer select-none min-w-0"
+              className="group/note flex items-center justify-between gap-2 px-2 py-0.5 rounded-md hover:bg-muted text-xs cursor-pointer select-none min-w-0"
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <div className="size-4 shrink-0 flex items-center justify-center">
@@ -308,11 +308,11 @@ export default function NotesSection({
                     deleteNote(n.id, target?.version);
                   }
                 }}
-                className="invisible group-hover/note:visible size-5 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer shrink-0"
+                className="invisible group-hover/note:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0"
                 title="Delete note"
                 aria-label="Delete note"
               >
-                <MinusCircle className="size-3.5 text-foreground" />
+                <MinusCircle className="size-3.5 text-foreground shrink-0" />
               </button>
             </div>
           );

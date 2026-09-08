@@ -45,7 +45,7 @@ export function MemberPopover({
               : actionBtnClass
           }
         >
-          <UserPlus className="mr-2 h-4 w-4 text-foreground" />
+          <UserPlus className="mr-2 h-4 w-4 text-foreground shrink-0" />
           <span>Members</span>
         </Button>
       </PopoverTrigger>
@@ -53,9 +53,9 @@ export function MemberPopover({
         align="start"
         side="bottom"
         sideOffset={-14}
-        className="w-72 rounded-sm p-0 shadow-xl border-border/50 flex flex-col z-100"
+        className="w-72 rounded-sm p-0 border-border flex flex-col z-100"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <span className="text-sm font-semibold text-center flex-1 text-foreground">Members</span>
           <Button
             variant="ghost"
@@ -63,7 +63,7 @@ export function MemberPopover({
             className="size-8 text-foreground hover:bg-muted cursor-pointer"
             onClick={() => onOpenChange(false)}
           >
-            <X className="h-4 w-4 text-foreground" />
+            <X className="h-4 w-4 text-foreground shrink-0" />
           </Button>
         </div>
         <div className="p-3">
@@ -94,8 +94,8 @@ export function MemberPopover({
                       onOpenChange(false);
                     }}
                     className={cn(
-                      'w-full flex items-center gap-3 px-2 py-1.5 rounded-sm transition-colors hover:bg-accent/50 text-left cursor-pointer',
-                      assigneeId === memberUserId && 'bg-accent/50 ring-1 ring-zinc-300',
+                      'w-full flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors hover:bg-muted text-left cursor-pointer',
+                      assigneeId === memberUserId && 'bg-muted ring-1 ring-border',
                     )}
                   >
                     <Avatar className="size-6">
@@ -103,7 +103,7 @@ export function MemberPopover({
                       <AvatarFallback className="text-xs font-medium">{fallback}</AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground flex-1 truncate">{uName}</span>
-                    {assigneeId === memberUserId && <Check className="size-4 text-foreground" />}
+                    {assigneeId === memberUserId && <Check className="size-4 text-foreground shrink-0" />}
                   </button>
                 );
               })}

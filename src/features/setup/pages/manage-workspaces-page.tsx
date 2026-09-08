@@ -35,7 +35,7 @@ export default function ManageWorkspacesPage() {
             </p>
           </div>
           <Button onClick={() => router.push('/create-workspace')} className='h-9 gap-2 cursor-pointer'>
-            <Plus className='w-4 h-4' />
+            <Plus className='w-4 h-4 shrink-0' />
             New workspace
           </Button>
         </div>
@@ -54,7 +54,7 @@ export default function ManageWorkspacesPage() {
 
             <div
               key={workspace.id}
-              className='flex items-center gap-4 px-4 py-3 bg-background hover:bg-secondary/40 transition-colors group'
+              className='flex items-center gap-4 px-4 py-3 bg-background hover:bg-muted transition-colors group'
             >
               {/* Avatar */}
               <div className='h-8 w-8 rounded-md bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0 overflow-hidden'>
@@ -72,7 +72,7 @@ export default function ManageWorkspacesPage() {
 
               {/* Member count + role */}
               <div className='hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground'>
-                <Users className='w-3.5 h-3.5' />
+                <Users className='w-3.5 h-3.5 shrink-0' />
                 <span>{workspace.members?.length ?? 0}</span>
               </div>
 
@@ -85,16 +85,16 @@ export default function ManageWorkspacesPage() {
                   onClick={() => editWorkspace.open(workspace)}
                   aria-label='Edit workspace'
                 >
-                  <Pencil className='w-3.5 h-3.5' />
+                  <Pencil className='w-3.5 h-3.5 shrink-0' />
                 </Button>
                 <Button
                   variant='ghost'
                   size='sm'
-                  className='h-7 w-7 p-0 text-muted-foreground hover:text-destructive cursor-pointer'
+                  className='h-7 w-7 p-0 text-muted-foreground hover:bg-muted cursor-pointer'
                   onClick={() => deleteWorkspace.open(workspace)}
                   aria-label='Delete workspace'
                 >
-                  <Trash2 className='w-3.5 h-3.5' />
+                  <Trash2 className='w-3.5 h-3.5 shrink-0' />
                 </Button>
               </div>
 
@@ -105,7 +105,7 @@ export default function ManageWorkspacesPage() {
                 onClick={() => router.push(`/${workspace.url}`)}
               >
                 Open
-                <ArrowRight className='w-3 h-3' />
+                <ArrowRight className='w-3 h-3 shrink-0' />
               </Button>
             </div>
           ))}

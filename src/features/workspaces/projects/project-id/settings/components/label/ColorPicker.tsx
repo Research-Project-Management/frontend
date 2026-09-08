@@ -44,7 +44,7 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
         <button
           type="button"
           aria-label="Pick color"
-          className="size-4.5 rounded-full shrink-0 transition-transform hover:scale-110 cursor-pointer outline-none shadow-2xs ring-offset-1 ring-offset-background"
+          className="size-4.5 rounded-full shrink-0 transition-transform hover:scale-110 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-none ring-offset-1 ring-offset-background"
           style={{ backgroundColor: color }}
         />
       </PopoverTrigger>
@@ -53,7 +53,7 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
         align="start"
         side="bottom"
         sideOffset={10}
-        className="w-auto p-3 bg-popover border border-border shadow-xl rounded-lg z-50 animate-in fade-in zoom-in-95 duration-150"
+        className="w-auto p-3 bg-popover border border-border rounded-md z-50 animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Color Palette Grid */}
         <div className="grid grid-cols-6 gap-2 mb-3">
@@ -92,7 +92,7 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
           ))}
 
           {/* Custom '#' box */}
-          <div className="size-6 rounded-md bg-muted/60 border border-border flex items-center justify-center text-xs font-semibold text-muted-foreground select-none">
+          <div className="size-6 rounded-md bg-muted border border-border flex items-center justify-center text-xs font-semibold text-muted-foreground select-none">
             #
           </div>
         </div>

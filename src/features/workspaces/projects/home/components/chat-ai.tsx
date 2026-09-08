@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import type { KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
 import { ArrowUp, Globe, ChevronDown, X, Plus, Check } from "lucide-react";
@@ -50,9 +50,15 @@ export default function ChatAi({ onSend }: ChatAiProps) {
 
   const [message, setMessage] = useState("");
   const [webSearch, setWebSearch] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>("workspace");
+  const [selectedProject, setSelectedProject] = useState<string>(() => projects?.[0]?.id || "");
   const [sites, setSites] = useState<string[]>(DEFAULT_ACADEMIC_SITES);
   const [newSite, setNewSite] = useState("");
+
+  useEffect(() => {
+    if (!selectedProject && projects && projects.length > 0) {
+      setSelectedProject(projects[0].id);
+    }
+  }, [projects, selectedProject]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,10 +72,10 @@ export default function ChatAi({ onSend }: ChatAiProps) {
 
   const handleSend = useCallback(() => {
     if (!message.trim()) return;
-    const finalProjectId = selectedProject === "workspace" || !selectedProject ? undefined : selectedProject;
+    const finalProjectId = selectedProject || (projects?.[0]?.id ?? undefined);
     onSend?.(message.trim(), finalProjectId, webSearch ? sites : undefined);
     setMessage("");
-  }, [message, selectedProject, webSearch, sites, onSend]);
+  }, [message, selectedProject, projects, webSearch, sites, onSend]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -90,14 +96,12 @@ export default function ChatAi({ onSend }: ChatAiProps) {
 
   if (isLoading || !projects) return null;
 
-  const isWorkspace = selectedProject === "workspace" || !selectedProject;
-  const activeProject = isWorkspace ? null : projects.find((p: any) => p.id === selectedProject);
-  const projectIndex = activeProject ? projects.findIndex((p: any) => p.id === selectedProject) : -1;
+  const activeProject = projects.find((p: any) => p.id === selectedProject) || (projects.length > 0 ? projects[0] : null);
   const scopeDotClass = activeProject ? "bg-primary" : "bg-muted-foreground";
 
   return (
     <div className="w-full">
-      <div className="relative flex flex-col bg-background border border-border/50 rounded-lg focus-within:border-border focus-within:ring-1 focus-within:ring-border/50 hover:border-border transition-all duration-200">
+      <div className="relative flex flex-col bg-background border border-border rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors duration-200">
 
         {/* Top row: Scope picker */}
         <div className="flex items-center gap-2 px-3 pt-3">
@@ -106,62 +110,45 @@ export default function ChatAi({ onSend }: ChatAiProps) {
               <button
                 type="button"
                 aria-label="Select scope"
-                className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-xs font-medium text-foreground min-w-0 max-w-[160px]"
+                className="flex items-center gap-1.5 h-7 px-2 rounded-md border border-border bg-background transition-colors text-xs font-medium text-foreground min-w-0 max-w-[160px] cursor-pointer"
               >
                 <span className={`size-2 rounded-full shrink-0 ${scopeDotClass}`} />
                 <span className="truncate">
-                  {activeProject ? activeProject.name : "Whole Workspace"}
+                  {activeProject ? activeProject.name : "No projects"}
                 </span>
-                <ChevronDown className="size-3 text-muted-foreground shrink-0 opacity-60 ml-0.5" />
+                <ChevronDown className="size-3 text-foreground shrink-0 opacity-60 ml-0.5" />
               </button>
             </PopoverTrigger>
 
             <PopoverContent align="start" className="w-56 p-1.5">
-              {/* Workspace item */}
-              <button
-                type="button"
-                onClick={() => setSelectedProject("workspace")}
-                className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${isWorkspace ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
-                  }`}
-              >
-                <div className="size-5 flex items-center justify-center shrink-0">
-                  <span className={`size-2 rounded-full shrink-0 ${isWorkspace ? 'bg-primary' : 'bg-muted-foreground'}`} />
+              {projects.length > 0 ? (
+                projects.map((project: any) => {
+                  const isActive = activeProject?.id === project.id;
+                  return (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() => setSelectedProject(project.id)}
+                      className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${
+                        isActive ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {project.avatar ? (
+                        <span className="text-sm leading-none shrink-0 w-5 text-center">{project.avatar}</span>
+                      ) : (
+                        <div className="size-5 flex items-center justify-center shrink-0">
+                          <span className={`size-2 rounded-full shrink-0 ${isActive ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                        </div>
+                      )}
+                      <span className="truncate">{project.name}</span>
+                      {isActive && <Check className="size-3.5 text-primary shrink-0 ml-auto" />}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-3 text-center text-xs text-muted-foreground">
+                  No projects available
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-xs leading-none">Whole Workspace</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Search all workspace projects</div>
-                </div>
-                {isWorkspace && <Check className="size-3.5 text-primary shrink-0 ml-auto" />}
-              </button>
-
-              {/* Projects */}
-              {projects.length > 0 && (
-                <>
-                  <div className="px-2 pb-1.5 pt-3 text-xs font-medium text-muted-foreground">
-                    Projects
-                  </div>
-                  {projects.map((project: any, i: number) => {
-                    const isActive = selectedProject === project.id;
-                    return (
-                      <button
-                        key={project.id}
-                        type="button"
-                        onClick={() => setSelectedProject(project.id)}
-                        className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm transition-colors cursor-pointer ${isActive ? "bg-accent text-foreground font-medium" : "text-foreground hover:bg-accent/60"
-                          }`}
-                      >
-                        {project.avatar ? (
-                          <span className="text-sm leading-none shrink-0 w-5 text-center">{project.avatar}</span>
-                        ) : (
-                          <div className="size-5 flex items-center justify-center shrink-0">
-                            <span className={`size-2 rounded-full shrink-0 ${isActive ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                          </div>
-                        )}
-                        <span className="truncate">{project.name}</span>
-                      </button>
-                    );
-                  })}
-                </>
               )}
             </PopoverContent>
           </Popover>
@@ -195,10 +182,10 @@ export default function ChatAi({ onSend }: ChatAiProps) {
             {webSearch && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1 text-xs text-primary/80 hover:text-primary px-2 py-1 rounded-lg bg-primary/8 hover:bg-primary/15 transition-colors cursor-pointer">
-                    <Globe className="size-3" />
+                  <button className="flex items-center gap-1 text-xs text-primary px-2 py-1 rounded-md bg-primary/8 hover:bg-primary/15 transition-colors cursor-pointer">
+                    <Globe className="size-3 shrink-0" />
                     <span>{sites.length} sites</span>
-                    <ChevronDown className="size-3" />
+                    <ChevronDown className="size-3 shrink-0" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -214,40 +201,40 @@ export default function ChatAi({ onSend }: ChatAiProps) {
                     {sites.map((site) => (
                       <div
                         key={site}
-                        className="flex items-center justify-between gap-2 px-2 py-1 rounded-lg bg-secondary/50 group/item"
+                        className="flex items-center justify-between gap-2 px-2 py-1 rounded-md bg-secondary/50 group/item"
                       >
                         <span className="text-xs font-mono truncate">{site}</span>
                         <button
                           aria-label="Remove site"
                           onClick={() => removeSite(site)}
-                          className="shrink-0 size-6 flex items-center justify-center opacity-0 group-hover/item:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                          className="shrink-0 size-6 flex items-center justify-center opacity-0 group-hover/item:opacity-100 text-muted-foreground hover:bg-muted transition-all"
                         >
-                          <X className="size-3" />
+                          <X className="size-3 shrink-0" />
                         </button>
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center gap-1 pt-1 border-t border-border/60">
+                  <div className="flex items-center gap-1 pt-1 border-t border-border">
                     <input
                       aria-label="New site URL"
                       value={newSite}
                       onChange={(e) => setNewSite(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addSite()}
                       placeholder="e.g. nature.com"
-                      className="flex-1 text-xs bg-secondary/40 rounded-lg px-2 py-1.5 border border-border/60 focus:outline-none focus:border-primary/40 placeholder:text-muted-foreground/50"
+                      className="flex-1 text-xs bg-secondary rounded-md px-2 py-1.5 border border-border focus:outline-none focus:border-primary placeholder:text-muted-foreground"
                     />
                     <button
                       aria-label="Add site"
                       onClick={addSite}
                       disabled={!newSite.trim()}
-                      className="size-7 flex items-center justify-center rounded-lg bg-primary/10 hover:bg-primary/20 text-primary disabled:opacity-30 transition-colors"
+                      className="size-7 flex items-center justify-center rounded-md bg-secondary hover:bg-muted text-foreground disabled:opacity-50 transition-colors"
                     >
-                      <Plus className="size-3.5" />
+                      <Plus className="size-3.5 shrink-0" />
                     </button>
                   </div>
                   <button
                     onClick={() => setSites(DEFAULT_ACADEMIC_SITES)}
-                    className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-0.5"
+                    className="w-full text-xs text-foreground transition-colors text-center py-0.5"
                   >
                     Reset to defaults
                   </button>
@@ -260,9 +247,9 @@ export default function ChatAi({ onSend }: ChatAiProps) {
             aria-label="Send message"
             onClick={handleSend}
             disabled={!message.trim()}
-            className="size-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed group/btn"
+            className="size-8 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed group/btn"
           >
-            <ArrowUp className="size-4 group-hover/btn:-translate-y-0.5 transition-transform" />
+            <ArrowUp className="size-4 group-hover/btn:-translate-y-0.5 transition-transform shrink-0" />
           </button>
         </div>
       </div>

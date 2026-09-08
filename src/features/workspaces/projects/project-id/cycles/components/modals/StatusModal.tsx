@@ -50,7 +50,7 @@ export const StatusModal = ({
       <DialogContent
         showCloseButton={false}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="max-w-[460px] p-0 overflow-hidden z-[101] rounded-sm border-0 shadow-2xl bg-popover"
+        className="max-w-[460px] p-0 overflow-hidden z-[101] rounded-sm border-0 bg-popover"
       >
         <div className="p-6">
           <DialogHeader className="space-y-1 text-left">
@@ -81,7 +81,7 @@ export const StatusModal = ({
               <div className="space-y-2">
                 <label className={cn(
                   "flex items-start gap-3 p-2.5 rounded-sm border cursor-pointer transition-all",
-                  incompleteAction === 'backlog' ? "border-primary bg-primary/5" : "border-border/80 hover:bg-muted/50"
+                  incompleteAction === 'backlog' ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
                 )}>
                   <input
                     type="radio"
@@ -93,7 +93,7 @@ export const StatusModal = ({
                   />
                   <div className="text-left">
                     <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                      <CornerDownLeft className="size-3.5" /> Move to Project Backlog
+                      <CornerDownLeft className="size-3.5 shrink-0" /> Move to Project Backlog
                     </span>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Work items will be unassigned from this cycle and returned to the general backlog.
@@ -104,7 +104,7 @@ export const StatusModal = ({
                 {availableCycles.length > 0 && (
                   <label className={cn(
                     "flex items-start gap-3 p-2.5 rounded-sm border cursor-pointer transition-all",
-                    incompleteAction === 'transfer' ? "border-primary bg-primary/5" : "border-border/80 hover:bg-muted/50"
+                    incompleteAction === 'transfer' ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
                   )}>
                     <input
                       type="radio"
@@ -116,7 +116,7 @@ export const StatusModal = ({
                     />
                     <div className="text-left flex-1">
                       <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                        <ArrowRight className="size-3.5" /> Transfer to Next Cycle
+                        <ArrowRight className="size-3.5 shrink-0" /> Transfer to Next Cycle
                       </span>
                       <p className="text-xs text-muted-foreground mt-0.5 mb-2">
                         Move all unfinished work items into another planned or upcoming cycle.
@@ -149,7 +149,7 @@ export const StatusModal = ({
 
                 <label className={cn(
                   "flex items-start gap-3 p-2.5 rounded-sm border cursor-pointer transition-all",
-                  incompleteAction === 'leave' ? "border-primary bg-primary/5" : "border-border/80 hover:bg-muted/50"
+                  incompleteAction === 'leave' ? "border-primary bg-primary/5" : "border-border hover:bg-muted"
                 )}>
                   <input
                     type="radio"
@@ -161,7 +161,7 @@ export const StatusModal = ({
                   />
                   <div className="text-left">
                     <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                      <CircleSlash className="size-3.5" /> Keep in this Cycle
+                      <CircleSlash className="size-3.5 shrink-0" /> Keep in this Cycle
                     </span>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Preserve incomplete tasks inside this completed cycle as historical record.
@@ -173,7 +173,7 @@ export const StatusModal = ({
           )}
         </div>
 
-        <div className="px-6 py-4 bg-muted/30 border-t border-border">
+        <div className="px-6 py-4 bg-muted border-t border-border">
           <DialogFooter className="flex w-full flex-row items-center justify-end gap-2">
             <Button
               type="button"

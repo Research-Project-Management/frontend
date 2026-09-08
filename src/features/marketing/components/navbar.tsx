@@ -43,7 +43,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link
             href='/'
-            className='flex gap-2.5 items-center min-h-[44px]'
+            className='flex gap-2.5 items-center min-h-11'
             onClick={() => setIsMenuOpen(false)}
             aria-label='Flux home'
           >
@@ -55,29 +55,29 @@ export default function Navbar() {
           <div className='hidden md:flex items-center gap-2'>
             <Link
               href='/login'
-              className='flex h-9 items-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+              className='flex h-9 items-center px-4 text-sm font-medium text-foreground rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
             >
               Sign in
             </Link>
             <Link
               href='/login'
-              className='group flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+              className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
             >
               Get started
-              <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
+              <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className='flex items-center justify-center w-11 h-11 rounded-lg transition-colors hover:bg-secondary md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+            className='flex items-center justify-center w-11 h-11 rounded-md transition-colors hover:bg-muted md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMenuOpen}
           >
             {isMenuOpen
-              ? <X className='w-5 h-5' aria-hidden='true' />
-              : <Menu className='w-5 h-5' aria-hidden='true' />
+              ? <X className='w-5 h-5 shrink-0' aria-hidden='true' />
+              : <Menu className='w-5 h-5 shrink-0' aria-hidden='true' />
             }
           </button>
         </div>
@@ -95,18 +95,18 @@ export default function Navbar() {
               <div className='flex flex-col gap-2'>
                 <Link
                   href='/login'
-                  className='flex items-center justify-center min-h-[44px] rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                  className='flex items-center justify-center min-h-11 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign in
                 </Link>
                 <Link
                   href='/login'
-                  className='flex items-center justify-center gap-1.5 min-h-[44px] rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                  className='flex items-center justify-center gap-1.5 min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Get started
-                  <ArrowRight className='w-3.5 h-3.5' aria-hidden='true' />
+                  <ArrowRight className='w-3.5 h-3.5 shrink-0' aria-hidden='true' />
                 </Link>
               </div>
             </motion.div>

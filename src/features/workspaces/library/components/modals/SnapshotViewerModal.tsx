@@ -41,19 +41,19 @@ export default function SnapshotViewerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border/60 shadow-xl rounded-lg"
+        className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border rounded-lg"
       >
-        <DialogHeader className="px-4 py-3 border-b border-border/60 flex flex-row items-center justify-between shrink-0 m-0">
+        <DialogHeader className="px-4 py-3 border-b border-border flex flex-row items-center justify-between shrink-0 m-0">
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
-            <div className="size-6 rounded flex items-center justify-center bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
-              <Globe className="size-3.5" />
+            <div className="size-6 rounded flex items-center justify-center bg-primary/10 text-primary shrink-0">
+              <Globe className="size-3.5 shrink-0" />
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-xs font-semibold text-foreground truncate">
                 {title || 'Web Snapshot Reader'}
               </DialogTitle>
               {sourceUrl && (
-                <p className="text-[10px] text-muted-foreground truncate">
+                <p className="text-10 text-muted-foreground truncate">
                   Source: {sourceUrl}
                 </p>
               )}
@@ -65,29 +65,29 @@ export default function SnapshotViewerModal({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                className="h-7 px-2 text-xs gap-1 text-foreground"
                 onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
                 title="Open original live website"
               >
-                <ExternalLink className="size-3.5" />
+                <ExternalLink className="size-3.5 shrink-0" />
                 <span className="hidden sm:inline">Original Web</span>
               </Button>
             )}
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+              className="h-7 px-2 text-xs gap-1 text-foreground"
               onClick={handleDownload}
               title="Download snapshot HTML"
             >
-              <Download className="size-3.5" />
+              <Download className="size-3.5 shrink-0" />
               <span className="hidden sm:inline">Download</span>
             </Button>
           </div>
         </DialogHeader>
 
         {/* Sandboxed Iframe Viewer */}
-        <div className="flex-1 w-full h-full bg-white dark:bg-zinc-950 overflow-hidden relative">
+        <div className="flex-1 w-full h-full bg-background overflow-hidden relative">
           <iframe
             src={snapshotUrl}
             sandbox="allow-same-origin allow-popups"

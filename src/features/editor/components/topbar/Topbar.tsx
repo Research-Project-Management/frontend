@@ -33,9 +33,9 @@ export default function Topbar() {
             <MenubarTrigger asChild>
               <Link
                 href={homeHref}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer rounded-sm hover:bg-muted focus:bg-muted outline-none"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-foreground transition-colors cursor-pointer rounded-sm hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
-                <ArrowUpLeft className="size-3.5" />
+                <ArrowUpLeft className="size-3.5 shrink-0" />
                 <span>Home</span>
               </Link>
             </MenubarTrigger>

@@ -56,9 +56,9 @@ export function AvatarSection({
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
           {isUploadingAvatar ? (
-            <Loader2 className="size-5 text-white animate-spin" />
+            <Loader2 className="size-5 text-white animate-spin shrink-0" />
           ) : (
-            <Camera className="size-5 text-white" />
+            <Camera className="size-5 text-white shrink-0" />
           )}
         </div>
       </div>

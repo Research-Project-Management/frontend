@@ -19,15 +19,15 @@ export default function Recent() {
   const filterAction = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/50 bg-background text-xs font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer">
+        <button className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background text-xs font-medium text-foreground transition-colors cursor-pointer">
           All
-          <ChevronDown className="size-3.5 text-foreground" />
+          <ChevronDown className="size-3.5 text-foreground shrink-0" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-36 rounded-lg bg-popover"
+        className="w-36 rounded-md bg-popover"
       >
         <DropdownMenuItem className="text-sm cursor-pointer">All</DropdownMenuItem>
         <DropdownMenuItem className="text-sm cursor-pointer">Work Items</DropdownMenuItem>
@@ -41,7 +41,7 @@ export default function Recent() {
     <Section title='Recents' action={filterAction}>
       {isLoading ? (
         <div className='flex items-center justify-center py-8'>
-          <Loader2 className='w-6 h-6 animate-spin text-primary' />
+          <Loader2 className='w-6 h-6 animate-spin text-primary shrink-0' />
         </div>
       ) : items && items.length > 0 ? (
         <div className='grid gap-2'>
@@ -65,32 +65,35 @@ export default function Recent() {
             return (
               <div
                 key={item.id}
-                className='group relative flex items-center gap-4 px-3 py-2.5 rounded-lg bg-transparent hover:bg-muted transition-colors duration-200'
+                className='group relative flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted transition-colors duration-150 cursor-pointer'
               >
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60 text-muted-foreground transition-colors">
-                  <Icon className='size-3.5' />
-                </div>
+                {/* Icon / Emoji directly on row without box */}
+                {item.emoji ? (
+                  <span className="text-sm leading-none shrink-0 select-none">{item.emoji}</span>
+                ) : (
+                  <Icon className='size-4 shrink-0 text-foreground transition-colors' />
+                )}
                 
-                <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <span className='text-sm font-medium text-muted-foreground w-16 shrink-0 truncate'>
-                    {item.project?.name?.substring(0, 5) || (typeof workspaceId === 'string' ? workspaceId.substring(0, 5) : '')}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <span className='text-11 font-medium text-muted-foreground shrink-0 min-w-12 truncate'>
+                    {item.project?.identifier || item.project?.name?.substring(0, 6) || (typeof workspaceId === 'string' ? workspaceId.substring(0, 6) : '')}
                   </span>
                   <Link
                     href={linkTo}
-                    className='text-sm font-semibold text-foreground truncate transition-colors before:absolute before:inset-0 max-w-[200px]'
+                    className='text-13 font-medium text-foreground truncate transition-colors before:absolute before:inset-0'
                   >
                     {item.title || item.name}
                   </Link>
-                  <span className='text-xs font-medium text-muted-foreground whitespace-nowrap'>
+                  <span className='text-xs font-normal text-muted-foreground whitespace-nowrap shrink-0'>
                     {item.updatedAt ? formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true }) : ''}
                   </span>
                 </div>
 
-                <div className="flex items-center -space-x-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  {(Array.isArray(item.users) ? item.users : (item.updatedBy ? [item.updatedBy] : [])).slice(0, 3).map((user: RecentItemUser, i: number) => (
-                    <Avatar key={user.id || i} className="size-6 border-2 border-background">
+                <div className="flex items-center -space-x-1 shrink-0 ml-auto">
+                  {(Array.isArray(item.users) ? item.users : (item.updatedBy ? [item.updatedBy] : [])).slice(0, 2).map((user: RecentItemUser, i: number) => (
+                    <Avatar key={user.id || i} className="size-5 rounded-full border border-background">
                       <AvatarImage src={user.avatar || user.image || undefined} />
-                      <AvatarFallback className="bg-muted text-xs font-medium text-foreground">
+                      <AvatarFallback className="bg-muted text-9 font-medium text-foreground">
                         {((user.name || user.email || 'U') as string).substring(0, 1).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -101,7 +104,7 @@ export default function Recent() {
           })}
         </div>
       ) : (
-        <div className='p-8 bg-muted/20 border border-dashed border-border rounded-lg text-center text-xs text-muted-foreground'>
+        <div className='p-8 bg-muted border border-dashed border-border rounded-lg text-center text-xs text-muted-foreground'>
           No recent items
         </div>
       )}

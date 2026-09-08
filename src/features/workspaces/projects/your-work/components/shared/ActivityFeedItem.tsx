@@ -66,12 +66,12 @@ export function ActivityFeedItem({
       className={cn(
         'flex items-start gap-3.5 px-5 py-4 transition-colors text-left select-none',
         isTaskRelated
-          ? 'hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer group'
+          ? 'hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer group'
           : '',
         className,
       )}
     >
-      <Avatar className="size-9 rounded-lg shrink-0 mt-0.5 border border-border/80">
+      <Avatar className="size-9 rounded-lg shrink-0 mt-0.5 border border-border">
         <AvatarImage
           src={activity.user?.avatar || undefined}
           alt={actorName}
@@ -96,7 +96,7 @@ export function ActivityFeedItem({
             <span
               className={cn(
                 'font-normal text-foreground transition-colors',
-                isTaskRelated && 'group-hover:text-primary',
+                
               )}
             >
               {activity.targetTitle}

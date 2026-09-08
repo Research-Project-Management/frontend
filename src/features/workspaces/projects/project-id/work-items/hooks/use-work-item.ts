@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { WorkItemService, TaskService } from '../services/work-item.service';
 import { LabelService, AVAILABLE_LABEL_COLORS, DEFAULT_LABEL_COLOR } from '../services/label.service';
+import { projectKeys } from '@/features/workspaces/projects/shell/services/project.service';
 import type {
   WorkItem,
   WorkItemMutationInput,
@@ -93,7 +94,7 @@ export const useTaskActivityLogs = (taskId: string) =>
 
 export const useTaskWorkspaceProjects = (workspaceId: string) =>
   useQuery({
-    queryKey: ['workspace-projects', workspaceId],
+    queryKey: projectKeys.all(workspaceId),
     queryFn: async () => {
       const res = await TaskService.getWorkspaceProjects(workspaceId);
       if (Array.isArray(res)) return res;
@@ -123,7 +124,8 @@ export const useCreateTask = () => {
   return useMutation({
     mutationFn: TaskService.create,
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['tasks', vars.projectId] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace-tasks'] });
       toast.success('Task created');
     },
     onError: (e: Error) => toast.error(e.message || 'Failed to create task'),
@@ -138,7 +140,10 @@ export const useUpdateTask = () => {
       delete (payload as any).projectId;
       return TaskService.update({ taskId, projectId, ...payload });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace-tasks'] });
+    },
     onError: (e: Error) => toast.error(e.message || 'Failed to update task'),
   });
 };
@@ -149,6 +154,7 @@ export const useDeleteTask = () => {
     mutationFn: ({ taskId }: { taskId: string; projectId?: string }) => TaskService.delete(taskId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace-tasks'] });
       toast.success('Task deleted');
     },
     onError: (e: Error) => toast.error(e.message || 'Failed to delete task'),
@@ -161,6 +167,7 @@ export const useDuplicateTask = () => {
     mutationFn: (vars: { taskId: string; projectId: string }) => TaskService.duplicate(vars),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace-tasks'] });
       toast.success('Task duplicated');
     },
     onError: (e: Error) => toast.error(e.message || 'Failed to duplicate task'),
@@ -171,7 +178,10 @@ export const useBulkUpdateTasks = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: TaskService.bulkUpdate,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['workspace-tasks'] });
+    },
     onError: (e: Error) => toast.error(e.message || 'Failed to update tasks'),
   });
 };

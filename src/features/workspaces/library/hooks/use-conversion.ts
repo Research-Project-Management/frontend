@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -82,11 +82,13 @@ export function useItemTypeConversion(workspaceId: string) {
       targetType,
       expectedVersion,
       retainUnmappedInExtra = true,
+      silent = false,
     }: {
       itemId: string;
       targetType: string;
       expectedVersion?: number;
       retainUnmappedInExtra?: boolean;
+      silent?: boolean;
     }) =>
       CatalogItemService.convertType(
         workspaceId,
@@ -100,10 +102,12 @@ export function useItemTypeConversion(workspaceId: string) {
         queryKey: itemKeys.byId(workspaceId, variables.itemId),
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
-      toast.success('Item type converted', {
-        description: 'Unmapped fields have been preserved in Extra.',
-        id: 'type-conversion',
-      });
+      if (!variables.silent) {
+        toast.success('Item type converted', {
+          description: variables.retainUnmappedInExtra ? 'Unmapped fields have been preserved in Extra.' : undefined,
+          id: 'type-conversion',
+        });
+      }
     },
     onError: (err: any) => {
       toast.error('Conversion failed', {

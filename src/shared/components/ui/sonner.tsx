@@ -55,7 +55,7 @@ export function Toaster({ ...props }: ToasterProps) {
           actionButton:
             'bg-foreground text-background hover:bg-foreground/90 font-medium text-xs rounded-md px-2.5 py-1 transition-colors',
           cancelButton:
-            'bg-muted text-muted-foreground hover:text-foreground font-medium text-xs rounded-md px-2.5 py-1 transition-colors',
+            'border border-border bg-background text-foreground hover:bg-muted font-medium text-xs rounded-md px-2.5 py-1 transition-colors',
         },
       }}
       {...props}

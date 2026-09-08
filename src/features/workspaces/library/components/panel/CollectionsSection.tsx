@@ -115,11 +115,11 @@ export default function CollectionsSection({
               <button
                 type="button"
                 onClick={() => handleMoveCollection(null)}
-                className="invisible group-hover:visible p-0.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer shrink-0 mr-1"
+                className="invisible group-hover:visible p-0.5 rounded-md hover:bg-muted text-foreground cursor-pointer shrink-0 mr-1"
                 title="Remove from collection (Unfile)"
                 aria-label="Remove from collection"
               >
-                <X className="size-3.5 text-foreground" />
+                <X className="size-3.5 text-foreground shrink-0" />
               </button>
             )}
           </div>

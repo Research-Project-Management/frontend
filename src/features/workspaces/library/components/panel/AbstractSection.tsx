@@ -128,11 +128,11 @@ export default function AbstractSection({
               <button
                 type="button"
                 onClick={handleCleanAndFormat}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-11 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-11 text-foreground hover:bg-muted cursor-pointer transition-colors"
                 title="Clean artifacts (years, prefixes) and format paragraph lines"
                 aria-label="Clean and format abstract text"
               >
-                <Sparkles className="size-3 text-foreground" />
+                <Sparkles className="size-3 text-foreground shrink-0" />
                 <span>Format</span>
               </button>
 
@@ -140,14 +140,14 @@ export default function AbstractSection({
               <button
                 type="button"
                 onClick={() => setIsJustified((prev) => !prev)}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-11 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-11 text-foreground hover:bg-muted cursor-pointer transition-colors"
                 title={isJustified ? 'Switch to left-aligned' : 'Switch to justified alignment'}
                 aria-label="Toggle text alignment"
               >
                 {isJustified ? (
-                  <AlignJustify className="size-3 text-foreground" />
+                  <AlignJustify className="size-3 text-foreground shrink-0" />
                 ) : (
-                  <AlignLeft className="size-3 text-foreground" />
+                  <AlignLeft className="size-3 text-foreground shrink-0" />
                 )}
                 <span>{isJustified ? 'Justified' : 'Left'}</span>
               </button>
@@ -156,13 +156,13 @@ export default function AbstractSection({
               <button
                 type="button"
                 onClick={handleCopy}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-11 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-11 text-foreground hover:bg-muted cursor-pointer transition-colors"
                 aria-label="Copy abstract"
               >
                 {isCopied ? (
-                  <Check className="size-3 text-foreground" />
+                  <Check className="size-3 text-foreground shrink-0" />
                 ) : (
-                  <Copy className="size-3 text-foreground" />
+                  <Copy className="size-3 text-foreground shrink-0" />
                 )}
                 <span>{isCopied ? 'Copied' : 'Copy'}</span>
               </button>
@@ -172,7 +172,7 @@ export default function AbstractSection({
       )}
 
       {/* Editable abstract textarea */}
-      <div className="rounded-md border border-border/60 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 bg-background transition-colors">
+      <div className="rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 bg-background transition-colors">
         <textarea
           ref={textareaRef}
           value={draft}

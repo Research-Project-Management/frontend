@@ -10,6 +10,8 @@ import { useCatalogItems, catalogItemKeys } from './use-items';
 import {
   formatCslCitation,
 } from '../services/citation.service';
+import { IngestionService } from '../services/ingestion.service';
+import { useIngestProgress } from './use-ingest-progress';
 import { useUnifiedIngest } from './use-ingest';
 import { useCollections } from './use-collections';
 import { useAsyncJobStatus } from './use-ingest';
@@ -150,6 +152,7 @@ export function useLibrary() {
   const collections = collectionService.state.collections;
   const { uploadFile, uploadFileDetailed } = useUpload();
   const { ingest: ingestUnified } = useUnifiedIngest(workspaceId);
+  const ingestProgress = useIngestProgress(workspaceId);
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -214,49 +217,110 @@ export function useLibrary() {
   const handleDirectFilesUpload = useCallback(
     async (files: File[]) => {
       if (!files.length) return;
-      const loadingToastId = toast.loading(`Uploading ${files.length} document(s)...`);
 
-      const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
-        files,
-        3,
-        async (file, count) => {
-          toast.loading(`Uploading document ${count} of ${files.length}...`, {
-            id: loadingToastId,
+      const recordFiles = files.filter((f) =>
+        /\.(bib|bibtex|ris)$/i.test(f.name),
+      );
+      const otherFiles = files.filter(
+        (f) => !/\.(bib|bibtex|ris)$/i.test(f.name),
+      );
+
+      // 1. Process BibTeX / RIS directly with ProcessModal
+      for (const recordFile of recordFiles) {
+        try {
+          const content = await recordFile.text();
+          const isRis = /\.ris$/i.test(recordFile.name);
+          const format = isRis ? 'RIS' : 'BIBTEX';
+          const res = await IngestionService.submit(workspaceId, {
+            kind: 'RECORD',
+            format,
+            content,
+            recordFormat: format,
+            rawRecord: content,
+            collectionId: collectionId || undefined,
           });
+          const runId = (res as any)?.data?.runId || (res as any)?.runId;
+          if (runId) {
+            ingestProgress.startMonitoring(runId, recordFile.name);
+            return;
+          }
+        } catch (err: any) {
+          toast.error(`Failed to import ${recordFile.name}: ${err?.message}`);
+        }
+      }
 
+      // 2. Process single PDF with ProcessModal
+      if (otherFiles.length === 1) {
+        const file = otherFiles[0];
+        try {
           const { fileId } = await uploadFileDetailed(file, {
             prefix: `${workspaceId}/library`,
             allowedTypes: ['application/pdf'],
           });
-
-          if (!fileId) {
-            throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
+          if (fileId) {
+            const res = await IngestionService.submit(workspaceId, {
+              kind: 'FILE',
+              fileId,
+              filename: file.name,
+              collectionId: collectionId || undefined,
+            });
+            const runId = (res as any)?.data?.runId || (res as any)?.runId;
+            if (runId) {
+              ingestProgress.startMonitoring(runId, file.name);
+              return;
+            }
           }
+        } catch (err: any) {
+          toast.error(`Failed to upload ${file.name}: ${err?.message}`);
+          return;
+        }
+      }
 
-          await ingestUnified({
-            source: 'pdf',
-            fileId,
-            filename: file.name,
-            collectionId: collectionId || undefined,
-            silent: true,
-          } as any);
-        },
-      );
+      // 3. Batch multi-file upload fallback
+      if (otherFiles.length > 1) {
+        const loadingToastId = toast.loading(`Uploading ${otherFiles.length} document(s)...`);
+        const { successCount, lastErrorMessage } = await uploadFilesWithConcurrency(
+          otherFiles,
+          3,
+          async (file, count) => {
+            toast.loading(`Uploading document ${count} of ${otherFiles.length}...`, {
+              id: loadingToastId,
+            });
 
-      if (successCount > 0) {
-        invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
-        toast.success('Import submitted', {
-          description: `${successCount} of ${files.length} document(s) uploaded. Ingestion pipeline is extracting metadata in background.`,
-          id: loadingToastId,
-        });
-      } else {
-        toast.error('Upload failed', {
-          description: lastErrorMessage || 'Unable to process selected documents.',
-          id: loadingToastId,
-        });
+            const { fileId } = await uploadFileDetailed(file, {
+              prefix: `${workspaceId}/library`,
+              allowedTypes: ['application/pdf'],
+            });
+
+            if (!fileId) {
+              throw new Error(`Upload succeeded but no fileId returned for ${file.name}`);
+            }
+
+            await ingestUnified({
+              source: 'pdf',
+              fileId,
+              filename: file.name,
+              collectionId: collectionId || undefined,
+              silent: true,
+            } as any);
+          },
+        );
+
+        if (successCount > 0) {
+          invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
+          toast.success('Import submitted', {
+            description: `${successCount} of ${otherFiles.length} document(s) uploaded. Ingestion pipeline is extracting metadata in background.`,
+            id: loadingToastId,
+          });
+        } else {
+          toast.error('Upload failed', {
+            description: lastErrorMessage || 'Unable to process selected documents.',
+            id: loadingToastId,
+          });
+        }
       }
     },
-    [uploadFileDetailed, ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient],
+    [uploadFileDetailed, ingestUnified, workspaceId, workspaceSlug, collectionId, queryClient, ingestProgress],
   );
 
   const handleDirectFolderUpload = useCallback(
@@ -314,24 +378,85 @@ export function useLibrary() {
     async (linkData: AddLinkData) => {
       try {
         const rawInput = (linkData.url || linkData.doi || '').trim();
-        const doiMatch = rawInput.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
-        const isPureDoi = rawInput.startsWith('10.') || (doiMatch && !rawInput.includes('http') && !rawInput.includes('arxiv'));
 
-        if (isPureDoi || linkData.doi) {
-          const doi = linkData.doi || (doiMatch ? doiMatch[1] : rawInput);
-          await ingestUnified({
-            source: 'doi',
-            doi,
-            collectionId: collectionId || undefined,
-            overrides: linkData.title ? { title: linkData.title } : undefined,
-          });
-        } else if (rawInput) {
-          await ingestUnified({
-            source: 'url',
-            url: rawInput,
-            collectionId: collectionId || undefined,
-            overrides: linkData.title ? { title: linkData.title } : undefined,
-          });
+        if (rawInput) {
+          const doiMatch = rawInput.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)\b/i);
+          const arxivMatch = rawInput.match(
+            /(?:arxiv:\s*|https?:\/\/arxiv\.org\/(?:abs|pdf|html)\/)?(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[a-z]{2})?\/\d{7})/i,
+          );
+          const pmidMatch = rawInput.match(
+            /(?:pmid:\s*|https?:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/)(\d{1,9})/i,
+          );
+          const cleanDigits = rawInput.replace(/[-\s]/g, '');
+          const isIsbn =
+            /^(?:isbn:?\s*)?(97[89]\d{10}|\d{9}[\dX])$/i.test(rawInput) ||
+            ((cleanDigits.length === 10 || cleanDigits.length === 13) &&
+              /^\d+X?$/i.test(cleanDigits) &&
+              !cleanDigits.startsWith('10.'));
+
+          const isPureDoi =
+            rawInput.startsWith('10.') ||
+            (doiMatch && !rawInput.includes('http') && !rawInput.includes('arxiv'));
+          const isArxiv = Boolean(
+            rawInput.toLowerCase().includes('arxiv') ||
+              (arxivMatch && !doiMatch && /^\d{4}\.\d{4,5}/.test(rawInput)),
+          );
+          const isPmid = Boolean(
+            rawInput.toLowerCase().startsWith('pmid:') ||
+              rawInput.includes('pubmed.ncbi') ||
+              (pmidMatch && /^\d{7,8}$/.test(rawInput)),
+          );
+
+          let submissionPayload: Parameters<typeof IngestionService.submit>[1];
+
+          if (isPureDoi || linkData.doi) {
+            const doi = linkData.doi || (doiMatch ? doiMatch[1] : rawInput);
+            submissionPayload = {
+              kind: 'IDENTIFIER',
+              identifierType: 'DOI',
+              value: doi,
+              collectionId: collectionId || undefined,
+              overrides: linkData.title ? { title: linkData.title } : undefined,
+            };
+          } else if (isArxiv && arxivMatch) {
+            submissionPayload = {
+              kind: 'IDENTIFIER',
+              identifierType: 'ARXIV',
+              value: arxivMatch[1],
+              collectionId: collectionId || undefined,
+              overrides: linkData.title ? { title: linkData.title } : undefined,
+            };
+          } else if (isPmid && pmidMatch) {
+            submissionPayload = {
+              kind: 'IDENTIFIER',
+              identifierType: 'PMID',
+              value: pmidMatch[1],
+              collectionId: collectionId || undefined,
+              overrides: linkData.title ? { title: linkData.title } : undefined,
+            };
+          } else if (isIsbn) {
+            submissionPayload = {
+              kind: 'IDENTIFIER',
+              identifierType: 'ISBN',
+              value: rawInput.replace(/^isbn:?\s*/i, '').trim(),
+              collectionId: collectionId || undefined,
+              overrides: linkData.title ? { title: linkData.title } : undefined,
+            };
+          } else {
+            submissionPayload = {
+              kind: 'URL',
+              url: rawInput,
+              collectionId: collectionId || undefined,
+              overrides: linkData.title ? { title: linkData.title } : undefined,
+            };
+          }
+
+          const res = await IngestionService.submit(workspaceId, submissionPayload);
+          const runId = (res as any)?.data?.runId || (res as any)?.runId;
+          if (runId) {
+            ingestProgress.startMonitoring(runId, linkData.title || rawInput);
+            return;
+          }
         } else {
           await handleAddPaper({
             title: linkData.title || 'Document',
@@ -354,11 +479,13 @@ export function useLibrary() {
           });
         }
         invalidateLibraryItems(queryClient, workspaceId, workspaceSlug, collectionId);
-      } catch {
-        // Errors already toasted by ingestUnified / handleAddPaper mutations
+      } catch (err: any) {
+        toast.error('Import failed', {
+          description: err?.message || 'Could not process identifier or document.',
+        });
       }
     },
-    [workspaceId, workspaceSlug, collectionId, ingestUnified, handleAddPaper, queryClient],
+    [workspaceId, workspaceSlug, collectionId, handleAddPaper, queryClient, ingestProgress],
   );
 
 
@@ -466,6 +593,7 @@ export function useLibrary() {
       isAddingItem: itemsHook.state.isAdding,
       isAddingPaper: itemsHook.state.isAdding,
       isCreatingCollection: collectionService.state.isCreating,
+      ingestProgressModal: ingestProgress.modalState,
     },
     actions: {
       setSearch: setSearchQuery,
@@ -485,6 +613,9 @@ export function useLibrary() {
       handleBatchDeletePapers,
       handleBatchMoveItems: handleBatchMovePapers,
       handleBatchMovePapers,
+      closeProcessModal: ingestProgress.closeModal,
+      toggleMinimizeProcessModal: ingestProgress.toggleMinimize,
+      startMonitoringIngest: ingestProgress.startMonitoring,
       navigate: router.push,
     },
   };

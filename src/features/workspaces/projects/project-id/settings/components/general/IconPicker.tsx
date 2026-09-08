@@ -201,18 +201,18 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
 
       <PopoverContent
         align="start"
-        className="w-72 p-3 rounded-lg border border-border/80 bg-background shadow-xl select-none"
+        className="w-72 p-3 rounded-md border border-border bg-background select-none"
       >
         {/* ── Top Tabs Segment Control ── */}
-        <div className="grid grid-cols-2 p-0.5 rounded-lg bg-muted/60 border border-border/60">
+        <div className="grid grid-cols-2 p-0.5 rounded-md bg-muted border border-border">
           <button
             type="button"
             onClick={() => setTab('emoji')}
             className={cn(
               'h-7 text-xs font-medium rounded-md transition-all cursor-pointer',
               tab === 'emoji'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground shadow-none font-semibold'
+                : 'text-muted-foreground hover:bg-muted'
             )}
           >
             Emoji
@@ -223,8 +223,8 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
             className={cn(
               'h-7 text-xs font-medium rounded-md transition-all cursor-pointer',
               tab === 'icon'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground shadow-none font-semibold'
+                : 'text-muted-foreground hover:bg-muted'
             )}
           >
             Icon
@@ -237,7 +237,7 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
             placeholder="Search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8.5 text-xs rounded-lg border-border/80 pl-3 pr-8 focus:ring-0 focus:outline-none"
+            className="h-8.5 text-xs rounded-md border-border pl-3 pr-8 focus:ring-0 focus:outline-none"
           />
           {tab === 'emoji' && (
             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm pointer-events-none">
@@ -260,7 +260,7 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
                   key={`${em}-${idx}`}
                   type="button"
                   onClick={() => handleEmojiClick(em)}
-                  className="size-7 flex items-center justify-center rounded-md text-base hover:bg-muted/70 active:scale-95 transition-all cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md text-base hover:bg-muted active:scale-95 transition-all cursor-pointer"
                 >
                   {em}
                 </button>
@@ -295,13 +295,13 @@ export function IconPicker({ currentValue, onSelect, children }: IconPickerProps
             </div>
 
             {/* Icon Grid */}
-            <div className="max-h-48 overflow-y-auto grid grid-cols-8 gap-1 p-0.5 border-t border-border/60 pt-2">
+            <div className="max-h-48 overflow-y-auto grid grid-cols-8 gap-1 p-0.5 border-t border-border pt-2">
               {filteredIcons.map(({ name, icon: IconComponent }) => (
                 <button
                   key={name}
                   type="button"
                   onClick={() => handleIconClick(name)}
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted/70 active:scale-95 transition-all cursor-pointer"
+                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted active:scale-95 transition-all cursor-pointer"
                   title={name}
                 >
                   <IconComponent

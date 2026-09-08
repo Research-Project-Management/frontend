@@ -35,10 +35,10 @@ function LoadingSkeleton() {
           {/* Tabs + toolbar skeleton */}
           <Skeleton className="h-8 w-full rounded-lg" />
           {/* Table skeleton */}
-          <div className="rounded-lg border border-border/60 overflow-hidden space-y-0">
+          <div className="rounded-lg border border-border overflow-hidden space-y-0">
             <Skeleton className="h-9 w-full rounded-none" />
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-none border-t border-border/40" />
+              <Skeleton key={i} className="h-12 w-full rounded-none border-t border-border" />
             ))}
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function WorkspaceMemberPage() {
           </div>
 
           {/* ── Tab bar + toolbar — border-b IS the table's top line ──── */}
-          <div className="flex items-end justify-between gap-3 flex-wrap border-b border-border/60">
+          <div className="flex items-end justify-between gap-3 flex-wrap border-b border-border">
             {/* Sub-tabs */}
             <div className="flex items-end gap-0.5">
               {TABS.map(({ key, label }) => (
@@ -124,10 +124,10 @@ export default function WorkspaceMemberPage() {
                   type="button"
                   onClick={() => setActiveTab(key)}
                   className={cn(
-                    'relative px-3.5 py-2 text-xs font-medium transition-all cursor-pointer outline-none select-none',
+                    'relative px-3.5 py-2 text-xs font-medium transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none',
                     activeTab === key
                       ? 'text-foreground'
-                      : 'text-muted-foreground hover:text-foreground',
+                      : 'text-muted-foreground hover:bg-muted',
                   )}
                 >
                   {label}
@@ -155,11 +155,11 @@ export default function WorkspaceMemberPage() {
 
           {/* ── People tab ─────────────────────────────────────────────── */}
           {activeTab === 'people' && (
-            <div className="rounded-b-lg rounded-t-none border border-t-0 border-border/60 overflow-hidden bg-background">
+            <div className="rounded-b-lg rounded-t-none border border-t-0 border-border overflow-hidden bg-background">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-border/70 bg-muted/25 text-muted-foreground">
+                    <tr className="border-b border-border bg-muted text-muted-foreground">
                       {/* Full name — wider */}
                       <th className="py-2.5 px-4 text-xs font-medium w-[22%]">
                         <Sortable

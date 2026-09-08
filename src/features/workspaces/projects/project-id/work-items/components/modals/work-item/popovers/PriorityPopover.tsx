@@ -19,10 +19,10 @@ export const PRIORITY_CONFIG: Record<
   TaskPriority,
   { label: string; icon: React.ElementType; color: string; bg: string }
 > = {
-  urgent: { label: 'Urgent', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50 text-red-700 border-red-200' },
-  high: { label: 'High', icon: ArrowUp, color: 'text-orange-600', bg: 'bg-orange-50 text-orange-700 border-orange-200' },
-  medium: { label: 'Medium', icon: Minus, color: 'text-amber-600', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
-  low: { label: 'Low', icon: ArrowDown, color: 'text-blue-600', bg: 'bg-blue-50 text-blue-700 border-blue-200' },
+  urgent: { label: 'Urgent', icon: AlertCircle, color: 'text-destructive', bg: 'bg-destructive/10 text-destructive border-destructive/20' },
+  high: { label: 'High', icon: ArrowUp, color: 'text-warning', bg: 'bg-warning/10 text-warning border-warning/20' },
+  medium: { label: 'Medium', icon: Minus, color: 'text-warning', bg: 'bg-warning/10 text-warning border-warning/20' },
+  low: { label: 'Low', icon: ArrowDown, color: 'text-primary', bg: 'bg-primary/10 text-primary border-primary/20' },
   none: { label: 'None', icon: CircleSlash, color: 'text-muted-foreground', bg: 'bg-muted text-muted-foreground border-border' },
 };
 
@@ -61,7 +61,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-48 p-1 rounded-sm border-border shadow-xl bg-popover"
+        className="w-48 p-1 rounded-sm border-border bg-popover"
       >
         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b border-border mb-1">
           Set Priority
@@ -82,14 +82,14 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
                 }}
                 className={cn(
                   'w-full flex items-center justify-between px-2 py-1.5 rounded-xs text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
-                  isSelected && 'bg-muted/80 text-foreground'
+                  isSelected && 'bg-muted text-foreground'
                 )}
               >
                 <div className="flex items-center gap-2">
                   <Icon className={cn('size-3.5', item.color)} />
                   <span>{item.label}</span>
                 </div>
-                {isSelected && <Check className="size-3.5 text-primary" />}
+                {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
               </button>
             );
           })}

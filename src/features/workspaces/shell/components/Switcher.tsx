@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronUp, PlusCircle, LogOut, Check, Settings, UserPlus, Mails } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
@@ -32,7 +31,7 @@ export default function Switcher({
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger
         aria-label={`Current Item: ${currentItem.name}`}
-        className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none transition-colors hover:bg-accent/60 data-[state=open]:bg-accent/80'
+        className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted data-[state=open]:bg-muted'
       >
         <Avatar className='size-5.5 rounded-md font-semibold'>
           {currentItem.avatar ? (
@@ -42,24 +41,24 @@ export default function Switcher({
               referrerPolicy="no-referrer"
             />
           ) : null}
-          <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-[11px] font-semibold">
+          <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-11 font-semibold">
             {String(currentItem.name).substring(0, 1).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <span className='max-w-[140px] truncate text-[13px] font-semibold tracking-tight text-foreground sm:max-w-[180px]'>
+        <span className='max-w-[140px] truncate text-13 font-semibold tracking-tight text-foreground sm:max-w-[180px]'>
           {currentItem.name}
         </span>
         {isOpen ? (
-          <ChevronUp className='size-3.5 text-foreground transition-colors' strokeWidth={2} />
+          <ChevronUp className='size-3.5 text-foreground transition-colors shrink-0' strokeWidth={2} />
         ) : (
-          <ChevronDown className='size-3.5 text-foreground transition-colors' strokeWidth={2} />
+          <ChevronDown className='size-3.5 text-foreground transition-colors shrink-0' strokeWidth={2} />
         )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align='start'
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className='w-[300px] p-0 rounded-lg overflow-hidden bg-popover border border-border shadow-none'
+        className='w-80 p-0 rounded-md overflow-hidden bg-popover border border-border shadow-none'
         sideOffset={8}
       >
         {/* User email header */}
@@ -68,7 +67,7 @@ export default function Switcher({
         </div>
 
         {/* Current active workspace */}
-        <div className='bg-muted/70 px-4 py-3.5 border-b border-border/50'>
+        <div className='bg-secondary px-4 py-3.5 border-b border-border'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3 min-w-0'>
               <Avatar className='size-9 rounded-md font-medium shrink-0'>
@@ -93,35 +92,35 @@ export default function Switcher({
             <Check className='size-4 text-foreground shrink-0' />
           </div>
 
-          <div className='flex items-center gap-3 mt-3.5'>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-8 flex-1 px-3 bg-background font-medium shadow-none text-xs rounded-md border border-border/60 hover:bg-background hover:border-foreground/30 text-foreground transition-colors cursor-pointer'
+          <div className='flex items-center gap-2 mt-3.5'>
+            <button
+              type='button'
+              className='h-8 flex-1 px-2.5 bg-background font-medium shadow-none text-12 rounded-md border border-border text-foreground cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap outline-none'
               onClick={() => {
                 setIsOpen(false);
                 router.push(`/${activeId}/settings`);
               }}
             >
-              <Settings className='mr-2 size-3.5 text-foreground' /> Settings
-            </Button>
-            <Button
-              variant='outline'
-              size='sm'
-              className='h-8 flex-1 px-3 bg-background font-medium shadow-none text-xs rounded-md border border-border/60 hover:bg-background hover:border-foreground/30 text-foreground transition-colors cursor-pointer'
+              <Settings className='size-3.5 text-foreground shrink-0' />
+              <span>Settings</span>
+            </button>
+            <button
+              type='button'
+              className='h-8 flex-1 px-2.5 bg-background font-medium shadow-none text-12 rounded-md border border-border text-foreground cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap outline-none'
               onClick={() => {
                 setIsOpen(false);
                 router.push(`/${activeId}/settings/members`);
               }}
             >
-              <UserPlus className='mr-2 size-3.5 text-foreground' /> Invite members
-            </Button>
+              <UserPlus className='size-3.5 text-foreground shrink-0' />
+              <span>Invite members</span>
+            </button>
           </div>
         </div>
 
         {/* Other workspaces */}
         {items.filter((item: Workspace) => item.id !== currentItem.id).length > 0 && (
-          <div className='p-2 max-h-[200px] overflow-y-auto bg-background flex flex-col gap-1 border-b border-border/50'>
+          <div className='max-h-[200px] overflow-y-auto bg-background flex flex-col border-b border-border'>
             {items
               .filter((item: Workspace) => item.id !== currentItem.id)
               .map((item: Workspace) => (
@@ -131,7 +130,7 @@ export default function Switcher({
                     setIsOpen(false);
                     router.push(`/${item.url}`);
                   }}
-                  className='px-3 py-2 justify-between cursor-pointer rounded-md'
+                  className='w-full px-4 py-2.5 justify-between cursor-pointer rounded-none hover:bg-muted focus:bg-muted'
                 >
                   <div className='flex items-center gap-3 min-w-0'>
                     <Avatar className='size-7 rounded-md font-medium shrink-0'>

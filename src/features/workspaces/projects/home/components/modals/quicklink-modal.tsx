@@ -61,7 +61,7 @@ export function QuicklinkModal({
     }}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[500px] p-0 border border-border shadow-2xl overflow-hidden rounded-lg bg-popover"
+        className="sm:max-w-[500px] p-0 border border-border overflow-hidden rounded-lg bg-popover"
         showCloseButton={false}
       >
         <div className="px-5 pt-5 pb-2">
@@ -104,7 +104,7 @@ export function QuicklinkModal({
             </div>
           </div>
 
-          <div className="px-5 py-3.5 border-t border-border bg-muted/40 flex items-center justify-end gap-2">
+          <div className="px-5 py-3.5 border-t border-border bg-muted flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"

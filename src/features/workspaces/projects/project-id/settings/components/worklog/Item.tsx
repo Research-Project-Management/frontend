@@ -23,9 +23,9 @@ interface WorklogItemProps {
 
 export function WorklogItem({ log, onDelete }: WorklogItemProps) {
   return (
-    <div className="p-4 rounded-lg border border-border/80 bg-card hover:bg-muted/20 transition-colors flex flex-col sm:flex-row sm:items-start justify-between gap-3 group">
+    <div className="p-4 rounded-md border border-border bg-card hover:bg-muted transition-colors flex flex-col sm:flex-row sm:items-start justify-between gap-3 group">
       <div className="flex items-start gap-3 min-w-0">
-        <Avatar className="size-8 rounded-full border border-border/80 shrink-0 mt-0.5">
+        <Avatar className="size-8 rounded-full border border-border shrink-0 mt-0.5">
           <AvatarImage src={log.user.avatar} alt={log.user.name} />
           <AvatarFallback className="text-xs font-semibold bg-muted text-muted-foreground">
             {log.user.name.charAt(0).toUpperCase()}
@@ -60,10 +60,10 @@ export function WorklogItem({ log, onDelete }: WorklogItemProps) {
         variant="ghost"
         size="icon"
         onClick={() => onDelete(log.id)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
+        className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
         title="Delete entry"
       >
-        <Trash2 className="size-3.5" />
+        <Trash2 className="size-3.5 shrink-0" />
       </Button>
     </div>
   );

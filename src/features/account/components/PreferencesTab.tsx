@@ -79,7 +79,7 @@ export default function PreferencesTab() {
                     <SelectContent>
                       <SelectItem value='system'>
                         <div className='flex items-center gap-2'>
-                          <div className='size-2 rounded-full bg-blue-500' />
+                          <div className='size-2 rounded-full bg-primary' />
                           <span>System Preference</span>
                         </div>
                       </SelectItem>
@@ -146,7 +146,7 @@ export default function PreferencesTab() {
             )}
           />
 
-          <div className='pt-6 pb-2 border-b border-border/50'>
+          <div className='pt-6 pb-2 border-b border-border'>
             <h3 className='text-base font-semibold text-foreground'>
               Language & Time
             </h3>

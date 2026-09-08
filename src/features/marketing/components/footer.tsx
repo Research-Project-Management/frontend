@@ -28,7 +28,7 @@ export default function Footer() {
           <div className='col-span-2 md:col-span-1 space-y-4'>
             <Link
               href='/'
-              className='inline-flex items-center gap-2 min-h-[44px]'
+              className='inline-flex items-center gap-2 min-h-11'
               aria-label='Flux home'
             >
               <img src='/Flux.svg' className='h-8 w-auto object-contain' alt='' aria-hidden='true' />
@@ -41,7 +41,7 @@ export default function Footer() {
               href='https://github.com/Research-Project-TDTU'
               target='_blank'
               rel='noopener noreferrer'
-              className='inline-flex items-center gap-1.5 min-h-[44px] -mx-2 px-2 text-base text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
+              className='inline-flex items-center gap-1.5 min-h-11 -mx-2 px-2 text-base text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
               aria-label='View Flux on GitHub (opens in new tab)'
             >
               <GithubIcon className='w-4 h-4' aria-hidden='true' />
@@ -101,7 +101,7 @@ function FooterLink({ href, label }: { href: string; label: string }) {
     <li>
       <Link
         href={href}
-        className='inline-flex items-center min-h-[44px] -mx-2 px-2 text-base text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
+        className='inline-flex items-center min-h-11 -mx-2 px-2 text-base text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm'
       >
         {label}
       </Link>

@@ -16,6 +16,8 @@ import {
   duplicateGroupSchema,
   libraryIntegrityReportSchema,
   asyncIngestionJobSchema,
+  catalogContributorRelationSchema,
+  collectionRelationSchema,
 } from '../schemas/library.schema';
 
 // ── Matt Pocock Branded Types ────────────────────────────────────────────────
@@ -34,6 +36,8 @@ export type WorkspaceId = Brand<string, 'WorkspaceId'>;
 
 export type User = z.infer<typeof userSchema>;
 export type CreatorCredit = z.infer<typeof creatorCreditSchema>;
+export type CatalogContributorRelation = z.infer<typeof catalogContributorRelationSchema>;
+export type CollectionRelation = z.infer<typeof collectionRelationSchema>;
 export type Note = z.infer<typeof noteSchema>;
 export type Collection = z.infer<typeof collectionSchema>;
 export type ItemAttachment = z.infer<typeof itemAttachmentSchema>;
@@ -50,7 +54,7 @@ export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema
 export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
 
 export type ReferenceData = {
-  extraFields?: Record<string, any>;
+  extraFields?: Record<string, unknown>;
   title: string;
   authors?: string[];
   creators?: Array<{
@@ -98,7 +102,7 @@ export type ReferenceData = {
   keywords?: string[];
   tags?: string[];
   fieldsOfStudy?: string[];
-  provenance?: any;
+  provenance?: Provenance;
   extra?: string;
 };
 

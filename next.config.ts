@@ -5,8 +5,16 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   poweredByHeader: false,
   compress: true,
-  output: 'standalone',
+  output: process.env.VERCEL ? undefined : 'standalone',
   serverExternalPackages: ['pdfjs-dist', 'canvas'],
+  allowedDevOrigins: [
+    'localhost:2915',
+    '127.0.0.1:2915',
+    'localhost:3000',
+    '127.0.0.1:3000',
+    'localhost',
+    '127.0.0.1',
+  ],
 
   turbopack: {
     rules: {
@@ -94,7 +102,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data: https:",
               "font-src 'self' data: https:",
-              "connect-src 'self' blob: data: http://localhost:* https: ws: wss:",
+              "connect-src 'self' blob: data: http: https: ws: wss:",
               "frame-src 'self' blob: https:",
               "worker-src 'self' blob:",
               "object-src 'none'",
@@ -108,10 +116,12 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const backendUrl =
+    const rawBackendUrl =
       process.env.INTERNAL_API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       'http://localhost:3000';
+    const backendUrl =
+      rawBackendUrl.trim().replace(/\/+$/, '') || 'http://localhost:3000';
     return [
       {
         source: '/api/:path*',

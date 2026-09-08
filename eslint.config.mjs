@@ -14,6 +14,10 @@ const eslintConfig = [
       '.playwright/**',
       'playwright-report/**',
       'test-results/**',
+      '*flux-next-cache*/**',
+      '**/*flux-next-cache*/**',
+      'C:/**',
+      '**/C:/**',
     ],
   },
   {

@@ -104,12 +104,12 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
   };
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm space-y-6">
+    <div className="rounded-md border bg-card p-6 space-y-6">
       {/* Header & Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div>
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Inbox className="size-5 text-primary" />
+            <Inbox className="size-5 text-primary shrink-0" />
             Sync Conflict & Pending Push Inbox
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -117,7 +117,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
           </p>
         </div>
 
-        <div role="tablist" aria-label="Conflict inbox tabs" className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg text-xs">
+        <div role="tablist" aria-label="Conflict inbox tabs" className="flex items-center gap-1 bg-muted p-1 rounded-lg text-xs">
           <button
             type="button"
             role="tab"
@@ -125,8 +125,8 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
             onClick={() => setFilterTab('conflicts')}
             className={`px-3 py-1.5 rounded-md font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer ${
               filterTab === 'conflicts'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground font-medium'
+                : 'text-muted-foreground hover:bg-muted'
             }`}
           >
             Conflicts (<span className="tabular-nums font-mono">{conflicts.length}</span>)
@@ -138,8 +138,8 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
             onClick={() => setFilterTab('pending')}
             className={`px-3 py-1.5 rounded-md font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer ${
               filterTab === 'pending'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground font-medium'
+                : 'text-muted-foreground hover:bg-muted'
             }`}
           >
             Pending / In-Flight (<span className="tabular-nums font-mono">{pendingPushes.length}</span>)
@@ -158,11 +158,11 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
         <div className="space-y-3">
           {isLoadingConflicts ? (
             <div className="py-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-              <RefreshCw className="size-3.5 animate-spin" /> Loading conflict inbox...
+              <RefreshCw className="size-3.5 animate-spin shrink-0" /> Loading conflict inbox...
             </div>
           ) : conflicts.length === 0 ? (
-            <div className="py-12 text-center space-y-2 border rounded-xl border-dashed">
-              <ShieldCheck className="size-8 text-emerald-500 mx-auto opacity-80" />
+            <div className="py-12 text-center space-y-2 border rounded-md border-dashed">
+              <ShieldCheck className="size-8 text-success mx-auto opacity-80 shrink-0" />
               <div className="text-sm font-semibold text-foreground">Zero Active Conflicts</div>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 All catalog items and remote Zotero records are fully synchronized without version divergence.
@@ -173,12 +173,12 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
               {conflicts.map((c) => (
                 <div
                   key={c.id}
-                  className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/5 flex flex-wrap items-center justify-between gap-3"
+                  className="p-4 rounded-lg border border-warning/30 bg-warning/5 flex flex-wrap items-center justify-between gap-3"
                 >
                   <div className="space-y-1 max-w-lg">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm text-foreground">{c.title}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-warning/20 text-warning border border-warning/30">
                         Conflict Detected
                       </span>
                     </div>
@@ -191,9 +191,9 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
                     <Button
                       size="sm"
                       onClick={() => handleOpenResolver(c)}
-                      className="bg-amber-600 hover:bg-amber-700 gap-1.5 text-xs text-white"
+                      className="bg-warning hover:bg-warning/90 gap-1.5 text-xs text-white"
                     >
-                      <AlertTriangle className="size-3.5" />
+                      <AlertTriangle className="size-3.5 shrink-0" />
                       Resolve Conflict
                     </Button>
                   )}
@@ -209,11 +209,11 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
         <div className="space-y-3">
           {isLoadingPendingPushes ? (
             <div className="py-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-              <RefreshCw className="size-3.5 animate-spin" /> Loading pending pushes...
+              <RefreshCw className="size-3.5 animate-spin shrink-0" /> Loading pending pushes...
             </div>
           ) : pendingPushes.length === 0 ? (
-            <div className="py-12 text-center space-y-2 border rounded-xl border-dashed">
-              <CheckCircle2 className="size-8 text-emerald-500 mx-auto opacity-80" />
+            <div className="py-12 text-center space-y-2 border rounded-md border-dashed">
+              <CheckCircle2 className="size-8 text-success mx-auto opacity-80 shrink-0" />
               <div className="text-sm font-semibold text-foreground">No Pending Outgoing Pushes</div>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 No items are currently waiting to be pushed to remote Zotero libraries.
@@ -227,7 +227,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
                   <div
                     key={p.id}
                     className={`p-4 rounded-lg border flex flex-wrap items-center justify-between gap-3 ${
-                      isFailed ? 'border-destructive/30 bg-destructive/5' : 'bg-muted/20'
+                      isFailed ? 'border-destructive/30 bg-destructive/5' : 'bg-muted'
                     }`}
                   >
                     <div className="space-y-1">

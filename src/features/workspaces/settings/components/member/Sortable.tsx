@@ -32,7 +32,7 @@ export function Sortable({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer outline-none group"
+          className="flex items-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary group"
         >
           <span className={cn('transition-colors', active ? 'text-foreground font-semibold' : '')}>
             {label}
@@ -46,12 +46,12 @@ export function Sortable({
           />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44 p-1 text-xs shadow-lg">
+      <DropdownMenuContent align="start" className="w-44 p-1 text-xs">
         <DropdownMenuItem
           onClick={() => onSort(field, 'asc')}
           className={cn(
             'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-xs',
-            active && sortDirection === 'asc' && 'bg-accent font-medium',
+            active && sortDirection === 'asc' && 'bg-muted font-medium',
           )}
         >
           <ArrowDownAZ className="size-3.5 text-muted-foreground shrink-0" />
@@ -61,7 +61,7 @@ export function Sortable({
           onClick={() => onSort(field, 'desc')}
           className={cn(
             'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-xs',
-            active && sortDirection === 'desc' && 'bg-accent font-medium',
+            active && sortDirection === 'desc' && 'bg-muted font-medium',
           )}
         >
           <ArrowUpZA className="size-3.5 text-muted-foreground shrink-0" />

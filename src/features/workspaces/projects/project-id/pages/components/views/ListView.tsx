@@ -14,7 +14,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
     <div className="p-6">
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-muted/40 text-muted-foreground border-b border-border text-xs">
+          <thead className="bg-muted text-muted-foreground border-b border-border text-xs">
             <tr>
               <th className="px-4 py-3 font-medium">Title</th>
               <th className="px-4 py-3 font-medium">Updated</th>
@@ -36,13 +36,13 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
               const linkHref = `/${workspaceId}/projects/${projId}/pages/${page.id}${fileQuery}`;
 
               return (
-                <tr key={page.id} className="hover:bg-muted/30 transition-colors group">
+                <tr key={page.id} className="hover:bg-muted transition-colors group">
                   <td className="px-4 py-3">
                     <Link
                       href={linkHref}
-                      className="flex items-center gap-2.5 font-medium text-foreground hover:text-primary transition-colors"
+                      className="flex items-center gap-2.5 font-medium text-foreground hover:underline transition-colors"
                     >
-                      <FileText className="size-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      <FileText className="size-4 text-foreground shrink-0" />
                       <span className="line-clamp-1">{page.title}</span>
                     </Link>
                   </td>
@@ -55,9 +55,9 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={linkHref}
-                      className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-foreground transition-colors"
                     >
-                      <ChevronRight className="size-4" />
+                      <ChevronRight className="size-4 shrink-0" />
                     </Link>
                   </td>
                 </tr>

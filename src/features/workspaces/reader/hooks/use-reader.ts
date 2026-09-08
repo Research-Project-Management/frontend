@@ -9,6 +9,8 @@ import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { usePdf } from './use-pdf';
 import { ItemsService } from '../services/items.service';
 import { ReadingService } from '../services/reading.service';
+import { AnnotationsService } from '../services/annotations.service';
+import { readerAnnotationKeys } from './use-annotations';
 import { useLibraryReaderStore } from '../store/reader.store';
 import type { ReaderPanel, ReaderDocument } from '../types/reader.types';
 
@@ -63,17 +65,31 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     }
   }, []);
 
-  const [panelWidth, setPanelWidth] = useState(() => {
-    if (typeof window === 'undefined') return DEFAULT_PANEL_WIDTH;
-    const saved = localStorage.getItem('flux_reader_panel_width');
-    return saved ? Number(saved) || DEFAULT_PANEL_WIDTH : DEFAULT_PANEL_WIDTH;
-  });
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
+  const isWidthLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('flux_reader_panel_width');
+      if (saved) {
+        const width = Number(saved);
+        if (width >= MIN_PANEL_WIDTH && width <= MAX_PANEL_WIDTH) {
+          setPanelWidth(width);
+        }
+      }
+      isWidthLoadedRef.current = true;
+    }
+  }, []);
 
   const [isResizingPanel, setIsResizingPanel] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const [selectionContext, setSelectionContext] = useState('');
   const [pendingNoteText, setPendingNoteText] = useState('');
   const [bibtexOpen, setBibtexOpen] = useState(false);
+  const [targetPage, setTargetPage] = useState<{ pageNumber: number; timestamp: number } | null>(null);
+
+  const effectiveAttachmentId =
+    paper?.attachments?.[0]?.id || paper?.primaryFile?.fileId || undefined;
 
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
@@ -103,6 +119,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   }, [activePanel]);
 
   useEffect(() => {
+    if (!isWidthLoadedRef.current) return;
     localStorage.setItem('flux_reader_panel_width', String(panelWidth));
   }, [panelWidth]);
 
@@ -149,8 +166,41 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setActivePanel('notes');
   };
 
-  const handleAnnotate = (_text: string, _pageNum?: number) => {
+  const handleNavigateToPage = (pageNumber: number) => {
+    if (pageNumber >= 1) {
+      setTargetPage({ pageNumber, timestamp: Date.now() });
+    }
+  };
+
+  const handleAnnotate = async (text: string, pageNum?: number) => {
     setActivePanel('annotations');
+    if (!workspaceId || !effectiveAttachmentId) return;
+
+    const quote = text?.trim();
+    if (!quote) return;
+
+    try {
+      const pageIndex = pageNum !== undefined && pageNum > 0 ? pageNum - 1 : 0;
+      await AnnotationsService.create(workspaceId, effectiveAttachmentId, {
+        type: 'highlight',
+        pageIndex,
+        color: '#ffeb3b',
+        quoteText: quote,
+      });
+      qc.invalidateQueries({
+        queryKey: readerAnnotationKeys.byAttachment(workspaceId, effectiveAttachmentId),
+      });
+      toast.success('Highlight created', {
+        description: `Saved to page ${pageIndex + 1}.`,
+        id: 'reader-annotation-toast',
+      });
+    } catch (err) {
+      console.error('Failed to create highlight annotation:', err);
+      toast.error('Failed to create highlight', {
+        description: getErrorMessage(err) || 'Could not save highlight. Please try again.',
+        id: 'reader-annotation-toast',
+      });
+    }
   };
 
   const clearSelectionContext = () => setSelectionContext('');
@@ -230,6 +280,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       bibtexOpen,
       fulltext,
       isLoadingFulltext,
+      targetPage,
     },
     actions: {
       setActivePanel,
@@ -238,6 +289,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleAskAi,
       handleAddToNote,
       handleAnnotate,
+      handleNavigateToPage,
       setPendingNoteText,
       clearSelectionContext,
       handleReindex,

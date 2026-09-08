@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
@@ -22,6 +22,7 @@ import { StatusModal, type StatusModalType } from '../components/modals/StatusMo
 import type { Cycle, CycleMilestone } from '../types/cycle.types';
 import { TopBar as Topbar } from '@/features/workspaces/settings/components/layout/TopBar';
 import CycleTopBarActions from '../components/layout/Topbar';
+import { logger } from '@/shared/lib/logger';
 
 const PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },
@@ -59,22 +60,28 @@ export function CyclePage() {
   const [phases, setPhases] = useState(PHASES);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<Cycle | null>(null);
-  const [labelDetailsCycleIds, setLabelDetailsCycleIds] = useState<Set<string>>(() => {
-    if (typeof window !== "undefined") {
+  const [labelDetailsCycleIds, setLabelDetailsCycleIds] = useState<Set<string>>(() => new Set<string>());
+  const isLabelStateLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && projectId) {
       const saved = localStorage.getItem(`cycle-labels-expanded-${projectId}`);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            return new Set<string>(parsed.filter((item): item is string => typeof item === "string"));
+            setLabelDetailsCycleIds(new Set<string>(parsed.filter((item): item is string => typeof item === "string")));
           }
-        } catch {}
+        } catch (err) {
+          logger.debug('[CyclePage] Failed to parse expanded label state', { err });
+        }
       }
+      isLabelStateLoadedRef.current = true;
     }
-    return new Set<string>();
-  });
+  }, [projectId]);
 
   useEffect(() => {
+    if (!isLabelStateLoadedRef.current) return;
     localStorage.setItem(`cycle-labels-expanded-${projectId}`, JSON.stringify(Array.from(labelDetailsCycleIds)));
   }, [labelDetailsCycleIds, projectId]);
 
@@ -349,18 +356,18 @@ export function CyclePage() {
             <div className="mt-1">
               {cycles.length === 0 && !searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
-                  <RotateCcw className="size-10 text-foreground/40 mb-4" strokeWidth={1.5} />
+                  <RotateCcw className="size-10 text-muted-foreground mb-4 shrink-0" strokeWidth={1.5} />
                   <h3 className="text-base font-semibold text-foreground mb-1.5">No cycles found</h3>
                   <p className="text-xs text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
                   <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
-                    <Plus className="size-4" />
+                    <Plus className="size-4 shrink-0" />
                     <span>Create your first cycle</span>
                   </Button>
                 </div>
               ) : (
-                <div className="border border-border/80 rounded-lg overflow-hidden flex flex-col bg-card">
+                <div className="border border-border rounded-lg overflow-hidden flex flex-col bg-card">
                   {(["active", "planned", "completed"] as DerivedStatus[]).map((status) => (
                 <ListViewGroup
                   key={status}

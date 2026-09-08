@@ -54,9 +54,9 @@ export default function ModulesPage() {
           size="sm"
           onClick={save}
           disabled={!hasChanges || isSaving}
-          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs shrink-0"
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none shrink-0"
         >
-          {isSaving && <Loader2 className="mr-2 size-3.5 animate-spin" />}
+          {isSaving && <Loader2 className="mr-2 size-3.5 animate-spin shrink-0" />}
           Save changes
         </Button>
       </div>

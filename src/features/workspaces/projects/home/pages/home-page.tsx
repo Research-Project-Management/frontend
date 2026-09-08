@@ -104,7 +104,7 @@ export default function HomePage() {
         saveConfig={saveSectionConfig}
       />
 
-      <main className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <main className="flex-1 overflow-y-auto no-scrollbar">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
           {/* Greeting Section */}
           <div className="flex flex-col items-center justify-center text-center space-y-2 mt-6 mb-8">
@@ -138,9 +138,9 @@ export default function HomePage() {
               <Comp key={id} />
             ))
           ) : mounted ? (
-            <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border-2 border-dashed border-border/60 bg-muted/10 mx-6 mb-6">
+            <div className="flex flex-col items-center justify-center p-12 text-center rounded-lg border-2 border-dashed border-border bg-muted mx-6 mb-6">
               <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-5">
-                <Shapes className="size-6" />
+                <Shapes className="size-6 shrink-0" />
               </div>
               <h3 className="text-base font-semibold text-foreground mb-1">
                 It's Quiet Without Widgets
@@ -150,7 +150,7 @@ export default function HomePage() {
               </p>
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="mt-6 px-5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors shadow-none"
+                className="mt-6 px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors shadow-none"
               >
                 Enable Widgets
               </button>

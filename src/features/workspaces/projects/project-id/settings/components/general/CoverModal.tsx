@@ -106,21 +106,21 @@ export function CoverModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="max-w-xl p-5 rounded-lg border border-border/80 bg-background shadow-2xl space-y-4">
+      <DialogContent className="max-w-xl p-5 rounded-lg border border-border bg-background space-y-4">
         <DialogHeader className="sr-only">
           <DialogTitle>Change Project Cover</DialogTitle>
         </DialogHeader>
 
         {/* ── Top Tabs Segment Control (Image 3, 4, 5) ── */}
-        <div className="grid grid-cols-3 p-1 rounded-lg bg-muted/60 border border-border/60">
+        <div className="grid grid-cols-3 p-1 rounded-md bg-muted border border-border">
           <button
             type="button"
             onClick={() => setTab('unsplash')}
             className={cn(
-              'h-8 text-xs font-medium rounded-lg transition-all cursor-pointer',
+              'h-8 text-xs font-medium rounded-md transition-all cursor-pointer',
               tab === 'unsplash'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground font-semibold'
+                : 'text-foreground hover:bg-background/40'
             )}
           >
             Unsplash
@@ -130,10 +130,10 @@ export function CoverModal({
             type="button"
             onClick={() => setTab('images')}
             className={cn(
-              'h-8 text-xs font-medium rounded-lg transition-all cursor-pointer',
+              'h-8 text-xs font-medium rounded-md transition-all cursor-pointer',
               tab === 'images'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground font-semibold'
+                : 'text-foreground hover:bg-background/40'
             )}
           >
             Images
@@ -143,10 +143,10 @@ export function CoverModal({
             type="button"
             onClick={() => setTab('upload')}
             className={cn(
-              'h-8 text-xs font-medium rounded-lg transition-all cursor-pointer',
+              'h-8 text-xs font-medium rounded-md transition-all cursor-pointer',
               tab === 'upload'
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground font-semibold'
+                : 'text-foreground hover:bg-background/40'
             )}
           >
             Upload
@@ -162,11 +162,11 @@ export function CoverModal({
                 placeholder="Search for images"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none"
+                className="h-9 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none"
               />
               <Button
                 type="button"
-                className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shrink-0 shadow-2xs"
+                className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shrink-0 "
               >
                 Search
               </Button>
@@ -179,7 +179,7 @@ export function CoverModal({
                   key={`unsplash-${i}`}
                   type="button"
                   onClick={() => handlePick(url)}
-                  className="group relative aspect-video rounded-lg overflow-hidden border border-border/60 hover:border-primary/80 transition-all cursor-pointer focus:outline-none"
+                  className="group relative aspect-video rounded-lg overflow-hidden border border-border hover:border-primary/80 transition-all cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <img
                     src={url}
@@ -203,7 +203,7 @@ export function CoverModal({
                 key={`curated-${i}`}
                 type="button"
                 onClick={() => handlePick(url)}
-                className="group relative aspect-video rounded-lg overflow-hidden border border-border/60 hover:border-primary/80 transition-all cursor-pointer focus:outline-none"
+                className="group relative aspect-video rounded-lg overflow-hidden border border-border hover:border-primary/80 transition-all cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <img
                   src={url}
@@ -223,9 +223,9 @@ export function CoverModal({
           <div className="space-y-4">
             <label
               htmlFor="cover-file-dropzone"
-              className="relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-border/80 hover:border-primary/60 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer min-h-[160px]"
+              className="relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-border hover:border-primary/60 rounded-lg bg-muted hover:bg-muted transition-colors cursor-pointer min-h-[160px]"
             >
-              <div className="absolute top-2 right-2 text-xs text-muted-foreground font-medium border border-border/60 px-1.5 py-0.5 rounded bg-background">
+              <div className="absolute top-2 right-2 text-xs text-muted-foreground font-medium border border-border px-1.5 py-0.5 rounded bg-background">
                 Edit
               </div>
 
@@ -233,7 +233,7 @@ export function CoverModal({
                 <img
                   src={previewUrl}
                   alt="Preview"
-                  className="max-h-28 rounded-lg object-cover shadow-xs"
+                  className="max-h-28 rounded-lg object-cover "
                 />
               ) : (
                 <div className="text-center space-y-1">
@@ -275,9 +275,9 @@ export function CoverModal({
                 type="button"
                 onClick={handleUploadAndSave}
                 disabled={!selectedFile || isUploading}
-                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs disabled:opacity-50"
+                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer disabled:opacity-50"
               >
-                {isUploading && <Loader2 className="size-3.5 animate-spin mr-1.5" />}
+                {isUploading && <Loader2 className="size-3.5 animate-spin mr-1.5 shrink-0" />}
                 Upload & Save
               </Button>
             </div>

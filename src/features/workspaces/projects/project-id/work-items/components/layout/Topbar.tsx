@@ -142,9 +142,10 @@ export function Topbar({
   return (
     <header
       className={cn(
-        'flex items-center justify-between border-b border-border/50 bg-background/80 px-4 h-12 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
+        'flex items-center justify-between border-b border-border bg-background/80 px-4 h-12 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
         className,
       )}
+      style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Title & Project/Cycle Context */}
       <div className="flex items-center gap-2 min-w-0">
@@ -168,7 +169,7 @@ export function Topbar({
                   className="flex items-center gap-1 text-xs text-foreground hover:bg-muted px-1.5 py-1 rounded-sm transition-colors cursor-pointer"
                 >
                   <span>Switch Cycle</span>
-                  <ChevronDown className="size-3 text-foreground" />
+                  <ChevronDown className="size-3 text-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52">
@@ -207,8 +208,8 @@ export function Topbar({
           className={cn(
             'relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group',
             isSearchExpanded || searchQuery
-              ? 'w-64 border border-border/50 bg-background'
-              : 'w-8 hover:bg-secondary/80 cursor-pointer',
+              ? 'w-64 border border-border bg-background'
+              : 'w-8 hover:bg-muted cursor-pointer',
           )}
           onClick={expandSearch}
         >
@@ -235,17 +236,17 @@ export function Topbar({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-foreground transition-colors cursor-pointer"
               aria-label="Clear search"
             >
-              <Plus className="size-3.5 rotate-45 text-foreground" />
+              <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />
             </button>
           )}
         </div>
 
         {/* 2. View Toggle Segmented Control (Storage Standard with Framer Motion) */}
         <TooltipProvider delayDuration={150}>
-          <div className="flex items-center bg-muted p-1 rounded-lg">
+          <div className="flex items-center bg-muted p-1 rounded-md">
             {viewOptions.map((v) => {
               const IconComp = v.icon;
               const isSelected = viewMode === v.id;
@@ -256,20 +257,20 @@ export function Topbar({
                       type="button"
                       onClick={() => onViewChange(v.id)}
                       className={cn(
-                        'relative p-1.5 rounded-md transition-colors cursor-pointer outline-none',
-                        isSelected ? 'text-foreground font-semibold' : 'text-foreground/70 hover:text-foreground hover:bg-muted/50',
+                        'relative p-1.5 rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        isSelected ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground',
                       )}
                       aria-label={v.label}
                     >
                       {isSelected && (
                         <motion.div
                           layoutId="task-view-toggle"
-                          className="absolute inset-0 bg-black/10 dark:bg-white/10 rounded-md shadow-xs"
+                          className="absolute inset-0 bg-background rounded-md shadow-xs"
                           transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
                         />
                       )}
                       <span className="relative z-10 flex">
-                        <IconComp className="size-4 text-foreground" strokeWidth={2.2} />
+                        <IconComp className="size-4 text-foreground shrink-0" strokeWidth={2.2} />
                       </span>
                     </button>
                   </TooltipTrigger>
@@ -290,14 +291,14 @@ export function Topbar({
                     variant="outline"
                     size="icon"
                     className={cn(
-                      'relative size-8 rounded-lg bg-transparent border-border/60 cursor-pointer outline-none transition-colors',
+                      'relative size-8 rounded-md bg-transparent border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors',
                       hasActiveFilters && 'border-primary/50 bg-primary/5 text-primary',
                     )}
                     aria-label="Filter tasks"
                   >
-                    <ListFilter className="size-4 text-foreground" strokeWidth={2.2} />
+                    <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={2.2} />
                     {hasActiveFilters && (
-                      <span className="absolute -top-1 -right-1 size-4 flex items-center justify-center rounded-full bg-primary text-[10px] font-medium tabular-nums text-primary-foreground">
+                      <span className="absolute -top-1 -right-1 size-4 flex items-center justify-center rounded-full bg-primary text-10 font-medium tabular-nums text-primary-foreground">
                         {totalActiveFilters}
                       </span>
                     )}
@@ -309,8 +310,8 @@ export function Topbar({
               </TooltipContent>
             </Tooltip>
 
-            <PopoverContent align="end" className="w-72 p-3 space-y-4 rounded-lg shadow-xl">
-              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+            <PopoverContent align="end" className="w-72 p-3 space-y-4 rounded-md">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <span className="text-xs font-semibold text-foreground">
                   Filters {hasActiveFilters && `(${totalActiveFilters})`}
                 </span>
@@ -318,9 +319,9 @@ export function Topbar({
                   <button
                     type="button"
                     onClick={clearAllFilters}
-                    className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-medium text-foreground hover:bg-muted px-1.5 py-0.5 rounded-md flex items-center gap-1 cursor-pointer"
                   >
-                    <RotateCcw className="size-3" />
+                    <RotateCcw className="size-3 shrink-0" />
                     Clear all
                   </button>
                 )}
@@ -415,9 +416,9 @@ export function Topbar({
                 variant="outline"
                 size="sm"
                 onClick={onAddExistingTask}
-                className="h-8 gap-1.5 px-3 text-sm font-medium border-border/80 hover:bg-muted rounded-lg shadow-2xs cursor-pointer"
+                className="h-8 gap-1.5 px-3 text-sm font-medium border-border hover:bg-muted rounded-md cursor-pointer"
               >
-                <ArrowRightLeft className="size-3.5" />
+                <ArrowRightLeft className="size-3.5 shrink-0" />
                 <span className="hidden sm:inline">Add Existing</span>
               </Button>
             )}
@@ -425,9 +426,9 @@ export function Topbar({
             <Button
               size="sm"
               onClick={onAddTask}
-              className="h-8 gap-1.5 px-3 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-xs cursor-pointer transition-all active:scale-[0.98]"
+              className="h-8 gap-1.5 px-3 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer transition-all active:scale-[0.98]"
             >
-              <Plus className="size-3.5" strokeWidth={2.5} />
+              <Plus className="size-3.5 shrink-0" strokeWidth={2.5} />
               <span>Add Work Item</span>
             </Button>
           </div>

@@ -146,10 +146,10 @@ export const TOOL_LABELS: Record<string, { label: string; icon: string; category
 /** Color scheme per tool category */
 export const TOOL_CATEGORY_COLORS: Record<ToolCategory, string> = {
   read:    'text-primary',
-  create:  'text-emerald-600 dark:text-emerald-400',
-  update:  'text-amber-600 dark:text-amber-400',
-  delete:  'text-red-500',
-  analyze: 'text-violet-600 dark:text-violet-400',
+  create:  'text-success',
+  update:  'text-warning',
+  delete:  'text-destructive',
+  analyze: 'text-primary',
 };
 
 // ── Agent Configuration ─────────────────────────────────────────────────────────
@@ -187,9 +187,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: 'Documents',
     description: 'Search and summarize your uploaded files',
     icon: '',
-    color: 'text-violet-500',
-    bg: 'bg-violet-500/8 hover:bg-violet-500/14',
-    border: 'border-violet-500/25',
+    color: 'text-primary',
+    bg: 'bg-primary/8 hover:bg-primary/14',
+    border: 'border-primary/25',
     quickPrompts: [
       'Summarize this document',
       'What are the key findings?',
@@ -201,9 +201,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: 'Analyze',
     description: 'Review data and research papers',
     icon: '',
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-500/8 hover:bg-emerald-500/14',
-    border: 'border-emerald-500/25',
+    color: 'text-success',
+    bg: 'bg-success/8 hover:bg-success/14',
+    border: 'border-success/25',
     quickPrompts: [
       'Compare these papers',
       'Analyze the data',
@@ -215,9 +215,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: 'LaTeX',
     description: 'Generate equations, tables, and templates',
     icon: '',
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-500/8 hover:bg-amber-500/14',
-    border: 'border-amber-500/25',
+    color: 'text-warning',
+    bg: 'bg-warning/8 hover:bg-warning/14',
+    border: 'border-warning/25',
     quickPrompts: [
       'Generate an equation',
       'Create a table',
@@ -229,9 +229,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: 'Web Search',
     description: 'Search academic and general web sources',
     icon: '',
-    color: 'text-sky-600 dark:text-sky-400',
-    bg: 'bg-sky-500/8 hover:bg-sky-500/14',
-    border: 'border-sky-500/25',
+    color: 'text-primary',
+    bg: 'bg-primary/8 hover:bg-primary/14',
+    border: 'border-primary/25',
     quickPrompts: [
       'Find papers on...',
       'Latest research in...',
@@ -243,9 +243,9 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     label: 'Task Planner',
     description: 'Break down work into actionable tasks',
     icon: '',
-    color: 'text-rose-600 dark:text-rose-400',
-    bg: 'bg-rose-500/8 hover:bg-rose-500/14',
-    border: 'border-rose-500/25',
+    color: 'text-destructive',
+    bg: 'bg-destructive/8 hover:bg-destructive/14',
+    border: 'border-destructive/25',
     quickPrompts: [
       'Plan a research sprint',
       'Break down this feature',
@@ -258,8 +258,8 @@ export const AGENT_CONFIGS: AgentConfig[] = [
     description: 'General conversational AI',
     icon: '',
     color: 'text-muted-foreground',
-    bg: 'bg-secondary/50 hover:bg-secondary/80',
-    border: 'border-border/60',
+    bg: 'bg-muted hover:bg-muted',
+    border: 'border-border',
     quickPrompts: [
       'Explain this concept',
       'Help me think through...',

@@ -78,7 +78,7 @@ export function CreateModal({
             Cancel
           </Button>
           <Button onClick={handleCreate} disabled={isCreating || !title.trim() || !selectedProjectId}>
-            {isCreating && <Loader2 className="mr-2 size-4 animate-spin" />}
+            {isCreating && <Loader2 className="mr-2 size-4 animate-spin shrink-0" />}
             Create
           </Button>
         </DialogFooter>

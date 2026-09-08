@@ -33,6 +33,7 @@ interface PanelProps {
   clearPendingNoteText?: () => void;
   setActivePanel: (v: ReaderPanel | null) => void;
   onResizeMouseDown: (e: React.MouseEvent) => void;
+  onNavigateToPage?: (pageNumber: number) => void;
 }
 
 export default function Panel({
@@ -46,6 +47,7 @@ export default function Panel({
   clearPendingNoteText,
   setActivePanel,
   onResizeMouseDown,
+  onNavigateToPage,
 }: PanelProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -109,12 +111,12 @@ export default function Panel({
                   'relative flex items-center gap-1.5 h-full px-2.5 text-xs font-medium transition-colors cursor-pointer border-b-2 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none',
                   active
                     ? 'border-primary text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                    : 'border-transparent text-muted-foreground hover:bg-muted',
                 )}
               >
                 <span>{tab.label}</span>
                 {tab.count ? (
-                  <span className="text-[11px] font-mono text-muted-foreground">
+                  <span className="text-11 font-mono text-muted-foreground">
                     ({tab.count})
                   </span>
                 ) : null}
@@ -137,7 +139,7 @@ export default function Panel({
                   aria-label="Confirm clear"
                   className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
                 >
-                  <Check className="size-3.5" />
+                  <Check className="size-3.5 shrink-0" />
                 </button>
                 <button
                   type="button"
@@ -146,7 +148,7 @@ export default function Panel({
                   aria-label="Cancel"
                   className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3.5 shrink-0" />
                 </button>
               </div>
             ) : (
@@ -158,9 +160,9 @@ export default function Panel({
                       size="icon-sm"
                       onClick={() => setShowClearConfirm(true)}
                       aria-label="Clear chat"
-                      className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none cursor-pointer rounded-sm"
+                      className="size-7 text-muted-foreground hover:bg-destructive/10 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none cursor-pointer rounded-sm"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-3.5 shrink-0" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
@@ -179,9 +181,9 @@ export default function Panel({
                   size="icon-sm"
                   onClick={() => setActivePanel(null)}
                   aria-label="Close panel"
-                  className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm"
+                  className="size-7 text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3.5 shrink-0" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
@@ -203,7 +205,7 @@ export default function Panel({
         >
           {isLoading ? (
             <div className="flex h-full items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <Loader2 className="size-5 animate-spin text-muted-foreground shrink-0" />
             </div>
           ) : paper ? (
             <ChatPanel
@@ -256,6 +258,7 @@ export default function Panel({
               paper={paper}
               workspaceId={workspaceId}
               attachmentId={paper.attachments?.[0]?.id}
+              onNavigateToPage={onNavigateToPage}
             />
           ) : null}
         </div>

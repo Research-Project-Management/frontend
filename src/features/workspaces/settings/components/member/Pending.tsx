@@ -20,8 +20,8 @@ export function PendingInvites({
   if (invites.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4 text-center select-none">
-        <div className="size-12 rounded-lg border border-border/80 bg-muted/20 flex items-center justify-center mb-3">
-          <Mail className="size-5 text-muted-foreground stroke-[1.5]" />
+        <div className="size-12 rounded-lg border border-border bg-muted flex items-center justify-center mb-3">
+          <Mail className="size-5 text-muted-foreground stroke-[1.5] shrink-0" />
         </div>
         <h3 className="text-sm font-semibold text-foreground">
           No pending invitations
@@ -34,10 +34,10 @@ export function PendingInvites({
   }
 
   return (
-    <div className="rounded-lg border border-border/80 overflow-hidden bg-background">
+    <div className="rounded-lg border border-border overflow-hidden bg-background">
       <table className="w-full text-left text-xs border-collapse">
         <thead>
-          <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground">
+          <tr className="border-b border-border bg-muted text-muted-foreground">
             <th className="py-2.5 px-4 font-medium">Email</th>
             <th className="py-2.5 px-4 font-medium">Role</th>
             <th className="py-2.5 px-4 font-medium">Invited on</th>
@@ -46,7 +46,7 @@ export function PendingInvites({
         </thead>
         <tbody className="divide-y divide-border/60">
           {invites.map((invite) => (
-            <tr key={invite.id} className="hover:bg-muted/20 transition-colors group">
+            <tr key={invite.id} className="hover:bg-muted transition-colors group">
               <td className="py-3 px-4 font-medium text-foreground">
                 {invite.email}
               </td>
@@ -56,7 +56,7 @@ export function PendingInvites({
                 </Badge>
               </td>
               <td className="py-3 px-4 text-muted-foreground flex items-center gap-1.5">
-                <Clock className="size-3 text-muted-foreground" />
+                <Clock className="size-3 text-muted-foreground shrink-0" />
                 <span>{invite.createdAt}</span>
               </td>
               <td className="py-3 px-2 text-right pr-4">
@@ -65,10 +65,10 @@ export function PendingInvites({
                     variant="ghost"
                     size="icon"
                     onClick={() => onCancelInvite(invite.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity size-7 text-muted-foreground hover:bg-destructive/10 shrink-0 cursor-pointer rounded-md"
                     title="Cancel invitation"
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-3.5 shrink-0" />
                   </Button>
                 )}
               </td>

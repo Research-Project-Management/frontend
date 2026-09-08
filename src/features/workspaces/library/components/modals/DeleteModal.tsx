@@ -72,11 +72,11 @@ export default function DeleteModal({
             className={cn(
               'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
               isRed
-                ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400'
-                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-primary/10 text-primary'
             )}
           >
-            {icon || <Trash2 className="h-5 w-5" />}
+            {icon || <Trash2 className="h-5 w-5 shrink-0" />}
           </div>
 
           <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export default function DeleteModal({
             {children}
 
             {itemName && !children && (
-              <div className="mt-3 px-3 py-2 rounded-md bg-muted/40 border border-border/50 text-xs text-foreground truncate font-normal leading-relaxed">
+              <div className="mt-3 px-3 py-2 rounded-md bg-muted border border-border text-xs text-foreground truncate font-normal leading-relaxed">
                 {itemName}
               </div>
             )}
@@ -116,13 +116,13 @@ export default function DeleteModal({
             className={cn(
               'cursor-pointer shadow-none !rounded-md',
               isRed
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
             )}
           >
             {isDeleting ? (
               <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="size-3.5 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin shrink-0" />
                 <span>Moving...</span>
               </span>
             ) : (

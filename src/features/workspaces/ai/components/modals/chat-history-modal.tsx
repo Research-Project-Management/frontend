@@ -158,13 +158,13 @@ export function ChatHistoryModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[80vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/40">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
           <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {description}
           </DialogDescription>
           <div className="relative mt-2">
-            <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
             <input
               type="text"
               value={search}
@@ -204,10 +204,10 @@ export function ChatHistoryModal({
                           key={chat.id}
                           onClick={() => handleSelect(chat)}
                           className={cn(
-                            'group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border text-xs cursor-pointer transition-colors',
+                            'group flex items-center justify-between gap-3 px-3 py-2.5 rounded-md border text-xs cursor-pointer transition-colors',
                             isActive
                               ? 'border-primary/40 bg-primary/5 text-foreground font-medium'
-                              : 'border-transparent hover:border-border hover:bg-secondary/40 text-foreground/90',
+                              : 'border-transparent hover:border-border hover:bg-muted text-foreground',
                           )}
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -243,18 +243,18 @@ export function ChatHistoryModal({
                               <button
                                 type="button"
                                 onClick={(e) => handleStartRename(e, chat)}
-                                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                                className="p-1 rounded-md hover:bg-muted text-foreground cursor-pointer"
                                 title="Rename"
                               >
-                                <Pencil className="size-3.5" />
+                                <Pencil className="size-3.5 shrink-0" />
                               </button>
                               <button
                                 type="button"
                                 onClick={(e) => handleDelete(e, chat.id)}
-                                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"
+                                className="p-1 rounded text-muted-foreground hover:bg-destructive/10"
                                 title="Delete"
                               >
-                                <Trash2 className="size-3.5" />
+                                <Trash2 className="size-3.5 shrink-0" />
                               </button>
                             </div>
                           )}

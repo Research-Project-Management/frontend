@@ -45,7 +45,7 @@ export function WorklogDateRange({
         <button
           type="button"
           className={cn(
-            'h-8 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/40 text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none shrink-0',
+            'h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0',
             hasFilter && 'border-primary/50 text-primary bg-primary/5'
           )}
         >
@@ -55,14 +55,14 @@ export function WorklogDateRange({
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-64 p-3 rounded-lg space-y-3">
+      <PopoverContent align="start" className="w-64 p-3 rounded-md space-y-3">
         <div className="space-y-1">
           <Label className="text-xs font-medium text-foreground">Start date</Label>
           <Input
             type="date"
             value={localStart}
             onChange={(e) => setLocalStart(e.target.value)}
-            className="h-8 text-xs border-border/80 focus:ring-0 focus:outline-none"
+            className="h-8 text-xs border-border focus:ring-0 focus:outline-none"
           />
         </div>
 
@@ -72,7 +72,7 @@ export function WorklogDateRange({
             type="date"
             value={localEnd}
             onChange={(e) => setLocalEnd(e.target.value)}
-            className="h-8 text-xs border-border/80 focus:ring-0 focus:outline-none"
+            className="h-8 text-xs border-border focus:ring-0 focus:outline-none"
           />
         </div>
 
@@ -81,9 +81,9 @@ export function WorklogDateRange({
             <button
               type="button"
               onClick={handleReset}
-              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+              className="text-xs text-foreground cursor-pointer flex items-center gap-1"
             >
-              <X className="size-3" />
+              <X className="size-3 shrink-0" />
               <span>Clear</span>
             </button>
           ) : (
@@ -93,7 +93,7 @@ export function WorklogDateRange({
           <Button
             size="sm"
             onClick={handleSave}
-            className="h-7 text-xs px-3 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-2xs"
+            className="h-7 text-xs px-3 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-none"
           >
             Apply
           </Button>

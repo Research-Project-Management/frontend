@@ -45,10 +45,10 @@ export function SideBar() {
                 key={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] leading-5 transition-colors outline-none max-md:shrink-0',
+                  'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
                   isActive
                     ? 'bg-muted text-foreground font-medium'
-                    : 'text-foreground hover:bg-muted/70 font-normal',
+                    : 'text-foreground hover:bg-muted font-normal',
                 )}
               >
                 {isActive && (

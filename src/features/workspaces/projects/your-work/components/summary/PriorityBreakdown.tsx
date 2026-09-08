@@ -19,10 +19,10 @@ export function PriorityBreakdown({
 }: PriorityBreakdownProps) {
   const effectiveTotal = totalAssigned !== undefined ? totalAssigned : total;
   const priorities = [
-    { key: 'urgent', label: 'Urgent', color: 'text-red-600', dot: 'bg-red-500' },
-    { key: 'high', label: 'High', color: 'text-orange-600', dot: 'bg-orange-500' },
-    { key: 'medium', label: 'Medium', color: 'text-amber-600', dot: 'bg-amber-500' },
-    { key: 'low', label: 'Low', color: 'text-blue-600', dot: 'bg-blue-500' },
+    { key: 'urgent', label: 'Urgent', color: 'text-destructive', dot: 'bg-destructive' },
+    { key: 'high', label: 'High', color: 'text-warning', dot: 'bg-warning' },
+    { key: 'medium', label: 'Medium', color: 'text-warning', dot: 'bg-warning' },
+    { key: 'low', label: 'Low', color: 'text-primary', dot: 'bg-primary' },
     { key: 'none', label: 'None', color: 'text-muted-foreground', dot: 'bg-muted-foreground/60' },
   ];
 
@@ -31,14 +31,14 @@ export function PriorityBreakdown({
       <h3 className="text-foreground font-semibold mb-3 text-sm tracking-tight">
         Work items by Priority
       </h3>
-      <div className="flex-1 rounded-lg border border-border/80 bg-card p-6 flex flex-col justify-center items-center shadow-2xs min-h-[180px]">
+      <div className="flex-1 rounded-lg border border-border bg-card p-6 flex flex-col justify-center items-center shadow-none min-h-[180px]">
         {effectiveTotal === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-2">
             <div className="relative size-16 mb-2 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-lg border border-border/60 bg-muted/20 rotate-6" />
-              <div className="absolute inset-0 rounded-lg border border-border/70 bg-card -rotate-3" />
-              <div className="relative size-12 rounded-lg border border-border/90 bg-card flex items-center justify-center shadow-2xs">
-                <BarChart2 className="size-6 text-muted-foreground/40 stroke-[1.5]" />
+              <div className="absolute inset-0 rounded-lg border border-border bg-muted rotate-6" />
+              <div className="absolute inset-0 rounded-lg border border-border bg-card -rotate-3" />
+              <div className="relative size-12 rounded-lg border border-border bg-card flex items-center justify-center shadow-none">
+                <BarChart2 className="size-6 text-muted-foreground/40 stroke-[1.5] shrink-0" />
               </div>
             </div>
             <p className="text-xs text-muted-foreground font-medium">
@@ -52,7 +52,7 @@ export function PriorityBreakdown({
               return (
                 <div
                   key={p.key}
-                  className="p-3 rounded-lg bg-muted/30 border border-border/60 flex flex-col justify-between"
+                  className="p-3 rounded-lg bg-muted border border-border flex flex-col justify-between"
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className={cn('size-2 rounded-full', p.dot)} />

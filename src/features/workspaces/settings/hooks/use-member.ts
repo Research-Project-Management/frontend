@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/shared/lib/logger';
 import { toast } from 'sonner';
 import { workspaceKeys } from '@/features/workspaces/shell/services/workspace.service';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
@@ -273,7 +274,9 @@ export function useMember(workspaceId: string) {
           try {
             await createInviteMutAsync({ email: email.trim(), role: role || 'member' });
             count++;
-          } catch {}
+          } catch (err) {
+            logger.warn('[useMember] Failed to invite user during CSV import', { email, err });
+          }
         }
       }
       toast.success(`Sent invitations to ${count} members`);

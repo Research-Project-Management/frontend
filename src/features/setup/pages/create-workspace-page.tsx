@@ -92,7 +92,7 @@ export default function CreateWorkspacePage() {
                 id='name'
                 type='text'
                 placeholder='e.g. Acme Corp'
-                className='h-10 rounded-lg'
+                className='h-9 rounded-md'
                 {...register('name', {
                   onChange: (e) => {
                     if (!dirtyFields.url) {
@@ -116,7 +116,7 @@ export default function CreateWorkspacePage() {
                 Set your workspace's URL <span className='text-destructive'>*</span>
               </Label>
               <div className={cn(
-                "flex items-center w-full min-w-0 rounded-lg border border-input bg-transparent px-3 h-10 text-base md:text-sm transition-colors",
+                "flex items-center w-full min-w-0 rounded-md border border-input bg-transparent px-3 h-9 text-13 transition-colors",
                 "focus-within:border-ring focus-within:ring-1 focus-within:ring-ring"
               )}>
                 <span className='text-muted-foreground select-none shrink-0 pr-0.5'>
@@ -144,7 +144,7 @@ export default function CreateWorkspacePage() {
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                     <SelectTrigger size="sm" className={cn(
-                      "w-full text-base md:text-sm rounded-lg",
+                      "w-full h-9 text-13 rounded-md",
                       "focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
                     )}>
                       <SelectValue placeholder='Select team size' />
@@ -166,13 +166,13 @@ export default function CreateWorkspacePage() {
             {/* Actions */}
             <div className='flex items-center gap-4 pt-4'>
               <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 450, damping: 25 }}>
-                <Button type='submit' className='h-10 px-6 font-medium rounded-lg cursor-pointer' disabled={!isValid || isPending}>
-                  {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+                <Button type='submit' className='h-9 px-6 font-medium rounded-md cursor-pointer' disabled={!isValid || isPending}>
+                  {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin shrink-0' />}
                   {isPending ? 'Creating...' : 'Create workspace'}
                 </Button>
               </motion.div>
               <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 450, damping: 25 }}>
-                <Button variant='outline' type='button' asChild className='h-10 px-6 font-medium text-muted-foreground rounded-lg hover:bg-secondary hover:text-foreground transition-colors cursor-pointer'>
+                <Button variant='outline' type='button' asChild className='h-9 px-6 font-medium text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer'>
                   <Link href='/manage-workspace'>Go back</Link>
                 </Button>
               </motion.div>

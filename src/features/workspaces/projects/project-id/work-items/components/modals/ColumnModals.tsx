@@ -74,7 +74,7 @@ export function ColumnFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 shadow-2xl rounded-sm">
+      <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 rounded-sm">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
@@ -112,7 +112,7 @@ export function ColumnFormModal({
                       onClick={() => setValue("selectedColor", color.value, { shouldDirty: true })}
                       type="button"
                       className={`
-                        relative w-7 h-7 rounded-full transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center
+                        relative w-7 h-7 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer flex items-center justify-center
                         ${color.border ? "border border-border" : "border border-transparent"}
                         ${isSelected ? "ring-2 ring-offset-2 ring-primary scale-100" : "hover:scale-110 opacity-80 hover:opacity-100"}
                       `}
@@ -129,7 +129,7 @@ export function ColumnFormModal({
             </div>
           </div>
 
-          <div className="px-6 py-4 bg-muted/30 flex flex-row items-center justify-end gap-3 border-t border-border">
+          <div className="px-6 py-4 bg-muted flex flex-row items-center justify-end gap-3 border-t border-border">
             <Button
               type="button"
               variant="ghost"
@@ -177,15 +177,13 @@ export function DeleteColumnModal({
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogOverlay
-        className="absolute inset-0 z-50 bg-foreground/15 backdrop-blur-[0.5px]
-          data-[state=open]:animate-in data-[state=open]:fade-in-0
-          data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
+        className="absolute inset-0 z-50 bg-foreground/15 backdrop-blur-[0.5px] data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0"
       />
       <DialogContent className="max-w-[560px] p-0 overflow-hidden z-[51]">
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
-            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-red-50 shrink-0">
-              <WarningIcon className="h-5 w-5 text-red-600" />
+            <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
+              <WarningIcon className="h-5 w-5 text-destructive" />
             </div>
 
             <div className="min-w-0">
@@ -199,7 +197,7 @@ export function DeleteColumnModal({
           </DialogHeader>
         </div>
 
-        <div className="px-6 py-4 bg-muted/30">
+        <div className="px-6 py-4 bg-muted">
           <DialogFooter className="flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
@@ -216,7 +214,7 @@ export function DeleteColumnModal({
               variant="destructive"
               onClick={onConfirm}
               disabled={isLoading}
-              className="h-9 px-4 text-xs font-medium bg-red-600 hover:bg-red-700 text-white border-none shadow-xs"
+              className="h-9 px-4 text-xs font-medium bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none "
             >
               {isLoading ? "Deleting..." : confirmLabel}
             </Button>

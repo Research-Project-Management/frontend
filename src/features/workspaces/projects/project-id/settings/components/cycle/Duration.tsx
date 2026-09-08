@@ -19,8 +19,8 @@ interface DurationProps {
 
 export function Duration({ value, onChange, disabled }: DurationProps) {
   return (
-    <div className="rounded-lg border border-border/80 bg-card/40 overflow-hidden">
-      <div className="px-6 py-4 border-b border-border/60">
+    <div className="rounded-lg border border-border bg-card/40 overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">
           Default cycle duration
         </h3>
@@ -40,10 +40,10 @@ export function Duration({ value, onChange, disabled }: DurationProps) {
                 disabled={disabled}
                 onClick={() => onChange(opt.value)}
                 className={cn(
-                  'px-3.5 py-1.5 rounded-md text-xs font-medium border transition-all cursor-pointer outline-none',
+                  'px-3.5 py-1.5 rounded-md text-xs font-medium border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                   isSelected
-                    ? 'bg-foreground text-background border-foreground font-semibold shadow-2xs'
-                    : 'bg-background text-muted-foreground border-border/80 hover:border-foreground/30 hover:text-foreground',
+                    ? 'bg-foreground text-background border-foreground font-semibold '
+                    : 'bg-background text-muted-foreground border-border hover:border-foreground/30 ',
                   disabled && 'opacity-60 cursor-not-allowed'
                 )}
               >

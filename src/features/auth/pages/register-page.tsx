@@ -27,7 +27,7 @@ const RegisterPage = () => {
   if (isAuthLoading) {
     return (
       <div className='flex min-h-screen items-center justify-center bg-background'>
-        <Loader2 className='h-8 w-8 animate-spin text-primary' />
+        <Loader2 className='h-8 w-8 animate-spin text-primary shrink-0' />
       </div>
     );
   }
@@ -51,7 +51,7 @@ const RegisterPage = () => {
               type='text'
               placeholder='Full name'
               aria-label='Full name'
-              className='h-10 rounded-lg'
+              className='h-9 rounded-md'
               {...register('name')}
             />
             {errors.name && (
@@ -65,7 +65,7 @@ const RegisterPage = () => {
               type='email'
               placeholder='Email'
               aria-label='Email'
-              className='h-10 rounded-lg'
+              className='h-9 rounded-md'
               {...register('email')}
             />
             {errors.email && (
@@ -80,16 +80,16 @@ const RegisterPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 placeholder='Password'
                 aria-label='Password'
-                className='h-10 pr-10 rounded-lg'
+                className='h-9 pr-10 rounded-md'
                 {...register('password')}
               />
               <button
                 type='button'
                 onClick={() => setShowPassword(!showPassword)}
-                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-foreground transition-colors cursor-pointer'
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                {showPassword ? <EyeOff className='h-4 w-4 shrink-0' /> : <Eye className='h-4 w-4 shrink-0' />}
               </button>
             </div>
             {errors.password && (
@@ -104,16 +104,16 @@ const RegisterPage = () => {
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder='Confirm password'
                 aria-label='Confirm password'
-                className='h-10 pr-10 rounded-lg'
+                className='h-9 pr-10 rounded-md'
                 {...register('confirmPassword')}
               />
               <button
                 type='button'
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer'
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-foreground transition-colors cursor-pointer'
                 aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
               >
-                {showConfirmPassword ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                {showConfirmPassword ? <EyeOff className='h-4 w-4 shrink-0' /> : <Eye className='h-4 w-4 shrink-0' />}
               </button>
             </div>
             {errors.confirmPassword && (
@@ -122,17 +122,17 @@ const RegisterPage = () => {
           </div>
 
           {error && (
-            <div className='p-3 text-sm text-destructive bg-destructive/10 rounded-lg text-center'>
+            <div className='p-3 text-sm text-destructive bg-muted rounded-md border border-border text-center'>
               {error}
             </div>
           )}
 
           <Button
             type='submit'
-            className='w-full h-10 mt-1 rounded-lg cursor-pointer'
+            className='w-full h-9 mt-1 rounded-md cursor-pointer'
             disabled={isPending}
           >
-            {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+            {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin shrink-0' />}
             {isPending ? 'Creating account...' : 'Create account'}
           </Button>
         </form>
@@ -141,7 +141,7 @@ const RegisterPage = () => {
           Already have an account?{' '}
           <Link
             href='/login'
-            className='text-primary font-semibold transition-opacity hover:opacity-80'
+            className='text-primary font-semibold hover:underline'
           >
             Sign in
           </Link>
@@ -152,7 +152,7 @@ const RegisterPage = () => {
             variant='outline'
             type='button'
             onClick={() => handleOAuthLogin('google')}
-            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg cursor-pointer'
+            className='w-full h-9 gap-1.5 text-foreground hover:bg-muted transition-colors rounded-md cursor-pointer'
           >
             <img src='/google.svg' alt='' aria-hidden='true' className='w-4 h-4' />
             Google
@@ -161,7 +161,7 @@ const RegisterPage = () => {
             variant='outline'
             type='button'
             onClick={() => handleOAuthLogin('github')}
-            className='w-full h-10 gap-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors rounded-lg cursor-pointer'
+            className='w-full h-9 gap-1.5 text-foreground hover:bg-muted transition-colors rounded-md cursor-pointer'
           >
             <img src='/github.svg' alt='' aria-hidden='true' className='w-4 h-4' />
             Github

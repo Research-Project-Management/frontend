@@ -58,7 +58,7 @@ export function MergeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border/60 shadow-none rounded-md">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border shadow-none rounded-md">
         <DialogHeader>
           <div className="flex items-center gap-2 text-foreground">
             <Files className="size-5 text-foreground shrink-0" />
@@ -87,8 +87,8 @@ export function MergeModal({
                   onClick={() => setSelectedMasterId(paper.id)}
                   className={`flex items-start gap-3 p-3 rounded-md border transition-colors cursor-pointer ${
                     isSelected
-                      ? 'border-border/60 bg-muted/60 shadow-none'
-                      : 'border-border/40 hover:border-border/60 hover:bg-muted/30'
+                      ? 'border-border bg-muted shadow-none'
+                      : 'border-border hover:border-border hover:bg-muted'
                   }`}
                 >
                   <RadioGroupItem value={paper.id} id={`paper-${paper.id}`} className="mt-0.5" />
@@ -130,7 +130,7 @@ export function MergeModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isMerging}
-            className="text-foreground rounded-md border-border/60"
+            className="text-foreground rounded-md border-border"
           >
             Cancel
           </Button>
@@ -141,9 +141,9 @@ export function MergeModal({
             className="gap-1.5 rounded-md"
           >
             {isMerging ? (
-              <Loader2 className="size-4 animate-spin text-background" />
+              <Loader2 className="size-4 animate-spin text-background shrink-0" />
             ) : (
-              <Check className="size-4 text-background" />
+              <Check className="size-4 text-background shrink-0" />
             )}
             <span>{isMerging ? 'Merging...' : 'Confirm & Merge Records'}</span>
           </Button>

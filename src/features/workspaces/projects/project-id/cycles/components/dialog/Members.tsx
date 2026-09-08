@@ -43,17 +43,17 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {trigger || (
-          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none cursor-pointer">
-            <UserPlus className="size-4 text-foreground" /> Members
+          <button className="h-10 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground hover:bg-muted flex items-center gap-2 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
+            <UserPlus className="size-4 text-foreground shrink-0" /> Members
           </button>
         )}
       </PopoverTrigger>
       <PopoverContent
         align="start"
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-72 p-0 rounded-sm border border-border shadow-xl overflow-hidden animate-in fade-in zoom-in duration-150 bg-popover z-140"
+        className="w-72 p-0 rounded-sm border border-border overflow-hidden animate-in fade-in zoom-in duration-150 bg-popover z-140"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0 bg-popover">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-popover">
           <span className="text-sm font-semibold text-center flex-1 text-foreground">Members</span>
           <Button
             variant="ghost"
@@ -62,13 +62,13 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
             onClick={() => setIsOpen(false)}
             aria-label="Close members popover"
           >
-            <X className="h-4 w-4 text-foreground" />
+            <X className="h-4 w-4 text-foreground shrink-0" />
           </Button>
         </div>
 
         <div className="p-3">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-foreground pointer-events-none" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-foreground pointer-events-none shrink-0" />
             <Input 
               placeholder="Search members" 
               value={searchTerm}
@@ -92,8 +92,8 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
                       onClick={() => toggleMember(user.id)}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all text-left group cursor-pointer ${
                         isSelected 
-                          ? 'bg-accent ring-1 ring-border mx-0.5 my-0.5 text-foreground' 
-                          : 'hover:bg-muted text-foreground/80 w-full'
+                          ? 'bg-muted ring-1 ring-border mx-0.5 my-0.5 text-foreground' 
+                          : 'hover:bg-muted text-foreground w-full'
                       } ${isSelected ? 'w-[calc(100%-4px)]' : ''}`}
                     >
                       <Avatar className="size-7">
@@ -105,7 +105,7 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
                       <span className={`text-sm flex-1 truncate text-foreground ${isSelected ? 'font-semibold' : 'font-medium'}`}>
                         {user.name}
                       </span>
-                      {isSelected && <Check className="size-3.5 text-foreground stroke-[3]" />}
+                      {isSelected && <Check className="size-3.5 text-foreground stroke-[3] shrink-0" />}
                     </button>
                   );
                 })

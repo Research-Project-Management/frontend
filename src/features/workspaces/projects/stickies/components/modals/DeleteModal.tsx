@@ -37,11 +37,11 @@ export default function DeleteModal({
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="max-w-[480px] p-6 bg-popover border border-border shadow-2xl rounded-lg"
+        className="max-w-[480px] p-6 bg-popover border border-border rounded-lg"
       >
         <DialogHeader className="flex flex-row items-start gap-4 space-y-0">
           <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
           </div>
 
           <div className="min-w-0 flex-1">

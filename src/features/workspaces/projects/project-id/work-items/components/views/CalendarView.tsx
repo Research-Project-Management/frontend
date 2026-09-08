@@ -328,17 +328,17 @@ export default function CalendarView({
                 variant="ghost"
                 size="icon"
                 onClick={handlePrevious}
-                className="h-8 w-8 rounded-lg text-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                className="h-8 w-8 rounded-md text-foreground hover:bg-muted cursor-pointer"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 shrink-0" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleNext}
-                className="h-8 w-8 rounded-lg text-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                className="h-8 w-8 rounded-md text-foreground hover:bg-muted cursor-pointer"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 shrink-0" />
               </Button>
               <div className="flex items-center gap-2 pl-1">
                 <h3 className="text-base font-semibold tracking-tight text-foreground">
@@ -352,7 +352,7 @@ export default function CalendarView({
                 variant="ghost"
                 size="sm"
                 onClick={handleToday}
-                className="h-8 px-3 text-xs font-medium text-foreground hover:bg-muted hover:text-foreground rounded-lg cursor-pointer"
+                className="h-8 px-3 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer"
               >
                 Today
               </Button>
@@ -362,10 +362,10 @@ export default function CalendarView({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 border-border/80 px-3 text-xs font-medium text-foreground rounded-lg cursor-pointer"
+                    className="h-8 gap-1.5 border border-border px-3 text-xs font-medium text-foreground rounded-md cursor-pointer"
                   >
                     Options
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -378,22 +378,22 @@ export default function CalendarView({
                     className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
                   >
                     <span className="flex-1 text-left text-foreground">Month layout</span>
-                    {layoutMode === "month" ? <Check className="h-4 w-4 ml-2 text-primary" /> : null}
+                    {layoutMode === "month" ? <Check className="h-4 w-4 ml-2 text-primary shrink-0" /> : null}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => setLayoutMode("week")}
                     className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
                   >
                     <span className="flex-1 text-left text-foreground">Week layout</span>
-                    {layoutMode === "week" ? <Check className="h-4 w-4 ml-2 text-primary" /> : null}
+                    {layoutMode === "week" ? <Check className="h-4 w-4 ml-2 text-primary shrink-0" /> : null}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
 
-        <div className="overflow-hidden rounded-lg border border-border/80 bg-card">
-          <div className="grid grid-cols-7 divide-x divide-border/60 bg-muted/40">
+        <div className="overflow-hidden rounded-md border border-border bg-card">
+          <div className="grid grid-cols-7 divide-x divide-border bg-muted">
             {WEEK_DAY_LABELS.map((label) => (
               <div
                 key={label}
@@ -460,11 +460,11 @@ export default function CalendarView({
             if (!open) handleCloseExistingDialog();
           }}
         >
-          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0 shadow-2xl" showCloseButton={false}>
+          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0" showCloseButton={false}>
             {/* Search bar */}
             <div className="px-2 pt-6 pb-2">
               <div className="relative flex items-center">
-                <Search className="absolute left-4 size-5 text-muted-foreground" strokeWidth={2.25} />
+                <Search className="absolute left-4 size-5 text-muted-foreground shrink-0" strokeWidth={2.25} />
                 <input
                   type="text"
                   value={existingSearch}
@@ -489,13 +489,13 @@ export default function CalendarView({
                       key={taskId}
                       type="button"
                       onClick={() => handleToggleExistingTask(taskId)}
-                      className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/70"
+                      className="group inline-flex items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
                       title={selectedTask.title || "Untitled task"}
                     >
                       <span className="max-w-45 truncate">
                         {selectedTask.title || "Untitled task"}
                       </span>
-                      <X className="size-3 text-muted-foreground group-hover:text-foreground" />
+                      <X className="size-3 text-foreground shrink-0" />
                     </button>
                   );
                 })}
@@ -506,7 +506,7 @@ export default function CalendarView({
             <div className="max-h-80 overflow-y-auto px-1 py-2">
               {filteredExistingTaskCandidates.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                  <Search className="size-8 mb-2 opacity-20" strokeWidth={1.5} />
+                  <Search className="size-8 mb-2 opacity-20 shrink-0" strokeWidth={1.5} />
                   <p className="text-sm font-medium">No work items found</p>
                 </div>
               ) : (
@@ -518,24 +518,24 @@ export default function CalendarView({
                       <button
                         type="button"
                         onClick={() => handleToggleExistingTask(task.id)}
-                        className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-muted/70"
+                        className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-muted"
                       >
                         <Checkbox
                           checked={checked}
                           aria-label={`Select task ${task.title}`}
-                          className="size-4 shrink-0 rounded-[2px] border-border bg-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          className="size-4 shrink-0 rounded-sm border-border bg-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         />
                         <div className="flex flex-1 items-center gap-2.5 min-w-0">
                           {(() => {
                             const col = columns.find(c => c.id === task.columnId);
                             if (!col) return null;
                             return (
-                              <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-[2px] truncate max-w-[80px]">
+                              <span className="shrink-0 text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm truncate max-w-[80px]">
                                 {col.title}
                               </span>
                             );
                           })()}
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground group-hover:text-foreground transition-colors">
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                             {task.title}
                           </span>
                         </div>
@@ -545,10 +545,10 @@ export default function CalendarView({
                             event.stopPropagation();
                             onOpenCardDetail(task);
                           }}
-                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-foreground transition-colors hover:bg-muted"
                           aria-label="Open task detail"
                         >
-                          <ChevronRight className="size-3.5" />
+                          <ChevronRight className="size-3.5 shrink-0" />
                         </button>
                       </button>
                     </div>
@@ -612,7 +612,7 @@ export default function CalendarView({
           {activeTask ? (
             <div 
               style={{ width: draggedWidth ?? 'auto' }} 
-              className="bg-card border border-border/80 rounded-lg overflow-hidden opacity-90"
+              className="bg-card border border-border rounded-lg overflow-hidden opacity-90"
             >
               <div className="relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium leading-tight text-foreground">
                 <span
@@ -668,7 +668,7 @@ const CalendarDayCell = memo(({
       style={{ minHeight: dayCellMinHeight }}
       className={cn(
         "group flex flex-col p-2.5 transition-colors",
-        !isCurrentMonth ? "bg-muted/30" : "bg-card",
+        !isCurrentMonth ? "bg-muted" : "bg-card",
         isOver && "bg-primary/5 ring-1 ring-inset ring-primary/40"
       )}
     >
@@ -676,7 +676,7 @@ const CalendarDayCell = memo(({
         <span
           className={
             isThisToday
-              ? "inline-flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white pt-[1px]"
+              ? "inline-flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground pt-0.5"
               : `text-xs font-medium leading-none tracking-tight ${dayTextClass}`
           }
         >
@@ -716,7 +716,7 @@ const CalendarDayCell = memo(({
               onClick={() => handleOpenAddTaskMenu(dateKey)}
               className={cn(
                 dayTasks.length > 0 ? "mt-1.5" : "mt-0",
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer",
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted cursor-pointer",
                 "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
               )}
             >
@@ -732,16 +732,16 @@ const CalendarDayCell = memo(({
           >
             <DropdownMenuItem
               onSelect={() => onAddWorkItem(dateKey)}
-              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none hover:bg-muted"
+              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary hover:bg-muted"
             >
-              <Plus className="size-3.5 text-foreground" />
+              <Plus className="size-3.5 text-foreground shrink-0" />
               <span>Add task</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => onAddExistingWorkItem(dateKey)}
-              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none hover:bg-muted"
+              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary hover:bg-muted"
             >
-              <FolderKanban className="size-3.5 text-foreground" />
+              <FolderKanban className="size-3.5 text-foreground shrink-0" />
               <span>Add existing task</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -750,7 +750,7 @@ const CalendarDayCell = memo(({
 
       {isQuickAdding && (
         <div className="mt-2 flex flex-col gap-2">
-          <div className="relative flex w-full items-center rounded-md border border-border/80 bg-background focus-within:border-primary/50">
+          <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-primary/50">
             <input
               type="text"
               autoFocus
@@ -856,7 +856,7 @@ const CalendarTaskItem = memo(({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-              "group relative flex w-full items-center gap-2 rounded-md border border-border/70 bg-card px-2.5 py-1 text-left text-xs font-medium leading-tight text-foreground transition-colors hover:bg-muted/50 cursor-pointer",
+              "group relative flex w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-left text-xs font-medium leading-tight text-foreground transition-colors hover:bg-muted cursor-pointer",
               isDragging && "z-50 opacity-40 border-primary"
             )}
           >

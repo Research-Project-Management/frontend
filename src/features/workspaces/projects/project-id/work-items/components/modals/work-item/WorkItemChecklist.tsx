@@ -131,7 +131,7 @@ export function ChecklistBlock({
     <div className="bg-transparent space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <CheckSquare className="size-5 text-foreground" />
+          <CheckSquare className="size-5 text-foreground shrink-0" />
           <h4 className="text-base font-semibold leading-tight text-foreground">
             {checklist.title}
           </h4>
@@ -140,7 +140,7 @@ export function ChecklistBlock({
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/80"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
           >
             Delete
           </button>
@@ -205,10 +205,10 @@ export function ChecklistBlock({
                 <button
                   type="button"
                   onClick={() => onDeleteItem(item.id)}
-                  className="inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                  className="inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10"
                   aria-label={`Delete item ${item.title}`}
                 >
-                  <X className="size-4" />
+                  <X className="size-4 shrink-0" />
                 </button>
               </div>
             ) : (
@@ -240,12 +240,12 @@ export function ChecklistBlock({
                 <button
                   type="button"
                   onClick={() => !isReadOnly && onDeleteItem(item.id)}
-                  className={`inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-destructive ${
+                  className={`inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10 ${
                     isReadOnly ? 'hidden' : 'opacity-0 group-hover:opacity-100'
                   }`}
                   aria-label={`Delete item ${item.title}`}
                 >
-                  <X className="size-4" />
+                  <X className="size-4 shrink-0" />
                 </button>
               </div>
             ),
@@ -289,7 +289,7 @@ export function ChecklistBlock({
         <button
           type="button"
           onClick={() => setShowNewItemInput(true)}
-          className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/80"
+          className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
         >
           Add an item
         </button>

@@ -142,7 +142,7 @@ interface GeneralBannerProps {
 function renderAvatarContent(avatar: string | null, name: string) {
   if (!avatar) {
     return (
-      <AvatarFallback className="rounded-lg text-xl bg-muted/90 text-foreground font-semibold">
+      <AvatarFallback className="rounded-lg text-xl bg-muted text-foreground font-semibold">
         {name ? name.charAt(0).toUpperCase() : 'P'}
       </AvatarFallback>
     );
@@ -154,7 +154,7 @@ function renderAvatarContent(avatar: string | null, name: string) {
     const IconComp = ICON_MAP[iconName] || Settings;
     return (
       <div className="size-full flex items-center justify-center bg-card rounded-lg">
-        <IconComp className="size-7" style={{ color: color || '#6366f1' }} />
+        <IconComp className="size-7 shrink-0" style={{ color: color || 'var(--primary)' }} />
       </div>
     );
   }
@@ -187,7 +187,7 @@ export function GeneralBanner({
   const networkLabel = isPrivate ? 'Private' : 'Public';
 
   return (
-    <div className="relative w-full rounded-lg border border-border/80 overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5 shadow-xs">
+    <div className="relative w-full rounded-lg border border-border overflow-hidden bg-muted h-44 sm:h-52 flex flex-col justify-end p-5 ">
       {/* Background Cover Image or Default Gradient */}
       {cover ? (
         <img
@@ -209,10 +209,10 @@ export function GeneralBanner({
           <IconPicker currentValue={avatar} onSelect={onSelectAvatar}>
             <button
               type="button"
-              className="cursor-pointer group relative block shrink-0 outline-none"
+              className="cursor-pointer group relative block shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="Change emoji or icon"
             >
-              <Avatar className="size-14 rounded-lg border-2 border-white/80 dark:border-white/20 bg-background shadow-xs">
+              <Avatar className="size-14 rounded-lg border-2 border-border bg-background ">
                 {renderAvatarContent(avatar, name)}
               </Avatar>
               <div className="absolute inset-0 rounded-lg bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs text-white font-medium">
@@ -221,7 +221,7 @@ export function GeneralBanner({
             </button>
           </IconPicker>
 
-          <div className="min-w-0 text-white drop-shadow-sm">
+          <div className="min-w-0 text-white ">
             <h2 className="text-base font-semibold truncate leading-tight tracking-tight">
               {name || 'Untitled project'}
             </h2>
@@ -240,7 +240,7 @@ export function GeneralBanner({
         >
           <button
             type="button"
-            className="h-8 px-3 rounded-lg border border-white/40 bg-white/90 hover:bg-white text-foreground dark:bg-black/70 dark:hover:bg-black/90 dark:text-white dark:border-white/20 text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer outline-none shrink-0"
+            className="h-8 px-3 rounded-md border border-border bg-background/90 hover:bg-background text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
           >
             <span>Change cover</span>
           </button>

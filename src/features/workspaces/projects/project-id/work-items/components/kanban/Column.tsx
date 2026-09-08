@@ -78,7 +78,7 @@ export function Column({
 
   if (isCollapsed) {
     return (
-      <div className="flex flex-col items-center w-10 shrink-0 bg-muted/40 border border-border/50 rounded-lg py-3 gap-2.5">
+      <div className="flex flex-col items-center w-10 shrink-0 bg-muted border border-border rounded-lg py-3 gap-2.5">
         <div
           className="w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: columnColor }}
@@ -107,7 +107,7 @@ export function Column({
                 onClick={() => setIsCollapsed(false)}
                 aria-label="Expand column"
               >
-                <Maximize2 className="h-3.5 w-3.5 text-foreground" />
+                <Maximize2 className="h-3.5 w-3.5 text-foreground shrink-0" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" sideOffset={6}>
@@ -129,7 +129,7 @@ export function Column({
                   }}
                   aria-label="Add card"
                 >
-                  <Plus className="h-4 w-4 text-foreground" />
+                  <Plus className="h-4 w-4 text-foreground shrink-0" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6}>
@@ -145,7 +145,7 @@ export function Column({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col w-72 shrink-0 bg-muted/40 border border-border/50 rounded-lg p-2.5 transition-colors h-full max-h-full ${
+      className={`flex flex-col w-72 shrink-0 bg-muted border border-border rounded-lg p-2.5 transition-colors h-full max-h-full ${
         isOver ? 'bg-primary/5 ring-2 ring-primary/30 border-primary/40' : ''
       }`}
     >
@@ -177,7 +177,7 @@ export function Column({
                     onClick={handleOpenQuickAdd}
                     aria-label="Add card"
                   >
-                    <Plus className="h-4 w-4 text-foreground" />
+                    <Plus className="h-4 w-4 text-foreground shrink-0" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={6}>
@@ -198,7 +198,7 @@ export function Column({
                   onClick={() => setIsCollapsed(true)}
                   aria-label="Collapse column"
                 >
-                  <Minimize2 className="h-3.5 w-3.5 text-foreground" />
+                  <Minimize2 className="h-3.5 w-3.5 text-foreground shrink-0" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6}>
@@ -211,7 +211,7 @@ export function Column({
 
       {/* Quick Add Inline Card Form */}
       {isQuickAddOpen && (
-        <div className="mb-2 bg-card p-2.5 rounded-lg border border-border/80">
+        <div className="mb-2 bg-card p-2.5 rounded-lg border border-border">
           <input
             ref={quickAddInputRef}
             type="text"

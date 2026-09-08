@@ -73,7 +73,7 @@ export function EmptyState({ onCreate }: EmptyStateProps) {
       <Button
         size="sm"
         onClick={onCreate}
-        className="h-8 text-xs font-medium px-4 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs"
+        className="h-8 text-xs font-medium px-4 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none"
       >
         Create your first label
       </Button>

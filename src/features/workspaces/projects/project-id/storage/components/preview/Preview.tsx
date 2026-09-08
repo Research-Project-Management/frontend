@@ -57,7 +57,7 @@ export default function Preview() {
 
   // ── Crossref badge config ───────────────────────────────────────────
   const crossrefBadge = {
-    found:     { label: 'Crossref matched', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+    found:     { label: 'Crossref matched', cls: 'bg-success/10 text-success' },
     'not-found': { label: 'Not on Crossref', cls: 'bg-muted text-muted-foreground' },
     error:     { label: 'Lookup failed',    cls: 'bg-destructive/10 text-destructive' },
     idle:      { label: 'Checking…',        cls: 'bg-muted text-muted-foreground' },
@@ -91,9 +91,9 @@ export default function Preview() {
         <button
           onClick={() => setSelectedItem(null)}
           aria-label="Close preview"
-          className="mt-0.5 shrink-0 size-5 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground/40 hover:text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+          className="mt-0.5 shrink-0 size-5 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
         >
-          <X className="size-3.5" />
+          <X className="size-3.5 shrink-0" />
         </button>
       </div>
 
@@ -115,7 +115,7 @@ export default function Preview() {
                 src={resolvedUrl}
                 alt={item.filename}
                 onError={() => setImageError(true)}
-                className="w-full h-full object-contain drop-shadow-sm"
+                className="w-full h-full object-contain "
               />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
@@ -131,7 +131,7 @@ export default function Preview() {
           ) : isPdf ? (
             pdfLoading ? (
               /* Shimmer skeleton for PDF loading */
-              <div className="relative w-[calc(100%-32px)] mx-4 my-6 rounded-md overflow-hidden bg-muted/50 h-36">
+              <div className="relative w-[calc(100%-32px)] mx-4 my-6 rounded-md overflow-hidden bg-muted h-36">
                 <div
                   className="absolute inset-0 -translate-x-full animate-shimmer"
                   style={{
@@ -139,7 +139,7 @@ export default function Preview() {
                   }}
                 />
                 <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-xs text-muted-foreground/50">
-                  <Loader2 className="size-3 animate-spin" />
+                  <Loader2 className="size-3 animate-spin shrink-0" />
                   Rendering…
                 </div>
               </div>
@@ -147,11 +147,11 @@ export default function Preview() {
               <img
                 src={previewDataUrl}
                 alt={`${item.filename} preview`}
-                className="w-full max-h-52 object-contain drop-shadow-sm animate-in fade-in duration-300"
+                className="w-full max-h-52 object-contain animate-in fade-in duration-300"
               />
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
-                <FileText className="size-9 text-muted-foreground/20" />
+                <FileText className="size-9 text-muted-foreground/20 shrink-0" />
                 <span className="text-xs text-muted-foreground/40">No preview available</span>
               </div>
             )
@@ -172,17 +172,17 @@ export default function Preview() {
         <div className="flex gap-1.5 px-3.5 pt-2 pb-2.5 border-b border-border">
           <button
             onClick={handleDownload}
-            className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
+            className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-all active:scale-[0.97]"
           >
-            <Download className="size-3" />
+            <Download className="size-3 shrink-0" />
             Download
           </button>
           {(isPdf || isImage) && (
             <button
               onClick={() => window.open(item.url, '_blank')}
-              className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all active:scale-[0.97]"
+              className="flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-xs text-foreground hover:bg-muted transition-all active:scale-[0.97]"
             >
-              <Maximize2 className="size-3" />
+              <Maximize2 className="size-3 shrink-0" />
               Open full
             </button>
           )}
@@ -221,7 +221,7 @@ export default function Preview() {
               </p>
               <div className="flex items-center gap-1.5">
                 {crossrefLoading ? (
-                  <Loader2 className="size-3 animate-spin text-muted-foreground/30" />
+                  <Loader2 className="size-3 animate-spin text-muted-foreground/30 shrink-0" />
                 ) : (
                   <span className={`text-xs font-medium px-1.5 py-px rounded-full leading-none ${crossrefBadge.cls}`}>
                     {crossrefBadge.label}
@@ -230,10 +230,10 @@ export default function Preview() {
                 <button
                   onClick={handleRetryLookup}
                   disabled={crossrefLoading}
-                  className="text-muted-foreground/25 hover:text-muted-foreground transition-colors disabled:opacity-30"
+                  className="text-muted-foreground/25 hover:bg-muted transition-colors disabled:opacity-30"
                   title="Retry Crossref lookup"
                 >
-                  <RefreshCw className="size-3 transition-transform duration-300 hover:rotate-180" />
+                  <RefreshCw className="size-3 transition-transform duration-300 hover:rotate-180 shrink-0" />
                 </button>
               </div>
             </div>
@@ -242,17 +242,17 @@ export default function Preview() {
             {crossrefStatus !== 'found' && !crossrefLoading && (
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
-                className="mb-4 text-xs text-primary/50 hover:text-primary transition-colors flex items-center gap-1.5 group"
+                className="mb-4 text-xs text-primary transition-colors flex items-center gap-1.5 group hover:underline"
               >
-                <Search className="size-3 group-hover:scale-110 transition-transform duration-150" />
+                <Search className="size-3 group-hover:scale-110 transition-transform duration-150 shrink-0" />
                 {searchOpen ? 'Cancel' : 'Search Crossref manually'}
               </button>
             )}
 
             {/* Search panel */}
             {searchOpen && (
-              <div className="mb-4 rounded-lg border border-border/60 bg-muted/15 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="flex gap-1.5 p-2 border-b border-border/30">
+              <div className="mb-4 rounded-lg border border-border bg-muted overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="flex gap-1.5 p-2 border-b border-border">
                   <Input
                     placeholder="Title, DOI, authors…"
                     value={searchQuery}
@@ -267,8 +267,8 @@ export default function Preview() {
                     disabled={searchLoading}
                   >
                     {searchLoading
-                      ? <Loader2 className="size-3 animate-spin" />
-                      : <Search className="size-3" />}
+                      ? <Loader2 className="size-3 animate-spin shrink-0" />
+                      : <Search className="size-3 shrink-0" />}
                   </Button>
                 </div>
                 {searchResults.length > 0 && (
@@ -277,7 +277,7 @@ export default function Preview() {
                       <button
                         key={idx}
                         onClick={() => handleSelectCrossref(work)}
-                        className="w-full text-left px-2.5 py-2 text-xs hover:bg-accent/50 transition-colors"
+                        className="w-full text-left px-2.5 py-2 text-xs hover:bg-muted transition-colors cursor-pointer"
                       >
                         <p className="font-medium line-clamp-2 leading-snug mb-0.5">{work.title}</p>
                         <p className="text-xs text-muted-foreground truncate">
@@ -300,39 +300,39 @@ export default function Preview() {
               {/* Title */}
               <div>
                 <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <FileText className="size-3" />Title
+                  <FileText className="size-3 shrink-0" />Title
                 </Label>
                 <Input
                   value={metadata.title || ''}
                   onChange={(e) => { setMetadata({ ...metadata, title: e.target.value }); setSaved(false); }}
                   placeholder="Paper title…"
-                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
               {/* Authors */}
               <div>
                 <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <User className="size-3" />Authors
+                  <User className="size-3 shrink-0" />Authors
                 </Label>
                 <Input
                   value={metadata.author || metadata.authors?.join(', ') || ''}
                   onChange={(e) => { setMetadata({ ...metadata, author: e.target.value }); setSaved(false); }}
                   placeholder="Last, First; Last, First…"
-                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
               {/* DOI */}
               <div>
                 <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <Fingerprint className="size-3" />DOI
+                  <Fingerprint className="size-3 shrink-0" />DOI
                 </Label>
                 <Input
                   value={metadata.doi || ''}
                   onChange={(e) => { setMetadata({ ...metadata, doi: e.target.value }); setSaved(false); }}
                   placeholder="10.xxxx/xxxxx"
-                  className="h-[30px] text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25 font-mono text-xs"
+                  className="h-[30px] text-xs bg-transparent border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25 font-mono"
                 />
               </div>
 
@@ -340,24 +340,24 @@ export default function Preview() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                    <Calendar className="size-3" />Year
+                    <Calendar className="size-3 shrink-0" />Year
                   </Label>
                   <Input
                     value={metadata.year ? String(metadata.year) : ''}
                     onChange={(e) => { setMetadata({ ...metadata, year: e.target.value ? parseInt(e.target.value) : undefined }); setSaved(false); }}
                     placeholder="2024"
-                    className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                    className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                   />
                 </div>
                 <div>
                   <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                    <FileDigit className="size-3" />Pages
+                    <FileDigit className="size-3 shrink-0" />Pages
                   </Label>
                   <Input
                     value={metadata.pages || ''}
                     onChange={(e) => { setMetadata({ ...metadata, pages: e.target.value }); setSaved(false); }}
                     placeholder="1–12"
-                    className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                    className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                   />
                 </div>
               </div>
@@ -365,26 +365,26 @@ export default function Preview() {
               {/* Journal */}
               <div>
                 <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <BookMarked className="size-3" />Journal
+                  <BookMarked className="size-3 shrink-0" />Journal
                 </Label>
                 <Input
                   value={metadata.journal || ''}
                   onChange={(e) => { setMetadata({ ...metadata, journal: e.target.value }); setSaved(false); }}
                   placeholder="Journal name…"
-                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
               {/* Publisher */}
               <div>
                 <Label className="flex items-center gap-1 text-xs font-semibold mb-1 text-muted-foreground/60">
-                  <Building2 className="size-3" />Publisher
+                  <Building2 className="size-3 shrink-0" />Publisher
                 </Label>
                 <Input
                   value={metadata.publisher || ''}
                   onChange={(e) => { setMetadata({ ...metadata, publisher: e.target.value }); setSaved(false); }}
                   placeholder="Publisher…"
-                  className="h-8 text-xs bg-transparent border-border/40 hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
+                  className="h-8 text-xs bg-transparent border-border hover:border-border focus:border-primary/50 transition-colors placeholder:text-muted-foreground/25"
                 />
               </div>
 
@@ -392,19 +392,19 @@ export default function Preview() {
               {metadata.abstract && (
                 <div>
                   <button
-                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-xs font-semibold text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                    className="flex items-center gap-1.5 w-full text-left mb-1.5 text-xs font-semibold text-muted-foreground/60 hover:bg-muted transition-colors"
                     onClick={() => setAbstractExpanded(!abstractExpanded)}
                   >
-                    <ScrollText className="size-3" />
+                    <ScrollText className="size-3 shrink-0" />
                     <span>Abstract</span>
                     <span className="ml-auto opacity-60">
                       {abstractExpanded
-                        ? <ChevronUp className="size-3" />
-                        : <ChevronDown className="size-3" />}
+                        ? <ChevronUp className="size-3 shrink-0" />
+                        : <ChevronDown className="size-3 shrink-0" />}
                     </span>
                   </button>
                   <div
-                    className={`relative text-xs leading-[1.65] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2.5 border border-border/30 overflow-hidden transition-all duration-300 ${abstractExpanded ? 'max-h-[600px]' : 'max-h-[68px]'}`}
+                    className={`relative text-xs leading-relaxed text-muted-foreground bg-muted rounded-lg px-3 py-2.5 border border-border overflow-hidden transition-all duration-300 ${abstractExpanded ? 'max-h-[600px]' : 'max-h-[68px]'}`}
                   >
                     {metadata.abstract}
                     {!abstractExpanded && (
@@ -426,18 +426,18 @@ export default function Preview() {
             onClick={handleSaveMetadata}
             className={`relative w-full h-8 rounded-sm flex items-center justify-center gap-2 text-xs font-medium transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
               saved
-                ? 'bg-emerald-500/8 text-emerald-600 dark:text-emerald-400 cursor-default'
+                ? 'bg-success/8 text-success cursor-default'
                 : 'bg-primary text-primary-foreground hover:opacity-90'
             }`}
           >
             {saved ? (
               <>
-                <CheckCircle2 className="size-3.5" />
+                <CheckCircle2 className="size-3.5 shrink-0" />
                 Saved
               </>
             ) : (
               <>
-                <Save className="size-3.5" />
+                <Save className="size-3.5 shrink-0" />
                 Save metadata
                 {unsaved && (
                   <span className="absolute right-3 size-1.5 rounded-full bg-primary-foreground/60 animate-pulse" />

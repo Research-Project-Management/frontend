@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from '@/shared/lib/api';
+import { logger } from '@/shared/lib/logger';
 import type { FormattedCitation, CslStyle, ReferenceData } from '../types/library.types';
 import { cleanDoi } from '../utils/author-doi.util';
 
@@ -160,7 +161,7 @@ export async function searchReferences(
 
     return { works, totalResults };
   } catch (err) {
-    console.warn('[searchReferences] CrossRef query failed:', err);
+    logger.warn('[searchReferences] CrossRef query failed', { error: err });
     return { works: [], totalResults: 0 };
   }
 }

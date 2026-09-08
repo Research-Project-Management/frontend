@@ -67,7 +67,7 @@ export default function DuplicateModal({
               htmlFor="replace"
               className={`flex items-center space-x-3 border p-4 rounded-lg cursor-pointer transition-colors ${uploadMode === "replace"
                 ? "border-primary bg-primary/5"
-                : "border-border/60 hover:bg-muted/50"
+                : "border-border hover:bg-muted"
                 }`}
             >
               <RadioGroupItem value="replace" id="replace" />
@@ -83,7 +83,7 @@ export default function DuplicateModal({
               htmlFor="keep-both"
               className={`flex items-center space-x-3 border p-4 rounded-lg cursor-pointer transition-colors ${uploadMode === "keep-both"
                 ? "border-primary bg-primary/5"
-                : "border-border/60 hover:bg-muted/50"
+                : "border-border hover:bg-muted"
                 }`}
             >
               <RadioGroupItem value="keep-both" id="keep-both" />
@@ -101,14 +101,14 @@ export default function DuplicateModal({
             variant="ghost"
             onClick={onClose}
             disabled={isUploading}
-            className="h-9 px-4 font-medium text-muted-foreground hover:text-foreground"
+            className="h-9 px-4 font-medium text-foreground"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isUploading}
-            className="h-9 px-5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="h-9 px-5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 "
           >
             Confirm
           </Button>

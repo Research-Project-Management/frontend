@@ -43,7 +43,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-lg border border-border/80 bg-background shadow-xl">
+      <DialogContent className="sm:max-w-md rounded-lg border border-border bg-background">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold text-foreground">
             Log research work
@@ -57,7 +57,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
               placeholder="e.g. Manuscript drafting / Model training"
-              className="h-8.5 text-xs rounded-md border-border/80 bg-background focus:ring-0 focus:outline-none"
+              className="h-8.5 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none"
               required
             />
           </div>
@@ -71,7 +71,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
                 min="0.25"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                className="h-8.5 text-xs rounded-md border-border/80 bg-background focus:ring-0 focus:outline-none"
+                className="h-8.5 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none"
                 required
               />
             </div>
@@ -82,7 +82,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-8.5 text-xs rounded-md border-border/80 bg-background focus:ring-0 focus:outline-none"
+                className="h-8.5 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none"
                 required
               />
             </div>
@@ -94,7 +94,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What was accomplished during this session?"
-              className="text-xs min-h-[80px] rounded-md border-border/80 bg-background focus:ring-0 focus:outline-none resize-none leading-relaxed"
+              className="text-xs min-h-[80px] rounded-md border-border bg-background focus:ring-0 focus:outline-none resize-none leading-relaxed"
             />
           </div>
 
@@ -111,7 +111,7 @@ export function LogModal({ open, onOpenChange, onAdd }: LogModalProps) {
             <Button
               type="submit"
               size="sm"
-              className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs"
+              className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none"
             >
               Save worklog
             </Button>

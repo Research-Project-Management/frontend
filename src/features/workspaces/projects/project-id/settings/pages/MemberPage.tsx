@@ -51,7 +51,7 @@ function SortableHeader({
         <button
           type="button"
           aria-label={`Sort by ${label}`}
-          className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer outline-none"
+          className="inline-flex items-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <span className={cn(active && 'text-foreground font-semibold')}>{label}</span>
           <ChevronDown
@@ -67,8 +67,8 @@ function SortableHeader({
         <DropdownMenuItem
           onClick={() => onSort(field, true)}
           className={cn(
-            'flex items-center gap-2 cursor-pointer rounded-sm px-2 py-1.5',
-            active && sortAsc && 'bg-accent',
+            'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5',
+            active && sortAsc && 'bg-muted font-medium',
           )}
         >
           <ArrowDownAZ className="size-3.5 text-muted-foreground shrink-0" />
@@ -77,8 +77,8 @@ function SortableHeader({
         <DropdownMenuItem
           onClick={() => onSort(field, false)}
           className={cn(
-            'flex items-center gap-2 cursor-pointer rounded-sm px-2 py-1.5',
-            active && !sortAsc && 'bg-accent',
+            'flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5',
+            active && !sortAsc && 'bg-muted font-medium',
           )}
         >
           <ArrowUpZA className="size-3.5 text-muted-foreground shrink-0" />
@@ -199,12 +199,12 @@ export default function MemberPage() {
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* Search */}
             <div className="relative w-44">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
               <Input
                 placeholder="Search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs border-border/80 bg-background focus:ring-0 focus:outline-none rounded-md"
+                className="pl-8 h-8 text-xs border-border bg-background focus:ring-0 focus:outline-none rounded-md"
               />
             </div>
 
@@ -216,7 +216,7 @@ export default function MemberPage() {
               variant="outline"
               size="sm"
               onClick={handleImport}
-              className="h-8 px-3 text-xs font-medium border-border/80 bg-background hover:bg-muted/50 text-foreground cursor-pointer rounded-md shrink-0"
+              className="h-8 px-3 text-xs font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0"
             >
               Import
             </Button>
@@ -226,7 +226,7 @@ export default function MemberPage() {
               <Button
                 size="sm"
                 onClick={() => setAddDialogOpen(true)}
-                className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-2xs shrink-0"
+                className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
               >
                 Add member
               </Button>
@@ -235,11 +235,11 @@ export default function MemberPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-border/80 overflow-hidden bg-background">
+        <div className="rounded-lg border border-border overflow-hidden bg-background">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground select-none">
+                <tr className="border-b border-border bg-muted text-muted-foreground select-none">
                   <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'name' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                     <SortableHeader label="Full name" field="name" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
                   </th>

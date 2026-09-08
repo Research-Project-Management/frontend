@@ -57,9 +57,9 @@ const Card = memo(
     return (
       <div
         className={cn(
-          "group relative flex flex-col rounded-lg border border-black/10 dark:border-white/10 overflow-hidden",
+          "group relative flex flex-col rounded-lg border border-border overflow-hidden",
           isDragging
-            ? "shadow-2xl scale-[1.02] rotate-1 z-50 pointer-events-none"
+            ? " scale-[1.02] rotate-1 z-50 pointer-events-none"
             : "transition-[box-shadow,background-color,transform] duration-200"
         )}
         style={{ backgroundColor: colorConfig.bg, color: colorConfig.text }}
@@ -67,7 +67,7 @@ const Card = memo(
         {/* Top accent bar + drag handle */}
         <div
           tabIndex={0}
-          className="h-10 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing active:outline-0 select-none bg-black/5 dark:bg-white/10 border-b border-black/5 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="h-10 flex items-center justify-between px-4 cursor-grab active:cursor-grabbing active:outline-0 select-none bg-muted border-b border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
           style={topAccentStyle}
           aria-label="Drag to move sticky"
           aria-roledescription="draggable card handle"
@@ -96,8 +96,7 @@ const Card = memo(
             }}
             placeholder="Title…"
             aria-label="Sticky title"
-            className="w-full bg-transparent border-0 outline-none resize-none text-sm font-semibold tracking-tight placeholder:text-current/40 placeholder:font-normal"
-            style={{ color: "inherit" }}
+            className="w-full bg-transparent border-0 outline-none resize-none text-sm font-semibold tracking-tight placeholder:text-current/40 placeholder:font-normal text-inherit"
           />
         </div>
 

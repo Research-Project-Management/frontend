@@ -110,11 +110,11 @@ export function TransferModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden border-border bg-background shadow-2xl rounded-sm">
+        <DialogContent className="max-w-xl p-0 overflow-hidden border-border bg-background rounded-sm">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-border/80 bg-muted/20">
+          <div className="px-6 py-5 border-b border-border bg-muted">
             <div className="flex items-center gap-2 text-foreground font-semibold text-base">
-              <ArrowRightLeft className="size-4.5 text-primary" />
+              <ArrowRightLeft className="size-4.5 text-primary shrink-0" />
               <span>Transfer Work Items from Cycle</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
@@ -141,9 +141,9 @@ export function TransferModal({
                     <SelectItem key={cycle.id} value={cycle.id} className="cursor-pointer">
                       <div className="flex items-center gap-2">
                         {cycle.status === "active" ? (
-                          <PlayCircle className="size-3.5 text-emerald-500" />
+                          <PlayCircle className="size-3.5 text-success shrink-0" />
                         ) : (
-                          <CircleDashed className="size-3.5 text-muted-foreground" />
+                          <CircleDashed className="size-3.5 text-muted-foreground shrink-0" />
                         )}
                         <span>{cycle.name}</span>
                       </div>
@@ -166,16 +166,16 @@ export function TransferModal({
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="text-foreground cursor-pointer"
                 >
-                  <X className="size-3" />
+                  <X className="size-3 shrink-0" />
                 </button>
               )}
             </div>
 
             {/* Task list */}
             <div className="border border-border rounded-sm overflow-hidden bg-background">
-              <div className="px-3 py-2 border-b border-border bg-muted/40 flex items-center justify-between">
+              <div className="px-3 py-2 border-b border-border bg-muted flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={
@@ -210,7 +210,7 @@ export function TransferModal({
                         key={task.id}
                         onClick={() => handleToggleSelect(task.id)}
                         className={cn(
-                          "px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors",
+                          "px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-muted transition-colors",
                           isSelected && "bg-primary/5"
                         )}
                       >
@@ -232,7 +232,7 @@ export function TransferModal({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          className="h-6 px-2 text-xs text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             setDetailTask(task);
@@ -249,7 +249,7 @@ export function TransferModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+          <div className="px-6 py-3 border-t border-border bg-muted flex items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"

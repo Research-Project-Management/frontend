@@ -15,7 +15,7 @@ export function Topbar({ project }: TopbarProps) {
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2.5">
-        <ChartBarBig className="size-4 text-foreground" />
+        <ChartBarBig className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold text-foreground tracking-tight">
           {project?.name ? `${project.name} · Overview` : 'Overview'}
         </h1>

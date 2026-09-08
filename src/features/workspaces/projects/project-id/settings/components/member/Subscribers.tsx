@@ -46,7 +46,7 @@ export function Subscribers({
             type="button"
             disabled={disabled}
             className={cn(
-              'w-full sm:w-72 h-9 flex items-center justify-between px-3 rounded-lg border border-border/80 bg-background hover:bg-muted/40 text-xs transition-colors cursor-pointer outline-none focus:ring-0 focus:outline-none shrink-0',
+              'w-full sm:w-72 h-9 flex items-center justify-between px-3 rounded-md border border-border bg-background hover:bg-muted text-xs transition-colors cursor-pointer outline-none focus:ring-0 focus:outline-none shrink-0',
               disabled && 'opacity-60 cursor-not-allowed'
             )}
           >
@@ -60,13 +60,13 @@ export function Subscribers({
           </button>
         </PopoverTrigger>
 
-        <PopoverContent align="end" className="w-72 p-1.5 rounded-lg">
+        <PopoverContent align="end" className="w-72 p-1.5 rounded-md">
           <div className="p-1 pb-1.5">
             <Input
               placeholder="Search members..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-xs border-border/80 focus:ring-0 focus:outline-none"
+              className="h-8 text-xs border-border focus:ring-0 focus:outline-none"
             />
           </div>
 
@@ -86,8 +86,8 @@ export function Subscribers({
                     className={cn(
                       'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer',
                       isSelected
-                        ? 'bg-accent/70 text-foreground font-medium'
-                        : 'text-foreground/90 hover:bg-muted/60'
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-foreground hover:bg-muted'
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -99,9 +99,9 @@ export function Subscribers({
                             : 'border-muted-foreground/40'
                         )}
                       >
-                        {isSelected && <Check className="size-2.5 stroke-[3]" />}
+                        {isSelected && <Check className="size-2.5 stroke-[3] shrink-0" />}
                       </div>
-                      <Avatar className="size-5 shrink-0 rounded-full border border-border/80">
+                      <Avatar className="size-5 shrink-0 rounded-full border border-border">
                         {m.user.avatar && (
                           <AvatarImage src={m.user.avatar} className="object-cover" />
                         )}

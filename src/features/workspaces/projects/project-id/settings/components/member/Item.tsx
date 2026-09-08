@@ -69,11 +69,11 @@ export function Item({
   const dateFormatted = formatDate(joinedAt);
 
   return (
-    <tr className="group border-b border-border/60 hover:bg-muted/20 transition-colors text-xs">
+    <tr className="group border-b border-border hover:bg-muted transition-colors text-xs">
       {/* Full name & Avatar */}
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
-          <Avatar className="size-8 rounded-full border border-border/80 shrink-0">
+          <Avatar className="size-8 rounded-full border border-border shrink-0">
             {user.avatar && (
               <AvatarImage src={user.avatar} className="object-cover" />
             )}
@@ -109,13 +109,13 @@ export function Item({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors cursor-pointer outline-none select-none"
+                className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
               >
                 <span>{roleLabel}</span>
-                <ChevronDown className="size-3 text-muted-foreground" />
+                <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-36 p-1 rounded-lg">
+            <DropdownMenuContent align="start" className="w-36 p-1 rounded-md">
               <DropdownMenuRadioGroup
                 value={role.toLowerCase()}
                 onValueChange={onUpdateRole}
@@ -152,17 +152,17 @@ export function Item({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none"
+                className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
-                <MoreHorizontal className="size-4" />
+                <MoreHorizontal className="size-4 shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32 p-1 rounded-lg">
+            <DropdownMenuContent align="end" className="w-32 p-1 rounded-md">
               <DropdownMenuItem
                 onClick={onRemove}
                 className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
               >
-                <Trash2 className="size-3.5 text-muted-foreground" />
+                <Trash2 className="size-3.5 text-muted-foreground shrink-0" />
                 <span>Remove</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

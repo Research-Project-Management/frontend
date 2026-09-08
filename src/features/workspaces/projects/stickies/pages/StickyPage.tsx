@@ -67,13 +67,13 @@ export default function StickyPage() {
   if (state.status.isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="shrink-0 border-b border-border/60 px-5 h-13 flex items-center">
+        <div className="shrink-0 border-b border-border px-5 h-13 flex items-center">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm">{copy.title}</span>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Loader2 className="h-5 w-5 animate-spin shrink-0" />
           <span className="text-sm">{copy.loading}</span>
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function StickyPage() {
                           (n: any) => n.id === state.activeId,
                         );
                         return sticky ? (
-                          <div className="rotate-1 scale-105 shadow-2xl cursor-grabbing">
+                          <div className="rotate-1 scale-105 cursor-grabbing">
                             <Card
                               sticky={sticky}
                               onUpdate={actions.update}

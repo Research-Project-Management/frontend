@@ -47,10 +47,10 @@ export default function Topbar() {
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
         <button
           type='button'
-          className='group flex h-8 w-full items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 text-[13px] text-muted-foreground shadow-none transition-colors hover:border-foreground/20 hover:bg-accent/50 hover:text-foreground cursor-pointer outline-none'
+          className='group flex h-8 w-full items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-13 text-foreground shadow-none transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
         >
-          <Search className='size-3.5 text-foreground/80 group-hover:text-foreground transition-colors shrink-0' />
-          <span className='text-[13px] text-muted-foreground group-hover:text-foreground transition-colors truncate'>Search...</span>
+          <Search className='size-3.5 text-foreground shrink-0' />
+          <span className='text-13 text-foreground truncate'>Search...</span>
         </button>
       </div>
 
@@ -61,10 +61,10 @@ export default function Topbar() {
             <TooltipTrigger asChild>
               <button
                 type='button'
-                className='group flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/60 cursor-pointer outline-none'
+                className='group flex size-8 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
                 aria-label='Inbox'
               >
-                <Mail className='size-4 text-foreground' />
+                <Mail className='size-4 text-foreground shrink-0' />
               </button>
             </TooltipTrigger>
             <TooltipContent side='bottom' sideOffset={6}>

@@ -76,7 +76,7 @@ export default function CreateCollectionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-md bg-background border border-border/60 shadow-none rounded-md"
+        className="sm:max-w-md bg-background border border-border shadow-none rounded-md"
         showCloseButton={false}
       >
         <DialogHeader>
@@ -96,7 +96,7 @@ export default function CreateCollectionModal({
               placeholder="Collection name"
               autoFocus
               onFocus={(e) => e.target.select()}
-              className="h-9 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-md border-border/60"
+              className="h-9 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-md border-border"
               {...register('name')}
             />
             {errors.name && (
@@ -117,10 +117,10 @@ export default function CreateCollectionModal({
                   value={field.value || 'root'}
                   onValueChange={(val) => field.onChange(val === 'root' ? null : val)}
                 >
-                  <SelectTrigger className="w-full h-9 text-sm text-foreground justify-between rounded-md border-border/60">
+                  <SelectTrigger className="w-full h-9 text-sm text-foreground justify-between rounded-md border-border">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border/60 shadow-none rounded-md">
+                  <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-none rounded-md">
                     {/* Root My Library */}
                     <SelectItem value="root" className="rounded-sm">
                       <div className="flex items-center gap-2">

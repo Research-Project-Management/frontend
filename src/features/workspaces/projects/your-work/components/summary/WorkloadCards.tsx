@@ -18,11 +18,11 @@ export function WorkloadCards({
 }: WorkloadCardsProps) {
   const workloadStates = [
     { label: 'Backlog', count: statusBreakdown.backlog || 0, color: 'bg-muted-foreground/60' },
-    { label: 'Not started', count: statusBreakdown.todo || 0, color: 'bg-blue-600' },
-    { label: 'Working on', count: statusBreakdown.doing || 0, color: 'bg-amber-500' },
-    { label: 'In review', count: statusBreakdown.review || 0, color: 'bg-yellow-400' },
-    { label: 'Completed', count: statusBreakdown.done || 0, color: 'bg-emerald-600' },
-    { label: 'Cancelled', count: statusBreakdown.cancelled || 0, color: 'bg-red-600' },
+    { label: 'Not started', count: statusBreakdown.todo || 0, color: 'bg-primary' },
+    { label: 'Working on', count: statusBreakdown.doing || 0, color: 'bg-warning' },
+    { label: 'In review', count: statusBreakdown.review || 0, color: 'bg-warning' },
+    { label: 'Completed', count: statusBreakdown.done || 0, color: 'bg-success' },
+    { label: 'Cancelled', count: statusBreakdown.cancelled || 0, color: 'bg-destructive' },
   ];
 
   return (
@@ -34,7 +34,7 @@ export function WorkloadCards({
         {workloadStates.map((state) => (
           <div
             key={state.label}
-            className="p-4 rounded-lg border border-border/80 bg-card flex flex-col justify-between min-h-[82px] shadow-2xs"
+            className="p-4 rounded-lg border border-border bg-card flex flex-col justify-between min-h-[82px] shadow-none"
           >
             <div className="flex items-center gap-2 mb-2">
               <span className={cn('size-2.5 rounded-xs shrink-0', state.color)} />

@@ -102,6 +102,27 @@ export const creatorCreditSchema = z.object({
   name: z.string().optional(),
 });
 
+export const catalogContributorRelationSchema = z.object({
+  id: z.string().optional(),
+  catalogItemId: z.string().optional(),
+  creatorType: z.string().optional().default('author'),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+  fullName: z.string().optional().default(''),
+  name: z.string().optional(),
+  orderIndex: z.number().optional().default(0),
+  createdAt: z.string().optional(),
+});
+
+export const collectionRelationSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().nullable().optional(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+  workspaceId: z.string().optional(),
+});
+
 export const catalogItemSchema = z.object({
   id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Item'),
@@ -177,14 +198,14 @@ export const catalogItemSchema = z.object({
   // Structured creator/author arrays
   creators: z.array(creatorCreditSchema).optional().default([]),
   // Raw relations returned by the API (backend includes these)
-  contributors: z.array(z.any()).optional().default([]),
+  contributors: z.array(catalogContributorRelationSchema).optional().default([]),
   itemTags: z.array(z.object({
     tag: z.object({ id: z.string(), name: z.string(), color: z.string().optional() }).optional(),
     tagId: z.string().optional(),
     catalogItemId: z.string().optional(),
   })).optional().default([]),
   collectionIds: z.array(z.string()).optional().default([]),
-  collections: z.array(z.any()).optional().default([]),
+  collections: z.array(collectionRelationSchema).optional().default([]),
   // Notes
   notes: z.array(noteSchema).optional().default([]),
   notesList: z.array(noteSchema).optional().default([]),

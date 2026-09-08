@@ -15,12 +15,14 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  FileText,
 } from 'lucide-react';
 import Topbar from '../components/Topbar';
 import InspectorPanel from '../components/Panel';
 import AddLinkModal from '../components/modals/AddLinkModal';
 import CreateCollectionModal from '../components/modals/CreateCollectionModal';
 import TrashModal, { type MoveToTrashTarget } from '../components/modals/TrashModal';
+import ProcessModal from '../components/modals/ProcessModal';
 import BatchBar from '../components/table/BatchBar';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -82,6 +84,32 @@ export default function LibraryPage() {
 
   const [trashTarget, setTrashTarget] = useState<MoveToTrashTarget | null>(null);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingOver(false);
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length > 0) {
+        handleDirectFilesUpload(files);
+      }
+    },
+    [handleDirectFilesUpload],
+  );
 
   const {
     sortedItems,
@@ -172,9 +200,9 @@ export default function LibraryPage() {
     return (
       <span className="shrink-0 ml-1.5 inline-flex items-center text-foreground">
         {sortOrder === 'desc' ? (
-          <ArrowDown className="size-3.5 text-foreground" />
+          <ArrowDown className="size-3.5 text-foreground shrink-0" />
         ) : (
-          <ArrowUp className="size-3.5 text-foreground" />
+          <ArrowUp className="size-3.5 text-foreground shrink-0" />
         )}
       </span>
     );
@@ -218,22 +246,22 @@ export default function LibraryPage() {
 
         {/* Active Filter Chips */}
         {(activeTag || activeFilter) && (
-          <div className="px-4 py-2 bg-muted/40 border-b border-border/40 flex items-center gap-2 text-xs">
+          <div className="px-4 py-2 bg-muted border-b border-border flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">Filtering by:</span>
             {activeTag && (
-              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border/50 font-medium">
+              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border font-medium">
                 Tag: #{activeTag}
               </span>
             )}
             {activeFilter && (
-              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border/50 font-medium capitalize">
+              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border font-medium capitalize">
                 View: {activeFilter}
               </span>
             )}
             <button
               type="button"
               onClick={() => navigate(`/${workspaceSlug}/library`)}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted rounded-sm px-1.5 py-0.5 transition-colors focus:outline-none cursor-pointer"
+              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted rounded-sm px-1.5 py-0.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
             >
               <span>Clear filter</span>
               <X className="size-3 text-muted-foreground shrink-0" />
@@ -242,11 +270,26 @@ export default function LibraryPage() {
         )}
 
         {/* Central Items Table - Managed Directly by LibraryPage */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-background">
+        <div
+          className="flex-1 min-h-0 overflow-hidden flex flex-col bg-background relative"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Drop Overlay */}
+          {isDraggingOver && (
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-background/85 backdrop-blur-xs border-2 border-dashed border-primary rounded-md p-6 pointer-events-none select-none">
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-2.5">
+                <FileText className="size-6 text-primary shrink-0" />
+              </div>
+              <p className="text-13 font-medium text-foreground">Drop references or PDFs here</p>
+              <p className="text-11 text-muted-foreground mt-0.5">Supports .bib, .ris, and .pdf files</p>
+            </div>
+          )}
           {isLoading && filteredItems.length === 0 ? (
             <div className="p-4 space-y-2">
               {Array.from({ length: 8 }).map((_, skeletonIndex) => (
-                <div key={skeletonIndex} className="flex items-center gap-3 py-2 border-b border-border/40">
+                <div key={skeletonIndex} className="flex items-center gap-3 py-2 border-b border-border">
                   <Skeleton className="size-4 rounded" />
                   <Skeleton className="h-4 flex-1 max-w-[320px]" />
                   <Skeleton className="h-4 w-28" />
@@ -259,8 +302,8 @@ export default function LibraryPage() {
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 h-full min-h-[300px] text-center p-8 select-none">
-              <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-                <BookOpen className="size-6 text-muted-foreground" />
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <BookOpen className="size-6 text-muted-foreground shrink-0" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">No references found</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -282,7 +325,7 @@ export default function LibraryPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setAddLinkOpen(true)}
-                    className="h-8 text-xs gap-1.5 cursor-pointer text-foreground hover:bg-muted border border-border/80 !rounded-md shadow-none"
+                    className="h-8 text-xs gap-1.5 cursor-pointer text-foreground hover:bg-muted border border-border !rounded-md shadow-none"
                   >
                     <span>Add Item</span>
                   </Button>
@@ -303,7 +346,7 @@ export default function LibraryPage() {
                   <col className={activeFilter === 'unfiled' ? 'w-[120px]' : 'w-[110px]'} />
                   <col className="w-10" />
                 </colgroup>
-                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border/60 select-none">
+                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border select-none">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
                     <th className="w-10 px-2.5 py-1.5 text-center align-middle">
                       <Checkbox
@@ -372,8 +415,8 @@ export default function LibraryPage() {
                             onClick={(clickEvent) => handleRowClick(clickEvent, paper)}
                             onDoubleClick={(clickEvent) => handleRowDoubleClick(clickEvent, paper)}
                             className={cn(
-                              'group h-9 transition-colors cursor-pointer border-b border-border/30',
-                              isSelected ? 'bg-muted/80' : isActive ? 'bg-muted/50' : 'hover:bg-muted/30',
+                              'group h-9 transition-colors cursor-pointer border-b border-border',
+                              isSelected ? 'bg-muted' : isActive ? 'bg-muted' : 'hover:bg-muted',
                             )}
                           >
                             <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(clickEvent) => clickEvent.stopPropagation()}>
@@ -418,30 +461,30 @@ export default function LibraryPage() {
                                   <DropdownMenuTrigger asChild>
                                     <button
                                       type="button"
-                                      className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none"
+                                      className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                       aria-label="Actions"
                                     >
-                                      <MoreVertical className="size-4 text-foreground" />
+                                      <MoreVertical className="size-4 text-foreground shrink-0" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
+                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <BookOpen className="size-3.5 text-foreground shrink-0" />
                                       <span>Open in Reader</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleSelectItem(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <Quote className="size-3.5 text-foreground shrink-0" />
                                       <span>Cite</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleInitiateSingleTrash(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <Trash2 className="size-3.5 text-foreground shrink-0" />
                                       <span>Move to Trash</span>
@@ -454,15 +497,15 @@ export default function LibraryPage() {
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48 text-xs font-sans">
                           <ContextMenuItem onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)} className="gap-2 text-foreground">
-                            <BookOpen className="size-3.5 text-foreground" />
+                            <BookOpen className="size-3.5 text-foreground shrink-0" />
                             <span>Open in Reader</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleSelectItem(paper)} className="gap-2 text-foreground">
-                            <Quote className="size-3.5 text-foreground" />
+                            <Quote className="size-3.5 text-foreground shrink-0" />
                             <span>Cite</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleInitiateSingleTrash(paper)} className="gap-2 text-foreground">
-                            <Trash2 className="size-3.5 text-foreground" />
+                            <Trash2 className="size-3.5 text-foreground shrink-0" />
                             <span>Move to Trash</span>
                           </ContextMenuItem>
                         </ContextMenuContent>
@@ -522,6 +565,20 @@ export default function LibraryPage() {
         target={trashTarget}
         onConfirm={handleConfirmTrash}
       />
+
+      {/* Real-time Zotero-style Process Modal */}
+      {state.ingestProgressModal && (
+        <ProcessModal
+          state={state.ingestProgressModal}
+          onClose={actions.closeProcessModal}
+          onToggleMinimize={actions.toggleMinimizeProcessModal}
+          onViewLibrary={() => {
+            if (workspaceSlug) {
+              navigate(`/${workspaceSlug}/library`);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

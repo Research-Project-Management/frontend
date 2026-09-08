@@ -75,7 +75,7 @@ export function ImportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 rounded-lg border border-border/80 bg-background shadow-2xl space-y-4">
+      <DialogContent className="max-w-md p-6 rounded-lg border border-border bg-background space-y-4">
         <DialogHeader className="space-y-1">
           <DialogTitle className="text-base font-semibold text-foreground">
             Import members from CSV
@@ -88,16 +88,16 @@ export function ImportModal({
         {/* Dropzone */}
         <label
           htmlFor="csv-import-file"
-          className="relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-border/80 hover:border-primary/60 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer min-h-[130px]"
+          className="relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-border hover:border-primary/60 rounded-lg bg-muted transition-colors cursor-pointer min-h-[130px]"
         >
           {fileName ? (
             <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-              <FileSpreadsheet className="size-5 text-emerald-500" />
+              <FileSpreadsheet className="size-5 text-success shrink-0" />
               <span>{fileName} ({parsedRows.length} members detected)</span>
             </div>
           ) : (
             <div className="text-center space-y-1">
-              <Upload className="size-6 text-muted-foreground mx-auto mb-1 stroke-[1.5]" />
+              <Upload className="size-6 text-muted-foreground mx-auto mb-1 stroke-[1.5] shrink-0" />
               <p className="text-xs font-medium text-foreground">
                 Drag & drop or browse CSV file
               </p>
@@ -124,7 +124,7 @@ export function ImportModal({
             onClick={downloadTemplate}
             className="text-primary hover:underline text-xs flex items-center gap-1 cursor-pointer font-medium"
           >
-            <Download className="size-3.5" />
+            <Download className="size-3.5 shrink-0" />
             <span>Download CSV template</span>
           </button>
         </div>
@@ -148,9 +148,9 @@ export function ImportModal({
             type="button"
             onClick={handleImportSubmit}
             disabled={isImporting || parsedRows.length === 0}
-            className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs disabled:opacity-50"
+            className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-none disabled:opacity-50"
           >
-            {isImporting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+            {isImporting && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
             Import {parsedRows.length > 0 ? `(${parsedRows.length})` : ''}
           </Button>
         </div>

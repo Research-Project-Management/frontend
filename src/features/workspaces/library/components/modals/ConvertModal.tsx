@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -140,7 +140,7 @@ export function ConvertModal({
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[88vh] flex flex-col p-6 gap-4 bg-background border border-border/60 rounded-md shadow-none">
+      <DialogContent className="sm:max-w-[520px] max-h-[88vh] flex flex-col p-6 gap-4 bg-background border border-border rounded-md shadow-none">
         <DialogHeader className="space-y-1 text-left">
           <DialogTitle className="text-sm font-semibold tracking-tight">
             Change Item Type
@@ -153,16 +153,16 @@ export function ConvertModal({
         </DialogHeader>
 
         {/* Type transition header */}
-        <div className="flex items-center justify-between px-3 py-2.5 rounded-md bg-muted/40 border border-border/50 text-xs">
+        <div className="flex items-center justify-between px-3 py-2.5 rounded-md bg-muted border border-border text-xs">
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider">
+            <span className="text-10 font-mono text-muted-foreground tracking-wide">
               Current type
             </span>
             <span className="font-medium text-foreground">{sourceTypeName}</span>
           </div>
           <ArrowRight className="size-3.5 text-muted-foreground shrink-0 mx-3" />
           <div className="flex flex-col gap-0.5 text-right">
-            <span className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider">
+            <span className="text-10 font-mono text-muted-foreground tracking-wide">
               New type
             </span>
             <span className="font-semibold text-foreground">{targetTypeName}</span>
@@ -173,7 +173,7 @@ export function ConvertModal({
         <div className="flex-1 overflow-y-auto space-y-3 min-h-[100px] max-h-[320px] pr-0.5 text-xs">
           {isLoadingPreview ? (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-              <Loader2 className="size-4 animate-spin text-foreground" />
+              <Loader2 className="size-4 animate-spin text-foreground shrink-0" />
               <span className="text-xs">Analyzing field compatibility…</span>
             </div>
           ) : previewError ? (
@@ -181,41 +181,41 @@ export function ConvertModal({
               <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-xs">Preview error</p>
-                <p className="text-[11px] opacity-90 mt-0.5">{previewError}</p>
+                <p className="text-11 opacity-90 mt-0.5">{previewError}</p>
               </div>
             </div>
           ) : preview ? (
             <>
               {/* ── LOSSY PATH: field-loss warning ─────────────────────── */}
               {droppedWithValues.length > 0 && (
-                <div className="rounded-md border border-amber-200/70 bg-amber-50/60 dark:border-amber-800/40 dark:bg-amber-950/30 overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-200/50 dark:border-amber-800/30">
-                    <TriangleAlert className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                <div className="rounded-md border border-warning/30 bg-warning/10 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-warning/20">
+                    <TriangleAlert className="size-3.5 text-warning shrink-0" />
+                    <span className="text-xs font-medium text-warning">
                       {droppedWithValues.length} field{droppedWithValues.length !== 1 ? 's' : ''} will leave the standard form
                     </span>
                   </div>
-                  <div className="divide-y divide-amber-100/80 dark:divide-amber-900/40">
+                  <div className="divide-y divide-warning/20">
                     {droppedWithValues.map((d, i) => (
                       <div key={d.field + i} className="flex items-start gap-2.5 px-3 py-1.5">
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="text-[11px] font-medium text-amber-900 dark:text-amber-200">
+                          <p className="text-11 font-medium text-warning">
                             {d.label || d.field}
                           </p>
-                          <p className="text-[10px] font-mono text-amber-700/80 dark:text-amber-400/80 truncate">
+                          <p className="text-10 font-mono text-warning truncate">
                             {formatValue(d.value)}
                           </p>
                         </div>
-                        <span className="text-[9px] text-amber-600/70 dark:text-amber-500/60 shrink-0 mt-0.5 font-mono">
+                        <span className="text-9 text-warning shrink-0 mt-0.5 font-mono">
                           → extraFields
                         </span>
                       </div>
                     ))}
                   </div>
-                  <div className="px-3 py-2 bg-amber-50/80 dark:bg-amber-950/20 border-t border-amber-200/50 dark:border-amber-800/30">
-                    <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
+                  <div className="px-3 py-2 bg-warning/10 border-t border-warning/20">
+                    <p className="text-10 text-warning leading-relaxed">
                       These values are <strong>not deleted</strong> — they are safely moved to{' '}
-                      <code className="px-1 bg-amber-100 dark:bg-amber-900/40 rounded-sm">extraFields</code>{' '}
+                      <code className="px-1 bg-warning/20 rounded-sm">extraFields</code>{' '}
                       and can be recovered by reverting the type.
                     </p>
                   </div>
@@ -225,22 +225,22 @@ export function ConvertModal({
               {/* ── Creator role adjustments ───────────────────────────── */}
               {creatorRoleChanges.length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-foreground font-medium text-[11px]">
-                    <Info className="size-3.5" />
+                  <div className="flex items-center gap-1.5 text-foreground font-medium text-11">
+                    <Info className="size-3.5 shrink-0" />
                     <span>Creator role adjustments</span>
                   </div>
-                  <div className="rounded-md border border-border/60 bg-muted/20 divide-y divide-border/40">
+                  <div className="rounded-md border border-border bg-muted divide-y divide-border/40">
                     {creatorRoleChanges.map((c, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between px-2.5 py-1.5 text-[11px]"
+                        className="flex items-center justify-between px-2.5 py-1.5 text-11"
                       >
                         <span className="text-muted-foreground truncate max-w-[160px]">
                           {(c.creator as any)?.name || (c.creator as any)?.fullName || 'Creator'}
                         </span>
                         <span className="flex items-center gap-1 font-mono shrink-0 ml-2">
                           <span className="text-muted-foreground">{c.fromRole}</span>
-                          <ArrowRight className="size-2.5 text-muted-foreground" />
+                          <ArrowRight className="size-2.5 text-muted-foreground shrink-0" />
                           <span className="text-foreground font-medium">{c.toRole}</span>
                         </span>
                       </div>
@@ -252,19 +252,19 @@ export function ConvertModal({
               {/* ── Base-semantic field remaps ─────────────────────────── */}
               {preview.mappedFields?.length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-foreground font-medium text-[11px]">
-                    <Info className="size-3.5" />
+                  <div className="flex items-center gap-1.5 text-foreground font-medium text-11">
+                    <Info className="size-3.5 shrink-0" />
                     <span>Field label remaps (base semantics)</span>
                   </div>
-                  <div className="rounded-md border border-border/60 bg-muted/20 divide-y divide-border/40">
+                  <div className="rounded-md border border-border bg-muted divide-y divide-border/40">
                     {preview.mappedFields.map((m, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between px-2.5 py-1.5 text-[11px] font-mono"
+                        className="flex items-center justify-between px-2.5 py-1.5 text-11 font-mono"
                       >
                         <span className="text-muted-foreground">{m.fromField}</span>
                         <span className="flex items-center gap-1 shrink-0 ml-2">
-                          <ArrowRight className="size-2.5 text-muted-foreground" />
+                          <ArrowRight className="size-2.5 text-muted-foreground shrink-0" />
                           <span className="text-foreground font-medium">{m.toField}</span>
                         </span>
                       </div>
@@ -275,9 +275,9 @@ export function ConvertModal({
 
               {/* ── Lossless confirmation ──────────────────────────────── */}
               {!hasLoss && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-md bg-muted border border-border">
                   <CheckCircle2 className="size-3.5 text-foreground shrink-0" />
-                  <span className="text-[11px] text-foreground">
+                  <span className="text-11 text-foreground">
                     All {preview.preservedFields.length} field{preview.preservedFields.length !== 1 ? 's' : ''} preserved identically — no data loss.
                   </span>
                 </div>
@@ -285,9 +285,9 @@ export function ConvertModal({
 
               {/* Preserve-in-extra note (lossless path) */}
               {hasLoss && droppedWithValues.length === 0 && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/20 border border-border/40">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted border border-border">
                   <ShieldCheck className="size-3.5 text-foreground shrink-0" />
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-11 text-muted-foreground">
                     Only creator roles adjusted — no field values lost.
                   </span>
                 </div>
@@ -297,7 +297,7 @@ export function ConvertModal({
         </div>
 
         {/* ── Retain-unmapped option ─────────────────────────────────────────── */}
-        <div className={cn('flex items-start gap-2 pt-3 border-t border-border/40', !hasLoss && 'opacity-60')}>
+        <div className={cn('flex items-start gap-2 pt-3 border-t border-border', !hasLoss && 'opacity-60')}>
           <Checkbox
             id="retain-unmapped"
             checked={retainUnmapped}
@@ -306,7 +306,7 @@ export function ConvertModal({
           />
           <label htmlFor="retain-unmapped" className="text-xs text-foreground cursor-pointer leading-snug select-none">
             <span className="font-medium">Keep unmapped values in extraFields</span>
-            <p className="text-[11px] text-muted-foreground font-normal mt-0.5">
+            <p className="text-11 text-muted-foreground font-normal mt-0.5">
               Ensures no metadata is permanently lost — values can be recovered by reverting the type.
             </p>
           </label>
@@ -314,14 +314,14 @@ export function ConvertModal({
 
         {/* ── Lossy acknowledgement checkbox ────────────────────────────────── */}
         {hasLoss && droppedWithValues.length > 0 && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/30">
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-md bg-warning/10 border border-warning/20">
             <Checkbox
               id="ack-loss"
               checked={acknowledgedLoss}
               onCheckedChange={(v) => setAcknowledgedLoss(Boolean(v))}
-              className="mt-0.5 size-3.5 rounded-md border-amber-400 dark:border-amber-600 cursor-pointer data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+              className="mt-0.5 size-3.5 rounded-md border-warning cursor-pointer data-[state=checked]:bg-warning data-[state=checked]:border-warning"
             />
-            <label htmlFor="ack-loss" className="text-xs text-amber-900 dark:text-amber-200 cursor-pointer leading-snug select-none">
+            <label htmlFor="ack-loss" className="text-xs text-warning cursor-pointer leading-snug select-none">
               I understand that{' '}
               <strong>
                 {droppedWithValues.length} field{droppedWithValues.length !== 1 ? 's' : ''}
@@ -331,7 +331,7 @@ export function ConvertModal({
           </div>
         )}
 
-        <DialogFooter className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+        <DialogFooter className="flex items-center justify-between gap-2 pt-2 border-t border-border">
           <Button
             type="button"
             variant="ghost"
@@ -350,10 +350,10 @@ export function ConvertModal({
             disabled={confirmDisabled}
             className={cn(
               'h-8 text-xs gap-1.5 rounded-md',
-              hasLoss && 'bg-amber-600 hover:bg-amber-700 text-white border-amber-700',
+              hasLoss && 'bg-warning hover:bg-warning/90 text-warning-foreground border-warning',
             )}
           >
-            {isConverting && <Loader2 className="size-3.5 animate-spin" />}
+            {isConverting && <Loader2 className="size-3.5 animate-spin shrink-0" />}
             <span>
               {hasLoss ? `Convert anyway` : `Convert to ${targetTypeName}`}
             </span>

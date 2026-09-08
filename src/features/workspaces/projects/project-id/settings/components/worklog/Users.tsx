@@ -44,7 +44,7 @@ export function WorklogUsers({
         <button
           type="button"
           className={cn(
-            'h-8 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/40 text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none shrink-0',
+            'h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0',
             count > 0 && 'border-primary/50 text-primary bg-primary/5'
           )}
         >
@@ -53,13 +53,13 @@ export function WorklogUsers({
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-64 p-1.5 rounded-lg">
+      <PopoverContent align="start" className="w-64 p-1.5 rounded-md">
         <div className="p-1 pb-1.5">
           <Input
             placeholder="Search users..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-7.5 text-xs border-border/80 focus:ring-0 focus:outline-none"
+            className="h-7.5 text-xs border-border focus:ring-0 focus:outline-none"
           />
         </div>
 
@@ -68,7 +68,7 @@ export function WorklogUsers({
             <button
               type="button"
               onClick={onClear}
-              className="w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+              className="w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <X className="size-3 shrink-0" />
               <span>Clear filter</span>
@@ -89,7 +89,7 @@ export function WorklogUsers({
                   onClick={() => onToggle(m.id)}
                   className={cn(
                     'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs transition-colors cursor-pointer text-left',
-                    isSelected ? 'bg-accent/70 font-medium text-foreground' : 'text-foreground/90 hover:bg-muted/60'
+                    isSelected ? 'bg-muted font-medium text-foreground' : 'text-foreground hover:bg-muted'
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -101,10 +101,10 @@ export function WorklogUsers({
                           : 'border-muted-foreground/40'
                       )}
                     >
-                      {isSelected && <Check className="size-2.5 stroke-[3]" />}
+                      {isSelected && <Check className="size-2.5 stroke-[3] shrink-0" />}
                     </div>
 
-                    <Avatar className="size-5 rounded-full border border-border/80 shrink-0">
+                    <Avatar className="size-5 rounded-full border border-border shrink-0">
                       {m.avatar && <AvatarImage src={m.avatar} className="object-cover" />}
                       <AvatarFallback className="text-xs bg-muted font-medium">
                         {m.name.charAt(0).toUpperCase()}

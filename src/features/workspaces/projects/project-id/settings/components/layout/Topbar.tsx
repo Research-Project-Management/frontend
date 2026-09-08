@@ -18,7 +18,7 @@ export function Topbar({ project, centerContent }: TopbarProps) {
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2.5">
-        <Settings className="size-4 text-foreground" />
+        <Settings className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold text-foreground tracking-tight">
           {project?.name ? `${project.name} · Settings` : 'Settings'}
         </h1>

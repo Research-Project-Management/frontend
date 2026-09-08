@@ -82,7 +82,7 @@ export default function PdfViewerToolbar({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    'size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none',
+                    'size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none',
                     isDrawerOpen && 'bg-muted text-primary',
                   )}
                   onClick={onToggleDrawer}
@@ -100,7 +100,7 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
                 disabled={pageNumber <= 1 || loading}
                 onClick={() => onPageChange(pageNumber - 1)}
                 aria-label="Previous page"
@@ -126,9 +126,9 @@ export default function PdfViewerToolbar({
               }}
               disabled={loading || !numPages}
               aria-label="Current page"
-              className="h-6 w-11 px-1 text-center font-mono text-xs tabular-nums text-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-sm border-border/70 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="h-6 w-11 px-1 text-center font-mono text-xs tabular-nums text-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-sm border-border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
-            <span className="text-[11px] font-mono tabular-nums text-muted-foreground select-none">
+            <span className="text-11 font-mono tabular-nums text-muted-foreground select-none">
               / {numPages ?? '-'}
             </span>
           </form>
@@ -138,7 +138,7 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
                 disabled={numPages ? pageNumber >= numPages || loading : true}
                 onClick={() => onPageChange(pageNumber + 1)}
                 aria-label="Next page"
@@ -157,7 +157,7 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
                 disabled={zoom <= 0.5 || loading}
                 onClick={handleZoomOut}
                 aria-label="Zoom out"
@@ -175,7 +175,7 @@ export default function PdfViewerToolbar({
                 onClick={() => onZoomChange(1.0)}
                 disabled={loading}
                 aria-label="Reset zoom to 100%"
-                className="min-w-[2.75rem] px-1.5 py-1 text-center font-mono text-[11px] tabular-nums text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="min-w-[2.75rem] px-1.5 py-1 text-center font-mono text-11 tabular-nums text-muted-foreground hover:bg-muted rounded-sm transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
               >
                 {Math.round(zoom * 100)}%
               </button>
@@ -188,7 +188,7 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
                 disabled={zoom >= 3.0 || loading}
                 onClick={handleZoomIn}
                 aria-label="Zoom in"
@@ -206,7 +206,7 @@ export default function PdfViewerToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                className="size-7 text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
                 onClick={onFitWidth}
                 disabled={loading}
                 aria-label="Fit to width"

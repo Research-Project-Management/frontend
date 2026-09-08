@@ -53,7 +53,7 @@ export function Form({
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="flex items-center gap-3 rounded-lg border border-border/60 bg-background p-2.5 shadow-2xs"
+      className="flex items-center gap-3 rounded-lg border border-border bg-background p-2.5 shadow-none"
     >
       {/* Color picker dropdown trigger */}
       <div className="pl-1 shrink-0 flex items-center">
@@ -75,7 +75,7 @@ export function Form({
           onKeyDown={(e) => {
             if (e.key === 'Escape') onCancel();
           }}
-          className="w-full h-8.5 rounded-md border border-border/80 bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none focus:outline-none focus:ring-0 disabled:opacity-60"
+          className="w-full h-8.5 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none focus:outline-none focus:ring-0 disabled:opacity-60"
         />
         {errors.name && (
           <p className="text-xs text-destructive mt-1">{errors.name.message}</p>
@@ -88,7 +88,7 @@ export function Form({
           type="button"
           onClick={onCancel}
           disabled={isLoading}
-          className="h-8.5 px-3 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted/70 transition-colors cursor-pointer disabled:opacity-50"
+          className="h-8.5 px-3 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
         >
           Cancel
         </button>

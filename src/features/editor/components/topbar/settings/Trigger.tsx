@@ -21,10 +21,10 @@ export default function Trigger() {
             'p-1.5 rounded transition-colors outline-none',
             settingsPanelOpen
               ? 'text-primary bg-primary/10'
-              : 'text-muted-foreground hover:text-primary hover:bg-primary/10',
+              : 'text-muted-foreground hover:bg-muted',
           )}
         >
-          <Settings className="size-4" />
+          <Settings className="size-4 shrink-0" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom">Settings</TooltipContent>

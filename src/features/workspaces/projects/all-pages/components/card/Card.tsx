@@ -23,13 +23,13 @@ export function Card({ page, workspaceId }: CardProps) {
   return (
     <Link
       href={`/${workspaceId}/projects/${projId}/pages/${page.id}${fileQuery}`}
-      className="group flex flex-col rounded-lg border border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:border-primary transition-all overflow-hidden"
+      className="group flex flex-col rounded-lg border border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:border-primary transition-all overflow-hidden"
     >
-      <div className="aspect-[4/3] bg-muted/30 border-b border-border flex items-center justify-center overflow-hidden">
+      <div className="aspect-[4/3] bg-muted border-b border-border flex items-center justify-center overflow-hidden">
         {page.pdfThumbnail ? (
           <img src={page.pdfThumbnail} alt={page.title} className="w-full h-full object-cover" />
         ) : (
-          <FileText className="size-10 text-muted-foreground/30 group-hover:text-foreground/60 transition-colors" />
+          <FileText className="size-10 text-muted-foreground/30 transition-colors shrink-0" />
         )}
       </div>
       <div className="p-4 flex flex-col gap-1.5">

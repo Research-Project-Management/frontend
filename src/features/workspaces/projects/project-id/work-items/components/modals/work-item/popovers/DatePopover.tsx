@@ -104,7 +104,7 @@ export function DatePopover({
               : actionBtnClass
           }
         >
-          <Clock className="mr-2 h-4 w-4 text-foreground" />
+          <Clock className="mr-2 h-4 w-4 text-foreground shrink-0" />
           <span>Dates</span>
         </Button>
       </PopoverTrigger>
@@ -112,9 +112,9 @@ export function DatePopover({
         align="start"
         side="bottom"
         sideOffset={-14}
-        className="w-[304px] p-0 rounded-sm shadow-xl border-border/50 overflow-hidden flex flex-col z-100 bg-popover"
+        className="w-[304px] p-0 rounded-sm border-border overflow-hidden flex flex-col z-100 bg-popover"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <span className="text-sm font-semibold text-center flex-1 text-foreground">Dates</span>
           <Button
             variant="ghost"
@@ -122,12 +122,12 @@ export function DatePopover({
             className="size-8 text-foreground"
             onClick={() => onOpenChange(false)}
           >
-            <X className="size-4" />
+            <X className="size-4 shrink-0" />
           </Button>
         </div>
 
         <div className="p-3 space-y-4 max-h-[80vh] overflow-y-auto">
-          <div className="flex justify-center border-b border-border/50 pb-3">
+          <div className="flex justify-center border-b border-border pb-3">
             <Calendar
               mode="range"
               selected={selectedRange as any}
@@ -175,7 +175,7 @@ export function DatePopover({
               />
             </div>
 
-            <div className="space-y-1.5 pt-2 border-t border-border/50">
+            <div className="space-y-1.5 pt-2 border-t border-border">
               <label className="text-xs font-semibold text-muted-foreground">
                 Set due date reminder
               </label>
@@ -223,7 +223,7 @@ export function DatePopover({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
+          <div className="pt-2 border-t border-border flex flex-col gap-2">
             <Button size="sm" onClick={handleSave} className="w-full">
               Save
             </Button>

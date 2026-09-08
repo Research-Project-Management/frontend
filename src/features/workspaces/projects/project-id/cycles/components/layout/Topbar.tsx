@@ -99,10 +99,10 @@ export default function TopBar({
               onSearchChange?.("");
               setIsSearchExpanded(false);
             }}
-            className="absolute right-2.5 text-foreground hover:text-foreground/70 transition-colors cursor-pointer"
+            className="absolute right-2.5 text-foreground transition-colors cursor-pointer"
             aria-label="Clear search"
           >
-            <Plus className="size-3.5 rotate-45 text-foreground" />
+            <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />
           </button>
         )}
       </div>
@@ -114,18 +114,18 @@ export default function TopBar({
             size="sm"
             className="h-8 gap-1.5 px-3 rounded-sm border border-border text-foreground hover:bg-muted shadow-none bg-background cursor-pointer"
           >
-            <Filter className="size-3.5 mt-[1px] text-foreground" />
+            <Filter className="size-3.5 mt-[1px] text-foreground shrink-0" />
             <span className="text-xs font-medium text-foreground">Filters</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent
           align="end"
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="w-64 p-0 rounded-sm border-border shadow-lg z-[100] overflow-hidden bg-popover"
+          className="w-64 p-0 rounded-sm border-border z-[100] overflow-hidden bg-popover"
         >
-          <div className="px-2 pt-2 pb-1 bg-muted/30">
-             <div className="relative flex items-center h-8 rounded-sm border border-border bg-background overflow-hidden focus-within:border-border/80 transition-colors">
-                <Search className="absolute left-2.5 size-3.5 text-foreground" />
+          <div className="px-2 pt-2 pb-1 bg-muted">
+             <div className="relative flex items-center h-8 rounded-sm border border-border bg-background overflow-hidden focus-within:border-border transition-colors">
+                <Search className="absolute left-2.5 size-3.5 text-foreground shrink-0" />
                 <input
                   type="text"
                   value={optionSearch}
@@ -142,10 +142,10 @@ export default function TopBar({
               <div className="px-1 pb-2 border-b border-border">
                 <button
                   onClick={() => setIsStartExpanded(!isStartExpanded)}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-muted rounded-md cursor-pointer"
                 >
                   <span>Start date</span>
-                  {isStartExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                  {isStartExpanded ? <ChevronUp className="size-3.5 shrink-0" /> : <ChevronDown className="size-3.5 shrink-0" />}
                 </button>
                 
                 {isStartExpanded && (
@@ -171,14 +171,14 @@ export default function TopBar({
                           }}
                           className={cn(
                             "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
-                            isActive ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
+                            isActive ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
                           )}
                         >
                           <div className={cn(
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             isActive ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {isActive && <Check className="size-3 text-primary-foreground" strokeWidth={3} />}
+                            {isActive && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
                           </div>
                           <span className="font-medium">{opt.label}</span>
                         </button>
@@ -188,15 +188,15 @@ export default function TopBar({
                       <button
                         onClick={() => setCustomDateType("startDate")}
                         className={cn(
-                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
-                          dateFilters.startDate?.label === "Custom" ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
+                          "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
+                          dateFilters.startDate?.label === "Custom" ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
                         )}
                       >
                          <div className={cn(
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             dateFilters.startDate?.label === "Custom" ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {dateFilters.startDate?.label === "Custom" && <Check className="size-3 text-primary-foreground" strokeWidth={3} />}
+                            {dateFilters.startDate?.label === "Custom" && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
                           </div>
                         <span className="font-medium">Custom</span>
                       </button>
@@ -211,10 +211,10 @@ export default function TopBar({
               <div className="px-1 mt-2">
                  <button
                   onClick={() => setIsDueExpanded(!isDueExpanded)}
-                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="flex w-full items-center justify-between px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-muted rounded-md cursor-pointer"
                 >
                   <span>End date</span>
-                  {isDueExpanded ? <ChevronUp className="size-3.5 text-foreground" /> : <ChevronDown className="size-3.5 text-foreground" />}
+                  {isDueExpanded ? <ChevronUp className="size-3.5 text-foreground shrink-0" /> : <ChevronDown className="size-3.5 text-foreground shrink-0" />}
                 </button>
                 
                 {isDueExpanded && (
@@ -240,14 +240,14 @@ export default function TopBar({
                           }}
                           className={cn(
                             "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
-                            isActive ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
+                            isActive ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
                           )}
                         >
                           <div className={cn(
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             isActive ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {isActive && <Check className="size-3 text-primary-foreground" strokeWidth={3} />}
+                            {isActive && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
                           </div>
                           <span className="font-medium">{opt.label}</span>
                         </button>
@@ -257,15 +257,15 @@ export default function TopBar({
                       <button
                         onClick={() => setCustomDateType("dueDate")}
                         className={cn(
-                          "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
-                          dateFilters.dueDate?.label === "Custom" ? "bg-accent text-foreground" : "text-foreground hover:bg-muted"
+                          "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
+                          dateFilters.dueDate?.label === "Custom" ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
                         )}
                       >
                          <div className={cn(
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             dateFilters.dueDate?.label === "Custom" ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {dateFilters.dueDate?.label === "Custom" && <Check className="size-3 text-primary-foreground" strokeWidth={3} />}
+                            {dateFilters.dueDate?.label === "Custom" && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
                           </div>
                         <span className="font-medium">Custom</span>
                       </button>
@@ -301,7 +301,7 @@ export default function TopBar({
         size="sm"
         className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
       >
-        <Plus className="size-3.5 text-primary-foreground" />
+        <Plus className="size-3.5 text-primary-foreground shrink-0" />
         Add Cycle
       </Button>
     </div>

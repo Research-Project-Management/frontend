@@ -40,15 +40,15 @@ const ACCEPTED_TYPES =
 function getFileIcon(name: string) {
   const n = (name || '').toLowerCase();
   if (/\.(png|jpg|jpeg|gif|webp)$/.test(n))
-    return <FileImage className="size-3.5 shrink-0 text-violet-400" />;
+    return <FileImage className="size-3.5 shrink-0 text-primary" />;
   if (/\.(pdf|doc|docx)$/.test(n))
-    return <FileText className="size-3.5 shrink-0 text-rose-400" />;
+    return <FileText className="size-3.5 shrink-0 text-destructive" />;
   if (/\.(xls|xlsx|csv)$/.test(n))
-    return <FileText className="size-3.5 shrink-0 text-emerald-400" />;
+    return <FileText className="size-3.5 shrink-0 text-success" />;
   if (/\.(ts|tsx|js|jsx|json)$/.test(n))
-    return <FileCode className="size-3.5 shrink-0 text-sky-400" />;
+    return <FileCode className="size-3.5 shrink-0 text-primary" />;
   if (/\.(md|txt)$/.test(n))
-    return <FileText className="size-3.5 shrink-0 text-amber-400" />;
+    return <FileText className="size-3.5 shrink-0 text-warning" />;
   return <File className="size-3.5 shrink-0 text-muted-foreground/40" />;
 }
 
@@ -139,10 +139,10 @@ export function Panel() {
         onDragLeave={() => setIsDragOver(false)}
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-md p-4 text-center cursor-pointer transition-colors ${
           isDragOver
             ? 'border-primary bg-primary/5'
-            : 'border-border/60 hover:border-primary/40 hover:bg-secondary/30'
+            : 'border-border hover:border-primary/40 hover:bg-muted'
         }`}
       >
         <input
@@ -157,7 +157,7 @@ export function Panel() {
             e.target.value = '';
           }}
         />
-        <FileUp className="size-6 mx-auto mb-2 text-muted-foreground" />
+        <FileUp className="size-6 mx-auto mb-2 text-muted-foreground shrink-0" />
         <p className="text-xs font-medium text-foreground">Upload reference documents</p>
         <p className="text-xs text-muted-foreground mt-0.5">PDF, DOC, TXT, MD, CSV, code files</p>
       </div>
@@ -166,9 +166,9 @@ export function Panel() {
       {workspaceId && (
         <button
           onClick={() => setSourcePickerOpen(true)}
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/60 text-xs font-medium text-foreground transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-md border border-border bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer"
         >
-          <BookOpen className="size-3.5 text-primary" />
+          <BookOpen className="size-3.5 text-primary shrink-0" />
           <span>Add from Paper Library</span>
         </button>
       )}
@@ -195,7 +195,7 @@ export function Panel() {
 
       {/* Sources List */}
       <div className="flex-1 overflow-y-auto space-y-2">
-        <div className="flex items-center justify-between pb-1 border-b border-border/40">
+        <div className="flex items-center justify-between pb-1 border-b border-border">
           <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
             <input
               type="checkbox"
@@ -216,7 +216,7 @@ export function Panel() {
             {sources.map((src) => (
               <div
                 key={src.id}
-                className="group flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-secondary/40 transition-colors text-xs"
+                className="group flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted transition-colors text-xs"
               >
                 <label className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer">
                   <input
@@ -234,9 +234,9 @@ export function Panel() {
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => handleViewContent(src.id, src.name)}
-                        className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                        className="p-1 rounded-md hover:bg-muted text-foreground cursor-pointer"
                       >
-                        <Eye className="size-3" />
+                        <Eye className="size-3 shrink-0" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="left" className="text-xs">
@@ -248,9 +248,9 @@ export function Panel() {
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => removeSource(src.id)}
-                        className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"
+                        className="p-1 rounded text-muted-foreground hover:bg-destructive/10"
                       >
-                        <Trash2 className="size-3" />
+                        <Trash2 className="size-3 shrink-0" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="left" className="text-xs">
@@ -273,7 +273,7 @@ export function Panel() {
           <div className="flex-1 overflow-y-auto p-4 rounded-lg bg-secondary/30 font-mono text-xs leading-relaxed whitespace-pre-wrap">
             {viewingLoading ? (
               <div className="flex items-center justify-center p-8">
-                <Loader2 className="size-5 animate-spin text-primary" />
+                <Loader2 className="size-5 animate-spin text-primary shrink-0" />
               </div>
             ) : (
               viewingDoc?.content

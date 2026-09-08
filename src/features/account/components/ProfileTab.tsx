@@ -226,9 +226,9 @@ export default function ProfileTab() {
                 <Input
                   value={user.email}
                   disabled
-                  className='bg-muted/50 text-muted-foreground'
+                  className='bg-muted text-muted-foreground'
                 />
-                <button type='button' className='text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mt-1 inline-block cursor-pointer'>
+                <button type='button' className='text-xs text-foreground underline underline-offset-2 mt-1 inline-block cursor-pointer'>
                   Change email
                 </button>
               </div>
@@ -255,7 +255,7 @@ export default function ProfileTab() {
                 When deactivating an account, all of the data and resources within that account will be permanently removed and cannot be recovered.
               </p>
             </div>
-            <Button variant='outline' className='text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer'>
+            <Button variant='outline' className='text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer'>
               Deactivate account
             </Button>
           </div>

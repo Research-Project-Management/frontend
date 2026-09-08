@@ -59,7 +59,7 @@ export default function NavigationBar({
               'relative flex items-center gap-1.5 px-3.5 py-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-t-sm',
               isActive
                 ? 'text-primary font-semibold'
-                : 'text-muted-foreground hover:text-foreground',
+                : 'text-muted-foreground hover:bg-muted',
             )}
           >
             <span>{tab.label}</span>

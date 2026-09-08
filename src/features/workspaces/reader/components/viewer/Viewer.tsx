@@ -25,23 +25,23 @@ export function DocumentPageSkeleton({ width }: { width?: number }) {
   const h = w * 1.414;
   return (
     <div
-      className="flex flex-col gap-3 p-8 bg-card border border-border/80 rounded-md animate-pulse select-none"
+      className="flex flex-col gap-3 p-8 bg-card border border-border rounded-md animate-pulse select-none"
       style={{ width: w, height: h }}
       aria-hidden="true"
     >
-      <div className="h-4 w-3/4 bg-muted/80 rounded-sm mb-4" />
-      <div className="h-2.5 w-1/2 bg-muted/60 rounded-sm mb-6" />
+      <div className="h-4 w-3/4 bg-muted rounded-sm mb-4" />
+      <div className="h-2.5 w-1/2 bg-muted rounded-sm mb-6" />
       <div className="space-y-2.5 flex-1">
-        <div className="h-2 w-full bg-muted/50 rounded-sm" />
-        <div className="h-2 w-full bg-muted/50 rounded-sm" />
-        <div className="h-2 w-11/12 bg-muted/50 rounded-sm" />
-        <div className="h-2 w-full bg-muted/50 rounded-sm" />
-        <div className="h-2 w-4/5 bg-muted/50 rounded-sm" />
-        <div className="h-2 w-full bg-muted/50 rounded-sm mt-4" />
-        <div className="h-2 w-full bg-muted/50 rounded-sm" />
-        <div className="h-2 w-9/12 bg-muted/50 rounded-sm" />
+        <div className="h-2 w-full bg-muted rounded-sm" />
+        <div className="h-2 w-full bg-muted rounded-sm" />
+        <div className="h-2 w-11/12 bg-muted rounded-sm" />
+        <div className="h-2 w-full bg-muted rounded-sm" />
+        <div className="h-2 w-4/5 bg-muted rounded-sm" />
+        <div className="h-2 w-full bg-muted rounded-sm mt-4" />
+        <div className="h-2 w-full bg-muted rounded-sm" />
+        <div className="h-2 w-9/12 bg-muted rounded-sm" />
       </div>
-      <div className="h-2 w-1/4 bg-muted/40 rounded-sm self-center mt-auto" />
+      <div className="h-2 w-1/4 bg-muted rounded-sm self-center mt-auto" />
     </div>
   );
 }
@@ -56,6 +56,7 @@ interface ViewerProps {
   onAnnotate?: (selectedText: string, pageNumber: number) => void;
   fulltext?: DocumentFulltext | null;
   isLoadingFulltext?: boolean;
+  targetPage?: { pageNumber: number; timestamp: number } | null;
 }
 
 export default function Viewer({
@@ -68,6 +69,7 @@ export default function Viewer({
   onAnnotate,
   fulltext,
   isLoadingFulltext,
+  targetPage,
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -147,6 +149,12 @@ export default function Viewer({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  useEffect(() => {
+    if (targetPage && targetPage.pageNumber >= 1) {
+      scrollToPage(targetPage.pageNumber);
+    }
+  }, [targetPage, scrollToPage]);
+
   const handleJumpToPage = useCallback(
     (page: number, _coords?: { x: number; y: number; width: number; height: number }) => {
       scrollToPage(page);
@@ -223,7 +231,7 @@ export default function Viewer({
   const showLoading = isLoading || (blobUrl && docLoading);
 
   return (
-    <div className="relative flex-1 flex flex-col min-w-0 h-full bg-muted/45 overflow-hidden">
+    <div className="relative flex-1 flex flex-col min-w-0 h-full bg-muted overflow-hidden">
       {/* Structure & Entities Navigation Drawer */}
       <DocumentNavDrawer
         isOpen={isDrawerOpen}
@@ -244,7 +252,7 @@ export default function Viewer({
         {error || docError ? (
           <div className="flex flex-col items-center justify-center text-center p-10 max-w-md mx-auto mt-20 gap-3">
             <div className="size-12 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
-              <AlertTriangle className="size-6" />
+              <AlertTriangle className="size-6 shrink-0" />
             </div>
             <p className="text-sm font-semibold text-foreground">
               Unable to load document
@@ -271,7 +279,7 @@ export default function Viewer({
             ) : (
               <>
                 <div className="size-12 rounded-md bg-card border border-border flex items-center justify-center text-muted-foreground">
-                  <AlertTriangle className="size-6" />
+                  <AlertTriangle className="size-6 shrink-0" />
                 </div>
                 <p className="text-xs text-muted-foreground max-w-sm leading-relaxed">
                   No valid PDF document path found for this entry.
@@ -299,7 +307,7 @@ export default function Viewer({
                     if (el) pageRefs.current.set(pageNum, el);
                     else pageRefs.current.delete(pageNum);
                   }}
-                  className="bg-card border border-border/80 rounded-md overflow-hidden"
+                  className="bg-card border border-border rounded-md overflow-hidden"
                 >
                   <Page
                     pageNumber={pageNum}
@@ -318,7 +326,7 @@ export default function Viewer({
         {/* Floating AI & Action menu */}
         {showFloatingMenu && selectedText && (
           <div
-            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-md border border-border/40 backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
+            className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 bg-foreground text-background px-2 py-1.5 rounded-md border border-border backdrop-blur animate-in fade-in zoom-in-95 duration-150 select-none"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -350,7 +358,7 @@ export default function Viewer({
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 focus-visible:ring-1 focus-visible:ring-background focus-visible:outline-none transition-colors cursor-pointer"
                 title="Add selected text to a new note"
               >
-                <StickyNote className="size-3.5 text-background" />
+                <StickyNote className="size-3.5 text-background shrink-0" />
                 Note
               </button>
             ) : null}
@@ -366,7 +374,7 @@ export default function Viewer({
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 focus-visible:ring-1 focus-visible:ring-background focus-visible:outline-none transition-colors cursor-pointer"
                 title="Highlight & annotate selected text"
               >
-                <Highlighter className="size-3.5 text-background" />
+                <Highlighter className="size-3.5 text-background shrink-0" />
                 Highlight
               </button>
             ) : null}
@@ -378,9 +386,9 @@ export default function Viewer({
               title="Copy selection"
             >
               {copiedSelection ? (
-                <Check className="size-3.5 text-background" />
+                <Check className="size-3.5 text-background shrink-0" />
               ) : (
-                <Copy className="size-3.5" />
+                <Copy className="size-3.5 shrink-0" />
               )}
               {copiedSelection ? 'Copied' : 'Copy'}
             </button>
@@ -392,7 +400,7 @@ export default function Viewer({
               className="p-1 rounded hover:bg-background/20 focus-visible:ring-1 focus-visible:ring-background focus-visible:outline-none transition-colors opacity-70 hover:opacity-100 cursor-pointer"
               aria-label="Close menu"
             >
-              <X className="size-3.5" />
+              <X className="size-3.5 shrink-0" />
             </button>
           </div>
         )}

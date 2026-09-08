@@ -196,14 +196,14 @@ export const Phase = ({
 
   const renderEditView = () => (
     <div className="flex flex-1 w-full min-h-0 flex-col animate-in fade-in duration-150 bg-background">
-      <div className="relative flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3">
+      <div className="relative flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 rounded-sm hover:bg-accent"
+          className="size-8 rounded-md hover:bg-muted cursor-pointer"
           onClick={() => setView("list")}
         >
-          <ChevronLeft className="size-4 text-muted-foreground" />
+          <ChevronLeft className="size-4 text-muted-foreground shrink-0" />
         </Button>
 
         <span className="flex-1 text-center text-sm font-semibold text-foreground">
@@ -213,10 +213,10 @@ export const Phase = ({
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 rounded-sm hover:bg-accent"
+          className="size-8 rounded-md hover:bg-muted cursor-pointer"
           onClick={() => setIsOpen(false)}
         >
-          <X className="size-4 text-muted-foreground" />
+          <X className="size-4 text-muted-foreground shrink-0" />
         </Button>
       </div>
 
@@ -231,7 +231,7 @@ export const Phase = ({
           <Input
             value={tempLabel}
             onChange={(event) => setTempLabel(event.target.value)}
-            className="h-9 rounded-sm border-border/50 bg-background text-sm shadow-none ring-primary/20 focus-visible:ring-1"
+            className="h-9 rounded-sm border-border bg-background text-sm shadow-none ring-primary/20 focus-visible:ring-1"
             placeholder="Phase name..."
             autoFocus
           />
@@ -247,10 +247,10 @@ export const Phase = ({
               <button
                 key={item.id}
                 onClick={() => setTempIconId(item.id)}
-                className={`flex h-12 items-center justify-center rounded-sm border transition-all duration-150 ${
+                className={`flex h-12 items-center justify-center rounded-sm border transition-all duration-150 cursor-pointer ${
                   tempIconId === item.id
-                    ? "border-foreground bg-accent"
-                    : "border-border/50 bg-background hover:border-border hover:bg-accent"
+                    ? "border-foreground bg-muted"
+                    : "border-border bg-background hover:border-border hover:bg-muted"
                 }`}
                 title={item.label}
                 type="button"
@@ -262,10 +262,10 @@ export const Phase = ({
         </div>
       </div>
 
-      <div className="shrink-0 flex items-center justify-between border-t border-border/50 p-4 bg-background">
+      <div className="shrink-0 flex items-center justify-between border-t border-border p-4 bg-background">
         <Button
           onClick={handleSave}
-          className="h-9 rounded-md bg-primary px-6 text-xs font-semibold text-primary-foreground shadow-none transition-all hover:bg-primary/90 active:scale-95"
+          className="h-9 rounded-md bg-primary px-6 text-xs font-medium text-primary-foreground shadow-none transition-all hover:bg-primary/90 active:scale-95"
         >
           Save
         </Button>
@@ -274,7 +274,7 @@ export const Phase = ({
           <Button
             onClick={() => handleDelete(editingPhaseId)}
             variant="ghost"
-            className="h-9 rounded-md px-4 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="h-9 rounded-md px-4 text-xs font-medium text-destructive hover:bg-destructive/10"
           >
             Delete
           </Button>
@@ -285,7 +285,7 @@ export const Phase = ({
 
   const renderListView = () => (
     <div className="flex flex-1 w-full min-h-0 flex-col animate-in fade-in duration-150 bg-background">
-      <div className="relative flex shrink-0 items-center justify-between border-b border-border/50 bg-background px-4 py-3">
+      <div className="relative flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-3">
         <div className="size-8" />
         <span className="flex-1 text-center text-sm font-semibold text-foreground">
           Phases
@@ -293,10 +293,10 @@ export const Phase = ({
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 rounded-sm hover:bg-accent"
+          className="size-8 rounded-md hover:bg-muted cursor-pointer"
           onClick={() => setIsOpen(false)}
         >
-          <X className="size-4 text-muted-foreground" />
+          <X className="size-4 text-muted-foreground shrink-0" />
         </Button>
       </div>
 
@@ -312,10 +312,10 @@ export const Phase = ({
                   setFormPhase(phase.id);
                   setIsOpen(false);
                 }}
-                className={`flex flex-1 cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors duration-150 ${
+                className={`flex flex-1 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 ${
                   formPhase === phase.id
-                    ? "bg-accent text-foreground"
-                    : "text-foreground hover:bg-accent/70"
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-foreground hover:bg-muted"
                 }`}
                 type="button"
               >
@@ -324,18 +324,14 @@ export const Phase = ({
                 </div>
 
                 <span
-                  className={`flex-1 truncate text-left font-semibold tracking-tight ${
-                    formPhase === phase.id
-                      ? "text-foreground"
-                      : "text-foreground/80"
-                  }`}
+                  className={`flex-1 truncate text-left font-semibold tracking-tight text-foreground`}
                 >
                   {phase.label}
                 </span>
 
                 <div className="opacity-100">
                   {formPhase === phase.id && (
-                    <Check className="size-3.5 text-foreground stroke-[2.5]" />
+                    <Check className="size-3.5 text-foreground stroke-[2.5] shrink-0" />
                   )}
                 </div>
               </button>
@@ -350,7 +346,7 @@ export const Phase = ({
                     event.stopPropagation();
                     handleOpenEdit(phase);
                   }}
-                  className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-muted cursor-pointer"
                   type="button"
                 >
                   <svg
@@ -374,10 +370,10 @@ export const Phase = ({
                       event.stopPropagation();
                       handleDelete(phase.id);
                     }}
-                    className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 cursor-pointer"
                     type="button"
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-3.5 shrink-0" />
                   </button>
                 )}
               </div>
@@ -386,13 +382,13 @@ export const Phase = ({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border/50 bg-muted/30 p-2">
+      <div className="shrink-0 border-t border-border bg-muted p-2">
         <Button
           variant="ghost"
           onClick={handleOpenCreate}
-          className="flex h-9 w-full items-center justify-center gap-2 rounded-sm border-none bg-accent/50 text-xs font-semibold text-foreground shadow-none transition-all hover:bg-accent"
+          className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-border bg-background text-xs font-semibold text-foreground shadow-none transition-all hover:bg-muted cursor-pointer"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-3.5 shrink-0" />
           Create new phase
         </Button>
       </div>
@@ -409,8 +405,8 @@ export const Phase = ({
     >
       <PopoverTrigger asChild>
         {trigger || (
-          <button ref={triggerRef} className="flex h-10 items-center gap-2 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground outline-none transition-colors hover:bg-muted cursor-pointer">
-            <ClipboardList className="size-4 text-foreground" />
+          <button ref={triggerRef} className="flex h-10 items-center gap-2 rounded-sm border border-border bg-background px-4 text-base font-medium text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted cursor-pointer">
+            <ClipboardList className="size-4 text-foreground shrink-0" />
             Phase
           </button>
         )}
@@ -421,7 +417,7 @@ export const Phase = ({
         side="bottom"
         sideOffset={-150}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="z-140 flex w-[320px] flex-col overflow-hidden rounded-sm border-border bg-popover p-0 shadow-2xl animate-in fade-in zoom-in duration-150"
+        className="z-140 flex w-[320px] flex-col overflow-hidden rounded-sm border-border bg-popover p-0 animate-in fade-in zoom-in duration-150"
         style={{
           height: view === "edit" ? undefined : phaseListHeight,
           maxHeight:

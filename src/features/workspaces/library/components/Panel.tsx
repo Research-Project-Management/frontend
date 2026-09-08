@@ -124,15 +124,15 @@ function InspectorSectionHeader({
       onClick={() => onToggle(id)}
       className={cn(
         "flex h-9 w-full items-center justify-between px-3 text-foreground select-none group bg-background",
-        paper && !isOpen ? "hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer" : "cursor-default"
+        paper && !isOpen ? "hover:bg-muted cursor-pointer" : "cursor-default"
       )}
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
         <div className="size-4 shrink-0 flex items-center justify-center">
           <Icon className="size-4 text-foreground shrink-0" />
         </div>
-        <span className="truncate text-[13px] text-foreground font-sans font-medium tracking-tight">
-          {label}{count !== undefined && count > 0 && <span className="text-[11px] font-normal text-muted-foreground font-mono tabular-nums ml-1">({count})</span>}
+        <span className="truncate text-13 text-foreground font-sans font-medium tracking-tight">
+          {label}{count !== undefined && count > 0 && <span className="text-11 font-normal text-muted-foreground font-mono tabular-nums ml-1">({count})</span>}
         </span>
       </div>
 
@@ -150,7 +150,7 @@ function InspectorSectionHeader({
                     onAdd?.(id, e);
                   }
                 }}
-                className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
+                className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
                 aria-label={`Add ${label}`}
               >
                 <Plus className="size-3.5 text-foreground shrink-0" />
@@ -168,7 +168,7 @@ function InspectorSectionHeader({
                 e.stopPropagation();
                 onToggle(id);
               }}
-              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
+              className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
               aria-label={isOpen ? `Collapse ${label}` : `Expand ${label}`}
             >
               <ChevronDown
@@ -226,7 +226,7 @@ function InspectorTitleInput({
           inputRef.current?.blur();
         }
       }}
-      className="w-full text-[13px] font-medium text-foreground tracking-tight bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary outline-none truncate font-sans"
+      className="w-full text-13 font-medium text-foreground tracking-tight bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary outline-none truncate font-sans"
     />
   );
 }
@@ -807,7 +807,7 @@ export default function InspectorPanel({
                           <button
                             type="button"
                             onClick={(e) => e.stopPropagation()}
-                            className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 outline-none cursor-pointer"
+                            className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
                             aria-label="Add to collection"
                           >
                             <Plus className="size-3.5 text-foreground shrink-0" />
@@ -815,15 +815,15 @@ export default function InspectorPanel({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="w-52 p-1.5 rounded-md border border-border/80 shadow-md bg-popover text-popover-foreground text-xs font-sans max-h-72 overflow-y-auto"
+                          className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs font-sans max-h-72 overflow-y-auto"
                         >
                           <DropdownMenuItem
                             onClick={() => {
                               setIsCreateCollectionOpen(true);
                             }}
-                            className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground"
+                            className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
                           >
-                            <FolderPlus className="size-3.5 text-foreground" />
+                            <FolderPlus className="size-3.5 text-foreground shrink-0" />
                             <span>Create Collection</span>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -833,9 +833,9 @@ export default function InspectorPanel({
                               onClick={() => {
                                 handleUpdatePaper({ collectionId: col.id });
                               }}
-                              className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-accent text-foreground"
+                              className="flex items-center gap-2 cursor-pointer py-1.5 px-2 rounded-md hover:bg-muted text-foreground"
                             >
-                              <Folder className="size-3.5 text-foreground" />
+                              <Folder className="size-3.5 text-foreground shrink-0" />
                               <span className="truncate">{col.name}</span>
                             </DropdownMenuItem>
                           ))}
@@ -951,7 +951,7 @@ export default function InspectorPanel({
                 if (!paper) return;
                 setIsInspectorOpen(!isInspectorOpen);
               }}
-              className="size-8 flex items-center justify-center rounded-md outline-none text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+              className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted cursor-pointer"
               aria-label={isInspectorOpen ? "Collapse panel" : "Expand panel"}
             >
               <PanelRight className="size-4 text-foreground shrink-0" />
@@ -962,7 +962,7 @@ export default function InspectorPanel({
           <div className="w-[calc(100%-16px)] mx-auto h-px bg-border/60 shrink-0" />
         </div>
 
-        {/* Middle: 8 Section Icons - gap-1 and hover:bg-black/5 only, NO active effect */}
+        {/* Middle: 8 Section Icons - gap-1 and hover:bg-muted only, NO active effect */}
         <div className="flex flex-col items-center gap-1 w-full pt-1 px-1">
           {SECTIONS_CONFIG.map((sec) => {
             const Icon = sec.icon;
@@ -972,7 +972,7 @@ export default function InspectorPanel({
                 key={sec.id}
                 type="button"
                 onClick={() => handleSectionIconClick(sec.id)}
-                className="size-8 flex items-center justify-center rounded-md outline-none text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                className="size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground hover:bg-muted cursor-pointer"
                 aria-label={sec.label}
               >
                 <Icon className="size-4 text-foreground shrink-0" />

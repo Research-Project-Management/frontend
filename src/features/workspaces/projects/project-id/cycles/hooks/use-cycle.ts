@@ -41,6 +41,7 @@ export const useCreateCycle = () => {
       CycleService.create({ projectId, ...data }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.project(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: ["tasks", variables.projectId] });
     },
   });
 };

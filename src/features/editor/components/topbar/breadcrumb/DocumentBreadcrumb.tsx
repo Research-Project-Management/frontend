@@ -71,7 +71,7 @@ export default function DocumentBreadcrumb() {
             }}
             title="Back to project"
             aria-label={`Back to project ${projectName}`}
-            className="px-1.5 py-0.5 text-sm rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0 max-w-[140px] truncate"
+            className="px-1.5 py-0.5 text-sm rounded-md text-foreground hover:bg-muted transition-colors shrink-0 max-w-[140px] truncate"
           >
             {projectName}
           </button>
@@ -105,7 +105,7 @@ export default function DocumentBreadcrumb() {
               }}
               title="Click to rename document"
               aria-label={`Document title: ${currentPage.title}. Click to rename`}
-              className="text-sm font-medium text-foreground hover:bg-primary/10 hover:text-primary rounded px-1.5 py-0.5 transition-colors select-none truncate max-w-[180px]"
+              className="text-sm font-medium text-foreground hover:bg-muted rounded-md px-1.5 py-0.5 transition-colors select-none truncate max-w-[180px]"
             >
               {currentPage.title}
             </button>

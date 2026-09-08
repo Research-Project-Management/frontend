@@ -31,7 +31,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className='h-full w-60 flex flex-col justify-between overflow-x-hidden border-r border-border/50 bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
+    <aside className='h-full w-60 flex flex-col justify-between overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
       <div>
         {/* Header */}
         <div className='mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden'>
@@ -41,7 +41,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             aria-label='Toggle Storage Sidebar'
             className='p-1 hidden rounded-md cursor-pointer text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring'
           >
-            <PanelLeftClose className='size-4 text-foreground' />
+            <PanelLeftClose className='size-4 text-foreground shrink-0' />
           </button>
         </div>
 
@@ -59,10 +59,10 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   key={item.label}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] leading-5 transition-colors outline-none max-md:shrink-0',
+                    'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
                     isActive
                       ? 'bg-muted text-foreground font-medium'
-                      : 'text-foreground hover:bg-muted/70 font-normal'
+                      : 'text-foreground hover:bg-muted font-normal'
                   )}
                 >
                   {isActive && (

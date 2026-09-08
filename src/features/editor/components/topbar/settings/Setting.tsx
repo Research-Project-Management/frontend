@@ -28,6 +28,7 @@ import {
 import { usePageStore } from '@/features/editor/store/page.store';
 import { filesQuery, useFileActions } from '@/features/editor/hooks/use-page';
 import { Separator } from '@/shared/components/ui/separator';
+import { Switch } from '@/shared/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import {
   Select,
@@ -52,7 +53,7 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-secondary/50 transition-colors">
+    <div className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted transition-colors">
       <div className="flex items-center gap-3 min-w-0">
         <Icon className="size-4 text-muted-foreground shrink-0" />
         <div className="min-w-0">
@@ -134,24 +135,11 @@ export default function Setting() {
   };
 
   const renderToggle = (checked: boolean, onChange: (v: boolean) => void, label: string) => (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <Switch
+      checked={checked}
+      onCheckedChange={onChange}
       aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        'relative w-9 h-5 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-        checked ? 'bg-primary' : 'bg-muted-foreground/20',
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-0.5 left-0.5 size-4 rounded-full bg-white transition-transform shadow-xs',
-          checked && 'translate-x-4',
-        )}
-      />
-    </button>
+    />
   );
 
   return (
@@ -163,9 +151,9 @@ export default function Setting() {
           type="button"
           onClick={toggleSettingsPanel}
           aria-label="Close settings"
-          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1 rounded-md hover:bg-muted text-foreground transition-colors"
         >
-          <X className="size-4" />
+          <X className="size-4 shrink-0" />
         </button>
       </div>
 
@@ -177,7 +165,7 @@ export default function Setting() {
           
           <SettingRow icon={Cpu} label="Engine" description="LaTeX compiler">
             <Tabs value={engine} onValueChange={(v) => setEngine(v as LaTeXEngine)}>
-              <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
+              <TabsList className="h-7 p-0.5 border-none bg-secondary">
                 <TabsTrigger value="pdflatex" className="text-xs px-2 py-1">pdf</TabsTrigger>
                 <TabsTrigger value="xelatex" className="text-xs px-2 py-1">Xe</TabsTrigger>
                 <TabsTrigger value="lualatex" className="text-xs px-2 py-1">Lua</TabsTrigger>
@@ -187,7 +175,7 @@ export default function Setting() {
 
           <SettingRow icon={Zap} label="Compile mode" description="Full = renders images">
             <Tabs value={compileMode} onValueChange={(v) => setCompileMode(v as CompileMode)}>
-              <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
+              <TabsList className="h-7 p-0.5 border-none bg-secondary">
                 <TabsTrigger value="full" className="text-xs px-2 py-1">Full</TabsTrigger>
                 <TabsTrigger value="draft" className="text-xs px-2 py-1">Draft</TabsTrigger>
               </TabsList>
@@ -231,7 +219,7 @@ export default function Setting() {
 
           <SettingRow icon={editorTheme === 'light' ? Sun : Moon} label="Theme">
             <Tabs value={editorTheme} onValueChange={(v) => setEditorTheme(v as 'light' | 'dark')}>
-              <TabsList className="h-7 p-0.5 border-none bg-secondary/80">
+              <TabsList className="h-7 p-0.5 border-none bg-secondary">
                 <TabsTrigger value="light" className="text-xs px-2 py-1">Light</TabsTrigger>
                 <TabsTrigger value="dark" className="text-xs px-2 py-1">Dark</TabsTrigger>
               </TabsList>
@@ -244,18 +232,18 @@ export default function Setting() {
                 type="button"
                 onClick={() => setFontSize(Math.max(10, fontSize - 1))}
                 aria-label="Decrease font size"
-                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded-md hover:bg-muted text-foreground transition-colors"
               >
-                <Minus className="size-3" />
+                <Minus className="size-3 shrink-0" />
               </button>
               <span className="text-xs font-mono w-6 text-center">{fontSize}</span>
               <button
                 type="button"
                 onClick={() => setFontSize(Math.min(24, fontSize + 1))}
                 aria-label="Increase font size"
-                className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded-md hover:bg-muted text-foreground transition-colors"
               >
-                <Plus className="size-3" />
+                <Plus className="size-3 shrink-0" />
               </button>
             </div>
           </SettingRow>

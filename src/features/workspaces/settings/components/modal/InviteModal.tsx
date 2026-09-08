@@ -63,7 +63,7 @@ export function InviteModal({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-w-md p-6 rounded-lg border border-border/80 bg-background shadow-2xl">
+      <DialogContent className="max-w-md p-6 rounded-lg border border-border bg-background">
         <DialogHeader className="space-y-1">
           <DialogTitle className="text-base font-semibold text-foreground">
             Invite members
@@ -90,13 +90,13 @@ export function InviteModal({
                       <FormItem className="space-y-1">
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1">
-                            <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                            <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
                             <FormControl>
                               <Input
                                 type="email"
                                 placeholder="colleague@example.com"
                                 {...inputField}
-                                className="h-8.5 pl-8 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none"
+                                className="h-8.5 pl-8 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none"
                               />
                             </FormControl>
                           </div>
@@ -107,9 +107,9 @@ export function InviteModal({
                               variant="ghost"
                               size="icon"
                               onClick={() => remove(index)}
-                              className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md cursor-pointer shrink-0"
+                              className="size-8 text-muted-foreground hover:bg-destructive/10 rounded-md cursor-pointer shrink-0"
                             >
-                              <Trash2 className="size-3.5" />
+                              <Trash2 className="size-3.5 shrink-0" />
                             </Button>
                           )}
                         </div>
@@ -125,7 +125,7 @@ export function InviteModal({
                 onClick={() => append({ email: '' })}
                 className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1 cursor-pointer pt-1"
               >
-                <Plus className="size-3.5" />
+                <Plus className="size-3.5 shrink-0" />
                 <span>Add another</span>
               </button>
             </div>
@@ -141,7 +141,7 @@ export function InviteModal({
                   </FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
-                      <SelectTrigger className="h-8.5 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3 capitalize">
+                      <SelectTrigger className="h-8.5 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3 capitalize">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -175,9 +175,9 @@ export function InviteModal({
               <Button
                 type="submit"
                 disabled={isInviting}
-                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-2xs shrink-0"
+                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-none shrink-0"
               >
-                {isInviting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+                {isInviting && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
                 Send invite
               </Button>
             </div>

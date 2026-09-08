@@ -47,11 +47,11 @@ export function MemberItem({
   const authLabel = member.authProvider || (member.user.email.endsWith('@gmail.com') ? 'Google' : 'Email');
 
   return (
-    <tr className="hover:bg-muted/20 transition-colors group">
+    <tr className="hover:bg-muted transition-colors group">
       {/* ── 1. Full Name ── */}
       <td className="py-3.5 px-4">
         <div className="flex items-center gap-3 min-w-0">
-          <Avatar className="size-6.5 rounded-full border border-border/80 shrink-0">
+          <Avatar className="size-6.5 rounded-full border border-border shrink-0">
             {member.user.avatar && (
               <AvatarImage src={member.user.avatar} className="object-cover" />
             )}
@@ -83,10 +83,10 @@ export function MemberItem({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors cursor-pointer outline-none capitalize"
+                className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary capitalize"
               >
                 <span>{member.role}</span>
-                <ChevronDown className="size-3 text-muted-foreground" />
+                <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-32 p-1 text-xs">
@@ -133,20 +133,20 @@ export function MemberItem({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none"
+              className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title="More actions"
               aria-label="More actions"
             >
-              <MoreHorizontal className="size-4" />
+              <MoreHorizontal className="size-4 shrink-0" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32 p-1 rounded-lg text-xs">
+          <DropdownMenuContent align="end" className="w-32 p-1 rounded-md text-xs">
             {isOwner ? (
               <DropdownMenuItem
                 onClick={() => (onLeave ? onLeave(member) : onRemove(member))}
                 className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
               >
-                <LogOut className="size-3.5 text-muted-foreground" />
+                <LogOut className="size-3.5 text-muted-foreground shrink-0" />
                 <span>Leave</span>
               </DropdownMenuItem>
             ) : (
@@ -154,7 +154,7 @@ export function MemberItem({
                 onClick={() => onRemove(member)}
                 className="text-xs font-medium cursor-pointer rounded-md flex items-center gap-2"
               >
-                <Trash2 className="size-3.5 text-muted-foreground" />
+                <Trash2 className="size-3.5 text-muted-foreground shrink-0" />
                 <span>Remove</span>
               </DropdownMenuItem>
             )}

@@ -23,7 +23,7 @@ export default function NavigationBar() {
   ];
 
   return (
-    <div className="w-full border-b border-border/50 px-4 sm:px-6">
+    <div className="w-full border-b border-border px-4 sm:px-6">
       <LayoutGroup id={`project-top-nav-${id}`}>
         <nav
           aria-label='Project Navigation'
@@ -38,7 +38,7 @@ export default function NavigationBar() {
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'relative flex h-12 items-center justify-center text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap',
-                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  isActive ? 'text-primary' : 'text-muted-foreground hover:bg-muted'
                 )}
               >
                 {item.label}

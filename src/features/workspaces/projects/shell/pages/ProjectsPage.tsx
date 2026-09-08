@@ -49,8 +49,8 @@ type ViewMode = 'grid' | 'list';
 
 function ProjectCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden h-48 animate-pulse">
-      <div className="h-24 bg-muted/40" />
+    <div className="flex flex-col rounded-md border border-border bg-card overflow-hidden h-48 animate-pulse">
+      <div className="h-24 bg-muted" />
       <div className="pt-6 px-4 pb-4 space-y-2.5">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-3 w-1/3" />
@@ -160,7 +160,7 @@ export function ProjectsPage() {
       {/* Toolbar: Filter Tabs (All, Public, Private), Sort & View Mode */}
       {activeProjects.length > 0 && (
         <div
-          className="flex flex-wrap items-center justify-between gap-3 px-6 py-2.5 border-b border-border/40 bg-muted/15 select-none shrink-0"
+          className="flex flex-wrap items-center justify-between gap-3 px-6 py-2.5 border-b border-border bg-muted select-none shrink-0"
           style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
         >
           {/* Left: Filter Tabs */}
@@ -168,14 +168,14 @@ export function ProjectsPage() {
             <button
               onClick={() => setActiveFilter('all')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer shrink-0',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0',
                 activeFilter === 'all'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                  ? 'bg-background text-foreground font-medium border border-border'
+                  : 'text-foreground hover:bg-muted'
               )}
             >
               <span>All Projects</span>
-              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted/60">
+              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
                 {filterCounts.all}
               </span>
             </button>
@@ -183,16 +183,16 @@ export function ProjectsPage() {
             <button
               onClick={() => setActiveFilter('public')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer shrink-0',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0',
                 activeFilter === 'public'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                  ? 'bg-background text-foreground font-medium border border-border'
+                  : 'text-foreground hover:bg-muted'
               )}
             >
-              <Globe className="size-3 text-muted-foreground" />
+              <Globe className="size-3 text-foreground shrink-0" />
               <span>Public</span>
               {filterCounts.public > 0 && (
-                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted/60">
+                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
                   {filterCounts.public}
                 </span>
               )}
@@ -201,16 +201,16 @@ export function ProjectsPage() {
             <button
               onClick={() => setActiveFilter('private')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer shrink-0',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0',
                 activeFilter === 'private'
-                  ? 'bg-background text-foreground shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                  ? 'bg-background text-foreground font-medium border border-border'
+                  : 'text-foreground hover:bg-muted'
               )}
             >
-              <Lock className="size-3 text-muted-foreground" />
+              <Lock className="size-3 text-foreground shrink-0" />
               <span>Private</span>
               {filterCounts.private > 0 && (
-                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted/60">
+                <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
                   {filterCounts.private}
                 </span>
               )}
@@ -224,9 +224,9 @@ export function ProjectsPage() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer border border-border/40"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer border border-border"
                 >
-                  <ArrowUpDown className="size-3 text-muted-foreground" />
+                  <ArrowUpDown className="size-3 text-foreground shrink-0" />
                   <span>
                     {sortBy === 'updated'
                       ? 'Recently updated'
@@ -259,32 +259,32 @@ export function ProjectsPage() {
             </DropdownMenu>
 
             {/* View Mode Switcher */}
-            <div className="flex items-center p-0.5 bg-muted/40 rounded-lg border border-border/40">
+            <div className="flex items-center p-0.5 bg-muted rounded-md border border-border">
               <button
                 type="button"
                 onClick={() => handleSetViewMode('grid')}
                 className={cn(
-                  'p-1 rounded-md transition-all cursor-pointer',
+                  'p-1 rounded-md transition-colors cursor-pointer',
                   viewMode === 'grid'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-background text-foreground'
+                    : 'text-foreground hover:bg-muted'
                 )}
-                title="Grid view"
+                aria-label="Grid view"
               >
-                <LayoutGrid className="size-3.5" />
+                <LayoutGrid className="size-3.5 shrink-0" />
               </button>
               <button
                 type="button"
                 onClick={() => handleSetViewMode('list')}
                 className={cn(
-                  'p-1 rounded-md transition-all cursor-pointer',
+                  'p-1 rounded-md transition-colors cursor-pointer',
                   viewMode === 'list'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-background text-foreground'
+                    : 'text-foreground hover:bg-muted'
                 )}
-                title="List view"
+                aria-label="List view"
               >
-                <List className="size-3.5" />
+                <List className="size-3.5 shrink-0" />
               </button>
             </div>
           </div>
@@ -306,7 +306,7 @@ export function ProjectsPage() {
         {!isLoading && isError && (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
             <div className="size-12 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
-              <AlertCircle className="size-6 text-destructive" />
+              <AlertCircle className="size-6 text-destructive shrink-0" />
             </div>
             <div className="space-y-1 max-w-sm">
               <h3 className="text-base font-semibold text-foreground">Failed to load projects</h3>
@@ -320,7 +320,7 @@ export function ProjectsPage() {
               onClick={() => window.location.reload()}
               className="gap-2 text-xs cursor-pointer"
             >
-              <RefreshCw className="size-3.5" />
+              <RefreshCw className="size-3.5 shrink-0" />
               <span>Reload page</span>
             </Button>
           </div>
@@ -342,7 +342,7 @@ export function ProjectsPage() {
 
         {/* Loaded Projects - List View */}
         {!isLoading && !isError && viewMode === 'list' && filteredProjects.length > 0 && (
-          <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-xs divide-y divide-border/40">
+          <div className="rounded-md border border-border bg-card overflow-hidden divide-y divide-border/40">
             {filteredProjects.map((project) => {
               const projectId = project.id || '';
               const projectKey = (project as any).key || project.identifier || 'PROJ';
@@ -358,11 +358,11 @@ export function ProjectsPage() {
               return (
                 <div
                   key={projectId}
-                  className="group flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/20 transition-colors text-xs"
+                  className="group flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted transition-colors text-xs"
                 >
                   {/* Left: Avatar + Title + Key + Description */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="size-8 rounded-lg bg-muted/60 border border-border/40 flex items-center justify-center text-base shrink-0 font-semibold text-foreground">
+                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center text-base shrink-0 font-semibold text-foreground">
                       {project.avatar ? (
                         <span>{project.avatar}</span>
                       ) : (
@@ -374,11 +374,11 @@ export function ProjectsPage() {
                       <div className="flex items-center gap-2 min-w-0">
                         <Link
                           href={`/${workspaceId}/projects/${projectId}/overview`}
-                          className="font-semibold text-foreground hover:text-primary transition-colors truncate block"
+                          className="font-semibold text-foreground hover:underline transition-colors truncate block"
                         >
                           {project.name}
                         </Link>
-                        <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted/60 border border-border/40 shrink-0">
+                        <span className="text-xs font-mono font-medium text-muted-foreground px-1 py-0.2 rounded bg-muted border border-border shrink-0">
                           {projectKey}
                         </span>
                       </div>
@@ -413,19 +413,19 @@ export function ProjectsPage() {
                     <div className="w-16 flex items-center gap-1 text-xs">
                       {isPrivate ? (
                         <>
-                          <Lock className="size-3 text-muted-foreground" />
+                          <Lock className="size-3 text-muted-foreground shrink-0" />
                           <span>Private</span>
                         </>
                       ) : (
                         <>
-                          <Globe className="size-3 text-muted-foreground" />
+                          <Globe className="size-3 text-muted-foreground shrink-0" />
                           <span>Public</span>
                         </>
                       )}
                     </div>
 
                     {/* Status */}
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success border border-success/20">
                       Joined
                     </span>
                   </div>
@@ -436,10 +436,10 @@ export function ProjectsPage() {
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 flex items-center justify-center transition-colors cursor-pointer"
+                          className="size-7 rounded-md text-foreground hover:bg-muted flex items-center justify-center transition-colors cursor-pointer"
                           title="More options"
                         >
-                          <MoreHorizontal className="size-4" />
+                          <MoreHorizontal className="size-4 shrink-0" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48 p-1.5 text-xs">
@@ -447,7 +447,7 @@ export function ProjectsPage() {
                           onClick={(e) => handleCopyLink(projectId, e)}
                           className="cursor-pointer font-medium flex items-center gap-2"
                         >
-                          <Link2 className="size-3.5" />
+                          <Link2 className="size-3.5 shrink-0" />
                           <span>Copy link</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild className="cursor-pointer font-medium">
@@ -455,15 +455,15 @@ export function ProjectsPage() {
                             href={`/${workspaceId}/projects/${projectId}/settings`}
                             className="flex items-center gap-2 w-full"
                           >
-                            <Settings className="size-3.5" />
+                            <Settings className="size-3.5 shrink-0" />
                             <span>Settings</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleArchiveProject(projectId)}
-                          className="cursor-pointer font-medium text-amber-600 dark:text-amber-400 flex items-center gap-2"
+                          className="cursor-pointer font-medium text-warning flex items-center gap-2"
                         >
-                          <Archive className="size-3.5" />
+                          <Archive className="size-3.5 shrink-0" />
                           <span>Archive project</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -480,7 +480,7 @@ export function ProjectsPage() {
           <div className="flex flex-col items-center justify-center py-28 text-center select-none animate-in fade-in duration-300">
             <div className="relative mb-3 flex items-center justify-center">
               <div className="absolute inset-0 size-16 rounded-full bg-foreground/[0.03] blur-xl -z-10" />
-              <Briefcase className="size-10 stroke-[1.25] text-muted-foreground/35" />
+              <Briefcase className="size-10 stroke-[1.25] text-muted-foreground/35 shrink-0" />
             </div>
             <div className="space-y-1 max-w-sm px-4">
               <h3 className="text-sm font-medium text-foreground tracking-tight">No projects yet</h3>
@@ -496,7 +496,7 @@ export function ProjectsPage() {
           <div className="flex flex-col items-center justify-center py-28 text-center select-none animate-in fade-in duration-300">
             <div className="relative mb-3 flex items-center justify-center">
               <div className="absolute inset-0 size-16 rounded-full bg-foreground/[0.03] blur-xl -z-10" />
-              <Briefcase className="size-10 stroke-[1.25] text-muted-foreground/35" />
+              <Briefcase className="size-10 stroke-[1.25] text-muted-foreground/35 shrink-0" />
             </div>
             <div className="space-y-1 max-w-sm px-4 mb-3">
               <h3 className="text-sm font-medium text-foreground tracking-tight">No matching projects</h3>
@@ -510,7 +510,7 @@ export function ProjectsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveFilter('all')}
-                  className="text-xs text-muted-foreground hover:text-foreground cursor-pointer h-7 px-2.5"
+                  className="text-xs text-foreground hover:bg-muted cursor-pointer h-7 px-2.5 rounded-md"
                 >
                   Show all projects
                 </Button>
@@ -520,7 +520,7 @@ export function ProjectsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSearchQuery('')}
-                  className="text-xs text-muted-foreground hover:text-foreground cursor-pointer h-7 px-2.5"
+                  className="text-xs text-foreground hover:bg-muted cursor-pointer h-7 px-2.5 rounded-md"
                 >
                   Clear search
                 </Button>

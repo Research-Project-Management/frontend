@@ -84,11 +84,11 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
     <div
       ref={previewRef}
       onClick={onOpenReader}
-      className="relative w-full rounded-md border border-border/60 bg-white dark:bg-zinc-950 overflow-hidden shadow-none flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
+      className="relative w-full rounded-md border border-border bg-background overflow-hidden shadow-none flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
     >
       {pdfLoading ? (
         <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin text-foreground" />
+          <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
           <span className="text-xs font-medium">Loading document...</span>
         </div>
       ) : pdfBlobUrl ? (
@@ -100,7 +100,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
           }}
           loading={
             <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin text-foreground" />
+              <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
               <span className="text-xs font-medium">Loading preview...</span>
             </div>
           }
@@ -126,7 +126,7 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               event.stopPropagation();
               retryPdf();
             }}
-            className="h-7 px-2.5 rounded-md border border-border/60 text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+            className="h-7 px-2.5 rounded-md border border-border text-foreground hover:bg-muted"
           >
             Retry preview
           </button>
@@ -147,9 +147,9 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.max(1, p - 1));
             }}
             aria-label="Previous page"
-            className="size-7 rounded-md bg-neutral-800/75 hover:bg-neutral-900 disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center cursor-pointer shadow-none"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none"
           >
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className="size-4 shrink-0" />
           </button>
           <button
             type="button"
@@ -159,9 +159,9 @@ function PdfViewerInternal({ paperUrl, onOpenReader }: PdfPagePreviewProps) {
               setCurrentPage((p) => Math.min(numPages, p + 1));
             }}
             aria-label="Next page"
-            className="size-7 rounded-md bg-neutral-800/75 hover:bg-neutral-900 disabled:opacity-30 disabled:pointer-events-none text-white flex items-center justify-center cursor-pointer shadow-none"
+            className="size-7 rounded-md bg-foreground/80 hover:bg-foreground disabled:opacity-30 disabled:pointer-events-none text-background flex items-center justify-center cursor-pointer shadow-none"
           >
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4 shrink-0" />
           </button>
         </div>
       )}
@@ -174,8 +174,8 @@ const PdfPagePreview = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground border border-border/50 rounded-md bg-card">
-        <Loader2 className="size-5 animate-spin text-foreground" />
+      <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground border border-border rounded-md bg-card">
+        <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
         <span className="text-xs font-medium">Loading preview...</span>
       </div>
     ),
@@ -195,7 +195,7 @@ function AttachmentRevisions({
   if (isLoading) {
     return (
       <div className="p-2 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-        <Loader2 className="size-3 animate-spin text-foreground" />
+        <Loader2 className="size-3 animate-spin text-foreground shrink-0" />
         <span>Loading history...</span>
       </div>
     );
@@ -207,7 +207,7 @@ function AttachmentRevisions({
 
   return (
     <div className="p-2 space-y-1 text-xs">
-      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+      <div className="text-11 font-medium text-muted-foreground px-1">
         Revision History
       </div>
       <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -216,8 +216,8 @@ function AttachmentRevisions({
             key={rev.id || rev.version}
             className="flex items-center justify-between p-1 rounded hover:bg-muted text-xs"
           >
-            <span className="font-mono text-[11px]">v{rev.version}</span>
-            <span className="text-muted-foreground text-[10px]">
+            <span className="font-mono text-11">v{rev.version}</span>
+            <span className="text-muted-foreground text-10">
               {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : ''}
             </span>
           </div>
@@ -252,13 +252,29 @@ export default function AttachmentsSection({
   const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
 
+  const paperFilename = paper.filename;
+  const openAccessPdfUrl = (paper as any)?.openAccessPdfUrl;
+
   const otherAttachments = useMemo(() => {
-    return rawAttachments.filter((att: ItemAttachment | any) => {
+    const list = rawAttachments.filter((att: ItemAttachment | any) => {
       if (att.attachmentType === 'primary_pdf' || att.type === 'primary_pdf') return false;
-      if (paper.filename && (att.filename === paper.filename || att.name === paper.filename)) return false;
+      if (paperFilename && (att.filename === paperFilename || att.name === paperFilename)) return false;
       return true;
     });
-  }, [rawAttachments, paper.filename]);
+
+    if (openAccessPdfUrl && openAccessPdfUrl !== paperUrl && !list.some((a: any) => (a.url === openAccessPdfUrl || a.fileUrl === openAccessPdfUrl))) {
+      list.push({
+        id: 'open-access-pdf',
+        filename: 'Open Access Full Text.pdf',
+        url: openAccessPdfUrl,
+        size: 0,
+        attachmentType: 'supplementary',
+        mimeType: 'application/pdf',
+      });
+    }
+
+    return list;
+  }, [rawAttachments, paperFilename, openAccessPdfUrl, paperUrl]);
 
   const hasSnapshot = useMemo(() => {
     return rawAttachments.some(
@@ -318,13 +334,16 @@ export default function AttachmentsSection({
 
         {/* Primary PDF Row */}
         {paperUrl ? (
-          <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60">
+          <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted border border-border">
             <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
               <div className="size-4 shrink-0 flex items-center justify-center">
                 <FileText className="size-4 text-foreground shrink-0" />
               </div>
-              <span className="text-xs font-medium text-foreground truncate" title={paper.filename || 'PDF'}>
-                {paper.filename || 'PDF'}
+              <span
+                className="text-xs font-medium text-foreground truncate"
+                title={paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
+              >
+                {paper.filename || ((paper as any)?.openAccessPdfUrl ? 'Open Access PDF' : 'PDF')}
               </span>
             </div>
 
@@ -333,9 +352,9 @@ export default function AttachmentsSection({
                 <button
                   type="button"
                   aria-label="Attachment options"
-                  className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-0"
+                  className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0"
                 >
-                  <MoreVertical className="size-3.5 text-foreground" />
+                  <MoreVertical className="size-3.5 text-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 text-xs font-sans">
@@ -343,21 +362,21 @@ export default function AttachmentsSection({
                   onClick={handleOpenReader}
                   className="gap-2 cursor-pointer"
                 >
-                  <BookOpen className="size-3.5 text-foreground" />
+                  <BookOpen className="size-3.5 text-foreground shrink-0" />
                   <span>Open in Reader</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleDownload(paperUrl, paper.filename || `${paper.title || 'document'}.pdf`)}
                   className="gap-2 cursor-pointer"
                 >
-                  <Download className="size-3.5 text-foreground" />
+                  <Download className="size-3.5 text-foreground shrink-0" />
                   <span>Download</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => window.open(paperUrl, '_blank', 'noopener,noreferrer')}
                   className="gap-2 cursor-pointer"
                 >
-                  <ExternalLink className="size-3.5 text-foreground" />
+                  <ExternalLink className="size-3.5 text-foreground shrink-0" />
                   <span>Open in New Tab</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -376,7 +395,7 @@ export default function AttachmentsSection({
           return (
             <div
               key={att.id}
-              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60 transition-colors"
+              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted border border-border transition-colors"
             >
               <div
                 className={`flex items-center gap-1.5 min-w-0 flex-1 mr-2 ${isSnapshot ? 'cursor-pointer' : ''}`}
@@ -388,7 +407,7 @@ export default function AttachmentsSection({
               >
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   {isSnapshot ? (
-                    <Globe className="size-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <Globe className="size-3.5 text-primary shrink-0" />
                   ) : (
                     <FileText className="size-3.5 text-foreground shrink-0" />
                   )}
@@ -397,9 +416,9 @@ export default function AttachmentsSection({
                   <p className="text-xs font-medium text-foreground truncate" title={att.filename || att.name}>
                     {att.filename || att.name}
                   </p>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                  <p className="text-10 text-muted-foreground flex items-center gap-1.5">
                     {isSnapshot && (
-                      <span className="text-blue-600 dark:text-blue-400 font-medium">Snapshot •</span>
+                      <span className="text-primary font-medium">Snapshot •</span>
                     )}
                     <span>{formatSize(att.size)}</span>
                   </p>
@@ -412,9 +431,9 @@ export default function AttachmentsSection({
                     <button
                       type="button"
                       aria-label="Attachment options"
-                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-0"
+                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0"
                     >
-                      <MoreVertical className="size-3.5 text-foreground" />
+                      <MoreVertical className="size-3.5 text-foreground shrink-0" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52 text-xs font-sans">
@@ -429,7 +448,7 @@ export default function AttachmentsSection({
                         }
                         className="gap-2 cursor-pointer"
                       >
-                        <BookOpen className="size-3.5 text-foreground" />
+                        <BookOpen className="size-3.5 text-foreground shrink-0" />
                         <span>View Snapshot</span>
                       </DropdownMenuItem>
                     )}
@@ -437,14 +456,14 @@ export default function AttachmentsSection({
                       onClick={() => handleDownload(downloadUrl, att.filename || att.name || (isSnapshot ? 'snapshot.html' : 'file'))}
                       className="gap-2 cursor-pointer"
                     >
-                      <Download className="size-3.5 text-foreground" />
+                      <Download className="size-3.5 text-foreground shrink-0" />
                       <span>Download</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => window.open(downloadUrl, '_blank', 'noopener,noreferrer')}
                       className="gap-2 cursor-pointer"
                     >
-                      <ExternalLink className="size-3.5 text-foreground" />
+                      <ExternalLink className="size-3.5 text-foreground shrink-0" />
                       <span>Open in New Tab</span>
                     </DropdownMenuItem>
                     {rawWorkspaceId && att.id && (
@@ -470,16 +489,16 @@ export default function AttachmentsSection({
           type="button"
           disabled={isCapturingSnapshot}
           onClick={handleCaptureSnapshot}
-          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border/80 hover:bg-black/5 dark:hover:bg-white/5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-xs text-foreground transition-colors disabled:opacity-50 cursor-pointer"
         >
           {isCapturingSnapshot ? (
             <>
-              <Loader2 className="size-3.5 animate-spin text-foreground" />
+              <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
               <span>Capturing Web Snapshot...</span>
             </>
           ) : (
             <>
-              <Globe className="size-3.5 text-blue-600 dark:text-blue-400" />
+              <Globe className="size-3.5 text-primary shrink-0" />
               <span>{hasSnapshot ? 'Update Web Snapshot' : 'Capture Web Snapshot'}</span>
             </>
           )}

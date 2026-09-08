@@ -30,15 +30,39 @@ export const PdfAnnotationEngine = {
     });
   },
 
-  filterAnnotations(annotations: ReaderAnnotation[], query: string): ReaderAnnotation[] {
-    if (!query || !query.trim()) return annotations;
-    const q = query.trim().toLowerCase();
+  filterAnnotations(
+    annotations: ReaderAnnotation[],
+    query?: string,
+    colorFilter?: string | null,
+  ): ReaderAnnotation[] {
+    const q = query?.trim().toLowerCase() || '';
+    const color = colorFilter?.trim().toLowerCase();
 
-    return annotations.filter(
-      (a) =>
-        (a.text || '').toLowerCase().includes(q) ||
-        (a.comment || '').toLowerCase().includes(q),
-    );
+    return annotations.filter((a) => {
+      if (q) {
+        const textMatch =
+          (a.quoteText || '').toLowerCase().includes(q) ||
+          (a.text || '').toLowerCase().includes(q) ||
+          (a.comment || '').toLowerCase().includes(q);
+        if (!textMatch) return false;
+      }
+
+      if (color && color !== 'all') {
+        const itemColor = (a.color || 'yellow').toLowerCase();
+        if (color in ANNOTATION_COLORS) {
+          const cfg = ANNOTATION_COLORS[color as AnnotationColorId];
+          const matches =
+            itemColor === color ||
+            itemColor === cfg.border.toLowerCase() ||
+            (color === 'yellow' && itemColor === '#ffeb3b');
+          if (!matches) return false;
+        } else if (itemColor !== color) {
+          return false;
+        }
+      }
+
+      return true;
+    });
   },
 
   normalizeRect(rect: AnnotationRect | { x: number; y: number; width: number; height: number }): AnnotationRect {

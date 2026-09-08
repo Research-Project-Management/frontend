@@ -53,7 +53,7 @@ function ResizeHandle({
       className={cn(
         "group relative w-1 bg-border/60 hover:bg-primary/50 active:bg-primary cursor-col-resize shrink-0 transition-all duration-150 outline-none",
         "focus-visible:ring-1 focus-visible:ring-primary select-none",
-        isDragging && "bg-primary w-1 shadow-xs"
+        isDragging && "bg-primary w-1 "
       )}
     >
       {/* Expanded invisible hit area */}
@@ -68,7 +68,7 @@ function ResizeHandle({
             : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
         )}
       >
-        <span className="h-6 w-1 rounded-full bg-primary shadow-xs" />
+        <span className="h-6 w-1 rounded-full bg-primary " />
       </div>
     </div>
   );
@@ -87,22 +87,22 @@ function ImagePanel({ asset }: { asset: AssetInfo }) {
   return (
     <div className="flex flex-col h-full w-full bg-background">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-xs text-muted-foreground shrink-0 bg-secondary/30">
-        <FileImage className="size-3.5 text-primary" />
+        <FileImage className="size-3.5 text-primary shrink-0" />
         <span className="font-medium text-foreground truncate">{asset.filename}</span>
         {ext && <span className="px-1.5 py-0.5 rounded bg-secondary font-mono text-xs text-muted-foreground">{ext}</span>}
         {sizeLabel && <span className="text-xs text-muted-foreground/70">{sizeLabel}</span>}
       </div>
-      <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-muted/20">
+      <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-muted">
         {asset.url ? (
           <img
             src={resolveFileUrl(asset.url) || ''}
             alt={asset.filename}
             crossOrigin="use-credentials"
-            className="max-w-full max-h-full object-contain rounded-md shadow-sm border border-border/40"
+            className="max-w-full max-h-full object-contain rounded-md border border-border"
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <AlertCircle className="size-6 text-muted-foreground/60" />
+            <AlertCircle className="size-6 text-muted-foreground/60 shrink-0" />
             <span className="text-sm">Image URL not available.</span>
           </div>
         )}
@@ -114,8 +114,8 @@ function ImagePanel({ asset }: { asset: AssetInfo }) {
 function EmptyEditorState() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3 select-none bg-background">
-      <div className="size-14 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-center">
-        <FileCode2 className="size-7 text-muted-foreground/50" />
+      <div className="size-14 rounded-lg bg-muted border border-border flex items-center justify-center">
+        <FileCode2 className="size-7 text-muted-foreground/50 shrink-0" />
       </div>
       <div className="text-center space-y-1">
         <p className="text-sm font-medium text-foreground">No file open</p>
@@ -138,7 +138,7 @@ function LoadingSkeleton() {
         <Skeleton className="h-5 w-5 rounded" />
         <Skeleton className="h-5 w-5 rounded" />
       </div>
-      <div className="h-10 border-b border-border bg-muted/20 flex items-center gap-px px-2">
+      <div className="h-10 border-b border-border bg-muted flex items-center gap-px px-2">
         {[100, 120, 80].map((w, i) => (
           <Skeleton key={i} className="h-6 rounded-md" style={{ width: w }} />
         ))}
@@ -430,7 +430,7 @@ function EditorShell() {
         <div
           style={{ width: isNarrowScreen ? '100%' : (isSidebarCollapsed ? 52 : localSidebarWidth) }}
           className={cn(
-            "shrink-0 overflow-hidden bg-card border-r border-border/40 transition-all duration-200 ease-out",
+            "shrink-0 overflow-hidden bg-card border-r border-border transition-all duration-200 ease-out",
             isNarrowScreen && "hidden",
             isDraggingSidebar && "transition-none"
           )}
@@ -482,7 +482,7 @@ function EditorShell() {
             display: showViewer ? undefined : 'none'
           }}
           className={cn(
-            "min-w-0 overflow-hidden bg-muted/20 dark:bg-background/60 border-l border-border/40",
+            "min-w-0 overflow-hidden bg-muted dark:bg-background/60 border-l border-border",
             isDraggingSplitter && "transition-none"
           )}
         >

@@ -40,12 +40,12 @@ export function Stats({
       {/* Total Work Items */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/work-items`)}
-        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
-              <CheckSquare className="size-4 text-foreground" />
+              <CheckSquare className="size-4 text-foreground shrink-0" />
             </div>
             <span className="text-xs font-medium text-muted-foreground">
               Work Items
@@ -66,12 +66,12 @@ export function Stats({
       {/* Team */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/settings/team`)}
-        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
-              <Users className="size-4 text-foreground" />
+              <Users className="size-4 text-foreground shrink-0" />
             </div>
             <span className="text-xs font-medium text-muted-foreground">
               Team
@@ -96,12 +96,12 @@ export function Stats({
       {/* Files */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/storage`)}
-        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 hover:shadow-xs transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
             <div className="p-2 rounded-lg bg-muted text-foreground transition-colors">
-              <HardDrive className="size-4 text-foreground" />
+              <HardDrive className="size-4 text-foreground shrink-0" />
             </div>
             <span className="text-xs font-medium text-muted-foreground">
               Files
@@ -121,7 +121,7 @@ export function Stats({
         <div>
           <div className="flex items-center gap-2.5 mb-3">
             <div className="p-2 rounded-lg bg-muted text-foreground">
-              <CalendarDays className="size-4 text-foreground" />
+              <CalendarDays className="size-4 text-foreground shrink-0" />
             </div>
             <span className="text-xs font-medium text-muted-foreground">
               Active Age

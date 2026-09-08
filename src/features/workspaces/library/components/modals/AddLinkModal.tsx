@@ -81,7 +81,7 @@ export default function AddLinkModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-md bg-background border border-border/60 shadow-none rounded-md"
+        className="sm:max-w-md bg-background border border-border shadow-none rounded-md"
       >
         <DialogHeader>
           <DialogTitle className="text-base font-medium text-foreground">
@@ -99,7 +99,7 @@ export default function AddLinkModal({
               id="link-url-input"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              className="h-9 text-sm font-mono text-foreground rounded-md border-border/60"
+              className="h-9 text-sm font-mono text-foreground rounded-md border-border"
               autoFocus
               required
             />
@@ -115,7 +115,7 @@ export default function AddLinkModal({
               placeholder="(Optional)"
               value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
-              className="h-9 text-sm text-foreground rounded-md border-border/60"
+              className="h-9 text-sm text-foreground rounded-md border-border"
             />
           </div>
 
@@ -136,7 +136,7 @@ export default function AddLinkModal({
               className="h-9 px-4 text-sm font-medium cursor-pointer min-w-[80px] rounded-md"
             >
               {isPending ? (
-                <Loader2 className="size-4 animate-spin text-background" />
+                <Loader2 className="size-4 animate-spin text-background shrink-0" />
               ) : (
                 'Confirm'
               )}

@@ -9,6 +9,7 @@ import {
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
+import { logger } from '@/shared/lib/logger';
 
 interface DoubleCalendarProps {
   startDate: string;
@@ -39,8 +40,11 @@ export const DoubleCalendarModal = ({
       setSelectedEnd(endDate || "");
       if (startDate) {
         try {
-          setCurrentMonth(parseISO(startDate));
-        } catch (e) {}
+          const parsed = parseISO(startDate);
+          if (!isNaN(parsed.getTime())) setCurrentMonth(parsed);
+        } catch (err) {
+          logger.debug('[DateRangeFilterModal] Failed to parse startDate', { err, startDate });
+        }
       }
     }
   }, [open, startDate, endDate]);
@@ -79,16 +83,16 @@ export const DoubleCalendarModal = ({
       <DialogContent
         showCloseButton={false}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[360px] p-0 overflow-hidden rounded-sm border-0 shadow-2xl bg-popover"
+        className="sm:max-w-[360px] p-0 overflow-hidden rounded-sm border-0 bg-popover"
       >
         <div className="p-4 w-full bg-popover animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => setCurrentMonth(subYears(currentMonth, 1))} aria-label="Previous year">
-                <ChevronsLeft className="size-4 text-foreground" />
+                <ChevronsLeft className="size-4 text-foreground shrink-0" />
               </Button>
               <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="Previous month">
-                <ChevronLeft className="size-4 text-foreground" />
+                <ChevronLeft className="size-4 text-foreground shrink-0" />
               </Button>
             </div>
             <span className="text-sm font-semibold text-foreground">
@@ -96,10 +100,10 @@ export const DoubleCalendarModal = ({
             </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="Next month">
-                <ChevronRight className="size-4 text-foreground" />
+                <ChevronRight className="size-4 text-foreground shrink-0" />
               </Button>
               <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => setCurrentMonth(addYears(currentMonth, 1))} aria-label="Next year">
-                <ChevronsRight className="size-4 text-foreground" />
+                <ChevronsRight className="size-4 text-foreground shrink-0" />
               </Button>
             </div>
           </div>
@@ -129,7 +133,7 @@ export const DoubleCalendarModal = ({
               }
 
               return (
-                <div key={i} className="relative py-[2px]">
+                <div key={i} className="relative py-0.5">
                   <button
                     onClick={() => handleDateClick(day)}
                     onMouseEnter={() => setHoverDate(dateStr)}
@@ -138,7 +142,7 @@ export const DoubleCalendarModal = ({
                       h-9 w-full flex items-center justify-center text-sm transition-all relative z-10
                       ${isCurrentMonth ? "text-foreground" : "text-muted-foreground/40 pointer-events-none"} font-medium
                       ${isStart || isEnd 
-                        ? "bg-primary text-primary-foreground font-semibold shadow-xs rounded-md cursor-pointer" 
+                        ? "bg-primary text-primary-foreground font-semibold  rounded-md cursor-pointer" 
                         : "cursor-pointer hover:bg-muted rounded-md"
                       }
                       ${inRange ? "!rounded-none !bg-primary/15 !text-primary" : ""}
@@ -163,7 +167,7 @@ export const DoubleCalendarModal = ({
             <Button variant="ghost" size="sm" onClick={onCancel} className="h-8 text-foreground hover:bg-muted font-medium px-4 cursor-pointer">
               Cancel
             </Button>
-            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 shadow-xs transition-all active:scale-95 cursor-pointer">
+            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 transition-all active:scale-95 cursor-pointer">
               Apply
             </Button>
           </div>

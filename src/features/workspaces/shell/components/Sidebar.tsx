@@ -29,7 +29,7 @@ export default function Sidebar() {
     <LayoutGroup id={id}>
       <nav
         aria-label='Main Navigation'
-        className='order-2 flex h-12 shrink-0 items-center justify-around gap-1 rounded-md border border-border bg-sidebar p-1 md:order-1 md:h-full md:w-12 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:py-2'
+        className='order-2 flex h-12 shrink-0 items-center justify-around gap-1 border-t border-border bg-sidebar p-1 md:order-1 md:h-full md:w-12 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-t-0 md:border-r-0 md:bg-sidebar md:p-0 md:py-2'
       >
         {NAV_ITEMS.map((item) => {
           const Icon = 'icon' in item ? item.icon : null;

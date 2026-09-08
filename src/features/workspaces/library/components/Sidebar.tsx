@@ -156,7 +156,7 @@ function CollectionNode({
                 if (e.key === 'Enter') onSubmitRename(node.id);
                 if (e.key === 'Escape') onSubmitRename('__cancel__');
               }}
-              className="h-8 w-full min-w-0 rounded-md border border-border/60 bg-background px-2 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
+              className="h-8 w-full min-w-0 rounded-md border border-border bg-background px-2 text-sm font-normal focus:outline-none focus:ring-1 focus:ring-ring shadow-none"
             />
           </div>
         ) : (
@@ -204,11 +204,11 @@ function CollectionNode({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   onClick={(e) => e.stopPropagation()}
                   aria-label={`Options for ${node.name}`}
                 >
-                  <MoreVertical className="size-4 text-foreground" />
+                  <MoreVertical className="size-4 text-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -217,7 +217,7 @@ function CollectionNode({
                 sideOffset={4}
                 collisionPadding={12}
                 onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-52 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground z-50 text-xs shadow-none space-y-0.5"
+                className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 text-xs shadow-none space-y-0.5"
               >
                 <DropdownMenuItem
                   onClick={() => onCreateSub(node.id, node.name)}
@@ -240,7 +240,7 @@ function CollectionNode({
                     <FolderInput className="size-4 text-foreground shrink-0" />
                     <span>Move to</span>
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-52 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground text-xs shadow-none space-y-0.5">
+                  <DropdownMenuSubContent className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-xs shadow-none space-y-0.5">
                     <DropdownMenuItem
                       onClick={() => onMove(node.id, null)}
                       className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
@@ -266,7 +266,7 @@ function CollectionNode({
                     <Copy className="size-4 text-foreground shrink-0" />
                     <span>Copy to</span>
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-52 p-1.5 rounded-md shadow-none border border-border/60 bg-popover text-popover-foreground text-xs space-y-0.5">
+                  <DropdownMenuSubContent className="w-52 p-1.5 rounded-md shadow-none border border-border bg-popover text-popover-foreground text-xs space-y-0.5">
                     <DropdownMenuItem
                       onClick={() => onCopy(node.id, null)}
                       className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
@@ -587,13 +587,13 @@ export default function LibrarySideBar() {
         minWidth: '180px',
         maxWidth: '400px',
       }}
-      className="relative h-full overflow-x-hidden border-r border-border/50 bg-transparent p-2.5 py-4 flex flex-col select-none shrink-0"
+      className="relative h-full overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 flex flex-col select-none shrink-0"
     >
       {/* Header: Matching Storage/Projects Sidebar with expandable search */}
       <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
         {isSearchExpanded || searchQuery ? (
-          <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border/60 bg-background/80 overflow-hidden group font-normal text-xs">
-            <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground/80 pointer-events-none" />
+          <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border bg-background/80 overflow-hidden group font-normal text-xs">
+            <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground pointer-events-none shrink-0" />
             <Input
               ref={searchInputRef}
               autoFocus
@@ -624,7 +624,7 @@ export default function LibrarySideBar() {
               className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-sm"
               aria-label="Clear search"
             >
-              <Plus className="size-3.5 rotate-45 text-foreground" />
+              <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />
             </button>
           </div>
         ) : (
@@ -637,7 +637,7 @@ export default function LibrarySideBar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={expandSearch}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="Search collections"
                   >
                     <Search className="size-4 shrink-0 text-foreground" />
@@ -651,7 +651,7 @@ export default function LibrarySideBar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={openCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="New collection"
                   >
                     <FolderPlus className="size-4 shrink-0 text-foreground" />
@@ -666,7 +666,7 @@ export default function LibrarySideBar() {
                   <button
                     onClick={toggle}
                     aria-label="Toggle sidebar"
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     <PanelLeft className="size-4 shrink-0 text-foreground" />
                   </button>

@@ -59,7 +59,7 @@ export function useFavorites(workspaceId?: string): UseFavoritesReturn {
     return new Set();
   }, [getStorageKey, workspaceId]);
 
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(readFavorites);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     setFavoriteIds(readFavorites());

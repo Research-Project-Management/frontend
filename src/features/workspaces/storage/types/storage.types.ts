@@ -8,3 +8,4 @@ export * from './shared.types';
 export * from './starred.types';
 export * from './trash.types';
 export * from './preview.types';
+export * from './view.types';

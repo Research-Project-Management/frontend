@@ -63,7 +63,7 @@ export function AddMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-lg border border-border/80 p-0 overflow-hidden bg-background shadow-xl">
+      <DialogContent className="sm:max-w-md rounded-lg border border-border p-0 overflow-hidden bg-background">
         <div className="p-6 pb-2">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold text-foreground">
@@ -78,12 +78,12 @@ export function AddMemberDialog({
         <div className="p-6 pt-2 space-y-4">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground shrink-0" />
               <Input
                 placeholder="Search workspace members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs border-border/80 focus:ring-0 focus:outline-none"
+                className="pl-8 h-8 text-xs border-border focus:ring-0 focus:outline-none"
               />
             </div>
 
@@ -91,7 +91,7 @@ export function AddMemberDialog({
               value={selectedRole}
               onValueChange={(val) => setSelectedRole(val as ProjectRole)}
             >
-              <SelectTrigger className="w-28 h-8 text-xs border-border/80 focus:ring-0 focus:outline-none">
+              <SelectTrigger className="w-28 h-8 text-xs border-border focus:ring-0 focus:outline-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -111,7 +111,7 @@ export function AddMemberDialog({
             </Select>
           </div>
 
-          <div className="max-h-56 overflow-y-auto border border-border/80 rounded-lg divide-y divide-border/60 bg-muted/10">
+          <div className="max-h-56 overflow-y-auto border border-border rounded-lg divide-y divide-border/60 bg-muted">
             {available.length === 0 ? (
               <div className="p-8 text-center text-xs text-muted-foreground">
                 {search
@@ -131,7 +131,7 @@ export function AddMemberDialog({
                     onClick={() => toggleUser(memberUserId)}
                     className={cn(
                       'w-full flex items-center justify-between p-2.5 transition-colors cursor-pointer text-left',
-                      isSelected ? 'bg-accent/60' : 'hover:bg-muted/40'
+                      isSelected ? 'bg-muted font-medium' : 'hover:bg-muted'
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -143,10 +143,10 @@ export function AddMemberDialog({
                             : 'border-muted-foreground/40'
                         )}
                       >
-                        {isSelected && <Check className="size-3 stroke-[3]" />}
+                        {isSelected && <Check className="size-3 stroke-[3] shrink-0" />}
                       </div>
 
-                      <Avatar className="size-7 rounded-full border border-border/80 shrink-0">
+                      <Avatar className="size-7 rounded-full border border-border shrink-0">
                         {u.avatar && (
                           <AvatarImage src={u.avatar} className="object-cover" />
                         )}
@@ -171,7 +171,7 @@ export function AddMemberDialog({
           </div>
         </div>
 
-        <DialogFooter className="p-4 bg-muted/30 border-t border-border/60 flex items-center justify-end gap-2">
+        <DialogFooter className="p-4 bg-muted border-t border-border flex items-center justify-end gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -184,9 +184,9 @@ export function AddMemberDialog({
             size="sm"
             onClick={handleConfirm}
             disabled={selectedUserIds.length === 0 || isLoading}
-            className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs"
+            className="h-8 text-xs font-medium px-4 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none"
           >
-            {isLoading && <Loader2 className="mr-1.5 size-3 animate-spin" />}
+            {isLoading && <Loader2 className="mr-1.5 size-3 animate-spin shrink-0" />}
             <span>Add {selectedUserIds.length > 0 ? `(${selectedUserIds.length})` : ''}</span>
           </Button>
         </DialogFooter>

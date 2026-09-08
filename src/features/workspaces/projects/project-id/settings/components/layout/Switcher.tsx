@@ -93,7 +93,7 @@ export default function Switcher({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors cursor-pointer',
-          open ? 'bg-accent' : 'hover:bg-accent/70',
+          open ? 'bg-muted' : 'hover:bg-muted',
         )}
       >
         <ProjectAvatar project={currentProject} size="sm" />
@@ -108,7 +108,7 @@ export default function Switcher({
         <div
           className={cn(
             'absolute left-2 right-2 top-full z-50 mt-1.5',
-            'rounded-xl border border-border bg-popover text-popover-foreground shadow-xl',
+            'rounded-md border border-border bg-popover text-popover-foreground ',
             'animate-in fade-in-0 zoom-in-95 duration-100',
             'flex flex-col overflow-hidden',
           )}
@@ -129,9 +129,9 @@ export default function Switcher({
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="text-muted-foreground hover:text-foreground cursor-pointer"
+                className="text-foreground cursor-pointer"
               >
-                <X className="size-3" />
+                <X className="size-3 shrink-0" />
               </button>
             )}
           </div>
@@ -153,10 +153,10 @@ export default function Switcher({
                     type="button"
                     onClick={() => handleSelect(proj)}
                     className={cn(
-                      'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors cursor-pointer',
+                      'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer',
                       isCurrent
-                        ? 'bg-accent font-semibold text-foreground'
-                        : 'hover:bg-accent/60 font-medium text-foreground',
+                        ? 'bg-muted font-medium text-foreground'
+                        : 'hover:bg-muted text-foreground',
                     )}
                   >
                     <ProjectAvatar project={proj} size="sm" />

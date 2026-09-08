@@ -88,7 +88,7 @@ export function GeneralDetails({
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder="Enter project name"
-          className="h-10 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3"
+          className="h-10 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3"
         />
       </div>
 
@@ -99,7 +99,7 @@ export function GeneralDetails({
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Enter project description"
-          className="text-xs min-h-[110px] rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none resize-none p-3 leading-relaxed"
+          className="text-xs min-h-[110px] rounded-lg border-border bg-background focus:ring-0 focus:outline-none resize-none p-3 leading-relaxed"
         />
       </div>
 
@@ -113,17 +113,17 @@ export function GeneralDetails({
               value={identifier}
               onChange={handleIdentifierInput}
               placeholder="e.g. XINCHAO23"
-              className="h-10 text-xs font-mono font-medium rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3 pr-9"
+              className="h-10 text-xs font-mono font-medium rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3 pr-9"
             />
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer outline-none"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     aria-label="Project ID info"
                   >
-                    <Info className="size-4" />
+                    <Info className="size-4 shrink-0" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="text-xs max-w-xs">
@@ -141,16 +141,16 @@ export function GeneralDetails({
             value={isPrivate ? 'private' : 'public'}
             onValueChange={(val) => onPrivateChange(val === 'private')}
           >
-            <SelectTrigger className="h-10 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3">
+            <SelectTrigger className="h-10 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3">
               <div className="flex items-center gap-2">
                 {isPrivate ? (
                   <>
-                    <Lock className="size-3.5 text-muted-foreground" />
+                    <Lock className="size-3.5 text-muted-foreground shrink-0" />
                     <span>Private</span>
                   </>
                 ) : (
                   <>
-                    <Globe className="size-3.5 text-muted-foreground" />
+                    <Globe className="size-3.5 text-muted-foreground shrink-0" />
                     <span>Public</span>
                   </>
                 )}
@@ -159,13 +159,13 @@ export function GeneralDetails({
             <SelectContent className="text-xs">
               <SelectItem value="public">
                 <div className="flex items-center gap-2">
-                  <Globe className="size-3.5 text-muted-foreground" />
+                  <Globe className="size-3.5 text-muted-foreground shrink-0" />
                   <span>Public</span>
                 </div>
               </SelectItem>
               <SelectItem value="private">
                 <div className="flex items-center gap-2">
-                  <Lock className="size-3.5 text-muted-foreground" />
+                  <Lock className="size-3.5 text-muted-foreground shrink-0" />
                   <span>Private</span>
                 </div>
               </SelectItem>
@@ -181,7 +181,7 @@ export function GeneralDetails({
           value={timezone || 'UTC'}
           onValueChange={onTimezoneChange}
         >
-          <SelectTrigger className="h-10 text-xs rounded-lg border-border/80 bg-background focus:ring-0 focus:outline-none px-3">
+          <SelectTrigger className="h-10 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="text-xs max-h-48">
@@ -199,9 +199,9 @@ export function GeneralDetails({
         <Button
           onClick={onSubmit}
           disabled={!hasChanges || isSaving || !name.trim()}
-          className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-2xs shrink-0"
+          className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
         >
-          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
           Update project
         </Button>
 

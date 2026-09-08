@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import {
@@ -192,9 +192,9 @@ export function SourcePickerModal({
             )}
 
             {isExp ? (
-              <FolderOpen className="size-3.5 text-amber-500 shrink-0" />
+              <FolderOpen className="size-3.5 text-warning shrink-0" />
             ) : (
-              <Folder className="size-3.5 text-amber-500 shrink-0" />
+              <Folder className="size-3.5 text-warning shrink-0" />
             )}
 
             <span className="truncate flex-1">{node.name}</span>
@@ -209,13 +209,13 @@ export function SourcePickerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/40">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
           <DialogTitle className="text-base font-semibold">Select Sources from Library</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-border/40 overflow-hidden min-h-[350px]">
           {/* Collections tree */}
-          <div className="md:col-span-2 p-3 flex flex-col overflow-hidden bg-muted/20">
+          <div className="md:col-span-2 p-3 flex flex-col overflow-hidden bg-muted">
             <div className="mb-2">
               <Input
                 placeholder="Filter collections..."
@@ -256,7 +256,7 @@ export function SourcePickerModal({
             <div className="flex-1 overflow-y-auto space-y-2">
               {papersLoading ? (
                 <div className="flex items-center justify-center p-8">
-                  <Loader2 className="size-5 animate-spin text-primary" />
+                  <Loader2 className="size-5 animate-spin text-primary shrink-0" />
                 </div>
               ) : activePapers.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground">
@@ -272,12 +272,12 @@ export function SourcePickerModal({
                       key={paper.id}
                       onClick={() => !alreadyAdded && togglePaper(paper)}
                       className={cn(
-                        'flex items-start gap-2.5 p-2.5 rounded-lg border text-xs transition-colors cursor-pointer',
+                        'flex items-start gap-2.5 p-2.5 rounded-md border text-xs transition-colors cursor-pointer',
                         alreadyAdded
-                          ? 'border-border/40 bg-secondary/20 opacity-60 cursor-default'
+                          ? 'border-border bg-muted/20 opacity-60 cursor-default'
                           : checked
                           ? 'border-primary/40 bg-primary/5'
-                          : 'border-border/40 hover:bg-secondary/40',
+                          : 'border-border hover:bg-muted',
                       )}
                     >
                       <Checkbox
@@ -304,7 +304,7 @@ export function SourcePickerModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-border/40 flex items-center justify-between bg-muted/20">
+        <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-muted">
           <span className="text-xs text-muted-foreground">
             {pendingSelection.size} new paper(s) selected
           </span>

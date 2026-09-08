@@ -21,6 +21,26 @@ export interface UpdateAnnotationDTO {
   expectedVersion?: number;
 }
 
+type AnnotationsListResponse =
+  | ReaderAnnotation[]
+  | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] };
+
+type AnnotationSingleResponse =
+  | ReaderAnnotation
+  | { data?: ReaderAnnotation; annotation?: ReaderAnnotation };
+
+type DeleteAnnotationResponse = {
+  deleted?: boolean;
+  id?: string;
+  data?: { deleted?: boolean; id?: string };
+};
+
+type ExtractNotesResponse = {
+  success?: boolean;
+  totalExtracted?: number;
+  data?: { success?: boolean; totalExtracted?: number };
+};
+
 /**
  * AnnotationsService corresponding to backend AnnotationsService (backend/src/modules/library/annotations/annotations.service.ts)
  */
@@ -33,12 +53,16 @@ export const AnnotationsService = {
     attachmentId: string,
     pageIndex?: number,
   ): Promise<ReaderAnnotation[]> => {
-    const query = pageIndex !== undefined ? `?pageIndex=${encodeURIComponent(pageIndex)}` : '';
-    const raw = await apiGet<any>(
+    const query =
+      pageIndex !== undefined ? `?pageIndex=${encodeURIComponent(pageIndex)}` : '';
+    const raw = await apiGet<AnnotationsListResponse>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations${query}`,
     );
     if (Array.isArray(raw)) return raw;
-    return raw?.data || raw?.annotations || [];
+    if (raw && typeof raw === 'object') {
+      return raw.data || raw.annotations || [];
+    }
+    return [];
   },
 
   /**
@@ -49,11 +73,16 @@ export const AnnotationsService = {
     attachmentId: string,
     dto: CreateAnnotationDTO,
   ): Promise<ReaderAnnotation> => {
-    const raw = await apiPost<any>(
+    const raw = await apiPost<AnnotationSingleResponse>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations`,
       dto,
     );
-    return raw?.data || raw?.annotation || raw;
+    if (raw && typeof raw === 'object') {
+      if ('data' in raw && raw.data) return raw.data;
+      if ('annotation' in raw && raw.annotation) return raw.annotation;
+      return raw as ReaderAnnotation;
+    }
+    return raw as ReaderAnnotation;
   },
 
   /**
@@ -66,14 +95,19 @@ export const AnnotationsService = {
     expectedVersion: number | undefined,
     dto: UpdateAnnotationDTO,
   ): Promise<ReaderAnnotation> => {
-    const raw = await apiPatch<any>(
+    const raw = await apiPatch<AnnotationSingleResponse>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       {
         ...dto,
         expectedVersion,
       },
     );
-    return raw?.data || raw?.annotation || raw;
+    if (raw && typeof raw === 'object') {
+      if ('data' in raw && raw.data) return raw.data;
+      if ('annotation' in raw && raw.annotation) return raw.annotation;
+      return raw as ReaderAnnotation;
+    }
+    return raw as ReaderAnnotation;
   },
 
   /**
@@ -85,16 +119,22 @@ export const AnnotationsService = {
     annotationId: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
-    const versionQuery = expectedVersion !== undefined
-      ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
-      : '';
-    const raw = await apiDelete<any>(
+    const versionQuery =
+      expectedVersion !== undefined
+        ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
+        : '';
+    const raw = await apiDelete<DeleteAnnotationResponse>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}${versionQuery}`,
     );
-    if (raw && typeof raw === 'object' && 'deleted' in raw) {
-      return { deleted: Boolean(raw.deleted) };
+    if (raw && typeof raw === 'object') {
+      if (typeof raw.deleted === 'boolean') {
+        return { deleted: raw.deleted };
+      }
+      if (raw.data && typeof raw.data.deleted === 'boolean') {
+        return { deleted: raw.data.deleted };
+      }
     }
-    return raw?.data || { deleted: true };
+    return { deleted: true };
   },
 
   /**
@@ -104,10 +144,23 @@ export const AnnotationsService = {
     workspaceId: string,
     itemId: string,
   ): Promise<{ success: boolean; totalExtracted: number }> => {
-    const raw = await apiPost<any>(
+    const raw = await apiPost<ExtractNotesResponse>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/extract-notes`,
       {},
     );
-    return raw?.data || raw || { success: true, totalExtracted: 0 };
+    if (raw && typeof raw === 'object') {
+      if (raw.data) {
+        return {
+          success: Boolean(raw.data.success),
+          totalExtracted: Number(raw.data.totalExtracted ?? 0),
+        };
+      }
+      return {
+        success: Boolean(raw.success),
+        totalExtracted: Number(raw.totalExtracted ?? 0),
+      };
+    }
+    return { success: true, totalExtracted: 0 };
   },
 };
+

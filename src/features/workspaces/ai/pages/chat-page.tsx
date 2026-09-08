@@ -28,11 +28,11 @@ import { useChat } from '../hooks/use-chat';
 
 const AGENT_LABELS: Record<string, { label: string; color: string }> = {
   chat: { label: 'General Chat', color: 'bg-secondary/80 text-muted-foreground' },
-  rag: { label: 'Document Search', color: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
-  analyze: { label: 'Analysis', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-  latex: { label: 'LaTeX', color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
-  task: { label: 'Task Planning', color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
-  web_search: { label: 'Web Search', color: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' },
+  rag: { label: 'Document Search', color: 'bg-primary/10 text-primary' },
+  analyze: { label: 'Analysis', color: 'bg-success/15 text-success' },
+  latex: { label: 'LaTeX', color: 'bg-warning/15 text-warning' },
+  task: { label: 'Task Planning', color: 'bg-destructive/10 text-destructive' },
+  web_search: { label: 'Web Search', color: 'bg-primary/15 text-primary' },
   action: { label: 'Workspace Agent', color: 'bg-primary/10 text-primary' },
 };
 
@@ -74,12 +74,12 @@ function parseThinkingContent(raw: string): {
 function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="mb-3 rounded-lg border border-border/40 bg-secondary/20 overflow-hidden">
+    <div className="mb-3 rounded-md border border-border bg-muted/40 overflow-hidden">
       <button
         onClick={() => setCollapsed((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/40 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted transition-colors cursor-pointer"
       >
-        <Brain className={`size-3.5 shrink-0 text-violet-400 ${isOpen ? 'animate-pulse' : ''}`} />
+        <Brain className={`size-3.5 shrink-0 text-primary ${isOpen ? 'animate-pulse' : ''}`} />
         <span className="text-xs font-medium text-muted-foreground flex-1">
           {isOpen ? 'Thinking…' : 'Thought process'}
         </span>
@@ -90,7 +90,7 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
         )}
       </button>
       {!collapsed && (
-        <div className="px-4 pb-3 pt-1 border-t border-border/30">
+        <div className="px-4 pb-3 pt-1 border-t border-border">
           <p className="text-xs leading-relaxed text-muted-foreground/70 whitespace-pre-wrap font-mono">
             {content}
           </p>
@@ -107,7 +107,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
   const ragSources = sources.filter((s) => s.source && !s.url);
 
   return (
-    <div className="mt-3 pt-2.5 border-t border-border/40 space-y-2">
+    <div className="mt-3 pt-2.5 border-t border-border space-y-2">
       <p className="text-xs font-semibold text-muted-foreground/80">
         Sources
       </p>
@@ -119,7 +119,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
             target="_blank"
             rel="noopener noreferrer"
             title={[s.authors, s.snippet].filter(Boolean).join('\n')}
-            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 transition-colors max-w-55 truncate"
+            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors max-w-55 truncate"
           >
             <ExternalLink className="size-2.5 shrink-0" />
             <span className="truncate">{s.title || s.url}</span>
@@ -130,14 +130,14 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           s.snippet ? (
             <Popover key={i}>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-pointer hover:bg-violet-500/20 transition-colors">
+                <button className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary max-w-55 truncate cursor-pointer hover:bg-primary/20 transition-colors">
                   <FileText className="size-2.5 shrink-0" />
                   <span className="truncate">{s.source}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-80 p-0 overflow-hidden">
-                <div className="px-3 py-2 border-b border-border/50 bg-secondary/60 flex items-center gap-2">
-                  <Quote className="size-3 text-violet-500 shrink-0" />
+                <div className="px-3 py-2 border-b border-border bg-secondary/60 flex items-center gap-2">
+                  <Quote className="size-3 text-primary shrink-0" />
                   <span className="text-xs font-semibold text-foreground/80 truncate">
                     {s.source}
                   </span>
@@ -152,7 +152,7 @@ function SourcesList({ sources }: { sources: SourceItem[] }) {
           ) : (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 max-w-55 truncate cursor-default"
+              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary max-w-55 truncate cursor-default"
             >
               <FileText className="size-2.5 shrink-0" />
               <span className="truncate">{s.source}</span>
@@ -225,9 +225,9 @@ const MessageBubble = memo(function MessageBubble({
           <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary/80 transition-colors"
+              className="flex items-center gap-1 text-xs text-foreground px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
             >
-              {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+              {copied ? <Check className="size-3 text-success shrink-0" /> : <Copy className="size-3 shrink-0" />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
@@ -321,7 +321,7 @@ function WelcomeScreen({
                   'group flex min-h-28 items-start gap-3.5 rounded-lg border bg-card p-4 text-left transition-all cursor-pointer',
                   active
                     ? 'border-primary/40 bg-primary/5 shadow-none'
-                    : 'border-border/50 hover:border-primary/30 hover:bg-muted/30 shadow-none',
+                    : 'border-border hover:border-primary/30 hover:bg-muted shadow-none',
                 )}
               >
                 <span
@@ -329,7 +329,7 @@ function WelcomeScreen({
                     'mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors',
                     active
                       ? 'bg-primary/10 text-primary'
-                      : 'bg-muted/50 text-muted-foreground group-hover:text-primary',
+                      : 'bg-muted text-muted-foreground',
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -370,7 +370,7 @@ function WelcomeScreen({
 function EmptyConversation() {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center px-4">
-      <div className="size-14 rounded-2xl flex items-center justify-center mb-4 bg-muted/40 border border-border/40">
+      <div className="size-14 rounded-lg flex items-center justify-center mb-4 bg-muted border border-border">
         <img src="/Chat.svg" alt="ai" className="size-7" />
       </div>
       <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1.5">Start a conversation</h2>
@@ -477,7 +477,7 @@ export function ChatPage() {
                   />
                 ) : activeActions.length === 0 && (
                   <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/30 border border-border/30">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/30 border border-border">
                       <Loader2 className="size-3.5 animate-spin text-primary shrink-0" />
                       <span className="text-xs text-muted-foreground">Thinking…</span>
                     </div>
@@ -504,10 +504,10 @@ export function ChatPage() {
           <button
             type="button"
             onClick={handleScrollToBottom}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex size-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:shadow hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95 transition-all duration-200"
+            className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex size-9 items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors"
             title="Scroll to bottom"
           >
-            <ArrowDown className="size-4" />
+            <ArrowDown className="size-4 shrink-0" />
           </button>
         )}
         <ChatInput onSend={sendMessage} disabled={isStreaming} initialProject={sessionProjectId} />

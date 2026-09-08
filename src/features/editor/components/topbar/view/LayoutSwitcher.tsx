@@ -32,9 +32,9 @@ export default function LayoutSwitcher() {
           type="button"
           title="Change layout"
           aria-label="Change editor layout"
-          className="p-1.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors outline-none"
+          className="p-1.5 rounded-md text-foreground hover:bg-muted transition-colors outline-none cursor-pointer"
         >
-          <LayoutIcon strokeWidth={1.5} className="size-4" />
+          <LayoutIcon strokeWidth={1.5} className="size-4 shrink-0 text-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44 z-[9999]">
@@ -44,7 +44,7 @@ export default function LayoutSwitcher() {
             onClick={() => setLayout(value)}
             className={cn(layout === value && 'font-semibold text-primary')}
           >
-            <Icon className="size-4 mr-2" strokeWidth={1.5} />
+            <Icon className="size-4 mr-2 shrink-0" strokeWidth={1.5} />
             {label}
           </DropdownMenuItem>
         ))}

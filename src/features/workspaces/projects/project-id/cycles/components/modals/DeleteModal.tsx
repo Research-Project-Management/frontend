@@ -23,12 +23,12 @@ export const DeleteModal = ({
       <DialogContent
         showCloseButton={false}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="max-w-[440px] p-0 overflow-hidden z-[101] rounded-sm border-0 shadow-2xl bg-popover"
+        className="max-w-[440px] p-0 overflow-hidden z-[101] rounded-sm border-0 bg-popover"
       >
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
             <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 shrink-0">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold text-foreground">Delete Cycle?</DialogTitle>
@@ -39,7 +39,7 @@ export const DeleteModal = ({
           </DialogHeader>
         </div>
 
-        <div className="px-6 py-4 bg-muted/30 border-t border-border">
+        <div className="px-6 py-4 bg-muted border-t border-border">
           <DialogFooter className="flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
             <Button
               type="button"
@@ -58,7 +58,7 @@ export const DeleteModal = ({
             >
               {isDeleting ? "Deleting..." : (
                 <>
-                  <Trash2 className="size-3.5" />
+                  <Trash2 className="size-3.5 shrink-0" />
                   <span>Delete</span>
                 </>
               )}

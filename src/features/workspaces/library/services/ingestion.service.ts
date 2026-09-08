@@ -86,16 +86,21 @@ export const IngestionService = {
       /** @deprecated Use value; retained for callers during migration. */
       identifierValue?: string;
       rawRecord?: string;
+      content?: string;
       recordFormat?: 'BIBTEX' | 'RIS';
+      format?: 'BIBTEX' | 'RIS';
       url?: string;
       fileId?: string;
+      filename?: string;
       collectionId?: string;
       overrides?: Record<string, any>;
       idempotencyKey?: string;
     },
   ) => {
-    const { identifierValue, value, ...rest } = payload;
+    const { identifierValue, value, rawRecord, content, recordFormat, format, ...rest } = payload;
     const resolvedValue = value ?? identifierValue;
+    const resolvedContent = content ?? rawRecord;
+    const resolvedFormat = format ?? recordFormat;
     return apiPost<{
       success: boolean;
       data: {
@@ -112,6 +117,10 @@ export const IngestionService = {
         ...rest,
         value: resolvedValue,
         identifierValue: resolvedValue,
+        content: resolvedContent,
+        rawRecord: resolvedContent,
+        format: resolvedFormat,
+        recordFormat: resolvedFormat,
       },
     );
   },
@@ -143,7 +152,41 @@ export const IngestionService = {
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
     return IngestionRunSnapshotResponseSchema.parse(enveloped);
   },
+
+  /**
+   * Query real-time granular progress for batch/single ingestion runs
+   */
+  getRunProgress: async (workspaceId: string, runId: string): Promise<IngestionProgressResponse> => {
+    const res = await apiGet<any>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion/status/${encodeURIComponent(runId)}/progress`,
+    );
+    const data = res && typeof res === 'object' && 'data' in res ? res.data : res;
+    return data as IngestionProgressResponse;
+  },
 };
+
+export interface IngestionProgressItem {
+  title: string;
+  status: 'SUCCEEDED' | 'DUPLICATE' | 'FAILED';
+  itemId?: string;
+  error?: string;
+}
+
+export interface IngestionProgressResponse {
+  runId: string;
+  workspaceId: string;
+  status: string;
+  total: number;
+  processed: number;
+  percentage: number;
+  succeeded: number;
+  duplicates: number;
+  failed: number;
+  currentTitle?: string;
+  items: IngestionProgressItem[];
+  startedAt: string;
+  completedAt?: string;
+}
 
 function toSubmission(payload: UnifiedIngestionPayload) {
   const common = {
@@ -160,12 +203,40 @@ function toSubmission(payload: UnifiedIngestionPayload) {
         identifierType: 'DOI' as const,
         value: payload.doi,
       };
+    case 'arxiv':
+      return {
+        ...common,
+        kind: 'IDENTIFIER' as const,
+        identifierType: 'ARXIV' as const,
+        value: payload.arxivId,
+      };
+    case 'pmid':
+      return {
+        ...common,
+        kind: 'IDENTIFIER' as const,
+        identifierType: 'PMID' as const,
+        value: payload.pmid,
+      };
+    case 'isbn':
+      return {
+        ...common,
+        kind: 'IDENTIFIER' as const,
+        identifierType: 'ISBN' as const,
+        value: payload.isbn,
+      };
     case 'bibtex':
       return {
         ...common,
         kind: 'RECORD' as const,
         format: 'BIBTEX' as const,
         content: payload.content || payload.bibtex || '',
+      };
+    case 'ris':
+      return {
+        ...common,
+        kind: 'RECORD' as const,
+        format: 'RIS' as const,
+        content: payload.content || payload.ris || '',
       };
     case 'url':
       return {

@@ -29,7 +29,7 @@ export function Team({ members }: TeamProps) {
         {members.map((member, idx) => (
           <div
             key={member.user?.id || idx}
-            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors"
+            className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted transition-colors"
           >
             <Avatar className="size-8 border border-border">
               {member.user?.avatar && <AvatarImage src={member.user.avatar} alt={member.user?.name || 'User'} />}

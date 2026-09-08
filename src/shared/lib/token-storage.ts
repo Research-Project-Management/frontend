@@ -1,3 +1,4 @@
+import { logger } from '@/shared/lib/logger';
 /**
  * Centralized authentication token storage adapter and lifecycle manager.
  * Supports swappable storage strategies (LocalStorage vs. InMemory) with SSR safety
@@ -163,7 +164,9 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
         window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
         window.localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN);
         window.localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
-      } catch {}
+      } catch (err) {
+        logger.debug('[TokenStorage] Error removing storage keys', { err });
+      }
       deleteCookieValue(STORAGE_KEYS.ACCESS_TOKEN);
       deleteCookieValue(STORAGE_KEYS.LEGACY_TOKEN);
       deleteCookieValue(STORAGE_KEYS.REFRESH_TOKEN);

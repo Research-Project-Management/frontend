@@ -98,7 +98,7 @@ export default function Sidebar() {
       <div className="mb-2 px-1">
         <Link
           href={`/${workspaceId}/projects/${projectId}/overview`}
-          className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] leading-5 font-normal text-foreground hover:bg-muted/70 transition-colors"
+          className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 font-normal text-foreground hover:bg-muted transition-colors"
         >
           <ArrowLeft className="size-4 shrink-0 text-foreground transition-transform group-hover:-translate-x-0.5" />
           <span className="tracking-tight">Project settings</span>
@@ -135,7 +135,7 @@ function GroupSection({
 }) {
   return (
     <div>
-      <div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted-foreground select-none">
+      <div className="px-2 pb-1.5 pt-1 text-13 font-medium text-muted-foreground select-none">
         {group.title}
       </div>
       <nav className="flex flex-col gap-1">
@@ -147,10 +147,10 @@ function GroupSection({
               key={item.id}
               href={item.to}
               className={cn(
-                'group flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] leading-5 transition-colors outline-none',
+                'group flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none',
                 active
                   ? 'bg-muted text-foreground font-medium'
-                  : 'text-foreground hover:bg-muted/70 font-normal',
+                  : 'text-foreground hover:bg-muted font-normal',
               )}
             >
               <Icon

@@ -32,7 +32,7 @@ export function ActivityTimeline({
         </h2>
       </div>
 
-      <div className="rounded-lg border border-border/80 bg-card overflow-hidden divide-y divide-border/60 shadow-2xs">
+      <div className="rounded-lg border border-border bg-card overflow-hidden divide-y divide-border/60 shadow-none">
         {isLoading ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
             Loading recent activities...

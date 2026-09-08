@@ -60,7 +60,7 @@ export default function OverviewPage() {
     return (
       <div className="flex flex-col items-center justify-center flex-1 p-8 text-center gap-3">
         <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-          <AlertCircle className="size-6" />
+          <AlertCircle className="size-6 shrink-0" />
         </div>
         <h3 className="font-semibold text-foreground">Failed to load overview</h3>
         <p className="text-sm text-muted-foreground max-w-sm">

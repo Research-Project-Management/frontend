@@ -202,14 +202,14 @@ export function CreateProjectModal({
                 className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border text-left transition-all duration-150 cursor-pointer
                   ${
                     isSelected
-                      ? `border-transparent ring-2 ${tpl.accent} bg-accent/40`
-                      : "border-border hover:border-muted-foreground/30 hover:bg-accent/20"
+                      ? `border-transparent ring-2 ${tpl.accent} bg-muted`
+                      : "border-border hover:border-muted-foreground/30 hover:bg-muted"
                   }`}
               >
                 {isSelected && (
                   <div className="absolute top-2 right-2">
                     <span className="flex size-4 items-center justify-center rounded-full bg-foreground text-background">
-                      <Check className="size-2.5 stroke-[3]" />
+                      <Check className="size-2.5 stroke-[3] shrink-0" />
                     </span>
                   </div>
                 )}
@@ -235,14 +235,14 @@ export function CreateProjectModal({
           <div className="relative" ref={emojiRef}>
             <button
               type="button"
-              className="flex items-center justify-center w-12 h-12 text-2xl border border-border hover:border-foreground rounded-lg cursor-pointer hover:bg-accent transition-colors shrink-0"
+              className="flex items-center justify-center w-12 h-12 text-2xl border border-border hover:border-foreground rounded-md cursor-pointer hover:bg-muted transition-colors shrink-0"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               {avatar}
             </button>
             {showEmojiPicker && (
               <div 
-                className="absolute z-50 mt-2 left-0 shadow-2xl rounded-lg border border-border overflow-hidden"
+                className="absolute z-50 mt-2 left-0 rounded-md border border-border overflow-hidden"
                 style={{ 
                   "--epr-bg-color": "var(--card)",
                   "--epr-category-navigation-button-active-color": "var(--muted-foreground)",
@@ -307,13 +307,13 @@ export function CreateProjectModal({
                   ${
                     isActive
                       ? "bg-primary/10 text-primary border-primary/20"
-                      : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
+                      : "bg-muted text-muted-foreground border-border hover:bg-muted"
                   }
                   ${isLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
                 `}
               >
-                {isLocked && <Lock className="size-3" />}
-                {!isLocked && isActive && <Check className="size-3" />}
+                {isLocked && <Lock className="size-3 shrink-0" />}
+                {!isLocked && isActive && <Check className="size-3 shrink-0" />}
                 {mod.label}
               </button>
             );

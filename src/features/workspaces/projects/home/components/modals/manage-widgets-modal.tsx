@@ -38,7 +38,7 @@ function SortableRow({
   } = useSortable({
     id: config.id,
   });
-  
+
   return (
     <div
       ref={setNodeRef}
@@ -48,19 +48,19 @@ function SortableRow({
         opacity: isDragging ? 0.5 : 1,
       }}
       className={cn(
-        "flex items-center gap-4 py-2.5 px-2 rounded-sm transition-colors duration-200 hover:bg-muted/40 group",
-        isDragging && "bg-muted/60 shadow-sm"
+        "flex items-center gap-4 py-2.5 px-2 rounded-md transition-colors duration-200 hover:bg-muted group",
+        isDragging && "bg-muted "
       )}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab text-muted-foreground/20 hover:text-muted-foreground shrink-0 transition-colors"
+        className="cursor-grab text-muted-foreground/20 shrink-0 transition-colors"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-4 w-4 shrink-0" />
       </button>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground/90 group-hover:text-foreground transition-colors">{config.label}</p>
+        <p className="text-sm font-medium text-foreground transition-colors">{config.label}</p>
       </div>
       <Switch
         checked={config.visible}
@@ -122,7 +122,7 @@ export function ManageWidgetsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[400px] bg-popover border border-border shadow-2xl rounded-lg p-6"
+        className="sm:max-w-[400px] bg-popover border border-border rounded-lg p-6"
         showCloseButton={false}
       >
         <DialogHeader className="mb-4">

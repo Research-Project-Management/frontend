@@ -74,7 +74,7 @@ export default function TopBar({
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2.5">
-        <Layers2 className="size-4 text-foreground" />
+        <Layers2 className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold text-foreground tracking-tight">Stickies</h1>
       </div>
 
@@ -87,8 +87,8 @@ export default function TopBar({
           className={cn(
             "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring",
             isSearchExpanded || searchQuery
-              ? "w-64 border border-border/50 bg-background"
-              : "w-8 hover:bg-secondary/80 cursor-pointer"
+              ? "w-64 border border-border bg-background"
+              : "w-8 hover:bg-muted cursor-pointer"
           )}
           onClick={() => {
             if (!isSearchExpanded) {
@@ -134,9 +134,9 @@ export default function TopBar({
                 onSearchChange("");
                 setIsSearchExpanded(false);
               }}
-              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-foreground transition-colors cursor-pointer"
             >
-              <X className="size-3.5 text-foreground" />
+              <X className="size-3.5 text-foreground shrink-0" />
             </button>
           )}
         </div>
@@ -150,11 +150,11 @@ export default function TopBar({
                 size="sm"
                 aria-label="Filter stickies by project"
                 className={cn(
-                  "h-8 gap-1.5 border-border/60 bg-background hover:bg-secondary/80 text-xs font-normal text-foreground cursor-pointer transition-colors",
+                  "h-8 gap-1.5 border-border bg-background hover:bg-muted text-xs font-normal text-foreground cursor-pointer transition-colors",
                   hasActiveFilters && "border-primary/50 text-primary bg-primary/5 hover:bg-primary/10"
                 )}
               >
-                <ListFilter className="size-3.5" />
+                <ListFilter className="size-3.5 shrink-0" />
                 <span>Filter</span>
                 {hasActiveFilters && (
                   <span className="ml-0.5 rounded-full bg-primary/15 px-1.5 py-0.2 text-xs font-semibold text-primary leading-none">
@@ -164,12 +164,12 @@ export default function TopBar({
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-64 p-3 bg-popover border border-border shadow-xl rounded-lg space-y-3"
+              className="w-64 p-3 bg-popover border border-border rounded-md space-y-3"
               align="end"
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <span className="text-xs font-semibold text-foreground">
                   Projects {hasActiveFilters && `(${projectFilter.length})`}
                 </span>
@@ -177,9 +177,9 @@ export default function TopBar({
                   <button
                     type="button"
                     onClick={clearAllFilters}
-                    className="text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-xs font-medium text-foreground flex items-center gap-1 cursor-pointer transition-colors"
                   >
-                    <RotateCcw className="size-3" />
+                    <RotateCcw className="size-3 shrink-0" />
                     Clear all
                   </button>
                 )}
@@ -188,12 +188,12 @@ export default function TopBar({
               {/* Search input if projects > 3 */}
               {projects.length > 3 && (
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground shrink-0" />
                   <Input
                     placeholder="Search projects..."
                     value={projectSearch}
                     onChange={(e) => setProjectSearch(e.target.value)}
-                    className="h-7 text-xs pl-7 pr-2 bg-muted/40 border-border/60 focus-visible:ring-1"
+                    className="h-7 text-xs pl-7 pr-2 bg-muted border-border focus-visible:ring-1"
                   />
                 </div>
               )}
@@ -243,7 +243,7 @@ export default function TopBar({
           disabled={isAddingSticky}
           className="h-8 gap-1.5 rounded-lg px-3 text-xs cursor-pointer"
         >
-          <Plus className="size-3.5 text-primary-foreground" />
+          <Plus className="size-3.5 text-primary-foreground shrink-0" />
           {addLabel}
         </Button>
       </div>

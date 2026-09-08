@@ -46,7 +46,7 @@ const ForgotPasswordPage = () => {
             </p>
           </div>
           <Link href='/login' className='w-full'>
-            <Button className='w-full h-10 rounded-lg cursor-pointer'>Return to sign in</Button>
+            <Button className='w-full h-10 rounded-md cursor-pointer'>Return to sign in</Button>
           </Link>
         </div>
       </div>
@@ -70,7 +70,7 @@ const ForgotPasswordPage = () => {
               type='email'
               placeholder='Email'
               aria-label='Email'
-              className='h-10 rounded-lg'
+              className='h-9 rounded-md'
               {...register('email')}
             />
             {errors.email && (
@@ -79,17 +79,17 @@ const ForgotPasswordPage = () => {
           </div>
 
           {error && (
-            <div className='p-3 text-sm text-destructive bg-destructive/10 rounded-lg text-center'>
+            <div className='p-3 text-sm text-destructive bg-muted rounded-md border border-border text-center'>
               {error}
             </div>
           )}
 
           <Button
             type='submit'
-            className='w-full h-10 mt-1 rounded-lg cursor-pointer'
+            className='w-full h-9 mt-1 rounded-md cursor-pointer'
             disabled={isPending}
           >
-            {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+            {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin shrink-0' />}
             {isPending ? 'Sending...' : 'Send reset link'}
           </Button>
         </form>
@@ -97,7 +97,7 @@ const ForgotPasswordPage = () => {
         <div className='text-center text-sm text-muted-foreground'>
           <Link
             href='/login'
-            className='text-primary font-semibold transition-opacity hover:opacity-80'
+            className='text-primary font-semibold hover:underline'
           >
             Back to sign in
           </Link>

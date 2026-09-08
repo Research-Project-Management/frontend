@@ -155,9 +155,9 @@ export default function TrashPage() {
     return (
       <span className="shrink-0 ml-1.5 inline-flex items-center text-foreground">
         {sortOrder === 'desc' ? (
-          <ArrowDown className="size-3.5 text-foreground" />
+          <ArrowDown className="size-3.5 text-foreground shrink-0" />
         ) : (
-          <ArrowUp className="size-3.5 text-foreground" />
+          <ArrowUp className="size-3.5 text-foreground shrink-0" />
         )}
       </span>
     );
@@ -182,13 +182,13 @@ export default function TrashPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setEmptyTrashDialogOpen(true)}
-                    className="h-8 text-xs gap-1.5 px-3 cursor-pointer font-medium text-foreground hover:bg-muted border border-border/80 !rounded-md shadow-none"
+                    className="h-8 text-xs gap-1.5 px-3 cursor-pointer font-medium text-foreground hover:bg-muted border border-border !rounded-md shadow-none"
                   >
-                    <Trash2 className="size-3.5 text-foreground" />
+                    <Trash2 className="size-3.5 text-foreground shrink-0" />
                     <span>Empty Trash</span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={6} className="text-[11px] font-normal px-2 py-0.5 rounded-md shadow-sm border border-border/80 bg-popover text-foreground">
+                <TooltipContent side="bottom" sideOffset={6} className="text-11 font-normal px-2 py-0.5 rounded-md border border-border bg-popover text-foreground">
                   Permanently delete all items from trash
                 </TooltipContent>
               </Tooltip>
@@ -201,7 +201,7 @@ export default function TrashPage() {
           {isLoading && trashItems.length === 0 ? (
             <div className="p-4 space-y-2">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-border/40">
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-border">
                   <Skeleton className="size-4 rounded-md" />
                   <Skeleton className="h-4 flex-1 max-w-[360px]" />
                   <Skeleton className="h-4 w-48" />
@@ -210,8 +210,8 @@ export default function TrashPage() {
             </div>
           ) : filteredTrashItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 h-full min-h-[300px] text-center p-8 select-none">
-              <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-                <Trash2 className="size-6 text-foreground" />
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Trash2 className="size-6 text-foreground shrink-0" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">Trash is empty</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -238,7 +238,7 @@ export default function TrashPage() {
                   <col className="w-6/12" />
                   <col className="w-10" />
                 </colgroup>
-                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs select-none border-b border-border/60">
+                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs select-none border-b border-border">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
                     <th className="w-10 px-2.5 py-1.5 text-center align-middle">
                       <div className="flex items-center justify-center">
@@ -284,8 +284,8 @@ export default function TrashPage() {
                           <tr
                             onClick={(e) => handleRowClick(e, paper)}
                             className={cn(
-                              'group h-9 transition-colors cursor-pointer border-b border-border/30',
-                              isSelected ? 'bg-muted/80' : isActive ? 'bg-muted/50' : 'hover:bg-muted/30',
+                              'group h-9 transition-colors cursor-pointer border-b border-border',
+                              isSelected ? 'bg-muted' : isActive ? 'bg-muted' : 'hover:bg-muted',
                             )}
                           >
                             <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
@@ -324,23 +324,23 @@ export default function TrashPage() {
                                   <DropdownMenuTrigger asChild>
                                     <button
                                       type="button"
-                                      className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none touch-manipulation"
+                                      className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary touch-manipulation"
                                       aria-label="More actions"
                                     >
-                                      <MoreVertical className="size-4 text-foreground" />
+                                      <MoreVertical className="size-4 text-foreground shrink-0" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
+                                  <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
                                       onClick={() => handleRestoreItem(paper.id)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <RotateCcw className="size-3.5 text-foreground shrink-0" />
                                       <span>Restore to Library</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => setSinglePurgeTarget(paper)}
-                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent outline-none"
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <Trash2 className="size-3.5 text-foreground shrink-0" />
                                       <span>Delete Permanently</span>
@@ -353,11 +353,11 @@ export default function TrashPage() {
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48 text-xs font-sans">
                           <ContextMenuItem onClick={() => handleRestoreItem(paper.id)} className="gap-2 cursor-pointer text-foreground">
-                            <RotateCcw className="size-3.5 text-foreground" />
+                            <RotateCcw className="size-3.5 text-foreground shrink-0" />
                             <span>Restore to Library</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => setSinglePurgeTarget(paper)} className="gap-2 cursor-pointer text-foreground">
-                            <Trash2 className="size-3.5 text-foreground" />
+                            <Trash2 className="size-3.5 text-foreground shrink-0" />
                             <span>Delete Permanently</span>
                           </ContextMenuItem>
                         </ContextMenuContent>
@@ -399,7 +399,7 @@ export default function TrashPage() {
         >
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
             <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
-              <Trash2 className="h-5 w-5 text-foreground" />
+              <Trash2 className="h-5 w-5 text-foreground shrink-0" />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -430,7 +430,7 @@ export default function TrashPage() {
             >
               {isPurging || isEmptyingTrash ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
                   <span>Purging...</span>
                 </span>
               ) : (
@@ -449,7 +449,7 @@ export default function TrashPage() {
         >
           <DialogHeader className="flex flex-row items-start gap-4 space-y-0 text-left">
             <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
-              <Trash2 className="h-5 w-5 text-foreground" />
+              <Trash2 className="h-5 w-5 text-foreground shrink-0" />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -481,7 +481,7 @@ export default function TrashPage() {
             >
               {isPurging ? (
                 <span className="inline-flex items-center gap-1.5">
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
                   <span>Deleting...</span>
                 </span>
               ) : (

@@ -30,7 +30,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
   if (!mounted || isLoading || !user) {
     return (
       <div className="size-8 flex items-center justify-center">
-        <div className="size-7 rounded-full bg-muted/60" />
+        <div className="size-7 rounded-full bg-muted" />
       </div>
     );
   }
@@ -38,7 +38,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-accent/50 outline-none data-[state=open]:bg-accent/50 cursor-pointer'>
+        <DropdownMenuTrigger className='flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer'>
             <Avatar className='size-7 rounded-full'>
       {user.avatar ? <AvatarImage src={resolveFileUrl(user.avatar) || undefined} alt={String(user.name || '')} referrerPolicy="no-referrer" /> : null}
       <AvatarFallback>{String(user.name || '').substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
@@ -48,11 +48,11 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
         <DropdownMenuContent
           align='end'
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className='w-[250px] p-0 overflow-hidden bg-popover rounded-lg shadow-none border border-border'
+          className='w-64 p-0 overflow-hidden bg-popover rounded-md shadow-none border border-border'
           alignOffset={0}
         >
-          <div className="flex flex-col items-center justify-center text-center px-4 py-4 border-b border-border/50 bg-muted/20">
-            <Avatar className="size-12 rounded-full border border-border/50">
+          <div className="flex flex-col items-center justify-center text-center px-4 py-4 border-b border-border bg-muted">
+            <Avatar className="size-12 rounded-full border border-border">
               {user.avatar ? (
                 <AvatarImage
                   src={resolveFileUrl(user.avatar) || undefined}
@@ -73,7 +73,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
               className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
               onClick={() => openModal('profile')}
             >
-              <Settings className="size-4 text-foreground" />
+              <Settings className="size-4 text-foreground shrink-0" />
               <span>Settings</span>
             </DropdownMenuItem>
             
@@ -81,7 +81,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
               className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
               onClick={() => openModal('preferences')}
             >
-              <SlidersHorizontal className="size-4 text-foreground" />
+              <SlidersHorizontal className="size-4 text-foreground shrink-0" />
               <span>Preferences</span>
             </DropdownMenuItem>
             
@@ -89,7 +89,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
               onClick={() => logout()} 
               className="cursor-pointer gap-2.5 px-3 py-2 text-foreground"
             >
-              <LogOut className="size-4 text-foreground" />
+              <LogOut className="size-4 text-foreground shrink-0" />
               <span>Sign out</span>
             </DropdownMenuItem>
           </div>

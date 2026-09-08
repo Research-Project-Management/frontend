@@ -36,9 +36,9 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
             <button
               onClick={() => setSourcesOpen(true)}
               title="Show sources"
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/50 bg-card px-3 text-xs font-medium text-muted-foreground shadow-none hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground shadow-none hover:bg-muted transition-colors cursor-pointer"
             >
-              <PanelRightOpen className="size-3.5" />
+              <PanelRightOpen className="size-3.5 shrink-0" />
               Sources
             </button>
           </div>
@@ -49,17 +49,17 @@ function ChatAiContent({ children }: { children?: React.ReactNode }) {
 
       {/* Sources panel — right side, wiki mode only */}
       {showSources && sourcesOpen && (
-        <aside className="shrink-0 h-full w-80 border-l border-border/50 bg-card flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border/50">
+        <aside className="shrink-0 h-full w-80 border-l border-border bg-card flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
             <h2 className="text-sm font-semibold text-foreground tracking-tight">
               Sources
             </h2>
             <button
               onClick={() => setSourcesOpen(false)}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              className="rounded-md p-1.5 text-foreground hover:bg-muted transition-colors cursor-pointer"
               title="Close sources"
             >
-              <PanelRightClose className="size-4" />
+              <PanelRightClose className="size-4 shrink-0" />
             </button>
           </div>
 

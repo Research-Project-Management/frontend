@@ -28,26 +28,26 @@ import { TOOL_LABELS } from '../../types/chat.types';
 
 const CATEGORY_ACCENT: Record<ToolCategory, string> = {
   read: 'bg-primary',
-  create: 'bg-emerald-500',
-  update: 'bg-amber-500',
-  delete: 'bg-red-500',
-  analyze: 'bg-violet-500',
+  create: 'bg-success',
+  update: 'bg-warning',
+  delete: 'bg-destructive',
+  analyze: 'bg-primary',
 };
 
 const CATEGORY_TEXT: Record<ToolCategory, string> = {
   read: 'text-primary',
-  create: 'text-emerald-600 dark:text-emerald-400',
-  update: 'text-amber-600 dark:text-amber-400',
-  delete: 'text-red-500',
-  analyze: 'text-violet-600 dark:text-violet-400',
+  create: 'text-success',
+  update: 'text-warning',
+  delete: 'text-destructive',
+  analyze: 'text-primary',
 };
 
 const CATEGORY_SURFACE: Record<ToolCategory, string> = {
   read: 'bg-primary/10 text-primary',
-  create: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  update: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  delete: 'bg-red-500/10 text-red-500',
-  analyze: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  create: 'bg-success/10 text-success',
+  update: 'bg-warning/10 text-warning',
+  delete: 'bg-destructive/10 text-destructive',
+  analyze: 'bg-primary/10 text-primary',
 };
 
 const AGENT_LABELS: Record<string, { label: string }> = {
@@ -96,11 +96,11 @@ export function ActionCardsGroup({
   const totalCount = otherActions.length;
 
   return (
-    <div className="my-2.5 rounded-xl border border-border/60 bg-card/40 overflow-hidden shadow-xs">
+    <div className="my-2.5 rounded-md border border-border bg-card/40 overflow-hidden ">
       {/* Header bar */}
       <button
         onClick={() => setCollapsed((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-secondary/40 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2 min-w-0">
           {runningAction ? (
@@ -108,7 +108,7 @@ export function ActionCardsGroup({
           ) : hasErrors ? (
             <AlertCircle className="size-3.5 text-destructive shrink-0" />
           ) : (
-            <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+            <CheckCircle2 className="size-3.5 text-success shrink-0" />
           )}
 
           <span className="text-xs font-medium text-foreground truncate">
@@ -129,10 +129,10 @@ export function ActionCardsGroup({
 
       {/* Action items list */}
       {!collapsed && (
-        <div className="border-t border-border/40 divide-y divide-border/20 px-3 py-2 space-y-1.5 bg-background/50">
+        <div className="border-t border-border divide-y divide-border/20 px-3 py-2 space-y-1.5 bg-background/50">
           {thinkingAction && (
             <div className="text-xs text-muted-foreground italic flex items-center gap-1.5 py-1">
-              <CircleDashed className="size-3 text-muted-foreground animate-spin" />
+              <CircleDashed className="size-3 text-muted-foreground animate-spin shrink-0" />
               <span>Analyzing intent and workspace context…</span>
             </div>
           )}
@@ -173,7 +173,7 @@ function ActionRow({ action }: { action: AgentAction }) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`p-1 rounded-md ${CATEGORY_SURFACE[toolMeta.category]}`}>
-            <Icon className="size-3" />
+            <Icon className="size-3 shrink-0" />
           </span>
           <span className="text-xs font-medium text-foreground truncate">
             {toolMeta.label}
@@ -182,19 +182,19 @@ function ActionRow({ action }: { action: AgentAction }) {
 
         <div className="flex items-center gap-1.5 shrink-0">
           {action.status === 'calling' && (
-            <Loader2 className="size-3 text-primary animate-spin" />
+            <Loader2 className="size-3 text-primary animate-spin shrink-0" />
           )}
           {action.status === 'done' && (
-            <CheckCircle2 className="size-3 text-emerald-500" />
+            <CheckCircle2 className="size-3 text-success shrink-0" />
           )}
           {action.status === 'error' && (
-            <AlertCircle className="size-3 text-destructive" />
+            <AlertCircle className="size-3 text-destructive shrink-0" />
           )}
 
           {(action.input || action.output) && (
             <button
               onClick={() => setOpen((v) => !v)}
-              className="text-xs text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded hover:bg-secondary"
+              className="text-xs text-foreground px-1.5 py-0.5 rounded-md hover:bg-muted transition-colors cursor-pointer"
             >
               {open ? 'Hide' : 'Details'}
             </button>
@@ -203,7 +203,7 @@ function ActionRow({ action }: { action: AgentAction }) {
       </div>
 
       {open && (
-        <div className="mt-1.5 rounded bg-muted/40 p-2 text-xs font-mono space-y-1">
+        <div className="mt-1.5 rounded bg-muted p-2 text-xs font-mono space-y-1">
           {action.input && (
             <div>
               <p className="text-xs text-muted-foreground font-sans font-semibold">Input:</p>

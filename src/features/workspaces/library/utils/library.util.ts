@@ -99,6 +99,12 @@ export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): stri
     if (url) return url;
   }
 
+  // 4b. Direct openAccessPdfUrl on paper
+  if ((paper as any)?.openAccessPdfUrl) {
+    const oaUrl = normalizeUrl((paper as any).openAccessPdfUrl);
+    if (oaUrl) return oaUrl;
+  }
+
   // 5. arXiv fallback: If paper has arxivId, arXiv DOI, arXiv URL, or arXiv filename
   const arxivMatch =
     (paper as any)?.arxivId ||
@@ -557,9 +563,6 @@ const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
   'storageid',
   'citationcount',
   'citations',
-  'archiveid',
-  'arxivid',
-  'arxiv',
   'repository',
   'comment',
   'comments',
@@ -579,56 +582,59 @@ const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
  * In Zotero, the Extra field contains pure text / custom variables without
  * artificial headings or redundant labels prepended.
  *
+ * For arXiv preprints, native Zotero formats the Extra field as:
+ *   arXiv:<id> [<primary_category>]
+ * (e.g. "arXiv:1406.2661 [stat.ML]" or "arXiv:1512.03385 [cs.CV]").
+ *
  * This function preserves genuine user content, strips out redundant duplicate fields
  * (such as Title which is already displayed in the main Title field, Cite Key, Open Access URLs),
- * and eliminates internal telemetry.
+ * and eliminates internal telemetry while guaranteeing official Zotero arXiv syntax.
  */
 export function formatAndSanitizeExtraMetadata(
   rawExtraMetadata?: string | null,
   additionalExtraFields?: Record<string, unknown> | null,
   associatedPaperItem?: Partial<CatalogItem> | null,
 ): string {
-  if (!rawExtraMetadata || typeof rawExtraMetadata !== 'string') {
-    return '';
-  }
+  let textContent = '';
 
-  const trimmed = rawExtraMetadata.trim();
-  if (!trimmed) {
-    return '';
-  }
+  if (typeof rawExtraMetadata === 'string' && rawExtraMetadata.trim()) {
+    const trimmed = rawExtraMetadata.trim();
 
-  let textContent = trimmed;
-
-  // If rawExtraMetadata is a JSON object string (e.g. from backend serialization)
-  if (trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const record = parsed as Record<string, unknown>;
-        if (typeof record._rawExtra === 'string') {
-          textContent = record._rawExtra.trim();
-        } else {
-          // If JSON contains genuine unmapped custom user properties (not telemetry or schema fields)
-          const customLines: string[] = [];
-          for (const [key, value] of Object.entries(parsed)) {
-            const normKey = key.toLowerCase().replace(/[-_]/g, '');
-            if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normKey)) continue;
-            if (value === null || value === undefined) continue;
-            if (typeof value === 'object') continue;
-            const strVal = String(value).trim();
-            if (!strVal) continue;
-            customLines.push(`${key}: ${strVal}`);
+    // If rawExtraMetadata is a JSON object string (e.g. from backend serialization)
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const record = parsed as Record<string, unknown>;
+          if (typeof record._rawExtra === 'string') {
+            textContent = record._rawExtra.trim();
+          } else {
+            // If JSON contains genuine unmapped custom user properties (not telemetry or schema fields)
+            const customLines: string[] = [];
+            for (const [key, value] of Object.entries(parsed)) {
+              const normKey = key.toLowerCase().replace(/[-_\s]/g, '');
+              if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normKey)) continue;
+              if (value === null || value === undefined) continue;
+              if (typeof value === 'object') continue;
+              const strVal = String(value).trim();
+              if (!strVal) continue;
+              if (normKey === 'arxiv' || normKey === 'arxivid' || normKey === 'archiveid') {
+                const cleanVal = strVal.replace(/^arxiv:\s*/i, '');
+                customLines.push(`arXiv:${cleanVal}`);
+              } else {
+                customLines.push(`${key}: ${strVal}`);
+              }
+            }
+            textContent = customLines.join('\n');
           }
-          textContent = customLines.join('\n');
         }
+      } catch {
+        // Not valid JSON, process as plain text directly
+        textContent = trimmed;
       }
-    } catch {
-      // Not valid JSON, process as plain text directly
+    } else {
+      textContent = trimmed;
     }
-  }
-
-  if (!textContent) {
-    return '';
   }
 
   const paperTitle = associatedPaperItem?.title?.trim().toLowerCase();
@@ -637,8 +643,9 @@ export function formatAndSanitizeExtraMetadata(
   const paperOaUrl = associatedPaperItem?.openAccessPdfUrl?.trim();
   const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
 
-  const lines = textContent.split(/\r?\n/);
+  const lines = textContent ? textContent.split(/\r?\n/) : [];
   const sanitizedLines: string[] = [];
+  let hasArxivLine = false;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -684,10 +691,22 @@ export function formatAndSanitizeExtraMetadata(
       continue;
     }
 
+    // Check for native Zotero arXiv syntax (e.g. arXiv:1406.2661 [stat.ML])
+    if (/^arxiv:\s*/i.test(trimmedLine)) {
+      hasArxivLine = true;
+      // Standardize spacing: "arXiv:<id> [<category>]" with space before category and clean ID
+      const normalizedLine = trimmedLine.replace(
+        /^arxiv:\s*([^\s\[]+)(?:v\d+)?\s*(\[[^\]]+\])?/i,
+        (_, id, cat) => (cat ? `arXiv:${id} ${cat.trim()}` : `arXiv:${id}`),
+      );
+      sanitizedLines.push(normalizedLine);
+      continue;
+    }
+
     // 6. Filter out internal telemetry keys
     const colonIdx = trimmedLine.indexOf(':');
     if (colonIdx > 0 && !trimmedLine.startsWith('http://') && !trimmedLine.startsWith('https://')) {
-      const k = trimmedLine.slice(0, colonIdx).trim().toLowerCase().replace(/[-_]/g, '');
+      const k = trimmedLine.slice(0, colonIdx).trim().toLowerCase().replace(/[-_\s]/g, '');
       if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(k)) {
         continue;
       }
@@ -695,6 +714,42 @@ export function formatAndSanitizeExtraMetadata(
 
     // Preserve the clean content line as-is (no artificial label/title prepended!)
     sanitizedLines.push(trimmedLine);
+  }
+
+  // Fallback: If paper has an arXiv ID but no arXiv line in Extra, synthesize standard Zotero line
+  if (!hasArxivLine) {
+    const rawArxiv =
+      associatedPaperItem?.arxivId ||
+      (typeof additionalExtraFields?.arxivId === 'string' ? additionalExtraFields.arxivId : undefined) ||
+      (typeof additionalExtraFields?.archiveId === 'string' ? additionalExtraFields.archiveId : undefined) ||
+      (associatedPaperItem?.callNumber?.startsWith('arXiv:') ? associatedPaperItem.callNumber.replace(/^arXiv:/i, '').trim() : undefined);
+
+    if (rawArxiv) {
+      const cleanArxiv = rawArxiv
+        .replace(/^arxiv:\s*/i, '')
+        .replace(/\s*\[.*?\]\s*$/, '')
+        .replace(/v\d+$/i, '')
+        .trim();
+      // Look for primary category if available
+      let primaryCategory =
+        typeof additionalExtraFields?.primaryCategory === 'string'
+          ? additionalExtraFields.primaryCategory.trim()
+          : '';
+
+      if (!primaryCategory && Array.isArray(associatedPaperItem?.keywords)) {
+        // e.g. ["stat.ML", "cs.LG"]
+        const catMatch = associatedPaperItem.keywords.find((k) =>
+          /^[a-z\-]+(\.[a-z\-]+)?$/i.test(String(k).trim()),
+        );
+        if (catMatch) primaryCategory = String(catMatch).trim();
+      }
+
+      const formattedArxivLine = primaryCategory
+        ? `arXiv:${cleanArxiv} [${primaryCategory}]`
+        : `arXiv:${cleanArxiv}`;
+
+      sanitizedLines.unshift(formattedArxivLine);
+    }
   }
 
   return sanitizedLines.join('\n');

@@ -68,12 +68,12 @@ export function StorageFilterPopover() {
           variant="outline"
           size="icon"
           className={cn(
-            "relative size-8 rounded-lg bg-transparent border-border/60 cursor-pointer outline-none transition-colors",
-            isActive && "bg-accent/80 border-primary/50 text-primary"
+            "relative size-8 rounded-md bg-transparent border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors",
+            isActive && "bg-muted border-primary/50 text-primary font-medium"
           )}
           aria-label="Filter & Sort"
         >
-          <ListFilter className="size-4" strokeWidth={2.5} />
+          <ListFilter className="size-4 shrink-0" strokeWidth={2.5} />
           {isActive && (
             <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
           )}
@@ -81,19 +81,19 @@ export function StorageFilterPopover() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 p-3.5 space-y-3.5 shadow-lg border border-border/60 bg-popover text-popover-foreground rounded-xl z-50"
+        className="w-80 p-3.5 space-y-3.5 border border-border bg-popover text-popover-foreground rounded-md z-50"
       >
-        <div className="flex items-center justify-between border-b border-border/40 pb-2">
+        <div className="flex items-center justify-between border-b border-border pb-2">
           <div className="flex items-center gap-1.5">
-            <ListFilter className="size-3.5 text-muted-foreground" />
+            <ListFilter className="size-3.5 text-muted-foreground shrink-0" />
             <span className="text-xs font-semibold text-foreground">Filter & Sort</span>
           </div>
           {isActive && (
             <button
               onClick={resetFilters}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs text-foreground transition-colors cursor-pointer"
             >
-              <RotateCcw className="size-3" />
+              <RotateCcw className="size-3 shrink-0" />
               Reset
             </button>
           )}
@@ -108,7 +108,7 @@ export function StorageFilterPopover() {
             value={typeFilter}
             onValueChange={(val) => setTypeFilter(val as StorageTypeFilter)}
           >
-            <SelectTrigger className="w-full h-8 text-xs bg-background/50 border-border/60">
+            <SelectTrigger className="w-full h-8 text-xs bg-background/50 border-border">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent position="popper" className="z-60">
@@ -117,7 +117,7 @@ export function StorageFilterPopover() {
                 return (
                   <SelectItem key={opt.value} value={opt.value} className="text-xs">
                     <div className="flex items-center gap-2">
-                      <IconComponent className="size-3.5 text-muted-foreground" />
+                      <IconComponent className="size-3.5 text-muted-foreground shrink-0" />
                       <span>{opt.label}</span>
                     </div>
                   </SelectItem>
@@ -136,19 +136,19 @@ export function StorageFilterPopover() {
             value={projectFilter}
             onValueChange={(val) => setProjectFilter(val)}
           >
-            <SelectTrigger className="w-full h-8 text-xs bg-background/50 border-border/60">
+            <SelectTrigger className="w-full h-8 text-xs bg-background/50 border-border">
               <SelectValue placeholder="All projects" />
             </SelectTrigger>
             <SelectContent position="popper" className="z-60 max-h-56">
               <SelectItem value="all" className="text-xs">
                 <div className="flex items-center gap-2">
-                  <Briefcase className="size-3.5 text-muted-foreground" />
+                  <Briefcase className="size-3.5 text-muted-foreground shrink-0" />
                   <span>All Projects</span>
                 </div>
               </SelectItem>
               <SelectItem value="workspace-only" className="text-xs">
                 <div className="flex items-center gap-2">
-                  <Files className="size-3.5 text-muted-foreground" />
+                  <Files className="size-3.5 text-muted-foreground shrink-0" />
                   <span>Workspace Only (No Project)</span>
                 </div>
               </SelectItem>
@@ -165,7 +165,7 @@ export function StorageFilterPopover() {
         </div>
 
         {/* 3. Sort By Dropdown */}
-        <div className="space-y-1.5 pt-1 border-t border-border/30">
+        <div className="space-y-1.5 pt-1 border-t border-border">
           <label className="text-xs font-semibold text-muted-foreground block">
             Sort by
           </label>
@@ -173,7 +173,7 @@ export function StorageFilterPopover() {
             value={sortBy}
             onValueChange={(val) => setSortBy(val as StorageSortBy)}
           >
-            <SelectTrigger className="w-full h-8 text-xs bg-background/50 border-border/60">
+            <SelectTrigger className="w-full h-8 text-xs bg-background/50 border-border">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent position="popper" className="z-60">

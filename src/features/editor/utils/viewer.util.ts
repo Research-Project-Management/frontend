@@ -12,6 +12,7 @@ import {
   type CrossrefWork,
 } from "../services/document.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
+import { logger } from "@/shared/lib/logger";
 
 export type { CrossrefWork };
 
@@ -208,12 +209,12 @@ export const LatexCompilerEngine = {
         await Promise.all(
           dirtyFiles.map(({ fileId, content }) =>
             flushPageContent(fileId, content).catch((err) => {
-              console.warn(`[LatexCompilerEngine] Flush error on ${fileId}:`, err);
+              logger.warn(`[LatexCompilerEngine] Flush error on ${fileId}`, { error: err });
             }),
           ),
         );
       } catch (err) {
-        console.warn("[LatexCompilerEngine] Some file flushes failed, proceeding:", err);
+        logger.warn('[LatexCompilerEngine] Some file flushes failed, proceeding', { error: err });
       }
     }
 
@@ -224,7 +225,7 @@ export const LatexCompilerEngine = {
       try {
         await syncIncremental(projectId, dirtyFileIds, false);
       } catch (syncErr) {
-        console.warn("[LatexCompilerEngine] Incremental sync error, proceeding to compile:", syncErr);
+        logger.warn('[LatexCompilerEngine] Incremental sync error, proceeding to compile', { error: syncErr });
       }
     }
 
@@ -503,7 +504,7 @@ export function parseXmpMetadata(xmpXml: string): Partial<PdfMetadata> {
       if (yearMatch) result.year = yearMatch[1];
     }
   } catch (err) {
-    console.warn("Failed to parse XMP metadata:", err);
+    logger.warn('[LatexCompilerEngine] Failed to parse XMP metadata', { error: err });
   }
   return result;
 }
@@ -603,7 +604,7 @@ export async function extractPdfMetadataFromFile(file: File, workspaceId?: strin
             Object.assign(meta, xmpMeta);
           }
         } catch (e) {
-          console.warn("Failed to get raw XMP from pdfjs metadata object:", e);
+          logger.warn('[LatexCompilerEngine] Failed to get raw XMP from metadata object', { error: e });
         }
       }
     }
@@ -632,7 +633,7 @@ export async function extractPdfMetadataFromFile(file: File, workspaceId?: strin
           return mergeCrossrefMetadata(meta, res.work);
         }
       } catch (err) {
-        console.warn("Crossref DOI enrichment failed:", err);
+        logger.warn('[LatexCompilerEngine] Crossref DOI enrichment failed', { error: err });
       }
     }
 
@@ -645,14 +646,14 @@ export async function extractPdfMetadataFromFile(file: File, workspaceId?: strin
             return mergeCrossrefMetadata(meta, res.works[0]);
           }
         } catch (err) {
-          console.warn("Crossref title search enrichment failed:", err);
+          logger.warn('[LatexCompilerEngine] Crossref title search enrichment failed', { error: err });
         }
       }
     }
 
     return meta;
   } catch (err) {
-    console.error("PDF metadata extraction error:", err);
+    logger.error('[LatexCompilerEngine] PDF metadata extraction error', { error: err });
     return meta;
   }
 }

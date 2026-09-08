@@ -87,7 +87,7 @@ export const CycleModal = ({
       <DialogContent
         showCloseButton={false}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[720px] flex flex-col p-0 overflow-hidden rounded-sm border-0 shadow-2xl bg-popover max-h-[90vh]"
+        className="sm:max-w-[720px] flex flex-col p-0 overflow-hidden rounded-sm border-0 bg-popover max-h-[90vh]"
       >
 
 
@@ -99,13 +99,13 @@ export const CycleModal = ({
               </span>
               {isReadOnly && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted rounded-sm text-xs font-semibold text-foreground border border-border">
-                  <Lock className="size-2.5 text-foreground" /> Read Only
+                  <Lock className="size-2.5 text-foreground shrink-0" /> Read Only
                 </div>
               )}
             </div>
           </div>
           <Button variant="ghost" size="icon" className="size-8 text-foreground hover:bg-muted cursor-pointer" onClick={() => onOpenChange(false)} aria-label="Close dialog">
-            <X className="size-5 text-foreground" />
+            <X className="size-5 text-foreground shrink-0" />
           </Button>
         </div>
 
@@ -149,7 +149,7 @@ export const CycleModal = ({
                 type="button"
                 disabled={isReadOnly}
                 onClick={() => phaseTriggerRef.current?.click()}
-                className={`h-9 px-3 bg-muted border border-border rounded-sm flex items-center gap-2 text-foreground font-medium text-sm ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted/80'} transition-colors`}
+                className={`h-9 px-3 bg-muted border border-border rounded-sm flex items-center gap-2 text-foreground font-medium text-sm ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted'} transition-colors`}
               >
                 <PhaseIconRenderer
                   phaseId={formPhase}
@@ -181,26 +181,26 @@ export const CycleModal = ({
               <div className="flex shrink-0 flex-col gap-1.5">
                 <span className="text-xs font-semibold text-muted-foreground">Dates</span>
                 <DatesSection formStart={formStart} formEnd={formEnd} setFormStart={setFormStart} setFormEnd={setFormEnd} trigger={
-                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-muted px-3 text-sm font-medium text-foreground ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted/80'} transition-colors whitespace-nowrap`}>
+                  <div className={`inline-flex h-9 w-fit items-center gap-2 rounded-sm bg-muted px-3 text-sm font-medium text-foreground ${isReadOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted'} transition-colors whitespace-nowrap`}>
                     <CalendarDays className="size-3.5 shrink-0 text-foreground" />
                     <div className="flex items-center gap-2">
                       {formStart && formEnd ? (
                         <>
                           <span>{format(parseISO(formStart), 'dd MMM yyyy')}</span>
-                          <ArrowRight className="size-3 text-muted-foreground" />
+                          <ArrowRight className="size-3 text-muted-foreground shrink-0" />
                           <span>{format(parseISO(formEnd), 'dd MMM yyyy')}</span>
                         </>
                       ) : (
                         <>
                           <span className="text-muted-foreground">Start date</span>
-                          <ArrowRight className="size-3 text-muted-foreground" />
+                          <ArrowRight className="size-3 text-muted-foreground shrink-0" />
                           <span className="text-muted-foreground">End date</span>
                         </>
                       )}
                     </div>
                     {!isReadOnly && (
                       <button onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors cursor-pointer" aria-label="Clear dates">
-                        <X className="size-2.5 text-foreground" />
+                        <X className="size-2.5 text-foreground shrink-0" />
                       </button>
                     )}
                   </div>
@@ -223,7 +223,7 @@ export const CycleModal = ({
                 setFormDescription(e.target.value);
               }}
               placeholder={isReadOnly ? "No description provided." : "Add a more detailed description..."}
-              className={`min-h-[120px] w-full resize-none rounded-sm border border-border px-4 py-3 text-base text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-muted/30 focus:bg-background focus:border-border'} transition-all`}
+              className={`min-h-[120px] w-full resize-none rounded-sm border border-border px-4 py-3 text-base text-foreground outline-none ${isReadOnly ? 'bg-transparent cursor-default' : 'hover:bg-muted focus:bg-background focus:border-border'} transition-all`}
             />
           </div>
         </div>

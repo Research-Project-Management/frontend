@@ -56,6 +56,42 @@ export const PdfIngestionPayloadSchema = z.object({
   silent: z.boolean().optional(),
 });
 
+export const ArxivIngestionPayloadSchema = z.object({
+  source: z.literal('arxiv'),
+  arxivId: z.string().min(1, 'arXiv ID is required'),
+  collectionId: z.string().optional(),
+  overrides: z.record(z.string(), z.unknown()).optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const PmidIngestionPayloadSchema = z.object({
+  source: z.literal('pmid'),
+  pmid: z.string().min(1, 'PMID is required'),
+  collectionId: z.string().optional(),
+  overrides: z.record(z.string(), z.unknown()).optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const IsbnIngestionPayloadSchema = z.object({
+  source: z.literal('isbn'),
+  isbn: z.string().min(1, 'ISBN is required'),
+  collectionId: z.string().optional(),
+  overrides: z.record(z.string(), z.unknown()).optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const RisIngestionPayloadSchema = z.object({
+  source: z.literal('ris'),
+  content: z.string().optional(),
+  ris: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
 export const ZoteroIngestionPayloadSchema = z.object({
   source: z.literal('zotero'),
   connectionId: z.string().min(1),
@@ -68,8 +104,12 @@ export const ZoteroIngestionPayloadSchema = z.object({
 
 export const UnifiedIngestionPayloadSchema = z.discriminatedUnion('source', [
   DoiIngestionPayloadSchema,
+  ArxivIngestionPayloadSchema,
+  PmidIngestionPayloadSchema,
+  IsbnIngestionPayloadSchema,
   UrlIngestionPayloadSchema,
   BibtexIngestionPayloadSchema,
+  RisIngestionPayloadSchema,
   PdfIngestionPayloadSchema,
   ZoteroIngestionPayloadSchema,
 ]);

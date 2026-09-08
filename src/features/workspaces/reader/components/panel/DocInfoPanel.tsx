@@ -61,17 +61,17 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
     <div className="space-y-4 text-xs font-sans">
       {/* Title block */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+        <div className="flex items-center justify-between text-11 font-mono text-muted-foreground">
           <span>Document Title</span>
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={handleCopyTitle}
-            className="size-6 text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer"
+            className="size-6 text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer"
             title="Copy title"
             aria-label="Copy document title"
           >
-            {copiedTitle ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
+            {copiedTitle ? <Check className="size-3 text-primary shrink-0" /> : <Copy className="size-3 shrink-0" />}
           </Button>
         </div>
         <h2 className="text-sm font-semibold leading-snug text-foreground">
@@ -82,7 +82,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
       {/* Authors list */}
       {authors.length > 0 && (
         <div className="space-y-1">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+          <span className="text-11 font-mono text-muted-foreground">
             Authors
           </span>
           <p className="text-xs text-foreground/90 leading-relaxed">
@@ -94,22 +94,22 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
       {/* Badges / Quick specs */}
       <div className="flex flex-wrap items-center gap-1.5 pt-1">
         {paper.itemType && (
-          <Badge variant="outline" className="text-[10px] font-mono capitalize px-1.5 py-0 border-border/70">
+          <Badge variant="outline" className="text-10 font-mono capitalize px-1.5 py-0 border-border">
             {paper.itemType}
           </Badge>
         )}
         {paper.year && (
-          <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 border-border/70">
+          <Badge variant="outline" className="text-10 font-mono px-1.5 py-0 border-border">
             {paper.year}
           </Badge>
         )}
         {paper.citationCount !== undefined && paper.citationCount > 0 && (
-          <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 border-border/70">
+          <Badge variant="outline" className="text-10 font-mono px-1.5 py-0 border-border">
             {paper.citationCount} citations
           </Badge>
         )}
         {paper.ragStatus === 'indexed' && (
-          <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 bg-primary/10 text-primary border border-primary/20">
+          <Badge variant="secondary" className="text-10 font-mono px-1.5 py-0 bg-primary/10 text-primary border border-primary/20">
             AI Indexed
           </Badge>
         )}
@@ -120,10 +120,10 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
       {/* Abstract */}
       {abstractText && (
         <div className="space-y-1.5">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+          <span className="text-11 font-mono text-muted-foreground">
             Abstract
           </span>
-          <div className="rounded-md bg-muted/20 p-2.5 border border-border/40 text-foreground/80 leading-relaxed">
+          <div className="rounded-md bg-muted p-2.5 border border-border text-foreground/80 leading-relaxed">
             <p className={!isAbstractExpanded && isLongAbstract ? 'line-clamp-4' : ''}>
               {abstractText}
             </p>
@@ -131,7 +131,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
               <button
                 type="button"
                 onClick={() => setIsAbstractExpanded(!isAbstractExpanded)}
-                className="mt-1.5 text-[11px] font-medium text-primary hover:underline focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm cursor-pointer"
+                className="mt-1.5 text-11 font-medium text-primary hover:underline focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm cursor-pointer"
               >
                 {isAbstractExpanded ? 'Show less' : 'Read full abstract'}
               </button>
@@ -142,14 +142,14 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
 
       {/* Structured publication metadata */}
       <div className="space-y-2 pt-1">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+        <span className="text-11 font-mono text-muted-foreground">
           Publication Details
         </span>
-        <div className="divide-y divide-border/40 rounded-md border border-border/60 bg-card">
+        <div className="divide-y divide-border/40 rounded-md border border-border bg-card">
           {(paper.journal || paper.publicationTitle) && (
             <div className="flex items-start justify-between gap-3 px-3 py-2">
               <span className="text-muted-foreground shrink-0 flex items-center gap-1.5">
-                <BookOpen className="size-3 text-muted-foreground/70" />
+                <BookOpen className="size-3 text-muted-foreground/70 shrink-0" />
                 Journal / Venue
               </span>
               <span className="font-medium text-right text-foreground truncate max-w-[200px]">
@@ -161,7 +161,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
           {paper.publisher && (
             <div className="flex items-start justify-between gap-3 px-3 py-2">
               <span className="text-muted-foreground shrink-0 flex items-center gap-1.5">
-                <Layers className="size-3 text-muted-foreground/70" />
+                <Layers className="size-3 text-muted-foreground/70 shrink-0" />
                 Publisher
               </span>
               <span className="font-medium text-right text-foreground">
@@ -173,7 +173,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
           {(paper.volume || paper.issue || paper.pages) && (
             <div className="flex items-start justify-between gap-3 px-3 py-2">
               <span className="text-muted-foreground shrink-0 flex items-center gap-1.5">
-                <FileText className="size-3 text-muted-foreground/70" />
+                <FileText className="size-3 text-muted-foreground/70 shrink-0" />
                 Vol / Issue / Pages
               </span>
               <span className="font-mono text-right text-foreground">
@@ -189,7 +189,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
           {cleanDoi && (
             <div className="flex items-center justify-between gap-3 px-3 py-2">
               <span className="text-muted-foreground shrink-0 flex items-center gap-1.5">
-                <Quote className="size-3 text-muted-foreground/70" />
+                <Quote className="size-3 text-muted-foreground/70 shrink-0" />
                 DOI
               </span>
               <div className="flex items-center gap-1 max-w-[210px]">
@@ -197,7 +197,7 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
                   href={doiUrl!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-[11px] text-primary hover:underline truncate focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm"
+                  className="font-mono text-11 text-primary hover:underline truncate focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm"
                   title={cleanDoi}
                 >
                   {cleanDoi}
@@ -206,11 +206,11 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
                   variant="ghost"
                   size="icon-xs"
                   onClick={handleCopyDoi}
-                  className="size-5 shrink-0 text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer"
+                  className="size-5 shrink-0 text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer"
                   title="Copy DOI"
                   aria-label="Copy DOI"
                 >
-                  {copiedDoi ? <Check className="size-2.5 text-primary" /> : <Copy className="size-2.5" />}
+                  {copiedDoi ? <Check className="size-2.5 text-primary shrink-0" /> : <Copy className="size-2.5 shrink-0" />}
                 </Button>
               </div>
             </div>
@@ -219,14 +219,14 @@ export default function DocInfoPanel({ paper }: DocInfoPanelProps) {
           {paper.url && (
             <div className="flex items-center justify-between gap-3 px-3 py-2">
               <span className="text-muted-foreground shrink-0 flex items-center gap-1.5">
-                <Link2 className="size-3 text-muted-foreground/70" />
+                <Link2 className="size-3 text-muted-foreground/70 shrink-0" />
                 URL
               </span>
               <a
                 href={paper.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-[11px] text-primary hover:underline truncate max-w-[210px] inline-flex items-center gap-1 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm"
+                className="font-mono text-11 text-primary hover:underline truncate max-w-[210px] inline-flex items-center gap-1 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none rounded-sm"
                 title={paper.url}
               >
                 <span className="truncate">{paper.url.replace(/^https?:\/\//, '')}</span>

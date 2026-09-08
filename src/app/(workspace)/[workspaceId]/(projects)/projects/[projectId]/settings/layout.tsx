@@ -45,8 +45,8 @@ export default function ProjectSettingLayout({
       {/* Right Content Area */}
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         {/* Topbar */}
-        <header className="flex items-center gap-2.5 px-7 h-12 border-b border-border/50 shrink-0">
-          <HeaderIcon className="size-4 text-muted-foreground" />
+        <header className="flex items-center gap-2.5 px-7 h-12 border-b border-border shrink-0">
+          <HeaderIcon className="size-4 text-foreground shrink-0" />
           <h1 className="text-sm font-semibold text-foreground">{title}</h1>
         </header>
 

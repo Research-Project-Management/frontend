@@ -146,7 +146,7 @@ export default function LandingPage() {
               variants={makeDelayed(0.08)}
               initial='hidden'
               animate='visible'
-              className='text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl'
+              className='text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl'
             >
               The workspace for
               <br />
@@ -173,14 +173,14 @@ export default function LandingPage() {
             >
               <Link
                 href='/login'
-                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Start for free
-                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
+                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
               </Link>
               <Link
                 href='/login'
-                className='flex h-9 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='flex h-9 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Sign in
               </Link>
@@ -235,32 +235,32 @@ export default function LandingPage() {
             className='grid overflow-hidden rounded-lg border border-border bg-border md:grid-cols-2 lg:grid-cols-3'
           >
             <FeatureCard
-              icon={<FileText className='w-5 h-5' aria-hidden='true' />}
+              icon={<FileText className='w-5 h-5 shrink-0' aria-hidden='true' />}
               title='Rich editor'
               description='Write documents with a powerful block editor. Supports markdown, code, math, and collaborative editing in real-time.'
             />
             <FeatureCard
-              icon={<Braces className='w-5 h-5' aria-hidden='true' />}
+              icon={<Braces className='w-5 h-5 shrink-0' aria-hidden='true' />}
               title='LaTeX compiler'
               description='Write and compile LaTeX directly in the browser. Multi-file projects, BibTeX, and instant PDF preview.'
             />
             <FeatureCard
-              icon={<CheckSquare className='w-5 h-5' aria-hidden='true' />}
+              icon={<CheckSquare className='w-5 h-5 shrink-0' aria-hidden='true' />}
               title='Task management'
               description='Track progress with tasks, deadlines, and priorities. Kanban boards and list views to match your workflow.'
             />
             <FeatureCard
-              icon={<MessageSquare className='w-5 h-5' aria-hidden='true' />}
+              icon={<MessageSquare className='w-5 h-5 shrink-0' aria-hidden='true' />}
               title='AI assistant'
               description='Ask questions about your documents. The AI reads your uploaded files and gives contextual answers with sources.'
             />
             <FeatureCard
-              icon={<Upload className='w-5 h-5' aria-hidden='true' />}
+              icon={<Upload className='w-5 h-5 shrink-0' aria-hidden='true' />}
               title='File storage'
               description='Upload and organize files per project. Version history, instant preview, and secure cloud storage included.'
             />
             <FeatureCard
-              icon={<Users className='w-5 h-5' aria-hidden='true' />}
+              icon={<Users className='w-5 h-5 shrink-0' aria-hidden='true' />}
               title='Team collaboration'
               description='Invite members with role-based access. Real-time presence, comments, and activity feeds keep everyone aligned.'
             />
@@ -364,19 +364,19 @@ export default function LandingPage() {
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
                 href='/login'
-                className='group flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 Get started
-                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5' aria-hidden='true' />
+                <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
               </Link>
               <a
                 href='https://github.com/Research-Project-TDTU'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='flex h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
               >
                 View on GitHub
-                <ArrowUpRight className='w-3.5 h-3.5' aria-hidden='true' />
+                <ArrowUpRight className='w-3.5 h-3.5 shrink-0' aria-hidden='true' />
               </a>
             </div>
           </motion.div>
@@ -402,9 +402,9 @@ function FeatureCard({
   return (
     <motion.div
       variants={cardVariant}
-      className='group space-y-3 bg-card p-6 transition-colors hover:bg-secondary lg:p-8'
+      className='group space-y-3 bg-card p-6 transition-colors hover:bg-muted lg:p-8'
     >
-      <div className='inline-flex text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 group-hover:text-foreground origin-left'>
+      <div className='inline-flex text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 origin-left'>
         {icon}
       </div>
       <h3 className='text-base font-semibold'>{title}</h3>
@@ -424,7 +424,7 @@ function StepCard({
 }) {
   return (
     <motion.div variants={cardVariant} className='space-y-3'>
-      <h3 className='text-xl font-semibold transition-colors duration-200 group-hover:text-primary'>{title}</h3>
+      <h3 className='text-xl font-semibold transition-colors duration-200'>{title}</h3>
       <p className='text-muted-foreground leading-relaxed'>{description}</p>
     </motion.div>
   );

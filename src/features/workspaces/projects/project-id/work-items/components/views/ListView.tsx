@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { logger } from '@/shared/lib/logger';
 import {
   PRIORITY_CONFIG,
   resolveWorkItemColumnColor,
@@ -182,7 +183,7 @@ const TaskRowContent = ({
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-2.5 bg-card hover:bg-muted/30 transition-colors text-left group cursor-pointer border-b border-border/40 last:border-b-0 relative",
+        "w-full flex items-center gap-3 px-4 py-2.5 bg-card hover:bg-muted transition-colors text-left group cursor-pointer border-b border-border last:border-b-0 relative",
         task.completed && "opacity-75",
         isDragging && "z-50 bg-card border border-primary/40 opacity-90 rounded-lg"
       )}
@@ -234,39 +235,39 @@ const TaskRowContent = ({
             ? "bg-destructive/10 text-destructive font-medium" 
             : "text-muted-foreground"
         )}>
-          <Clock3 className="size-3" />
+          <Clock3 className="size-3 shrink-0" />
           <span className="whitespace-nowrap">{dueDateInfo.displayText}</span>
         </span>
       )}
 
       <div className="flex items-center gap-2 text-muted-foreground transition-colors">
-        {metadata.hasDescription && <AlignLeft className="size-3" />}
+        {metadata.hasDescription && <AlignLeft className="size-3 shrink-0" />}
         {metadata.commentCount > 0 && (
           <div className="flex items-center gap-0.5 text-xs" title="Comments">
-            <MessageSquare className="size-3" />
+            <MessageSquare className="size-3 shrink-0" />
             <span>{metadata.commentCount}</span>
           </div>
         )}
         {metadata.attachmentCount > 0 && (
           <div className="flex items-center gap-0.5 text-xs" title="Attachments">
-            <Paperclip className="size-3" />
+            <Paperclip className="size-3 shrink-0" />
             <span>{metadata.attachmentCount}</span>
           </div>
         )}
         {metadata.checklistTotal > 0 && (
           <div className="flex items-center gap-0.5 text-xs" title="Checklist progress">
-            <CheckSquare className="size-3" />
+            <CheckSquare className="size-3 shrink-0" />
             <span>{metadata.checklistDone}/{metadata.checklistTotal}</span>
           </div>
         )}
       </div>
 
       {assignee && (
-        <Avatar className="size-5 shrink-0 border border-border/80 shadow-2xs">
+        <Avatar className="size-5 shrink-0 border border-border">
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
-          <AvatarFallback className="text-[10px] font-medium bg-muted text-muted-foreground">
+          <AvatarFallback className="text-10 font-medium bg-muted text-muted-foreground">
             {assignee.name?.charAt(0) || 'U'}
           </AvatarFallback>
         </Avatar>
@@ -279,16 +280,16 @@ const TaskRowContent = ({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded"
               aria-label="More actions"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreHorizontal className="h-3.5 w-3.5" />
+              <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-44 rounded-lg p-1 text-xs">
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicateCard(task); }} className="cursor-pointer">
-              <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
+              <Copy className="mr-2 h-3.5 w-3.5 shrink-0" /> Duplicate
             </DropdownMenuItem>
             {currentUserId && (
               <DropdownMenuItem
@@ -304,25 +305,25 @@ const TaskRowContent = ({
               >
                 {isCurrentUserAssignee ? (
                   <>
-                    <UserMinus className="mr-2 h-3.5 w-3.5" /> Leave
+                    <UserMinus className="mr-2 h-3.5 w-3.5 shrink-0" /> Leave
                   </>
                 ) : (
                   <>
-                    <UserPlus className="mr-2 h-3.5 w-3.5" /> Join
+                    <UserPlus className="mr-2 h-3.5 w-3.5 shrink-0" /> Join
                   </>
                 )}
               </DropdownMenuItem>
             )}
             {onRemoveFromCycle && (
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRemoveFromCycle(task); }} className="cursor-pointer">
-                <RotateCcw className="mr-2 h-3.5 w-3.5" /> Remove from cycle
+                <RotateCcw className="mr-2 h-3.5 w-3.5 shrink-0" /> Remove from cycle
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={(e) => { e.stopPropagation(); onDeleteCard(task); }}
               className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
             >
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+              <Trash2 className="mr-2 h-3.5 w-3.5 shrink-0" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -437,13 +438,13 @@ const ListViewColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border/70 bg-card overflow-hidden transition-all",
+        "rounded-lg border border-border bg-card overflow-hidden transition-all",
         isOver && "ring-2 ring-primary/30 border-primary/50"
       )}
     >
       {/* ── Group Header ── */}
       <div 
-        className="flex items-center justify-between px-3.5 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors group cursor-pointer border-b border-border/50 select-none"
+        className="flex items-center justify-between px-3.5 py-2.5 bg-muted hover:bg-muted transition-colors group cursor-pointer border-b border-border select-none"
         onClick={() => toggleExpand(group.key)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -472,10 +473,10 @@ const ListViewColumn = ({
               setQuickAddColumnId(group.key);
             }}
             disabled={isAddingCard}
-            className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer rounded"
+            className="h-6 w-6 text-muted-foreground hover:bg-muted cursor-pointer rounded"
             aria-label="Add task"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3.5 shrink-0" />
           </Button>
         )}
       </div>
@@ -526,7 +527,7 @@ const ListViewColumn = ({
 
           {/* Quick Add Form */}
           {quickAddColumnId === group.key && (
-            <div className="p-3 bg-muted/20 border-t border-border/40 space-y-2">
+            <div className="p-3 bg-muted border-t border-border space-y-2">
               <input
                 ref={quickAddInputRef}
                 type="text"
@@ -544,7 +545,7 @@ const ListViewColumn = ({
                   }
                 }}
                 placeholder="What needs to be done?"
-                className="h-8 w-full rounded-lg border border-border/80 bg-background px-3 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring placeholder:text-muted-foreground"
+                className="h-8 w-full rounded-lg border border-border bg-background px-3 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring placeholder:text-muted-foreground"
                 disabled={isAddingCard}
                 autoFocus
               />
@@ -622,21 +623,7 @@ export default function ListView({
     return new Set(columns.map((c) => resolveTaskColumnId(c)));
   }, [columns]);
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return defaultExpanded;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return new Set<string>(parsed.filter((item): item is string => typeof item === "string"));
-        }
-      }
-      return defaultExpanded;
-    } catch {
-      return defaultExpanded;
-    }
-  });
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(defaultExpanded);
 
   const [labelDetailsTaskIds, setLabelDetailsTaskIds] = useState<Set<string>>(new Set());
   const [quickAddColumnId, setQuickAddColumnId] = useState<string | null>(null);
@@ -645,7 +632,24 @@ export default function ListView({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => { setIsMounted(true); }, []);
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setExpandedIds(
+            new Set<string>(
+              parsed.filter((item): item is string => typeof item === "string"),
+            ),
+          );
+        }
+      }
+    } catch (err) {
+      logger.debug('[ListView] Failed to load expanded states from localStorage', { err });
+    }
+  }, [STORAGE_KEY]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -662,8 +666,13 @@ export default function ListView({
   }, [quickAddColumnId]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(expandedIds)));
-  }, [expandedIds, STORAGE_KEY]);
+    if (!isMounted) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(expandedIds)));
+    } catch (err) {
+      logger.debug('[ListView] Failed to persist expanded states to localStorage', { err });
+    }
+  }, [expandedIds, STORAGE_KEY, isMounted]);
 
   const handleQuickAddSubmit = (columnId: string) => {
     const trimmed = quickAddTitle.trim();
@@ -777,7 +786,7 @@ export default function ListView({
       {isMounted && createPortal(
         <DragOverlay>
           {activeTask ? (
-            <div className="w-[calc(100vw-400px)] max-w-2xl bg-card text-foreground border border-border/80 rounded-lg overflow-hidden">
+            <div className="w-[calc(100vw-400px)] max-w-2xl bg-card text-foreground border border-border rounded-lg overflow-hidden">
               <TaskRowContent
                 task={activeTask}
                 currentUserId={currentUserId}

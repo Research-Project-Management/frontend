@@ -96,9 +96,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
 
     return (
       <div className="min-h-[400px] w-full flex items-center justify-center p-6 bg-background">
-        <div className="max-w-md w-full rounded-xl border border-destructive/20 bg-destructive/5 p-6 shadow-sm text-center space-y-4">
+        <div className="max-w-md w-full rounded-md border border-destructive/20 bg-destructive/5 p-6 text-center space-y-4">
           <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
-            <AlertTriangle className="w-6 h-6" />
+            <AlertTriangle className="w-6 h-6 shrink-0" />
           </div>
 
           <div className="space-y-1.5">
@@ -109,7 +109,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
           </div>
 
           {error.message && (
-            <div className="p-2.5 rounded-md bg-muted/60 text-left font-mono text-xs text-muted-foreground overflow-x-auto max-h-24">
+            <div className="p-2.5 rounded-md bg-muted text-left font-mono text-xs text-muted-foreground overflow-x-auto max-h-24">
               {error.message}
             </div>
           )}
@@ -117,9 +117,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
           <button
             type="button"
             onClick={this.reset}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors shadow-sm cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 rounded-md transition-colors cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-3.5 h-3.5 shrink-0" />
             Thử lại
           </button>
         </div>

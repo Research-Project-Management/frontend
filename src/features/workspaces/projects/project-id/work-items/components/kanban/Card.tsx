@@ -89,7 +89,7 @@ export function CardUI({
     <div
       onClick={() => edit()}
       className={cn(
-        "group relative min-w-0 rounded-lg border border-border/70 bg-card px-3.5 py-3 transition-colors hover:border-border cursor-pointer",
+        "group relative min-w-0 rounded-lg border border-border bg-card px-3.5 py-3 transition-colors hover:border-border cursor-pointer",
         isDragging && "opacity-40 border-primary"
       )}
     >
@@ -100,12 +100,12 @@ export function CardUI({
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-foreground opacity-0 transition-all hover:bg-muted focus-visible:opacity-100 data-[state=open]:opacity-100 group-hover:opacity-100 cursor-pointer outline-none"
+              className="absolute right-2.5 top-2.5 z-10 h-6 w-6 shrink-0 text-foreground opacity-0 transition-all hover:bg-muted focus-visible:opacity-100 data-[state=open]:opacity-100 group-hover:opacity-100 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
               aria-label="More task actions"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
             >
-              <MoreHorizontal className="h-4 w-4 text-foreground" />
+              <MoreHorizontal className="h-4 w-4 text-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -121,7 +121,7 @@ export function CardUI({
                 duplicate();
               }}
             >
-              <Copy className="mr-2 h-4 w-4 text-foreground" />
+              <Copy className="mr-2 h-4 w-4 text-foreground shrink-0" />
               <span className="text-foreground">Duplicate</span>
             </DropdownMenuItem>
 
@@ -138,9 +138,9 @@ export function CardUI({
                 }}
               >
                 {assignee.isCurrentUser ? (
-                  <UserMinus className="mr-3 h-4 w-4 text-foreground" />
+                  <UserMinus className="mr-3 h-4 w-4 text-foreground shrink-0" />
                 ) : (
-                  <UserPlus className="mr-3 h-4 w-4 text-foreground" />
+                  <UserPlus className="mr-3 h-4 w-4 text-foreground shrink-0" />
                 )}
                 <span className="text-foreground">{assignee.isCurrentUser ? 'Leave' : 'Join'}</span>
               </DropdownMenuItem>
@@ -154,7 +154,7 @@ export function CardUI({
                   removeFromCycle();
                 }}
               >
-                <RotateCcw className="mr-2 h-4 w-4 text-foreground" />
+                <RotateCcw className="mr-2 h-4 w-4 text-foreground shrink-0" />
                 <span className="text-foreground">Remove from cycle</span>
               </DropdownMenuItem>
             )}
@@ -167,7 +167,7 @@ export function CardUI({
               }}
               className="text-destructive focus:bg-destructive/10 focus:text-destructive"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2 h-4 w-4 shrink-0" />
               <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -212,8 +212,8 @@ export function CardUI({
       {/* Task Title */}
       <div className="flex items-start gap-1.5">
         {isDone && (
-          <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-            <Check className="size-2.5 stroke-3" />
+          <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
+            <Check className="size-2.5 stroke-3 shrink-0" />
           </span>
         )}
         <div className="min-w-0 flex-1">
@@ -278,7 +278,7 @@ export function CardUI({
 
           {assignee.user && (
             <div className="shrink-0" title={assignee.user.name}>
-              <Avatar className="size-5 border border-border/80 bg-background text-[10px] font-medium text-foreground">
+              <Avatar className="size-5 border border-border bg-background text-10 font-medium text-foreground">
                 {assignee.avatar ? (
                   <AvatarImage src={assignee.avatar} alt={assignee.user.name} />
                 ) : null}

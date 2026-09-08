@@ -34,26 +34,26 @@ const PRIORITY_BADGES: Record<
   urgent: {
     label: 'Urgent',
     icon: AlertCircle,
-    color: 'text-red-600 dark:text-red-400',
-    bg: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/50',
+    color: 'text-destructive',
+    bg: 'bg-destructive/10 text-destructive border-destructive/20',
   },
   high: {
     label: 'High',
     icon: ArrowUp,
-    color: 'text-orange-600 dark:text-orange-400',
-    bg: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800/50',
+    color: 'text-warning',
+    bg: 'bg-warning/10 text-warning border-warning/20',
   },
   medium: {
     label: 'Medium',
     icon: Minus,
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
+    color: 'text-warning',
+    bg: 'bg-warning/10 text-warning border-warning/20',
   },
   low: {
     label: 'Low',
     icon: ArrowDown,
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/50',
+    color: 'text-primary',
+    bg: 'bg-primary/10 text-primary border-primary/20',
   },
 };
 
@@ -126,9 +126,9 @@ export function YourWorkTaskList({
 
       <div className="space-y-4">
         {groups.length === 0 ? (
-          <div className="text-center py-16 bg-card border border-border/80 rounded-lg shadow-2xs">
-            <div className="size-10 rounded-full bg-muted/60 flex items-center justify-center mx-auto mb-3">
-              <EmptyIcon className="size-5 text-muted-foreground" />
+          <div className="text-center py-16 bg-card border border-border rounded-lg shadow-none">
+            <div className="size-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+              <EmptyIcon className="size-5 text-muted-foreground shrink-0" />
             </div>
             <p className="text-muted-foreground text-xs font-medium italic">
               {emptyMessage}
@@ -141,14 +141,14 @@ export function YourWorkTaskList({
             return (
               <div
                 key={group.key}
-                className="border border-border/80 rounded-lg overflow-hidden bg-card shadow-2xs"
+                className="border border-border rounded-lg overflow-hidden bg-card shadow-none"
               >
                 {/* Group Header */}
                 <div
                   role="button"
                   tabIndex={0}
                   aria-expanded={!isCollapsed}
-                  className="flex items-center gap-2.5 px-4 py-3 bg-muted/30 border-b border-border/60 transition-colors group cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset select-none"
+                  className="flex items-center gap-2.5 px-4 py-3 bg-muted border-b border-border transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset select-none"
                   onClick={() => toggleExpand(group.key)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -214,11 +214,11 @@ export function YourWorkTaskList({
                             onTaskClick(taskId);
                           }
                         }}
-                        className="w-full flex items-center gap-3.5 px-5 py-3.5 bg-card hover:bg-muted/30 focus-visible:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer"
+                        className="w-full flex items-center gap-3.5 px-5 py-3.5 bg-card hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer"
                       >
                         <div className="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
                           {task.identifier && (
-                            <span className="text-xs font-medium font-mono text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/80 shrink-0">
+                            <span className="text-xs font-medium font-mono text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted shrink-0">
                               {task.identifier}
                             </span>
                           )}
@@ -239,7 +239,7 @@ export function YourWorkTaskList({
 
                           <span
                             className={cn(
-                              'text-xs truncate font-medium text-foreground group-hover:text-primary transition-colors',
+                              'text-xs truncate font-medium text-foreground transition-colors',
                               task.columnId === 'done' &&
                                 'text-muted-foreground line-through font-normal',
                             )}
@@ -255,7 +255,7 @@ export function YourWorkTaskList({
 
                           {subCount > 0 && (
                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0">
-                              <GitBranch className="size-2.5" />
+                              <GitBranch className="size-2.5 shrink-0" />
                               {subDone}/{subCount}
                             </span>
                           )}
@@ -267,7 +267,7 @@ export function YourWorkTaskList({
                               className="flex items-center gap-1 text-xs text-muted-foreground"
                               title="Comments"
                             >
-                              <MessageSquare className="size-3" />
+                              <MessageSquare className="size-3 shrink-0" />
                               <span>{task.commentCount}</span>
                             </div>
                           )}
@@ -277,11 +277,11 @@ export function YourWorkTaskList({
                               className={cn(
                                 'flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium',
                                 isOverdue
-                                  ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800/50'
+                                  ? 'bg-destructive/10 text-destructive border border-destructive/20'
                                   : 'bg-muted text-muted-foreground',
                               )}
                             >
-                              <Clock3 className="size-3" />
+                              <Clock3 className="size-3 shrink-0" />
                               <span>
                                 {new Date(task.dueDate).toLocaleDateString(
                                   'en-GB',

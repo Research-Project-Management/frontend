@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/utils/error.util';
@@ -9,6 +10,7 @@ import {
   type UpdateAnnotationDTO,
 } from '../services/annotations.service';
 import type { ReaderAnnotation } from '../types/reader.types';
+import { PdfAnnotationEngine } from '../utils/reader.util';
 
 export const readerAnnotationKeys = {
   all: ['reader', 'annotations'] as const,
@@ -115,7 +117,10 @@ export function useAnnotations(workspaceId: string, attachmentId?: string) {
     },
   });
 
-  const annotations = (query.data || []) as ReaderAnnotation[];
+  const annotations = useMemo(() => {
+    return PdfAnnotationEngine.sortAnnotations(query.data || []);
+  }, [query.data]);
+
 
   return {
     annotations,

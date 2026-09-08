@@ -83,17 +83,17 @@ export function TaskAttachments({
     <>
       <div className="mt-10">
         <div className="mb-4 flex items-center gap-2">
-          <Paperclip className="size-4 text-muted-foreground" />
+          <Paperclip className="size-4 text-muted-foreground shrink-0" />
           <h3 className="text-base font-semibold text-foreground">Attachments</h3>
         </div>
         <div className="space-y-3 pl-1">
           {attachments.map((item) => (
             <div
               key={item.id}
-              className="group flex items-center justify-between gap-4 rounded-md px-2 py-2 transition-colors hover:bg-muted/70"
+              className="group flex items-center justify-between gap-4 rounded-md px-2 py-2 transition-colors hover:bg-muted"
             >
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground border border-border/60">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-sm font-semibold text-muted-foreground border border-border">
                   {getAttachmentTypeLabel(item)}
                 </div>
 
@@ -121,7 +121,7 @@ export function TaskAttachments({
                   className="inline-flex size-8 items-center justify-center rounded-sm text-foreground transition-colors hover:bg-muted"
                   aria-label={`Open ${item.name}`}
                 >
-                  <ExternalLink className="size-4 text-foreground" />
+                  <ExternalLink className="size-4 text-foreground shrink-0" />
                 </a>
                 {!isReadOnly && (
                   <div className="relative">
@@ -131,11 +131,11 @@ export function TaskAttachments({
                       className="inline-flex size-8 items-center justify-center rounded-sm text-foreground transition-colors hover:bg-muted cursor-pointer"
                       aria-label={`Options for ${item.name}`}
                     >
-                      <MoreHorizontal className="size-4 text-foreground" />
+                      <MoreHorizontal className="size-4 text-foreground shrink-0" />
                     </button>
 
                     {activeMenuId === item.id ? (
-                      <div className="absolute right-0 top-full mt-2 z-30 w-44 rounded-sm border border-border bg-popover p-1.5 shadow-xl">
+                      <div className="absolute right-0 top-full mt-2 z-30 w-44 rounded-sm border border-border bg-popover p-1.5">
                         <button
                           type="button"
                           onClick={() => handleOpenRename(item)}
@@ -194,7 +194,7 @@ export function TaskAttachments({
           if (!open) setRenameItem(null);
         }}
       >
-        <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
+        <DialogContent className="max-w-130 rounded-sm border-0 p-0" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
               <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">

@@ -61,7 +61,9 @@ export default function LibraryPopover({
     mutationFn: (data: Record<string, unknown>) =>
       previewServices.ingestPaper(workspaceId, data),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['items', workspaceId] });
       qc.invalidateQueries({ queryKey: ['papers', workspaceId] });
+      qc.invalidateQueries({ queryKey: ['collections', workspaceId] });
       toast.success(`Added to ${selectedCollection?.name || 'Library'}.`);
       setOpen(false);
       setCollectionId("");
@@ -102,14 +104,14 @@ export default function LibraryPopover({
         className="w-72 p-3"
       >
         <div className="flex items-center gap-2 pb-2">
-          <BookOpen className="size-4 text-muted-foreground" />
+          <BookOpen className="size-4 text-muted-foreground shrink-0" />
           <p className="text-sm font-semibold">Add to Library</p>
         </div>
 
         <div className="max-h-56 overflow-y-auto space-y-1 py-1">
           {isLoading ? (
             <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin shrink-0" />
               Loading collections...
             </div>
           ) : collections.length === 0 ? (
@@ -123,7 +125,9 @@ export default function LibraryPopover({
                 <button
                   key={targetCollectionId}
                   onClick={() => setCollectionId(targetCollectionId || '')}
-                  className="w-full flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent cursor-pointer"
+                  className={`w-full flex items-center gap-2 rounded-md px-2 py-2 text-left cursor-pointer transition-colors ${
+                    collectionId === targetCollectionId ? "bg-muted font-medium" : "hover:bg-muted"
+                  }`}
                 >
                   <FolderOpen
                     className="size-4 shrink-0"
@@ -133,7 +137,7 @@ export default function LibraryPopover({
                     {collection.name}
                   </span>
                   {collectionId === targetCollectionId && (
-                    <Check className="size-3.5 text-foreground" />
+                    <Check className="size-3.5 text-foreground shrink-0" />
                   )}
                 </button>
               );
@@ -148,7 +152,7 @@ export default function LibraryPopover({
           onClick={handleAdd}
         >
           {ingestMutation.isPending && (
-            <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+            <Loader2 className="size-3.5 mr-1.5 animate-spin shrink-0" />
           )}
           Add PDF
         </Button>

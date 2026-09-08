@@ -98,7 +98,7 @@ export default function LabelPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-0.5 font-medium text-foreground hover:underline"
             >
-              Docs <ArrowUpRight className="size-3.5" />
+              Docs <ArrowUpRight className="size-3.5 shrink-0" />
             </a>
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function LabelPage() {
             setIsAdding(true);
             setEditingId(null);
           }}
-          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs shrink-0"
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none shrink-0"
         >
           Add label
         </Button>

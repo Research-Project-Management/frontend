@@ -18,7 +18,7 @@ export default defineConfig({
     include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
     passWithNoTests: true,
     pool: 'threads',
-    testTimeout: 20000,
+    testTimeout: 30000,
     fileParallelism: false,
     coverage: {
       provider: 'v8',

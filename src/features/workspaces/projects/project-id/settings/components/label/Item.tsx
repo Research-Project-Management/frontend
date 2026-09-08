@@ -16,11 +16,11 @@ interface ItemProps {
 
 export function Item({ item, onEdit, onDelete }: ItemProps) {
   return (
-    <div className="group flex h-11 items-center justify-between gap-3 px-3 rounded-lg border border-border/70 bg-background shadow-2xs hover:border-border transition-all">
+    <div className="group flex h-11 items-center justify-between gap-3 px-3 rounded-lg border border-border bg-background shadow-none hover:border-border transition-all">
       {/* Left side: Drag handle + Tag icon + Name */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <div className="flex items-center justify-center size-4 shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground/80 transition-opacity opacity-0 group-hover:opacity-100 cursor-grab">
-          <GripVertical className="size-3.5" />
+        <div className="flex items-center justify-center size-4 shrink-0 text-muted-foreground/40 /80 transition-opacity opacity-0 group-hover:opacity-100 cursor-grab">
+          <GripVertical className="size-3.5 shrink-0" />
         </div>
 
         <Tag
@@ -41,17 +41,17 @@ export function Item({ item, onEdit, onDelete }: ItemProps) {
             <button
               type="button"
               aria-label="More options"
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer outline-none data-[state=open]:opacity-100"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:opacity-100"
             >
-              <MoreHorizontal className="size-4" />
+              <MoreHorizontal className="size-4 shrink-0" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32 p-1 rounded-lg">
+          <DropdownMenuContent align="end" className="w-32 p-1 rounded-md">
             <DropdownMenuItem
               onClick={onEdit}
               className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium cursor-pointer rounded-md"
             >
-              <Pencil className="size-3.5 text-muted-foreground" />
+              <Pencil className="size-3.5 text-muted-foreground shrink-0" />
               <span>Edit</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -63,9 +63,9 @@ export function Item({ item, onEdit, onDelete }: ItemProps) {
           onClick={onDelete}
           aria-label="Delete label"
           title="Delete label"
-          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 transition-colors cursor-pointer"
         >
-          <X className="size-4" />
+          <X className="size-4 shrink-0" />
         </button>
       </div>
     </div>

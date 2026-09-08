@@ -37,10 +37,10 @@ export default function PaperBibtexDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl p-0 gap-0 overflow-hidden border border-border bg-background shadow-none">
-        <DialogHeader className="p-4 pb-2 border-b border-border bg-muted/20">
+        <DialogHeader className="p-4 pb-2 border-b border-border bg-muted">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-sm bg-muted flex items-center justify-center text-foreground border border-border">
-              <FileJson className="size-4" />
+              <FileJson className="size-4 shrink-0" />
             </div>
             <div>
               <DialogTitle className="text-sm font-semibold text-foreground">BibTeX Citation</DialogTitle>
@@ -51,16 +51,16 @@ export default function PaperBibtexDialog({
           </div>
         </DialogHeader>
 
-        <div className="p-4 bg-muted/10">
+        <div className="p-4 bg-muted">
           <div className="relative group">
-            <pre className="p-3 bg-muted/40 border border-border/80 rounded-sm font-mono text-xs overflow-x-auto max-h-[340px] text-foreground leading-relaxed select-all">
+            <pre className="p-3 bg-muted border border-border rounded-sm font-mono text-xs overflow-x-auto max-h-[340px] text-foreground leading-relaxed select-all">
               {bibTeXString}
             </pre>
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-3 border-t border-border bg-muted/20">
-          <span className="text-[11px] text-muted-foreground font-mono">
+        <div className="flex items-center justify-between p-3 border-t border-border bg-muted">
+          <span className="text-11 text-muted-foreground font-mono">
             {paper.id ? `Key: ${paper.id.slice(0, 8)}` : ''}
           </span>
           <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export default function PaperBibtexDialog({
               onClick={handleCopy}
               className="h-7 text-xs font-medium gap-1.5 shadow-none border-border cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             >
-              {isCopied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+              {isCopied ? <Check className="size-3.5 text-primary shrink-0" /> : <Copy className="size-3.5 shrink-0" />}
               <span>{isCopied ? 'Copied' : 'Copy'}</span>
             </Button>
             <Button
@@ -78,7 +78,7 @@ export default function PaperBibtexDialog({
               onClick={handleDownload}
               className="h-7 text-xs font-medium gap-1.5 shadow-none cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             >
-              <Download className="size-3.5" />
+              <Download className="size-3.5 shrink-0" />
               <span>Download .bib</span>
             </Button>
           </div>

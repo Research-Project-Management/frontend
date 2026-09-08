@@ -20,6 +20,7 @@ import React, {
 import { LayoutGroup } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
+import { logger } from '@/shared/lib/logger';
 import { getErrorMessage } from '@/shared/utils/error.util';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import type { ChatSession } from '../../types/chat.types';
@@ -55,14 +56,23 @@ function groupByProject(chats: ChatSession[]): ProjectGroup[] {
 }
 
 function loadSet(k: string): Set<string> {
+  if (typeof window === 'undefined') return new Set();
   try {
     const parsed = JSON.parse(localStorage.getItem(k) ?? '[]');
     if (Array.isArray(parsed)) return new Set(parsed.filter((x): x is string => typeof x === 'string'));
     return new Set();
-  } catch { return new Set(); }
+  } catch (err) {
+    logger.debug('[AiSidebar] Failed to parse collapsed projects from localStorage', { key: k, err });
+    return new Set();
+  }
 }
 function saveSet(k: string, s: Set<string>) {
-  localStorage.setItem(k, JSON.stringify(Array.from(s)));
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(k, JSON.stringify(Array.from(s)));
+  } catch (err) {
+    logger.debug('[AiSidebar] Failed to save collapsed projects to localStorage', { key: k, err });
+  }
 }
 
 export function Sidebar() {
@@ -79,10 +89,14 @@ export function Sidebar() {
   const [selectedProjectId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() =>
-    loadSet(`ai-sidebar-collapsed-${workspaceId}`),
-  );
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(() => new Set());
   const [isClearingMemory, setIsClearingMemory] = useState(false);
+
+  useEffect(() => {
+    if (workspaceId) {
+      setCollapsedProjects(loadSet(`ai-sidebar-collapsed-${workspaceId}`));
+    }
+  }, [workspaceId]);
 
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -199,14 +213,14 @@ export function Sidebar() {
   const groups = useMemo(() => groupByProject(filtered), [filtered]);
 
   return (
-    <aside className="w-60 shrink-0 h-full border-r border-border/60 bg-sidebar flex flex-col overflow-hidden select-none">
+    <aside className="w-60 shrink-0 h-full border-r border-border bg-sidebar flex flex-col overflow-hidden select-none">
       {/* Header */}
-      <div className="p-2.5 border-b border-border/40 flex items-center justify-between gap-2">
+      <div className="p-2.5 border-b border-border flex items-center justify-between gap-2">
         <button
           onClick={() => workspaceId && router.push(`/${workspaceId}/ai`)}
-          className="flex-1 flex items-center justify-center gap-2 h-8 rounded-md border border-border/60 bg-background hover:bg-muted text-foreground text-[13px] font-medium transition-colors shadow-none cursor-pointer outline-none"
+          className="flex-1 flex items-center justify-center gap-2 h-8 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors shadow-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
-          <SquarePen className="size-3.5 text-foreground" />
+          <SquarePen className="size-3.5 text-foreground shrink-0" />
           <span>New Chat</span>
         </button>
 
@@ -215,9 +229,9 @@ export function Sidebar() {
             <button
               onClick={handleClearMemory}
               disabled={isClearingMemory}
-              className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted/70 transition-colors cursor-pointer outline-none"
+              className="size-8 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
-              <RotateCcw className={`size-3.5 text-foreground ${isClearingMemory ? 'animate-spin' : ''}`} />
+              <RotateCcw className={`size-3.5 text-foreground shrink-0 ${isClearingMemory ? 'animate-spin' : ''}`} />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
@@ -227,15 +241,15 @@ export function Sidebar() {
       </div>
 
       {/* Search */}
-      <div className="p-2.5 border-b border-border/40">
+      <div className="p-2.5 border-b border-border">
         <div className="relative">
-          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-foreground/80" />
+          <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full h-8 pl-8 pr-2.5 rounded-md bg-background border border-border/60 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:border-border transition-colors text-foreground"
+            className="w-full h-8 pl-8 pr-2.5 rounded-md bg-background border border-border text-xs placeholder:text-muted-foreground focus:outline-none focus:border-border transition-colors text-foreground"
           />
         </div>
       </div>
@@ -259,7 +273,7 @@ export function Sidebar() {
                 <div key={pid} className="space-y-1">
                   <button
                     onClick={() => handleToggleCollapse(pid)}
-                    className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer select-none transition-colors"
+                    className="w-full flex items-center justify-between px-2 py-1 text-11 font-medium text-foreground cursor-pointer select-none transition-colors"
                   >
                     <span className="truncate">{pName}</span>
                     <ChevronDown
@@ -282,10 +296,10 @@ export function Sidebar() {
                               workspaceId && router.push(`/${workspaceId}/ai/${chat.id}`)
                             }
                             className={cn(
-                              'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-[13px] leading-5 cursor-pointer transition-colors outline-none',
+                              'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-13 leading-5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
                               isActive
                                 ? 'bg-muted text-foreground font-medium'
-                                : 'text-foreground hover:bg-muted/70 font-normal',
+                                : 'text-foreground hover:bg-muted font-normal',
                             )}
                           >
                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -316,14 +330,14 @@ export function Sidebar() {
                                   className="p-1 rounded hover:bg-muted text-foreground cursor-pointer transition-colors"
                                   title="Rename"
                                 >
-                                  <Pencil className="size-3.5 text-foreground" />
+                                  <Pencil className="size-3.5 text-foreground shrink-0" />
                                 </button>
                                 <button
                                   onClick={(e) => handleDelete(e, chat.id)}
-                                  className="p-1 rounded hover:bg-muted text-foreground hover:text-destructive cursor-pointer transition-colors"
+                                  className="p-1 rounded text-foreground hover:bg-destructive/10 cursor-pointer transition-colors"
                                   title="Delete"
                                 >
-                                  <Trash2 className="size-3.5" />
+                                  <Trash2 className="size-3.5 shrink-0" />
                                 </button>
                               </div>
                             )}

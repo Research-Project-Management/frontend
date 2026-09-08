@@ -247,7 +247,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
       <div className="flex items-center justify-between border-b pb-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-foreground flex items-center gap-2">
-            <BookOpen className="size-6 text-primary" />
+            <BookOpen className="size-6 text-primary shrink-0" />
             Zotero Reference Library Integration
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -255,8 +255,8 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
           </p>
         </div>
         {!isManager && (
-          <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-md border border-amber-500/20">
-            <Lock className="size-3.5" />
+          <div className="flex items-center gap-1.5 text-xs text-warning bg-warning/10 px-3 py-1.5 rounded-md border border-warning/20">
+            <Lock className="size-3.5 shrink-0" />
             View Only (Admin required for changes)
           </div>
         )}
@@ -264,7 +264,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
 
       {/* Kill Switch Alert if active */}
       {killSwitch?.workspaceDisabled && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300">
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-warning/10 border border-warning/30 text-warning">
           <ShieldAlert className="size-5 shrink-0" />
           <div className="text-sm">
             <span className="font-semibold">Two-way push is paused by workspace policy:</span>{' '}
@@ -282,7 +282,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
       )}
 
       {successMessage && (
-        <div className="flex items-center gap-3 p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-sm">
+        <div className="flex items-center gap-3 p-3.5 rounded-lg bg-success/10 border border-success/20 text-success text-sm">
           <CheckCircle2 className="size-4 shrink-0" />
           <span>{successMessage}</span>
         </div>
@@ -290,9 +290,9 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
 
       {/* Step 1: Connect Account if no active connection */}
       {!activeConnection && (
-        <div className="rounded-xl border bg-card p-6 shadow-sm">
+        <div className="rounded-md border bg-card p-6 ">
           <h3 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
-            <Link2 className="size-4 text-primary" />
+            <Link2 className="size-4 text-primary shrink-0" />
             Connect Zotero Account
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
@@ -301,7 +301,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
               href="https://www.zotero.org/settings/keys/new"
               target="_blank"
               rel="noreferrer"
-              className="text-primary underline hover:text-primary/80"
+              className="text-primary underline hover:underline"
             >
               zotero.org/settings/keys
             </a>
@@ -334,7 +334,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
             </div>
 
             <Button type="submit" disabled={!isManager || isConnecting || !apiKey.trim()} className="gap-2">
-              {isConnecting ? <RefreshCw className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+              {isConnecting ? <RefreshCw className="size-4 animate-spin shrink-0" /> : <Link2 className="size-4 shrink-0" />}
               {isConnecting ? 'Validating API Key...' : 'Connect Account'}
             </Button>
           </form>
@@ -345,7 +345,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
       {activeConnection && (
         <div className="space-y-6">
           {/* Active Connection Summary Card */}
-          <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+          <div className="rounded-md border bg-card p-5 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
                 Z
@@ -353,7 +353,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-foreground">{activeConnection.accountName}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success font-medium border border-success/20">
                     Active
                   </span>
                 </div>
@@ -371,16 +371,16 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                 disabled={isRevoking}
                 className="text-destructive hover:bg-destructive/10 border-destructive/20 gap-1.5"
               >
-                <Trash2 className="size-3.5" />
+                <Trash2 className="size-3.5 shrink-0" />
                 Disconnect Account
               </Button>
             )}
           </div>
 
           {/* Add Remote Library Binding Section */}
-          <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+          <div className="rounded-md border bg-card p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Layers className="size-4 text-primary" />
+              <Layers className="size-4 text-primary shrink-0" />
               Bind Remote Library
             </h3>
             <p className="text-xs text-muted-foreground">
@@ -389,7 +389,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
 
             {isLoadingLibraries ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <RefreshCw className="size-3.5 animate-spin" /> Loading accessible Zotero libraries...
+                <RefreshCw className="size-3.5 animate-spin shrink-0" /> Loading accessible Zotero libraries...
               </div>
             ) : remoteLibraries.length > 0 ? (
               <div className="flex flex-wrap items-center gap-3">
@@ -427,7 +427,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                     disabled={isCreatingBinding || !selectedLibraryId}
                     className="gap-1.5"
                   >
-                    {isCreatingBinding ? <RefreshCw className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />}
+                    {isCreatingBinding ? <RefreshCw className="size-3.5 animate-spin shrink-0" /> : <Link2 className="size-3.5 shrink-0" />}
                     Create Library Binding
                   </Button>
                 )}
@@ -440,15 +440,15 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
           </div>
 
           {/* Active Bindings List & Sync Controls */}
-          <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+          <div className="rounded-md border bg-card p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <RefreshCw className="size-4 text-primary" />
+                <RefreshCw className="size-4 text-primary shrink-0" />
                 Active Library Bindings ({bindings.length})
               </span>
               {storageQuota && !storageQuota.isUnavailable && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1 font-normal">
-                  <HardDrive className="size-3.5" />
+                  <HardDrive className="size-3.5 shrink-0" />
                   Zotero Storage: {(storageQuota.used / (1024 * 1024)).toFixed(1)}MB / {(storageQuota.total / (1024 * 1024)).toFixed(0)}MB
                 </span>
               )}
@@ -457,8 +457,8 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
             {isLoadingBindings ? (
               <div className="text-xs text-muted-foreground py-4 text-center">Loading bindings...</div>
             ) : bindings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-6 text-center border rounded-lg border-dashed border-border/80 bg-muted/10 space-y-1.5">
-                <FolderSync className="size-7 text-muted-foreground/50" />
+              <div className="flex flex-col items-center justify-center p-6 text-center border rounded-lg border-dashed border-border bg-muted space-y-1.5">
+                <FolderSync className="size-7 text-muted-foreground/50 shrink-0" />
                 <p className="text-xs font-semibold text-foreground">No active library bindings</p>
                 <p className="text-xs text-muted-foreground max-w-sm">
                   Select a remote library above to bind and synchronize with your Flux workspace.
@@ -482,7 +482,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                         }
                       }}
                       className={`p-4 rounded-lg border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring ${
-                        isSelected ? 'border-primary/50 bg-primary/5' : 'bg-background hover:bg-muted/50'
+                        isSelected ? 'border-primary/50 bg-primary/5' : 'bg-background hover:bg-muted'
                       }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -494,8 +494,8 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
                                 isTwoWay
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                  ? 'bg-success/10 text-success border-success/20'
+                                  : 'bg-primary/10 text-primary border-primary/20'
                               }`}
                             >
                               {isTwoWay ? 'Two-Way Sync' : 'Read-Only'}
@@ -531,7 +531,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                               disabled={isReconciling}
                               className="gap-1 text-xs"
                             >
-                              <CheckCircle2 className="size-3" />
+                              <CheckCircle2 className="size-3 shrink-0" />
                               Reconcile
                             </Button>
 
@@ -539,9 +539,9 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                               variant="ghost"
                               size="sm"
                               onClick={() => setDirectionModalBinding(b)}
-                              className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                              className="gap-1 text-xs text-foreground"
                             >
-                              <ArrowLeftRight className="size-3" />
+                              <ArrowLeftRight className="size-3 shrink-0" />
                               {isTwoWay ? 'Revert Read-Only' : 'Enable Two-Way'}
                             </Button>
                           </div>
@@ -550,7 +550,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
 
                       {/* Pull Run Result Stats */}
                       {isSelected && lastRunStats && (
-                        <div className="mt-3 pt-3 border-t text-xs text-muted-foreground flex items-center gap-4 bg-muted/30 p-2.5 rounded">
+                        <div className="mt-3 pt-3 border-t text-xs text-muted-foreground flex items-center gap-4 bg-muted p-2.5 rounded">
                           <span>Created: <strong className="text-foreground">{lastRunStats.itemsCreated}</strong></span>
                           <span>Updated: <strong className="text-foreground">{lastRunStats.itemsUpdated}</strong></span>
                           {lastRunStats.itemsSkipped !== undefined && (
@@ -576,7 +576,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
         {directionModalBinding && (
           <DialogContent className="max-w-md w-full p-6 space-y-4" showCloseButton={true}>
             <DialogHeader className="text-left space-y-2">
-              <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
+              <div className="flex items-center gap-2.5 text-warning">
                 <AlertTriangle className="size-5 shrink-0" />
                 <DialogTitle className="text-base font-semibold text-foreground">
                   {directionModalBinding.syncDirection === 'read_only'
@@ -612,10 +612,10 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
                 size="sm"
                 onClick={handleToggleSyncDirection}
                 disabled={isUpdatingSyncDirection}
-                className={directionModalBinding.syncDirection === 'read_only' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+                className={directionModalBinding.syncDirection === 'read_only' ? 'bg-warning hover:bg-warning/90' : ''}
               >
                 {isUpdatingSyncDirection ? (
-                  <RefreshCw className="size-3.5 animate-spin" />
+                  <RefreshCw className="size-3.5 animate-spin shrink-0" />
                 ) : (
                   'Confirm & Switch'
                 )}

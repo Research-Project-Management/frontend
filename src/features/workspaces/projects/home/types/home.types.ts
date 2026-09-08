@@ -12,6 +12,7 @@ export interface RecentItemUser {
 export interface RecentItemProject {
   id: string;
   name?: string | null;
+  identifier?: string | null;
 }
 
 export interface RecentItem {
@@ -19,6 +20,7 @@ export interface RecentItem {
   type: 'project' | 'page' | 'file' | 'task' | 'paper' | string;
   title?: string;
   name?: string;
+  emoji?: string | null;
   updatedAt?: string | Date;
   project?: RecentItemProject | null;
   users?: RecentItemUser[];

@@ -62,7 +62,7 @@ const markdownComponents: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="my-2 border-l-2 border-primary/40 bg-muted/30 px-3 py-2 text-foreground/75">
+      <blockquote className="my-2 border-l-2 border-primary/40 bg-muted px-3 py-2 text-foreground/75">
         {children}
       </blockquote>
     );
@@ -87,7 +87,7 @@ const markdownComponents: Components = {
     );
   },
   thead({ children }) {
-    return <thead className="bg-muted/40">{children}</thead>;
+    return <thead className="bg-muted">{children}</thead>;
   },
   th({ children }) {
     return (
@@ -104,7 +104,7 @@ const markdownComponents: Components = {
     );
   },
   hr() {
-    return <hr className="my-3 border-border/40" />;
+    return <hr className="my-3 border-border" />;
   },
   code({ className, children }) {
     return (
@@ -115,7 +115,7 @@ const markdownComponents: Components = {
   },
   pre({ children }) {
     return (
-      <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed">
+      <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-muted px-4 py-3 text-xs leading-relaxed">
         {children}
       </pre>
     );

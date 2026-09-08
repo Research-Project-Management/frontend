@@ -5,20 +5,28 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  workers: 1,
+  reporter: 'list',
+  timeout: 60000,
   use: {
     baseURL: 'http://127.0.0.1:2915',
     trace: 'on-first-retry',
   },
   projects: [
     {
+      name: 'smoke',
+      testMatch: '**/smoke.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
       name: 'setup',
       testMatch: 'setup/global.setup.ts',
     },
     {
       name: 'chromium',
-      testMatch: '**/*.spec.ts',
+      testMatch: 'features/**/*.spec.ts',
       use: { 
         ...devices['Desktop Chrome'],
         channel: 'chrome',
@@ -27,10 +35,4 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://127.0.0.1:2915',
-    reuseExistingServer: true,
-    timeout: 120000,
-  },
 });

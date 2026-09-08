@@ -15,6 +15,7 @@ import type {
 } from '../types/editor-ai.types';
 import { API_BASE_URL as API_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/api';
+import { logger } from '@/shared/lib/logger';
 
 function getHeaders(extra?: Record<string, string>): Record<string, string> {
   const token = getAuthToken();
@@ -120,14 +121,18 @@ export async function* streamEditorChat(
             try {
               const meta = JSON.parse(data.slice(6)) as any;
               options?.onMeta?.(meta);
-            } catch {}
+            } catch (err) {
+              logger.debug('[aiService] Failed to parse stream meta', { err });
+            }
             continue;
           }
           if (data.startsWith('[ACTION]')) {
             try {
               const action = JSON.parse(data.slice(8)) as any;
               options?.onAction?.(action);
-            } catch {}
+            } catch (err) {
+              logger.debug('[aiService] Failed to parse stream action', { err });
+            }
             continue;
           }
           yield data.replace(/\\n/g, '\n');

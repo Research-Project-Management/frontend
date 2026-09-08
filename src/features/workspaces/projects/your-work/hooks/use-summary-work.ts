@@ -1,84 +1,77 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { getYourWork, getWorkspaceTasks } from '../services/your-work.service';
+import { getYourWork } from '../services/your-work.service';
 import { yourWorkSummaryResponseSchema, type YourWorkSummaryResponse } from '../schemas/your-work.schema';
-import { createProjectMap, categorizeTasks } from '../utils/your-work.util';
+import { useYourWorkBase } from './use-your-work-base';
 
 export function useSummaryWork() {
-  const { workspaceId } = useParams() as { workspaceId: string };
-  const { user } = useAuth();
-  const { projects = [], isLoading: isLoadingProjects } = useProjects();
-  const currentUserId = user?.id;
+  const base = useYourWorkBase();
 
   const {
     data: rawYourWork,
     isLoading: isLoadingYourWork,
     refetch: refetchYourWork,
   } = useQuery({
-    queryKey: ['your-work', 'summary', workspaceId],
+    queryKey: ['your-work', 'summary', base.workspaceId],
     queryFn: async ({ signal }) => {
-      const res = await getYourWork(workspaceId, signal);
+      const res = await getYourWork(base.workspaceId, signal);
       const parsed = yourWorkSummaryResponseSchema.safeParse(res);
       return parsed.success ? parsed.data : (res as YourWorkSummaryResponse);
     },
-    enabled: !!workspaceId,
+    enabled: !!base.workspaceId,
     staleTime: 30_000,
   });
-
-  const {
-    data: tasksData = [],
-    isLoading: isLoadingTasks,
-    refetch: refetchTasks,
-  } = useQuery({
-    queryKey: ['workspace-tasks', workspaceId],
-    queryFn: ({ signal }) => getWorkspaceTasks(workspaceId, signal),
-    enabled: !!workspaceId,
-    staleTime: 30_000,
-  });
-
-  const tasks: any[] = useMemo(
-    () =>
-      Array.isArray(tasksData)
-        ? tasksData
-        : (tasksData as any)?.tasks || (tasksData as any)?.data || [],
-    [tasksData],
-  );
 
   const activities = useMemo(
     () => (rawYourWork as any)?.activity || [],
     [rawYourWork],
   );
 
-  const categorizedTasks = useMemo(() => {
-    return categorizeTasks(tasks, currentUserId);
-  }, [tasks, currentUserId]);
-
-  const taskProjectMap = useMemo(() => createProjectMap(projects), [projects]);
-
-  return {
-    state: {
-      workspaceId,
-      tasks,
+  const state = useMemo(
+    () => ({
+      workspaceId: base.workspaceId,
+      tasks: base.allTasks,
       activities,
-      categorizedTasks,
-      taskProjectMap,
-      isLoading: isLoadingYourWork || isLoadingTasks || isLoadingProjects,
+      categorizedTasks: base.categories,
+      taskProjectMap: base.taskProjectMap,
+      isLoading: isLoadingYourWork || base.isLoading,
       isLoadingYourWork,
-      isLoadingTasks,
-      isLoadingProjects,
-    },
-    actions: {
+      isLoadingTasks: base.isLoadingTasks,
+      isLoadingProjects: base.isLoadingProjects,
+    }),
+    [
+      base.workspaceId,
+      base.allTasks,
+      activities,
+      base.categories,
+      base.taskProjectMap,
+      isLoadingYourWork,
+      base.isLoading,
+      base.isLoadingTasks,
+      base.isLoadingProjects,
+    ],
+  );
+
+  const baseRefetch = base.refetch;
+  const actions = useMemo(
+    () => ({
       refetch: () => {
         refetchYourWork();
-        refetchTasks();
+        baseRefetch();
       },
-    },
-  };
+    }),
+    [refetchYourWork, baseRefetch],
+  );
+
+  return useMemo(
+    () => ({
+      state,
+      actions,
+    }),
+    [state, actions],
+  );
 }
 
 export default useSummaryWork;

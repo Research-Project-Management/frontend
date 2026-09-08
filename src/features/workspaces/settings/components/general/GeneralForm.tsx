@@ -105,7 +105,7 @@ export function GeneralForm({
             <Input
               readOnly
               value={slug}
-              className="h-9 w-full rounded-md bg-muted/50 text-muted-foreground cursor-not-allowed font-medium"
+              className="h-9 w-full rounded-md bg-muted text-muted-foreground cursor-not-allowed font-medium"
             />
           </div>
         </div>
@@ -116,7 +116,7 @@ export function GeneralForm({
             disabled={!hasChanges || isSubmitting}
             className="cursor-pointer"
           >
-            {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin" />}
+            {isSubmitting && <Loader2 className="size-4 mr-2 animate-spin shrink-0" />}
             {isSubmitting ? 'Saving…' : 'Update workspace'}
           </Button>
         </div>

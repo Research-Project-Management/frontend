@@ -42,7 +42,7 @@ function TagItemInput({
   };
 
   return (
-    <div className="group flex items-center gap-1.5 px-1 py-0.5 min-h-[28px]">
+    <div className="group flex items-center gap-1.5 px-1 py-0.5 min-h-7">
       <div className="size-4 shrink-0 flex items-center justify-center">
         <Tag className="size-3.5 text-foreground shrink-0" />
       </div>
@@ -64,7 +64,7 @@ function TagItemInput({
             inputRef.current?.blur();
           }
         }}
-        className="flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal truncate focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
+        className="flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal truncate focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text"
         title={tag}
       />
 
@@ -74,7 +74,7 @@ function TagItemInput({
           e.stopPropagation();
           onRemove(tag);
         }}
-        className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer invisible group-hover:visible focus-visible:visible"
+        className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer invisible group-hover:visible focus-visible:visible"
         title={`Remove tag "${tag}"`}
         aria-label={`Remove tag "${tag}"`}
       >
@@ -154,7 +154,7 @@ export default function TagsSection({
 
       {/* Adding Tag Row */}
       {isAdding && (
-        <div className="flex items-center gap-1.5 px-1 py-0.5 min-h-[28px]">
+        <div className="flex items-center gap-1.5 px-1 py-0.5 min-h-7">
           <div className="size-4 shrink-0 flex items-center justify-center">
             <Tag className="size-3.5 text-foreground shrink-0" />
           </div>
@@ -176,7 +176,7 @@ export default function TagsSection({
                 onCancelAdding?.();
               }
             }}
-            className="flex-1 min-w-0 h-7 bg-background text-foreground px-2 py-[4px] rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal truncate focus:outline-none focus-visible:outline-none font-sans"
+            className="flex-1 min-w-0 h-7 bg-background text-foreground px-2 py-1 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal truncate focus:outline-none focus-visible:outline-none font-sans"
           />
           <button
             type="button"
@@ -185,7 +185,7 @@ export default function TagsSection({
               setNewTag('');
               onCancelAdding?.();
             }}
-            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+            className="size-5 shrink-0 flex items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer"
             title="Cancel"
             aria-label="Cancel adding tag"
           >
@@ -198,7 +198,7 @@ export default function TagsSection({
       {tags.length === 0 && !isAdding && (
         <div
           onClick={() => setIsAdding(true)}
-          className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+          className="px-2 py-1 text-xs text-foreground cursor-pointer"
         >
           No tags
         </div>

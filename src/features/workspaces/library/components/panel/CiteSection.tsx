@@ -308,10 +308,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
               type="button"
               onClick={() => setActiveFormat(fmt.id)}
               className={cn(
-                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none select-none font-medium shrink-0',
+                'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none font-medium shrink-0',
                 isSelected
-                  ? 'bg-black/10 dark:bg-white/10 text-foreground font-semibold'
-                  : 'text-foreground hover:bg-black/5 dark:hover:bg-white/5',
+                  ? 'bg-muted text-foreground font-semibold'
+                  : 'text-foreground hover:bg-muted',
               )}
             >
               {fmt.label}
@@ -325,10 +325,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
               <button
                 type="button"
                 className={cn(
-                  'h-6 px-2 text-xs rounded-md cursor-pointer outline-none select-none font-medium inline-flex items-center gap-1 shrink-0',
+                  'h-6 px-2 text-xs rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none font-medium inline-flex items-center gap-1 shrink-0',
                   isMoreFormatActive
-                    ? 'bg-black/10 dark:bg-white/10 text-foreground font-semibold'
-                    : 'text-foreground hover:bg-black/5 dark:hover:bg-white/5',
+                    ? 'bg-muted text-foreground font-semibold'
+                    : 'text-foreground hover:bg-muted',
                 )}
               >
                 <span>{activeMoreFormat ? activeMoreFormat.label : 'More'}</span>
@@ -338,7 +338,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
             <DropdownMenuContent
               align="end"
               sideOffset={4}
-              className="w-36 p-1 bg-popover/95 border border-border/80 rounded-md shadow-none text-xs z-50"
+              className="w-36 p-1 bg-popover/95 border border-border rounded-md shadow-none text-xs z-50"
             >
               {moreFormats.map((fmt) => {
                 const isSelected = activeFormat === fmt.id;
@@ -348,9 +348,9 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
                     onSelect={() => setActiveFormat(fmt.id)}
                     onClick={() => setActiveFormat(fmt.id)}
                     className={cn(
-                      'h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-black/5 dark:hover:bg-white/5 outline-none flex items-center justify-between',
+                      'h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between',
                       isSelected
-                        ? 'font-medium text-foreground bg-black/10 dark:bg-white/10'
+                        ? 'font-medium text-foreground bg-muted'
                         : 'text-foreground',
                     )}
                   >
@@ -368,10 +368,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
 
       {/* In-Text Citation Preview Row (Academic styles only) */}
       {!isExportFormat && inTextPreview && (
-        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border/60 bg-transparent text-xs">
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border bg-transparent text-xs">
           <div className="flex items-center gap-1.5 min-w-0 pr-2">
-            <span className="text-muted-foreground text-[11px] shrink-0 font-medium">In-text</span>
-            <span className="font-mono text-[11px] text-foreground truncate select-text">
+            <span className="text-muted-foreground text-11 shrink-0 font-medium">In-text</span>
+            <span className="font-mono text-11 text-foreground truncate select-text">
               {inTextPreview}
             </span>
           </div>
@@ -381,13 +381,13 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
                 <button
                   type="button"
                   onClick={handleCopyInText}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
                   aria-label="Copy in-text citation"
                 >
                   {copiedInText ? (
-                    <Check className="size-3.5 text-foreground" />
+                    <Check className="size-3.5 text-foreground shrink-0" />
                   ) : (
-                    <Copy className="size-3.5 text-foreground" />
+                    <Copy className="size-3.5 text-foreground shrink-0" />
                   )}
                 </button>
               </TooltipTrigger>
@@ -400,7 +400,7 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
       )}
 
       {/* Citation Box with Hover-Only Action Icons & Full Width Text */}
-      <div className="group relative rounded-md border border-border/60 p-2.5 bg-transparent min-h-[80px] max-h-56 overflow-y-auto text-xs leading-relaxed select-text font-sans">
+      <div className="group relative rounded-md border border-border p-2.5 bg-transparent min-h-[80px] max-h-56 overflow-y-auto text-xs leading-relaxed select-text font-sans">
         <TooltipProvider delayDuration={700}>
           <div
             className={cn(
@@ -415,10 +415,10 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label="Download citation"
                 >
-                  <Download className="size-3.5 text-foreground" />
+                  <Download className="size-3.5 text-foreground shrink-0" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={4} className="text-xs px-2 py-1">
@@ -431,13 +431,13 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label="Copy citation"
                 >
                   {copied ? (
-                    <Check className="size-3.5 text-foreground" />
+                    <Check className="size-3.5 text-foreground shrink-0" />
                   ) : (
-                    <Copy className="size-3.5 text-foreground" />
+                    <Copy className="size-3.5 text-foreground shrink-0" />
                   )}
                 </button>
               </TooltipTrigger>
@@ -457,8 +457,8 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
             <div>
               {isLoading && !sanitizedHtml ? (
                 <div className="space-y-1.5 py-1">
-                  <div className="h-3 bg-muted/60 rounded animate-pulse w-full" />
-                  <div className="h-3 bg-muted/60 rounded animate-pulse w-5/6" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-full" />
+                  <div className="h-3 bg-muted rounded animate-pulse w-5/6" />
                 </div>
               ) : (
                 <div

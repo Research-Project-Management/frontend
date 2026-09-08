@@ -38,7 +38,7 @@ export function TopBar({ viewMode, setViewMode, onCreateClick, searchQuery = '',
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2">
-        <PenLine className="size-4 text-foreground" />
+        <PenLine className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">All pages</h1>
       </div>
       <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ export function TopBar({ viewMode, setViewMode, onCreateClick, searchQuery = '',
         <div
           className={cn(
             "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
-            isSearchExpanded || searchQuery ? "w-64 border border-border/60 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
+            isSearchExpanded || searchQuery ? "w-64 border border-border bg-background" : "w-8 hover:bg-muted cursor-pointer"
           )}
           onClick={!isSearchExpanded ? expandSearch : undefined}
         >
@@ -74,39 +74,39 @@ export function TopBar({ viewMode, setViewMode, onCreateClick, searchQuery = '',
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-foreground transition-colors cursor-pointer"
             >
-              <Plus className="size-3.5 rotate-45 text-foreground" />
+              <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />
             </button>
           )}
         </div>
 
         {/* View Toggle */}
         <TooltipProvider delayDuration={150}>
-          <div className="flex items-center bg-muted p-1 rounded-lg">
+          <div className="flex items-center bg-muted p-1 rounded-md">
             {(['grid', 'list'] as const).map((v) => (
               <Tooltip key={v}>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setViewMode(v)}
                     className={cn(
-                      "relative p-1.5 rounded-md transition-colors cursor-pointer outline-none",
+                      "relative p-1.5 rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary",
                       viewMode === v
-                        ? "text-foreground"
-                        : "text-foreground/70 hover:text-foreground hover:bg-muted/50"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                     aria-label={`${v === 'grid' ? 'Grid' : 'List'} view`}
                   >
                     {viewMode === v && (
                       <motion.div
                         layoutId="allpages-view-toggle"
-                        className="absolute inset-0 bg-black/10 dark:bg-white/10 rounded-md"
+                        className="absolute inset-0 bg-background rounded-md shadow-xs"
                         transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
                       />
                     )}
                     <span className="relative z-10 flex">
-                      {v === 'grid' && <Columns3 className="size-4 text-foreground" strokeWidth={2.5} />}
-                      {v === 'list' && <AlignJustify className="size-4 text-foreground" strokeWidth={2.5} />}
+                      {v === 'grid' && <Columns3 className="size-4 text-foreground shrink-0" strokeWidth={2.5} />}
+                      {v === 'list' && <AlignJustify className="size-4 text-foreground shrink-0" strokeWidth={2.5} />}
                     </span>
                   </button>
                 </TooltipTrigger>
@@ -124,7 +124,7 @@ export function TopBar({ viewMode, setViewMode, onCreateClick, searchQuery = '',
           className="h-8 gap-1.5 px-3 rounded-lg cursor-pointer"
           onClick={onCreateClick}
         >
-          <Plus className="size-3.5 text-primary-foreground" />
+          <Plus className="size-3.5 text-primary-foreground shrink-0" />
           New
         </Button>
       </div>

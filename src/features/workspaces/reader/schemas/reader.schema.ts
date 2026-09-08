@@ -18,12 +18,7 @@ export const annotationTypeSchema = z.enum([
   'area',
 ]);
 
-export const readerAnnotationSchema = z.object({
-  id: z.string(),
-  paperId: z.string().optional(),
-  attachmentId: z.string().optional(),
-  pageNumber: z.number().int().positive().optional(),
-  pageIndex: z.number().int().nonnegative().optional(),
+const baseAnnotationFields = {
   color: z.string().default('yellow'),
   type: annotationTypeSchema.default('highlight'),
   text: z.string().optional(),
@@ -32,6 +27,15 @@ export const readerAnnotationSchema = z.object({
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
   rectCoords: z.unknown().optional(),
+};
+
+export const readerAnnotationSchema = z.object({
+  id: z.string(),
+  paperId: z.string().optional(),
+  attachmentId: z.string().optional(),
+  pageNumber: z.number().int().positive().optional(),
+  pageIndex: z.number().int().nonnegative().optional(),
+  ...baseAnnotationFields,
   version: z.number().optional(),
   authorId: z.string().optional(),
   createdAt: z.string(),
@@ -43,14 +47,7 @@ export const createAnnotationSchema = z.object({
   attachmentId: z.string().optional(),
   pageNumber: z.number().int().positive(),
   pageIndex: z.number().int().nonnegative().optional(),
-  color: z.string().default('yellow'),
-  type: annotationTypeSchema.default('highlight'),
-  text: z.string().optional(),
-  quoteText: z.string().optional(),
-  comment: z.string().optional(),
-  rects: z.array(annotationRectSchema).optional(),
-  boundingRect: annotationRectSchema.optional(),
-  rectCoords: z.unknown().optional(),
+  ...baseAnnotationFields,
 });
 
 export const updateAnnotationSchema = z.object({
@@ -182,24 +179,28 @@ export const documentTagSchema = z.union([
   z.string(),
 ]);
 
+const documentPublicationFields = {
+  abstract: z.string().nullable().optional(),
+  year: z.number().nullable().optional(),
+  doi: z.string().nullable().optional(),
+  journal: z.string().nullable().optional(),
+  publicationTitle: z.string().nullable().optional(),
+  publisher: z.string().nullable().optional(),
+  volume: z.string().nullable().optional(),
+  issue: z.string().nullable().optional(),
+  pages: z.string().nullable().optional(),
+};
+
 export const readerDocumentSchema = z.object({
   id: z.string(),
   workspaceId: z.string().optional(),
   collectionId: z.string().nullable().optional(),
   title: z.string(),
   itemType: z.string().optional(),
-  abstract: z.string().nullable().optional(),
+  ...documentPublicationFields,
   authors: z.array(z.string()).optional(),
   creators: z.array(documentCreatorSchema).optional(),
-  year: z.number().nullable().optional(),
-  doi: z.string().nullable().optional(),
-  journal: z.string().nullable().optional(),
-  publicationTitle: z.string().nullable().optional(),
   publicationDate: z.string().nullable().optional(),
-  publisher: z.string().nullable().optional(),
-  volume: z.string().nullable().optional(),
-  issue: z.string().nullable().optional(),
-  pages: z.string().nullable().optional(),
   citationCount: z.number().optional(),
   citationKey: z.string().nullable().optional(),
   url: z.string().nullable().optional(),
@@ -218,15 +219,7 @@ export const readerDocumentSchema = z.object({
 
 export const updateDocumentSchema = z.object({
   title: z.string().optional(),
-  abstract: z.string().nullable().optional(),
-  year: z.number().nullable().optional(),
-  doi: z.string().nullable().optional(),
-  journal: z.string().nullable().optional(),
-  publicationTitle: z.string().nullable().optional(),
-  publisher: z.string().nullable().optional(),
-  volume: z.string().nullable().optional(),
-  issue: z.string().nullable().optional(),
-  pages: z.string().nullable().optional(),
+  ...documentPublicationFields,
   collectionId: z.string().nullable().optional(),
 });
 

@@ -87,7 +87,7 @@ export default function WorkspaceInvitesPage() {
                 id='code'
                 type='text'
                 placeholder='e.g. 8f2a1b9c'
-                className='h-10 rounded-lg'
+                className='h-9 rounded-md'
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
               />
@@ -96,13 +96,13 @@ export default function WorkspaceInvitesPage() {
             {/* Actions */}
             <div className='flex items-center gap-4 pt-4'>
               <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 450, damping: 25 }}>
-                <Button type='submit' className='h-10 px-6 font-medium rounded-lg cursor-pointer' disabled={!inviteCode.trim() || isPending}>
-                  {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+                <Button type='submit' className='h-9 px-6 font-medium rounded-md cursor-pointer' disabled={!inviteCode.trim() || isPending}>
+                  {isPending && <Loader2 className='mr-2 h-4 w-4 animate-spin shrink-0' />}
                   {isPending ? 'Joining...' : 'Join workspace'}
                 </Button>
               </motion.div>
               <motion.div whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 450, damping: 25 }}>
-                <Button variant='outline' type='button' onClick={() => router.back()} className='h-10 px-6 font-medium text-muted-foreground rounded-lg hover:bg-secondary hover:text-foreground transition-colors cursor-pointer'>
+                <Button variant='outline' type='button' onClick={() => router.back()} className='h-9 px-6 font-medium text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer'>
                   Go back
                 </Button>
               </motion.div>

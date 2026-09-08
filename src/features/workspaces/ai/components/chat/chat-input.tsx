@@ -231,7 +231,7 @@ export function ChatInput({
       {showMentionDropdown && filteredAgents.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute bottom-full mb-2 left-0 z-50 w-72 rounded-xl border border-border/80 bg-popover/95 backdrop-blur-md shadow-xl overflow-hidden p-1.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
+          className="absolute bottom-full mb-2 left-0 z-50 w-72 rounded-md border border-border bg-popover/95 backdrop-blur-md overflow-hidden p-1.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-150"
         >
           <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
             Mention Agent
@@ -240,10 +240,10 @@ export function ChatInput({
             <button
               key={agent.id}
               onClick={() => selectAgent(agent)}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-xs transition-colors ${
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left text-xs transition-colors cursor-pointer ${
                 i === highlightIdx
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent/50 text-foreground'
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'hover:bg-muted text-foreground'
               }`}
             >
               <span className={`size-2 rounded-full ${agent.color.replace('text-', 'bg-')}`} />
@@ -257,7 +257,7 @@ export function ChatInput({
       )}
 
       {/* Main chat input container */}
-      <div className="relative rounded-2xl border border-border/60 bg-muted/40 shadow-2xs focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 focus-within:bg-background transition-all">
+      <div className="relative rounded-lg border border-border bg-muted focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 focus-within:bg-background transition-all">
         {/* Selected agent pill */}
         {selectedAgentConfig && (
           <div className="flex items-center gap-1.5 px-4 pt-3 pb-1">
@@ -268,7 +268,7 @@ export function ChatInput({
                 onClick={clearAgent}
                 className="hover:opacity-75 focus:outline-none"
               >
-                <X className="size-3" />
+                <X className="size-3 shrink-0" />
               </button>
             </div>
           </div>
@@ -293,7 +293,7 @@ export function ChatInput({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border/60 bg-background/80 px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background/80 px-2.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
                 >
                   <span
                     className="size-2 rounded-full"
@@ -311,7 +311,7 @@ export function ChatInput({
                       ? workspace?.name || 'Workspace'
                       : (projects || []).find((p: any) => p.id === selectedProject)?.name || 'Project'}
                   </span>
-                  <ChevronDown className="size-3 opacity-60" />
+                  <ChevronDown className="size-3 opacity-60 shrink-0" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-56 p-1.5">
@@ -321,10 +321,10 @@ export function ChatInput({
                 <button
                   type="button"
                   onClick={() => setSelectedProject('workspace')}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left ${
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left cursor-pointer transition-colors ${
                     selectedProject === 'workspace'
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'hover:bg-accent/50 text-foreground'
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'hover:bg-muted text-foreground'
                   }`}
                 >
                   <span className="size-2 rounded-full bg-muted-foreground/60" />
@@ -335,10 +335,10 @@ export function ChatInput({
                     key={proj.id}
                     type="button"
                     onClick={() => setSelectedProject(proj.id)}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left ${
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left cursor-pointer transition-colors ${
                       selectedProject === proj.id
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'hover:bg-accent/50 text-foreground'
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'hover:bg-muted text-foreground'
                     }`}
                   >
                     <span className="size-2 rounded-full" style={{ backgroundColor: projDot(idx) }} />
@@ -353,20 +353,20 @@ export function ChatInput({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className={`inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors ${
+                  className={`inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors ${
                     webSearch
-                      ? 'border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-medium'
-                      : 'border-border/60 bg-background/80 text-muted-foreground hover:bg-accent hover:text-foreground'
+                      ? 'border-primary/40 bg-primary/10 text-primary font-medium'
+                      : 'border-border bg-background text-muted-foreground hover:bg-muted'
                   }`}
                 >
-                  <Globe className="size-3.5" />
+                  <Globe className="size-3.5 shrink-0" />
                   <span>Web Search</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-72 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
-                    <Globe className="size-4 text-sky-500" />
+                    <Globe className="size-4 text-primary shrink-0" />
                     <span className="text-xs font-semibold">Web Search Sources</span>
                   </div>
                   <Switch checked={webSearch} onCheckedChange={setWebSearch} />
@@ -384,9 +384,9 @@ export function ChatInput({
                       <button
                         type="button"
                         onClick={() => removeSite(site)}
-                        className="text-muted-foreground hover:text-destructive"
+                        className="text-muted-foreground hover:bg-muted"
                       >
-                        <X className="size-3" />
+                        <X className="size-3 shrink-0" />
                       </button>
                     </div>
                   ))}
@@ -410,7 +410,7 @@ export function ChatInput({
                     onClick={addSite}
                     className="h-7 px-2 rounded bg-primary text-primary-foreground text-xs hover:opacity-90"
                   >
-                    <Plus className="size-3" />
+                    <Plus className="size-3 shrink-0" />
                   </button>
                 </div>
               </PopoverContent>
@@ -422,15 +422,15 @@ export function ChatInput({
             type="button"
             onClick={handleSend}
             disabled={!message.trim() && !disabled}
-            className={`inline-flex size-8 items-center justify-center rounded-xl transition-all ${
+            className={`inline-flex size-8 items-center justify-center rounded-md transition-all ${
               message.trim() && !disabled
-                ? 'bg-primary text-primary-foreground shadow hover:opacity-90 hover:scale-105 active:scale-95'
+                ? 'bg-primary text-primary-foreground  hover:opacity-90 hover:scale-105 active:scale-95'
                 : disabled
                 ? 'bg-muted text-muted-foreground cursor-not-allowed'
                 : 'bg-muted text-muted-foreground/50 cursor-default'
             }`}
           >
-            {disabled ? <Square className="size-3.5 fill-current" /> : <ArrowUp className="size-4" />}
+            {disabled ? <Square className="size-3.5 fill-current shrink-0" /> : <ArrowUp className="size-4 shrink-0" />}
           </button>
         </div>
       </div>

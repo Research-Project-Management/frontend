@@ -67,7 +67,7 @@ function CommandInput({
   return (
     <div
       data-slot="command-input-wrapper"
-      className="flex h-10 items-center gap-2 border-b border-border/50 px-3"
+      className="flex h-10 items-center gap-2 border-b border-border px-3"
     >
       <SearchIcon className="size-4 shrink-0 opacity-50 text-muted-foreground" />
       <CommandPrimitive.Input
@@ -163,7 +163,7 @@ function CommandShortcut({
     <span
       data-slot="command-shortcut"
       className={cn(
-        "ml-auto font-mono text-xs font-medium tracking-wide text-muted-foreground bg-muted/80 border border-border/40 px-1.5 py-0.5 rounded",
+        "ml-auto font-mono text-xs font-medium tracking-wide text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded",
         className
       )}
       {...props}

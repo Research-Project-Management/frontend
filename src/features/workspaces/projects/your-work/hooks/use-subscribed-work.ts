@@ -1,58 +1,24 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { getWorkspaceTasks } from '../services/your-work.service';
-import { createProjectMap, categorizeTasks } from '../utils/your-work.util';
+import { useYourWorkBase } from './use-your-work-base';
 
 export function useSubscribedWork() {
-  const { workspaceId } = useParams() as { workspaceId: string };
-  const { user } = useAuth();
-  const { projects = [], isLoading: isLoadingProjects } = useProjects();
-
-  const currentUserId = user?.id;
-
-  const {
-    data: tasksData = [],
-    isLoading: isLoadingTasks,
-    refetch,
-  } = useQuery({
-    queryKey: ['workspace-tasks', workspaceId],
-    queryFn: ({ signal }) => getWorkspaceTasks(workspaceId, signal),
-    enabled: !!workspaceId,
-    staleTime: 30_000,
-  });
-
-  const allTasks: any[] = useMemo(
-    () =>
-      Array.isArray(tasksData)
-        ? tasksData
-        : (tasksData as any)?.tasks || (tasksData as any)?.data || [],
-    [tasksData],
-  );
-
-  const subscribedTasks = useMemo(() => {
-    return categorizeTasks(allTasks, currentUserId).subscribed;
-  }, [allTasks, currentUserId]);
-
-  const taskProjectMap = useMemo(() => createProjectMap(projects), [projects]);
+  const base = useYourWorkBase();
+  const subscribedTasks = base.categories.subscribed;
 
   return {
     state: {
-      workspaceId,
-      allTasks,
+      workspaceId: base.workspaceId,
+      allTasks: base.allTasks,
       subscribedTasks,
       count: subscribedTasks.length,
-      taskProjectMap,
-      isLoading: isLoadingTasks || isLoadingProjects,
-      isLoadingTasks,
-      isLoadingProjects,
+      taskProjectMap: base.taskProjectMap,
+      isLoading: base.isLoading,
+      isLoadingTasks: base.isLoadingTasks,
+      isLoadingProjects: base.isLoadingProjects,
     },
     actions: {
-      refetch,
+      refetch: base.refetch,
     },
   };
 }

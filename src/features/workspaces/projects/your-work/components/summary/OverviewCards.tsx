@@ -57,11 +57,11 @@ export function OverviewCards({
               key={card.label}
               href={card.href}
               className={cn(
-                'flex items-center gap-4 p-4 rounded-lg border border-border/80 bg-card hover:bg-muted/30 hover:border-border transition-all text-left group cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'flex items-center gap-4 p-4 rounded-md border border-border bg-card hover:bg-muted transition-colors text-left group cursor-pointer shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               )}
             >
-              <div className="size-11 rounded-lg border border-border/80 bg-muted/30 flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-muted/50 transition-colors shrink-0">
-                <Icon className="size-5" />
+              <div className="size-11 rounded-md bg-transparent flex items-center justify-center text-foreground transition-colors shrink-0">
+                <Icon className="size-5 shrink-0" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium">

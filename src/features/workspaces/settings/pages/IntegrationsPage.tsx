@@ -18,7 +18,7 @@ export default function IntegrationsPage() {
         <TopBar title="Integrations" Icon={Puzzle} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-            <Puzzle className="size-6 text-muted-foreground" />
+            <Puzzle className="size-6 text-muted-foreground shrink-0" />
           </div>
           <h3 className="text-sm font-semibold text-foreground">Workspace not found</h3>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm">

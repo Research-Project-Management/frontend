@@ -62,7 +62,7 @@ function NoteEditForm({
         autoFocus
       />
       {errors.contentMd && (
-        <p className="text-[11px] text-destructive">{errors.contentMd.message}</p>
+        <p className="text-11 text-destructive">{errors.contentMd.message}</p>
       )}
       <div className="flex justify-end gap-1">
         <Button
@@ -80,7 +80,7 @@ function NoteEditForm({
           className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
           disabled={isSaving}
         >
-          {isSaving ? <Loader2 className="size-3 animate-spin" /> : 'Save'}
+          {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" /> : 'Save'}
         </Button>
       </div>
     </form>
@@ -261,7 +261,7 @@ export default function NotesPanel({
             className="w-full resize-none bg-transparent text-xs leading-relaxed outline-none placeholder:text-muted-foreground/50 text-foreground"
           />
           {newNoteErrors.contentMd && (
-            <p className="text-[11px] text-destructive mt-0.5">{newNoteErrors.contentMd.message}</p>
+            <p className="text-11 text-destructive mt-0.5">{newNoteErrors.contentMd.message}</p>
           )}
           <div className="flex justify-end pt-1">
             <Button
@@ -271,9 +271,9 @@ export default function NotesPanel({
               className="h-6 text-xs px-2.5 font-medium cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
             >
               {isCreating ? (
-                <Loader2 className="size-3 animate-spin mr-1" />
+                <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
               ) : (
-                <Plus className="size-3 mr-1" />
+                <Plus className="size-3 mr-1 shrink-0" />
               )}
               Add note
             </Button>
@@ -284,15 +284,15 @@ export default function NotesPanel({
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
         {isNotesLoading ? (
           <div className="flex h-full items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Loader2 className="size-5 animate-spin text-muted-foreground shrink-0" />
           </div>
         ) : displayNotes.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4 py-8">
-            <div className="flex size-9 items-center justify-center rounded-sm border border-border bg-muted/30">
-              <FileText className="size-4 text-muted-foreground" />
+            <div className="flex size-9 items-center justify-center rounded-sm border border-border bg-muted">
+              <FileText className="size-4 text-muted-foreground shrink-0" />
             </div>
             <p className="mt-2 text-xs font-medium text-foreground">No notes recorded</p>
-            <p className="mt-1 max-w-[200px] text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 max-w-[200px] text-11 leading-relaxed text-muted-foreground">
               Select text in the document or write notes directly above.
             </p>
           </div>
@@ -332,16 +332,16 @@ export default function NotesPanel({
                                 aria-label="Confirm delete"
                                 className="flex size-5 items-center justify-center rounded text-destructive hover:bg-destructive/20 focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
                               >
-                                <Check className="size-3.5" />
+                                <Check className="size-3.5 shrink-0" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeletingId(null)}
                                 title="Cancel"
                                 aria-label="Cancel"
-                                className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-secondary focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+                                className="flex size-5 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
                               >
-                                <X className="size-3.5" />
+                                <X className="size-3.5 shrink-0" />
                               </button>
                             </div>
                           ) : (
@@ -349,36 +349,36 @@ export default function NotesPanel({
                               <button
                                 type="button"
                                 onClick={() => setEditingId(note.id)}
-                                className="flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
+                                className="flex size-6 items-center justify-center rounded-sm text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors cursor-pointer"
                                 title="Edit note"
                                 aria-label="Edit note"
                               >
-                                <Edit3 className="size-3.5" />
+                                <Edit3 className="size-3.5 shrink-0" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setDeletingId(note.id)}
-                                className="flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:text-destructive focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
+                                className="flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-destructive focus-visible:outline-none transition-colors cursor-pointer"
                                 title="Delete note"
                                 aria-label="Delete note"
                               >
-                                <Trash2 className="size-3.5" />
+                                <Trash2 className="size-3.5 shrink-0" />
                               </button>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                      <div className="flex items-center gap-2 text-10 text-muted-foreground font-mono">
                         {note.createdAt && <span>{formatNoteDate(note.createdAt)}</span>}
                         {note.tags && note.tags.length > 0 && (
                           <div className="flex items-center gap-1 font-sans">
                             {note.tags.map((t) => (
                               <span
                                 key={t}
-                                className="inline-flex items-center gap-0.5 px-1 rounded text-[10px] bg-muted text-muted-foreground"
+                                className="inline-flex items-center gap-0.5 px-1 rounded text-10 bg-muted text-muted-foreground"
                               >
-                                <Tag className="size-2.5 opacity-60" />
+                                <Tag className="size-2.5 opacity-60 shrink-0" />
                                 <span>{t}</span>
                               </span>
                             ))}

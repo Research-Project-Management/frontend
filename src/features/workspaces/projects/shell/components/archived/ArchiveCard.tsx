@@ -49,21 +49,21 @@ export function ArchiveCard({
   return (
     <div
       key={projectId}
-      className="group relative flex flex-col rounded-lg border border-border/70 bg-card/60 grayscale-30 hover:grayscale-0 overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md hover:border-border min-w-0"
+      className="group relative flex flex-col rounded-lg border border-border bg-card/60 grayscale-30 hover:grayscale-0 overflow-hidden transition-all duration-200 hover:border-border min-w-0"
     >
       {/* Banner */}
       <div className={cn('relative h-24 w-full bg-gradient-to-tr overflow-hidden', bannerClass)}>
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[0.5px]" />
         <div className="absolute top-2 right-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-500 border border-amber-500/30 backdrop-blur-xs">
-            <Archive className="size-2.5" />
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-warning/20 text-warning border border-warning/30 backdrop-blur-xs">
+            <Archive className="size-2.5 shrink-0" />
             <span>Archived</span>
           </span>
         </div>
       </div>
 
       {/* Avatar */}
-      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border shadow-xs flex items-center justify-center text-xl shrink-0">
+      <div className="absolute top-16 left-4 size-10 rounded-lg bg-background border border-border flex items-center justify-center text-xl shrink-0">
         {project.avatar ? (
           <span>{project.avatar}</span>
         ) : (
@@ -88,12 +88,12 @@ export function ArchiveCard({
             <span className="flex items-center gap-1">
               {isPrivate ? (
                 <>
-                  <Lock className="size-3" />
+                  <Lock className="size-3 shrink-0" />
                   <span>Private</span>
                 </>
               ) : (
                 <>
-                  <Globe className="size-3" />
+                  <Globe className="size-3 shrink-0" />
                   <span>Public</span>
                 </>
               )}
@@ -108,7 +108,7 @@ export function ArchiveCard({
         )}
 
         {/* Lead & Actions */}
-        <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2 min-w-0">
+        <div className="pt-2 border-t border-border flex items-center justify-between gap-2 min-w-0">
           {/* Lead */}
           <div className="flex items-center gap-1 min-w-0">
             {leadUser ? (
@@ -134,20 +134,20 @@ export function ArchiveCard({
               type="button"
               onClick={(e) => onRestore(projectId, e)}
               disabled={isRestoring}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-foreground hover:bg-muted/80 transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
               title="Restore project to workspace"
             >
-              <RotateCcw className="size-3" />
+              <RotateCcw className="size-3 shrink-0" />
               <span>Restore</span>
             </button>
 
             <button
               type="button"
               onClick={(e) => onDeletePermanent(project, e)}
-              className="flex items-center justify-center size-7 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              className="flex items-center justify-center size-7 rounded text-muted-foreground hover:bg-destructive/10 transition-colors cursor-pointer"
               title="Delete permanently"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-3.5 shrink-0" />
             </button>
           </div>
         </div>

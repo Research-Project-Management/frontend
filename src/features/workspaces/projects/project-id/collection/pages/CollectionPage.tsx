@@ -110,13 +110,13 @@ export default function CollectionPage() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Top Header */}
-      <header className="flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-md px-4 h-12 shrink-0 select-none">
+      <header className="flex items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 h-12 shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
           <BookOpen className="size-4 text-foreground shrink-0" />
           <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {project?.name ? `${project.name} Collection` : 'Project Collection'}
           </h1>
-          <span className="text-xs font-mono text-foreground px-2 py-0.5 rounded-full bg-muted/60">
+          <span className="text-xs font-mono text-foreground px-2 py-0.5 rounded-full bg-muted">
             {filteredPapers.length} {filteredPapers.length === 1 ? 'item' : 'items'}
           </span>
         </div>
@@ -124,8 +124,8 @@ export default function CollectionPage() {
         {/* Search & Action Buttons */}
         <div className="flex items-center gap-2.5 shrink-0">
           {/* Search */}
-          <div className="relative flex items-center w-48 sm:w-56 h-8 rounded-md border border-border/50 bg-background/60 hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <div className="relative flex items-center w-48 sm:w-56 h-8 rounded-md border border-border bg-background/60 hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
             <input
               placeholder="Search papers..."
               value={search}
@@ -135,10 +135,10 @@ export default function CollectionPage() {
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                className="absolute right-2 text-foreground cursor-pointer"
                 aria-label="Clear search"
               >
-                <Plus className="size-3.5 rotate-45" />
+                <Plus className="size-3.5 rotate-45 shrink-0" />
               </button>
             )}
           </div>
@@ -151,7 +151,7 @@ export default function CollectionPage() {
             className="h-8 gap-1.5 text-xs text-foreground hover:bg-muted cursor-pointer"
             title="Download .bib file for this project"
           >
-            <Download className="size-3.5 text-foreground" />
+            <Download className="size-3.5 text-foreground shrink-0" />
             <span className="hidden sm:inline">Export .bib</span>
           </Button>
 
@@ -159,9 +159,9 @@ export default function CollectionPage() {
           <Button
             size="sm"
             onClick={() => handleOpenUpload('file')}
-            className="h-8 gap-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-xs"
+            className="h-8 gap-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer "
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3.5 shrink-0" />
             <span>Add Paper</span>
           </Button>
         </div>
@@ -177,9 +177,9 @@ export default function CollectionPage() {
               <Skeleton className="h-9 w-full rounded-md" />
             </div>
           ) : filteredPapers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[300px] text-center border border-dashed border-border/60 rounded-xl p-8 bg-muted/10">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
-                <BookOpen className="size-6" />
+            <div className="flex flex-col items-center justify-center min-h-[300px] text-center border border-dashed border-border rounded-md p-8 bg-muted">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary mb-3">
+                <BookOpen className="size-6 shrink-0" />
               </div>
               <h3 className="text-sm font-semibold text-foreground">No papers in this collection</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
@@ -191,7 +191,7 @@ export default function CollectionPage() {
                   onClick={() => handleOpenUpload('file')}
                   className="h-8 text-xs gap-1.5 cursor-pointer"
                 >
-                  <Plus className="size-3.5" />
+                  <Plus className="size-3.5 shrink-0" />
                   Add Paper
                 </Button>
                 <Button
@@ -200,7 +200,7 @@ export default function CollectionPage() {
                   onClick={() => router.push(`/${workspaceUrl}/library`)}
                   className="h-8 text-xs gap-1.5 cursor-pointer"
                 >
-                  <Library className="size-3.5" />
+                  <Library className="size-3.5 shrink-0" />
                   Open Workspace Library
                 </Button>
               </div>
@@ -281,7 +281,7 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-border/60 bg-background">
+    <div className="overflow-hidden rounded-md border border-border bg-background">
       <div className="max-h-full overflow-auto">
         <table className="w-full table-fixed border-collapse text-left type-dense">
           <colgroup>
@@ -291,7 +291,7 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
             <col className="w-10" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-background">
-            <tr className="h-9 border-b border-border/60 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
+            <tr className="h-9 border-b border-border type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
               <th className="w-10 px-2.5 text-center">
                 <Checkbox
                   checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
@@ -310,9 +310,9 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
                     {hasUserSorted && sortField === field && (
                       <span className="shrink-0 ml-1.5 inline-flex items-center text-foreground">
                         {sortOrder === 'desc' ? (
-                          <ArrowDown className="size-3.5 text-foreground" />
+                          <ArrowDown className="size-3.5 text-foreground shrink-0" />
                         ) : (
-                          <ArrowUp className="size-3.5 text-foreground" />
+                          <ArrowUp className="size-3.5 text-foreground shrink-0" />
                         )}
                       </span>
                     )}
@@ -328,7 +328,7 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
                 key={item.id}
                 onClick={() => onSelectItem(item)}
                 onDoubleClick={() => onOpenItem(item.id)}
-                className={item.id === selectedItemId ? 'h-9 bg-muted/60 cursor-pointer' : 'h-9 hover:bg-muted/40 cursor-pointer'}
+                className={item.id === selectedItemId ? 'h-9 bg-muted cursor-pointer' : 'h-9 hover:bg-muted cursor-pointer'}
               >
                 <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(event) => event.stopPropagation()}>
                   <Checkbox
@@ -351,7 +351,7 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button type="button" aria-label="Collection item actions" className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer">
-                        <MoreVertical className="size-4 text-foreground" />
+                        <MoreVertical className="size-4 text-foreground shrink-0" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="text-xs">
@@ -359,7 +359,7 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
                         Open in reader
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onDeleteItem(item.id)} className="text-foreground focus:bg-muted cursor-pointer">
-                        <Trash2 className="size-3.5 text-foreground" /> Move to trash
+                        <Trash2 className="size-3.5 text-foreground shrink-0" /> Move to trash
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -370,7 +370,7 @@ function CollectionTable({ items, collections, selectedItemId, onSelectItem, onD
         </table>
       </div>
       {selectedItemIds.length > 0 && (
-        <div className="flex items-center justify-between border-t border-border/60 px-3 py-2 text-xs">
+        <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs">
           <span className="text-foreground font-medium">{selectedItemIds.length} selected</span>
           <div className="flex items-center gap-2">
             <DropdownMenu>

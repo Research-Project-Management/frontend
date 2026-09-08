@@ -51,9 +51,9 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
               type="button"
               onClick={() => setIsSidebarVisible(true)}
               title="Expand sidebar"
-              className="p-1.5 -ml-1.5 rounded-md text-foreground hover:bg-muted/80 cursor-pointer transition-colors flex items-center justify-center"
+              className="p-1.5 -ml-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors flex items-center justify-center"
             >
-              <PanelLeft className="size-4.5 text-foreground" />
+              <PanelLeft className="size-4.5 text-foreground shrink-0" />
             </button>
           </div>
         )}

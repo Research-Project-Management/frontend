@@ -59,9 +59,9 @@ export default function CyclePage() {
           size="sm"
           onClick={save}
           disabled={!hasChanges || isSaving}
-          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-2xs shrink-0"
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none shrink-0"
         >
-          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
           Save changes
         </Button>
       </div>
@@ -82,7 +82,7 @@ export default function CyclePage() {
         />
 
         {/* Info Callout */}
-        <div className="rounded-lg border border-border/80 bg-muted/20 px-6 py-4">
+        <div className="rounded-lg border border-border bg-muted px-6 py-4">
           <div className="flex gap-3 items-start">
             <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-relaxed">

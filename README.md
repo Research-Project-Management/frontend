@@ -49,12 +49,13 @@ A cloud-native, multi-tenant B2B/Academic SaaS platform with AI integration, eng
 - **Next.js 16** - App Router with Turbopack
 - **React 19** - Latest React with React Server Components support
 - **TypeScript** - Strict type safety
-- **TailwindCSS 4** - Modern utility-first CSS framework
-- **Geist Sans & Geist Mono** - High-density typography with OpenType features (`cv02-cv11`, `tnum`)
+- **TailwindCSS 4** - Modern utility-first CSS framework with CSS-first `@theme` configuration
+- **Inter & IBM Plex Mono** - 100% Plane.so official typography standard via `next/font/google` (zero-CLS, subsets: latin, vietnamese), 13-step scale (9px–40px), 450 body weight, 1.54 line-height, and strict 600 SemiBold UI cap
 
 ### UI & Design System
 
 - **Flat Precision SaaS Architecture** - 4-color foundation (Black, White, Zinc Gray, SaaS Blue)
+- **Strict 100% SaaS Font Weight Cap** - SemiBold (600) for headings/KPIs, Medium (500) for badges/tags/buttons, Regular (450) for body/data tables. No font-bold in UI.
 - **Radix UI** - Accessible headless component primitives
 - **Lucide React** - High-precision icon library with optical centering
 - **shadcn/ui** - Semantic token-based component system

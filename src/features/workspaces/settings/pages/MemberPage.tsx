@@ -106,7 +106,7 @@ export default function WorkspaceMemberPage() {
 
           {/* ── Page title ─────────────────────────────────────────────── */}
           <div className="pt-7 pb-6">
-            <h1 className="text-xl font-bold text-foreground tracking-tight leading-snug">
+            <h1 className="text-xl font-semibold text-foreground tracking-tight leading-snug">
               Members
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">

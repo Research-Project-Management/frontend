@@ -58,12 +58,31 @@ export const formatBytes = (bytes: number, decimals = 1): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${units[i]}`;
 };
 
+// ─── Encoding & Text Normalization ──────────────────────────────────────────
+
+/**
+ * Detects and repairs UTF-8 mojibake (e.g. "Táº¥n ThÃ nh" → "Tấn Thành")
+ * caused by UTF-8 bytes being mistakenly interpreted as Windows-1252 / Latin-1.
+ */
+export const fixMojibake = (str?: string | null): string => {
+  if (!str || typeof str !== 'string') return '';
+  if (!/[\u00C0-\u00FF][\u0080-\u00FF]/.test(str)) return str;
+  try {
+    const bytes = new Uint8Array([...str].map((c) => c.charCodeAt(0) & 0xff));
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return decoded;
+  } catch {
+    return str;
+  }
+};
+
 // ─── User Initials ────────────────────────────────────────────────────────────
 
 export const getInitials = (name?: string | null, max = 2): string => {
-  if (!name || typeof name !== 'string') return 'U';
+  const clean = fixMojibake(name);
+  if (!clean) return 'U';
   return (
-    name
+    clean
       .split(' ')
       .filter(Boolean)
       .slice(0, max)

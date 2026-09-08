@@ -54,6 +54,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     selectionContext,
     pendingNoteText,
     bibtexOpen,
+    fulltext,
+    isLoadingFulltext,
   } = state;
 
   const {
@@ -124,6 +126,8 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               onAskAi={handleAskAi}
               onAddToNote={handleAddToNote}
               onAnnotate={handleAnnotate}
+              fulltext={fulltext}
+              isLoadingFulltext={isLoadingFulltext}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center max-w-lg mx-auto">

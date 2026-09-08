@@ -70,12 +70,12 @@ export default function TopBar({
 
   return (
     <header
-      className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0"
+      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <Layers2 className="size-4 text-foreground" />
-        <h1 className="text-sm font-semibold text-foreground">Stickies</h1>
+        <h1 className="text-sm font-semibold text-foreground tracking-tight">Stickies</h1>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
@@ -221,7 +221,7 @@ export default function TopBar({
                         )}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="size-5 rounded flex items-center justify-center bg-muted text-xs font-bold shrink-0">
+                          <span className="size-5 rounded flex items-center justify-center bg-muted text-xs font-medium shrink-0">
                             {project.name?.charAt(0).toUpperCase() || "P"}
                           </span>
                           <span className="truncate">{project.name}</span>

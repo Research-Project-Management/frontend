@@ -180,7 +180,7 @@ export default function MemberPage() {
     <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Members</h1>
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Members</h1>
       </div>
 
       {/* Top Settings */}

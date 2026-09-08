@@ -8,13 +8,8 @@ import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useUpload } from '@/shared/hooks/use-upload';
 import { useCatalogItems, catalogItemKeys } from './use-items';
 import {
-  fetchReferenceByDoi,
-  searchReferences,
   formatCslCitation,
 } from '../services/citation.service';
-import {
-  RelationService,
-} from '../services/catalog.service';
 import { useUnifiedIngest } from './use-ingest';
 import { useCollections } from './use-collections';
 import { useAsyncJobStatus } from './use-ingest';
@@ -470,29 +465,6 @@ export function useLibrary() {
 export { useCollections } from './use-collections';
 export { useAsyncJobStatus } from './use-ingest';
 
-// ── References & Citation Hooks ──
-
-export function useReferences() {
-  const lookupDoiMutation = useMutation({
-    mutationFn: (doiIdentifier: string) => fetchReferenceByDoi(doiIdentifier),
-  });
-
-  const searchCrossrefMutation = useMutation({
-    mutationFn: (query: string) => searchReferences(query),
-  });
-
-  return {
-    state: {
-      isLookingUp: lookupDoiMutation.isPending,
-      isSearching: searchCrossrefMutation.isPending,
-    },
-    actions: {
-      lookupDoi: lookupDoiMutation.mutateAsync,
-      searchCrossref: searchCrossrefMutation.mutateAsync,
-    },
-  };
-}
-
 export function useCslCitation(
   workspaceId: string,
   paperId: string,
@@ -504,57 +476,6 @@ export function useCslCitation(
     queryFn: () => formatCslCitation(workspaceId, paperId, style, index),
     enabled: Boolean(workspaceId && paperId),
     staleTime: 1000 * 60 * 30,
-  });
-}
-
-// ── Relation & Knowledge Graph Hooks ──
-
-export function useRelatedPapers(workspaceId: string, paperId: string) {
-  return useQuery({
-    queryKey: libraryKeys.relations(workspaceId, paperId),
-    queryFn: () => RelationService.getRelated(workspaceId, paperId),
-    enabled: Boolean(workspaceId && paperId),
-  });
-}
-
-export function useLinkPapers(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      targetPaperId,
-      relationType,
-    }: {
-      targetPaperId: string;
-      relationType?: string;
-    }) => RelationService.link(workspaceId, paperId, targetPaperId, relationType),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.relations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-      toast.success('Related paper linked', { id: 'relation-mutation' });
-    },
-  });
-}
-
-export function useUnlinkPapers(workspaceId: string, paperId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (targetPaperId: string) =>
-      RelationService.unlink(workspaceId, paperId, targetPaperId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.relations(workspaceId, paperId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: libraryKeys.paperBundle(workspaceId, paperId),
-      });
-      toast.success('Related paper unlinked', { id: 'relation-mutation' });
-    },
   });
 }
 

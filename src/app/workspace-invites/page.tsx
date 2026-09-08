@@ -69,7 +69,7 @@ export default function WorkspaceInvitesPage() {
       <main className='flex-1 flex flex-col pt-12 sm:pt-24 px-8 lg:px-86 pb-12 items-start'>
         <div className='w-full max-w-[420px] flex flex-col'>
           <div className='space-y-1.5 mb-12'>
-            <h1 className='text-2xl font-bold tracking-tight'>
+            <h1 className='text-2xl font-semibold tracking-tight'>
               Join Workspace
             </h1>
             <p className='text-muted-foreground'>

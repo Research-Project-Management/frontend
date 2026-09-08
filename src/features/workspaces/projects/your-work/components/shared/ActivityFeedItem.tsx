@@ -76,7 +76,7 @@ export function ActivityFeedItem({
           src={activity.user?.avatar || undefined}
           alt={actorName}
         />
-        <AvatarFallback className="rounded-lg text-xs font-bold bg-muted">
+        <AvatarFallback className="rounded-lg text-xs font-medium bg-muted">
           {actorName.substring(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -88,7 +88,7 @@ export function ActivityFeedItem({
           </span>
           <span className="text-muted-foreground mr-1.5">{actionVerb}</span>
           {activity.targetIdentifier && (
-            <span className="font-bold text-foreground mr-1.5">
+            <span className="font-medium text-foreground mr-1.5 font-mono">
               {activity.targetIdentifier}
             </span>
           )}

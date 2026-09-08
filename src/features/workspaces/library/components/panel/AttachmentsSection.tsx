@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -12,6 +12,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Globe,
 } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import {
@@ -23,8 +24,9 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { getPaperFileUrl } from '@/features/workspaces/library/utils/library.util';
 import { usePdf } from '@/features/workspaces/reader/hooks/use-pdf';
-import { useAttachmentRevisions } from '@/features/workspaces/library/hooks/use-attachments';
-import type { CatalogItem, PaperAttachment } from '@/features/workspaces/library/types/library.types';
+import { useAttachments, useAttachmentRevisions } from '@/features/workspaces/library/hooks/use-attachments';
+import SnapshotViewerModal from '../modals/SnapshotViewerModal';
+import type { CatalogItem, ItemAttachment } from '@/features/workspaces/library/types/library.types';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -233,7 +235,7 @@ interface AttachmentsSectionProps {
   hideHeader?: boolean;
 }
 
-const EMPTY_ATTACHMENTS: PaperAttachment[] = [];
+const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
 export default function AttachmentsSection({
   paper,
@@ -244,16 +246,28 @@ export default function AttachmentsSection({
   const params = useParams();
   const rawWorkspaceId = (workspaceId || (params as any)?.workspaceId || 'ws-default') as string;
 
+  const { captureSnapshot, isCapturingSnapshot } = useAttachments(rawWorkspaceId, paper.id || '');
+  const [activeSnapshot, setActiveSnapshot] = useState<{ url: string; title: string; sourceUrl?: string } | null>(null);
+
   const rawAttachments = paper.attachments || (paper as any).files || EMPTY_ATTACHMENTS;
   const paperUrl = getPaperFileUrl(paper);
 
   const otherAttachments = useMemo(() => {
-    return rawAttachments.filter((att: PaperAttachment | any) => {
+    return rawAttachments.filter((att: ItemAttachment | any) => {
       if (att.attachmentType === 'primary_pdf' || att.type === 'primary_pdf') return false;
       if (paper.filename && (att.filename === paper.filename || att.name === paper.filename)) return false;
       return true;
     });
   }, [rawAttachments, paper.filename]);
+
+  const hasSnapshot = useMemo(() => {
+    return rawAttachments.some(
+      (att: any) =>
+        att.attachmentType === 'web_snapshot' ||
+        att.mimeType === 'text/html' ||
+        att.filename?.toLowerCase().endsWith('.html'),
+    );
+  }, [rawAttachments]);
 
   const handleOpenReader = () => {
     if (!paper.id) return;
@@ -271,7 +285,12 @@ export default function AttachmentsSection({
     document.body.removeChild(a);
   };
 
-  if (!paperUrl && otherAttachments.length === 0) {
+  const handleCaptureSnapshot = async () => {
+    if (!paper.id || !paper.url) return;
+    await captureSnapshot(paper.url);
+  };
+
+  if (!paperUrl && otherAttachments.length === 0 && !paper.url) {
     return null;
   }
 
@@ -349,21 +368,40 @@ export default function AttachmentsSection({
         {/* Other Attachments */}
         {otherAttachments.map((att: any) => {
           const downloadUrl = att.fileUrl || att.url;
+          const isSnapshot =
+            att.attachmentType === 'web_snapshot' ||
+            att.mimeType === 'text/html' ||
+            att.filename?.toLowerCase().endsWith('.html');
+
           return (
             <div
               key={att.id}
-              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60"
+              className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 border border-border/60 transition-colors"
             >
-              <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+              <div
+                className={`flex items-center gap-1.5 min-w-0 flex-1 mr-2 ${isSnapshot ? 'cursor-pointer' : ''}`}
+                onClick={isSnapshot ? () => setActiveSnapshot({
+                  url: downloadUrl,
+                  title: att.filename || paper.title,
+                  sourceUrl: paper.url,
+                }) : undefined}
+              >
                 <div className="size-4 shrink-0 flex items-center justify-center">
-                  <FileText className="size-3.5 text-foreground shrink-0" />
+                  {isSnapshot ? (
+                    <Globe className="size-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  ) : (
+                    <FileText className="size-3.5 text-foreground shrink-0" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-foreground truncate" title={att.filename || att.name}>
                     {att.filename || att.name}
                   </p>
-                  <p className="text-[10px] text-foreground">
-                    {formatSize(att.size)}
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                    {isSnapshot && (
+                      <span className="text-blue-600 dark:text-blue-400 font-medium">Snapshot •</span>
+                    )}
+                    <span>{formatSize(att.size)}</span>
                   </p>
                 </div>
               </div>
@@ -380,8 +418,23 @@ export default function AttachmentsSection({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52 text-xs font-sans">
+                    {isSnapshot && (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setActiveSnapshot({
+                            url: downloadUrl,
+                            title: att.filename || paper.title,
+                            sourceUrl: paper.url,
+                          })
+                        }
+                        className="gap-2 cursor-pointer"
+                      >
+                        <BookOpen className="size-3.5 text-foreground" />
+                        <span>View Snapshot</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
-                      onClick={() => handleDownload(downloadUrl, att.filename || att.name || 'file')}
+                      onClick={() => handleDownload(downloadUrl, att.filename || att.name || (isSnapshot ? 'snapshot.html' : 'file'))}
                       className="gap-2 cursor-pointer"
                     >
                       <Download className="size-3.5 text-foreground" />
@@ -410,6 +463,39 @@ export default function AttachmentsSection({
           );
         })}
       </div>
+
+      {/* Capture Snapshot Action for Web URLs */}
+      {paper.url && (
+        <button
+          type="button"
+          disabled={isCapturingSnapshot}
+          onClick={handleCaptureSnapshot}
+          className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border border-dashed border-border/80 hover:bg-black/5 dark:hover:bg-white/5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          {isCapturingSnapshot ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin text-foreground" />
+              <span>Capturing Web Snapshot...</span>
+            </>
+          ) : (
+            <>
+              <Globe className="size-3.5 text-blue-600 dark:text-blue-400" />
+              <span>{hasSnapshot ? 'Update Web Snapshot' : 'Capture Web Snapshot'}</span>
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Snapshot Viewer Modal */}
+      <SnapshotViewerModal
+        open={Boolean(activeSnapshot)}
+        onOpenChange={(open) => {
+          if (!open) setActiveSnapshot(null);
+        }}
+        snapshotUrl={activeSnapshot?.url || null}
+        title={activeSnapshot?.title || 'Web Snapshot'}
+        sourceUrl={activeSnapshot?.sourceUrl}
+      />
     </div>
   );
 }

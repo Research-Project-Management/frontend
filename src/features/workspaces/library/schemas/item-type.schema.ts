@@ -185,7 +185,6 @@ export const FIELD_DEFINITIONS: Record<string, SchemaFieldDefinition> = {
 
   DOI: { field: 'doi', label: 'DOI', type: 'text', category: 'identifiers', placeholder: '10.xxxx/...', mono: true },
   citationCount: { field: 'citationCount', label: 'Citations', type: 'number', category: 'identifiers', placeholder: 'e.g. 150', mono: true },
-  influentialCitationCount: { field: 'influentialCitationCount', label: 'Influential Citations', type: 'number', category: 'identifiers', placeholder: 'e.g. 25', mono: true },
   ISBN: { field: 'isbn', label: 'ISBN', type: 'text', category: 'identifiers', placeholder: '978-...', mono: true },
   ISSN: { field: 'issn', label: 'ISSN', type: 'text', category: 'identifiers', placeholder: 'xxxx-xxxx', mono: true },
   PMID: { field: 'pmid', label: 'PMID', type: 'text', category: 'identifiers', placeholder: 'e.g. 22745249', mono: true },
@@ -301,7 +300,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'editor', 'translator', 'reviewedAuthor', 'contributor'], 'author'),
     fields: buildFields([
       'publicationTitle', 'volume', 'issue', 'pages', 'date',
-      'series', 'seriesTitle', 'seriesText', 'journalAbbreviation', 'DOI', 'citationCount', 'ISSN', 'PMID', 'PMCID', 'arxivId',
+      'series', 'seriesTitle', 'seriesText', 'journalAbbreviation', 'DOI', 'citationCount', 'citationKey', 'ISSN', 'PMID', 'PMCID', 'arxivId',
       'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
@@ -314,7 +313,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'editor', 'translator', 'seriesEditor', 'contributor'], 'author'),
     fields: buildFields([
       'proceedingsTitle', 'conferenceName', 'place', 'publisher',
-      'volume', 'pages', 'series', 'date', 'DOI', 'citationCount', 'ISBN', 'arxivId',
+      'volume', 'pages', 'series', 'date', 'DOI', 'citationCount', 'citationKey', 'ISBN', 'arxivId',
       'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
@@ -327,7 +326,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'translator'], 'author'),
     fields: buildFields([
       'genre', 'repository', 'archiveId', 'place', 'date', 'series',
-      'seriesNumber', 'DOI', 'citationKey', 'url', 'accessDate',
+      'seriesNumber', 'DOI', 'citationCount', 'citationKey', 'url', 'accessDate',
       'archive', 'archiveLocation', 'shortTitle', 'language',
       'libraryCatalog', 'callNumber', 'rights', 'extra'
     ]),
@@ -340,7 +339,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'translator'], 'author'),
     fields: buildFields([
       'thesisType', 'university', 'place', 'date',
-      'numPages', 'language', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
+      'numPages', 'language', 'shortTitle', 'DOI', 'citationCount', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
   },
@@ -352,7 +351,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'contributor', 'editor', 'reviewedAuthor', 'seriesEditor', 'translator'], 'author'),
     fields: buildFields([
       'reportNumber', 'reportType', 'institution', 'place', 'date',
-      'pages', 'language', 'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
+      'pages', 'language', 'shortTitle', 'DOI', 'citationCount', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
   },
@@ -388,7 +387,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'editor', 'translator', 'seriesEditor', 'contributor'], 'author'),
     fields: buildFields([
       'series', 'seriesNumber', 'volume', 'numberOfVolumes',
-      'edition', 'place', 'publisher', 'date', 'numPages', 'language', 'ISBN',
+      'edition', 'place', 'publisher', 'date', 'numPages', 'language', 'ISBN', 'citationCount', 'citationKey',
       'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
@@ -401,7 +400,7 @@ export const LIBRARY_ITEM_TYPES: Record<string, SchemaItemTypeDefinition> = {
     creatorTypes: buildCreators(['author', 'bookAuthor', 'editor', 'translator', 'seriesEditor', 'contributor'], 'author'),
     fields: buildFields([
       'bookTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes',
-      'edition', 'place', 'publisher', 'date', 'pages', 'language', 'ISBN',
+      'edition', 'place', 'publisher', 'date', 'pages', 'language', 'ISBN', 'citationCount', 'citationKey',
       'shortTitle', 'url', 'accessDate', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber',
       'rights', 'extra'
     ]),
@@ -841,8 +840,6 @@ export const ITEM_TYPE_GROUPS: ItemTypeCategoryGroup[] = [
 export const ITEM_TYPE_DEFINITIONS = LIBRARY_ITEM_TYPES;
 export const ITEM_TYPE_CATEGORIES = ITEM_TYPE_GROUPS;
 export const LIBRARY_ITEM_TYPE_KEYS = Object.keys(LIBRARY_ITEM_TYPES);
-/** @deprecated Use LIBRARY_ITEM_TYPE_KEYS */
-export const ZOTERO_ITEM_TYPES_EXTENDED = LIBRARY_ITEM_TYPE_KEYS;
 
 /**
  * Get Library item-type definition. Returns null for unknown types.
@@ -853,7 +850,3 @@ export function getItemTypeDefinition(itemType?: string | null): SchemaItemTypeD
   return LIBRARY_ITEM_TYPES[itemType] ?? null;
 }
 
-/** @deprecated Use getItemTypeDefinition — silent fallback to journalArticle removed. */
-export function getZoteroItemTypeDefinition(itemType?: string | null): SchemaItemTypeDefinition | null {
-  return getItemTypeDefinition(itemType);
-}

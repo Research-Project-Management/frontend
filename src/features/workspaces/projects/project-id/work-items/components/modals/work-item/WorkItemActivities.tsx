@@ -269,7 +269,7 @@ export function TaskActivities({
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
-          <h3 className="text-base font-bold text-foreground">
+          <h3 className="text-base font-semibold text-foreground">
             Comments & Activity
           </h3>
         </div>
@@ -377,7 +377,7 @@ export function TaskActivities({
                 <div key={item.id} className="flex items-start gap-2.5">
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-muted text-sm font-bold text-foreground">
+                    <AvatarFallback className="bg-muted text-sm font-medium text-foreground">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -532,7 +532,7 @@ export function TaskActivities({
         <DialogContent className="max-w-130 rounded-sm border-0 p-0 shadow-2xl" showCloseButton={false}>
           <div className="p-6">
             <DialogHeader className="space-y-2 text-left">
-              <DialogTitle className="text-lg font-bold text-foreground">
+              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
                 Delete comment?
               </DialogTitle>
               <DialogDescription className="text-sm leading-6 text-muted-foreground">

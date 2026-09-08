@@ -17,7 +17,6 @@ import {
   libraryIntegrityReportSchema,
   asyncIngestionJobSchema,
 } from '../schemas/library.schema';
-import type { ReferenceData } from './reference.types';
 
 // ── Matt Pocock Branded Types ────────────────────────────────────────────────
 declare const __brand: unique symbol;
@@ -38,8 +37,6 @@ export type CreatorCredit = z.infer<typeof creatorCreditSchema>;
 export type Note = z.infer<typeof noteSchema>;
 export type Collection = z.infer<typeof collectionSchema>;
 export type ItemAttachment = z.infer<typeof itemAttachmentSchema>;
-/** @deprecated Use ItemAttachment */
-export type PaperAttachment = ItemAttachment;
 export type PrimaryFile = z.infer<typeof primaryFileSchema>;
 export type Provenance = z.infer<typeof provenanceSchema>;
 export type CatalogItem = z.infer<typeof catalogItemSchema>;
@@ -52,7 +49,58 @@ export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
 export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 export type AsyncIngestionJob = z.infer<typeof asyncIngestionJobSchema>;
 
-export type { ReferenceData };
+export type ReferenceData = {
+  extraFields?: Record<string, any>;
+  title: string;
+  authors?: string[];
+  creators?: Array<{
+    creatorType?: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+  }>;
+  editors?: string[];
+  doi?: string;
+  arxivId?: string;
+  pmid?: string;
+  pmcid?: string;
+  journal?: string;
+  publicationTitle?: string;
+  publicationDate?: string;
+  publisher?: string;
+  place?: string;
+  issn?: string;
+  isbn?: string;
+  volume?: string;
+  issue?: string;
+  section?: string;
+  partNumber?: string;
+  partTitle?: string;
+  pages?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesText?: string;
+  year?: number | string;
+  type?: string;
+  itemType?: string;
+  abstract?: string;
+  url?: string;
+  openAccessPdfUrl?: string;
+  isOpenAccess?: boolean;
+  citationCount?: number | string | null;
+  score?: number;
+  language?: string;
+  journalAbbr?: string;
+  shortTitle?: string;
+  rights?: string;
+  license?: string;
+  libraryCatalog?: string;
+  keywords?: string[];
+  tags?: string[];
+  fieldsOfStudy?: string[];
+  provenance?: any;
+  extra?: string;
+};
 
 // ── DTOs & Mutation Inputs ───────────────────────────────────────────────────
 

@@ -9,7 +9,6 @@ import {
   Layers,
   Settings,
   BookOpen,
-  FileText,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -29,7 +28,8 @@ export default function Sidebar() {
   return (
     <LayoutGroup id={id}>
       <nav
-        className='order-2 flex h-11 shrink-0 items-center justify-around gap-1 rounded-lg border border-border bg-muted p-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:px-0.5 md:py-4'
+        aria-label='Main Navigation'
+        className='order-2 flex h-12 shrink-0 items-center justify-around gap-1 rounded-md border border-border bg-sidebar p-1 md:order-1 md:h-full md:w-12 md:flex-col md:justify-start md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:py-2'
       >
         {NAV_ITEMS.map((item) => {
           const Icon = 'icon' in item ? item.icon : null;
@@ -58,19 +58,18 @@ export default function Sidebar() {
               key={item.label}
               href={fullPath}
               aria-current={isActive ? 'page' : undefined}
-              className={cn(
-                'group relative flex w-full cursor-pointer flex-col items-center justify-center gap-1 rounded-md py-1 select-none outline-none transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 text-foreground'
-              )}
+              className='group relative flex w-full cursor-pointer flex-col items-center justify-center gap-1 select-none outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 text-foreground'
             >
-              <div className={cn(
-                'relative flex size-8.5 shrink-0 items-center justify-center rounded-md transition-colors duration-200',
-                !isActive && 'group-hover:bg-black/5 dark:group-hover:bg-white/5'
-              )}>
+              <div
+                className={cn(
+                  'relative flex size-8.5 shrink-0 items-center justify-center rounded-md transition-colors duration-200',
+                  !isActive && 'group-hover:bg-sidebar-hover'
+                )}
+              >
                 {isActive && (
                   <motion.div
                     layoutId={`sidebar-active-${id}`}
-                    className='absolute inset-0 rounded-md bg-black/10 dark:bg-white/10'
-                    initial={false}
+                    className='absolute inset-0 rounded-md bg-sidebar-accent'
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
@@ -89,7 +88,10 @@ export default function Sidebar() {
               </div>
 
               <span
-                className='relative z-10 whitespace-nowrap text-center text-xs font-medium tracking-tight leading-none text-foreground select-none'
+                className={cn(
+                  'relative z-10 whitespace-nowrap text-center text-11 tracking-tight leading-none select-none text-foreground transition-colors duration-200',
+                  isActive ? 'font-medium' : 'font-normal'
+                )}
               >
                 {item.label}
               </span>
@@ -100,3 +102,5 @@ export default function Sidebar() {
     </LayoutGroup>
   );
 }
+
+

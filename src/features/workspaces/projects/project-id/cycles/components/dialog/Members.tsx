@@ -98,7 +98,7 @@ export const Members = ({ projectData, formMembers, setFormMembers, trigger, isR
                     >
                       <Avatar className="size-7">
                         <AvatarImage src={user.avatar} className="object-cover" />
-                        <AvatarFallback className="bg-muted text-foreground text-xs font-bold flex items-center justify-center">
+                        <AvatarFallback className="bg-muted text-foreground text-xs font-medium flex items-center justify-center">
                           {user.name?.charAt(0).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>

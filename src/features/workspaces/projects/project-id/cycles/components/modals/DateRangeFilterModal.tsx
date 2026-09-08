@@ -91,7 +91,7 @@ export const DoubleCalendarModal = ({
                 <ChevronLeft className="size-4 text-foreground" />
               </Button>
             </div>
-            <span className="text-sm font-bold text-foreground">
+            <span className="text-sm font-semibold text-foreground">
               {format(currentMonth, "MMMM yyyy")}
             </span>
             <div className="flex items-center gap-1">
@@ -106,7 +106,7 @@ export const DoubleCalendarModal = ({
 
           <div className="grid grid-cols-7 mb-2">
             {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(d => (
-              <div key={d} className="text-xs font-bold text-muted-foreground text-center">{d}</div>
+              <div key={d} className="text-xs font-medium text-muted-foreground text-center">{d}</div>
             ))}
           </div>
 
@@ -138,7 +138,7 @@ export const DoubleCalendarModal = ({
                       h-9 w-full flex items-center justify-center text-sm transition-all relative z-10
                       ${isCurrentMonth ? "text-foreground" : "text-muted-foreground/40 pointer-events-none"} font-medium
                       ${isStart || isEnd 
-                        ? "bg-primary text-primary-foreground font-bold shadow-md rounded-md cursor-pointer" 
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs rounded-md cursor-pointer" 
                         : "cursor-pointer hover:bg-muted rounded-md"
                       }
                       ${inRange ? "!rounded-none !bg-primary/15 !text-primary" : ""}
@@ -163,7 +163,7 @@ export const DoubleCalendarModal = ({
             <Button variant="ghost" size="sm" onClick={onCancel} className="h-8 text-foreground hover:bg-muted font-medium px-4 cursor-pointer">
               Cancel
             </Button>
-            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6 shadow-sm transition-all active:scale-95 cursor-pointer">
+            <Button size="sm" onClick={handleApply} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 shadow-xs transition-all active:scale-95 cursor-pointer">
               Apply
             </Button>
           </div>

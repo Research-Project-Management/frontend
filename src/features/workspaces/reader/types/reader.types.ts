@@ -34,6 +34,12 @@ import {
   annotationFormSchema,
   chatMessageFormSchema,
   pageNavFormSchema,
+  documentBoundingBoxSchema,
+  documentSectionSchema,
+  documentFigureSchema,
+  documentTableSchema,
+  documentFormulaSchema,
+  documentFulltextSchema,
 } from '../schemas/reader.schema';
 
 declare const __brand: unique symbol;
@@ -93,6 +99,13 @@ export type NoteFormData = z.infer<typeof noteFormSchema>;
 export type AnnotationFormData = z.infer<typeof annotationFormSchema>;
 export type ChatMessageFormData = z.infer<typeof chatMessageFormSchema>;
 export type PageNavFormData = z.infer<typeof pageNavFormSchema>;
+
+export type DocumentBoundingBox = z.infer<typeof documentBoundingBoxSchema>;
+export type DocumentSection = z.infer<typeof documentSectionSchema>;
+export type DocumentFigure = z.infer<typeof documentFigureSchema>;
+export type DocumentTable = z.infer<typeof documentTableSchema>;
+export type DocumentFormula = z.infer<typeof documentFormulaSchema>;
+export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
 
 export interface StreamPaperOptions {
   selection?: {

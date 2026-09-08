@@ -266,7 +266,7 @@ const TaskRowContent = ({
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
-          <AvatarFallback className="text-xs font-bold bg-muted text-muted-foreground">
+          <AvatarFallback className="text-[10px] font-medium bg-muted text-muted-foreground">
             {assignee.name?.charAt(0) || 'U'}
           </AvatarFallback>
         </Avatar>

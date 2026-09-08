@@ -214,7 +214,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               className={cn(
                 "h-7 rounded-md px-2 text-xs font-mono transition-colors outline-none",
                 opt.state
-                  ? "bg-primary/15 text-primary font-bold"
+                  ? "bg-primary/15 text-primary font-semibold"
                   : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
               )}
             >

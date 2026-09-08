@@ -31,17 +31,17 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   ];
 
   return (
-    <aside className='h-full w-60 flex flex-col justify-between overflow-x-hidden border-r border-border/50 bg-transparent p-2 py-4 max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
+    <aside className='h-full w-60 flex flex-col justify-between overflow-x-hidden border-r border-border/50 bg-transparent p-2.5 py-4 select-none max-md:w-full max-md:border-r-0 max-md:border-b max-md:py-2'>
       <div>
         {/* Header */}
-        <div className='mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground max-md:hidden'>
+        <div className='mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground max-md:hidden'>
           <span>Storage</span>
           <button
             onClick={onToggle}
             aria-label='Toggle Storage Sidebar'
-            className='p-1 hidden rounded-sm cursor-pointer text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring'
+            className='p-1 hidden rounded-md cursor-pointer text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring'
           >
-            <PanelLeftClose className='size-5 text-foreground' />
+            <PanelLeftClose className='size-4 text-foreground' />
           </button>
         </div>
 
@@ -59,27 +59,24 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   key={item.label}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'group/item relative flex h-9.5 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors hover:bg-accent/70 outline-none focus-visible:ring-1 focus-visible:ring-ring max-md:shrink-0 text-foreground',
-                    isActive ? 'font-semibold' : 'font-medium'
+                    'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] leading-5 transition-colors outline-none max-md:shrink-0',
+                    isActive
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'text-foreground hover:bg-muted/70 font-normal'
                   )}
                 >
                   {isActive && (
                     <motion.div
                       layoutId={`storage-nav-active-${id}`}
-                      className='absolute inset-0 rounded-md bg-accent'
+                      className='absolute inset-0 rounded-md bg-muted'
                       initial={false}
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
                   <item.icon
-                    className="relative z-10 size-4 shrink-0 text-foreground"
+                    className='relative z-10 size-4 shrink-0 text-foreground'
                   />
-                  <span
-                    className={cn(
-                      'relative z-10 min-w-0 truncate text-foreground',
-                      isActive ? 'font-semibold' : 'font-medium'
-                    )}
-                  >
+                  <span className='relative z-10 min-w-0 truncate tracking-tight'>
                     {item.label}
                   </span>
                 </Link>

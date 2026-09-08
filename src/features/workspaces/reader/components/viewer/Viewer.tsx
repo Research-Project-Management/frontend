@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { X, Loader2, AlertTriangle, StickyNote, Copy, Check, Highlighter } from 'lucide-react';
 import Toolbar from './Toolbar';
+import DocumentNavDrawer from './DocumentNavDrawer';
+import type { DocumentFulltext } from '../../types/reader.types';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -52,6 +54,8 @@ interface ViewerProps {
   onAskAi: (selectedText: string) => void;
   onAddToNote?: (selectedText: string) => void;
   onAnnotate?: (selectedText: string, pageNumber: number) => void;
+  fulltext?: DocumentFulltext | null;
+  isLoadingFulltext?: boolean;
 }
 
 export default function Viewer({
@@ -62,6 +66,8 @@ export default function Viewer({
   onAskAi,
   onAddToNote,
   onAnnotate,
+  fulltext,
+  isLoadingFulltext,
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -69,6 +75,7 @@ export default function Viewer({
   const [fitWidth, setFitWidth] = useState<boolean>(true);
   const [docLoading, setDocLoading] = useState<boolean>(true);
   const [docError, setDocError] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (blobUrl) {
@@ -140,6 +147,13 @@ export default function Viewer({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  const handleJumpToPage = useCallback(
+    (page: number, _coords?: { x: number; y: number; width: number; height: number }) => {
+      scrollToPage(page);
+    },
+    [scrollToPage],
+  );
+
   // Text selection floating menu
   const handleMouseUp = useCallback(() => {
     const selection = window.getSelection();
@@ -210,6 +224,16 @@ export default function Viewer({
 
   return (
     <div className="relative flex-1 flex flex-col min-w-0 h-full bg-muted/45 overflow-hidden">
+      {/* Structure & Entities Navigation Drawer */}
+      <DocumentNavDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        fulltext={fulltext ?? null}
+        isLoading={!!isLoadingFulltext}
+        currentPage={visiblePage}
+        onJumpToPage={handleJumpToPage}
+      />
+
       {/* Scrollable PDF area */}
       <div
         ref={scrollContainerRef}
@@ -384,6 +408,8 @@ export default function Viewer({
           onZoomChange={(z: number) => { setZoom(z); setFitWidth(false); }}
           onFitWidth={() => setFitWidth(true)}
           loading={!!showLoading}
+          onToggleDrawer={() => setIsDrawerOpen((v) => !v)}
+          isDrawerOpen={isDrawerOpen}
         />
       </div>
     </div>

@@ -110,13 +110,13 @@ export default function CollectionPage() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Top Header */}
-      <header className="flex items-center justify-between border-b border-border/50 bg-background px-6 h-14 shrink-0 select-none">
+      <header className="flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-md px-4 h-12 shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
-          <BookOpen className="size-4.5 text-foreground shrink-0" />
-          <h1 className="text-base font-semibold tracking-tight text-foreground truncate">
+          <BookOpen className="size-4 text-foreground shrink-0" />
+          <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {project?.name ? `${project.name} Collection` : 'Project Collection'}
           </h1>
-          <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded-full bg-muted/60">
+          <span className="text-xs font-mono text-foreground px-2 py-0.5 rounded-full bg-muted/60">
             {filteredPapers.length} {filteredPapers.length === 1 ? 'item' : 'items'}
           </span>
         </div>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -498,7 +498,15 @@ export function useTrash(workspaceId: string) {
 
 // ── 5. Table Sorting & Selection Hook ───────────────────────────────────────
 
-export type SortField = 'title' | 'authors' | 'year' | 'journal' | 'createdAt' | 'lastReadAt';
+export type SortField =
+  | 'title'
+  | 'authors'
+  | 'year'
+  | 'journal'
+  | 'createdAt'
+  | 'lastReadAt'
+  | 'citationCount'
+  | 'itemType';
 export type SortOrder = 'asc' | 'desc';
 
 export interface UseItemTableOptions {
@@ -526,32 +534,32 @@ export function useItemTable({
 
   const handleSort = useCallback((field: SortField) => {
     if (sortField === field) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      setSortOrder((previousOrder) => (previousOrder === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortOrder('asc');
     }
   }, [sortField]);
 
-  const toggleSelect = useCallback((id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+  const toggleSelect = useCallback((itemId: string, clickEvent?: React.MouseEvent) => {
+    if (clickEvent) clickEvent.stopPropagation();
+    setSelectedIds((previousSelectedIds) => {
+      const nextSelectedIds = new Set(previousSelectedIds);
+      if (nextSelectedIds.has(itemId)) {
+        nextSelectedIds.delete(itemId);
       } else {
-        next.add(id);
+        nextSelectedIds.add(itemId);
       }
-      return next;
+      return nextSelectedIds;
     });
   }, []);
 
   const toggleSelectAll = useCallback(() => {
-    setSelectedIds((prev) => {
-      if (prev.size === targetItems.length) {
+    setSelectedIds((previousSelectedIds) => {
+      if (previousSelectedIds.size === targetItems.length) {
         return new Set();
       }
-      return new Set(targetItems.map((item) => item.id));
+      return new Set(targetItems.map((targetItem) => targetItem.id));
     });
   }, [targetItems]);
 
@@ -560,42 +568,55 @@ export function useItemTable({
   }, []);
 
   const sortedItems = useMemo(() => {
-    return [...targetItems].sort((first, second) => {
-      let comparison = 0;
+    return [...targetItems].sort((firstItem, secondItem) => {
+      let comparisonResult = 0;
       switch (sortField) {
         case 'title':
-          comparison = (first.title || '').localeCompare(second.title || '');
+          comparisonResult = (firstItem.title || '').localeCompare(secondItem.title || '');
           break;
         case 'authors':
-          comparison = (first.authors?.[0] || '').localeCompare(second.authors?.[0] || '');
+          comparisonResult = (firstItem.authors?.[0] || '').localeCompare(secondItem.authors?.[0] || '');
+          break;
+        case 'itemType':
+          comparisonResult = (firstItem.itemType || '').localeCompare(secondItem.itemType || '');
           break;
         case 'year':
-          comparison = Number(first.year || 0) - Number(second.year || 0);
+          comparisonResult = Number(firstItem.year || 0) - Number(secondItem.year || 0);
           break;
+        case 'citationCount': {
+          const firstCitationCount = Number(
+            firstItem.citationCount ?? (firstItem.extraFields as Record<string, unknown> | undefined)?.citationCount ?? 0,
+          );
+          const secondCitationCount = Number(
+            secondItem.citationCount ?? (secondItem.extraFields as Record<string, unknown> | undefined)?.citationCount ?? 0,
+          );
+          comparisonResult = firstCitationCount - secondCitationCount;
+          break;
+        }
         case 'journal':
-          comparison = (first.journal || first.publisher || '').localeCompare(
-            second.journal || second.publisher || '',
+          comparisonResult = (firstItem.journal || firstItem.publisher || '').localeCompare(
+            secondItem.journal || secondItem.publisher || '',
           );
           break;
         case 'lastReadAt': {
-          const t1 = new Date(
-            first.lastReadAt || first.accessedAt || first.updatedAt || first.createdAt || 0,
+          const firstTimestamp = new Date(
+            firstItem.lastReadAt || firstItem.accessedAt || firstItem.updatedAt || firstItem.createdAt || 0,
           ).getTime();
-          const t2 = new Date(
-            second.lastReadAt || second.accessedAt || second.updatedAt || second.createdAt || 0,
+          const secondTimestamp = new Date(
+            secondItem.lastReadAt || secondItem.accessedAt || secondItem.updatedAt || secondItem.createdAt || 0,
           ).getTime();
-          comparison = t1 - t2;
+          comparisonResult = firstTimestamp - secondTimestamp;
           break;
         }
         case 'createdAt':
-          comparison =
-            new Date(first.createdAt || 0).getTime() -
-            new Date(second.createdAt || 0).getTime();
+          comparisonResult =
+            new Date(firstItem.createdAt || 0).getTime() -
+            new Date(secondItem.createdAt || 0).getTime();
           break;
         default:
-          comparison = 0;
+          comparisonResult = 0;
       }
-      return sortOrder === 'asc' ? comparison : -comparison;
+      return sortOrder === 'asc' ? comparisonResult : -comparisonResult;
     });
   }, [targetItems, sortField, sortOrder]);
 

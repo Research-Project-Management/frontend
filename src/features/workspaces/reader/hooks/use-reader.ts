@@ -36,6 +36,14 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const paper = (paperQuery.data ?? null) as ReaderDocument | null;
   const isLoadingPapers = paperQuery.isLoading;
 
+  const fulltextQuery = useQuery({
+    queryKey: ['reader', 'fulltext', workspaceId, effectivePaperId],
+    queryFn: () => ItemsService.getFulltext(workspaceId, effectivePaperId),
+    enabled: Boolean(workspaceId && effectivePaperId),
+  });
+  const fulltext = fulltextQuery.data ?? null;
+  const isLoadingFulltext = fulltextQuery.isLoading;
+
   const paperUrl = ItemsService.getPaperFileUrl(paper);
   const {
     blobUrl: pdfBlobUrl,
@@ -220,6 +228,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       selectionContext,
       pendingNoteText,
       bibtexOpen,
+      fulltext,
+      isLoadingFulltext,
     },
     actions: {
       setActivePanel,

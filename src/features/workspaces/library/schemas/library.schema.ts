@@ -40,6 +40,16 @@ export const noteSchema = z.object({
   updatedAt: z.string().optional().default(''),
 });
 
+export const noteResponseSchema = z.object({
+  success: z.boolean(),
+  data: noteSchema,
+});
+
+export const noteListResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.array(noteSchema),
+});
+
 export const itemAttachmentSchema = z.object({
   id: z.string().optional().default(''),
   fileId: z.string().nullable().optional(),
@@ -50,8 +60,6 @@ export const itemAttachmentSchema = z.object({
   attachmentType: z.enum(['primary_pdf', 'supplementary', 'dataset', 'slides', 'code', 'figure', 'other']).optional(),
   uploadedAt: z.string().optional(),
 });
-/** @deprecated Use itemAttachmentSchema */
-export const paperAttachmentSchema = itemAttachmentSchema;
 
 export const primaryFileSchema = z.object({
   fileId: z.string().nullable().optional(),
@@ -134,7 +142,9 @@ export const catalogItemSchema = z.object({
   license: z.string().optional(),
   citationKey: z.string().optional().default(''),
   citationCount: z.union([z.number(), z.string()]).nullish(),
-  influentialCitationCount: z.union([z.number(), z.string()]).nullish(),
+  referenceCount: z.union([z.number(), z.string()]).nullish(),
+  openAccessPdfUrl: z.string().nullish(),
+  date: z.string().optional(),
   edition: z.string().optional(),
   numPages: z.string().optional(),
   numberOfVolumes: z.string().optional(),
@@ -180,7 +190,7 @@ export const catalogItemSchema = z.object({
   notesList: z.array(noteSchema).optional().default([]),
   // File info
   primaryFile: primaryFileSchema.nullish(),
-  attachments: z.array(paperAttachmentSchema).optional().default([]),
+  attachments: z.array(itemAttachmentSchema).optional().default([]),
   fileUrl: z.string().optional().default(''),
   filename: z.string().optional().default(''),
   mimeType: z.string().optional().default(''),
@@ -213,10 +223,6 @@ export const catalogItemSchema = z.object({
   version: z.number().optional().default(1),
   provenance: provenanceSchema.nullish(),
 });
-
-
-/** @deprecated Use catalogItemSchema */
-export const paperSchema = catalogItemSchema;
 
 // ── CSL Citation Formatter Schemas ──────────────────────────────────────────
 export const cslStyleSchema = z.enum([
@@ -302,7 +308,7 @@ export const relatedItemSchema = relatedPaperItemSchema;
 // ── Unified Academic Bundle Schema ──────────────────────────────────────────
 export const catalogItemBundleSchema = z.object({
   item: catalogItemSchema.optional(),
-  paper: paperSchema.optional(),
+  paper: catalogItemSchema.optional(),
   citationApa: formattedCitationSchema,
   citationIeee: formattedCitationSchema,
   annotations: z.array(pdfAnnotationSchema),
@@ -318,7 +324,8 @@ export const duplicateGroupSchema = z.object({
   matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR']),
   confidence: z.enum(['high', 'medium']),
   key: z.string(),
-  papers: z.array(paperSchema),
+  papers: z.array(catalogItemSchema),
+  items: z.array(catalogItemSchema).optional(),
 });
 
 export const libraryIntegrityReportSchema = z.object({

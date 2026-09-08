@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { useHotkeys } from '@/shared/hooks/use-hotkeys';
 import { cn } from '@/shared/lib/utils';
 import { ProjectFilterPopover } from './ProjectFilterPopover';
 import type { Project } from '../../types/project.types';
@@ -48,15 +47,9 @@ export function Topbar({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(Boolean(searchQuery));
 
-  // Shortcut key handling: '/' or 'Cmd/Ctrl+K' focuses search input
-  useHotkeys(['/', 'mod+k'], () => {
-    setIsSearchExpanded(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  });
-
   return (
     <header
-      className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Icon, Title & Project Count */}
@@ -66,7 +59,7 @@ export function Topbar({
           Projects
         </h1>
         {totalProjectsCount !== undefined && totalProjectsCount > 0 && (
-          <span className="text-xs font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
+          <span className="text-xs font-mono tabular-nums px-1.5 py-0.2 rounded-full bg-muted text-foreground border border-border/40 shrink-0">
             {totalProjectsCount}
           </span>
         )}
@@ -157,13 +150,13 @@ export function Topbar({
             asChild
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground hidden sm:inline-flex cursor-pointer"
+            className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-accent hidden sm:inline-flex cursor-pointer"
             title="View archived projects"
           >
             <Link href={`/${workspaceId}/projects/archives`}>
-              <Archive className="size-3.5" />
+              <Archive className="size-3.5 text-foreground" />
               <span>Archives</span>
-              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted">
+              <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted text-foreground">
                 {archivedCount}
               </span>
             </Link>

@@ -246,7 +246,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
       {/* Header Banner */}
       <div className="flex items-center justify-between border-b pb-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground flex items-center gap-2">
             <BookOpen className="size-6 text-primary" />
             Zotero Reference Library Integration
           </h2>
@@ -347,7 +347,7 @@ export function ZoteroConnectionPanel({ workspaceId }: ZoteroConnectionPanelProp
           {/* Active Connection Summary Card */}
           <div className="rounded-xl border bg-card p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+              <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
                 Z
               </div>
               <div>

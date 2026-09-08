@@ -207,7 +207,7 @@ export default function Logs({ log, onClose }: LogsProps) {
               {countOf(tab.key) !== null && (
                 <span
                   className={cn(
-                    'px-1 min-w-4 text-center rounded-full text-xs font-bold leading-4',
+                    'px-1 min-w-4 text-center rounded-full text-xs font-medium tabular-nums leading-4',
                     badgeClass(tab.key),
                   )}
                 >

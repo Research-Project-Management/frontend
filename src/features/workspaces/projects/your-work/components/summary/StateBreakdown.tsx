@@ -59,7 +59,7 @@ export function StateBreakdown({
                     {state.label}
                   </span>
                 </div>
-                <p className="text-lg font-bold text-foreground">{state.count}</p>
+                <p className="text-lg font-semibold tabular-nums tracking-tight text-foreground">{state.count}</p>
               </div>
             ))}
           </div>

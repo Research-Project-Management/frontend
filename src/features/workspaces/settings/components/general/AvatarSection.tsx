@@ -48,7 +48,7 @@ export function AvatarSection({
               referrerPolicy="no-referrer"
             />
           )}
-          <AvatarFallback className="size-full rounded-lg bg-primary text-primary-foreground font-bold text-2xl">
+          <AvatarFallback className="size-full rounded-lg bg-primary text-primary-foreground font-medium text-2xl">
             {initial}
           </AvatarFallback>
         </Avatar>
@@ -65,7 +65,7 @@ export function AvatarSection({
 
       {/* ── Text Details ── */}
       <div className="flex flex-col gap-0.5 min-w-0">
-        <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground truncate">
+        <h2 className="text-base sm:text-lg font-semibold tracking-tight text-foreground truncate">
           {name || 'my-workspace'}
         </h2>
         <p className="text-xs sm:text-sm text-muted-foreground truncate">{slug}</p>

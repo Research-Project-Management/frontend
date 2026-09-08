@@ -34,19 +34,19 @@ export function TopBar({ viewMode, setViewMode, onCreateClick, searchQuery = '',
 
   return (
     <header
-      className="flex items-center justify-between border-b border-border/50 bg-background/80 px-6 h-14 backdrop-blur-md sticky top-0 z-10 shrink-0"
-      style={{ paddingLeft: "max(1.5rem, var(--header-offset, 0px))" }}
+      className="flex items-center justify-between border-b border-border bg-background/80 px-4 h-12 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
+      style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
       <div className="flex items-center gap-2">
-        <PenLine className="size-4 text-foreground/80" />
+        <PenLine className="size-4 text-foreground" />
         <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">All pages</h1>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         {/* Search */}
         <div
           className={cn(
-            "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
-            isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
+            "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
+            isSearchExpanded || searchQuery ? "w-64 border border-border/60 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
           )}
           onClick={!isSearchExpanded ? expandSearch : undefined}
         >

@@ -77,7 +77,7 @@ export function MemberFilter({
             <span>Filters</span>
             {/* Active badge */}
             {hasActiveFilters && (
-              <span className="size-4 rounded-full bg-foreground text-background text-xs font-bold flex items-center justify-center leading-none">
+              <span className="size-4 rounded-full bg-foreground text-background text-[10px] font-medium tabular-nums flex items-center justify-center leading-none">
                 {roleFilter.length}
               </span>
             )}

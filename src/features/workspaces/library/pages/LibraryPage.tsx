@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,7 +10,6 @@ import {
   Inbox,
   Files,
   Trash2,
-  Folder,
   Quote,
   MoreVertical,
   ArrowUp,
@@ -246,12 +245,14 @@ export default function LibraryPage() {
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-background">
           {isLoading && filteredItems.length === 0 ? (
             <div className="p-4 space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-border/40">
+              {Array.from({ length: 8 }).map((_, skeletonIndex) => (
+                <div key={skeletonIndex} className="flex items-center gap-3 py-2 border-b border-border/40">
                   <Skeleton className="size-4 rounded" />
-                  <Skeleton className="h-4 flex-1 max-w-[360px]" />
-                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 flex-1 max-w-[320px]" />
+                  <Skeleton className="h-4 w-28" />
                   <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-14" />
                   <Skeleton className="h-4 w-24" />
                 </div>
               ))}
@@ -293,13 +294,13 @@ export default function LibraryPage() {
               <table className="w-full table-fixed text-left border-collapse">
                 <colgroup>
                   <col className="w-10" />
-                  <col className="w-4/12" />
-                  <col className={activeFilter === 'unfiled' ? "w-4/12" : "w-3/12"} />
-                  <col className="w-1/12" />
+                  <col className={activeFilter === 'unfiled' ? 'w-5/12' : 'w-4/12'} />
+                  <col className={activeFilter === 'unfiled' ? 'w-4/12' : 'w-3/12'} />
+                  <col className="w-[70px]" />
                   {activeFilter !== 'unfiled' && (
-                    <col className="w-2/12" />
+                    <col className="w-3/12" />
                   )}
-                  <col className={activeFilter === 'unfiled' ? "w-3/12" : "w-2/12"} />
+                  <col className={activeFilter === 'unfiled' ? 'w-[120px]' : 'w-[110px]'} />
                   <col className="w-10" />
                 </colgroup>
                 <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border/60 select-none">
@@ -331,10 +332,10 @@ export default function LibraryPage() {
                     </th>
                     <th
                       onClick={() => onColumnSort('year')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer"
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap"
                     >
                       <div className="flex items-center">
-                        <span>Year</span>
+                        <span className="whitespace-nowrap">Year</span>
                         {renderSortIcon('year')}
                       </div>
                     </th>
@@ -359,7 +360,7 @@ export default function LibraryPage() {
                   {sortedItems.map((paper) => {
                     const isSelected = selectedIds.has(paper.id);
                     const isActive = selectedItemId === paper.id;
-                    const authors = normalizeAuthors(paper.authors, (paper as any).creators, (paper as any).contributors);
+                    const authors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
                     const authorCompact = formatCreatorCompact(authors);
                     const authorFull = authors.length > 0 ? authors.join('; ') : '—';
                     const collection = paper.collectionId ? collectionMap[paper.collectionId] : null;
@@ -368,14 +369,14 @@ export default function LibraryPage() {
                       <ContextMenu key={paper.id}>
                         <ContextMenuTrigger asChild>
                           <tr
-                            onClick={(e) => handleRowClick(e, paper)}
-                            onDoubleClick={(e) => handleRowDoubleClick(e, paper)}
+                            onClick={(clickEvent) => handleRowClick(clickEvent, paper)}
+                            onDoubleClick={(clickEvent) => handleRowDoubleClick(clickEvent, paper)}
                             className={cn(
                               'group h-9 transition-colors cursor-pointer border-b border-border/30',
                               isSelected ? 'bg-muted/80' : isActive ? 'bg-muted/50' : 'hover:bg-muted/30',
                             )}
                           >
-                            <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                            <td className="w-10 px-2.5 py-1.5 text-center align-middle" onClick={(clickEvent) => clickEvent.stopPropagation()}>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleSelect(paper.id)}
@@ -403,14 +404,7 @@ export default function LibraryPage() {
 
                             {activeFilter !== 'unfiled' && (
                               <td className="px-3.5 py-1.5 align-middle type-dense font-normal text-foreground truncate">
-                                {collection ? (
-                                  <span className="inline-flex items-center gap-1.5 truncate max-w-full text-foreground" title={collection.name}>
-                                    <Folder className="size-3.5 shrink-0 text-foreground" />
-                                    <span className="truncate">{collection.name}</span>
-                                  </span>
-                                ) : (
-                                  '—'
-                                )}
+                                {collection?.name || '—'}
                               </td>
                             )}
 
@@ -418,7 +412,7 @@ export default function LibraryPage() {
                               {paper.createdAt ? new Date(paper.createdAt).toLocaleDateString('en-US') : '—'}
                             </td>
 
-                            <td className="w-10 px-2 py-1.5 align-middle text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="w-10 px-2 py-1.5 align-middle text-right" onClick={(clickEvent) => clickEvent.stopPropagation()}>
                               <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -483,11 +477,11 @@ export default function LibraryPage() {
           {/* Floating batch action bar for library items */}
           <BatchBar
             selectedCount={selectedIds.size}
-            selectedItems={sortedItems.filter((i) => selectedIds.has(i.id))}
+            selectedItems={sortedItems.filter((tableItem) => selectedIds.has(tableItem.id))}
             collections={collections}
             onClearSelection={clearSelection}
-            onBatchMove={handleBatchMoveItems ? (collectionId) => {
-              handleBatchMoveItems(Array.from(selectedIds), collectionId);
+            onBatchMove={handleBatchMoveItems ? (targetCollectionId) => {
+              handleBatchMoveItems(Array.from(selectedIds), targetCollectionId);
               clearSelection();
             } : undefined}
             onBatchDelete={handleInitiateBatchTrash}

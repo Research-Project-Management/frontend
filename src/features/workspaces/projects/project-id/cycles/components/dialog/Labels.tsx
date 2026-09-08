@@ -77,7 +77,7 @@ const LabelSelect = ({
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-5 custom-scrollbar" onWheel={handleScrollableWheel}>
             <div className="h-10 rounded-md shadow-none w-full flex items-center px-3" style={{ backgroundColor: selectedColor }}>
-              {editingName && <span className="text-xs font-bold text-white truncate max-w-full drop-shadow-sm">{editingName}</span>}
+              {editingName && <span className="text-xs font-medium text-white truncate max-w-full drop-shadow-sm">{editingName}</span>}
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-muted-foreground">Title</Label>
@@ -172,7 +172,7 @@ const LabelSelect = ({
                     className="flex h-10 min-w-0 items-center rounded-md px-3 shadow-none transition-all hover:opacity-85 active:scale-[0.98] cursor-pointer" 
                     style={{ backgroundColor: label.color }}
                   >
-                    <span className="min-w-0 max-w-full truncate text-xs font-bold text-white drop-shadow-sm">{label.name}</span>
+                    <span className="min-w-0 max-w-full truncate text-xs font-medium text-white drop-shadow-sm">{label.name}</span>
                   </button>
                   <Button 
                     variant="ghost" 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -110,32 +110,32 @@ export default function ReferencesPage() {
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-background">
       {/* Top Header */}
-      <header className="flex items-center justify-between border-b border-border/50 bg-background px-6 h-14 shrink-0 select-none">
+      <header className="flex items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-md px-4 h-12 shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
-          <BookOpen className="size-4.5 text-foreground shrink-0" />
-          <h1 className="text-base font-semibold tracking-tight text-foreground truncate">
+          <BookOpen className="size-4 text-foreground shrink-0" />
+          <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
             {project?.name ? `${project.name} References` : 'Project References'}
           </h1>
-          <span className="text-xs font-mono text-muted-foreground px-2 py-0.5 rounded-full bg-muted/60">
+          <span className="text-xs font-mono text-foreground px-2 py-0.5 rounded-full bg-muted/60">
             {filteredPapers.length} {filteredPapers.length === 1 ? 'item' : 'items'}
           </span>
         </div>
 
         {/* Search & Action Buttons */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Search */}
-          <div className="relative flex items-center w-48 sm:w-56 h-8 rounded-md border border-border/50 bg-background/60 hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <div className="relative flex items-center w-48 sm:w-56 h-8 rounded-md border border-border/50 bg-background hover:bg-background focus-within:bg-background focus-within:border-primary/50 transition-colors">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground/80 pointer-events-none" />
             <input
               placeholder="Search references..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-full text-xs py-0 bg-transparent focus:outline-none border-none shadow-none w-full placeholder:text-muted-foreground/60 pl-8 pr-7"
+              className="h-full text-xs py-0 bg-transparent focus:outline-none border-none shadow-none w-full placeholder:text-muted-foreground/60 pl-8 pr-7 text-foreground"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                className="absolute right-2 text-foreground hover:text-foreground cursor-pointer"
                 aria-label="Clear search"
               >
                 <Plus className="size-3.5 rotate-45" />

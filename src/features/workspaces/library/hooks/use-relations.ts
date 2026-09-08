@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { RelationService } from '../services/catalog.service';
+import { RelationService } from '../services/relation.service';
 
 // ── Query Keys ────────────────────────────────────────────────────────────────
 export const relationKeys = {

@@ -63,7 +63,7 @@ export const updateAnnotationSchema = z.object({
 });
 
 export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations']);
-export const readerNavPanelSchema = z.enum(['outline', 'thumbnails']);
+export const readerNavPanelSchema = z.enum(['outline', 'figures', 'tables', 'formulas', 'thumbnails']);
 export const readerFitModeSchema = z.enum(['fit-width', 'fit-page', 'auto', 'custom']);
 export const readerViewModeSchema = z.enum(['single', 'continuous', 'spread']);
 export const readerRotationSchema = z.enum(['0', '90', '180', '270']);
@@ -296,3 +296,64 @@ export const chatMessageFormSchema = z.object({
 export const pageNavFormSchema = z.object({
   page: z.number().int().min(1),
 });
+
+// ── Document Fulltext Structured Schemas ─────────────────────────────────────
+
+export const documentBoundingBoxSchema = z.object({
+  page: z.number(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+
+export const documentSectionSchema = z.object({
+  id: z.string(),
+  num: z.string(),
+  title: z.string(),
+  paragraphs: z.array(z.string()),
+  page: z.number(),
+  coords: documentBoundingBoxSchema.optional(),
+  imradCategory: z.enum(['introduction', 'methods', 'results', 'discussion', 'conclusion', 'other']).default('other'),
+});
+
+export const documentFigureSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  caption: z.string(),
+  page: z.number(),
+  coords: documentBoundingBoxSchema.optional(),
+});
+
+export const documentTableSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  caption: z.string(),
+  page: z.number(),
+  coords: documentBoundingBoxSchema.optional(),
+  headers: z.array(z.string()).optional(),
+  rows: z.array(z.array(z.string())).optional(),
+  markdown: z.string().optional(),
+});
+
+export const documentFormulaSchema = z.object({
+  id: z.string(),
+  label: z.string().optional(),
+  text: z.string(),
+  page: z.number(),
+  coords: documentBoundingBoxSchema.optional(),
+});
+
+export const documentFulltextSchema = z.object({
+  title: z.string().optional(),
+  abstract: z.string().optional(),
+  sections: z.array(documentSectionSchema).default([]),
+  figures: z.array(documentFigureSchema).default([]),
+  tables: z.array(documentTableSchema).default([]),
+  formulas: z.array(documentFormulaSchema).default([]),
+  sectionCount: z.number().optional(),
+  figureCount: z.number().optional(),
+  tableCount: z.number().optional(),
+  formulaCount: z.number().optional(),
+});
+

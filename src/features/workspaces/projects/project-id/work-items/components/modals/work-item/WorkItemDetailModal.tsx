@@ -631,7 +631,7 @@ export function WorkItemDetailModal({
                     </span>
                   )}
                   {card?.identifier && (
-                    <span className="bg-muted px-2 py-0.5 rounded text-xs font-bold text-foreground">
+                    <span className="bg-muted px-2 py-0.5 rounded text-xs font-medium font-mono text-foreground">
                       {card.identifier}
                     </span>
                   )}
@@ -645,7 +645,7 @@ export function WorkItemDetailModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
                 disabled={isReadOnly}
-                className="w-full text-2xl font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-1 -m-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
+                className="w-full text-2xl font-semibold tracking-tight text-foreground outline-none bg-transparent placeholder:text-muted-foreground border-none p-1 -m-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
               />
 
               {/* Task Actions Badges & Toolbars */}
@@ -702,7 +702,7 @@ export function WorkItemDetailModal({
                     {selectedLabelsList.map((l: any) => (
                       <span
                         key={l.id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-bold text-white shadow-xs"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-medium text-white shadow-xs"
                         style={{ backgroundColor: l.color }}
                       >
                         {l.name}

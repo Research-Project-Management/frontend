@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { QualityService } from '../services/catalog.service';
+import { QualityService } from '../services/curation.service';
 import { itemKeys } from './use-items';
 
 export const curationKeys = {

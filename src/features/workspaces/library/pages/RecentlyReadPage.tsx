@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -87,7 +87,7 @@ export default function RecentlyReadPage() {
   const { data: viewData, isLoading } = useViewItems(workspaceId, 'recent', search);
   const recentlyReadItems: CatalogItem[] = Array.isArray(viewData)
     ? viewData
-    : (viewData as any)?.items || [];
+    : (viewData as { items?: CatalogItem[] } | undefined)?.items || [];
 
   const {
     sortedItems,
@@ -253,7 +253,7 @@ export default function RecentlyReadPage() {
                   {sortedItems.map((paper) => {
                     const isSelected = selectedIds.has(paper.id);
                     const isActive = selectedItemId === paper.id;
-                    const authors = normalizeAuthors(paper.authors, (paper as any).creators, (paper as any).contributors);
+                    const authors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
                     const authorCompact = formatCreatorCompact(authors);
                     const authorFull = authors.length > 0 ? authors.join('; ') : '—';
                     const lastReadTimestamp = paper.lastReadAt || paper.accessedAt || paper.updatedAt || paper.createdAt;

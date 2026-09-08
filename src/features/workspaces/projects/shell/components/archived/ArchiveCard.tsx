@@ -67,7 +67,7 @@ export function ArchiveCard({
         {project.avatar ? (
           <span>{project.avatar}</span>
         ) : (
-          <span className="text-sm font-bold text-foreground">
+          <span className="text-sm font-semibold text-foreground">
             {project.name ? project.name.charAt(0).toUpperCase() : 'P'}
           </span>
         )}

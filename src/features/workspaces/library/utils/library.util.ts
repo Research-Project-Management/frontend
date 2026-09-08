@@ -280,11 +280,78 @@ export function formatCreatorCompact(authors?: string[] | null): string {
   if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
   return `${authors[0]} et al.`;
 }
+// ── Academic Tag Normalizer Constants ───────────────────────────────────────
+const ARXIV_CATEGORY_MAP: Record<string, string> = {
+  'cs.ai': 'Computer Science - Artificial Intelligence',
+  'cs.cl': 'Computer Science - Computation and Language',
+  'cs.cv': 'Computer Science - Computer Vision and Pattern Recognition',
+  'cs.lg': 'Computer Science - Machine Learning',
+  'cs.ne': 'Computer Science - Neural and Evolutionary Computing',
+  'cs.ro': 'Computer Science - Robotics',
+  'stat.ml': 'Statistics - Machine Learning',
+  'math.oc': 'Mathematics - Optimization and Control',
+};
+
+const SCIENTIFIC_ACRONYMS = new Set([
+  'AI', 'ML', 'NLP', 'CV', 'CNN', 'RNN', 'LSTM', 'GAN', 'BERT', 'LLM', 'COCO',
+  'YOLO', 'RESNET', 'VGG', 'SVM', 'RL', 'API', 'GPU', 'CPU', 'TPU', 'DNA', 'RNA', 'SGD', 'ADAM',
+]);
+
+const NOISE_TAG_WORDS = new Set([
+  'undefined', 'null', 'n/a', 'na', 'none', 'unknown',
+  'introduction', 'conclusion', 'background', 'paper', 'article',
+]);
+
+function cleanSingleFrontendTag(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  let str = raw
+    .replace(/â€“|â€”/g, '-')
+    .replace(/â€™|â€˜/g, "'")
+    .replace(/â€œ|â€ /g, '"')
+    .replace(/\uFFFD/g, '')
+    .trim();
+
+  const lower = str.toLowerCase();
+  if (ARXIV_CATEGORY_MAP[lower]) return ARXIV_CATEGORY_MAP[lower];
+  if (NOISE_TAG_WORDS.has(lower)) return null;
+
+  str = str
+    .replace(/\s*\([^)]*(?:\)|$)/g, '')
+    .replace(/^(?:keywords?|index terms|categories|subject)[:—\-\s]+/i, '')
+    .replace(/^#+/, '')
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/\.$/, '')
+    .trim();
+
+  if (str.length < 2 || str.length > 60 || /^\d+$/.test(str)) return null;
+  if (NOISE_TAG_WORDS.has(str.toLowerCase())) return null;
+
+  return str
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (SCIENTIFIC_ACRONYMS.has(upper)) return upper;
+      if (word.includes('-')) {
+        return word
+          .split('-')
+          .map((part) => {
+            const partUpper = part.toUpperCase();
+            if (SCIENTIFIC_ACRONYMS.has(partUpper)) return partUpper;
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+          })
+          .join('-');
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
 
 /**
- * Normalizes all tag-like fields on a paper into a deduped, trimmed string array.
- * Merges: tags, labels, keywords, itemTags (Zotero-style join table).
- * Use this everywhere instead of duplicating the 4-source merge pattern.
+ * Normalizes all tag-like fields on a paper into a deduped, trimmed, clean
+ * academic string array.
+ * Cleans mojibake, strips Wikipedia disambiguation suffixes, maps arXiv taxonomy codes,
+ * and formats with Title Case and preserved acronyms.
  */
 export function normalizeTags(paper: Partial<CatalogItem> | null | undefined): string[] {
   if (!paper) return [];
@@ -299,8 +366,19 @@ export function normalizeTags(paper: Partial<CatalogItem> | null | undefined): s
   const seen = new Set<string>();
   const result: string[] = [];
   for (const t of raw) {
-    const s = (typeof t === 'string' ? t : (t as any)?.name ?? '').trim();
-    if (s && !seen.has(s)) { seen.add(s); result.push(s); }
+    const s = typeof t === 'string' ? t : (t as any)?.name ?? '';
+    if (!s) continue;
+    const parts = s.split(/[,;\n\r|•·]/).map((p: string) => p.trim()).filter(Boolean);
+    for (const part of parts) {
+      const cleaned = cleanSingleFrontendTag(part);
+      if (cleaned) {
+        const lowerKey = cleaned.toLowerCase();
+        if (!seen.has(lowerKey)) {
+          seen.add(lowerKey);
+          result.push(cleaned);
+        }
+      }
+    }
   }
   return result;
 }
@@ -709,169 +787,139 @@ const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
   'repository',
   'comment',
   'comments',
+  'tldr',
+  'referencecount',
+  'references',
+  'influentialcitationcount',
+  'influentialcitations',
+  'corpusid',
+  's2paperid',
+  'openaccesspdfurl',
+  'openaccess',
 ]);
 
 /**
- * Canonical key mappings to standard human-readable academic labels (Zotero Extra style).
- */
-const CANONICAL_EXTRA_LABEL_MAP: Readonly<Record<string, string>> = {
-  pmid: 'PMID',
-  pmcid: 'PMCID',
-  mrnumber: 'MR Number',
-  zblnumber: 'Zbl Number',
-};
-
-/**
- * Formats and sanitizes raw extra metadata into clean, human-readable Zotero-style lines (Key: Value).
- * Strips out internal system telemetry, pipeline provenance, duplicate fields that are already displayed
- * in standard fields (such as Citations and arXiv ID), author comments (which are displayed in the Notes tab),
- * and removes redundant "Open Access:" label prefix leaving direct URLs clean for user reading.
+ * Sanitizes and formats Extra metadata for display.
+ * In Zotero, the Extra field contains pure text / custom variables without
+ * artificial headings or redundant labels prepended.
+ *
+ * This function preserves genuine user content, strips out redundant duplicate fields
+ * (such as Title which is already displayed in the main Title field, Cite Key, Open Access URLs),
+ * and eliminates internal telemetry.
  */
 export function formatAndSanitizeExtraMetadata(
   rawExtraMetadata?: string | null,
   additionalExtraFields?: Record<string, unknown> | null,
   associatedPaperItem?: Partial<CatalogItem> | null,
 ): string {
-  const mergedMetadataRecord: Record<string, unknown> = {};
+  if (!rawExtraMetadata || typeof rawExtraMetadata !== 'string') {
+    return '';
+  }
 
-  if (rawExtraMetadata && typeof rawExtraMetadata === 'string') {
-    const trimmedExtraMetadata = rawExtraMetadata.trim();
-    if (trimmedExtraMetadata.startsWith('{')) {
-      try {
-        const parsedMetadataRecord: unknown = JSON.parse(trimmedExtraMetadata);
-        if (
-          typeof parsedMetadataRecord === 'object' &&
-          parsedMetadataRecord !== null &&
-          !Array.isArray(parsedMetadataRecord)
-        ) {
-          Object.assign(
-            mergedMetadataRecord,
-            parsedMetadataRecord as Record<string, unknown>,
-          );
-        }
-      } catch (caughtError) {
-        // Not valid JSON, process as plain text lines below
-      }
-    } else if (trimmedExtraMetadata) {
-      // Plain text multi-line (e.g. Zotero style "Key: Value")
-      const rawLines = trimmedExtraMetadata.split(/\r?\n/);
-      for (const singleLine of rawLines) {
-        let trimmedLine = singleLine.trim();
-        if (!trimmedLine) {
-          continue;
-        }
+  const trimmed = rawExtraMetadata.trim();
+  if (!trimmed) {
+    return '';
+  }
 
-        // If line is a Comment line, discard it as it is already displayed in the Notes tab
-        if (/^comments?:\s*/i.test(trimmedLine)) {
-          continue;
-        }
+  let textContent = trimmed;
 
-        // If line is just "Open Access:" or "Open Access", discard it
-        if (/^open\s*access:?$/i.test(trimmedLine)) {
-          continue;
-        }
-
-        // If line starts with "Open Access: <url>", strip the prefix and keep the url directly
-        if (/^open\s*access:\s*https?:\/\//i.test(trimmedLine)) {
-          trimmedLine = trimmedLine.replace(/^open\s*access:\s*/i, '');
-        }
-
-        const colonIndex = trimmedLine.indexOf(':');
-        // Handle "Key: Value" lines, but avoid splitting URLs like "https://..."
-        if (colonIndex > 0 && !trimmedLine.startsWith('http://') && !trimmedLine.startsWith('https://')) {
-          const lineKey = trimmedLine.slice(0, colonIndex).trim();
-          const lineValue = trimmedLine.slice(colonIndex + 1).trim();
-          mergedMetadataRecord[lineKey] = lineValue;
+  // If rawExtraMetadata is a JSON object string (e.g. from backend serialization)
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        if (typeof parsed._rawExtra === 'string') {
+          textContent = parsed._rawExtra.trim();
         } else {
-          mergedMetadataRecord[trimmedLine] = true;
+          // If JSON contains genuine unmapped custom user properties (not telemetry or schema fields)
+          const customLines: string[] = [];
+          for (const [key, value] of Object.entries(parsed)) {
+            const normKey = key.toLowerCase().replace(/[-_]/g, '');
+            if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normKey)) continue;
+            if (value === null || value === undefined) continue;
+            if (typeof value === 'object') continue;
+            const strVal = String(value).trim();
+            if (!strVal) continue;
+            customLines.push(`${key}: ${strVal}`);
+          }
+          textContent = customLines.join('\n');
         }
       }
+    } catch {
+      // Not valid JSON, process as plain text directly
     }
   }
 
-  if (
-    additionalExtraFields &&
-    typeof additionalExtraFields === 'object' &&
-    !Array.isArray(additionalExtraFields)
-  ) {
-    for (const [metadataKey, metadataValue] of Object.entries(
-      additionalExtraFields,
-    )) {
-      if (
-        metadataValue !== null &&
-        metadataValue !== undefined &&
-        mergedMetadataRecord[metadataKey] === undefined
-      ) {
-        mergedMetadataRecord[metadataKey] = metadataValue;
-      }
-    }
+  if (!textContent) {
+    return '';
   }
 
+  const paperTitle = associatedPaperItem?.title?.trim().toLowerCase();
   const paperUrl = associatedPaperItem?.url?.trim();
   const paperFileUrl = associatedPaperItem?.fileUrl?.trim();
-  const formattedMetadataLines: string[] = [];
+  const paperOaUrl = associatedPaperItem?.openAccessPdfUrl?.trim();
+  const paperCiteKey = associatedPaperItem?.citationKey?.trim().toLowerCase();
 
-  for (const [metadataKey, metadataValue] of Object.entries(
-    mergedMetadataRecord,
-  )) {
-    if (metadataValue === null || metadataValue === undefined) {
-      continue;
-    }
+  const lines = textContent.split(/\r?\n/);
+  const sanitizedLines: string[] = [];
 
-    const normalizedKey = metadataKey.toLowerCase().replace(/[-_]/g, '');
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
 
-    // Skip telemetry or fields already displayed in dedicated inputs (Citations, arXiv, etc.)
-    if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(normalizedKey)) {
-      continue;
-    }
-
-    // Ignore nested complex objects
-    if (typeof metadataValue === 'object') {
-      continue;
-    }
-
-    // Open Access PDF URL: do not repeat "Open Access:", just output the URL directly
-    if (normalizedKey === 'openaccesspdfurl' || normalizedKey === 'openaccess') {
-      const openAccessUrl = String(metadataValue).trim();
-      if (
-        openAccessUrl &&
-        openAccessUrl !== paperUrl &&
-        openAccessUrl !== paperFileUrl
-      ) {
-        formattedMetadataLines.push(openAccessUrl);
-      }
-      continue;
-    }
-
-    // If boolean flag from plain line (e.g. standalone URL or standalone line)
-    if (typeof metadataValue === 'boolean' && metadataValue) {
-      // Discard dangling "Open Access:" lines
-      if (/^open\s*access:?$/i.test(metadataKey)) {
+    // 1. Filter out redundant title lines (Title is already shown at the top of the form)
+    const titleMatch = trimmedLine.match(/^title:\s*(.+)$/i);
+    if (titleMatch) {
+      const lineTitle = titleMatch[1].trim().toLowerCase();
+      if (!paperTitle || lineTitle === paperTitle) {
         continue;
       }
-      const cleanedKey = metadataKey.replace(/^open\s*access:\s*/i, '').trim();
-      if (cleanedKey && cleanedKey !== paperUrl && cleanedKey !== paperFileUrl) {
-        formattedMetadataLines.push(cleanedKey);
+    }
+
+    // 2. Filter out duplicate citation key lines (Cite Key has its own dedicated field)
+    const citeKeyMatch = trimmedLine.match(/^citation\s*key:\s*(.+)$/i);
+    if (citeKeyMatch) {
+      const lineKey = citeKeyMatch[1].trim().toLowerCase();
+      if (!paperCiteKey || lineKey === paperCiteKey) {
+        continue;
       }
+    }
+
+    // 3. Filter out Open Access notices / PDF download URLs (managed under Attachments)
+    if (/^open\s*access:?/i.test(trimmedLine)) {
+      continue;
+    }
+    if (
+      trimmedLine === paperOaUrl ||
+      trimmedLine === paperFileUrl ||
+      trimmedLine === paperUrl
+    ) {
       continue;
     }
 
-    const stringValue = String(metadataValue).trim();
-    if (!stringValue) {
+    // 4. Filter out Comments (managed in Notes tab)
+    if (/^comments?:\s*/i.test(trimmedLine)) {
       continue;
     }
 
-    // If string value is already the same as paper url or file url, avoid duplicating
-    if (stringValue === paperUrl || stringValue === paperFileUrl) {
+    // 5. Filter out TLDR (Semantic Scholar AI summary removed)
+    if (/^tl;?dr:\s*/i.test(trimmedLine)) {
       continue;
     }
 
-    const displayLabel =
-      CANONICAL_EXTRA_LABEL_MAP[normalizedKey] || metadataKey;
+    // 6. Filter out internal telemetry keys
+    const colonIdx = trimmedLine.indexOf(':');
+    if (colonIdx > 0 && !trimmedLine.startsWith('http://') && !trimmedLine.startsWith('https://')) {
+      const k = trimmedLine.slice(0, colonIdx).trim().toLowerCase().replace(/[-_]/g, '');
+      if (EXCLUDED_EXTRA_TELEMETRY_KEYS.has(k)) {
+        continue;
+      }
+    }
 
-    formattedMetadataLines.push(`${displayLabel}: ${stringValue}`);
+    // Preserve the clean content line as-is (no artificial label/title prepended!)
+    sanitizedLines.push(trimmedLine);
   }
 
-  return formattedMetadataLines.join('\n');
+  return sanitizedLines.join('\n');
 }
 

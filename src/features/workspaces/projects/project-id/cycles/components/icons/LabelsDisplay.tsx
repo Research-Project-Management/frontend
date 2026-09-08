@@ -59,7 +59,7 @@ export function LabelsDisplay({
 
       {/* Overflow badge */}
       {hiddenCount > 0 && (
-        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-xs font-bold text-muted-foreground bg-muted">
+        <div className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-sm px-2 text-xs font-medium tabular-nums text-muted-foreground bg-muted">
           +{hiddenCount}
         </div>
       )}

@@ -146,7 +146,7 @@ export default function LandingPage() {
               variants={makeDelayed(0.08)}
               initial='hidden'
               animate='visible'
-              className='text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl'
+              className='text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl'
             >
               The workspace for
               <br />
@@ -219,7 +219,7 @@ export default function LandingPage() {
             animate={featuresReveal.isInView ? 'visible' : 'hidden'}
             className='max-w-2xl mb-14'
           >
-            <h2 id='features-heading' className='text-3xl font-bold lg:text-4xl'>
+            <h2 id='features-heading' className='text-3xl font-semibold tracking-tight lg:text-4xl'>
               Everything your team needs
             </h2>
             <p className='text-muted-foreground mt-3 text-lg leading-relaxed'>
@@ -281,7 +281,7 @@ export default function LandingPage() {
             animate={stepsReveal.isInView ? 'visible' : 'hidden'}
             className='max-w-2xl mb-14'
           >
-            <h2 id='how-heading' className='text-3xl font-bold lg:text-4xl'>
+            <h2 id='how-heading' className='text-3xl font-semibold tracking-tight lg:text-4xl'>
               From idea to publication
             </h2>
           </motion.div>
@@ -322,19 +322,19 @@ export default function LandingPage() {
             className='grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 py-8'
           >
             <motion.div variants={fadeUpBase} className='group space-y-2'>
-              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>99.9%</h3>
+              <h3 className='text-4xl font-semibold tabular-nums tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>99.9%</h3>
               <p className='text-sm font-medium text-muted-foreground'>Uptime</p>
             </motion.div>
             <motion.div variants={fadeUpBase} className='group space-y-2'>
-              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>&lt;1s</h3>
+              <h3 className='text-4xl font-semibold tabular-nums tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>&lt;1s</h3>
               <p className='text-sm font-medium text-muted-foreground'>Compile time</p>
             </motion.div>
             <motion.div variants={fadeUpBase} className='group space-y-2'>
-              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>E2E</h3>
+              <h3 className='text-4xl font-semibold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>E2E</h3>
               <p className='text-sm font-medium text-muted-foreground'>Encrypted</p>
             </motion.div>
             <motion.div variants={fadeUpBase} className='group space-y-2'>
-              <h3 className='text-4xl font-bold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>Free</h3>
+              <h3 className='text-4xl font-semibold tracking-tight transition-transform duration-300 ease-out group-hover:-translate-y-1'>Free</h3>
               <p className='text-sm font-medium text-muted-foreground'>No credit card</p>
             </motion.div>
           </motion.div>
@@ -354,7 +354,7 @@ export default function LandingPage() {
             animate={ctaReveal.isInView ? 'visible' : 'hidden'}
             className='max-w-2xl mx-auto text-center space-y-6'
           >
-            <h2 id='cta-heading' className='text-3xl font-bold lg:text-4xl'>
+            <h2 id='cta-heading' className='text-3xl font-semibold tracking-tight lg:text-4xl'>
               Ready to start?
             </h2>
             <p className='text-lg text-muted-foreground'>

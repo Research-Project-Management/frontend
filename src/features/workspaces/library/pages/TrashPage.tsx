@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import {
@@ -274,7 +274,7 @@ export default function TrashPage() {
                   {sortedItems.map((paper) => {
                     const isSelected = selectedIds.has(paper.id);
                     const isActive = selectedItemId === paper.id;
-                    const authors = normalizeAuthors(paper.authors, (paper as any).creators, (paper as any).contributors);
+                    const authors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
                     const authorCompact = formatCreatorCompact(authors);
                     const authorFull = authors.length > 0 ? authors.join('; ') : '—';
 

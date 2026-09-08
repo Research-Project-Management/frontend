@@ -40,7 +40,7 @@ export function WorkloadCards({
               <span className={cn('size-2.5 rounded-xs shrink-0', state.color)} />
               <span className="text-xs font-medium text-muted-foreground truncate">{state.label}</span>
             </div>
-            <p className="text-xl font-bold text-foreground pl-0.5">{state.count}</p>
+            <p className="text-xl font-semibold tabular-nums tracking-tight text-foreground pl-0.5">{state.count}</p>
           </div>
         ))}
       </div>

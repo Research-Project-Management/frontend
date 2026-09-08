@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState, useMemo, useRef, useCallback, useEffect } from 'react';
@@ -136,7 +136,7 @@ function CollectionNode({
         {isActive && (
           <motion.div
             layoutId={`col-active-${navId}`}
-            className="absolute inset-0 rounded-md bg-accent"
+            className="absolute inset-0 rounded-md bg-muted"
             initial={false}
             transition={{ type: 'spring', stiffness: 500, damping: 35 }}
           />
@@ -161,7 +161,12 @@ function CollectionNode({
           </div>
         ) : (
           <div
-            className="group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-2 transition-colors cursor-pointer select-none text-dense font-medium text-foreground tracking-tight hover:bg-accent/60"
+            className={cn(
+              "group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-2 transition-colors cursor-pointer select-none text-13 leading-5 tracking-tight",
+              isActive
+                ? "bg-muted text-foreground font-medium"
+                : "text-foreground hover:bg-muted font-normal"
+            )}
             style={{ paddingLeft: `${paddingLeft}px` }}
           >
             {hasChildren ? (
@@ -171,10 +176,10 @@ function CollectionNode({
                   setIsOpen((v) => !v);
                 }}
                 aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                className="flex size-4 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-accent transition-colors cursor-pointer"
+                className="flex size-4 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <ChevronRight
-                  className={cn('size-3.5 text-foreground transition-transform duration-150', effectiveIsOpen && 'rotate-90')}
+                  className={cn('size-3.5 transition-transform duration-150', effectiveIsOpen && 'rotate-90')}
                 />
               </button>
             ) : depth > 0 ? (
@@ -183,7 +188,7 @@ function CollectionNode({
 
             <Link
               href={to}
-              className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none text-foreground"
+              className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none"
             >
               {hasChildren && effectiveIsOpen ? (
                 <FolderOpen className="size-4 shrink-0 text-foreground" />
@@ -191,7 +196,7 @@ function CollectionNode({
                 <Folder className="size-4 shrink-0 text-foreground" />
               )}
 
-              <span className="flex-1 min-w-0 truncate text-dense font-medium text-foreground tracking-tight">
+              <span className="flex-1 min-w-0 truncate tracking-tight text-foreground">
                 {node.name}
               </span>
             </Link>
@@ -199,7 +204,7 @@ function CollectionNode({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-accent transition-opacity hover:transition-colors cursor-pointer outline-none"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground opacity-0 group-hover/node:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100 hover:bg-muted transition-opacity hover:transition-colors cursor-pointer outline-none"
                   onClick={(e) => e.stopPropagation()}
                   aria-label={`Options for ${node.name}`}
                 >
@@ -216,7 +221,7 @@ function CollectionNode({
               >
                 <DropdownMenuItem
                   onClick={() => onCreateSub(node.id, node.name)}
-                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                 >
                   <FolderPlus className="size-4 text-foreground shrink-0" />
                   <span>New Subcollection</span>
@@ -224,21 +229,21 @@ function CollectionNode({
 
                 <DropdownMenuItem
                   onClick={() => onStartRename(node.id, node.name)}
-                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                 >
                   <Pencil className="size-4 text-foreground shrink-0" />
                   <span>Rename</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent">
+                  <DropdownMenuSubTrigger className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted">
                     <FolderInput className="size-4 text-foreground shrink-0" />
                     <span>Move to</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-52 p-1.5 rounded-md border border-border/60 bg-popover text-popover-foreground text-xs shadow-none space-y-0.5">
                     <DropdownMenuItem
                       onClick={() => onMove(node.id, null)}
-                      className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                      className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                     >
                       <FolderTree className="size-4 text-foreground shrink-0" />
                       <span>My Library</span>
@@ -247,7 +252,7 @@ function CollectionNode({
                       <DropdownMenuItem
                         key={target.id}
                         onClick={() => onMove(node.id, target.id)}
-                        className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                        className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                       >
                         <Folder className="size-4 text-foreground shrink-0" />
                         <span className="truncate">{target.name}</span>
@@ -257,14 +262,14 @@ function CollectionNode({
                 </DropdownMenuSub>
 
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent">
+                  <DropdownMenuSubTrigger className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted">
                     <Copy className="size-4 text-foreground shrink-0" />
                     <span>Copy to</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-52 p-1.5 rounded-md shadow-none border border-border/60 bg-popover text-popover-foreground text-xs space-y-0.5">
                     <DropdownMenuItem
                       onClick={() => onCopy(node.id, null)}
-                      className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                      className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                     >
                       <FolderTree className="size-4 text-foreground shrink-0" />
                       <span>My Library</span>
@@ -273,7 +278,7 @@ function CollectionNode({
                       <DropdownMenuItem
                         key={target.id}
                         onClick={() => onCopy(node.id, target.id)}
-                        className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                        className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                       >
                         <Folder className="size-4 text-foreground shrink-0" />
                         <span className="truncate">{target.name}</span>
@@ -283,7 +288,7 @@ function CollectionNode({
                 </DropdownMenuSub>
 
                 <DropdownMenuItem
-                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                   onClick={() => onDelete(node.id)}
                 >
                   <FolderMinus className="size-4 text-foreground shrink-0" />
@@ -291,7 +296,7 @@ function CollectionNode({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-accent focus:bg-accent"
+                  className="gap-2.5 px-2.5 py-1.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-sm hover:bg-muted focus:bg-muted"
                   onClick={() => onDeleteWithItems(node.id)}
                 >
                   <Trash2 className="size-4 text-foreground shrink-0" />
@@ -582,13 +587,13 @@ export default function LibrarySideBar() {
         minWidth: '180px',
         maxWidth: '400px',
       }}
-      className="relative h-full overflow-x-hidden border-r border-border/50 bg-transparent p-2 py-4 flex flex-col select-none shrink-0"
+      className="relative h-full overflow-x-hidden border-r border-border/50 bg-transparent p-2.5 py-4 flex flex-col select-none shrink-0"
     >
       {/* Header: Matching Storage/Projects Sidebar with expandable search */}
-      <div className="mb-4 px-2 flex items-center justify-between font-semibold text-lg text-foreground select-none">
+      <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
         {isSearchExpanded || searchQuery ? (
           <div className="relative flex items-center transition-all duration-300 ease-in-out w-full h-8 rounded-md border border-border/60 bg-background/80 overflow-hidden group font-normal text-xs">
-            <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-muted-foreground pointer-events-none" />
+            <Search className="absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 left-2 translate-x-0 text-foreground/80 pointer-events-none" />
             <Input
               ref={searchInputRef}
               autoFocus
@@ -616,15 +621,15 @@ export default function LibrarySideBar() {
                 e.stopPropagation();
               }}
               onClick={handleClearSearch}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground hover:bg-muted transition-colors cursor-pointer p-0.5 rounded-sm"
               aria-label="Clear search"
             >
-              <Plus className="size-3.5 rotate-45" />
+              <Plus className="size-3.5 rotate-45 text-foreground" />
             </button>
           </div>
         ) : (
           <>
-            <span className="truncate min-w-0 font-semibold text-lg text-foreground">Library</span>
+            <span className="truncate min-w-0 font-semibold text-sm tracking-tight text-foreground">Library</span>
 
             <div className="flex items-center gap-0.5 shrink-0">
               {/* Search collections toggle button */}
@@ -632,10 +637,10 @@ export default function LibrarySideBar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={expandSearch}
-                    className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
                     aria-label="Search collections"
                   >
-                    <Search className="size-4 text-foreground shrink-0" />
+                    <Search className="size-4 shrink-0 text-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Search collections</TooltipContent>
@@ -646,10 +651,10 @@ export default function LibrarySideBar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={openCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
                     aria-label="New collection"
                   >
-                    <FolderPlus className="size-4 text-foreground shrink-0" />
+                    <FolderPlus className="size-4 shrink-0 text-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">New collection</TooltipContent>
@@ -661,9 +666,9 @@ export default function LibrarySideBar() {
                   <button
                     onClick={toggle}
                     aria-label="Toggle sidebar"
-                    className="rounded-md p-1.5 text-foreground hover:bg-accent cursor-pointer transition-colors outline-none"
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none"
                   >
-                    <PanelLeft className="size-4 text-foreground shrink-0" />
+                    <PanelLeft className="size-4 shrink-0 text-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Collapse sidebar</TooltipContent>
@@ -683,18 +688,23 @@ export default function LibrarySideBar() {
           <div className="relative group/root flex items-center w-full">
             <Link
               href={basePath}
-              className="group/item relative flex h-8 w-full items-center gap-2 rounded-md px-2.5 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pr-8"
+              className={cn(
+                "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8",
+                isLibraryActive
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-foreground hover:bg-muted font-normal"
+              )}
             >
               {isLibraryActive && (
                 <motion.div
                   layoutId={`library-nav-active-${id}`}
-                  className="absolute inset-0 rounded-md bg-accent"
+                  className="absolute inset-0 rounded-md bg-muted"
                   initial={false}
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
               <Library className="relative z-10 size-4 shrink-0 text-foreground" />
-              <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
+              <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                 My Library
               </span>
             </Link>
@@ -706,7 +716,7 @@ export default function LibrarySideBar() {
                 setIsLibraryExpanded((v) => !v);
               }}
               aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-              className="absolute right-2 z-20 flex size-5 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-accent transition-colors cursor-pointer"
+              className="absolute right-2 z-20 flex size-5 shrink-0 items-center justify-center rounded-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <ChevronRight
                 className={cn(
@@ -723,18 +733,23 @@ export default function LibrarySideBar() {
               {/* 1. Recently Read (First item in My Library) */}
               <Link
                 href={`${basePath}/recently-read`}
-                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isRecentReadActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
               >
                 {isRecentReadActive && (
                   <motion.div
                     layoutId={`library-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-accent"
+                    className="absolute inset-0 rounded-md bg-muted"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
                 <History className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Recently Read
                 </span>
               </Link>
@@ -759,18 +774,23 @@ export default function LibrarySideBar() {
               {/* 2. Duplicate Items */}
               <Link
                 href={`${basePath}/duplicates`}
-                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isDuplicatesActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
               >
                 {isDuplicatesActive && (
                   <motion.div
                     layoutId={`library-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-accent"
+                    className="absolute inset-0 rounded-md bg-muted"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
                 <Files className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Duplicate Items
                 </span>
               </Link>
@@ -778,18 +798,23 @@ export default function LibrarySideBar() {
               {/* 3. Unfiled Items */}
               <Link
                 href={`${basePath}/unfiled`}
-                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isUnfiledActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
               >
                 {isUnfiledActive && (
                   <motion.div
                     layoutId={`library-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-accent"
+                    className="absolute inset-0 rounded-md bg-muted"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
                 <Inbox className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Unfiled Items
                 </span>
               </Link>
@@ -797,18 +822,23 @@ export default function LibrarySideBar() {
               {/* 4. Trash */}
               <Link
                 href={`${basePath}/trash`}
-                className="group/item relative flex h-8 items-center gap-2 rounded-md pr-2 type-dense font-medium text-foreground transition-colors hover:bg-accent/60 outline-none focus-visible:ring-1 focus-visible:ring-ring select-none pl-6"
+                className={cn(
+                  "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
+                  isTrashActive
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-muted font-normal"
+                )}
               >
                 {isTrashActive && (
                   <motion.div
                     layoutId={`library-nav-active-${id}`}
-                    className="absolute inset-0 rounded-md bg-accent"
+                    className="absolute inset-0 rounded-md bg-muted"
                     initial={false}
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
                 <Trash2 className="relative z-10 size-4 shrink-0 text-foreground" />
-                <span className="relative z-10 min-w-0 truncate flex-1 text-foreground">
+                <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                   Trash
                 </span>
               </Link>

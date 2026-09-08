@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { fixMojibake } from '@/shared/utils/format';
 import { ChatAi, Recent, Quicklinks, Stickies } from "../components";
 import { Section } from "../components/layouts/section";
 import { ManageWidgetsModal } from "../components/modals/manage-widgets-modal";
@@ -86,7 +87,7 @@ export default function HomePage() {
     [config],
   );
 
-  const fullName = user?.name;
+  const fullName = fixMojibake(user?.name);
   const greeting = useMemo(() => getGreeting(), []);
   const now = useMemo(() => new Date(), []);
 

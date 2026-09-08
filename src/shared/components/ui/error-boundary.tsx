@@ -102,7 +102,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
           </div>
 
           <div className="space-y-1.5">
-            <h3 className="text-lg font-bold text-foreground">Đã xảy ra sự cố</h3>
+            <h3 className="text-lg font-semibold text-foreground">Đã xảy ra sự cố</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Ứng dụng gặp lỗi không mong muốn trong quá trình kết xuất giao diện.
             </p>

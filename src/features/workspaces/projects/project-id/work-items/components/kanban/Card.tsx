@@ -278,7 +278,7 @@ export function CardUI({
 
           {assignee.user && (
             <div className="shrink-0" title={assignee.user.name}>
-              <Avatar className="size-5 border border-border/80 bg-background text-xs font-bold text-foreground">
+              <Avatar className="size-5 border border-border/80 bg-background text-[10px] font-medium text-foreground">
                 {assignee.avatar ? (
                   <AvatarImage src={assignee.avatar} alt={assignee.user.name} />
                 ) : null}

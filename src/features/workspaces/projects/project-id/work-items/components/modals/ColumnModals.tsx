@@ -77,7 +77,7 @@ export function ColumnFormModal({
       <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border-0 shadow-2xl rounded-sm">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-lg font-bold text-foreground">
+            <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
               {mode === "create" ? "New Column" : "Edit Column"}
             </DialogTitle>
           </DialogHeader>

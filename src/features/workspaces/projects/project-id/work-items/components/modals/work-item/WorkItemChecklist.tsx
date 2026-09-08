@@ -132,7 +132,7 @@ export function ChecklistBlock({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <CheckSquare className="size-5 text-foreground" />
-          <h4 className="text-base font-bold leading-tight text-foreground">
+          <h4 className="text-base font-semibold leading-tight text-foreground">
             {checklist.title}
           </h4>
         </div>

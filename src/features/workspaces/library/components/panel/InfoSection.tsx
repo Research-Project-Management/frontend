@@ -14,8 +14,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { CatalogItem, CreatorCredit } from '@/features/workspaces/library/types/library.types';
 import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId, formatAndSanitizeExtraMetadata } from '@/features/workspaces/library/utils/library.util';
+import { generateCitationKey } from '@/features/workspaces/library/utils/bibtex.util';
 import {
   LIBRARY_ITEM_TYPES,
   getItemTypeDefinition,
@@ -48,7 +49,7 @@ const DIRECT_METADATA_FIELDS = new Set([
   'publisher', 'place', 'volume', 'issue', 'section', 'partNumber', 'partTitle',
   'pages', 'series', 'seriesTitle', 'seriesText', 'issn', 'isbn', 'url', 'type',
   'language', 'shortTitle', 'archive', 'archiveLocation', 'callNumber',
-  'publicationDate', 'libraryCatalog',
+  'publicationDate', 'libraryCatalog', 'journalAbbr',
 ]);
 
 /** Filter out empty, null, undefined, or junk placeholder string values */
@@ -112,28 +113,34 @@ export interface CreatorEntry {
 
 /** Parse & sanitize creators array into structured list */
 function parseCreators(paper: CatalogItem): CreatorEntry[] {
-  const rawCreators = (paper as any).creators || (paper as any).contributors;
+  const rawCreators = paper.creators && paper.creators.length > 0
+    ? paper.creators
+    : paper.contributors;
   if (Array.isArray(rawCreators) && rawCreators.length > 0) {
-    const parsed: CreatorEntry[] = [];
-    for (const c of rawCreators) {
-      const creatorType = c.creatorType || 'author';
-      let name = cleanValue(c.name || c.fullName);
-      const firstName = cleanValue(c.firstName || c.given);
-      const lastName = cleanValue(c.lastName || c.family);
-      if (!name && (firstName || lastName)) {
-        name = [lastName, firstName].filter(Boolean).join(', ');
+    const parsedCreators: CreatorEntry[] = [];
+    for (const rawCreatorItem of rawCreators) {
+      const creatorType = rawCreatorItem.creatorType || 'author';
+      let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
+      const firstName = cleanValue(
+        rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given,
+      );
+      const lastName = cleanValue(
+        rawCreatorItem.lastName || (rawCreatorItem as Record<string, unknown>).family,
+      );
+      if (!creatorName && (firstName || lastName)) {
+        creatorName = [lastName, firstName].filter(Boolean).join(', ');
       }
 
-      if (name) {
-        const parts = splitAuthorString(name);
-        for (const p of parts) {
-          parsed.push({
+      if (creatorName) {
+        const splitNameParts = splitAuthorString(creatorName);
+        for (const authorPart of splitNameParts) {
+          parsedCreators.push({
             creatorType,
-            name: p,
+            name: authorPart,
           });
         }
       } else {
-        parsed.push({
+        parsedCreators.push({
           creatorType,
           name: '',
           firstName,
@@ -141,22 +148,71 @@ function parseCreators(paper: CatalogItem): CreatorEntry[] {
         });
       }
     }
-    if (parsed.length > 0) return parsed;
+    if (parsedCreators.length > 0) return parsedCreators;
   }
 
-  const authors = normalizeAuthors(
+  const normalizedAuthorList = normalizeAuthors(
     paper.authors,
-    (paper as any).creators,
-    (paper as any).contributors,
+    paper.creators,
+    paper.contributors,
   );
-  if (authors.length > 0) {
-    return authors.map((name) => ({
+  if (normalizedAuthorList.length > 0) {
+    return normalizedAuthorList.map((authorName) => ({
       creatorType: 'author',
-      name: name || '',
+      name: authorName || '',
     }));
   }
 
   return [];
+}
+
+/** Compare two creator arrays for semantic equality to prevent redundant mutations */
+function areCreatorsEqual(
+  firstCreators: CreatorEntry[],
+  secondCreators: CreatorEntry[],
+): boolean {
+  const normalizedFirstCreators = firstCreators.filter(
+    (creatorItem) => creatorItem.name.trim().length > 0,
+  );
+  const normalizedSecondCreators = secondCreators.filter(
+    (creatorItem) => creatorItem.name.trim().length > 0,
+  );
+
+  if (normalizedFirstCreators.length !== normalizedSecondCreators.length) {
+    return false;
+  }
+
+  for (let creatorIndex = 0; creatorIndex < normalizedFirstCreators.length; creatorIndex += 1) {
+    const firstCreator = normalizedFirstCreators[creatorIndex];
+    const secondCreator = normalizedSecondCreators[creatorIndex];
+    if (!firstCreator || !secondCreator) {
+      return false;
+    }
+    const firstCreatorRole = firstCreator.creatorType || 'author';
+    const secondCreatorRole = secondCreator.creatorType || 'author';
+    if (firstCreatorRole !== secondCreatorRole) {
+      return false;
+    }
+    const firstCreatorName = firstCreator.name.trim();
+    const secondCreatorName = secondCreator.name.trim();
+    if (firstCreatorName !== secondCreatorName) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/** Convert CreatorEntry items into strongly typed CreatorCredit items for CatalogItem */
+function toCatalogItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] {
+  return creatorEntries.map((creatorEntry, indexPosition) => ({
+    orderIndex: indexPosition,
+    creatorType: creatorEntry.creatorType || 'author',
+    fullName: creatorEntry.name.trim(),
+    name: creatorEntry.name.trim(),
+    firstName: creatorEntry.firstName,
+    lastName: creatorEntry.lastName,
+  }));
 }
 
 /** Clean Inline Editable Text Input (Saves on Enter / Blur, Cancels on Escape, No Placeholders) */
@@ -342,8 +398,8 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   const [localCreators, setLocalCreators] = useState<CreatorEntry[]>(() => parseCreators(paper));
 
   const paperId = paper.id;
-  const paperCreators = (paper as any).creators;
-  const paperContributors = (paper as any).contributors;
+  const paperCreators = paper.creators;
+  const paperContributors = paper.contributors;
   const paperAuthors = paper.authors;
 
   useEffect(() => {
@@ -386,42 +442,79 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
   };
 
   // Creator management
-  const handleUpdateCreatorName = (index: number, newName: string) => {
-    const updated = [...localCreators];
-    if (updated[index]) {
-      updated[index] = { ...updated[index], name: newName };
-      setLocalCreators(updated);
-      const validNames = updated.map((c) => c.name.trim()).filter(Boolean);
-      handleFieldChange('authors', validNames.length ? validNames : undefined);
-      handleFieldChange('creators', updated);
+  const handleUpdateCreatorName = (targetIndex: number, newCreatorName: string) => {
+    const currentCreator = localCreators[targetIndex];
+    if (!currentCreator || currentCreator.name === newCreatorName) {
+      return;
+    }
+    const updatedCreators = [...localCreators];
+    updatedCreators[targetIndex] = { ...currentCreator, name: newCreatorName };
+    setLocalCreators(updatedCreators);
+    const existingCreators = parseCreators(paper);
+    if (areCreatorsEqual(updatedCreators, existingCreators)) {
+      return;
+    }
+    const validAuthorNames = updatedCreators
+      .filter((creatorItem) => (creatorItem.creatorType || 'author') === 'author')
+      .map((creatorItem) => creatorItem.name.trim())
+      .filter(Boolean);
+    if (onUpdatePaper) {
+      onUpdatePaper({
+        authors: validAuthorNames.length ? validAuthorNames : undefined,
+        creators: toCatalogItemCreators(updatedCreators),
+      });
     }
   };
 
-  const handleUpdateCreatorType = (index: number, newType: string) => {
-    const updated = [...localCreators];
-    if (updated[index]) {
-      updated[index] = { ...updated[index], creatorType: newType };
-      setLocalCreators(updated);
-      handleFieldChange('creators', updated);
+  const handleUpdateCreatorType = (targetIndex: number, newCreatorType: string) => {
+    const currentCreator = localCreators[targetIndex];
+    if (!currentCreator) return;
+    const currentRole = currentCreator.creatorType || 'author';
+    if (currentRole === newCreatorType) {
+      return;
+    }
+    const updatedCreators = [...localCreators];
+    updatedCreators[targetIndex] = { ...currentCreator, creatorType: newCreatorType };
+    setLocalCreators(updatedCreators);
+    const existingCreators = parseCreators(paper);
+    if (areCreatorsEqual(updatedCreators, existingCreators)) {
+      return;
+    }
+    const validAuthorNames = updatedCreators
+      .filter((creatorItem) => (creatorItem.creatorType || 'author') === 'author')
+      .map((creatorItem) => creatorItem.name.trim())
+      .filter(Boolean);
+    if (onUpdatePaper) {
+      onUpdatePaper({
+        authors: validAuthorNames.length ? validAuthorNames : undefined,
+        creators: toCatalogItemCreators(updatedCreators),
+      });
     }
   };
 
   const handleAddCreator = (afterIndex?: number) => {
-    const role = typeDefinition.primaryCreatorType || 'author';
-    const insertAt = typeof afterIndex === 'number' ? afterIndex + 1 : localCreators.length;
-    const updated = [...localCreators];
-    updated.splice(insertAt, 0, { creatorType: role, name: '' });
-    setLocalCreators(updated);
+    const primaryRole = typeDefinition.primaryCreatorType || 'author';
+    const insertPosition = typeof afterIndex === 'number' ? afterIndex + 1 : localCreators.length;
+    const updatedCreators = [...localCreators];
+    updatedCreators.splice(insertPosition, 0, { creatorType: primaryRole, name: '' });
+    setLocalCreators(updatedCreators);
     setIsAuthorsExpanded(true);
-    setFocusAuthorIndex(insertAt);
+    setFocusAuthorIndex(insertPosition);
   };
 
-  const handleRemoveCreator = (index: number) => {
-    const updated = localCreators.filter((_, idx) => idx !== index);
-    setLocalCreators(updated);
-    const validNames = updated.map((c) => c.name.trim()).filter(Boolean);
-    handleFieldChange('authors', validNames.length ? validNames : undefined);
-    handleFieldChange('creators', updated.length ? updated : undefined);
+  const handleRemoveCreator = (targetIndex: number) => {
+    const updatedCreators = localCreators.filter((_, creatorIndex) => creatorIndex !== targetIndex);
+    setLocalCreators(updatedCreators);
+    const validAuthorNames = updatedCreators
+      .filter((creatorItem) => (creatorItem.creatorType || 'author') === 'author')
+      .map((creatorItem) => creatorItem.name.trim())
+      .filter(Boolean);
+    if (onUpdatePaper) {
+      onUpdatePaper({
+        authors: validAuthorNames.length ? validAuthorNames : undefined,
+        creators: updatedCreators.length ? toCatalogItemCreators(updatedCreators) : undefined,
+      });
+    }
   };
 
   const displayDoi = cleanDoi(paper.doi);
@@ -456,6 +549,9 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       }
       if (fieldKey === 'arxivId' || fieldKey === 'arXivId' || fieldKey === 'arxiv') {
         return cleanValue(p.arxivId || p.arXivId || p.arxiv || extractArxivId(p.url) || extractArxivId(p.callNumber));
+      }
+      if (fieldKey === 'citationKey' || fieldKey === 'citeKey') {
+        return cleanValue(p.citationKey || generateCitationKey(p));
       }
       if (fieldKey === 'series' || fieldKey === 'seriesTitle') {
         return cleanValue(p.series || p.seriesTitle);
@@ -520,6 +616,12 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       if (fieldKey === 'country') {
         return cleanValue(p.country || p.place || p.extraFields?.country);
       }
+      if (fieldKey === 'citationCount') {
+        const currentCitationCount =
+          paper.citationCount ??
+          (paper.extraFields as Record<string, unknown> | undefined)?.citationCount;
+        return cleanValue(currentCitationCount);
+      }
       return cleanValue(p[fieldKey] ?? p.extraFields?.[fieldKey] ?? p.customFields?.[fieldKey]);
     },
     [paper, displayDoi],
@@ -554,8 +656,17 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
       handleFieldChange('rights', val || undefined);
       handleFieldChange('license', val || undefined);
     } else if (key === 'citationCount') {
-      const parsed = parseInt(val.replace(/,/g, ''), 10);
-      handleFieldChange('citationCount', isNaN(parsed) ? undefined : (parsed as any));
+      const parsedCitationCount = parseInt(val.replace(/,/g, ''), 10);
+      const validCitationCount = isNaN(parsedCitationCount) ? undefined : parsedCitationCount;
+      if (onUpdatePaper) {
+        onUpdatePaper({
+          citationCount: validCitationCount,
+          extraFields: {
+            ...(paper.extraFields as Record<string, unknown> | undefined),
+            citationCount: validCitationCount ?? null,
+          },
+        });
+      }
     } else if (key === 'abstractNote' || key === 'abstract') {
       handleFieldChange('abstract', val || undefined);
       handleFieldChange('abstractNote', val || undefined);
@@ -694,21 +805,45 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
             <input
               type="text"
               aria-label="Author"
-              onBlur={(e) => {
-                const val = e.target.value.trim();
-                if (val) {
-                  handleFieldChange('authors', [val]);
-                  handleFieldChange('creators', [{ name: val, creatorType: 'author' }]);
+              onBlur={(blurEvent) => {
+                const trimmedValue = blurEvent.target.value.trim();
+                const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
+                if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
+                  if (onUpdatePaper) {
+                    onUpdatePaper({
+                      authors: [trimmedValue],
+                      creators: [
+                        {
+                          orderIndex: 0,
+                          creatorType: 'author',
+                          fullName: trimmedValue,
+                          name: trimmedValue,
+                        },
+                      ],
+                    });
+                  }
                 }
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value.trim();
-                  if (val) {
-                    handleFieldChange('authors', [val]);
-                    handleFieldChange('creators', [{ name: val, creatorType: 'author' }]);
+              onKeyDown={(keyboardEvent) => {
+                if (keyboardEvent.key === 'Enter') {
+                  const trimmedValue = (keyboardEvent.target as HTMLInputElement).value.trim();
+                  const existingAuthors = normalizeAuthors(paper.authors, paper.creators, paper.contributors);
+                  if (trimmedValue && (!existingAuthors.length || existingAuthors[0] !== trimmedValue)) {
+                    if (onUpdatePaper) {
+                      onUpdatePaper({
+                        authors: [trimmedValue],
+                        creators: [
+                          {
+                            orderIndex: 0,
+                            creatorType: 'author',
+                            fullName: trimmedValue,
+                            name: trimmedValue,
+                          },
+                        ],
+                      });
+                    }
                   }
-                  (e.target as HTMLInputElement).blur();
+                  (keyboardEvent.target as HTMLInputElement).blur();
                 }
               }}
               className="flex-1 h-7 bg-transparent px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-[12px] leading-[18px] outline-none min-w-0 font-normal font-sans"
@@ -716,8 +851,8 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
           </div>
         ) : (
           <>
-            {visibleCreators.map((creator, idx) => (
-              <div key={idx} className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
+            {visibleCreators.map((creatorEntry, creatorIndex) => (
+              <div key={creatorIndex} className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5 group">
                 {/* Left Role Column */}
                 <div className="flex items-center justify-end min-w-0">
                   <DropdownMenu>
@@ -725,25 +860,25 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                       <button
                         type="button"
                         className="w-full h-7 flex items-center justify-end pr-2 rounded-md text-[12px] leading-[18px] font-normal text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-right"
-                        aria-label={`Change role for creator ${idx + 1}`}
+                        aria-label={`Change role for creator ${creatorIndex + 1}`}
                       >
                         <span className="truncate">
-                          {ALL_CREATOR_TYPES[creator.creatorType] || creator.creatorType || 'Author'}
+                          {ALL_CREATOR_TYPES[creatorEntry.creatorType] || creatorEntry.creatorType || 'Author'}
                         </span>
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-[140px] p-1 rounded-md shadow-none border border-border/60 bg-popover text-popover-foreground space-y-0.5">
-                      {creatorTypesList.map((ct) => (
+                      {creatorTypesList.map((creatorTypeItem) => (
                         <DropdownMenuItem
-                          key={ct.creatorType}
-                          onClick={() => handleUpdateCreatorType(idx, ct.creatorType)}
+                          key={creatorTypeItem.creatorType}
+                          onClick={() => handleUpdateCreatorType(creatorIndex, creatorTypeItem.creatorType)}
                           className={cn(
                             'flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-black/5 dark:hover:bg-white/5',
-                            creator.creatorType === ct.creatorType && 'bg-black/10 dark:bg-white/10 font-medium',
+                            creatorEntry.creatorType === creatorTypeItem.creatorType && 'bg-black/10 dark:bg-white/10 font-medium',
                           )}
                         >
-                          <span className="text-foreground">{ct.label}</span>
-                          {creator.creatorType === ct.creatorType && (
+                          <span className="text-foreground">{creatorTypeItem.label}</span>
+                          {creatorEntry.creatorType === creatorTypeItem.creatorType && (
                             <Check className="size-3 text-foreground shrink-0" aria-hidden="true" />
                           )}
                         </DropdownMenuItem>
@@ -754,40 +889,51 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                 {/* Right Input Column */}
                 <div className="flex items-center gap-1 min-w-0">
                   <input
-                    ref={(el) => {
-                      authorInputRefs.current[idx] = el;
+                    ref={(inputElement) => {
+                      authorInputRefs.current[creatorIndex] = inputElement;
                     }}
                     type="text"
-                    value={creator.name}
-                    aria-label={`Creator ${idx + 1}`}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val.includes(';') || /\s+and\s+/i.test(val) || val.includes('\n')) {
-                        const parts = splitAuthorString(val);
-                        if (parts.length > 1) {
-                          const updated = [...localCreators];
-                          const newEntries = parts.map((p) => ({
-                            creatorType: updated[idx]?.creatorType || 'author',
-                            name: p,
+                    value={creatorEntry.name}
+                    aria-label={`Creator ${creatorIndex + 1}`}
+                    onChange={(changeEvent) => {
+                      const inputValue = changeEvent.target.value;
+                      if (inputValue.includes(';') || /\s+and\s+/i.test(inputValue) || inputValue.includes('\n')) {
+                        const splitParts = splitAuthorString(inputValue);
+                        if (splitParts.length > 1) {
+                          const updatedCreators = [...localCreators];
+                          const newCreatorEntries = splitParts.map((authorNamePart) => ({
+                            creatorType: updatedCreators[creatorIndex]?.creatorType || 'author',
+                            name: authorNamePart,
                           }));
-                          updated.splice(idx, 1, ...newEntries);
-                          setLocalCreators(updated);
+                          updatedCreators.splice(creatorIndex, 1, ...newCreatorEntries);
+                          setLocalCreators(updatedCreators);
                           return;
                         }
                       }
-                      const updated = [...localCreators];
-                      updated[idx] = { ...updated[idx], name: val };
-                      setLocalCreators(updated);
+                      const updatedCreators = [...localCreators];
+                      updatedCreators[creatorIndex] = { ...updatedCreators[creatorIndex], name: inputValue };
+                      setLocalCreators(updatedCreators);
                     }}
                     onBlur={() => {
-                      const validNames = localCreators.map((c) => c.name.trim()).filter(Boolean);
-                      handleFieldChange('authors', validNames.length ? validNames : undefined);
-                      handleFieldChange('creators', localCreators);
+                      const originalCreators = parseCreators(paper);
+                      if (areCreatorsEqual(localCreators, originalCreators)) {
+                        return;
+                      }
+                      const validAuthorNames = localCreators
+                        .filter((creatorItem) => (creatorItem.creatorType || 'author') === 'author')
+                        .map((creatorItem) => creatorItem.name.trim())
+                        .filter(Boolean);
+                      if (onUpdatePaper) {
+                        onUpdatePaper({
+                          authors: validAuthorNames.length ? validAuthorNames : undefined,
+                          creators: toCatalogItemCreators(localCreators),
+                        });
+                      }
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddCreator(idx);
+                    onKeyDown={(keyboardEvent) => {
+                      if (keyboardEvent.key === 'Enter') {
+                        keyboardEvent.preventDefault();
+                        handleAddCreator(creatorIndex);
                       }
                     }}
                     className="flex-1 h-7 bg-transparent px-2 py-[4px] rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-[12px] leading-[18px] outline-none min-w-0 font-normal font-sans"
@@ -796,7 +942,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                   <div className="invisible group-hover:visible flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleAddCreator(idx)}
+                      onClick={() => handleAddCreator(creatorIndex)}
                       className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
                       aria-label="Add creator below"
                     >
@@ -806,7 +952,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                     {localCreators.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveCreator(idx)}
+                        onClick={() => handleRemoveCreator(creatorIndex)}
                         className="size-6 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-foreground cursor-pointer focus-visible:outline-none"
                         aria-label="Remove creator"
                       >
@@ -1000,23 +1146,21 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
         </div>
       )}
 
-      {/* Extra Field */}
-      {isValidValue(formattedExtraMetadata) && (
-        <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">
-          <span
-            className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate pt-1"
-            id="label-extra"
-          >
-            Extra
-          </span>
-          <InlineTextarea
-            value={formattedExtraMetadata}
-            ariaLabel="Extra"
-            rows={Math.min(4, Math.max(1, formattedExtraMetadata.split('\n').length))}
-            onSave={(savedValue) => handleFieldChange('extra', savedValue || undefined)}
-          />
-        </div>
-      )}
+      {/* Extra Field - Always available like native Zotero */}
+      <div className="grid grid-cols-[96px_1fr] gap-1.5 items-start py-0.5">
+        <span
+          className="text-muted-foreground text-right font-normal select-none pr-2 text-[12px] leading-[18px] truncate pt-1"
+          id="label-extra"
+        >
+          Extra
+        </span>
+        <InlineTextarea
+          value={formattedExtraMetadata}
+          ariaLabel="Extra"
+          rows={Math.min(4, Math.max(1, formattedExtraMetadata ? formattedExtraMetadata.split('\n').length : 1))}
+          onSave={(savedValue) => handleFieldChange('extra', savedValue || undefined)}
+        />
+      </div>
 
       {/* Date Added */}
       {isValidValue(paper.createdAt) && (

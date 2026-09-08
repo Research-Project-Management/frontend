@@ -9,10 +9,12 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  ListTree,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { cn } from '@/shared/lib/utils';
 import { pageNavFormSchema } from '../../schemas/reader.schema';
 import type { PageNavFormData } from '../../types/reader.types';
 
@@ -24,6 +26,8 @@ interface PdfViewerToolbarProps {
   onZoomChange: (zoom: number) => void;
   onFitWidth: () => void;
   loading: boolean;
+  onToggleDrawer?: () => void;
+  isDrawerOpen?: boolean;
 }
 
 export default function PdfViewerToolbar({
@@ -34,6 +38,8 @@ export default function PdfViewerToolbar({
   onZoomChange,
   onFitWidth,
   loading,
+  onToggleDrawer,
+  isDrawerOpen,
 }: PdfViewerToolbarProps) {
   const { register, handleSubmit, reset } = useForm<PageNavFormData>({
     resolver: zodResolver(pageNavFormSchema),
@@ -69,6 +75,26 @@ export default function PdfViewerToolbar({
       <div className="flex w-full select-none items-center justify-between text-xs text-foreground">
         {/* Page navigation */}
         <div className="flex items-center gap-1">
+          {onToggleDrawer ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'size-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none',
+                    isDrawerOpen && 'bg-muted text-primary',
+                  )}
+                  onClick={onToggleDrawer}
+                  aria-label="Toggle Outline & Entities Drawer"
+                >
+                  <ListTree className="size-3.5 shrink-0" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">Outline & Entities</TooltipContent>
+            </Tooltip>
+          ) : null}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

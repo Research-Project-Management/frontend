@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -7,8 +7,7 @@ import {
   AttachmentsService,
   type AttachmentDto,
 } from '../services/attachment.service';
-import { CatalogItemService } from '../services/catalog.service';
-import type { ItemAttachment, PaperAttachment } from '../types/library.types';
+import type { ItemAttachment } from '../types/library.types';
 
 // ── Query Keys ────────────────────────────────────────────────────────────────
 export const attachmentKeys = {
@@ -33,8 +32,8 @@ export function useAttachments(workspaceId: string, itemId: string) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data: Partial<PaperAttachment>) =>
-      CatalogItemService.addAttachment(workspaceId, itemId, data),
+    mutationFn: (data: Partial<ItemAttachment>) =>
+      AttachmentsService.createAttachment(workspaceId, itemId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(workspaceId, itemId),
@@ -66,6 +65,26 @@ export function useAttachments(workspaceId: string, itemId: string) {
     },
   });
 
+  const captureSnapshotMutation = useMutation({
+    mutationFn: (url?: string) =>
+      AttachmentsService.captureSnapshot(workspaceId, itemId, url),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.byItem(workspaceId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['catalog-items'],
+      });
+      toast.success('Web Snapshot captured', { id: 'snapshot-mutation' });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to capture snapshot', {
+        description: err?.message || 'Please verify the URL is accessible.',
+        id: 'snapshot-mutation',
+      });
+    },
+  });
+
   return {
     attachments: attachmentsQuery.data ?? [],
     isLoading: attachmentsQuery.isLoading,
@@ -73,8 +92,10 @@ export function useAttachments(workspaceId: string, itemId: string) {
     // Mutations
     add: addMutation.mutateAsync,
     remove: deleteMutation.mutateAsync,
+    captureSnapshot: captureSnapshotMutation.mutateAsync,
     isAdding: addMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isCapturingSnapshot: captureSnapshotMutation.isPending,
   };
 }
 

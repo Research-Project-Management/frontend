@@ -86,17 +86,47 @@ export async function deleteAttachment(
   return response.success;
 }
 
+export async function captureSnapshot(
+  workspaceId: string,
+  itemId: string,
+  url?: string,
+): Promise<AttachmentDto> {
+  const response = await apiPost<{ attachment: AttachmentDto } | AttachmentDto>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments/snapshot`,
+    url ? { url } : {},
+  );
+  return (response as any).attachment ?? response;
+}
+
+export async function createAttachment(
+  workspaceId: string,
+  itemId: string,
+  data: any,
+): Promise<any> {
+  const response = await apiPost<any>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
+    data,
+  );
+  return response;
+}
+
 export const AttachmentsService = {
   getAttachments,
   getAttachment,
   getAttachmentRevisions,
   addRevision,
   deleteAttachment,
+  createAttachment,
+  addAttachment: createAttachment,
+  captureSnapshot,
   // Ergonomic aliases
   list: getAttachments,
   get: getAttachment,
   revisions: getAttachmentRevisions,
   delete: deleteAttachment,
+  add: createAttachment,
+  create: createAttachment,
 };
+
 
 export const AttachmentService = AttachmentsService;

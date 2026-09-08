@@ -1,18 +1,19 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter, IBM_Plex_Mono } from 'next/font/google';
 import { Toaster } from '@/shared/components/ui/sonner';
 import '@/shared/styles/globals.css';
 import Providers from './providers';
 
-const geistSans = Geist({
+const inter = Inter({
+  subsets: ['latin', 'vietnamese'],
   variable: '--font-sans',
-  subsets: ['latin'],
   display: 'swap',
 });
 
-const geistMono = Geist_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-mono',
-  subsets: ['latin'],
   display: 'swap',
 });
 
@@ -41,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
       <body

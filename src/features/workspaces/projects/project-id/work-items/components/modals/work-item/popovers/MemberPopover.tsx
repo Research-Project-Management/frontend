@@ -100,7 +100,7 @@ export function MemberPopover({
                   >
                     <Avatar className="size-6">
                       <AvatarImage src={uAvatar} />
-                      <AvatarFallback className="text-xs font-bold">{fallback}</AvatarFallback>
+                      <AvatarFallback className="text-xs font-medium">{fallback}</AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground flex-1 truncate">{uName}</span>
                     {assigneeId === memberUserId && <Check className="size-4 text-foreground" />}

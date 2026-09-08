@@ -260,7 +260,7 @@ export default function Format() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded text-xs font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-95 outline-none">
-                    <span className="text-xs font-bold">Env</span>
+                    <span className="text-xs font-medium">Env</span>
                     <ChevronDown className="size-3 shrink-0 opacity-60" />
                   </button>
                 </DropdownMenuTrigger>

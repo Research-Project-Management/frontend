@@ -48,7 +48,7 @@ export default function Navbar() {
             aria-label='Flux home'
           >
             <img src='/Flux.svg' className='h-8 w-auto object-contain' alt='' aria-hidden='true' />
-            <span className='font-bold text-lg tracking-tight'>Flux</span>
+            <span className='font-semibold text-lg tracking-tight'>Flux</span>
           </Link>
 
           {/* Desktop Actions */}

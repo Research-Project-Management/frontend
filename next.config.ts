@@ -22,7 +22,6 @@ const nextConfig: NextConfig = {
       use: ['@svgr/webpack'],
     });
 
-
     config.resolve.alias = {
       ...config.resolve.alias,
       'pdfjs-dist$': 'pdfjs-dist/build/pdf.min.mjs',
@@ -112,7 +111,10 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const backendUrl =
+      process.env.INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:3000';
     return [
       {
         source: '/api/:path*',

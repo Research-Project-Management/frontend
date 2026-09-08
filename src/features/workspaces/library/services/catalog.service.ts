@@ -1,15 +1,11 @@
-import { apiGet, apiPost, apiPut, apiPatch, apiDelete, getAuthToken } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
 import type {
-  Collection,
   CatalogItem,
   CatalogItemBundle,
   ItemAttachment,
-  IngestItemDTO,
-  RelatedItem,
-  DuplicateGroup,
-  LibraryIntegrityReport,
 } from "@/features/workspaces/library/types/library.types";
+import { AttachmentsService } from './attachment.service';
 
 // ── Payload sanitization ──────────────────────────────────────────────────────
 const VALID_ITEM_PAYLOAD_KEYS = new Set([
@@ -38,7 +34,7 @@ const VALID_ITEM_PAYLOAD_KEYS = new Set([
   // Collection targeting
   'collectionId', 'collectionIds',
   // Citation metrics
-  'citationCount', 'influentialCitationCount',
+  'citationCount',
   // Type-specific fields across 37 item types
   'edition', 'numPages', 'numberOfVolumes', 'bookTitle', 'proceedingsTitle',
   'conferenceName', 'eventPlace', 'websiteTitle', 'websiteType',
@@ -333,30 +329,17 @@ export const CatalogItemService = {
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/purge`,
     ),
 
-  ingest: (workspaceId: string, data: IngestItemDTO) =>
-    apiPost<{ item: CatalogItem }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/ingestion`,
-      data,
-    ),
-
   addAttachment: (
     workspaceId: string,
     itemId: string,
-    data: Partial<ItemAttachment>
-  ) =>
-    apiPost<{ item: CatalogItem }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
-      data
-    ),
+    data: Partial<ItemAttachment>,
+  ) => AttachmentsService.createAttachment(workspaceId, itemId, data),
 
   deleteAttachment: (
     workspaceId: string,
     itemId: string,
-    attachmentId: string
-  ) =>
-    apiDelete<{ item: CatalogItem }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}`
-    ),
+    attachmentId: string,
+  ) => AttachmentsService.deleteAttachment(workspaceId, attachmentId),
 
   importFromStorage: (
     workspaceId: string,
@@ -413,115 +396,10 @@ export const CatalogItemService = {
     fetchPdfBlob(url, signal),
 };
 
-// ── Item Relations ────────────────────────────────────────────────────────────
-
-export const RelationService = {
-  getRelated: (workspaceId: string, itemId: string) =>
-    apiGet<{ relatedPapers: RelatedItem[]; relatedItems?: RelatedItem[]; total: number }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/relations`,
-    ).then((res) => ({
-      relatedItems: res.relatedItems || res.relatedPapers || [],
-      relatedPapers: res.relatedPapers || res.relatedItems || [],
-      total: res.total || (res.relatedItems || res.relatedPapers || []).length,
-    })),
-
-  link: (
-    workspaceId: string,
-    itemId: string,
-    targetItemId: string,
-    relationType: string = 'related',
-  ) =>
-    apiPost<{ message: string; relationType: string }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/relations`,
-      { targetItemId, targetPaperId: targetItemId, relationType },
-    ),
-
-  unlink: (workspaceId: string, itemId: string, targetItemId: string) =>
-    apiDelete<{ message: string }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/relations/${encodeURIComponent(targetItemId)}`,
-    ),
-};
-
-// ── Item Curation & Quality ───────────────────────────────────────────────────
-
-export interface RawDuplicateCluster {
-  clusterId: string;
-  matchReason: string;
-  confidence: number;
-  items: Array<{
-    id: string;
-    title: string;
-    doi?: string;
-    year?: number | null;
-    authors?: string[];
-    citationKey?: string;
-    collectionId?: string | null;
-  }>;
-}
-
-export const QualityService = {
-  getDuplicates: async (workspaceId: string) => {
-    const res = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/duplicates`,
-    );
-
-    const clusters: RawDuplicateCluster[] = Array.isArray(res)
-      ? res
-      : res?.data || res?.clusters || [];
-
-    const duplicateGroups: DuplicateGroup[] = clusters.map((c) => ({
-      matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
-      confidence: c.confidence >= 1 ? 'high' : 'medium',
-      key: c.clusterId,
-      papers: (c.items || []).map((it) => ({
-        id: it.id,
-        title: it.title,
-        doi: it.doi || '',
-        authors: it.authors || [],
-        year: it.year || null,
-        citationKey: it.citationKey || '',
-        collectionId: it.collectionId || null,
-      })) as any,
-    }));
-
-    return {
-      duplicateGroups,
-      totalDuplicates: duplicateGroups.reduce(
-        (acc, g) => acc + (g.papers?.length || 0),
-        0,
-      ),
-    };
-  },
-
-  mergePapers: (
-    workspaceId: string,
-    masterPaperId: string,
-    sourcePaperIds: string[],
-    fieldSelections?: Record<string, any>,
-  ) =>
-    apiPost<{
-      success: boolean;
-      data: {
-        masterPaper: CatalogItem;
-        mergedCount: number;
-        softDeletedPaperIds: string[];
-      };
-      masterPaper?: CatalogItem;
-      mergedCount?: number;
-      softDeletedPaperIds?: string[];
-    }>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/merge`,
-      {
-        primaryItemId: masterPaperId,
-        duplicateItemIds: sourcePaperIds,
-        fieldSelections,
-      },
-    ),
-
-  getIntegrityReport: async (workspaceId: string): Promise<LibraryIntegrityReport> => {
-    const res = await apiGet<any>(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/curation/integrity`,
-    );
-    return res?.data || res;
-  },
-};
+// ── Item Relations & Curation (Re-exported from standalone services) ─────────
+export { RelationService } from './relation.service';
+export {
+  QualityService,
+  CurationService,
+  type RawDuplicateCluster,
+} from './curation.service';

@@ -1,5 +1,5 @@
 import { apiGet, apiPatch, apiPost, getAuthToken } from '@/shared/lib/api';
-import type { ReaderDocument } from '../types/reader.types';
+import type { ReaderDocument, DocumentFulltext } from '../types/reader.types';
 
 // API base resolution
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -203,5 +203,19 @@ export const ItemsService = {
       {},
     );
     return raw?.data || raw || { success: true };
+  },
+
+  getFulltext: async (
+    workspaceId: string,
+    itemId: string,
+  ): Promise<DocumentFulltext | null> => {
+    try {
+      const raw = await apiGet<any>(
+        `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/fulltext`,
+      );
+      return raw?.data || raw || null;
+    } catch {
+      return null;
+    }
   },
 };

@@ -41,20 +41,21 @@ export function MemberPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-6.5 px-2 text-[11px] font-medium rounded-md border border-border/60 bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
             open && 'bg-muted border-border'
           )}
         >
-          <UserPlus className="size-3 text-foreground" />
+          <UserPlus className="size-3.5 text-muted-foreground" />
           <span>Members</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        sideOffset={-14}
-        className="w-72 rounded-sm p-0 shadow-xl border-border/50 flex flex-col z-100"
+        sideOffset={6}
+        collisionPadding={16}
+        className="w-72 rounded-lg p-0 shadow-2xl border-border/70 flex flex-col z-100 bg-popover max-h-[min(480px,calc(100vh-80px))] overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           <span className="text-sm font-semibold text-center flex-1 text-foreground">Members</span>

@@ -60,20 +60,21 @@ export function LabelPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-6.5 px-2 text-[11px] font-medium rounded-md border border-border/60 bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
             isOpen && 'bg-muted border-border'
           )}
         >
-          <Tag className="size-3 text-foreground" />
+          <Tag className="size-3.5 text-muted-foreground" />
           <span>Labels</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        sideOffset={-14}
-        className="w-80 p-0 rounded-sm shadow-xl border-border/50 overflow-hidden flex flex-col z-100 bg-popover"
+        sideOffset={6}
+        collisionPadding={16}
+        className="w-80 p-0 rounded-lg shadow-2xl border-border/70 overflow-hidden flex flex-col z-100 bg-popover max-h-[min(500px,calc(100vh-80px))]"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           {view !== 'list' && (

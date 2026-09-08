@@ -336,14 +336,13 @@ export function SplitView({
                         <button
                           type="button"
                           disabled={isReadOnly}
-                          className="h-6.5 text-[11px] font-semibold border border-border/60 bg-muted/50 hover:bg-muted rounded-md px-2 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none min-w-20"
+                          className="h-7 text-xs font-medium border border-border/70 bg-muted/50 hover:bg-muted rounded-md px-2.5 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none shrink-0"
                         >
                           <span
                             className="size-2 rounded-full shrink-0"
                             style={{ backgroundColor: activeColColor }}
                           />
                           <span className="truncate">{activeCol?.title || activeTask.columnId}</span>
-                          <ChevronDown className="size-3 text-muted-foreground opacity-60 ml-0.5 shrink-0" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-50">

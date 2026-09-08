@@ -23,6 +23,7 @@ import {
   Terminal,
   Check,
   Zap,
+  ChevronDown,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useUpload } from "@/shared/hooks/use-upload";
@@ -50,6 +51,7 @@ import type {
 } from '../../../types/work-item.types';
 import {
   resolveTaskColumnId,
+  resolveTaskColumnColor,
 } from "../../../types/work-item.types";
 import {
   useTaskComments,
@@ -166,6 +168,7 @@ export function WorkItemDetailModal({
   const [dragActive, setDragActive] = useState(false);
 
   const taskId = card?.id || null;
+  const isCreating = !taskId;
   const currentUserId = currentUser?.id || null;
   const isCurrentUserAssignee = Boolean(currentUserId && assigneeId === currentUserId);
   const canComment = Boolean(taskId);
@@ -327,8 +330,13 @@ export function WorkItemDetailModal({
     onSave(payload);
   }, [isReadOnly, taskId, onSave]);
 
+  const handleCreate = useCallback(() => {
+    if (!title.trim() || isReadOnly) return;
+    onSave(currentPayload);
+  }, [title, isReadOnly, onSave, currentPayload]);
+
   useEffect(() => {
-    if (!open || isReadOnly) return;
+    if (!open || isReadOnly || isCreating) return;
 
     if (!autosaveReadyRef.current) {
       autosaveReadyRef.current = true;
@@ -336,7 +344,6 @@ export function WorkItemDetailModal({
     }
 
     if (!hasUnsavedChanges) return;
-    if (!taskId && !currentPayload.title?.trim()) return;
 
     const payloadSnapshot = TaskHelpers.createSnapshot(currentPayload);
     if (payloadSnapshot === autosaveSignatureRef.current) return;
@@ -347,7 +354,7 @@ export function WorkItemDetailModal({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [open, hasUnsavedChanges, currentPayload, isReadOnly, safeSave, taskId]);
+  }, [open, hasUnsavedChanges, currentPayload, isReadOnly, safeSave, isCreating]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -363,19 +370,19 @@ export function WorkItemDetailModal({
 
   const handleColumnChange = (newColId: string) => {
     setColumnId(newColId);
-    safeSave({ ...currentPayload, columnId: newColId });
+    if (!isCreating) safeSave({ ...currentPayload, columnId: newColId });
   };
 
   const handleJoinTask = () => {
     if (!currentUserId || isReadOnly) return;
     setAssigneeId(currentUserId);
-    safeSave({ ...currentPayload, assigneeId: currentUserId });
+    if (!isCreating) safeSave({ ...currentPayload, assigneeId: currentUserId });
   };
 
   const handleLeaveTask = () => {
     if (!isCurrentUserAssignee || isReadOnly) return;
     setAssigneeId(null);
-    safeSave({ ...currentPayload, assigneeId: null });
+    if (!isCreating) safeSave({ ...currentPayload, assigneeId: null });
   };
 
   // Branch name copy
@@ -401,13 +408,13 @@ export function WorkItemDetailModal({
     };
     const updated = [...checklists, newChecklist];
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleDeleteChecklist = (checklistId: string) => {
     const updated = checklists.filter((c) => c.id !== checklistId);
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleToggleChecklistItem = (checklistId: string, itemId: string) => {
@@ -419,7 +426,7 @@ export function WorkItemDetailModal({
       };
     });
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleDeleteChecklistItem = (checklistId: string, itemId: string) => {
@@ -431,7 +438,7 @@ export function WorkItemDetailModal({
       };
     });
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleUpdateChecklistItem = (checklistId: string, itemId: string, newTitle: string) => {
@@ -443,7 +450,7 @@ export function WorkItemDetailModal({
       };
     });
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   const handleAddChecklistItem = (checklistId: string, itemTitle: string) => {
@@ -457,7 +464,7 @@ export function WorkItemDetailModal({
       return { ...c, items: [...c.items, newItem] };
     });
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   // Subtask quick actions
@@ -499,7 +506,7 @@ export function WorkItemDetailModal({
     };
     const updated = [...checklists, criteriaChecklist];
     setChecklists(updated);
-    safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
+    if (!isCreating) safeSave({ ...currentPayload, checklists: TaskHelpers.normalizeChecklists(updated) });
   };
 
   // Attachment Actions
@@ -519,7 +526,7 @@ export function WorkItemDetailModal({
       const updated = [...attachments, ...newAttachments];
       setAttachments(updated);
       setOpenAttachmentPopover(false);
-      if (!isReadOnly) onSave({ ...currentPayload, attachments: updated });
+      if (!isReadOnly && !isCreating) onSave({ ...currentPayload, attachments: updated });
     } catch {
       // Ignored
     }
@@ -528,13 +535,13 @@ export function WorkItemDetailModal({
   const handleRenameAttachment = (attachmentId: string, newName: string) => {
     const updated = attachments.map((a) => (a.id === attachmentId ? { ...a, name: newName } : a));
     setAttachments(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, attachments: updated });
+    if (!isReadOnly && !isCreating) onSave({ ...currentPayload, attachments: updated });
   };
 
   const handleRemoveAttachment = (attachmentId: string) => {
     const updated = attachments.filter((a) => a.id !== attachmentId);
     setAttachments(updated);
-    if (!isReadOnly) onSave({ ...currentPayload, attachments: updated });
+    if (!isReadOnly && !isCreating) onSave({ ...currentPayload, attachments: updated });
   };
 
   // Comment Actions
@@ -633,153 +640,126 @@ export function WorkItemDetailModal({
 
   // Compact Pill Button Class
   const actionBtnClass =
-    'h-6.5 px-2 text-[11px] font-medium rounded-md bg-muted/60 hover:bg-muted text-foreground border border-border/60 shadow-none flex items-center gap-1 transition-colors cursor-pointer shrink-0';
+    'h-7 px-2.5 text-xs font-medium rounded-md bg-muted/50 hover:bg-muted text-foreground border border-border/70 shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
+
+  const renderStatusSelector = () => {
+    const activeCol = columns.find((c) => resolveTaskColumnId(c) === columnId);
+    const activeColColor = resolveTaskColumnColor(columnId, activeCol?.accentColor);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild disabled={isReadOnly}>
+          <button
+            type="button"
+            className={cn(
+              'h-7 px-2.5 text-xs font-medium rounded-md bg-muted/50 hover:bg-muted text-foreground border border-border/70 shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
+              isReadOnly && 'opacity-60 cursor-not-allowed'
+            )}
+          >
+            <span className="size-2 rounded-full shrink-0 bg-muted-foreground" />
+            <span>{activeCol?.title || columnId}</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-100 rounded-md border-border/70 shadow-xl bg-popover">
+          {columns.map((col) => {
+            const cId = resolveTaskColumnId(col);
+            const color = resolveTaskColumnColor(cId, col.accentColor);
+            const isCurrent = columnId === cId;
+            return (
+              <DropdownMenuItem
+                key={cId}
+                onClick={() => handleColumnChange(cId)}
+                className={cn(
+                  'flex items-center justify-between px-2.5 py-1.5 rounded-xs text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
+                  isCurrent && 'bg-muted/80 text-foreground font-semibold'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                  <span className="truncate">{col.title}</span>
+                </div>
+                {isCurrent && <Check className="size-3.5 text-primary" />}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
         ref={dialogScrollRef}
         showCloseButton={false}
-        className="max-w-[900px] w-[94vw] max-h-[85vh] p-0 border border-border/80 shadow-2xl rounded-xl overflow-hidden flex flex-col bg-background text-foreground duration-150 sm:max-w-[900px]"
+        className={cn(
+          "w-[94vw] max-h-[85vh] p-0 border border-border/80 shadow-2xl rounded-xl overflow-hidden flex flex-col bg-background text-foreground duration-150",
+          isCreating ? "max-w-[640px] sm:max-w-[640px]" : "max-w-[900px] sm:max-w-[900px]"
+        )}
         style={{
-          width: "min(900px, 94vw)",
-          maxWidth: "900px",
+          width: isCreating ? "min(640px, 94vw)" : "min(900px, 94vw)",
+          maxWidth: isCreating ? "640px" : "900px",
           maxHeight: "85vh",
         }}
       >
-        <DialogTitle className="sr-only">Work item detail</DialogTitle>
-
         <div className="flex h-full min-h-0 flex-col bg-background text-foreground overflow-hidden">
-          {/* Top Header Bar - Compact Sleek */}
-          <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-border/70 bg-background sticky top-0 z-30 shrink-0 min-h-10">
-            <div className="flex items-center gap-1 min-w-0 flex-wrap">
-              {/* Status Selector */}
-              <Select value={columnId} onValueChange={handleColumnChange} disabled={isReadOnly}>
-                <SelectTrigger className="h-6.5 w-auto min-w-20 rounded-md border border-border/60 bg-muted/50 px-2 text-[11px] font-semibold text-foreground shadow-none hover:bg-muted focus:ring-0 transition-colors">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="rounded-md border-border/50 shadow-xl">
-                  {columns.map((col) => {
-                    const val = resolveTaskColumnId(col);
-                    return (
-                      <SelectItem key={val} value={val} className="py-1 text-xs font-medium">
-                        {col.title}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-
-              {/* Work Item Type Popover */}
-              <TaskTypePopover
-                open={openTypePopover}
-                onOpenChange={setOpenTypePopover}
-                issueType={issueType}
-                setIssueType={(type) => {
-                  setIssueType(type);
-                  onSave({ ...currentPayload, issueType: type });
-                }}
-                actionBtnClass={actionBtnClass}
-              />
-
-              {/* Priority Popover */}
-              <PriorityPopover
-                open={openPriorityPopover}
-                onOpenChange={setOpenPriorityPopover}
-                priority={priority}
-                setPriority={(p) => {
-                  setPriority(p);
-                  onSave({ ...currentPayload, priority: p });
-                }}
-                actionBtnClass={actionBtnClass}
-              />
-
-              {/* Story Points Popover */}
-              <StoryPointsPopover
-                open={openStoryPointsPopover}
-                onOpenChange={setOpenStoryPointsPopover}
-                storyPoints={storyPoints}
-                setStoryPoints={(pts) => {
-                  setStoryPoints(pts);
-                  onSave({ ...currentPayload, storyPoints: pts });
-                }}
-                actionBtnClass={actionBtnClass}
-              />
-
-              {/* Identifier Tag & Git Branch Copy */}
-              {card?.identifier && (
-                <button
-                  type="button"
-                  onClick={handleCopyIdentifier}
-                  className="font-mono text-[11px] font-bold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded bg-muted/50 hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                  title="Click to copy identifier"
-                >
-                  <span>{card.identifier}</span>
-                </button>
-              )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyBranch}
-                className="h-6.5 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 shrink-0"
-                title="Copy git branch command"
-              >
-                <Terminal className="size-3 text-emerald-500" />
-                <span className="hidden sm:inline">Copy Branch</span>
-              </Button>
-            </div>
+          {/* Top Modal Header */}
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border/70 bg-muted/20 shrink-0">
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+              <span>{isCreating ? "Create Work Items" : (card?.identifier ? `${card.identifier}` : "Work Item Detail")}</span>
+            </DialogTitle>
 
             {/* Menu Actions & Close */}
             <div className="flex items-center gap-0.5">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer outline-none"
-                    aria-label="More actions"
-                  >
-                    <MoreHorizontal className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-md border-border/50 shadow-xl p-1">
-                  {!isReadOnly && onDuplicate && (
-                    <DropdownMenuItem onClick={onDuplicate} className="rounded-xs py-1.5 text-xs">
-                      <Copy className="mr-2 h-3.5 w-3.5 text-foreground" />
-                      <span>Duplicate</span>
-                    </DropdownMenuItem>
-                  )}
-                  {currentUserId && (
-                    <DropdownMenuItem
-                      onClick={isCurrentUserAssignee ? handleLeaveTask : handleJoinTask}
-                      className="rounded-xs py-1.5 text-xs"
+              {!isCreating && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer outline-none"
+                      aria-label="More actions"
                     >
-                      {isCurrentUserAssignee ? (
-                        <UserMinus className="mr-2 h-3.5 w-3.5 text-foreground" />
-                      ) : (
-                        <UserPlus className="mr-2 h-3.5 w-3.5 text-foreground" />
-                      )}
-                      <span>{isCurrentUserAssignee ? "Leave issue" : "Join issue"}</span>
-                    </DropdownMenuItem>
-                  )}
-                  {onRemoveFromCycle && (
-                    <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-xs py-1.5 text-xs">
-                      <RotateCcw className="mr-2 h-3.5 w-3.5 text-foreground" />
-                      <span>Remove from cycle</span>
-                    </DropdownMenuItem>
-                  )}
-                  {!isReadOnly && onDelete && (
-                    <DropdownMenuItem
-                      onClick={onDelete}
-                      className="rounded-xs py-1.5 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-3.5 w-3.5" />
-                      <span>Delete issue</span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      <MoreHorizontal className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 rounded-md border-border/50 shadow-xl p-1">
+                    {!isReadOnly && onDuplicate && (
+                      <DropdownMenuItem onClick={onDuplicate} className="rounded-xs py-1.5 text-xs">
+                        <Copy className="mr-2 h-3.5 w-3.5 text-foreground" />
+                        <span>Duplicate</span>
+                      </DropdownMenuItem>
+                    )}
+                    {currentUserId && (
+                      <DropdownMenuItem
+                        onClick={isCurrentUserAssignee ? handleLeaveTask : handleJoinTask}
+                        className="rounded-xs py-1.5 text-xs"
+                      >
+                        {isCurrentUserAssignee ? (
+                          <UserMinus className="mr-2 h-3.5 w-3.5 text-foreground" />
+                        ) : (
+                          <UserPlus className="mr-2 h-3.5 w-3.5 text-foreground" />
+                        )}
+                        <span>{isCurrentUserAssignee ? "Leave issue" : "Join issue"}</span>
+                      </DropdownMenuItem>
+                    )}
+                    {onRemoveFromCycle && (
+                      <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-xs py-1.5 text-xs">
+                        <RotateCcw className="mr-2 h-3.5 w-3.5 text-foreground" />
+                        <span>Remove from cycle</span>
+                      </DropdownMenuItem>
+                    )}
+                    {!isReadOnly && onDelete && (
+                      <DropdownMenuItem
+                        onClick={onDelete}
+                        className="rounded-xs py-1.5 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        <span>Delete issue</span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
               <Button
                 variant="ghost"
@@ -787,423 +767,305 @@ export function WorkItemDetailModal({
                 className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer outline-none"
                 onClick={handleClose}
               >
-                <X className="size-3.5" />
+                <X className="size-4" />
               </Button>
             </div>
           </div>
 
-          {/* 2-Column Responsive Body Grid - Balanced & Compact */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-            <div className="grid grid-cols-1 items-start gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_285px]">
-              {/* Left Column: Work Item Main Info */}
-              <div className="min-w-0 space-y-3.5">
-                {/* Title Input */}
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Issue title"
-                  disabled={isReadOnly}
-                  className="w-full text-base sm:text-lg font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
+          {/* Properties Toolbar Bar (Only in Detail / Edit Mode) */}
+          {!isCreating && (
+            <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-border/70 bg-background sticky top-0 z-30 shrink-0 min-h-10">
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                {renderStatusSelector()}
+
+                <TaskTypePopover
+                  open={openTypePopover}
+                  onOpenChange={setOpenTypePopover}
+                  issueType={issueType}
+                  setIssueType={(type) => {
+                    setIssueType(type);
+                    onSave({ ...currentPayload, issueType: type });
+                  }}
+                  actionBtnClass={actionBtnClass}
                 />
 
-                {/* Secondary Properties Toolbar (Assignee, Labels, Dates, Checklist, AI) */}
-                <div className="space-y-1.5">
-                  {/* Active Chips */}
-                  {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
-                    <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                      {selectedMember && (
-                        <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
-                          <Avatar className="size-3.5">
-                            <AvatarImage src={selectedMember.avatar} />
-                            <AvatarFallback className="text-[8px]">
-                              {selectedMember.name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{selectedMember.name}</span>
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAssigneeId(null);
-                                onSave({ ...currentPayload, assigneeId: null });
-                              }}
-                              className="hover:text-red-500 cursor-pointer ml-0.5"
-                            >
-                              <X className="size-2.5" />
-                            </button>
-                          )}
-                        </div>
-                      )}
+                {card?.identifier && (
+                  <button
+                    type="button"
+                    onClick={handleCopyIdentifier}
+                    className="font-mono text-[11px] font-bold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded bg-muted/50 hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                    title="Click to copy identifier"
+                  >
+                    <span>{card.identifier}</span>
+                  </button>
+                )}
 
-                      {selectedLabelsList.map((l: any) => (
-                        <span
-                          key={l.id}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white shadow-xs"
-                          style={{ backgroundColor: l.color }}
-                        >
-                          {l.name}
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = labels.filter((id) => id !== l.id);
-                                setLabels(updated);
-                                onSave({ ...currentPayload, labels: updated });
-                              }}
-                              className="hover:opacity-80 cursor-pointer"
-                            >
-                              <X className="size-2.5" />
-                            </button>
-                          )}
-                        </span>
-                      ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyBranch}
+                  className="h-6.5 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 shrink-0"
+                  title="Copy git branch command"
+                >
+                  <Terminal className="size-3 text-emerald-500" />
+                  <span className="hidden sm:inline">Copy Branch</span>
+                </Button>
+              </div>
+            </div>
+          )}
 
-                      {(startDate || dueDate) && (
-                        <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
-                          <Clock className="size-3 text-muted-foreground" />
-                          <span>
-                            {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
-                            {startDate && dueDate ? ' - ' : ''}
-                            {dueDate && new Date(dueDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
-                          </span>
-                          {!isReadOnly && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStartDate("");
-                                setDueDate("");
-                                setRecurrence("none");
-                                setReminder("1day");
-                                onSave({
-                                  ...currentPayload,
-                                  startDate: null,
-                                  dueDate: null,
-                                  recurrence: "none",
-                                  reminder: "1day",
-                                });
-                              }}
-                              className="hover:text-red-500 cursor-pointer ml-0.5"
-                            >
-                              <X className="size-2.5" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+          {/* Body Content */}
+          {isCreating ? (
+            /* Creation Mode: Clean, Focused Single-Column Layout */
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-5 space-y-4">
+              {/* Title Input */}
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && title.trim()) {
+                    e.preventDefault();
+                    handleCreate();
+                  }
+                }}
+                placeholder="Issue title"
+                autoFocus
+                disabled={isReadOnly}
+                className="w-full text-base sm:text-lg font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
+              />
 
-                  {/* Actions Toolbar Pills */}
-                  {!isReadOnly && (
-                    <div className="flex flex-wrap items-center gap-1">
-                      <MemberPopover
-                        open={openMemberPopover}
-                        onOpenChange={setOpenMemberPopover}
-                        assigneeId={assigneeId}
-                        setAssigneeId={(id) => {
-                          setAssigneeId(id);
-                          onSave({ ...currentPayload, assigneeId: id });
-                        }}
-                        members={members}
-                        actionBtnClass={actionBtnClass}
-                      />
+              {/* Description */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add a detailed description..."
+                  disabled={isReadOnly}
+                  rows={4}
+                  className="w-full resize-none rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[95px]"
+                />
+              </div>
 
-                      <LabelPopover
-                        open={openLabelPopover}
-                        onOpenChange={setOpenLabelPopover}
-                        labels={labels}
-                        setLabels={(l) => {
-                          const updated = typeof l === 'function' ? l(labels) : l;
-                          setLabels(updated);
-                          onSave({ ...currentPayload, labels: updated });
-                        }}
-                        actionBtnClass={actionBtnClass}
-                      />
-
-                      <DatePopover
-                        open={openDatePopover}
-                        onOpenChange={setOpenDatePopover}
-                        startDate={startDate}
-                        dueDate={dueDate}
-                        recurrence={recurrence}
-                        reminder={reminder}
-                        onApplyDates={(data) => {
-                          setStartDate(data.startDate || "");
-                          setDueDate(data.dueDate || "");
-                          setRecurrence(data.recurrence || "none");
-                          setReminder(data.reminder || "1day");
-                          onSave({
-                            ...currentPayload,
-                            startDate: data.startDate,
-                            dueDate: data.dueDate,
-                            recurrence: data.recurrence || "none",
-                            reminder: data.reminder || "1day",
-                          });
-                        }}
-                        actionBtnClass={actionBtnClass}
-                      />
-
-                      <Popover open={openChecklistPopover} onOpenChange={setOpenChecklistPopover}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className={actionBtnClass}>
-                            <CheckSquare className="size-3 text-foreground" />
-                            <span>Checklist</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
-                          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
-                            <span className="text-xs font-semibold text-foreground">Add Checklist</span>
-                            <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenChecklistPopover(false)}>
-                              <X className="size-3" />
-                            </Button>
-                          </div>
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              if (newChecklistTitle.trim()) {
-                                handleAddChecklist(newChecklistTitle.trim());
-                                setNewChecklistTitle("Checklist");
-                                setOpenChecklistPopover(false);
-                              }
-                            }}
-                            className="p-2.5 space-y-2"
+              {/* Secondary Properties Toolbar (Assignee, Labels, Dates, Checklist, Attach, AI) */}
+              <div className="space-y-2">
+                {/* Active Chips */}
+                {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
+                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                    {selectedMember && (
+                      <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                        <Avatar className="size-3.5">
+                          <AvatarImage src={selectedMember.avatar} />
+                          <AvatarFallback className="text-[8px]">
+                            {selectedMember.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{selectedMember.name}</span>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => setAssigneeId(null)}
+                            className="hover:text-red-500 cursor-pointer ml-0.5"
                           >
-                            <Input
-                              value={newChecklistTitle}
-                              onChange={(e) => setNewChecklistTitle(e.target.value)}
-                              placeholder="Checklist title"
-                              autoFocus
-                              className="h-7 text-xs"
-                            />
-                            <Button type="submit" size="sm" className="w-full h-7 text-xs">
-                              Add
-                            </Button>
-                          </form>
-                        </PopoverContent>
-                      </Popover>
+                            <X className="size-2.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
 
-                      <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className={actionBtnClass}>
-                            <Paperclip className="size-3 text-foreground" />
-                            <span>Attach</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
-                          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
-                            <span className="text-xs font-semibold text-foreground">Attach Files</span>
-                            <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenAttachmentPopover(false)}>
-                              <X className="size-3" />
-                            </Button>
-                          </div>
-                          <div className="p-2.5 space-y-2">
-                            <div
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                setDragActive(true);
-                              }}
-                              onDragLeave={() => setDragActive(false)}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                setDragActive(false);
-                                handleAttachFiles(e.dataTransfer.files);
-                              }}
-                              onClick={() => fileInputRef.current?.click()}
-                              className={cn(
-                                'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                                dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
-                              )}
-                            >
-                              <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
-                              <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
-                              <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                className="hidden"
-                                onChange={(e) => handleAttachFiles(e.target.files)}
-                              />
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-
-                      <TaskAiActions
-                        taskTitle={title}
-                        taskDescription={description}
-                        onAppendSubtasks={handleAiAppendSubtasks}
-                        onAppendAcceptanceCriteria={handleAiAppendCriteria}
-                        onEnhanceDescription={(enh) => {
-                          setDescription(enh);
-                          onSave({ ...currentPayload, description: enh, content: enh });
-                        }}
-                        isReadOnly={isReadOnly}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress Rollup Bar */}
-                {(checklists.length > 0 || subtasks.length > 0) && (
-                  <div className="space-y-1 p-2 rounded-md bg-muted/30 border border-border/50">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-foreground flex items-center gap-1">
-                        <Zap className="size-3 text-amber-500" />
-                        Overall Completion
+                    {selectedLabelsList.map((l: any) => (
+                      <span
+                        key={l.id}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white shadow-xs"
+                        style={{ backgroundColor: l.color }}
+                      >
+                        {l.name}
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = labels.filter((id) => id !== l.id);
+                              setLabels(updated);
+                            }}
+                            className="hover:opacity-80 cursor-pointer"
+                          >
+                            <X className="size-2.5" />
+                          </button>
+                        )}
                       </span>
-                      <span className="font-bold text-muted-foreground">{progressRollup}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${progressRollup}%` }}
-                      />
-                    </div>
+                    ))}
+
+                    {(startDate || dueDate) && (
+                      <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                        <Clock className="size-3 text-muted-foreground" />
+                        <span>
+                          {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                          {startDate && dueDate ? ' - ' : ''}
+                          {dueDate && new Date(dueDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                        </span>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStartDate("");
+                              setDueDate("");
+                              setRecurrence("none");
+                              setReminder("1day");
+                            }}
+                            className="hover:text-red-500 cursor-pointer ml-0.5"
+                          >
+                            <X className="size-2.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Description */}
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Description
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => {
-                      setDescription(e.target.value);
-                      setShowDescriptionActions(true);
-                    }}
-                    placeholder="Add a detailed description..."
-                    disabled={isReadOnly}
-                    rows={3}
-                    className="w-full resize-none rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[85px]"
-                  />
-                  {showDescriptionActions && !isReadOnly && (
-                    <div className="flex gap-1.5">
-                      <Button
-                        size="sm"
-                        className="h-6.5 text-xs px-2.5"
-                        onClick={() => {
-                          setShowDescriptionActions(false);
-                          descriptionDraftRef.current = description;
-                          onSave(currentPayload);
-                        }}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6.5 text-xs px-2.5"
-                        onClick={() => {
-                          setDescription(descriptionDraftRef.current);
-                          setShowDescriptionActions(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                {/* Actions Toolbar - All Buttons in 1 Single Row with Monochrome Icons */}
+                {!isReadOnly && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {renderStatusSelector()}
 
-                {/* Dependencies & Relations */}
-                <TaskRelations
-                  relations={relations}
-                  currentTaskId={taskId || undefined}
-                  onAddRelation={(newRel) => {
-                    const updated = [...relations, newRel];
-                    setRelations(updated);
-                    onSave({ ...currentPayload, relations: updated });
-                  }}
-                  onRemoveRelation={(relId) => {
-                    const updated = relations.filter((r) => r.id !== relId);
-                    setRelations(updated);
-                    onSave({ ...currentPayload, relations: updated });
-                  }}
-                  isReadOnly={isReadOnly}
-                />
+                    <TaskTypePopover
+                      open={openTypePopover}
+                      onOpenChange={setOpenTypePopover}
+                      issueType={issueType}
+                      setIssueType={(type) => setIssueType(type)}
+                      actionBtnClass={actionBtnClass}
+                    />
 
-                {/* Subtasks Section */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <GitBranch className="size-3.5" />
-                      <span>Subtasks ({subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{subtasks.length})</span>
-                    </label>
-                  </div>
+                    <MemberPopover
+                      open={openMemberPopover}
+                      onOpenChange={setOpenMemberPopover}
+                      assigneeId={assigneeId}
+                      setAssigneeId={(id) => setAssigneeId(id)}
+                      members={members}
+                      actionBtnClass={actionBtnClass}
+                    />
 
-                  {subtasks.length > 0 && (
-                    <div className="divide-y divide-border/60 rounded-md border border-border/70 bg-background overflow-hidden">
-                      {subtasks.map((sub: any, sIdx: number) => {
-                        const isSubDone = sub.completed || sub.columnId === 'done';
-                        return (
-                          <div key={sub.id || sIdx} className="flex items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted/40 transition-colors group">
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <button
-                                type="button"
-                                disabled={isReadOnly}
-                                onClick={() => {
-                                  const updated = subtasks.map((s, i) =>
-                                    i === sIdx ? { ...s, completed: !isSubDone, columnId: !isSubDone ? 'done' : 'todo' } : s
-                                  );
-                                  setSubtasks(updated);
-                                }}
-                                className={cn(
-                                  'size-3.5 rounded-xs border flex items-center justify-center transition-colors cursor-pointer',
-                                  isSubDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-border hover:border-primary'
-                                )}
-                              >
-                                {isSubDone && <Check className="size-2.5" />}
-                              </button>
-                              <span className={cn("font-medium text-xs", isSubDone ? 'line-through text-muted-foreground' : 'text-foreground')}>
-                                {sub.title}
-                              </span>
-                            </div>
+                    <LabelPopover
+                      open={openLabelPopover}
+                      onOpenChange={setOpenLabelPopover}
+                      labels={labels}
+                      setLabels={(l) => {
+                        const updated = typeof l === 'function' ? l(labels) : l;
+                        setLabels(updated);
+                      }}
+                      actionBtnClass={actionBtnClass}
+                    />
 
-                            {!isReadOnly && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = subtasks.filter((_, i) => i !== sIdx);
-                                  setSubtasks(updated);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 text-muted-foreground cursor-pointer transition-opacity"
-                              >
-                                <X className="size-3" />
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                    <DatePopover
+                      open={openDatePopover}
+                      onOpenChange={setOpenDatePopover}
+                      startDate={startDate}
+                      dueDate={dueDate}
+                      recurrence={recurrence}
+                      reminder={reminder}
+                      onApplyDates={(data) => {
+                        setStartDate(data.startDate || "");
+                        setDueDate(data.dueDate || "");
+                        setRecurrence(data.recurrence || "none");
+                        setReminder(data.reminder || "1day");
+                      }}
+                      actionBtnClass={actionBtnClass}
+                    />
 
-                  {!isReadOnly && (
-                    <form onSubmit={handleAddSubtask} className="flex items-center gap-1.5">
-                      <Input
-                        value={newSubtaskTitle}
-                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                        placeholder="+ Add subtask..."
-                        className="h-7 text-xs"
-                      />
-                      {newSubtaskTitle.trim() && (
-                        <Button type="submit" size="sm" className="h-7 text-xs shrink-0 px-2.5">
-                          Add
+                    <Popover open={openChecklistPopover} onOpenChange={setOpenChecklistPopover}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={actionBtnClass}>
+                          <CheckSquare className="size-3.5 text-muted-foreground" />
+                          <span>Checklist</span>
                         </Button>
-                      )}
-                    </form>
-                  )}
-                </div>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                          <span className="text-xs font-semibold text-foreground">Add Checklist</span>
+                          <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenChecklistPopover(false)}>
+                            <X className="size-3" />
+                          </Button>
+                        </div>
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (newChecklistTitle.trim()) {
+                              handleAddChecklist(newChecklistTitle.trim());
+                              setNewChecklistTitle("Checklist");
+                              setOpenChecklistPopover(false);
+                            }
+                          }}
+                          className="p-2.5 space-y-2"
+                        >
+                          <Input
+                            value={newChecklistTitle}
+                            onChange={(e) => setNewChecklistTitle(e.target.value)}
+                            placeholder="Checklist title"
+                            autoFocus
+                            className="h-7 text-xs"
+                          />
+                          <Button type="submit" size="sm" className="w-full h-7 text-xs">
+                            Add
+                          </Button>
+                        </form>
+                      </PopoverContent>
+                    </Popover>
 
-                {/* Attachments Section */}
-                <TaskAttachments
-                  attachments={attachments}
-                  onRenameAttachment={handleRenameAttachment}
-                  onRemoveAttachment={handleRemoveAttachment}
-                  isReadOnly={isReadOnly}
-                />
+                    <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={actionBtnClass}>
+                          <Paperclip className="size-3.5 text-muted-foreground" />
+                          <span>Attach</span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                          <span className="text-xs font-semibold text-foreground">Attach Files</span>
+                          <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenAttachmentPopover(false)}>
+                            <X className="size-3" />
+                          </Button>
+                        </div>
+                        <div className="p-2.5 space-y-2">
+                          <div
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setDragActive(true);
+                            }}
+                            onDragLeave={() => setDragActive(false)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDragActive(false);
+                              handleAttachFiles(e.dataTransfer.files);
+                            }}
+                            onClick={() => fileInputRef.current?.click()}
+                            className={cn(
+                              'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
+                              dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                            )}
+                          >
+                            <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
+                            <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => handleAttachFiles(e.target.files)}
+                            />
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
 
-                {/* Checklists Section */}
+                    {/* Temporarily hidden: TaskAiActions */}
+                  </div>
+                )}
+              </div>
+
+              {/* Checklists Section */}
+              {checklists.length > 0 && (
                 <TaskChecklist
                   checklists={checklists}
                   onDeleteChecklist={handleDeleteChecklist}
@@ -1213,35 +1075,497 @@ export function WorkItemDetailModal({
                   onAddItem={handleAddChecklistItem}
                   isReadOnly={isReadOnly}
                 />
-              </div>
+              )}
 
-              {/* Right Column: Compact Activities & Comments Timeline */}
-              <div className="border-t lg:border-t-0 lg:border-l border-border/70 pt-4 lg:pt-0 lg:pl-5 sticky top-0">
-                <TaskActivities
-                  commentText={commentText}
-                  setCommentText={setCommentText}
-                  commentTextareaRef={commentTextareaRef}
-                  onSaveComment={handleSaveComment}
-                  onUpdateComment={handleUpdateComment}
-                  onDeleteComment={handleDeleteComment}
-                  onReactComment={handleReactComment}
-                  attachmentLinks={attachments.map((item) => ({ name: item.name, url: item.url }))}
-                  commentFocusToken={commentFocusToken}
-                  commentCaretPosition={commentCaretPosition}
-                  onCommentCaretChange={setCommentCaretPosition}
-                  canComment={canComment}
-                  isSavingComment={createTaskCommentMutation.isPending}
-                  isUpdatingComment={updateTaskCommentMutation.isPending}
-                  showDetailActivity={showDetailActivity}
-                  setShowDetailActivity={setShowDetailActivity}
-                  activityLoading={activityLoading}
-                  activityError={Boolean(activityError)}
-                  activities={visibleActivities}
+              {/* Attachments Section */}
+              {attachments.length > 0 && (
+                <TaskAttachments
+                  attachments={attachments}
+                  onRenameAttachment={handleRenameAttachment}
+                  onRemoveAttachment={handleRemoveAttachment}
                   isReadOnly={isReadOnly}
                 />
+              )}
+            </div>
+          ) : (
+            /* Edit / View Mode: Full 2-Column Responsive Layout */
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+              <div className="grid grid-cols-1 items-start gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_285px]">
+                {/* Left Column: Work Item Main Info */}
+                <div className="min-w-0 space-y-3.5">
+                  {/* Title Input */}
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Issue title"
+                    disabled={isReadOnly}
+                    className="w-full text-base sm:text-lg font-bold text-foreground outline-none bg-transparent placeholder:text-muted-foreground/60 border-none p-0 focus:ring-0 tracking-tight"
+                  />
+
+                  {/* Progress Rollup Bar */}
+                  {(checklists.length > 0 || subtasks.length > 0) && (
+                    <div className="space-y-1 p-2 rounded-md bg-muted/30 border border-border/50">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-foreground flex items-center gap-1">
+                          <Zap className="size-3 text-amber-500" />
+                          Overall Completion
+                        </span>
+                        <span className="font-bold text-muted-foreground">{progressRollup}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                          style={{ width: `${progressRollup}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Description
+                    </label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        setShowDescriptionActions(true);
+                      }}
+                      placeholder="Add a detailed description..."
+                      disabled={isReadOnly}
+                      rows={3}
+                      className="w-full resize-none rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[85px]"
+                    />
+                    {showDescriptionActions && !isReadOnly && (
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          className="h-6.5 text-xs px-2.5"
+                          onClick={() => {
+                            setShowDescriptionActions(false);
+                            descriptionDraftRef.current = description;
+                            onSave(currentPayload);
+                          }}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6.5 text-xs px-2.5"
+                          onClick={() => {
+                            setDescription(descriptionDraftRef.current);
+                            setShowDescriptionActions(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Secondary Properties Toolbar (Assignee, Labels, Dates, Checklist, AI) */}
+                  <div className="space-y-1.5">
+                    {/* Active Chips */}
+                    {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
+                      <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                        {selectedMember && (
+                          <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                            <Avatar className="size-3.5">
+                              <AvatarImage src={selectedMember.avatar} />
+                              <AvatarFallback className="text-[8px]">
+                                {selectedMember.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{selectedMember.name}</span>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAssigneeId(null);
+                                  onSave({ ...currentPayload, assigneeId: null });
+                                }}
+                                className="hover:text-red-500 cursor-pointer ml-0.5"
+                              >
+                                <X className="size-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {selectedLabelsList.map((l: any) => (
+                          <span
+                            key={l.id}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white shadow-xs"
+                            style={{ backgroundColor: l.color }}
+                          >
+                            {l.name}
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = labels.filter((id) => id !== l.id);
+                                  setLabels(updated);
+                                  onSave({ ...currentPayload, labels: updated });
+                                }}
+                                className="hover:opacity-80 cursor-pointer"
+                              >
+                                <X className="size-2.5" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+
+                        {(startDate || dueDate) && (
+                          <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                            <Clock className="size-3 text-muted-foreground" />
+                            <span>
+                              {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                              {startDate && dueDate ? ' - ' : ''}
+                              {dueDate && new Date(dueDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
+                            </span>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStartDate("");
+                                  setDueDate("");
+                                  setRecurrence("none");
+                                  setReminder("1day");
+                                  onSave({
+                                    ...currentPayload,
+                                    startDate: null,
+                                    dueDate: null,
+                                    recurrence: "none",
+                                    reminder: "1day",
+                                  });
+                                }}
+                                className="hover:text-red-500 cursor-pointer ml-0.5"
+                              >
+                                <X className="size-2.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions Toolbar - All Buttons in 1 Single Row with Monochrome Icons */}
+                    {!isReadOnly && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {renderStatusSelector()}
+
+                        <TaskTypePopover
+                          open={openTypePopover}
+                          onOpenChange={setOpenTypePopover}
+                          issueType={issueType}
+                          setIssueType={(type) => {
+                            setIssueType(type);
+                            onSave({ ...currentPayload, issueType: type });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                        />
+
+                        <MemberPopover
+                          open={openMemberPopover}
+                          onOpenChange={setOpenMemberPopover}
+                          assigneeId={assigneeId}
+                          setAssigneeId={(id) => {
+                            setAssigneeId(id);
+                            onSave({ ...currentPayload, assigneeId: id });
+                          }}
+                          members={members}
+                          actionBtnClass={actionBtnClass}
+                        />
+
+                        <LabelPopover
+                          open={openLabelPopover}
+                          onOpenChange={setOpenLabelPopover}
+                          labels={labels}
+                          setLabels={(l) => {
+                            const updated = typeof l === 'function' ? l(labels) : l;
+                            setLabels(updated);
+                            onSave({ ...currentPayload, labels: updated });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                        />
+
+                        <DatePopover
+                          open={openDatePopover}
+                          onOpenChange={setOpenDatePopover}
+                          startDate={startDate}
+                          dueDate={dueDate}
+                          recurrence={recurrence}
+                          reminder={reminder}
+                          onApplyDates={(data) => {
+                            setStartDate(data.startDate || "");
+                            setDueDate(data.dueDate || "");
+                            setRecurrence(data.recurrence || "none");
+                            setReminder(data.reminder || "1day");
+                            onSave({
+                              ...currentPayload,
+                              startDate: data.startDate,
+                              dueDate: data.dueDate,
+                              recurrence: data.recurrence || "none",
+                              reminder: data.reminder || "1day",
+                            });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                        />
+
+                        <Popover open={openChecklistPopover} onOpenChange={setOpenChecklistPopover}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className={actionBtnClass}>
+                              <CheckSquare className="size-3.5 text-muted-foreground" />
+                              <span>Checklist</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
+                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                              <span className="text-xs font-semibold text-foreground">Add Checklist</span>
+                              <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenChecklistPopover(false)}>
+                                <X className="size-3" />
+                              </Button>
+                            </div>
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                if (newChecklistTitle.trim()) {
+                                  handleAddChecklist(newChecklistTitle.trim());
+                                  setNewChecklistTitle("Checklist");
+                                  setOpenChecklistPopover(false);
+                                }
+                              }}
+                              className="p-2.5 space-y-2"
+                            >
+                              <Input
+                                value={newChecklistTitle}
+                                onChange={(e) => setNewChecklistTitle(e.target.value)}
+                                placeholder="Checklist title"
+                                autoFocus
+                                className="h-7 text-xs"
+                              />
+                              <Button type="submit" size="sm" className="w-full h-7 text-xs">
+                                Add
+                              </Button>
+                            </form>
+                          </PopoverContent>
+                        </Popover>
+
+                        <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className={actionBtnClass}>
+                              <Paperclip className="size-3.5 text-muted-foreground" />
+                              <span>Attach</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
+                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                              <span className="text-xs font-semibold text-foreground">Attach Files</span>
+                              <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenAttachmentPopover(false)}>
+                                <X className="size-3" />
+                              </Button>
+                            </div>
+                            <div className="p-2.5 space-y-2">
+                              <div
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setDragActive(true);
+                                }}
+                                onDragLeave={() => setDragActive(false)}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  setDragActive(false);
+                                  handleAttachFiles(e.dataTransfer.files);
+                                }}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn(
+                                  'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
+                                  dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                                )}
+                              >
+                                <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
+                                <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  multiple
+                                  className="hidden"
+                                  onChange={(e) => handleAttachFiles(e.target.files)}
+                                />
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+
+                        {/* Temporarily hidden: TaskAiActions */}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Dependencies & Relations */}
+                  <TaskRelations
+                    relations={relations}
+                    currentTaskId={taskId || undefined}
+                    onAddRelation={(newRel) => {
+                      const updated = [...relations, newRel];
+                      setRelations(updated);
+                      onSave({ ...currentPayload, relations: updated });
+                    }}
+                    onRemoveRelation={(relId) => {
+                      const updated = relations.filter((r) => r.id !== relId);
+                      setRelations(updated);
+                      onSave({ ...currentPayload, relations: updated });
+                    }}
+                    isReadOnly={isReadOnly}
+                  />
+
+                  {/* Subtasks Section */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <GitBranch className="size-3.5" />
+                        <span>Subtasks ({subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{subtasks.length})</span>
+                      </label>
+                    </div>
+
+                    {subtasks.length > 0 && (
+                      <div className="divide-y divide-border/60 rounded-md border border-border/70 bg-background overflow-hidden">
+                        {subtasks.map((sub: any, sIdx: number) => {
+                          const isSubDone = sub.completed || sub.columnId === 'done';
+                          return (
+                            <div key={sub.id || sIdx} className="flex items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted/40 transition-colors group">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <button
+                                  type="button"
+                                  disabled={isReadOnly}
+                                  onClick={() => {
+                                    const updated = subtasks.map((s, i) =>
+                                      i === sIdx ? { ...s, completed: !isSubDone, columnId: !isSubDone ? 'done' : 'todo' } : s
+                                    );
+                                    setSubtasks(updated);
+                                  }}
+                                  className={cn(
+                                    'size-3.5 rounded-xs border flex items-center justify-center transition-colors cursor-pointer',
+                                    isSubDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-border hover:border-primary'
+                                  )}
+                                >
+                                  {isSubDone && <Check className="size-2.5" />}
+                                </button>
+                                <span className={cn("font-medium text-xs", isSubDone ? 'line-through text-muted-foreground' : 'text-foreground')}>
+                                  {sub.title}
+                                </span>
+                              </div>
+
+                              {!isReadOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = subtasks.filter((_, i) => i !== sIdx);
+                                    setSubtasks(updated);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 text-muted-foreground cursor-pointer transition-opacity"
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {!isReadOnly && (
+                      <form onSubmit={handleAddSubtask} className="flex items-center gap-1.5">
+                        <Input
+                          value={newSubtaskTitle}
+                          onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                          placeholder="+ Add subtask..."
+                          className="h-7 text-xs"
+                        />
+                        {newSubtaskTitle.trim() && (
+                          <Button type="submit" size="sm" className="h-7 text-xs shrink-0 px-2.5">
+                            Add
+                          </Button>
+                        )}
+                      </form>
+                    )}
+                  </div>
+
+                  {/* Attachments Section */}
+                  <TaskAttachments
+                    attachments={attachments}
+                    onRenameAttachment={handleRenameAttachment}
+                    onRemoveAttachment={handleRemoveAttachment}
+                    isReadOnly={isReadOnly}
+                  />
+
+                  {/* Checklists Section */}
+                  <TaskChecklist
+                    checklists={checklists}
+                    onDeleteChecklist={handleDeleteChecklist}
+                    onToggleItem={handleToggleChecklistItem}
+                    onDeleteItem={handleDeleteChecklistItem}
+                    onUpdateItem={handleUpdateChecklistItem}
+                    onAddItem={handleAddChecklistItem}
+                    isReadOnly={isReadOnly}
+                  />
+                </div>
+
+                {/* Right Column: Compact Activities & Comments Timeline */}
+                <div className="border-t lg:border-t-0 lg:border-l border-border/70 pt-4 lg:pt-0 lg:pl-5 sticky top-0">
+                  <TaskActivities
+                    commentText={commentText}
+                    setCommentText={setCommentText}
+                    commentTextareaRef={commentTextareaRef}
+                    onSaveComment={handleSaveComment}
+                    onUpdateComment={handleUpdateComment}
+                    onDeleteComment={handleDeleteComment}
+                    onReactComment={handleReactComment}
+                    attachmentLinks={attachments.map((item) => ({ name: item.name, url: item.url }))}
+                    commentFocusToken={commentFocusToken}
+                    commentCaretPosition={commentCaretPosition}
+                    onCommentCaretChange={setCommentCaretPosition}
+                    canComment={canComment}
+                    isSavingComment={createTaskCommentMutation.isPending}
+                    isUpdatingComment={updateTaskCommentMutation.isPending}
+                    showDetailActivity={showDetailActivity}
+                    setShowDetailActivity={setShowDetailActivity}
+                    activityLoading={activityLoading}
+                    activityError={Boolean(activityError)}
+                    activities={visibleActivities}
+                    isReadOnly={isReadOnly}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Footer for Creation Mode */}
+          {isCreating && (
+            <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-border/70 bg-muted/20 shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+                className="h-8 text-xs px-3 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!title.trim() || isReadOnly}
+                onClick={handleCreate}
+                className="h-8 text-xs px-4 font-semibold cursor-pointer"
+              >
+                Create Issue
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

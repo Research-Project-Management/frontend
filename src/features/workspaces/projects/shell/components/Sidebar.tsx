@@ -87,12 +87,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const id = useId();
 
   // Pinned items state (persisted)
-  const [pinnedArchives, setPinnedArchives] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('sidebar_pinned_archives') === 'true';
-    }
-    return false;
-  });
+  const [pinnedArchives, setPinnedArchives] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const togglePinArchives = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -128,24 +124,29 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // ── Expanded projects (persisted) ──────────────────────────────────────────
 
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebar_expanded_projects');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return new Set<string>(parsed.filter((item): item is string => typeof item === 'string'));
-          }
-        } catch {}
-      }
-    }
-    return new Set<string>();
-  });
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => new Set<string>());
 
   useEffect(() => {
+    setIsMounted(true);
+    const savedPin = localStorage.getItem('sidebar_pinned_archives');
+    if (savedPin === 'true') {
+      setPinnedArchives(true);
+    }
+    const saved = localStorage.getItem('sidebar_expanded_projects');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setExpandedProjects(new Set<string>(parsed.filter((item): item is string => typeof item === 'string')));
+        }
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
     localStorage.setItem('sidebar_expanded_projects', JSON.stringify(Array.from(expandedProjects)));
-  }, [expandedProjects]);
+  }, [expandedProjects, isMounted]);
 
   // Auto-expand active project on navigation
   useEffect(() => {

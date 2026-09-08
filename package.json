@@ -15,8 +15,12 @@
     "test:e2e": "playwright test",
     "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "codebase:sync": "node ../.agents/scripts/sync-codebase.mjs frontend"
+    "codebase:sync": "node ../.agents/scripts/sync-codebase.mjs frontend",
+    "audit:dry": "npx --yes jscpd --threshold 5 src",
+    "audit:circular": "npx --yes madge --circular --extensions ts,tsx src",
+    "audit:deadcode": "npx --yes knip",
+    "audit:security": "pnpm audit",
+    "audit:quality": "pnpm typecheck && pnpm audit:circular && pnpm audit:dry"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

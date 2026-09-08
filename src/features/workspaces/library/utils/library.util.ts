@@ -828,8 +828,9 @@ export function formatAndSanitizeExtraMetadata(
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        if (typeof parsed._rawExtra === 'string') {
-          textContent = parsed._rawExtra.trim();
+        const record = parsed as Record<string, unknown>;
+        if (typeof record._rawExtra === 'string') {
+          textContent = record._rawExtra.trim();
         } else {
           // If JSON contains genuine unmapped custom user properties (not telemetry or schema fields)
           const customLines: string[] = [];
@@ -922,4 +923,83 @@ export function formatAndSanitizeExtraMetadata(
 
   return sanitizedLines.join('\n');
 }
+
+/**
+ * Sanitizes and normalizes an academic paper abstract for display and storage.
+ * 1. Decodes HTML entities and strips XML/HTML tags.
+ * 2. Strips leading "Abstract", "ABSTRACT", "Summary" prefixes.
+ * 3. Removes repeated year extraction artifacts (e.g. "(2012)(2013)(2014)(2015)(2016)(2017).").
+ * 4. Removes trailing author contribution, copyright, and index terms noise.
+ * 5. Unwraps single hard line-breaks within paragraphs while preserving double-newline paragraph separation.
+ * 6. Fixes hyphenated words broken across line wraps ("stochas- tic" -> "stochastic").
+ */
+export function cleanAbstractText(text?: string | null): string {
+  if (!text || typeof text !== 'string') return '';
+
+  let cleaned = text.replace(/<[^>]+>/g, ' ');
+  // Decode common HTML entities
+  cleaned = cleaned
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+
+  // Strip stray LaTeX braces
+  cleaned = cleaned.replace(/\\(?:textbf|textit|emph|underline|text)\{([^}]+)\}/g, '$1');
+
+  // 1. Remove leading "Abstract" or "ABSTRACT" headings
+  cleaned = cleaned.replace(/^(?:abstract|summary|résumé)\s*[:.—\-–\u2014\u2013]?\s*/i, '');
+  cleaned = cleaned.replace(/^(?:abstract|summary|résumé)\s*\r?\n+/i, '');
+
+  // 2. Remove repeated parenthesized / bracketed year-chain extraction artifacts
+  // e.g. "(2012)(2013)(2014)(2015)(2016)(2017)."
+  cleaned = cleaned.replace(/(?:\((?:19|20)\d{2}\)\s*){2,}\.?/g, '');
+  cleaned = cleaned.replace(/(?:\[(?:19|20)\d{2}\]\s*){2,}\.?/g, '');
+  cleaned = cleaned.replace(/\((?:(?:19|20)\d{2}[,\s;]*){3,}\)\.?/g, '');
+
+  // 3. Remove trailing author contribution / footnote noise
+  cleaned = cleaned.replace(
+    /(?:(?:\n\s*|\.\s+|\s+)[*†‡§\d]*\s*(?:Equal contribution|Corresponding author|Correspondence to|Author ordering|Listing order|These authors contributed equally|Work performed while|Supported in part by|This work was supported by)[\s\S]*$)/i,
+    '.',
+  );
+
+  // 4. Remove trailing publication metadata or index terms
+  cleaned = cleaned.replace(
+    /(?:\n\s*|\s+)(?:ACM Reference [Ff]ormat|Index Terms|Keywords|Key words|Additional Key Words and Phrases)[—:\-\s]+[\s\S]*$/i,
+    '',
+  );
+
+  // 5. Remove trailing IEEE/ACM copyright banners
+  cleaned = cleaned.replace(
+    /(?:\n\s*|\.\s+|\s+)(?:Copyright\s*(?:\(c\)|©)?\s*(?:19|20)\d{2}|©\s*(?:19|20)\d{2}\s*IEEE)[\s\S]*$/i,
+    '',
+  );
+  cleaned = cleaned.replace(
+    /(?:\n\s*|\s+)\b\d{4}-\d{3}[\dX]\s*(?:\(c\)|©)?\s*\d{4}\s*IEEE[\s\S]*$/i,
+    '',
+  );
+
+  // 6. Normalize paragraphs & unwrap hard line-breaks within each paragraph
+  const rawParagraphs = cleaned.split(/\r?\n\s*\r?\n/);
+  const normalizedParagraphs = rawParagraphs
+    .map((paragraph) => {
+      // Fix hyphenation across breaks (e.g., "stochas- tic" -> "stochastic")
+      let p = paragraph.replace(/([a-zA-Z]{2,})-\s*\r?\n\s*([a-zA-Z]{2,})/g, '$1$2');
+      // Collapse single newlines into a single space
+      p = p.replace(/\r?\n/g, ' ');
+      // Collapse multiple whitespace
+      p = p.replace(/\s+/g, ' ').trim();
+      // Clean spacing before punctuation
+      p = p.replace(/\s+([.,;:!?])/g, '$1');
+      // Clean duplicate periods (excluding ellipsis)
+      p = p.replace(/\.\s*\.(?!\.)/g, '.');
+      return p;
+    })
+    .filter((p) => p.length > 0);
+
+  return normalizedParagraphs.join('\n\n').trim();
+}
+
 

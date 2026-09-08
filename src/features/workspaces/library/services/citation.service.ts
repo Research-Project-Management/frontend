@@ -94,7 +94,7 @@ export async function searchReferences(
 ): Promise<{ works: ReferenceData[]; totalResults: number }> {
   try {
     const res = await apiGet<{ works: ReferenceData[]; totalResults: number }>(
-      `/api/library/references/crossref/search`,
+      `/api/v1/library/citation/crossref/search`,
       { params: { query, rows: String(rows) } },
     );
     if (res && Array.isArray(res.works)) return res;

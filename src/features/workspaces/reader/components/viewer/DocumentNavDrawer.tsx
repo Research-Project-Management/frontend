@@ -61,7 +61,7 @@ export default function DocumentNavDrawer({
         s.num.toLowerCase().includes(q) ||
         s.imradCategory?.toLowerCase().includes(q),
     );
-  }, [sections, searchQuery]);
+  }, [fulltext?.sections, searchQuery]);
 
   const filteredFigures = useMemo(() => {
     if (!searchQuery.trim()) return figures;
@@ -71,7 +71,7 @@ export default function DocumentNavDrawer({
         f.label.toLowerCase().includes(q) ||
         f.caption.toLowerCase().includes(q),
     );
-  }, [figures, searchQuery]);
+  }, [fulltext?.figures, searchQuery]);
 
   const filteredTables = useMemo(() => {
     if (!searchQuery.trim()) return tables;
@@ -81,7 +81,7 @@ export default function DocumentNavDrawer({
         t.label.toLowerCase().includes(q) ||
         t.caption.toLowerCase().includes(q),
     );
-  }, [tables, searchQuery]);
+  }, [fulltext?.tables, searchQuery]);
 
   const filteredFormulas = useMemo(() => {
     if (!searchQuery.trim()) return formulas;
@@ -91,7 +91,7 @@ export default function DocumentNavDrawer({
         f.text.toLowerCase().includes(q) ||
         (f.label && f.label.toLowerCase().includes(q)),
     );
-  }, [formulas, searchQuery]);
+  }, [fulltext?.formulas, searchQuery]);
 
   if (!isOpen) return null;
 

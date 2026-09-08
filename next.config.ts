@@ -97,7 +97,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data: https:",
               "font-src 'self' data: https:",
-              "connect-src 'self' blob: data: http://localhost:* https: ws: wss:",
+              "connect-src 'self' blob: data: http://localhost:* http://160.250.128.108:* https: ws: wss: ws://160.250.128.108:*",
               "frame-src 'self' blob: https:",
               "worker-src 'self' blob:",
               "object-src 'none'",

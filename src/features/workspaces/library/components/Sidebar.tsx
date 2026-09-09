@@ -98,6 +98,7 @@ interface NodeProps {
   onMove: (collectionId: string, newParentId: string | null) => void;
   onCopy: (collectionId: string, targetParentId: string | null) => void;
   onCreateSub: (parentId: string, parentName: string) => void;
+  onLinkClick?: () => void;
 }
 
 function CollectionNode({
@@ -118,13 +119,17 @@ function CollectionNode({
   onMove,
   onCopy,
   onCreateSub,
+  onLinkClick,
 }: NodeProps) {
   const to = `${basePath}/${node.id}`;
   const isActive = activeId === node.id;
   const hasChildren = node.children.length > 0;
   const [isOpen, setIsOpen] = useState(true);
 
-  const validMoveTargets = getValidMoveTargets(allCollections, node.id);
+  const validMoveTargets = useMemo(
+    () => getValidMoveTargets(allCollections, node.id),
+    [allCollections, node.id],
+  );
   const effectiveIsOpen = isSearching ? true : isOpen;
 
   // SaaS indentation: 24px for root collection, +14px per subcollection depth level
@@ -188,6 +193,7 @@ function CollectionNode({
 
             <Link
               href={to}
+              onClick={onLinkClick}
               className="flex flex-1 min-w-0 items-center gap-2 py-1 outline-none"
             >
               {hasChildren && effectiveIsOpen ? (
@@ -354,9 +360,13 @@ export default function LibrarySideBar() {
   const workspaceId = workspace?.id || workspaceUrl || '';
 
   const collectionService = useCollections(workspaceId);
-  const CatalogItemService = useCatalogItems({ workspaceId });
+  const { isOpen, setIsOpen, width, setWidth, toggle } = useLibrarySidebarStore();
 
-  const { width, setWidth, toggle } = useLibrarySidebarStore();
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  }, [setIsOpen]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<string | null>(null);
@@ -442,10 +452,6 @@ export default function LibrarySideBar() {
   const collections = useMemo(
     () => collectionService.state.collections ?? [],
     [collectionService.state.collections],
-  );
-  const papers = useMemo(
-    () => CatalogItemService.state.allPapers ?? [],
-    [CatalogItemService.state.allPapers],
   );
 
   // Filter collections by search query
@@ -577,18 +583,41 @@ export default function LibrarySideBar() {
     onMove: handleMove,
     onCopy: handleCopy,
     onCreateSub: openCreateSub,
+    onLinkClick: () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setIsOpen(false);
+      }
+    },
   };
 
+  const handleMobileLinkClick = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  };
+
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <aside
-      aria-label="Library navigation and collections"
-      style={{
-        width: `${width}px`,
-        minWidth: '180px',
-        maxWidth: '400px',
-      }}
-      className="relative h-full overflow-x-hidden border-r border-border bg-transparent p-2.5 py-4 flex flex-col select-none shrink-0"
-    >
+    <>
+      {/* Mobile Backdrop Overlay */}
+      <div
+        className="fixed inset-0 z-40 bg-black/30 md:hidden"
+        onClick={() => setIsOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside
+        aria-label="Library navigation and collections"
+        style={{
+          width: `${width}px`,
+          minWidth: '220px',
+          maxWidth: '400px',
+        }}
+        className="fixed inset-y-0 left-0 z-50 md:static md:z-auto h-full overflow-x-hidden border-r border-border bg-background p-2.5 py-4 flex flex-col select-none shrink-0 shadow-none"
+      >
       {/* Header: Matching Storage/Projects Sidebar with expandable search */}
       <div className="mb-3 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground select-none">
         {isSearchExpanded || searchQuery ? (
@@ -688,6 +717,7 @@ export default function LibrarySideBar() {
           <div className="relative group/root flex items-center w-full">
             <Link
               href={basePath}
+              onClick={handleMobileLinkClick}
               className={cn(
                 "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8",
                 isLibraryActive
@@ -733,6 +763,7 @@ export default function LibrarySideBar() {
               {/* 1. Recently Read (First item in My Library) */}
               <Link
                 href={`${basePath}/recently-read`}
+                onClick={handleMobileLinkClick}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isRecentReadActive
@@ -774,6 +805,7 @@ export default function LibrarySideBar() {
               {/* 2. Duplicate Items */}
               <Link
                 href={`${basePath}/duplicates`}
+                onClick={handleMobileLinkClick}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isDuplicatesActive
@@ -798,6 +830,7 @@ export default function LibrarySideBar() {
               {/* 3. Unfiled Items */}
               <Link
                 href={`${basePath}/unfiled`}
+                onClick={handleMobileLinkClick}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isUnfiledActive
@@ -822,6 +855,7 @@ export default function LibrarySideBar() {
               {/* 4. Trash */}
               <Link
                 href={`${basePath}/trash`}
+                onClick={handleMobileLinkClick}
                 className={cn(
                   "group/item relative flex h-8 items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
                   isTrashActive
@@ -895,6 +929,7 @@ export default function LibrarySideBar() {
         isPending={collectionService.state.isDeleting}
       />
     </aside>
+    </>
   );
 }
 

@@ -10,7 +10,7 @@ import { useStorageFilterStore } from '../../store/use-filter-store';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { applyStorageFilters } from '../../utils/filter.util';
 import { downloadStorageItem } from '../../utils/file';
-import { BulkActionBar } from './BulkActionBar';
+import { BulkActionBar } from '../actions/BulkActionBar';
 import Topbar from './Topbar';
 import type { LucideIcon } from 'lucide-react';
 

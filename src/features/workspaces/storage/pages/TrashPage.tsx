@@ -1,22 +1,20 @@
-'use client';
+﻿'use client';
 
-import { useTrash, useRestoreItem, usePermanentlyDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { Trash2 } from 'lucide-react';
-import { StorageCollectionPage } from '../components/layout/StorageCollectionPage';
-import { filterTrashFiles } from '../utils/trash.util';
+import { useTrash, useRestoreItem, usePermanentlyDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
+import { StoragePageTemplate } from '../components/layout/StoragePageTemplate';
 
 export default function WorkspaceTrashPage() {
-  const { mutate: handleRestore } = useRestoreItem();
-  const { mutate: handlePermanentlyDelete } = usePermanentlyDeleteItem();
+  const { mutateAsync: handleRestore } = useRestoreItem();
+  const { mutateAsync: handlePermanentlyDelete } = usePermanentlyDeleteItem();
 
   return (
-    <StorageCollectionPage
+    <StoragePageTemplate
       title="Trash"
       icon={Trash2}
-      useDataHook={useTrash}
-      filterItems={filterTrashFiles}
-      onRestore={(id) => handleRestore(id)}
-      onDelete={(id) => handlePermanentlyDelete(id)}
+      useFilesHook={useTrash}
+      onRestore={handleRestore}
+      onDelete={handlePermanentlyDelete}
       isTrash={true}
     />
   );

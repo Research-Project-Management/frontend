@@ -8,7 +8,8 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
-import type { TaskRecurrence, TaskReminder, WorkItemRecurrence, WorkItemReminder } from '../../../../types/work-item.types';
+import { cn } from '@/shared/lib/utils';
+import type { TaskRecurrence, TaskReminder } from '../../../../types/work-item.types';
 
 export interface DatePopoverProps {
   open: boolean;
@@ -62,6 +63,16 @@ export function DatePopover({
     }
   }, [open, startDate, dueDate, recurrence, reminder]);
 
+  const setQuickDue = (daysFromNow: number) => {
+    const target = new Date();
+    target.setDate(target.getDate() + daysFromNow);
+    setSelectedRange((prev) => ({
+      from: prev.from || new Date(),
+      to: target,
+    }));
+    setHasDueDate(true);
+  };
+
   const handleSave = () => {
     let finalStart: string | null = null;
     let finalDue: string | null = null;
@@ -98,137 +109,214 @@ export function DatePopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={
-            open
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
-              : actionBtnClass
-          }
+          size="sm"
+          className={cn(
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            actionBtnClass,
+            open && 'bg-muted border-border'
+          )}
         >
-          <Clock className="mr-2 h-4 w-4 text-foreground shrink-0" />
+          <Clock className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Dates</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        sideOffset={-14}
-        className="w-[304px] p-0 rounded-sm border-border overflow-hidden flex flex-col z-100 bg-popover"
+        sideOffset={6}
+        collisionPadding={16}
+        className="w-[520px] p-0 rounded-lg shadow-sm border border-border overflow-hidden flex flex-col z-100 bg-popover"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-          <span className="text-sm font-semibold text-center flex-1 text-foreground">Dates</span>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 bg-popover">
+          <div className="flex items-center gap-2">
+            <Clock className="size-3.5 shrink-0 text-primary" />
+            <span className="text-xs font-bold text-foreground">Dates & Deadlines</span>
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-foreground"
+            className="size-6 text-foreground hover:bg-muted cursor-pointer rounded-md"
             onClick={() => onOpenChange(false)}
           >
-            <X className="size-4 shrink-0" />
+            <X className="size-3.5 shrink-0" />
           </Button>
         </div>
 
-        <div className="p-3 space-y-4 max-h-[80vh] overflow-y-auto">
-          <div className="flex justify-center border-b border-border pb-3">
+        {/* 2-Column Body (Compact Height) */}
+        <div className="flex divide-x divide-border min-h-0 bg-background">
+          {/* Left Column: Calendar */}
+          <div className="p-3 flex items-center justify-center shrink-0">
             <Calendar
               mode="range"
               selected={selectedRange as any}
-              onSelect={(range: any) => setSelectedRange(range || { from: undefined })}
-              className="p-0"
+              onSelect={(range: any) => {
+                setSelectedRange(range || { from: undefined });
+                if (range?.from) setHasStartDate(true);
+                if (range?.to) setHasDueDate(true);
+              }}
+              className="p-0 text-xs"
             />
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={hasStartDate}
-                onCheckedChange={(c) => setHasStartDate(!!c)}
-                id="start-date-cb"
-              />
-              <label htmlFor="start-date-cb" className="text-xs font-semibold text-foreground flex-1">
-                Start date
-              </label>
-              <Input
-                readOnly
-                value={selectedRange.from ? selectedRange.from.toLocaleDateString() : 'M/D/YYYY'}
-                className="h-8 w-28 text-xs text-center"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={hasDueDate}
-                onCheckedChange={(c) => setHasDueDate(!!c)}
-                id="due-date-cb"
-              />
-              <label htmlFor="due-date-cb" className="text-xs font-semibold text-foreground flex-1">
-                Due date
-              </label>
-              <Input
-                readOnly
-                value={
-                  selectedRange.to
-                    ? selectedRange.to.toLocaleDateString()
-                    : selectedRange.from
-                    ? selectedRange.from.toLocaleDateString()
-                    : 'M/D/YYYY'
-                }
-                className="h-8 w-28 text-xs text-center"
-              />
-            </div>
-
-            <div className="space-y-1.5 pt-2 border-t border-border">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Set due date reminder
-              </label>
-              <Select
-                value={reminderOption || 'none'}
-                onValueChange={(val) => setReminderOption(val as TaskReminder)}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Reminder" />
-                </SelectTrigger>
-                <SelectContent className="text-xs">
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="at-time">At time of due date</SelectItem>
-                  <SelectItem value="5m">5 Minutes before</SelectItem>
-                  <SelectItem value="10m">10 Minutes before</SelectItem>
-                  <SelectItem value="15m">15 Minutes before</SelectItem>
-                  <SelectItem value="1h">1 Hour before</SelectItem>
-                  <SelectItem value="2h">2 Hours before</SelectItem>
-                  <SelectItem value="1day">1 Day before</SelectItem>
-                  <SelectItem value="2day">2 Days before</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
+          {/* Right Column: Quick Presets + Details */}
+          <div className="flex-1 p-3.5 space-y-3 flex flex-col justify-between overflow-y-auto max-h-[300px]">
+            {/* Quick Presets */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">
-                Repeat
-              </label>
-              <Select
-                value={recurrenceOption || 'none'}
-                onValueChange={(val) => setRecurrenceOption(val as TaskRecurrence)}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Repeat" />
-                </SelectTrigger>
-                <SelectContent className="text-xs">
-                  <SelectItem value="none">Never</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="mon-fri">Every weekday (Mon - Fri)</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly-day">Monthly (on same day)</SelectItem>
-                  <SelectItem value="monthly-week">Monthly (on same weekday)</SelectItem>
-                </SelectContent>
-              </Select>
+              <span className="text-10 font-bold text-muted-foreground tracking-normal">Quick Select</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDue(0)}
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
+                >
+                  Today
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDue(1)}
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
+                >
+                  Tomorrow
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDue(7)}
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
+                >
+                  Next week
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuickDue(14)}
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
+                >
+                  In 2 weeks
+                </Button>
+              </div>
+            </div>
+
+            {/* Inputs */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={hasStartDate}
+                  onCheckedChange={(c) => setHasStartDate(!!c)}
+                  id="start-date-cb"
+                />
+                <label htmlFor="start-date-cb" className="text-xs font-medium text-foreground flex-1 cursor-pointer">
+                  Start date
+                </label>
+                <Input
+                  readOnly
+                  value={selectedRange.from ? selectedRange.from.toLocaleDateString() : 'M/D/YYYY'}
+                  className="h-6.5 w-24 text-11 text-center px-1 font-mono rounded-md border-border"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={hasDueDate}
+                  onCheckedChange={(c) => setHasDueDate(!!c)}
+                  id="due-date-cb"
+                />
+                <label htmlFor="due-date-cb" className="text-xs font-medium text-foreground flex-1 cursor-pointer">
+                  Due date
+                </label>
+                <Input
+                  readOnly
+                  value={
+                    selectedRange.to
+                      ? selectedRange.to.toLocaleDateString()
+                      : selectedRange.from
+                      ? selectedRange.from.toLocaleDateString()
+                      : 'M/D/YYYY'
+                  }
+                  className="h-6.5 w-24 text-11 text-center px-1 font-mono rounded-md border-border"
+                />
+              </div>
+            </div>
+
+            {/* Reminders & Recurrence */}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+              <div className="space-y-1">
+                <label className="text-10 font-bold text-muted-foreground">
+                  Reminder
+                </label>
+                <Select
+                  value={reminderOption || 'none'}
+                  onValueChange={(val) => setReminderOption(val as TaskReminder)}
+                >
+                  <SelectTrigger className="h-6.5 text-11 px-2 rounded-md border-border">
+                    <SelectValue placeholder="Reminder" />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs rounded-md border-border shadow-sm">
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="at-time">At time of due</SelectItem>
+                    <SelectItem value="15m">15m before</SelectItem>
+                    <SelectItem value="1h">1h before</SelectItem>
+                    <SelectItem value="1day">1d before</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-10 font-bold text-muted-foreground">
+                  Repeat
+                </label>
+                <Select
+                  value={recurrenceOption || 'none'}
+                  onValueChange={(val) => setRecurrenceOption(val as TaskRecurrence)}
+                >
+                  <SelectTrigger className="h-6.5 text-11 px-2 rounded-md border-border">
+                    <SelectValue placeholder="Repeat" />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs rounded-md border-border shadow-sm">
+                    <SelectItem value="none">Never</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="mon-fri">Mon - Fri</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly-day">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="pt-2 border-t border-border flex flex-col gap-2">
-            <Button size="sm" onClick={handleSave} className="w-full">
-              Save
+        {/* Footer */}
+        <div className="px-3.5 py-2.5 border-t border-border shrink-0 flex items-center justify-between gap-2 bg-popover">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleRemove}
+            className="h-7 text-xs text-muted-foreground hover:text-destructive cursor-pointer px-2.5 rounded-md"
+          >
+            Clear
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="h-7 text-xs px-3 cursor-pointer rounded-md shadow-none"
+            >
+              Cancel
             </Button>
-            <Button size="sm" variant="outline" onClick={handleRemove} className="w-full">
-              Remove
+            <Button
+              size="sm"
+              onClick={handleSave}
+              className="h-7 text-xs font-semibold px-4 cursor-pointer rounded-md shadow-none"
+            >
+              Apply
             </Button>
           </div>
         </div>

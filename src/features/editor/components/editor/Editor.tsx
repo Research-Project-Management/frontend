@@ -52,6 +52,10 @@ const FluxIcon = ({ className }: { className?: string }) => (
 import { CatalogItemService } from '@/features/workspaces/library/services/catalog.service';
 import { generateCitationKey } from '@/features/workspaces/library/utils/library.util';
 import Format from "./Format";
+import CitationPickerModal from "./CitationPickerModal";
+import { registerCitationCompletion } from "./citation-completion.provider";
+import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
+import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
 
 // Register LaTeX language and custom theme before Monaco loads
 if (typeof window !== 'undefined') {
@@ -219,6 +223,57 @@ export default function Editor({ page }: EditorProps) {
   const renameInputRef = useRef<HTMLInputElement>(null);
   const disposablesRef = useRef<Array<{ dispose: () => void }>>([]);
   const domCleanupRef = useRef<(() => void) | null>(null);
+
+  const [citationModalOpen, setCitationModalOpen] = useState(false);
+  const { data: libraryData } = useViewItems(workspaceIdRef.current, 'all');
+  const libraryItems = libraryData?.items ?? [];
+  const libraryItemsRef = useRef<CatalogItem[]>([]);
+  libraryItemsRef.current = libraryItems;
+
+  useEffect(() => {
+    const unsubOpen = EditorEventBus.on('flux:open-citation-picker', () => {
+      setCitationModalOpen(true);
+    });
+
+    const unsubInsert = EditorEventBus.on('flux:insert-citation', (detail) => {
+      const bibKey = detail?.bibKey;
+      if (!bibKey) return;
+      const ed = editorRef.current;
+      if (!ed) return;
+      const sel = ed.getSelection();
+      if (sel) {
+        ed.executeEdits('event-bus-citation', [
+          {
+            range: sel,
+            text: `\\cite{${bibKey}}`,
+            forceMoveMarkers: true,
+          },
+        ]);
+        ed.focus();
+      }
+    });
+
+    return () => {
+      unsubOpen();
+      unsubInsert();
+    };
+  }, [editorRef]);
+
+  const handleInsertCitationSnippet = (snippet: string) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const sel = ed.getSelection();
+    if (sel) {
+      ed.executeEdits('citation-picker-modal', [
+        {
+          range: sel,
+          text: snippet,
+          forceMoveMarkers: true,
+        },
+      ]);
+    }
+    ed.focus();
+  };
 
   // Unmount cleanup for Monaco DOM listeners and disposables
   useEffect(() => {
@@ -500,8 +555,14 @@ export default function Editor({ page }: EditorProps) {
         action: () => insertAt("\\subsection{}"),
       },
       { icon: List, label: "List item", action: () => insertAt("\\item ") },
-      { icon: Tag, label: "Label", action: () => insertAt("\\label{}") },
-      { icon: BookOpen, label: "Citation", action: () => insertAt("\\cite{}") },
+      {
+        icon: BookOpen,
+        label: "Insert Citation...",
+        action: () => {
+          closeMenu();
+          setCitationModalOpen(true);
+        },
+      },
     ],
     [
       {
@@ -586,6 +647,9 @@ export default function Editor({ page }: EditorProps) {
       domNode.addEventListener("dblclick", dblClickHandler);
       domCleanupRef.current = () => domNode.removeEventListener("dblclick", dblClickHandler);
     }
+
+    const citationDisposable = registerCitationCompletion(monaco, () => libraryItemsRef.current);
+    disposablesRef.current.push(citationDisposable);
 
     disposablesRef.current.push(
       editor.onContextMenu((e) => {
@@ -1007,6 +1071,14 @@ export default function Editor({ page }: EditorProps) {
           </div>,
           document.body,
         )}
+
+      {/* In-Editor Citation Picker Modal */}
+      <CitationPickerModal
+        open={citationModalOpen}
+        onOpenChange={setCitationModalOpen}
+        items={libraryItems}
+        onSelectCitation={handleInsertCitationSnippet}
+      />
     </div>
   );
 }

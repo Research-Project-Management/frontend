@@ -1,22 +1,20 @@
-'use client';
+﻿'use client';
 
-import { useStarredFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { Star } from 'lucide-react';
-import { StorageCollectionPage } from '../components/layout/StorageCollectionPage';
-import { filterStarredFiles } from '../utils/starred.util';
+import { useStarredFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
+import { StoragePageTemplate } from '../components/layout/StoragePageTemplate';
 
 export default function WorkspaceStarredPage() {
-  const { mutate: handleToggleStar } = useToggleStarItem();
-  const { mutate: handleDelete } = useDeleteItem();
+  const { mutateAsync: handleToggleStar } = useToggleStarItem();
+  const { mutateAsync: handleDelete } = useDeleteItem();
 
   return (
-    <StorageCollectionPage
+    <StoragePageTemplate
       title="Starred"
       icon={Star}
-      useDataHook={useStarredFiles}
-      filterItems={filterStarredFiles}
-      onToggleStar={(id) => handleToggleStar(id)}
-      onDelete={(id) => handleDelete(id)}
+      useFilesHook={useStarredFiles}
+      onToggleStar={handleToggleStar}
+      onDelete={handleDelete}
     />
   );
 }

@@ -169,6 +169,10 @@ export default function Format() {
   const hasOverflow = !showStructure || !showMath || !showFormat;
 
   const handleFormat = (type: LatexFormatType) => {
+    if (type === 'cite') {
+      EditorEventBus.emit('flux:open-citation-picker');
+      return;
+    }
     EditorCommandBus.format(editorRef.current, type);
   };
 

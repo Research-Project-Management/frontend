@@ -9,7 +9,7 @@ import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';
 
 export interface ActivityFeedItemProps {
   activity: YourWorkActivityEvent | any;
-  onTaskClick: (taskId: string) => void;
+  onTaskClick?: (taskId: string) => void;
   taskProjectMap?: ProjectMap;
   className?: string;
 }
@@ -46,7 +46,7 @@ export function ActivityFeedItem({
 
   const handleClick = () => {
     if (isTaskRelated && activity.itemId) {
-      onTaskClick(activity.itemId);
+      onTaskClick?.(activity.itemId);
     }
   };
 
@@ -71,12 +71,12 @@ export function ActivityFeedItem({
         className,
       )}
     >
-      <Avatar className="size-9 rounded-lg shrink-0 mt-0.5 border border-border">
+      <Avatar className="size-9 rounded-full shrink-0 mt-0.5 border border-border">
         <AvatarImage
           src={activity.user?.avatar || undefined}
           alt={actorName}
         />
-        <AvatarFallback className="rounded-lg text-xs font-medium bg-muted">
+        <AvatarFallback className="rounded-full text-xs font-medium bg-muted text-foreground">
           {actorName.substring(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
@@ -93,12 +93,7 @@ export function ActivityFeedItem({
             </span>
           )}
           {activity.targetTitle && (
-            <span
-              className={cn(
-                'font-normal text-foreground transition-colors',
-                
-              )}
-            >
+            <span className="font-normal text-foreground transition-colors">
               {activity.targetTitle}
             </span>
           )}
@@ -110,7 +105,7 @@ export function ActivityFeedItem({
           </span>
           {projectName && (
             <>
-              <span className="text-muted-foreground/40 text-xs">•</span>
+              <span className="text-muted-foreground text-xs">•</span>
               <span className="text-xs font-medium text-muted-foreground truncate max-w-[200px]">
                 {projectName}
               </span>

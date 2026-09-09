@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
+import { getWorkloadStates, type WorkloadStateItem } from '../../utils/workload.util';
 
 export interface WorkloadCardsProps {
   statusBreakdown?: Record<string, number>;
@@ -16,14 +17,7 @@ export function WorkloadCards({
   onTaskClick,
   taskProjectMap,
 }: WorkloadCardsProps) {
-  const workloadStates = [
-    { label: 'Backlog', count: statusBreakdown.backlog || 0, color: 'bg-muted-foreground/60' },
-    { label: 'Not started', count: statusBreakdown.todo || 0, color: 'bg-primary' },
-    { label: 'Working on', count: statusBreakdown.doing || 0, color: 'bg-warning' },
-    { label: 'In review', count: statusBreakdown.review || 0, color: 'bg-warning' },
-    { label: 'Completed', count: statusBreakdown.done || 0, color: 'bg-success' },
-    { label: 'Cancelled', count: statusBreakdown.cancelled || 0, color: 'bg-destructive' },
-  ];
+  const workloadStates = getWorkloadStates(statusBreakdown);
 
   return (
     <div>
@@ -31,7 +25,7 @@ export function WorkloadCards({
         Workload
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        {workloadStates.map((state) => (
+        {workloadStates.map((state: WorkloadStateItem) => (
           <div
             key={state.label}
             className="p-4 rounded-lg border border-border bg-card flex flex-col justify-between min-h-[82px] shadow-none"

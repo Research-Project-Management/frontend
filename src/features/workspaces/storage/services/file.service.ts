@@ -8,30 +8,80 @@ import { API_BASE_URL } from '@/config/env';
 import { generateThumbnail } from '@/shared/utils/file';
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/storage/types/storage.types';
 
+export interface FileQueryParams {
+  parentId?: string | null;
+  search?: string;
+  sortBy?: string;
+  types?: string[] | string;
+  type?: string;
+  projectIds?: string[] | string;
+  projectId?: string;
+  limit?: number;
+  page?: number;
+}
+
+export function buildQueryString(params?: FileQueryParams | string | null): string {
+  if (!params) return '';
+  if (typeof params === 'string' || params === null) {
+    return `?parentId=${params === null ? 'null' : params}`;
+  }
+
+  const searchParams = new URLSearchParams();
+
+  if (params.parentId !== undefined) {
+    searchParams.set('parentId', params.parentId === null ? 'null' : params.parentId);
+  }
+  if (params.search && params.search.trim()) {
+    searchParams.set('search', params.search.trim());
+  }
+  if (params.sortBy) {
+    searchParams.set('sortBy', params.sortBy);
+  }
+  if (params.types) {
+    const typesStr = Array.isArray(params.types) ? params.types.join(',') : params.types;
+    if (typesStr) searchParams.set('types', typesStr);
+  }
+  if (params.type && params.type !== 'all') {
+    searchParams.set('type', params.type);
+  }
+  if (params.projectIds) {
+    const projStr = Array.isArray(params.projectIds) ? params.projectIds.join(',') : params.projectIds;
+    if (projStr) searchParams.set('projectIds', projStr);
+  }
+  if (params.projectId && params.projectId !== 'all') {
+    searchParams.set('projectId', params.projectId);
+  }
+  if (params.limit !== undefined) {
+    searchParams.set('limit', String(params.limit));
+  }
+  if (params.page !== undefined) {
+    searchParams.set('page', String(params.page));
+  }
+
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : '';
+}
+
 // ── Read Operations (Workspace-level) ────────────────────────────────────────
 
-export const getHomeFiles = (workspaceId: string) =>
-    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/home`);
-
-export const getAllFiles = (workspaceId: string, parentId?: string | null) => {
-    let url = `/api/files/workspace/${workspaceId}`;
-    if (parentId !== undefined) {
-      url += `?parentId=${parentId === null ? 'null' : parentId}`;
-    }
-    return apiGet<StorageResponse>(url);
+export const getAllFiles = (workspaceId: string, params?: FileQueryParams | string | null) => {
+  return apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}${buildQueryString(params)}`);
 };
 
-export const getMyFiles = (workspaceId: string) =>
-    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/my-files`);
+export const getHomeFiles = (workspaceId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/home${buildQueryString(params)}`);
 
-export const getStarredFiles = (workspaceId: string) =>
-    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/starred`);
+export const getMyFiles = (workspaceId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/my-files${buildQueryString(params)}`);
 
-export const getSharedFiles = (workspaceId: string) =>
-    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/shared`);
+export const getStarredFiles = (workspaceId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/starred${buildQueryString(params)}`);
 
-export const getTrashedFiles = (workspaceId: string) =>
-    apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/trash`);
+export const getSharedFiles = (workspaceId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/shared${buildQueryString(params)}`);
+
+export const getTrashedFiles = (workspaceId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/workspace/${workspaceId}/trash${buildQueryString(params)}`);
 
 export const getStorageUsage = (workspaceId: string) =>
     apiGet<{ totalBytes: number }>(`/api/files/workspace/${workspaceId}/usage`);
@@ -268,7 +318,7 @@ export const moveItem = (itemId: string, parentId: string | null) =>
 export const updateFileMetadata = (itemId: string, metaData: Record<string, any>) =>
     apiPut(`/api/files/${itemId}`, { metaData });
 
-export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
+const fetchAuthorized = async (url: string, errorType: string): Promise<Response> => {
     const token = getAuthToken();
     const headers: Record<string, string> = {};
     if (token && !url.startsWith("blob:") && !url.startsWith("data:")) {
@@ -276,22 +326,19 @@ export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
     }
     const response = await fetch(url, { credentials: "include", headers });
     if (!response.ok) {
-        throw new Error("Failed to fetch file buffer: " + response.statusText);
+        throw new Error(`Failed to fetch file ${errorType}: ` + response.statusText);
     }
-    return response.arrayBuffer();
+    return response;
+};
+
+export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
+    const res = await fetchAuthorized(url, "buffer");
+    return res.arrayBuffer();
 };
 
 export const getFileBlob = async (url: string): Promise<Blob> => {
-    const token = getAuthToken();
-    const headers: Record<string, string> = {};
-    if (token && !url.startsWith("blob:") && !url.startsWith("data:")) {
-        headers["Authorization"] = `Bearer ${token}`;
-    }
-    const response = await fetch(url, { credentials: "include", headers });
-    if (!response.ok) {
-        throw new Error("Failed to fetch file blob: " + response.statusText);
-    }
-    return response.blob();
+    const res = await fetchAuthorized(url, "blob");
+    return res.blob();
 };
 
 

@@ -6,7 +6,8 @@ import Topbar from "../components/layout/Topbar";
 import { WorkItemViews, TaskViews } from "../components/views/WorkItemViews";
 import { WorkItemDetailModal as WorkItemDialog, TaskDetailModal as TaskDialog } from "../components/modals/work-item/WorkItemDetailModal";
 import { TransferModal } from "../components/modals/TransferModal";
-import { AddExistingWorkItemModal, AddExistingTaskModal } from "../components/modals/AddExistingWorkItemModal";
+import { AddExistingTaskModal } from "../components/modals/AddExistingWorkItemModal";
+import { ColumnFormModal, DeleteColumnModal } from "../components/modals/ColumnModals";
 import { useTaskProject } from "../hooks/use-work-item";
 import { useTopbar } from "../hooks/use-topbar";
 import { useKanban } from "../hooks/use-kanban";
@@ -15,6 +16,7 @@ import type {
   Task as TaskType,
   WorkItemMutationInput,
   TaskMutationInput,
+  Column as ColumnType,
 } from "../types/work-item.types";
 import { resolveWorkItemColumnId, resolveTaskColumnId } from "../types/work-item.types";
 import { Button } from '@/shared/components/ui/button';
@@ -40,7 +42,10 @@ export type WorkItemModalState =
   | { type: 'detail'; card: Partial<WorkItemType> }
   | { type: 'delete-task'; task: WorkItemType }
   | { type: 'add-existing' }
-  | { type: 'transfer' };
+  | { type: 'transfer' }
+  | { type: 'create-column' }
+  | { type: 'edit-column'; column: ColumnType }
+  | { type: 'delete-column'; column: ColumnType };
 
 export type TaskModalState = WorkItemModalState;
 
@@ -221,7 +226,8 @@ export function WorkItemPage({
 
   const handleJoinCard = (card: TaskType) => {
     if (!currentUser?.id) return;
-    if (card.assigneeId?.id === currentUser.id) return;
+    const currentAssigneeId = typeof card.assigneeId === 'object' ? card.assigneeId?.id : card.assigneeId;
+    if (currentAssigneeId === currentUser.id) return;
 
     projectActions.updateTask({
       taskId: card.id,
@@ -232,7 +238,8 @@ export function WorkItemPage({
 
   const handleLeaveCard = (card: TaskType) => {
     if (!currentUser?.id) return;
-    if (card.assigneeId?.id !== currentUser.id) return;
+    const currentAssigneeId = typeof card.assigneeId === 'object' ? card.assigneeId?.id : card.assigneeId;
+    if (currentAssigneeId !== currentUser.id) return;
 
     projectActions.updateTask({
       taskId: card.id,
@@ -280,6 +287,44 @@ export function WorkItemPage({
     }
   };
 
+  const handleOpenAddColumn = () => {
+    setModal({ type: 'create-column' });
+  };
+
+  const handleOpenEditColumn = (column: ColumnType) => {
+    setModal({ type: 'edit-column', column });
+  };
+
+  const handleOpenDeleteColumn = (column: ColumnType) => {
+    setModal({ type: 'delete-column', column });
+  };
+
+  const handleCreateColumn = (payload: { sectionName: string; selectedColor: string }) => {
+    projectActions.addColumn({
+      title: payload.sectionName,
+      accentColor: payload.selectedColor,
+    }).then(() => {
+      closeModal();
+    });
+  };
+
+  const handleEditColumn = (payload: { sectionName: string; selectedColor: string }) => {
+    if (modal.type !== 'edit-column') return;
+    projectActions.updateColumn(modal.column.id, {
+      title: payload.sectionName,
+      accentColor: payload.selectedColor,
+    }).then(() => {
+      closeModal();
+    });
+  };
+
+  const handleDeleteColumnConfirm = () => {
+    if (modal.type !== 'delete-column') return;
+    projectActions.deleteColumn(modal.column.id).then(() => {
+      closeModal();
+    });
+  };
+
   const isCycleEmpty = cycleId && allTasks.length === 0 && !isLoading;
 
   if (isLoading) {
@@ -291,10 +336,10 @@ export function WorkItemPage({
         <div className="flex-1 flex gap-5 p-6 overflow-hidden">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-72 space-y-3">
-              <Skeleton className="h-8 w-full rounded" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-8 w-full rounded-md" />
+              <Skeleton className="h-24 w-full rounded-md" />
+              <Skeleton className="h-24 w-full rounded-md" />
+              <Skeleton className="h-16 w-full rounded-md" />
             </div>
           ))}
         </div>
@@ -336,8 +381,8 @@ export function WorkItemPage({
       <div className="flex-1 flex flex-col min-h-0 relative">
         {isCycleEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <KanbanSquare className="w-8 h-8 text-primary shrink-0" />
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <KanbanSquare className="w-8 h-8 text-foreground shrink-0" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">
               No work items in this cycle
@@ -350,7 +395,7 @@ export function WorkItemPage({
                 variant="outline"
                 size="sm"
                 onClick={() => setModal({ type: 'add-existing' })}
-                className="gap-2 rounded-sm"
+                className="gap-2 rounded-md"
               >
                 <ArrowRightLeft className="w-4 h-4 shrink-0" />
                 <span>Add Existing Work Items</span>
@@ -361,7 +406,7 @@ export function WorkItemPage({
                   const firstCol = columns[0];
                   handleOpenAddDialog(firstCol ? resolveTaskColumnId(firstCol) : "");
                 }}
-                className="gap-2 rounded-sm"
+                className="gap-2 rounded-md"
               >
                 <Plus className="w-4 h-4 shrink-0" />
                 <span>Create Work Item</span>
@@ -386,6 +431,9 @@ export function WorkItemPage({
             onLeaveCard={handleLeaveCard}
             onRemoveFromCycle={handleRemoveFromCycle}
             onAssignExistingTasks={handleAssignExistingTasksToDate}
+            onAddColumn={handleOpenAddColumn}
+            onEditColumn={handleOpenEditColumn}
+            onDeleteColumn={handleOpenDeleteColumn}
             isReadOnly={isReadOnly}
           />
         )}
@@ -420,7 +468,7 @@ export function WorkItemPage({
 
       {/* Task Delete Confirmation Modal */}
       <Dialog open={modal.type === 'delete-task'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="w-full max-w-md p-6 gap-4">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border shadow-sm bg-background">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">Delete Work Item</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -428,15 +476,49 @@ export function WorkItemPage({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={closeModal} disabled={projectState.status.isDeleting}>
+            <Button variant="ghost" size="sm" onClick={closeModal} disabled={projectState.status.isDeleting} className="rounded-md">
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleTaskDeleteConfirm} disabled={projectState.status.isDeleting}>
+            <Button variant="destructive" size="sm" onClick={handleTaskDeleteConfirm} disabled={projectState.status.isDeleting} className="rounded-md">
               {projectState.status.isDeleting ? "Deleting..." : "Delete Work Item"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Column Modals */}
+      <ColumnFormModal
+        isOpen={modal.type === 'create-column'}
+        onClose={closeModal}
+        onSubmit={handleCreateColumn}
+        mode="create"
+        isLoading={projectState.status.isSaving}
+      />
+
+      {modal.type === 'edit-column' && (
+        <ColumnFormModal
+          isOpen={true}
+          onClose={closeModal}
+          onSubmit={handleEditColumn}
+          mode="edit"
+          initialData={{
+            sectionName: modal.column.title,
+            selectedColor: modal.column.accentColor,
+          }}
+          isLoading={projectState.status.isSaving}
+        />
+      )}
+
+      {modal.type === 'delete-column' && (
+        <DeleteColumnModal
+          isOpen={true}
+          onClose={closeModal}
+          onConfirm={handleDeleteColumnConfirm}
+          columnTitle={modal.column.title}
+          fallbackColumnTitle={columns.find((c) => c.id !== modal.column.id)?.title || 'Backlog'}
+          isLoading={projectState.status.isDeleting}
+        />
+      )}
 
       {/* Cycle Modals */}
       {cycleId && (

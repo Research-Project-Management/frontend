@@ -39,31 +39,33 @@ export function MemberPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={
-            open
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
-              : actionBtnClass
-          }
+          size="sm"
+          className={cn(
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            actionBtnClass,
+            open && 'bg-muted border-border'
+          )}
         >
-          <UserPlus className="mr-2 h-4 w-4 text-foreground shrink-0" />
+          <UserPlus className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Members</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        sideOffset={-14}
-        className="w-72 rounded-sm p-0 border-border flex flex-col z-100"
+        sideOffset={6}
+        collisionPadding={16}
+        className="w-72 rounded-md p-0 shadow-sm border border-border flex flex-col z-100 bg-popover max-h-[min(480px,calc(100vh-80px))] overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <span className="text-sm font-semibold text-center flex-1 text-foreground">Members</span>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-foreground hover:bg-muted cursor-pointer"
+            className="size-8 text-foreground hover:bg-muted cursor-pointer rounded-md"
             onClick={() => onOpenChange(false)}
           >
-            <X className="h-4 w-4 text-foreground shrink-0" />
+            <X className="size-4 shrink-0 text-foreground" />
           </Button>
         </div>
         <div className="p-3">
@@ -72,7 +74,7 @@ export function MemberPopover({
               placeholder="Search members"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 pr-8"
+              className="h-8 text-xs pr-8 rounded-md border-border"
             />
           </div>
           <div className="mt-4">
@@ -94,16 +96,16 @@ export function MemberPopover({
                       onOpenChange(false);
                     }}
                     className={cn(
-                      'w-full flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors hover:bg-muted text-left cursor-pointer',
-                      assigneeId === memberUserId && 'bg-muted ring-1 ring-border',
+                      'w-full flex items-center gap-3 px-2 py-1.5 rounded-sm transition-colors hover:bg-muted text-left cursor-pointer',
+                      assigneeId === memberUserId && 'bg-muted font-medium text-foreground',
                     )}
                   >
-                    <Avatar className="size-6">
+                    <Avatar className="size-6 shrink-0">
                       <AvatarImage src={uAvatar} />
                       <AvatarFallback className="text-xs font-medium">{fallback}</AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground flex-1 truncate">{uName}</span>
-                    {assigneeId === memberUserId && <Check className="size-4 text-foreground shrink-0" />}
+                    {assigneeId === memberUserId && <Check className="size-4 shrink-0 text-primary" />}
                   </button>
                 );
               })}

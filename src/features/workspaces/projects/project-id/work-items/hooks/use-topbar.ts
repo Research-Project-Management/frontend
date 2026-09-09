@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import type { WorkItem, Task, Column, Project, Cycle } from '../types/work-item.types';
 import { resolveWorkItemColumnId, resolveTaskColumnId } from '../types/work-item.types';
 import { useTaskWorkspaceProjects } from './use-work-item';
 
-export type ViewMode = 'board' | 'list' | 'calendar';
+export type ViewMode = 'list' | 'board' | 'calendar' | 'table' | 'split';
+
+const TASKS_VIEW_STORAGE_KEY = 'flux:tasks-view-mode';
+const VALID_MODES: ViewMode[] = ['list', 'board', 'calendar', 'table', 'split'];
 
 export type AssigneeFilterOption = {
   id: string;
@@ -46,7 +49,35 @@ export function useTopbar({
   const pathname = usePathname();
   const { data: projects = [] } = useTaskWorkspaceProjects(workspaceId);
 
-  const [mode, setMode] = useState<ViewMode>('board');
+  const [mode, setModeState] = useState<ViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(TASKS_VIEW_STORAGE_KEY) as ViewMode;
+        if (saved && VALID_MODES.includes(saved)) return saved;
+      } catch {}
+    }
+    return 'board';
+  });
+
+  const setMode = useCallback((newMode: ViewMode) => {
+    setModeState(newMode);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(TASKS_VIEW_STORAGE_KEY, newMode);
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(TASKS_VIEW_STORAGE_KEY) as ViewMode;
+        if (saved && VALID_MODES.includes(saved)) {
+          setModeState(prev => (saved !== prev ? saved : prev));
+        }
+      } catch {}
+    }
+  }, []);
   const [colIds, setColIds] = useState<string[]>([]);
   const [userIds, setUserIds] = useState<string[]>([]);
   const [internalSearch, setInternalSearch] = useState('');
@@ -75,11 +106,13 @@ export function useTopbar({
     if (Array.isArray(tasks)) {
       for (const t of tasks) {
         if (!t) continue;
-        if (t.assigneeId?.id) {
-          map.set(t.assigneeId.id, {
-            id: t.assigneeId.id,
-            name: t.assigneeId.name || 'Unknown',
-            avatar: t.assigneeId.avatar,
+        const assignee = typeof t.assigneeId === 'object' ? t.assigneeId : (t as any).assignee;
+        const assigneeId = assignee?.id || (typeof t.assigneeId === 'string' ? t.assigneeId : null);
+        if (assigneeId) {
+          map.set(assigneeId, {
+            id: assigneeId,
+            name: assignee?.name || 'Unknown',
+            avatar: assignee?.avatar,
           });
         } else {
           hasUnassigned = true;

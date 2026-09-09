@@ -1,22 +1,20 @@
-'use client';
+﻿'use client';
 
-import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { Share2 } from 'lucide-react';
-import { StorageCollectionPage } from '../components/layout/StorageCollectionPage';
-import { filterSharedFiles } from '../utils/shared.util';
+import { useSharedFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
+import { StoragePageTemplate } from '../components/layout/StoragePageTemplate';
 
 export default function WorkspaceSharedPage() {
-  const { mutate: handleToggleStar } = useToggleStarItem();
-  const { mutate: handleDelete } = useDeleteItem();
+  const { mutateAsync: handleToggleStar } = useToggleStarItem();
+  const { mutateAsync: handleDelete } = useDeleteItem();
 
   return (
-    <StorageCollectionPage
+    <StoragePageTemplate
       title="Shared"
       icon={Share2}
-      useDataHook={useSharedFiles}
-      filterItems={filterSharedFiles}
-      onToggleStar={(id) => handleToggleStar(id)}
-      onDelete={(id) => handleDelete(id)}
+      useFilesHook={useSharedFiles}
+      onToggleStar={handleToggleStar}
+      onDelete={handleDelete}
     />
   );
 }

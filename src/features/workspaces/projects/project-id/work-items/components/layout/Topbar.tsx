@@ -8,6 +8,8 @@ import {
   Columns3,
   AlignJustify,
   CalendarDays,
+  TableProperties,
+  LayoutTemplate,
   ListFilter,
   KanbanSquare,
   Check,
@@ -134,9 +136,11 @@ export function Topbar({
   } = actions;
 
   const viewOptions: Array<{ id: ViewMode; label: string; icon: LucideIcon }> = [
-    { id: 'board', label: 'Board view', icon: Columns3 },
     { id: 'list', label: 'List view', icon: AlignJustify },
+    { id: 'board', label: 'Board view', icon: Columns3 },
     { id: 'calendar', label: 'Calendar view', icon: CalendarDays },
+    { id: 'table', label: 'Table view', icon: TableProperties },
+    { id: 'split', label: 'Split view', icon: LayoutTemplate },
   ];
 
   return (
@@ -188,7 +192,7 @@ export function Topbar({
                       onClick={() => handleCycleSelect(c.id)}
                       className={cn(
                         'text-xs cursor-pointer',
-                        c.id === cycleId && 'bg-primary/10 text-primary font-medium',
+                        c.id === cycleId && 'bg-muted text-primary font-medium',
                       )}
                     >
                       {c.name}
@@ -292,7 +296,7 @@ export function Topbar({
                     size="icon"
                     className={cn(
                       'relative size-8 rounded-md bg-transparent border-border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors',
-                      hasActiveFilters && 'border-primary/50 bg-primary/5 text-primary',
+                      hasActiveFilters && 'border-primary bg-muted text-primary',
                     )}
                     aria-label="Filter tasks"
                   >
@@ -345,7 +349,7 @@ export function Topbar({
                           onClick={() => toggleColumnFilter(columnId)}
                           className={cn(
                             'w-full flex items-center justify-between px-2 py-1.5 rounded-sm text-xs transition-colors text-left cursor-pointer',
-                            isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground',
+                            isSelected ? 'bg-muted text-primary font-medium' : 'hover:bg-muted text-foreground',
                           )}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -379,7 +383,7 @@ export function Topbar({
                           onClick={() => toggleAssigneeFilter(user.id)}
                           className={cn(
                             'w-full flex items-center justify-between px-2 py-1.5 rounded-sm text-xs transition-colors text-left cursor-pointer',
-                            isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground',
+                            isSelected ? 'bg-muted text-primary font-medium' : 'hover:bg-muted text-foreground',
                           )}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -416,20 +420,20 @@ export function Topbar({
                 variant="outline"
                 size="sm"
                 onClick={onAddExistingTask}
-                className="h-8 gap-1.5 px-3 text-sm font-medium border-border hover:bg-muted rounded-md cursor-pointer"
+                className="h-8 gap-1.5 px-3 text-13 font-medium border-border hover:bg-muted rounded-md cursor-pointer"
               >
                 <ArrowRightLeft className="size-3.5 shrink-0" />
-                <span className="hidden sm:inline">Add Existing</span>
+                <span className="hidden sm:inline">Add existing</span>
               </Button>
             )}
 
             <Button
               size="sm"
               onClick={onAddTask}
-              className="h-8 gap-1.5 px-3 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer transition-all active:scale-[0.98]"
+              className="h-8 gap-1.5 px-3 text-13 font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer transition-all active:scale-[0.98]"
             >
               <Plus className="size-3.5 shrink-0" strokeWidth={2.5} />
-              <span>Add Work Item</span>
+              <span>Add work item</span>
             </Button>
           </div>
         )}

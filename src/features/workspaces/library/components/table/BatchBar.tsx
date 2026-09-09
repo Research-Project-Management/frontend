@@ -126,11 +126,11 @@ export function BatchBar({
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-md border border-border rounded-md select-none shadow-none"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border rounded-md select-none shadow-none"
       >
         {/* Selection Count */}
         <div className="flex items-center gap-1.5 pr-2.5 border-r border-border">
@@ -210,7 +210,7 @@ export function BatchBar({
             align="center"
             side="top"
             sideOffset={8}
-            className="w-48 p-1 bg-popover/95 backdrop-blur-md border border-border rounded-md shadow-none"
+            className="w-48 p-1 bg-popover border border-border rounded-md shadow-none"
           >
             <DropdownMenuItem
               onClick={() => handleCopyMultiCite('apa')}

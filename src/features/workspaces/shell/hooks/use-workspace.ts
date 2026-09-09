@@ -124,15 +124,20 @@ export const useUpdateWorkspace = () => {
         }
       }
     },
-    onError: (error, variables, context) => {
-      if (context?.previousWorkspaces) {
-        queryClient.setQueryData(workspaceKeys.all, context.previousWorkspaces);
-      }
-    },
+    onError: (_err, _vars, context) => handleWorkspaceRollback(queryClient, context),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },
   });
+};
+
+const handleWorkspaceRollback = (
+  queryClient: any,
+  context?: { previousWorkspaces?: WorkspaceListResponse },
+) => {
+  if (context?.previousWorkspaces) {
+    queryClient.setQueryData(workspaceKeys.all, context.previousWorkspaces);
+  }
 };
 
 export const useDeleteWorkspace = () => {
@@ -152,11 +157,7 @@ export const useDeleteWorkspace = () => {
 
       return { previousWorkspaces };
     },
-    onError: (error, workspaceId, context) => {
-      if (context?.previousWorkspaces) {
-        queryClient.setQueryData(workspaceKeys.all, context.previousWorkspaces);
-      }
-    },
+    onError: (_err, _id, context) => handleWorkspaceRollback(queryClient, context),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
     },

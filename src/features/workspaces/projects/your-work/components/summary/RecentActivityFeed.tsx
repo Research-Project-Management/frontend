@@ -1,16 +1,14 @@
 'use client';
 
 import React from 'react';
-import { ActivityFeedItem } from '../shared/ActivityFeedItem';
-import type { ProjectMap } from '../../utils/your-work.util';
-import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';
+import { ActivityFeedList } from '../shared/ActivityFeedList';
 
 export interface RecentActivityFeedProps {
-  activities?: YourWorkActivityEvent[] | any[];
+  activities?: any[];
   isLoading?: boolean;
   limit?: number;
-  onTaskClick: (taskId: string) => void;
-  taskProjectMap?: ProjectMap;
+  onTaskClick?: (taskId: string) => void;
+  taskProjectMap?: Record<string, { id: string; name: string }>;
 }
 
 export function RecentActivityFeed({
@@ -27,27 +25,13 @@ export function RecentActivityFeed({
       <h2 className="text-foreground font-semibold mb-3 text-sm tracking-tight">
         Recent activity
       </h2>
-
-      <div className="rounded-lg border border-border bg-card overflow-hidden divide-y divide-border/60 shadow-none">
-        {isLoading ? (
-          <div className="p-8 text-center text-xs text-muted-foreground">
-            Loading recent activities...
-          </div>
-        ) : displayItems.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-xs font-medium italic">
-            No activity yet.
-          </div>
-        ) : (
-          displayItems.map((activity, idx) => (
-            <ActivityFeedItem
-              key={activity.id || idx}
-              activity={activity}
-              onTaskClick={onTaskClick}
-              taskProjectMap={taskProjectMap}
-            />
-          ))
-        )}
-      </div>
+      <ActivityFeedList
+        items={displayItems}
+        isLoading={isLoading}
+        onTaskClick={onTaskClick}
+        taskProjectMap={taskProjectMap}
+        emptyPadding="py-8"
+      />
     </div>
   );
 }

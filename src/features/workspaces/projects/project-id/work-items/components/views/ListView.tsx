@@ -11,27 +11,49 @@ import {
   MoreHorizontal,
   Paperclip,
   Plus,
+  Pencil,
   RotateCcw,
   Trash2,
   UserMinus,
   UserPlus,
   ChevronRight,
   ChevronDown,
+  Bug,
+  Sparkles,
+  TrendingUp,
+  Zap,
+  Hash,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from '@/shared/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { logger } from '@/shared/lib/logger';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import {
   PRIORITY_CONFIG,
-  resolveWorkItemColumnColor,
+  ISSUE_TYPE_CONFIG,
   resolveTaskColumnColor,
+  resolveWorkItemColumnColor,
   resolveWorkItemColumnId,
   resolveTaskColumnId,
   type Priority,
   type WorkItem,
   type Task,
   type Column,
+  type TaskIssueType,
 } from "../../types/work-item.types";
+
+const ISSUE_TYPE_ICONS: Record<TaskIssueType, React.ElementType> = {
+  task: CheckSquare,
+  bug: Bug,
+  feature: Sparkles,
+  improvement: TrendingUp,
+  epic: Zap,
+};
 import {
   DndContext,
   closestCenter,
@@ -180,22 +202,60 @@ const TaskRowContent = ({
   const assigneeId = assignee?.id || (typeof task.assigneeId === 'string' ? task.assigneeId : null);
   const isCurrentUserAssignee = Boolean(currentUserId && (assigneeId === currentUserId || assignee?.id === currentUserId));
 
+  const iType = (task.issueType as TaskIssueType) || 'task';
+  const isBlocked = Array.isArray(task.relations) && task.relations.some((r) => r.type === 'blocked_by');
+
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-2.5 bg-card hover:bg-muted transition-colors text-left group cursor-pointer border-b border-border last:border-b-0 relative",
+        "w-full flex items-center gap-2.5 px-4 py-2.5 bg-card hover:bg-muted transition-colors text-left group cursor-pointer border-b border-border last:border-b-0 relative",
         task.completed && "opacity-75",
-        isDragging && "z-50 bg-card border border-primary/40 opacity-90 rounded-lg"
+        isDragging && "z-50 bg-card border border-primary opacity-90 rounded-md shadow-sm"
       )}
     >
       <PriorityBadge priority={(task.priority as 'urgent' | 'high' | 'medium' | 'low' | 'none')} />
 
+      {/* Issue Type Icon */}
+      {(() => {
+        const Icon = ISSUE_TYPE_ICONS[iType] || CheckSquare;
+        const config = ISSUE_TYPE_CONFIG[iType] || ISSUE_TYPE_CONFIG.task;
+        return (
+          <span className="shrink-0 inline-flex items-center" title={config.label}>
+            <Icon className="size-3.5 shrink-0" style={{ color: config.color }} />
+          </span>
+        );
+      })()}
+
+      {/* Identifier */}
+      {task.identifier && (
+        <span className="font-mono text-11 font-semibold text-muted-foreground shrink-0">
+          {task.identifier}
+        </span>
+      )}
+
+      {/* Title */}
       <span className={cn(
         "text-xs font-medium flex-1 truncate transition-colors",
         task.completed ? "text-muted-foreground line-through" : "text-foreground"
       )}>
         {task.title}
       </span>
+
+      {/* Blocked Warning */}
+      {isBlocked && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
+          <ShieldAlert className="size-3 shrink-0" />
+          <span>Blocked</span>
+        </span>
+      )}
+
+      {/* Story Points */}
+      {task.storyPoints !== undefined && task.storyPoints !== null && (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+          <Hash className="size-3 shrink-0" />
+          <span>{task.storyPoints}</span>
+        </span>
+      )}
 
       {visibleLabels.length > 0 && (
         <button
@@ -212,7 +272,7 @@ const TaskRowContent = ({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className="inline-flex h-4 items-center rounded px-1.5 text-xs font-semibold leading-none text-white"
+                className="inline-flex h-4 items-center rounded-sm px-1.5 text-xs font-semibold leading-none text-white"
                 style={{ backgroundColor: label.color }}
               >
                 {label.title}
@@ -230,7 +290,7 @@ const TaskRowContent = ({
 
       {dueDateInfo.hasAnyDate && (
         <span className={cn(
-          "flex items-center gap-1 text-xs shrink-0 px-2 py-0.5 rounded transition-colors",
+          "flex items-center gap-1 text-xs shrink-0 px-2 py-0.5 rounded-sm transition-colors",
           dueDateInfo.isOverdueAlert 
             ? "bg-destructive/10 text-destructive font-medium" 
             : "text-muted-foreground"
@@ -263,7 +323,7 @@ const TaskRowContent = ({
       </div>
 
       {assignee && (
-        <Avatar className="size-5 shrink-0 border border-border">
+        <Avatar className="size-5 shrink-0 border border-border shadow-none">
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
@@ -280,14 +340,14 @@ const TaskRowContent = ({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0 text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-md shadow-none"
               aria-label="More actions"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-44 rounded-lg p-1 text-xs">
+          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-44 rounded-md border-border shadow-sm p-1 text-xs">
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicateCard(task); }} className="cursor-pointer">
               <Copy className="mr-2 h-3.5 w-3.5 shrink-0" /> Duplicate
             </DropdownMenuItem>
@@ -413,6 +473,8 @@ const ListViewColumn = ({
   onLeaveCard, 
   onDeleteCard, 
   onRemoveFromCycle,
+  onEditColumn,
+  onDeleteColumn,
   toggleLabelDetails, 
   workspaceLabels, 
   quickAddColumnId, 
@@ -438,8 +500,8 @@ const ListViewColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border bg-card overflow-hidden transition-all",
-        isOver && "ring-2 ring-primary/30 border-primary/50"
+        "rounded-md border border-border bg-card overflow-hidden transition-all",
+        isOver && "ring-1 ring-primary border-primary"
       )}
     >
       {/* ── Group Header ── */}
@@ -460,25 +522,72 @@ const ListViewColumn = ({
           </span>
         </div>
 
-        {!isReadOnly && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              if (!isExpanded) {
-                toggleExpand(group.key);
-              }
-              setQuickAddColumnId(group.key);
-            }}
-            disabled={isAddingCard}
-            className="h-6 w-6 text-muted-foreground hover:bg-muted cursor-pointer rounded"
-            aria-label="Add task"
-          >
-            <Plus className="size-3.5 shrink-0" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {!isReadOnly && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (!isExpanded) {
+                  toggleExpand(group.key);
+                }
+                setQuickAddColumnId(group.key);
+              }}
+              disabled={isAddingCard}
+              className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-md shadow-none"
+              aria-label="Add task"
+            >
+              <Plus className="size-3.5 shrink-0" />
+            </Button>
+          )}
+
+          {!isReadOnly && (onEditColumn || onDeleteColumn) && group.column && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-md shadow-none"
+                  aria-label="Status options"
+                >
+                  <MoreHorizontal className="size-3.5 shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 rounded-md border-border shadow-sm text-xs z-50">
+                {onEditColumn && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditColumn(group.column);
+                    }}
+                    className="cursor-pointer gap-2 py-1.5"
+                  >
+                    <Pencil className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span>Edit status</span>
+                  </DropdownMenuItem>
+                )}
+                {onDeleteColumn && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteColumn(group.column);
+                      }}
+                      className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5 shrink-0" />
+                      <span>Delete status</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* ── Group Content ── */}
@@ -502,7 +611,7 @@ const ListViewColumn = ({
               items={group.items.map((t: any) => t.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="flex flex-col divide-y divide-border/30">
+              <div className="flex flex-col divide-y divide-border">
                 {group.items.map((task: any) => (
                   <SortableTaskRow
                     key={task.id}
@@ -545,14 +654,14 @@ const ListViewColumn = ({
                   }
                 }}
                 placeholder="What needs to be done?"
-                className="h-8 w-full rounded-lg border border-border bg-background px-3 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring placeholder:text-muted-foreground"
+                className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground"
                 disabled={isAddingCard}
                 autoFocus
               />
               <div className="flex items-center gap-1.5">
                 <Button
                   size="sm"
-                  className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
+                  className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-none"
                   onClick={() => handleQuickAddSubmit(group.key)}
                   disabled={!quickAddTitle.trim() || isAddingCard}
                 >
@@ -561,7 +670,7 @@ const ListViewColumn = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs rounded-md cursor-pointer"
+                  className="h-7 px-2 text-xs rounded-md cursor-pointer shadow-none"
                   onClick={() => {
                     setQuickAddColumnId(null);
                     setQuickAddTitle("");
@@ -578,7 +687,6 @@ const ListViewColumn = ({
   );
 };
 
-/* Main Component */
 type ListViewProps = {
   tasksByColumnId: Map<string, Task[]>;
   columns: Column[];
@@ -592,6 +700,9 @@ type ListViewProps = {
   onLeaveCard: (task: Task) => void;
   onRemoveFromCycle?: (task: Task) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
+  onAddColumn?: () => void;
+  onEditColumn?: (column: Column) => void;
+  onDeleteColumn?: (column: Column) => void;
   isAddingCard?: boolean;
   projectId: string;
   isReadOnly?: boolean;
@@ -610,6 +721,9 @@ export default function ListView({
   onLeaveCard,
   onRemoveFromCycle,
   onMoveCard,
+  onAddColumn,
+  onEditColumn,
+  onDeleteColumn,
   isAddingCard,
   projectId,
   isReadOnly,
@@ -623,7 +737,21 @@ export default function ListView({
     return new Set(columns.map((c) => resolveTaskColumnId(c)));
   }, [columns]);
 
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(defaultExpanded);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return defaultExpanded;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return new Set<string>(parsed.filter((item): item is string => typeof item === "string"));
+        }
+      }
+      return defaultExpanded;
+    } catch {
+      return defaultExpanded;
+    }
+  });
 
   const [labelDetailsTaskIds, setLabelDetailsTaskIds] = useState<Set<string>>(new Set());
   const [quickAddColumnId, setQuickAddColumnId] = useState<string | null>(null);
@@ -632,24 +760,7 @@ export default function ListView({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setExpandedIds(
-            new Set<string>(
-              parsed.filter((item): item is string => typeof item === "string"),
-            ),
-          );
-        }
-      }
-    } catch (err) {
-      logger.debug('[ListView] Failed to load expanded states from localStorage', { err });
-    }
-  }, [STORAGE_KEY]);
+  useEffect(() => { setIsMounted(true); }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -666,13 +777,8 @@ export default function ListView({
   }, [quickAddColumnId]);
 
   useEffect(() => {
-    if (!isMounted) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(expandedIds)));
-    } catch (err) {
-      logger.debug('[ListView] Failed to persist expanded states to localStorage', { err });
-    }
-  }, [expandedIds, STORAGE_KEY, isMounted]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(expandedIds)));
+  }, [expandedIds, STORAGE_KEY]);
 
   const handleQuickAddSubmit = (columnId: string) => {
     const trimmed = quickAddTitle.trim();
@@ -740,6 +846,7 @@ export default function ListView({
         key: columnId,
         label: col.title,
         color: resolveTaskColumnColor(columnId, col.accentColor),
+        column: col,
         items: tasksByColumnId.get(columnId) ?? [],
       };
     }),
@@ -771,6 +878,8 @@ export default function ListView({
               onLeaveCard={onLeaveCard}
               onRemoveFromCycle={onRemoveFromCycle}
               onDeleteCard={onDeleteCard}
+              onEditColumn={onEditColumn}
+              onDeleteColumn={onDeleteColumn}
               toggleLabelDetails={toggleLabelDetails}
               workspaceLabels={workspaceLabels}
               quickAddColumnId={quickAddColumnId}
@@ -781,12 +890,25 @@ export default function ListView({
               isReadOnly={isReadOnly}
             />
           ))}
+
+          {!isReadOnly && onAddColumn && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={onAddColumn}
+                className="w-full h-9 border border-dashed border-border hover:border-primary hover:bg-muted rounded-md flex items-center justify-center gap-1.5 text-13 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-background shadow-none"
+              >
+                <Plus className="size-3.5 shrink-0" />
+                <span>Add status / column</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {isMounted && createPortal(
         <DragOverlay>
           {activeTask ? (
-            <div className="w-[calc(100vw-400px)] max-w-2xl bg-card text-foreground border border-border rounded-lg overflow-hidden">
+            <div className="w-[calc(100vw-400px)] max-w-2xl bg-card text-foreground border border-border rounded-md shadow-sm overflow-hidden">
               <TaskRowContent
                 task={activeTask}
                 currentUserId={currentUserId}

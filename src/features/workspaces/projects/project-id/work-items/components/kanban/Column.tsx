@@ -3,9 +3,16 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, Minimize2, Maximize2 } from 'lucide-react';
+import { Plus, Minimize2, Maximize2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { Card, type TaskCardLabel } from './Card';
 import type { WorkItem, Task, Column as ColumnType } from '../../types/work-item.types';
 import { resolveWorkItemColumnColor, resolveTaskColumnColor, resolveWorkItemColumnId, resolveTaskColumnId } from '../../types/work-item.types';
@@ -23,6 +30,8 @@ export interface ColumnProps {
   onJoinCard?: (card: Task) => void;
   onLeaveCard?: (card: Task) => void;
   onRemoveFromCycle?: (card: Task) => void;
+  onEditColumn?: (column: ColumnType) => void;
+  onDeleteColumn?: (column: ColumnType) => void;
   onAddDisabled?: boolean;
   isReadOnly?: boolean;
 }
@@ -40,6 +49,8 @@ export function Column({
   onJoinCard,
   onLeaveCard,
   onRemoveFromCycle,
+  onEditColumn,
+  onDeleteColumn,
   onAddDisabled,
   isReadOnly = false,
 }: ColumnProps) {
@@ -187,6 +198,45 @@ export function Column({
             </TooltipProvider>
           )}
 
+          {!isReadOnly && (onEditColumn || onDeleteColumn) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-foreground hover:bg-muted cursor-pointer"
+                  aria-label="Column options"
+                >
+                  <MoreHorizontal className="h-4 w-4 text-foreground shrink-0" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44 text-xs z-50">
+                {onEditColumn && (
+                  <DropdownMenuItem
+                    onClick={() => onEditColumn(column)}
+                    className="cursor-pointer gap-2 py-1.5"
+                  >
+                    <Pencil className="size-3.5 text-foreground shrink-0" />
+                    <span>Edit column</span>
+                  </DropdownMenuItem>
+                )}
+                {onDeleteColumn && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onDeleteColumn(column)}
+                      className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5 shrink-0" />
+                      <span>Delete column</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -227,7 +277,7 @@ export function Column({
           <div className="flex items-center gap-1.5 mt-2">
             <Button
               size="sm"
-              className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
+              className="h-7 px-3 text-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer"
               onClick={handleQuickAddSubmit}
             >
               Add Card
@@ -235,7 +285,7 @@ export function Column({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs rounded-md cursor-pointer"
+              className="h-7 px-2 text-11 rounded-md cursor-pointer"
               onClick={handleCloseQuickAdd}
             >
               Cancel

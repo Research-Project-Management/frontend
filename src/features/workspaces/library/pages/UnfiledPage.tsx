@@ -205,7 +205,7 @@ export default function UnfiledPage() {
               <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
                 <Inbox className="size-6 text-foreground shrink-0" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">No unfiled items</h3>
+              <h2 className="text-sm font-semibold text-foreground">No unfiled items</h2>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                 {search.trim()
                   ? 'No unfiled references matching your search query.'
@@ -232,9 +232,9 @@ export default function UnfiledPage() {
                   <col className="w-3/12" />
                   <col className="w-10" />
                 </colgroup>
-                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border select-none">
+                <thead className="sticky top-0 z-20 bg-background border-b border-border select-none">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
-                    <th className="w-10 px-2.5 py-1.5 text-center align-middle">
+                    <th scope="col" className="w-10 px-2.5 py-1.5 text-center align-middle">
                       <Checkbox
                         checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
                         onCheckedChange={toggleSelectAll}
@@ -242,8 +242,18 @@ export default function UnfiledPage() {
                       />
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      tabIndex={0}
+                      aria-sort={hasUserSorted && sortField === 'title' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                       onClick={() => onColumnSort('title')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('title');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
@@ -251,8 +261,18 @@ export default function UnfiledPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      tabIndex={0}
+                      aria-sort={hasUserSorted && sortField === 'authors' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                       onClick={() => onColumnSort('authors')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('authors');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Creator</span>
@@ -260,8 +280,18 @@ export default function UnfiledPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      tabIndex={0}
+                      aria-sort={hasUserSorted && sortField === 'year' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                       onClick={() => onColumnSort('year')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('year');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
                     >
                       <div className="flex items-center">
                         <span>Year</span>
@@ -269,15 +299,25 @@ export default function UnfiledPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      tabIndex={0}
+                      aria-sort={hasUserSorted && sortField === 'createdAt' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                       onClick={() => onColumnSort('createdAt')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('createdAt');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
                     >
                       <div className="flex items-center">
                         <span className="whitespace-nowrap">Date Added</span>
                         {renderSortIcon('createdAt')}
                       </div>
                     </th>
-                    <th className="w-10 px-2 py-1.5" />
+                    <th scope="col" className="w-10 px-2 py-1.5" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">

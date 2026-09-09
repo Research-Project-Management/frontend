@@ -8,27 +8,77 @@ import { API_BASE_URL } from '@/config/env';
 import { generateThumbnail } from '@/shared/utils/file';
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 
-// ── Read Operations (Workspace-level) ────────────────────────────────────────
+export interface FileQueryParams {
+  parentId?: string | null;
+  search?: string;
+  sortBy?: string;
+  types?: string[] | string;
+  type?: string;
+  projectIds?: string[] | string;
+  projectId?: string;
+  limit?: number;
+  page?: number;
+}
 
-export const getAllFiles = (projectId: string, parentId?: string | null) => {
-    let url = `/api/files/project/${projectId}`;
-    if (parentId !== undefined) {
-      url += `?parentId=${parentId === null ? 'null' : parentId}`;
-    }
-    return apiGet<StorageResponse>(url);
+export function buildQueryString(params?: FileQueryParams | string | null): string {
+  if (!params) return '';
+  if (typeof params === 'string' || params === null) {
+    return `?parentId=${params === null ? 'null' : params}`;
+  }
+
+  const searchParams = new URLSearchParams();
+
+  if (params.parentId !== undefined) {
+    searchParams.set('parentId', params.parentId === null ? 'null' : params.parentId);
+  }
+  if (params.search && params.search.trim()) {
+    searchParams.set('search', params.search.trim());
+  }
+  if (params.sortBy) {
+    searchParams.set('sortBy', params.sortBy);
+  }
+  if (params.types) {
+    const typesStr = Array.isArray(params.types) ? params.types.join(',') : params.types;
+    if (typesStr) searchParams.set('types', typesStr);
+  }
+  if (params.type && params.type !== 'all') {
+    searchParams.set('type', params.type);
+  }
+  if (params.projectIds) {
+    const projStr = Array.isArray(params.projectIds) ? params.projectIds.join(',') : params.projectIds;
+    if (projStr) searchParams.set('projectIds', projStr);
+  }
+  if (params.projectId && params.projectId !== 'all') {
+    searchParams.set('projectId', params.projectId);
+  }
+  if (params.limit !== undefined) {
+    searchParams.set('limit', String(params.limit));
+  }
+  if (params.page !== undefined) {
+    searchParams.set('page', String(params.page));
+  }
+
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : '';
+}
+
+// ── Read Operations (Project-level) ──────────────────────────────────────────
+
+export const getAllFiles = (projectId: string, params?: FileQueryParams | string | null) => {
+  return apiGet<StorageResponse>(`/api/files/project/${projectId}${buildQueryString(params)}`);
 };
 
-export const getMyFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/project/${projectId}/my-files`);
+export const getMyFiles = (projectId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/project/${projectId}/my-files${buildQueryString(params)}`);
 
-export const getStarredFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/project/${projectId}/starred`);
+export const getStarredFiles = (projectId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/project/${projectId}/starred${buildQueryString(params)}`);
 
-export const getSharedFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/project/${projectId}/shared`);
+export const getSharedFiles = (projectId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/project/${projectId}/shared${buildQueryString(params)}`);
 
-export const getTrashedFiles = (projectId: string) =>
-    apiGet<StorageResponse>(`/api/files/project/${projectId}/trash`);
+export const getTrashedFiles = (projectId: string, params?: FileQueryParams) =>
+  apiGet<StorageResponse>(`/api/files/project/${projectId}/trash${buildQueryString(params)}`);
 
 const uploadBlobWithProgress = (
     blob: Blob,

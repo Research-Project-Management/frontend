@@ -24,7 +24,41 @@ export interface WorkspacePendingInvite {
   id: string;
   email: string;
   role: WorkspaceRole;
+  token?: string;
+  status?: string;
+  expiresAt?: string;
   createdAt: string;
+  invitedBy?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  };
+}
+
+export interface InvitationPreviewResponse {
+  invitation: {
+    id: string;
+    email: string;
+    role: WorkspaceRole;
+    status: string;
+    expiresAt: string;
+    createdAt: string;
+    isExpired: boolean;
+  };
+  workspace: {
+    id: string;
+    name: string;
+    url: string;
+    avatar?: string | null;
+    membersCount: number;
+  };
+  invitedBy?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    avatar?: string | null;
+  };
 }
 
 export interface WorkspaceMemberResponse {

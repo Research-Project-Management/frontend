@@ -10,8 +10,9 @@ import { useTopbar } from '../../hooks/use-topbar';
 import CreateFolderModal from '../modal/CreateFolderModal';
 import RenameModal from '../modal/RenameModal';
 import DuplicateModal from '../modal/DuplicateModal';
+import MoveModal from '../modal/MoveModal';
 import { useViewStore } from '../../store/use-view-store';
-import { StorageFilterPopover } from './StorageFilterPopover';
+import { StorageFilterPopover } from '../filters/StorageFilterPopover';
 
 export interface BreadcrumbItem {
   id: string | null;
@@ -87,7 +88,7 @@ export default function Topbar({
                     onClick={() => onBreadcrumbNavigate?.(segment.id)}
                     disabled={isLast}
                     className={cn(
-                      "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded px-1 py-0.5",
+                      "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded-md px-1.5 py-0.5",
                       isLast
                         ? "font-semibold text-foreground cursor-default"
                         : "text-foreground hover:bg-muted cursor-pointer font-normal"
@@ -104,13 +105,13 @@ export default function Topbar({
           <div className="flex items-center gap-2">
             {Icon && <Icon className="size-4 text-foreground shrink-0" />}
             <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
-              {title || 'My Drive'}
+              {title || 'My Files'}
             </h1>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <div
           className={cn(
             "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
@@ -120,20 +121,20 @@ export default function Topbar({
         >
           <Search
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 text-foreground",
+              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 shrink-0",
               isSearchExpanded || searchQuery
-                ? "left-2.5 translate-x-0"
-                : "left-1/2 -translate-x-1/2"
+                ? "left-2.5 translate-x-0 text-muted-foreground"
+                : "left-1/2 -translate-x-1/2 text-foreground"
             )}
           />
           <Input
             ref={inputRef}
-            placeholder="Search files..."
+            placeholder="Search files & folders..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             onBlur={() => collapseSearch(searchQuery)}
             className={cn(
-              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8",
+              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-opacity duration-200 pl-8 pr-8",
               isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
             autoFocus={isSearchExpanded}
@@ -142,16 +143,16 @@ export default function Topbar({
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-foreground transition-colors cursor-pointer"
+              className="absolute right-2.5 text-foreground hover:bg-muted transition-colors cursor-pointer rounded-sm"
             >
-              <Plus className="size-3.5 rotate-45 text-foreground shrink-0" />
+              <Plus className="size-3.5 rotate-45 shrink-0" />
             </button>
           )}
         </div>
 
         {/* View Toggle and Filter */}
         <div className="flex items-center gap-2">
-          <TooltipProvider delayDuration={150}>
+          <TooltipProvider delayDuration={300}>
             <div className="flex items-center bg-muted p-1 rounded-md">
               {(['grid', 'list'] as const).map((v) => (
                 <Tooltip key={v}>
@@ -160,11 +161,11 @@ export default function Topbar({
                       onClick={() => setView(v)}
                       className={cn(
                         "relative p-1.5 rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                        view === v 
-                          ? "text-foreground font-medium" 
-                          : "text-muted-foreground hover:text-foreground"
+                        view === v
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
-                      aria-label={`${v === 'grid' ? 'Grid' : 'List'} view`}
+                      aria-label={`${v} view`}
                     >
                       {view === v && (
                         <motion.div
@@ -174,8 +175,8 @@ export default function Topbar({
                         />
                       )}
                       <span className="relative z-10 flex">
-                        {v === 'grid' && <Columns3 className="size-4 text-foreground shrink-0" strokeWidth={2.5} />}
-                        {v === 'list' && <AlignJustify className="size-4 text-foreground shrink-0" strokeWidth={2.5} />}
+                        {v === 'grid' && <Columns3 className="size-4 shrink-0" strokeWidth={2.5} />}
+                        {v === 'list' && <AlignJustify className="size-4 shrink-0" strokeWidth={2.5} />}
                       </span>
                     </button>
                   </TooltipTrigger>
@@ -194,34 +195,35 @@ export default function Topbar({
           <PopoverTrigger asChild>
             <Button size="sm" className="h-8 gap-1.5 px-3 rounded-md cursor-pointer">
               <Plus className="size-3.5 text-primary-foreground shrink-0" />
-              New
+              <span>New</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent
             align="end"
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-48 p-1"
+            className="w-48 p-1 rounded-md border border-border bg-popover shadow-sm"
           >
             <button
               onClick={handleUploadFile}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
               <Upload className="size-4 text-foreground shrink-0" />
-              Upload file
+              <span>Upload file</span>
             </button>
             <button
               onClick={handleUploadFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
               <FolderUp className="size-4 text-foreground shrink-0" />
-              Upload folder
+              <span>Upload folder</span>
             </button>
+            <div className="h-px bg-border my-1" />
             <button
               onClick={handleCreateFolder}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-muted transition-colors text-left cursor-pointer"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
               <FolderPlus className="size-4 text-foreground shrink-0" />
-              New folder
+              <span>New folder</span>
             </button>
           </PopoverContent>
         </Popover>
@@ -250,6 +252,7 @@ export default function Topbar({
         <CreateFolderModal workspaceId={workspaceId} parentId={parentId} />
       )}
       <RenameModal />
+      <MoveModal workspaceId={workspaceId} />
       <DuplicateModal
         isOpen={duplicatePrompt !== null}
         filename={duplicatePrompt?.file.name ?? ""}

@@ -9,6 +9,7 @@ import {
   LayoutGrid,
   RefreshCcw,
   Tag,
+  Layers,
 } from 'lucide-react';
 import Sidebar from '@/features/workspaces/projects/project-id/settings/components/layout/Sidebar';
 
@@ -17,6 +18,7 @@ import Sidebar from '@/features/workspaces/projects/project-id/settings/componen
 const ROUTE_MAP: { match: (p: string) => boolean; title: string; icon: React.ElementType }[] = [
   { match: (p) => p.includes('/settings/members') || p.includes('/settings/team'), title: 'Members', icon: Users },
   { match: (p) => p.includes('/settings/worklogs'), title: 'Worklogs', icon: Clock },
+  { match: (p) => p.includes('/settings/statuses'), title: 'Task Statuses', icon: Layers },
   { match: (p) => p.includes('/settings/modules'), title: 'Modules', icon: LayoutGrid },
   { match: (p) => p.includes('/settings/cycles'), title: 'Cycles', icon: RefreshCcw },
   { match: (p) => p.includes('/settings/labels'), title: 'Labels', icon: Tag },

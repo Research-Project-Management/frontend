@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Star,
   Folder,
@@ -7,11 +7,12 @@ import {
   RotateCcw,
   Trash2,
   Pencil,
-  FolderUp,
+  FolderInput,
   FolderSymlink,
   CheckSquare,
   Square,
   MinusSquare,
+  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -19,7 +20,8 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from '@/shared/utils/url';
-import type { StorageItem, StorageViewProps } from '@/features/workspaces/storage/types/storage.types';
+import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
+import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import {
   getFileType,
   getFileIcon,
@@ -27,10 +29,59 @@ import {
   formatFileSize,
   formatDate,
 } from '../../utils/file';
-import { StorageFileIcon } from './StorageFileIcon';
-import { useStorageItemEvents } from './use-storage-item-events';
+import { useStorageSelectionStore } from '../../store/use-selection-store';
+import { createFolderDropHandlers } from '../../utils/drag-drop.util';
 
-export type { StorageViewProps };
+function FileIconItem({ item }: { item: StorageItem }) {
+  const [hasError, setHasError] = useState(false);
+  const fileType = getFileType(item);
+  const imageUrl = !hasError
+    ? resolveFileUrl(item.thumbnail || (fileType === 'image' ? item.url : undefined))
+    : null;
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={item.filename}
+        className="size-5 rounded object-cover shrink-0"
+        onError={() => setHasError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className={`flex items-center justify-center shrink-0 ${getFileColor(fileType)}`}>
+      {item.isFolder ? (
+        <Folder className="size-5 fill-amber-500/20 text-amber-500 shrink-0" />
+      ) : (
+        getFileIcon(fileType, 5)
+      )}
+    </div>
+  );
+}
+
+export type StorageViewProps = {
+  items: StorageItem[];
+  onToggleStar?: (fileId: string) => void | Promise<void>;
+  onDelete: (fileId: string) => void | Promise<void>;
+  onRestore?: (fileId: string) => void | Promise<void>;
+  onDownload: (item: StorageItem) => void;
+  onFolderClick?: (folder: StorageItem) => void;
+  onFileClick?: (file: StorageItem) => void;
+  isTrash?: boolean;
+  selectedItemId?: string | null;
+  highlightedItemId?: string | null;
+  onDropOnFolder?: (folder: StorageItem, e: React.DragEvent) => void;
+  onDragStartFile?: (item: StorageItem, e: React.DragEvent) => void;
+  /** Called when user wants to move an item one level up (out of current folder) */
+  onMoveToParent?: (item: StorageItem) => void;
+  onOpenLocation?: (item: StorageItem) => void;
+  isReadOnly?: boolean;
+  hasMore?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadMore?: () => void;
+};
 
 type ItemActionsProps = {
   item: StorageItem;
@@ -60,6 +111,11 @@ export function ItemActions({
 
   const handleRenameClick = () => {
     const event = new CustomEvent('open-rename-modal', { detail: item });
+    window.dispatchEvent(event);
+  };
+
+  const handleMoveClick = () => {
+    const event = new CustomEvent('open-move-modal', { detail: { item } });
     window.dispatchEvent(event);
   };
 
@@ -106,11 +162,11 @@ export function ItemActions({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-foreground hover:bg-muted"
+          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onToggleStar?.(item.id)}
           title={item.starred ? "Unstar" : "Star"}
         >
-          <Star className={`size-3.5 ${item.starred ? "fill-warning text-warning" : ""}`} />
+          <Star className={`size-3.5 ${item.starred ? "fill-amber-400 text-amber-400" : ""}`} />
         </Button>
       )}
 
@@ -118,7 +174,7 @@ export function ItemActions({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-foreground hover:bg-muted"
+          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={() => onDownload(item)}
           title="Download"
         >
@@ -131,7 +187,7 @@ export function ItemActions({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-foreground hover:bg-muted"
+            className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={handleRestore}
             disabled={isRestoring}
             title="Restore"
@@ -142,7 +198,7 @@ export function ItemActions({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-destructive hover:bg-destructive/10"
+            className="size-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
             onClick={() => setIsDeleteModalOpen(true)}
             title="Delete Permanently"
           >
@@ -155,26 +211,24 @@ export function ItemActions({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 text-foreground hover:bg-muted"
+              className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <MoreVertical className="size-3.5 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 text-xs">
-            <DropdownMenuItem onClick={handleRenameClick} className="gap-2">
+            <DropdownMenuItem onClick={handleRenameClick} className="gap-2 cursor-pointer">
               <Pencil className="size-3.5 shrink-0" />
               <span>Rename</span>
             </DropdownMenuItem>
 
-            {onMoveToParent && item.parentId && (
-              <DropdownMenuItem onClick={() => onMoveToParent(item)} className="gap-2">
-                <FolderUp className="size-3.5 shrink-0" />
-                <span>Move to parent folder</span>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem onClick={handleMoveClick} className="gap-2 cursor-pointer">
+              <FolderInput className="size-3.5 shrink-0" />
+              <span>Move</span>
+            </DropdownMenuItem>
 
             {onOpenLocation && (
-              <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2">
+              <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2 cursor-pointer">
                 <FolderSymlink className="size-3.5 shrink-0" />
                 <span>Go to location</span>
               </DropdownMenuItem>
@@ -182,7 +236,7 @@ export function ItemActions({
 
             <DropdownMenuItem
               onClick={() => setIsDeleteModalOpen(true)}
-              className="gap-2 text-destructive focus:text-destructive"
+              className="gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
               <Trash2 className="size-3.5 shrink-0" />
               <span>Delete</span>
@@ -209,38 +263,60 @@ export function ItemActions({
   );
 }
 
-export default function ListView(props: StorageViewProps) {
-  const {
-    items,
-    onToggleStar,
-    onDelete,
-    onRestore,
-    onDownload,
-    isTrash,
-    onMoveToParent,
-    onOpenLocation,
-    isReadOnly,
-  } = props;
+export default function ListView({
+  items,
+  onToggleStar,
+  onDelete,
+  onRestore,
+  onDownload,
+  onFolderClick,
+  onFileClick,
+  isTrash,
+  selectedItemId,
+  highlightedItemId,
+  onDropOnFolder,
+  onDragStartFile,
+  onMoveToParent,
+  onOpenLocation,
+  isReadOnly,
+  hasMore,
+  isFetchingNextPage,
+  onLoadMore,
+}: StorageViewProps) {
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const sentinelRef = useInfiniteSentinel({ hasMore, isFetchingNextPage, onLoadMore });
 
   const {
-    allSelected,
-    hasSomeSelected,
-    handleHeaderCheckboxClick,
-    handleCheckboxClick,
-    handleItemClick,
-    getItemSelectionState,
-    getItemDragProps,
-  } = useStorageItemEvents(props);
+    selectedIds,
+    toggleSelect,
+    selectRange,
+    selectAll,
+    clearSelection,
+    isAllSelected,
+  } = useStorageSelectionStore();
+
+  const allItemIds = items.map((i) => i.id);
+  const allSelected = isAllSelected(allItemIds);
+  const hasSomeSelected = selectedIds.length > 0 && !allSelected;
+
+  const handleHeaderCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (allSelected) {
+      clearSelection();
+    } else {
+      selectAll(allItemIds);
+    }
+  };
 
   return (
-    <div className="rounded-lg overflow-hidden">
+    <div className="rounded-lg overflow-hidden select-none">
       {/* Header - Google Drive style */}
       <div className="grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border select-none">
         <div className="col-span-5 flex items-center gap-3">
           {!isReadOnly && (
             <button
               onClick={handleHeaderCheckboxClick}
-              className="size-4 flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer rounded-sm"
+              className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title={allSelected ? "Deselect all" : "Select all"}
             >
               {allSelected ? (
@@ -269,8 +345,9 @@ export default function ListView(props: StorageViewProps) {
         <div className="divide-y divide-border/30">
           <AnimatePresence initial={false}>
             {items.map((item) => {
-              const { isMultiSelected, isSelected, isDragOver } = getItemSelectionState(item);
-              const dragProps = getItemDragProps(item);
+              const isMultiSelected = selectedIds.includes(item.id);
+              const isSingleSelected = selectedItemId === item.id || highlightedItemId === item.id;
+              const isSelected = isMultiSelected || isSingleSelected;
 
               return (
                 <motion.div
@@ -281,16 +358,45 @@ export default function ListView(props: StorageViewProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -10, transition: { duration: 0.15 } }}
                   transition={{ duration: 0.2 }}
-                  {...dragProps}
+                  draggable={!isReadOnly && !item.isFolder && !!onDragStartFile}
+                  onDragStart={(e: any) => {
+                    if (!isReadOnly && !item.isFolder && onDragStartFile) {
+                      onDragStartFile(item, e);
+                    }
+                  }}
+                  {...createFolderDropHandlers(item, isReadOnly, onDropOnFolder, setDragOverFolderId)}
                   className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted cursor-pointer group transition-colors select-none ${
-                    isSelected ? "bg-muted font-medium" : ""
-                  } ${isDragOver ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
-                  onClick={(e) => handleItemClick(e, item)}
+                    isSelected ? "bg-accent font-medium" : ""
+                  } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
+                  onClick={(e: React.MouseEvent) => {
+                    if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      if (e.shiftKey) {
+                        selectRange(allItemIds, item.id);
+                      } else {
+                        toggleSelect(item.id);
+                      }
+                      return;
+                    }
+
+                    if (item.isFolder) {
+                      onFolderClick?.(item);
+                    } else {
+                      onFileClick?.(item);
+                    }
+                  }}
                 >
                   <div className="col-span-5 flex items-center gap-3 min-w-0 overflow-hidden">
                     {!isReadOnly && (
                       <button
-                        onClick={(e) => handleCheckboxClick(e, item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (e.shiftKey) {
+                            selectRange(allItemIds, item.id);
+                          } else {
+                            toggleSelect(item.id);
+                          }
+                        }}
                         className={`size-4 flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
                           isMultiSelected
                             ? "opacity-100 text-primary"
@@ -306,12 +412,12 @@ export default function ListView(props: StorageViewProps) {
                       </button>
                     )}
 
-                    <StorageFileIcon item={item} variant="list" />
-                    <span className="text-sm truncate" title={item.filename}>
+                    <FileIconItem item={item} />
+                    <span className="text-sm truncate font-medium text-foreground" title={item.filename}>
                       {item.filename}
                     </span>
                     {item.starred && (
-                      <Star className="size-3.5 fill-warning text-warning shrink-0" />
+                      <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
                     )}
                   </div>
 
@@ -324,7 +430,7 @@ export default function ListView(props: StorageViewProps) {
                           <img
                             src={resolveFileUrl(item.author.avatar) || ""}
                             alt=""
-                            className="size-5 rounded-full shrink-0"
+                            className="size-5 rounded-full shrink-0 object-cover"
                           />
                         ) : (
                           <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -366,6 +472,14 @@ export default function ListView(props: StorageViewProps) {
               );
             })}
           </AnimatePresence>
+          <div ref={sentinelRef} className="py-2 flex items-center justify-center min-h-6">
+            {isFetchingNextPage && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
+                <Loader2 className="size-4 animate-spin text-primary shrink-0" />
+                <span>Loading more files...</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

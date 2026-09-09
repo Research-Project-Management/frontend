@@ -227,12 +227,12 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border-border/80 rounded-xl shadow-2xl"
+        className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-popover text-popover-foreground border border-border rounded-lg shadow-sm"
       >
-        <DialogHeader className="px-5 py-4 border-b border-border/50">
+        <DialogHeader className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <FolderInput className="size-4" />
+            <div className="size-8 rounded-md bg-muted text-primary flex items-center justify-center shrink-0">
+              <FolderInput className="size-4 shrink-0" />
             </div>
             <div className="min-w-0 flex-1">
               <DialogTitle className="text-sm font-semibold truncate text-foreground">
@@ -246,13 +246,13 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
         </DialogHeader>
 
         {/* Navigation & Breadcrumb Toolbar */}
-        <div className="px-5 py-2.5 bg-muted border-b border-border/40 flex items-center justify-between gap-2 min-w-0">
+        <div className="px-5 py-2.5 bg-muted border-b border-border flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto py-0.5 text-xs">
             {breadcrumbs.length > 1 && (
               <button
                 type="button"
                 onClick={handleBackOneStep}
-                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer mr-1"
+                className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer mr-1"
                 title="Go back"
               >
                 <ArrowLeft className="size-3.5" />
@@ -269,7 +269,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
                     onClick={() => handleNavigateBreadcrumb(idx)}
                     disabled={isLast}
                     className={cn(
-                      "px-1.5 py-0.5 rounded transition-colors max-w-[130px] truncate",
+                      "px-1.5 py-0.5 rounded-md transition-colors max-w-[130px] truncate",
                       isLast
                         ? "font-semibold text-foreground cursor-default"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
@@ -345,9 +345,9 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
               setSelectedFolderName(breadcrumbs[breadcrumbs.length - 1].name);
             }}
             className={cn(
-              "flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer border transition-all duration-150 select-none",
+              "flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer border transition-all duration-150 select-none",
               selectedFolderId === currentFolderId
-                ? "bg-primary/10 border-primary/40 text-primary font-medium shadow-xs"
+                ? "bg-muted border-primary text-primary font-medium"
                 : "border-transparent hover:bg-muted text-foreground"
             )}
           >
@@ -358,7 +358,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
                   {currentFolderId === null ? 'My Drive (Root directory)' : `Current: ${breadcrumbs[breadcrumbs.length - 1].name}`}
                 </span>
                 {itemsToMove.every((i) => (i.parentId ?? null) === currentFolderId) && (
-                  <span className="text-10 text-muted-foreground font-normal px-1.5 py-0.5 rounded bg-muted">
+                  <span className="text-10 text-muted-foreground font-normal px-1.5 py-0.5 rounded-sm bg-muted">
                     Current location
                   </span>
                 )}
@@ -400,10 +400,10 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
                       }
                     }}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-lg text-xs group transition-all duration-150 border select-none",
+                      "flex items-center justify-between px-3 py-2 rounded-md text-xs group transition-all duration-150 border select-none",
                       isForbidden && "opacity-40 pointer-events-none bg-muted border-transparent",
                       isSelected
-                        ? "bg-primary/10 border-primary/40 text-primary font-medium"
+                        ? "bg-muted border-primary text-primary font-medium"
                         : "border-transparent hover:bg-muted text-foreground cursor-pointer"
                     )}
                   >
@@ -415,12 +415,12 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
                       )}
                       <span className="truncate">{folder.filename}</span>
                       {isFolderCurrentLocation && (
-                        <span className="text-10 text-muted-foreground font-normal px-1.5 py-0.2 rounded bg-muted shrink-0">
+                        <span className="text-10 text-muted-foreground font-normal px-1.5 py-0.2 rounded-sm bg-muted shrink-0">
                           Current location
                         </span>
                       )}
                       {isForbidden && (
-                        <span className="text-10 text-destructive/80 font-normal px-1.5 py-0.2 rounded bg-destructive/10 shrink-0">
+                        <span className="text-10 text-destructive font-normal px-1.5 py-0.2 rounded-sm bg-destructive/10 shrink-0">
                           Cannot move into itself
                         </span>
                       )}
@@ -435,10 +435,10 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
                           handleEnterFolder(folder);
                         }}
                         disabled={isForbidden}
-                        className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        className="p-1 rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer"
                         title={`Browse into ${folder.filename}`}
                       >
-                        <ChevronRight className="size-3.5" />
+                        <ChevronRight className="size-3.5 shrink-0" />
                       </button>
                     </div>
                   </div>
@@ -449,7 +449,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
         </div>
 
         {/* Footer with Destination Preview and Confirm Action */}
-        <DialogFooter className="px-5 py-3.5 bg-muted border-t border-border/50 flex sm:items-center sm:justify-between gap-3">
+        <DialogFooter className="px-5 py-3.5 bg-muted border-t border-border flex sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate min-w-0">
             <CornerDownRight className="size-3.5 text-primary shrink-0" />
             <span className="shrink-0">Destination:</span>

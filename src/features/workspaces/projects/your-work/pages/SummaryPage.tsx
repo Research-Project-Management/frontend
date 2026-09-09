@@ -9,7 +9,7 @@ import { WorkloadCards } from '../components/summary/WorkloadCards';
 import { PriorityBreakdown } from '../components/summary/PriorityBreakdown';
 import { StateBreakdown } from '../components/summary/StateBreakdown';
 import { RecentActivityFeed } from '../components/summary/RecentActivityFeed';
-import { TaskDialogModal } from '../components/shared/TaskDialogModal';
+import { TaskModalHost } from '../components/shared/TaskModalHost';
 
 export function SummaryPage() {
   const { state } = useSummaryWork();
@@ -81,14 +81,7 @@ export function SummaryPage() {
       />
 
       {/* Task detail dialog */}
-      {selectedTask && (
-        <TaskDialogModal
-          taskId={selectedTask.taskId}
-          projectId={selectedTask.projectId}
-          open={!!selectedTask}
-          onOpenChange={(open) => !open && handleCloseTask()}
-        />
-      )}
+      <TaskModalHost selectedTask={selectedTask} onClose={handleCloseTask} />
     </div>
   );
 }

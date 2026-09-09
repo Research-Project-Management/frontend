@@ -76,7 +76,7 @@ const PRIORITY_ICONS: Record<TaskPriority, { icon: React.ElementType; color: str
   high: { icon: ArrowUpIcon, color: 'text-orange-500', label: 'High' },
   medium: { icon: Minus, color: 'text-amber-500', label: 'Medium' },
   low: { icon: ArrowDownIcon, color: 'text-blue-500', label: 'Low' },
-  none: { icon: CircleSlash, color: 'text-muted-foreground/60', label: 'None' },
+  none: { icon: CircleSlash, color: 'text-muted-foreground', label: 'None' },
 };
 
 function ArrowUpIcon(props: any) {
@@ -200,27 +200,27 @@ export function SplitView({
   };
 
   const actionBtnClass =
-    'h-6.5 px-2 text-11 font-medium rounded-md bg-muted hover:bg-muted text-foreground border border-border/60 shadow-none flex items-center gap-1 transition-colors cursor-pointer shrink-0';
+    'h-6.5 px-2 text-11 font-medium rounded-md bg-muted hover:bg-muted text-foreground border border-border shadow-none flex items-center gap-1 transition-colors cursor-pointer shrink-0';
 
   return (
-    <div className="flex-1 min-h-0 h-full flex bg-background text-foreground overflow-hidden border-t border-border/50">
+    <div className="flex-1 min-h-0 h-full flex bg-background text-foreground overflow-hidden border-t border-border">
       {/* ── Left Pane: Master Task List ────────────────────────────────────────── */}
-      <div className="w-80 sm:w-96 border-r border-border/70 flex flex-col min-h-0 bg-muted shrink-0">
+      <div className="w-80 sm:w-96 border-r border-border flex flex-col min-h-0 bg-muted shrink-0">
         {/* Left Header / Filter Bar */}
-        <div className="p-3 border-b border-border/60 space-y-2 shrink-0 bg-background/50 backdrop-blur-xs">
+        <div className="p-3 border-b border-border space-y-2 shrink-0 bg-background">
           <div className="relative flex items-center">
-            <Search className="absolute left-2.5 size-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 size-3.5 text-muted-foreground shrink-0" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter tasks..."
-              className="w-full h-8 pl-8 pr-3 text-xs bg-muted border border-border/60 rounded-md text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary transition-colors"
+              className="w-full h-8 pl-8 pr-3 text-xs bg-muted border border-border rounded-md text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
             />
           </div>
 
           <div className="flex items-center justify-between gap-1.5">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-6.5 text-11 font-medium w-36 border-border/60 bg-muted">
+              <SelectTrigger className="h-6.5 text-11 font-medium w-36 border-border bg-muted">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent className="text-xs">
@@ -244,7 +244,7 @@ export function SplitView({
         </div>
 
         {/* Task List Items */}
-        <div className="flex-1 overflow-y-auto divide-y divide-border/40">
+        <div className="flex-1 overflow-y-auto divide-y divide-border">
           {filteredTasks.map((task) => {
             const isSelected = activeTask?.id === task.id;
             const col = columnMap.get(task.columnId);
@@ -261,8 +261,8 @@ export function SplitView({
                 key={task.id}
                 onClick={() => setSelectedTaskId(task.id)}
                 className={cn(
-                  'p-3 cursor-pointer transition-all hover:bg-muted text-left relative group',
-                  isSelected && 'bg-primary/10 hover:bg-primary/15 border-l-3 border-primary'
+                  'p-3 cursor-pointer transition-colors hover:bg-muted text-left relative group',
+                  isSelected && 'bg-muted border-l-2 border-primary text-foreground font-semibold'
                 )}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -275,7 +275,7 @@ export function SplitView({
 
                   <div className="flex items-center gap-1.5">
                     <span
-                      className="size-2 rounded-full"
+                      className="size-2 rounded-full shrink-0"
                       style={{ backgroundColor: colColor }}
                       title={col?.title || task.columnId}
                     />
@@ -283,7 +283,7 @@ export function SplitView({
                   </div>
                 </div>
 
-                <h4 className={cn('text-xs font-semibold line-clamp-2 leading-snug', isSelected ? 'text-primary font-bold' : 'text-foreground')}>
+                <h4 className={cn('text-xs font-medium line-clamp-2 leading-snug', isSelected ? 'text-foreground font-semibold' : 'text-foreground')}>
                   {task.title}
                 </h4>
 
@@ -291,9 +291,9 @@ export function SplitView({
                   <div className="flex items-center gap-1">
                     {(() => {
                       const assignee = typeof task.assigneeId === 'object' ? task.assigneeId : (task as any).assignee;
-                      if (!assignee) return <span className="italic opacity-60">Unassigned</span>;
+                      if (!assignee) return <span className="italic text-muted-foreground">Unassigned</span>;
                       return (
-                        <span className="truncate max-w-[120px] font-medium text-foreground/80">
+                        <span className="truncate max-w-[120px] font-medium text-foreground">
                           {assignee.name || 'Member'}
                         </span>
                       );
@@ -302,7 +302,7 @@ export function SplitView({
 
                   {task.dueDate && (
                     <span className="flex items-center gap-1 font-mono">
-                      <Clock className="size-2.5" />
+                      <Clock className="size-2.5 shrink-0" />
                       {new Date(task.dueDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
                     </span>
                   )}
@@ -324,7 +324,7 @@ export function SplitView({
         {activeTask ? (
           <>
             {/* Header Toolbar */}
-            <div className="px-5 py-2.5 border-b border-border/70 flex items-center justify-between gap-2 shrink-0 bg-background/80 backdrop-blur-xs">
+            <div className="px-5 py-2.5 border-b border-border flex items-center justify-between gap-2 shrink-0 bg-background">
               <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                 {/* Status */}
                 {(() => {
@@ -336,7 +336,7 @@ export function SplitView({
                         <button
                           type="button"
                           disabled={isReadOnly}
-                          className="h-7 text-xs font-medium border border-border/70 bg-muted hover:bg-muted rounded-md px-2.5 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none shrink-0"
+                          className="h-7 text-xs font-medium border border-border bg-muted hover:bg-muted rounded-md px-2.5 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none shrink-0"
                         >
                           <span
                             className="size-2 rounded-full shrink-0"
@@ -356,12 +356,12 @@ export function SplitView({
                               onClick={() => onMoveCard(activeTask.id, cId)}
                               className={cn(
                                 "flex items-center gap-2 cursor-pointer text-xs py-1.5",
-                                isCurrent && "bg-primary/10 font-semibold text-primary"
+                                isCurrent && "bg-muted font-semibold text-foreground"
                               )}
                             >
                               <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                               <span className="flex-1 truncate">{c.title}</span>
-                              {isCurrent && <Check className="size-3.5 text-primary ml-auto" />}
+                              {isCurrent && <Check className="size-3.5 text-foreground ml-auto shrink-0" />}
                             </DropdownMenuItem>
                           );
                         })}
@@ -417,7 +417,7 @@ export function SplitView({
                   onClick={() => handleCopyBranch(activeTask)}
                   className="h-6.5 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 shrink-0"
                 >
-                  <Terminal className="size-3 text-emerald-500" />
+                  <Terminal className="size-3 text-emerald-500 shrink-0" />
                   <span className="hidden sm:inline">Copy Branch</span>
                 </Button>
               </div>
@@ -431,7 +431,7 @@ export function SplitView({
                   onClick={() => onEditCard(activeTask)}
                   title="Open full modal dialog"
                 >
-                  <Maximize2 className="size-3.5" />
+                  <Maximize2 className="size-3.5 shrink-0" />
                 </Button>
               </div>
             </div>
@@ -453,14 +453,14 @@ export function SplitView({
                       const assignee = typeof activeTask.assigneeId === 'object' ? activeTask.assigneeId : (activeTask as any).assignee;
                       if (!assignee) {
                         return (
-                          <div className="text-muted-foreground italic text-xs bg-muted px-2 py-1 rounded border border-border/40">
+                          <div className="text-muted-foreground italic text-xs bg-muted px-2 py-1 rounded-md border border-border">
                             No assignee
                           </div>
                         );
                       }
                       return (
-                        <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md border border-border/50">
-                          <Avatar className="size-4">
+                        <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded-md border border-border">
+                          <Avatar className="size-4 shrink-0">
                             <AvatarImage src={assignee.avatar} />
                             <AvatarFallback className="text-9 font-bold">
                               {TaskHelpers.getInitials(assignee.name)}
@@ -472,8 +472,8 @@ export function SplitView({
                     })()}
 
                     {activeTask.dueDate && (
-                      <div className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md border border-border/50">
-                        <Clock className="size-3 text-muted-foreground" />
+                      <div className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md border border-border">
+                        <Clock className="size-3 text-muted-foreground shrink-0" />
                         <span>Due {new Date(activeTask.dueDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}</span>
                       </div>
                     )}
@@ -484,9 +484,9 @@ export function SplitView({
                     <label className="text-11 font-bold text-muted-foreground tracking-normal">
                       Description
                     </label>
-                    <div className="p-3 rounded-md border border-border/70 bg-muted text-xs text-foreground leading-relaxed min-h-[80px] whitespace-pre-wrap">
+                    <div className="p-3 rounded-md border border-border bg-muted text-xs text-foreground leading-relaxed min-h-[80px] whitespace-pre-wrap">
                       {activeTask.description || activeTask.content || (
-                        <span className="italic text-muted-foreground/60">No description provided.</span>
+                        <span className="italic text-muted-foreground">No description provided.</span>
                       )}
                     </div>
                   </div>
@@ -517,7 +517,7 @@ export function SplitView({
                 </div>
 
                 {/* Right: Comments & Activities Panel */}
-                <div className="border-t lg:border-t-0 lg:border-l border-border/70 pt-4 lg:pt-0 lg:pl-5 sticky top-0">
+                <div className="border-t lg:border-t-0 lg:border-l border-border pt-4 lg:pt-0 lg:pl-5 sticky top-0">
                   <TaskActivities
                     commentText={commentText}
                     setCommentText={setCommentText}
@@ -546,9 +546,9 @@ export function SplitView({
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
-            <CheckSquare className="size-10 opacity-30 mb-2" />
+            <CheckSquare className="size-10 opacity-30 mb-2 shrink-0" />
             <p className="text-sm font-semibold">Select a task from the list</p>
-            <p className="text-xs mt-1 text-muted-foreground/70">
+            <p className="text-xs mt-1 text-muted-foreground">
               Click on any task on the left to view and interact with its full details.
             </p>
           </div>

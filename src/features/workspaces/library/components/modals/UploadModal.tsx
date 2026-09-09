@@ -511,12 +511,20 @@ export default function PaperUploadDialog({
 
         {/* 3 Clean Modes: Magic Wand (Identifier) | File (PDF) | Folder (Batch) */}
         <div className="p-4 space-y-4">
-          <div className="flex items-center p-0.5 bg-muted rounded-md border border-border gap-1 text-xs">
+          <div
+            role="tablist"
+            aria-label="Upload methods"
+            className="flex items-center p-0.5 bg-muted rounded-md border border-border gap-1 text-xs"
+          >
             <button
               type="button"
+              role="tab"
+              id="tab-identifier"
+              aria-selected={mode === 'identifier'}
+              aria-controls="panel-identifier"
               onClick={() => setMode('identifier')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm font-medium transition-colors cursor-pointer',
+                'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 mode === 'identifier'
                   ? 'bg-background text-foreground shadow-none font-medium'
                   : 'text-muted-foreground hover:bg-muted',
@@ -527,9 +535,13 @@ export default function PaperUploadDialog({
             </button>
             <button
               type="button"
+              role="tab"
+              id="tab-file"
+              aria-selected={mode === 'file'}
+              aria-controls="panel-file"
               onClick={() => setMode('file')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm font-medium transition-colors cursor-pointer',
+                'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 mode === 'file'
                   ? 'bg-background text-foreground shadow-none font-medium'
                   : 'text-muted-foreground hover:bg-muted',
@@ -540,9 +552,13 @@ export default function PaperUploadDialog({
             </button>
             <button
               type="button"
+              role="tab"
+              id="tab-folder"
+              aria-selected={mode === 'folder'}
+              aria-controls="panel-folder"
               onClick={() => setMode('folder')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm font-medium transition-colors cursor-pointer',
+                'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-sm font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 mode === 'folder'
                   ? 'bg-background text-foreground shadow-none font-medium'
                   : 'text-muted-foreground hover:bg-muted',
@@ -555,7 +571,7 @@ export default function PaperUploadDialog({
 
           {/* Mode 1: Magic Wand / Identifier (Reference Manager Style) */}
           {mode === 'identifier' && (
-            <div className="space-y-3">
+            <div id="panel-identifier" role="tabpanel" aria-labelledby="tab-identifier" className="space-y-3">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-foreground">
@@ -597,7 +613,7 @@ export default function PaperUploadDialog({
 
               {/* Resolved Preview Card */}
               {title && (
-                <div className="p-3 bg-muted rounded-md border border-border space-y-2 text-xs animate-in fade-in zoom-in-95 duration-150">
+                <div className="p-3 bg-muted rounded-md border border-border space-y-2 text-xs animate-in fade-in duration-100">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="font-medium text-foreground text-xs leading-snug">
                       {title}
@@ -636,7 +652,7 @@ export default function PaperUploadDialog({
                 </button>
 
                 {showAdvanced && (
-                  <div className="mt-2 space-y-2.5 p-3 rounded-md bg-card border border-border text-xs animate-in fade-in duration-150">
+                  <div className="mt-2 space-y-2.5 p-3 rounded-md bg-card border border-border text-xs animate-in fade-in duration-100">
                     <div className="space-y-1">
                       <Label htmlFor="item-title" className="text-xs">Title</Label>
                       <Input
@@ -683,7 +699,7 @@ export default function PaperUploadDialog({
 
           {/* Mode 2: PDF File Upload */}
           {mode === 'file' && (
-            <div className="space-y-3">
+            <div id="panel-file" role="tabpanel" aria-labelledby="tab-file" className="space-y-3">
               {!file ? (
                 <div
                   className={cn(
@@ -756,7 +772,7 @@ export default function PaperUploadDialog({
 
                   {extractStatus === 'extracting' && (
                     <div className="flex items-center gap-1.5 text-xs text-foreground bg-muted border border-border p-2 rounded-md">
-                      <Sparkles className="size-3.5 animate-pulse text-foreground shrink-0" />
+                      <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
                       <span>Extracting PDF metadata...</span>
                     </div>
                   )}
@@ -790,7 +806,7 @@ export default function PaperUploadDialog({
 
           {/* Mode 3: Folder Upload */}
           {mode === 'folder' && (
-            <div className="space-y-3">
+            <div id="panel-folder" role="tabpanel" aria-labelledby="tab-folder" className="space-y-3">
               {folderFiles.length === 0 ? (
                 <div
                   className="flex flex-col items-center justify-center gap-2.5 rounded-md border-2 border-dashed p-6 border-border hover:border-border hover:bg-muted transition-colors cursor-pointer"

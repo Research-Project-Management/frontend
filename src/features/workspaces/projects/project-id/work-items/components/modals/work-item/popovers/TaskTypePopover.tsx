@@ -51,17 +51,17 @@ export const TaskTypePopover: React.FC<TaskTypePopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none',
+            'h-7 px-2.5 text-xs font-medium rounded-md border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none shrink-0',
             actionBtnClass
           )}
         >
-          <CurrentIcon className="size-3.5 text-muted-foreground" />
+          <CurrentIcon className="size-3.5 shrink-0 text-muted-foreground" />
           <span>{currentConfig.label}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-52 p-1 rounded-sm border-border shadow-xl bg-popover z-100"
+        className="w-52 p-1 rounded-md border-border shadow-sm bg-popover z-100"
       >
         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b border-border mb-1">
           Work Item Type
@@ -87,14 +87,14 @@ export const TaskTypePopover: React.FC<TaskTypePopoverProps> = ({
               >
                 <div className="flex items-center gap-2">
                   <div
-                    className="size-5 rounded flex items-center justify-center"
+                    className="size-5 rounded-sm flex items-center justify-center shrink-0"
                     style={{ backgroundColor: item.bgLight }}
                   >
-                    <Icon className="size-3.5" style={{ color: item.color }} />
+                    <Icon className="size-3.5 shrink-0" style={{ color: item.color }} />
                   </div>
                   <span>{item.label}</span>
                 </div>
-                {isSelected && <Check className="size-3.5 text-primary" />}
+                {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
               </button>
             );
           })}

@@ -139,8 +139,8 @@ export default function StatusesPage() {
   if (isLoading) {
     return (
       <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-5xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-44 rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-8 w-44 rounded-md" />
+        <Skeleton className="h-64 w-full rounded-md" />
       </div>
     );
   }
@@ -151,7 +151,7 @@ export default function StatusesPage() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Layers className="size-6 text-primary" />
+            <Layers className="size-6 text-foreground shrink-0" />
             <span>Task Statuses</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -165,26 +165,26 @@ export default function StatusesPage() {
             size="sm"
             onClick={() => setIsResetConfirmOpen(true)}
             disabled={resetColumnsMut.isPending}
-            className="h-9 px-3 text-xs font-medium gap-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+            className="h-9 px-3 text-xs font-medium gap-1.5 rounded-md text-muted-foreground hover:text-foreground"
           >
-            <RotateCcw className="size-3.5" />
+            <RotateCcw className="size-3.5 shrink-0" />
             <span>Reset Defaults</span>
           </Button>
 
           <Button
             size="sm"
             onClick={() => setIsAddModalOpen(true)}
-            className="h-9 px-4 text-xs font-medium gap-1.5 rounded-lg shadow-sm"
+            className="h-9 px-4 text-xs font-medium gap-1.5 rounded-md shadow-none"
           >
-            <Plus className="size-4" />
+            <Plus className="size-4 shrink-0" />
             <span>Add Status</span>
           </Button>
         </div>
       </div>
 
       {/* ── Statuses List Card ── */}
-      <div className="border border-border/80 rounded-xl bg-card overflow-hidden shadow-xs">
-        <div className="px-4 py-3 bg-muted border-b border-border/60 flex items-center justify-between text-xs font-semibold text-muted-foreground select-none">
+      <div className="border border-border rounded-md bg-card overflow-hidden">
+        <div className="px-4 py-3 bg-muted border-b border-border flex items-center justify-between text-xs font-semibold text-muted-foreground select-none">
           <div className="flex items-center gap-3">
             <span className="w-6 text-center">#</span>
             <span>Status Name</span>
@@ -195,7 +195,7 @@ export default function StatusesPage() {
           </div>
         </div>
 
-        <div className="divide-y divide-border/40">
+        <div className="divide-y divide-border">
           {columns.map((col, index) => {
             const colId = resolveTaskColumnId(col);
             const color = resolveTaskColumnColor(colId, col.accentColor);
@@ -213,7 +213,7 @@ export default function StatusesPage() {
                   </div>
 
                   <span
-                    className="size-3 rounded-full shrink-0 shadow-2xs border border-black/10 dark:border-white/10"
+                    className="size-3 rounded-full shrink-0 border border-border"
                     style={{ backgroundColor: color }}
                   />
 
@@ -222,7 +222,7 @@ export default function StatusesPage() {
                   </span>
 
                   {col.isDefault && (
-                    <span className="text-10 font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
+                    <span className="text-10 font-medium px-2 py-0.5 rounded-full bg-muted text-foreground border border-border shrink-0">
                       Default
                     </span>
                   )}
@@ -244,10 +244,10 @@ export default function StatusesPage() {
                       size="icon"
                       disabled={index === 0 || reorderColumnsMut.isPending}
                       onClick={() => handleMoveUp(index)}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
                       title="Move up"
                     >
-                      <ChevronUp className="size-4" />
+                      <ChevronUp className="size-4 shrink-0" />
                     </Button>
 
                     {/* Move Down */}
@@ -257,10 +257,10 @@ export default function StatusesPage() {
                       size="icon"
                       disabled={index === columns.length - 1 || reorderColumnsMut.isPending}
                       onClick={() => handleMoveDown(index)}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
                       title="Move down"
                     >
-                      <ChevronDown className="size-4" />
+                      <ChevronDown className="size-4 shrink-0" />
                     </Button>
 
                     {/* Edit */}
@@ -269,10 +269,10 @@ export default function StatusesPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setEditingColumn(col)}
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
                       title="Edit status"
                     >
-                      <Pencil className="size-3.5" />
+                      <Pencil className="size-3.5 shrink-0" />
                     </Button>
 
                     {/* Delete */}
@@ -282,10 +282,10 @@ export default function StatusesPage() {
                       size="icon"
                       disabled={columns.length <= 1}
                       onClick={() => setDeletingColumn(col)}
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-md transition-colors"
                       title={columns.length <= 1 ? "Cannot delete the only status" : "Delete status"}
                     >
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-3.5 shrink-0" />
                     </Button>
                   </div>
                 </div>
@@ -334,7 +334,7 @@ export default function StatusesPage() {
       {/* ── Reset Confirmation Dialog ── */}
       {isResetConfirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md bg-card p-6 rounded-xl border border-border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-md bg-card p-6 rounded-lg border border-border shadow-sm space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-foreground">Reset Statuses to Default?</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               This will restore the standard default statuses (<strong>Backlog</strong>, <strong>To Do</strong>, <strong>Doing</strong>, <strong>Review</strong>, <strong>Done</strong>).
@@ -345,7 +345,7 @@ export default function StatusesPage() {
                 size="sm"
                 onClick={() => setIsResetConfirmOpen(false)}
                 disabled={resetColumnsMut.isPending}
-                className="h-8 px-3 text-xs font-medium rounded-lg"
+                className="h-8 px-3 text-xs font-medium rounded-md"
               >
                 Cancel
               </Button>
@@ -353,7 +353,7 @@ export default function StatusesPage() {
                 size="sm"
                 onClick={handleResetConfirm}
                 disabled={resetColumnsMut.isPending}
-                className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg"
+                className="h-8 px-4 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary rounded-md shadow-none"
               >
                 {resetColumnsMut.isPending ? "Resetting..." : "Confirm Reset"}
               </Button>

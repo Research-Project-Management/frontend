@@ -138,7 +138,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
         {/* Section 1: Cited in Document */}
         <div className="p-3 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-11 font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-11 font-medium text-muted-foreground">
               Cited in Document ({citedItems.length + missingKeys.length})
             </span>
           </div>
@@ -146,7 +146,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
           {citedItems.length === 0 && missingKeys.length === 0 ? (
             <div className="py-4 text-center rounded-md border border-dashed border-border p-3 text-11 text-muted-foreground">
               No citations found in this document yet. Type{' '}
-              <code className="bg-muted px-1 py-0.5 rounded font-mono text-foreground">\cite&#123;...&#125;</code>{' '}
+              <code className="bg-muted px-1 py-0.5 rounded-sm font-mono text-foreground">\cite&#123;...&#125;</code>{' '}
               in editor or click + to insert.
             </div>
           ) : (
@@ -160,7 +160,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                 return (
                   <div
                     key={item.id || key}
-                    className="group p-2 rounded-md border border-border bg-card/60 hover:bg-muted/50 transition-colors space-y-1"
+                    className="group p-2 rounded-md border border-border bg-card hover:bg-muted transition-colors space-y-1"
                   >
                     <div className="flex items-start justify-between gap-1.5">
                       <p className="text-12 font-medium text-foreground line-clamp-1 leading-snug flex-1">
@@ -168,7 +168,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       </p>
                       <Badge
                         variant="outline"
-                        className="text-10 font-mono shrink-0 px-1 py-0 bg-primary/10 text-primary border-primary/20"
+                        className="text-10 font-mono shrink-0 px-1 py-0 bg-muted text-foreground border-border"
                       >
                         {key}
                       </Badge>
@@ -182,19 +182,19 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       <button
                         type="button"
                         onClick={() => handleCopyKey(key)}
-                        className="h-6 px-1.5 flex items-center gap-1 rounded text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className="h-6 px-1.5 flex items-center gap-1 rounded-md text-11 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Copy cite command"
                       >
-                        {isCopied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+                        {isCopied ? <Check className="size-3 text-emerald-500 shrink-0" /> : <Copy className="size-3 shrink-0" />}
                         <span>{isCopied ? 'Copied' : 'Copy'}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleInsertKey(key)}
-                        className="h-6 px-1.5 flex items-center gap-1 rounded text-11 bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                        className="h-6 px-1.5 flex items-center gap-1 rounded-md text-11 bg-muted hover:bg-muted text-foreground transition-colors"
                         title="Insert \cite{key} at cursor"
                       >
-                        <Plus className="size-3" />
+                        <Plus className="size-3 shrink-0" />
                         <span>Insert</span>
                       </button>
                     </div>
@@ -206,7 +206,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
               {missingKeys.map((mKey: string) => (
                 <div
                   key={mKey}
-                  className="p-2 rounded-md border border-destructive/30 bg-destructive/5 space-y-1"
+                  className="p-2 rounded-md border border-border bg-muted space-y-1"
                 >
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -215,7 +215,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                         {mKey}
                       </span>
                     </div>
-                    <Badge variant="destructive" className="text-9 px-1 py-0 uppercase">
+                    <Badge variant="destructive" className="text-9 px-1 py-0 font-medium">
                       Missing
                     </Badge>
                   </div>
@@ -231,19 +231,19 @@ export default function CitationTab({ onClose }: CitationTabProps) {
         {/* Section 2: Workspace Library Browser */}
         <div className="p-3 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-11 font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-11 font-medium text-muted-foreground">
               Workspace Library ({libraryItems.length})
             </span>
           </div>
 
           <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
             <Input
               type="text"
               placeholder="Search library papers..."
               value={libraryQuery}
               onChange={(e) => setLibraryQuery(e.target.value)}
-              className="h-8 pl-8 pr-2 text-11 rounded-md"
+              className="h-8 pl-8 pr-2 text-11 rounded-md border-border"
             />
           </div>
 
@@ -264,7 +264,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                 return (
                   <div
                     key={item.id || key}
-                    className="group flex items-start justify-between gap-2 p-2 rounded-md hover:bg-muted/60 transition-colors"
+                    className="group flex items-start justify-between gap-2 p-2 rounded-md hover:bg-muted transition-colors"
                   >
                     <div className="min-w-0 flex-1 space-y-0.5">
                       <p className="text-12 font-medium text-foreground truncate leading-snug">
@@ -283,7 +283,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       className="shrink-0 size-7 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       title={`Insert \\cite{${key}}`}
                     >
-                      <Plus className="size-3.5" />
+                      <Plus className="size-3.5 shrink-0" />
                     </button>
                   </div>
                 );

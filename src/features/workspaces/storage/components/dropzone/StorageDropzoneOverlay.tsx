@@ -94,23 +94,23 @@ export default function StorageDropzoneOverlay({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="absolute inset-2 z-50 rounded-2xl border-2 border-dashed border-primary/80 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center shadow-2xl pointer-events-none"
+            className="absolute inset-2 z-50 rounded-md border-2 border-dashed border-primary bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center shadow-sm pointer-events-none"
           >
             <motion.div
               initial={{ y: 8, scale: 0.9 }}
               animate={{ y: 0, scale: 1 }}
               transition={{ repeat: Infinity, repeatType: "reverse", duration: 1.5, ease: "easeInOut" }}
-              className="size-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-5 shadow-lg shadow-primary/10"
+              className="size-16 rounded-md bg-muted border border-border flex items-center justify-center text-primary mb-4"
             >
-              <UploadCloud className="size-10" />
+              <UploadCloud className="size-8 shrink-0" />
             </motion.div>
             
-            <h3 className="text-xl font-bold tracking-tight text-foreground mb-1">
+            <h3 className="text-base font-semibold tracking-tight text-foreground mb-1">
               Drop files here to upload
             </h3>
             
             <p className="text-sm text-muted-foreground max-w-sm flex items-center gap-1.5 justify-center mt-1">
-              <FolderUp className="size-4 text-primary" />
+              <FolderUp className="size-4 text-primary shrink-0" />
               <span>
                 Uploading to: <strong className="text-foreground font-medium">{folderName || "Root directory"}</strong>
               </span>

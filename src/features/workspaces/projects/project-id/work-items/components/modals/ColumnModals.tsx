@@ -77,7 +77,7 @@ export function ColumnFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border border-border shadow-2xl rounded-xl">
+      <DialogContent className="sm:max-w-md gap-0 p-0 overflow-hidden border border-border shadow-sm rounded-lg">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
@@ -99,7 +99,7 @@ export function ColumnFormModal({
                 id="column-name"
                 placeholder="e.g., In QA, Blocked, Ready to Deploy..."
                 autoFocus
-                className="h-10 text-sm font-medium text-foreground rounded-lg border-border bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all"
+                className="h-9 text-13 font-medium text-foreground rounded-md border-border bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all"
                 {...register("sectionName")}
               />
               {errors.sectionName && (
@@ -111,7 +111,7 @@ export function ColumnFormModal({
               <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
                 <span>Accent Color</span>
                 <span
-                  className="size-3.5 rounded-full inline-block border border-border/60"
+                  className="size-3.5 rounded-full inline-block border border-border"
                   style={{ backgroundColor: selectedColor }}
                 />
               </Label>
@@ -126,14 +126,14 @@ export function ColumnFormModal({
                       title={color.label}
                       className={`
                         relative w-7 h-7 rounded-full transition-all duration-200 focus:outline-none cursor-pointer flex items-center justify-center
-                        border border-black/10 dark:border-white/10
-                        ${isSelected ? "ring-2 ring-offset-2 ring-primary scale-110 shadow-sm" : "hover:scale-110 opacity-80 hover:opacity-100"}
+                        border border-border
+                        ${isSelected ? "ring-2 ring-offset-2 ring-primary scale-110 shadow-xs" : "hover:scale-110 opacity-90 hover:opacity-100"}
                       `}
                       style={{ backgroundColor: color.value }}
                       aria-label={`Select ${color.label} color`}
                     >
                       {isSelected && (
-                        <Check className="size-3.5 text-white drop-shadow-sm" strokeWidth={3} />
+                        <Check className="size-3.5 shrink-0 text-white drop-shadow-xs" strokeWidth={3} />
                       )}
                     </button>
                   );
@@ -149,14 +149,14 @@ export function ColumnFormModal({
               size="sm"
               onClick={onClose}
               disabled={isLoading}
-              className="h-9 px-4 text-xs font-medium text-muted-foreground hover:bg-muted shadow-none rounded-lg"
+              className="h-8 px-4 text-xs font-medium text-muted-foreground hover:bg-muted shadow-none rounded-md"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               size="sm"
-              className="h-9 px-5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg transition-all"
+              className="h-8 px-5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-none rounded-md transition-all"
               disabled={!watch("sectionName")?.trim() || isLoading}
             >
               {isLoading ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create Status" : "Save Changes")}
@@ -190,11 +190,11 @@ export function DeleteColumnModal({
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
       <DialogOverlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs" />
-      <DialogContent className="max-w-[480px] p-0 overflow-hidden border border-border shadow-2xl rounded-xl z-50">
+      <DialogContent className="max-w-[480px] p-0 overflow-hidden border border-border shadow-sm rounded-lg z-50">
         <div className="p-6">
           <DialogHeader className="flex flex-row items-start gap-3 space-y-0">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive shrink-0">
-              <AlertTriangle className="size-5" />
+              <AlertTriangle className="size-5 shrink-0" />
             </div>
 
             <div className="min-w-0">
@@ -204,7 +204,7 @@ export function DeleteColumnModal({
               <DialogDescription className="mt-2 text-xs text-muted-foreground leading-relaxed">
                 Are you sure you want to delete <strong className="text-foreground font-semibold">&ldquo;{columnTitle}&rdquo;</strong>?
                 {fallbackColumnTitle && (
-                  <span className="block mt-1 text-foreground/80">
+                  <span className="block mt-1 text-muted-foreground">
                     Any existing tasks in this status will be safely moved to <strong className="text-foreground font-semibold">&ldquo;{fallbackColumnTitle}&rdquo;</strong>.
                   </span>
                 )}
@@ -220,7 +220,7 @@ export function DeleteColumnModal({
             size="sm"
             onClick={onClose}
             disabled={isLoading}
-            className="h-8 px-3.5 text-xs font-medium rounded-lg"
+            className="h-8 px-3.5 text-xs font-medium rounded-md shadow-none"
           >
             Cancel
           </Button>
@@ -231,7 +231,7 @@ export function DeleteColumnModal({
             size="sm"
             onClick={onConfirm}
             disabled={isLoading}
-            className="h-8 px-4 text-xs font-medium shadow-xs rounded-lg"
+            className="h-8 px-4 text-xs font-medium shadow-none rounded-md"
           >
             {isLoading ? "Deleting..." : "Delete Status"}
           </Button>

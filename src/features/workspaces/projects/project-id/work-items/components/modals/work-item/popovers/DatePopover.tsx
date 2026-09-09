@@ -111,12 +111,12 @@ export function DatePopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
             open && 'bg-muted border-border'
           )}
         >
-          <Clock className="size-3.5 text-muted-foreground" />
+          <Clock className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Dates</span>
         </Button>
       </PopoverTrigger>
@@ -125,26 +125,26 @@ export function DatePopover({
         side="bottom"
         sideOffset={6}
         collisionPadding={16}
-        className="w-[520px] p-0 rounded-xl shadow-2xl border-border/80 overflow-hidden flex flex-col z-100 bg-popover"
+        className="w-[520px] p-0 rounded-lg shadow-sm border border-border overflow-hidden flex flex-col z-100 bg-popover"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/70 shrink-0 bg-popover">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 bg-popover">
           <div className="flex items-center gap-2">
-            <Clock className="size-3.5 text-primary" />
+            <Clock className="size-3.5 shrink-0 text-primary" />
             <span className="text-xs font-bold text-foreground">Dates & Deadlines</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 text-foreground hover:bg-muted cursor-pointer"
+            className="size-6 text-foreground hover:bg-muted cursor-pointer rounded-md"
             onClick={() => onOpenChange(false)}
           >
-            <X className="size-3.5" />
+            <X className="size-3.5 shrink-0" />
           </Button>
         </div>
 
         {/* 2-Column Body (Compact Height) */}
-        <div className="flex divide-x divide-border/60 min-h-0 bg-background/50">
+        <div className="flex divide-x divide-border min-h-0 bg-background">
           {/* Left Column: Calendar */}
           <div className="p-3 flex items-center justify-center shrink-0">
             <Calendar
@@ -170,7 +170,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(0)}
-                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
                 >
                   Today
                 </Button>
@@ -179,7 +179,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(1)}
-                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
                 >
                   Tomorrow
                 </Button>
@@ -188,7 +188,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(7)}
-                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
                 >
                   Next week
                 </Button>
@@ -197,7 +197,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(14)}
-                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer rounded-md shadow-none"
                 >
                   In 2 weeks
                 </Button>
@@ -205,7 +205,7 @@ export function DatePopover({
             </div>
 
             {/* Inputs */}
-            <div className="space-y-2 pt-2 border-t border-border/60">
+            <div className="space-y-2 pt-2 border-t border-border">
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={hasStartDate}
@@ -218,7 +218,7 @@ export function DatePopover({
                 <Input
                   readOnly
                   value={selectedRange.from ? selectedRange.from.toLocaleDateString() : 'M/D/YYYY'}
-                  className="h-6.5 w-24 text-11 text-center px-1 font-mono"
+                  className="h-6.5 w-24 text-11 text-center px-1 font-mono rounded-md border-border"
                 />
               </div>
 
@@ -240,13 +240,13 @@ export function DatePopover({
                       ? selectedRange.from.toLocaleDateString()
                       : 'M/D/YYYY'
                   }
-                  className="h-6.5 w-24 text-11 text-center px-1 font-mono"
+                  className="h-6.5 w-24 text-11 text-center px-1 font-mono rounded-md border-border"
                 />
               </div>
             </div>
 
             {/* Reminders & Recurrence */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
               <div className="space-y-1">
                 <label className="text-10 font-bold text-muted-foreground">
                   Reminder
@@ -255,10 +255,10 @@ export function DatePopover({
                   value={reminderOption || 'none'}
                   onValueChange={(val) => setReminderOption(val as TaskReminder)}
                 >
-                  <SelectTrigger className="h-6.5 text-11 px-2">
+                  <SelectTrigger className="h-6.5 text-11 px-2 rounded-md border-border">
                     <SelectValue placeholder="Reminder" />
                   </SelectTrigger>
-                  <SelectContent className="text-xs">
+                  <SelectContent className="text-xs rounded-md border-border shadow-sm">
                     <SelectItem value="none">None</SelectItem>
                     <SelectItem value="at-time">At time of due</SelectItem>
                     <SelectItem value="15m">15m before</SelectItem>
@@ -276,10 +276,10 @@ export function DatePopover({
                   value={recurrenceOption || 'none'}
                   onValueChange={(val) => setRecurrenceOption(val as TaskRecurrence)}
                 >
-                  <SelectTrigger className="h-6.5 text-11 px-2">
+                  <SelectTrigger className="h-6.5 text-11 px-2 rounded-md border-border">
                     <SelectValue placeholder="Repeat" />
                   </SelectTrigger>
-                  <SelectContent className="text-xs">
+                  <SelectContent className="text-xs rounded-md border-border shadow-sm">
                     <SelectItem value="none">Never</SelectItem>
                     <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="mon-fri">Mon - Fri</SelectItem>
@@ -293,12 +293,12 @@ export function DatePopover({
         </div>
 
         {/* Footer */}
-        <div className="px-3.5 py-2.5 border-t border-border/70 shrink-0 flex items-center justify-between gap-2 bg-popover">
+        <div className="px-3.5 py-2.5 border-t border-border shrink-0 flex items-center justify-between gap-2 bg-popover">
           <Button
             size="sm"
             variant="ghost"
             onClick={handleRemove}
-            className="h-7 text-xs text-muted-foreground hover:text-destructive cursor-pointer px-2.5"
+            className="h-7 text-xs text-muted-foreground hover:text-destructive cursor-pointer px-2.5 rounded-md"
           >
             Clear
           </Button>
@@ -307,14 +307,14 @@ export function DatePopover({
               size="sm"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="h-7 text-xs px-3 cursor-pointer"
+              className="h-7 text-xs px-3 cursor-pointer rounded-md shadow-none"
             >
               Cancel
             </Button>
             <Button
               size="sm"
               onClick={handleSave}
-              className="h-7 text-xs font-semibold px-4 cursor-pointer"
+              className="h-7 text-xs font-semibold px-4 cursor-pointer rounded-md shadow-none"
             >
               Apply
             </Button>

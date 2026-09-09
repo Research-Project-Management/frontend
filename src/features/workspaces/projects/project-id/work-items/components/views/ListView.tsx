@@ -208,9 +208,9 @@ const TaskRowContent = ({
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-2.5 px-4 py-2.5 bg-card hover:bg-muted transition-colors text-left group cursor-pointer border-b border-border/40 last:border-b-0 relative",
+        "w-full flex items-center gap-2.5 px-4 py-2.5 bg-card hover:bg-muted transition-colors text-left group cursor-pointer border-b border-border last:border-b-0 relative",
         task.completed && "opacity-75",
-        isDragging && "z-50 bg-card border border-primary/40 opacity-90 rounded-lg"
+        isDragging && "z-50 bg-card border border-primary opacity-90 rounded-md shadow-sm"
       )}
     >
       <PriorityBadge priority={(task.priority as 'urgent' | 'high' | 'medium' | 'low' | 'none')} />
@@ -221,7 +221,7 @@ const TaskRowContent = ({
         const config = ISSUE_TYPE_CONFIG[iType] || ISSUE_TYPE_CONFIG.task;
         return (
           <span className="shrink-0 inline-flex items-center" title={config.label}>
-            <Icon className="size-3.5" style={{ color: config.color }} />
+            <Icon className="size-3.5 shrink-0" style={{ color: config.color }} />
           </span>
         );
       })()}
@@ -244,7 +244,7 @@ const TaskRowContent = ({
       {/* Blocked Warning */}
       {isBlocked && (
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
-          <ShieldAlert className="size-3" />
+          <ShieldAlert className="size-3 shrink-0" />
           <span>Blocked</span>
         </span>
       )}
@@ -252,7 +252,7 @@ const TaskRowContent = ({
       {/* Story Points */}
       {task.storyPoints !== undefined && task.storyPoints !== null && (
         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
-          <Hash className="size-3" />
+          <Hash className="size-3 shrink-0" />
           <span>{task.storyPoints}</span>
         </span>
       )}
@@ -272,7 +272,7 @@ const TaskRowContent = ({
             return showLabelDetails ? (
               <span
                 key={label.id}
-                className="inline-flex h-4 items-center rounded px-1.5 text-xs font-semibold leading-none text-white"
+                className="inline-flex h-4 items-center rounded-sm px-1.5 text-xs font-semibold leading-none text-white"
                 style={{ backgroundColor: label.color }}
               >
                 {label.title}
@@ -290,40 +290,40 @@ const TaskRowContent = ({
 
       {dueDateInfo.hasAnyDate && (
         <span className={cn(
-          "flex items-center gap-1 text-xs shrink-0 px-2 py-0.5 rounded transition-colors",
+          "flex items-center gap-1 text-xs shrink-0 px-2 py-0.5 rounded-sm transition-colors",
           dueDateInfo.isOverdueAlert 
             ? "bg-destructive/10 text-destructive font-medium" 
             : "text-muted-foreground"
         )}>
-          <Clock3 className="size-3" />
+          <Clock3 className="size-3 shrink-0" />
           <span className="whitespace-nowrap">{dueDateInfo.displayText}</span>
         </span>
       )}
 
       <div className="flex items-center gap-2 text-muted-foreground transition-colors">
-        {metadata.hasDescription && <AlignLeft className="size-3" />}
+        {metadata.hasDescription && <AlignLeft className="size-3 shrink-0" />}
         {metadata.commentCount > 0 && (
           <div className="flex items-center gap-0.5 text-xs" title="Comments">
-            <MessageSquare className="size-3" />
+            <MessageSquare className="size-3 shrink-0" />
             <span>{metadata.commentCount}</span>
           </div>
         )}
         {metadata.attachmentCount > 0 && (
           <div className="flex items-center gap-0.5 text-xs" title="Attachments">
-            <Paperclip className="size-3" />
+            <Paperclip className="size-3 shrink-0" />
             <span>{metadata.attachmentCount}</span>
           </div>
         )}
         {metadata.checklistTotal > 0 && (
           <div className="flex items-center gap-0.5 text-xs" title="Checklist progress">
-            <CheckSquare className="size-3" />
+            <CheckSquare className="size-3 shrink-0" />
             <span>{metadata.checklistDone}/{metadata.checklistTotal}</span>
           </div>
         )}
       </div>
 
       {assignee && (
-        <Avatar className="size-5 shrink-0 border border-border/80 shadow-2xs">
+        <Avatar className="size-5 shrink-0 border border-border shadow-none">
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
@@ -340,16 +340,16 @@ const TaskRowContent = ({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-md shadow-none"
               aria-label="More actions"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreHorizontal className="h-3.5 w-3.5" />
+              <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-44 rounded-lg p-1 text-xs">
+          <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()} className="w-44 rounded-md border-border shadow-sm p-1 text-xs">
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicateCard(task); }} className="cursor-pointer">
-              <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
+              <Copy className="mr-2 h-3.5 w-3.5 shrink-0" /> Duplicate
             </DropdownMenuItem>
             {currentUserId && (
               <DropdownMenuItem
@@ -365,25 +365,25 @@ const TaskRowContent = ({
               >
                 {isCurrentUserAssignee ? (
                   <>
-                    <UserMinus className="mr-2 h-3.5 w-3.5" /> Leave
+                    <UserMinus className="mr-2 h-3.5 w-3.5 shrink-0" /> Leave
                   </>
                 ) : (
                   <>
-                    <UserPlus className="mr-2 h-3.5 w-3.5" /> Join
+                    <UserPlus className="mr-2 h-3.5 w-3.5 shrink-0" /> Join
                   </>
                 )}
               </DropdownMenuItem>
             )}
             {onRemoveFromCycle && (
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRemoveFromCycle(task); }} className="cursor-pointer">
-                <RotateCcw className="mr-2 h-3.5 w-3.5" /> Remove from cycle
+                <RotateCcw className="mr-2 h-3.5 w-3.5 shrink-0" /> Remove from cycle
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={(e) => { e.stopPropagation(); onDeleteCard(task); }}
               className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
             >
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+              <Trash2 className="mr-2 h-3.5 w-3.5 shrink-0" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -500,13 +500,13 @@ const ListViewColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        "rounded-lg border border-border/70 bg-card overflow-hidden transition-all",
-        isOver && "ring-2 ring-primary/30 border-primary/50"
+        "rounded-md border border-border bg-card overflow-hidden transition-all",
+        isOver && "ring-1 ring-primary border-primary"
       )}
     >
       {/* ── Group Header ── */}
       <div 
-        className="flex items-center justify-between px-3.5 py-2.5 bg-muted hover:bg-muted transition-colors group cursor-pointer border-b border-border/50 select-none"
+        className="flex items-center justify-between px-3.5 py-2.5 bg-muted hover:bg-muted transition-colors group cursor-pointer border-b border-border select-none"
         onClick={() => toggleExpand(group.key)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -536,10 +536,10 @@ const ListViewColumn = ({
                 setQuickAddColumnId(group.key);
               }}
               disabled={isAddingCard}
-              className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-md shadow-none"
               aria-label="Add task"
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-3.5 shrink-0" />
             </Button>
           )}
 
@@ -550,13 +550,13 @@ const ListViewColumn = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-md shadow-none"
                   aria-label="Status options"
                 >
-                  <MoreHorizontal className="size-3.5" />
+                  <MoreHorizontal className="size-3.5 shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 text-xs z-50">
+              <DropdownMenuContent align="end" className="w-40 rounded-md border-border shadow-sm text-xs z-50">
                 {onEditColumn && (
                   <DropdownMenuItem
                     onClick={(e) => {
@@ -565,7 +565,7 @@ const ListViewColumn = ({
                     }}
                     className="cursor-pointer gap-2 py-1.5"
                   >
-                    <Pencil className="size-3.5 text-muted-foreground" />
+                    <Pencil className="size-3.5 shrink-0 text-muted-foreground" />
                     <span>Edit status</span>
                   </DropdownMenuItem>
                 )}
@@ -579,7 +579,7 @@ const ListViewColumn = ({
                       }}
                       className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-3.5 shrink-0" />
                       <span>Delete status</span>
                     </DropdownMenuItem>
                   </>
@@ -611,7 +611,7 @@ const ListViewColumn = ({
               items={group.items.map((t: any) => t.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="flex flex-col divide-y divide-border/30">
+              <div className="flex flex-col divide-y divide-border">
                 {group.items.map((task: any) => (
                   <SortableTaskRow
                     key={task.id}
@@ -636,7 +636,7 @@ const ListViewColumn = ({
 
           {/* Quick Add Form */}
           {quickAddColumnId === group.key && (
-            <div className="p-3 bg-muted border-t border-border/40 space-y-2">
+            <div className="p-3 bg-muted border-t border-border space-y-2">
               <input
                 ref={quickAddInputRef}
                 type="text"
@@ -654,14 +654,14 @@ const ListViewColumn = ({
                   }
                 }}
                 placeholder="What needs to be done?"
-                className="h-8 w-full rounded-lg border border-border/80 bg-background px-3 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring placeholder:text-muted-foreground"
+                className="h-8 w-full rounded-md border border-border bg-background px-3 text-xs text-foreground focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground"
                 disabled={isAddingCard}
                 autoFocus
               />
               <div className="flex items-center gap-1.5">
                 <Button
                   size="sm"
-                  className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
+                  className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shadow-none"
                   onClick={() => handleQuickAddSubmit(group.key)}
                   disabled={!quickAddTitle.trim() || isAddingCard}
                 >
@@ -670,7 +670,7 @@ const ListViewColumn = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs rounded-md cursor-pointer"
+                  className="h-7 px-2 text-xs rounded-md cursor-pointer shadow-none"
                   onClick={() => {
                     setQuickAddColumnId(null);
                     setQuickAddTitle("");
@@ -896,10 +896,10 @@ export default function ListView({
               <button
                 type="button"
                 onClick={onAddColumn}
-                className="w-full h-10 border border-dashed border-border/80 hover:border-primary/60 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-all cursor-pointer bg-muted shadow-none"
+                className="w-full h-9 border border-dashed border-border hover:border-primary hover:bg-muted rounded-md flex items-center justify-center gap-1.5 text-13 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-background shadow-none"
               >
-                <Plus className="size-4" />
-                <span>Add Status / Column</span>
+                <Plus className="size-3.5 shrink-0" />
+                <span>Add status / column</span>
               </button>
             </div>
           )}
@@ -908,7 +908,7 @@ export default function ListView({
       {isMounted && createPortal(
         <DragOverlay>
           {activeTask ? (
-            <div className="w-[calc(100vw-400px)] max-w-2xl bg-card text-foreground border border-border/80 rounded-lg overflow-hidden">
+            <div className="w-[calc(100vw-400px)] max-w-2xl bg-card text-foreground border border-border rounded-md shadow-sm overflow-hidden">
               <TaskRowContent
                 task={activeTask}
                 currentUserId={currentUserId}

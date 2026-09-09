@@ -98,21 +98,21 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
   if (isLoading || isAuthLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md p-8 rounded-2xl border border-border/70 bg-card shadow-2xl space-y-6 text-center">
+        <div className="w-full max-w-md p-8 rounded-lg border border-border bg-card shadow-sm space-y-6 text-center">
           <div className="flex justify-center">
-            <Skeleton className="size-16 rounded-2xl" />
+            <Skeleton className="size-16 rounded-md" />
           </div>
           <div className="space-y-2">
-            <Skeleton className="h-6 w-3/4 mx-auto rounded-lg" />
+            <Skeleton className="h-6 w-3/4 mx-auto rounded-md" />
             <Skeleton className="h-4 w-1/2 mx-auto rounded-md" />
           </div>
-          <div className="p-4 rounded-xl border border-border/50 bg-muted space-y-3">
-            <Skeleton className="h-4 w-full rounded" />
-            <Skeleton className="h-4 w-4/5 rounded" />
+          <div className="p-4 rounded-md border border-border bg-muted space-y-3">
+            <Skeleton className="h-4 w-full rounded-md" />
+            <Skeleton className="h-4 w-4/5 rounded-md" />
           </div>
           <div className="flex gap-3 pt-2">
-            <Skeleton className="h-10 flex-1 rounded-xl" />
-            <Skeleton className="h-10 flex-1 rounded-xl" />
+            <Skeleton className="h-10 flex-1 rounded-md" />
+            <Skeleton className="h-10 flex-1 rounded-md" />
           </div>
         </div>
       </div>
@@ -122,9 +122,9 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
   if (error || !data) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md p-8 rounded-2xl border border-destructive/30 bg-card shadow-2xl text-center space-y-5">
-          <div className="size-14 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto border border-destructive/20">
-            <AlertCircle className="size-7 stroke-[1.8]" />
+        <div className="w-full max-w-md p-8 rounded-lg border border-border bg-card shadow-sm text-center space-y-5">
+          <div className="size-14 rounded-md bg-muted text-destructive flex items-center justify-center mx-auto border border-border">
+            <AlertCircle className="size-7 stroke-[1.8] shrink-0" />
           </div>
           <div className="space-y-1.5">
             <h2 className="text-xl font-bold text-foreground">
@@ -138,7 +138,7 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
           <div className="pt-2">
             <Button
               onClick={() => router.replace('/')}
-              className="w-full h-10 rounded-xl text-xs font-medium cursor-pointer"
+              className="w-full h-9 rounded-md text-xs font-medium cursor-pointer"
             >
               Return to Home
             </Button>
@@ -153,14 +153,11 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-4 relative overflow-hidden">
-      {/* Background ambient decorative glow */}
-      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
-
       {/* Main Card */}
-      <div className="w-full max-w-md rounded-2xl border border-border/80 bg-card/95 backdrop-blur-md shadow-2xl p-7 relative z-10 space-y-6">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-sm p-7 relative z-10 space-y-6">
         {/* Workspace Brand & Avatar */}
         <div className="flex flex-col items-center text-center space-y-3 pt-1">
-          <div className="size-16 rounded-2xl border border-border/80 bg-muted shadow-sm flex items-center justify-center overflow-hidden">
+          <div className="size-16 rounded-md border border-border bg-muted flex items-center justify-center overflow-hidden">
             {workspace.avatar ? (
               <img
                 src={workspace.avatar}
@@ -168,7 +165,7 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <Building2 className="size-8 text-primary" />
+              <Building2 className="size-8 text-foreground shrink-0" />
             )}
           </div>
 
@@ -183,9 +180,9 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
         </div>
 
         {/* Invitation Context */}
-        <div className="rounded-xl border border-border/70 bg-muted p-4 space-y-3">
+        <div className="rounded-md border border-border bg-muted p-4 space-y-3">
           <div className="flex items-center gap-3">
-            <Avatar className="size-9 rounded-full border border-border/80 shrink-0">
+            <Avatar className="size-9 rounded-full border border-border shrink-0">
               {invitedBy?.avatar && (
                 <AvatarImage src={invitedBy.avatar} alt={invitedBy.name} />
               )}
@@ -206,16 +203,16 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
             </div>
             <Badge
               variant="secondary"
-              className="text-10 font-bold tracking-wider px-2 py-0.5"
+              className="text-10 font-bold tracking-wider px-2 py-0.5 rounded-sm"
             >
               {invitation.role}
             </Badge>
           </div>
 
-          <div className="pt-1 border-t border-border/50 flex items-center justify-between text-11 text-muted-foreground">
+          <div className="pt-1 border-t border-border flex items-center justify-between text-11 text-muted-foreground">
             <span>Workspace members</span>
             <span className="font-medium text-foreground flex items-center gap-1">
-              <Users className="size-3" />
+              <Users className="size-3 shrink-0" />
               {workspace.membersCount}
             </span>
           </div>
@@ -223,7 +220,7 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
 
         {/* Expired Status Notice */}
         {isExpired && (
-          <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
+          <div className="p-3 rounded-md border border-border bg-muted text-foreground text-xs flex items-center gap-2">
             <AlertCircle className="size-4 shrink-0" />
             <span>This invitation has expired or has already been accepted.</span>
           </div>
@@ -245,10 +242,10 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
                   variant="outline"
                   onClick={handleDecline}
                   disabled={isAccepting || isDeclining || isExpired}
-                  className="flex-1 h-10 rounded-xl text-xs font-medium cursor-pointer"
+                  className="flex-1 h-9 rounded-md text-xs font-medium cursor-pointer"
                 >
                   {isDeclining ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
                   ) : (
                     'Decline'
                   )}
@@ -258,14 +255,14 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
                   type="button"
                   onClick={handleAccept}
                   disabled={isAccepting || isDeclining || isExpired}
-                  className="flex-1 h-10 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm cursor-pointer"
+                  className="flex-1 h-9 rounded-md text-xs font-medium bg-primary hover:bg-primary text-primary-foreground shadow-none cursor-pointer"
                 >
                   {isAccepting ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
                   ) : (
                     <>
                       <span>Accept & Join</span>
-                      <ArrowRight className="size-3.5 ml-1" />
+                      <ArrowRight className="size-3.5 ml-1 shrink-0" />
                     </>
                   )}
                 </Button>
@@ -281,9 +278,9 @@ export function InviteAcceptPage({ token }: InviteAcceptPageProps) {
               <Button
                 type="button"
                 onClick={() => router.push(`/login?redirect=/invite/${token}`)}
-                className="w-full h-10 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                className="w-full h-9 rounded-md text-xs font-medium bg-primary hover:bg-primary text-primary-foreground shadow-none cursor-pointer flex items-center justify-center gap-2"
               >
-                <LogIn className="size-3.5" />
+                <LogIn className="size-3.5 shrink-0" />
                 <span>Log in to Accept</span>
               </Button>
 

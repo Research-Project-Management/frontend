@@ -60,12 +60,12 @@ export function LabelPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
             isOpen && 'bg-muted border-border'
           )}
         >
-          <Tag className="size-3.5 text-muted-foreground" />
+          <Tag className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Labels</span>
         </Button>
       </PopoverTrigger>
@@ -74,17 +74,17 @@ export function LabelPopover({
         side="bottom"
         sideOffset={6}
         collisionPadding={16}
-        className="w-80 p-0 rounded-lg shadow-2xl border-border/70 overflow-hidden flex flex-col z-100 bg-popover max-h-[min(500px,calc(100vh-80px))]"
+        className="w-80 p-0 rounded-md shadow-sm border border-border overflow-hidden flex flex-col z-100 bg-popover max-h-[min(500px,calc(100vh-80px))]"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           {view !== 'list' && (
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 text-foreground"
+              className="size-8 text-foreground rounded-md"
               onClick={() => setView('list')}
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-4 shrink-0" />
             </Button>
           )}
           <span className="text-sm font-semibold text-center flex-1 text-foreground">
@@ -93,10 +93,10 @@ export function LabelPopover({
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-foreground"
+            className="size-8 text-foreground rounded-md"
             onClick={() => setIsOpen(false)}
           >
-            <X className="size-4" />
+            <X className="size-4 shrink-0" />
           </Button>
         </div>
 
@@ -106,7 +106,7 @@ export function LabelPopover({
               placeholder="Search labels..."
               value={labelSearch}
               onChange={(e) => setLabelSearch(e.target.value)}
-              className="h-9"
+              className="h-8 text-xs rounded-md border-border"
             />
             <div className="max-h-56 overflow-y-auto space-y-1">
               {filteredLabels.map((l) => {
@@ -124,7 +124,7 @@ export function LabelPopover({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-7"
+                      className="size-7 rounded-md"
                       onClick={() =>
                         handleEdit({
                           id: l.id,
@@ -133,13 +133,13 @@ export function LabelPopover({
                         })
                       }
                     >
-                      <SquarePen className="size-3.5 text-muted-foreground" />
+                      <SquarePen className="size-3.5 shrink-0 text-muted-foreground" />
                     </Button>
                   </div>
                 );
               })}
             </div>
-            <Button variant="outline" className="w-full h-8 text-xs" onClick={handleCreateNew}>
+            <Button variant="outline" className="w-full h-8 text-xs rounded-md shadow-none" onClick={handleCreateNew}>
               Create a new label
             </Button>
           </div>

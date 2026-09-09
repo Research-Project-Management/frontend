@@ -106,9 +106,9 @@ export default function StorageStatsOverview({
       icon: Film,
       count: stats.breakdown.video.count + stats.breakdown.audio.count,
       size: stats.breakdown.video.size + stats.breakdown.audio.size,
-      accentClass: 'from-purple-500/10 to-pink-500/10 text-purple-500 border-purple-500/20 hover:border-purple-500/40',
-      activeClass: 'ring-2 ring-purple-500 border-transparent bg-purple-500/10',
-      iconBg: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+      accentClass: 'from-sky-500/10 to-blue-500/10 text-sky-500 border-sky-500/20 hover:border-sky-500/40',
+      activeClass: 'ring-2 ring-sky-500 border-transparent bg-sky-500/10',
+      iconBg: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
     },
     {
       id: 'archive',
@@ -126,16 +126,14 @@ export default function StorageStatsOverview({
   return (
     <div className={cn("space-y-4 mb-6", className)}>
       {/* Banner / Header Card */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-r from-card via-card/90 to-card p-5 sm:p-6 shadow-sm">
-        <div className="absolute right-0 top-0 -mt-8 -mr-8 size-48 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
-
+      <div className="relative overflow-hidden rounded-md border border-border bg-card p-5 sm:p-6 shadow-none">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                <HardDrive className="size-4" />
+              <div className="size-8 rounded-md bg-muted flex items-center justify-center text-primary shrink-0">
+                <HardDrive className="size-4 shrink-0" />
               </div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-foreground">
                 Storage Overview
               </h2>
             </div>
@@ -152,9 +150,9 @@ export default function StorageStatsOverview({
               <Button
                 onClick={onUploadClick}
                 size="sm"
-                className="gap-1.5 rounded-lg shadow-sm"
+                className="gap-1.5 rounded-md"
               >
-                <Upload className="size-3.5" />
+                <Upload className="size-3.5 shrink-0" />
                 Upload files
               </Button>
             )}
@@ -163,9 +161,9 @@ export default function StorageStatsOverview({
                 onClick={onCreateFolderClick}
                 variant="outline"
                 size="sm"
-                className="gap-1.5 rounded-lg border-border/80 hover:bg-muted"
+                className="gap-1.5 rounded-md border border-border hover:bg-muted"
               >
-                <FolderPlus className="size-3.5" />
+                <FolderPlus className="size-3.5 shrink-0" />
                 New folder
               </Button>
             )}
@@ -174,10 +172,10 @@ export default function StorageStatsOverview({
                 onClick={onExploreClick}
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+                className="gap-1.5 rounded-md text-muted-foreground hover:text-foreground"
               >
                 <span>View all</span>
-                <ArrowRight className="size-3.5" />
+                <ArrowRight className="size-3.5 shrink-0" />
               </Button>
             )}
           </div>
@@ -197,15 +195,15 @@ export default function StorageStatsOverview({
               whileTap={{ scale: 0.98 }}
               onClick={() => toggleType(cat.id as any)}
               className={cn(
-                "relative cursor-pointer overflow-hidden rounded-xl border bg-card p-4 transition-all duration-200 shadow-sm",
+                "relative cursor-pointer overflow-hidden rounded-md border bg-card p-4 transition-all duration-200 shadow-none",
                 isSelected
                   ? cat.activeClass
-                  : "border-border/60 hover:shadow-md hover:border-border",
+                  : "border-border hover:bg-muted hover:border-border",
               )}
             >
               <div className="flex items-center justify-between mb-3">
-                <div className={cn("size-9 rounded-lg flex items-center justify-center", cat.iconBg)}>
-                  <Icon className="size-5" />
+                <div className={cn("size-9 rounded-md flex items-center justify-center", cat.iconBg)}>
+                  <Icon className="size-5 shrink-0" />
                 </div>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                   {cat.count} files

@@ -263,9 +263,9 @@ export function TaskActivities({
   return (
     <div className="w-full flex flex-col space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 border-b border-border/60">
+      <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-1.5">
-          <MessageSquare className="size-3.5 text-muted-foreground" />
+          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
           <h3 className="text-11 font-bold tracking-normal text-muted-foreground">
             Comments & Activity
           </h3>
@@ -274,7 +274,7 @@ export function TaskActivities({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
+          className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none rounded-md"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -313,7 +313,7 @@ export function TaskActivities({
           placeholder={canComment ? "Write a comment..." : "Save card before commenting"}
           disabled={!canComment || isReadOnly}
           className={cn(
-            "min-h-[58px] rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary/40 resize-none transition-colors leading-relaxed",
+            "min-h-[58px] rounded-md border border-border bg-background p-2.5 text-xs text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary resize-none transition-colors leading-relaxed",
             (!canComment || isReadOnly) && "cursor-not-allowed bg-muted"
           )}
           rows={2}
@@ -328,7 +328,7 @@ export function TaskActivities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-6.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+              className="h-6.5 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md shadow-none"
               onClick={handleCancelComment}
               disabled={isSavingComment}
             >
@@ -337,12 +337,12 @@ export function TaskActivities({
             <Button
               type="button"
               size="sm"
-              className="h-6.5 px-3 text-xs"
+              className="h-6.5 px-3 text-xs rounded-md shadow-none"
               onClick={handleSaveComment}
               disabled={!commentText.trim() || isSavingComment}
             >
               {isSavingComment ? (
-                <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/80 border-t-transparent mr-1" />
+                <span className="inline-block size-3 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
               ) : null}
               Save
             </Button>
@@ -396,7 +396,7 @@ export function TaskActivities({
                             <Textarea
                               value={editingCommentText}
                               onChange={(e) => setEditingCommentText(e.target.value)}
-                              className="min-h-[50px] rounded-md border border-border bg-card p-2 text-xs text-foreground shadow-none resize-none focus-visible:ring-1 focus-visible:ring-primary/40"
+                              className="min-h-[50px] rounded-md border border-border bg-card p-2 text-xs text-foreground shadow-none resize-none focus-visible:ring-1 focus-visible:ring-primary"
                               disabled={isSubmittingEdit}
                               autoFocus
                             />
@@ -405,7 +405,7 @@ export function TaskActivities({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground rounded-md shadow-none"
                                 onClick={handleCancelEditComment}
                                 disabled={isSubmittingEdit}
                               >
@@ -414,12 +414,12 @@ export function TaskActivities({
                               <Button
                                 type="button"
                                 size="sm"
-                                className="h-6 px-2.5 text-xs"
+                                className="h-6 px-2.5 text-xs rounded-md shadow-none"
                                 onClick={handleSaveEditedComment}
                                 disabled={!editingCommentText.trim() || isSubmittingEdit}
                               >
                                 {isSubmittingEdit ? (
-                                  <span className="inline-block size-2.5 animate-spin rounded-full border-2 border-white/80 border-t-transparent mr-1" />
+                                  <span className="inline-block size-2.5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-1" />
                                 ) : null}
                                 Save
                               </Button>
@@ -427,11 +427,11 @@ export function TaskActivities({
                           </div>
                         ) : (
                           <>
-                            <div className="rounded-md border border-border/70 bg-muted px-2.5 py-1.5 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
+                            <div className="rounded-md border border-border bg-muted px-2.5 py-1.5 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
-                              <div className="inline-flex items-center rounded-full border border-border/70 bg-background px-1.5 py-0.5 text-11 shadow-xs">
+                              <div className="inline-flex items-center rounded-full border border-border bg-background px-1.5 py-0.5 text-11 shadow-xs">
                                 {item.reactionEmoji}
                               </div>
                             ) : null}
@@ -452,11 +452,11 @@ export function TaskActivities({
                                   )
                                 }
                               >
-                                <SmilePlus className="size-3" />
+                                <SmilePlus className="size-3 shrink-0" />
                               </button>
                               {item.permissions?.canEdit && !isReadOnly ? (
                                 <>
-                                  <span className="text-muted-foreground/50">•</span>
+                                  <span className="text-muted-foreground">•</span>
                                   <button
                                     type="button"
                                     className="rounded px-1 py-0.2 hover:underline cursor-pointer"
@@ -468,7 +468,7 @@ export function TaskActivities({
                               ) : null}
                               {item.permissions?.canDelete && !isReadOnly ? (
                                 <>
-                                  <span className="text-muted-foreground/50">•</span>
+                                  <span className="text-muted-foreground">•</span>
                                   <button
                                     type="button"
                                     className="rounded px-1 py-0.2 text-destructive hover:underline cursor-pointer"
@@ -480,7 +480,7 @@ export function TaskActivities({
                               ) : null}
 
                               {reactionPickerCommentId === item.id ? (
-                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-full border border-border bg-popover text-popover-foreground px-1.5 py-0.5 shadow-lg flex items-center gap-0.5">
+                                <div className="absolute bottom-full left-0 z-20 mb-1 rounded-full border border-border bg-popover text-popover-foreground px-1.5 py-0.5 shadow-sm flex items-center gap-0.5">
                                   {reactionOptions.map((emoji) => (
                                     <button
                                       key={emoji}
@@ -531,7 +531,7 @@ export function TaskActivities({
           if (!open) setDeleteCommentId(null);
         }}
       >
-        <DialogContent className="max-w-xs rounded-lg border border-border p-4 shadow-xl" showCloseButton={false}>
+        <DialogContent className="max-w-xs rounded-lg border border-border p-4 shadow-sm" showCloseButton={false}>
           <DialogHeader className="space-y-1 text-left">
             <DialogTitle className="text-sm font-bold text-foreground">
               Delete comment?
@@ -546,7 +546,7 @@ export function TaskActivities({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-xs px-2.5 text-muted-foreground hover:bg-muted"
+              className="h-7 text-xs px-2.5 text-muted-foreground hover:bg-muted rounded-md shadow-none"
               onClick={() => setDeleteCommentId(null)}
             >
               Cancel
@@ -554,7 +554,7 @@ export function TaskActivities({
             <Button
               type="button"
               size="sm"
-              className="h-7 text-xs bg-destructive px-3 text-white shadow-none hover:bg-destructive/90"
+              className="h-7 text-xs bg-destructive px-3 text-white shadow-none hover:bg-destructive/90 rounded-md"
               onClick={handleConfirmDeleteComment}
               disabled={isDeleteCommentRunning}
             >

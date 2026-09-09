@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -70,11 +70,11 @@ export default function CitationPickerModal({
       onOpenChange={onOpenChange}
       title="Insert Citation"
       description="Search library items and insert citation snippet"
-      className="max-w-2xl rounded-lg border border-border shadow-md"
+      className="max-w-2xl rounded-lg border border-border shadow-sm"
     >
-      <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border bg-muted/40">
+      <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border bg-muted">
         <div className="flex items-center gap-2">
-          <BookOpen className="size-4 text-primary" />
+          <BookOpen className="size-4 text-foreground shrink-0" />
           <span className="text-13 font-semibold text-foreground">Insert Citation</span>
         </div>
         {/* Style selector pills */}
@@ -85,7 +85,7 @@ export default function CitationPickerModal({
               type="button"
               onClick={() => setSelectedStyle(opt.id)}
               className={cn(
-                'px-2 py-0.5 text-11 font-mono rounded transition-colors',
+                'px-2 py-0.5 text-11 font-mono rounded-md transition-colors',
                 selectedStyle === opt.id
                   ? 'bg-primary text-primary-foreground font-medium'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted',
@@ -130,7 +130,7 @@ export default function CitationPickerModal({
                     </p>
                     <p className="text-11 text-muted-foreground truncate">
                       {authorSummary}{yearStr}
-                      {item.journal && <span className="opacity-80"> · {item.journal}</span>}
+                      {item.journal && <span> · {item.journal}</span>}
                     </p>
                   </div>
                 </div>
@@ -138,7 +138,7 @@ export default function CitationPickerModal({
                 <div className="shrink-0 flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="font-mono text-11 px-1.5 py-0 border-border bg-muted/60 text-foreground"
+                    className="font-mono text-11 px-1.5 py-0 border-border bg-muted text-foreground"
                   >
                     {item.resolvedCitationKey}
                   </Badge>

@@ -67,7 +67,7 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        'flex h-12 w-full items-center justify-between border-b border-border/50 bg-background/80 px-4 py-2 backdrop-blur-md sticky top-0 z-10 shrink-0',
+        'flex h-12 w-full items-center justify-between border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
         className
       )}
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
@@ -75,22 +75,22 @@ export default function Topbar({
       <div className="flex items-center gap-1.5 min-w-0 max-w-[55vw]">
         {breadcrumbs && breadcrumbs.length > 1 ? (
           <div className="flex items-center gap-1 min-w-0 overflow-x-auto py-1">
-            {Icon && <Icon className="size-4 text-foreground/80 shrink-0 mr-1" />}
+            {Icon && <Icon className="size-4 text-foreground shrink-0 mr-1" />}
             {breadcrumbs.map((segment, index) => {
               const isLast = index === breadcrumbs.length - 1;
               return (
                 <div key={segment.id || `root-${index}`} className="flex items-center gap-1 min-w-0 shrink-0">
                   {index > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground/60 shrink-0" />
+                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
                   )}
                   <button
                     onClick={() => onBreadcrumbNavigate?.(segment.id)}
                     disabled={isLast}
                     className={cn(
-                      "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded px-1 py-0.5",
+                      "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded-md px-1.5 py-0.5",
                       isLast
                         ? "font-semibold text-foreground cursor-default"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                        : "text-foreground hover:bg-muted cursor-pointer font-normal"
                     )}
                     title={segment.name}
                   >
@@ -102,7 +102,7 @@ export default function Topbar({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            {Icon && <Icon className="size-4 text-foreground/80" />}
+            {Icon && <Icon className="size-4 text-foreground shrink-0" />}
             <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
               {title || 'Files'}
             </h1>
@@ -113,17 +113,17 @@ export default function Topbar({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
-            isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary cursor-pointer"
+            "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
+            isSearchExpanded || searchQuery ? "w-64 border border-border bg-background" : "w-8 hover:bg-muted cursor-pointer"
           )}
           onClick={expandSearch}
         >
           <Search
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10",
+              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 shrink-0",
               isSearchExpanded || searchQuery
-                ? "left-2.5 translate-x-0 text-muted-foreground/50"
-                : "left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground"
+                ? "left-2.5 translate-x-0 text-muted-foreground"
+                : "left-1/2 -translate-x-1/2 text-foreground"
             )}
           />
           <Input
@@ -133,7 +133,7 @@ export default function Topbar({
             onChange={(e) => handleSearchChange(e.target.value)}
             onBlur={() => collapseSearch(searchQuery)}
             className={cn(
-              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground/50 transition-opacity duration-200 pl-8 pr-8",
+              "h-full text-sm py-0 leading-none border-none bg-transparent focus-visible:ring-0 shadow-none w-full placeholder:text-muted-foreground transition-opacity duration-200 pl-8 pr-8",
               isSearchExpanded || searchQuery ? "opacity-100" : "opacity-0 pointer-events-none"
             )}
             autoFocus={isSearchExpanded}
@@ -142,24 +142,24 @@ export default function Topbar({
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleClearSearch}
-              className="absolute right-2.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              className="absolute right-2.5 text-foreground hover:bg-muted transition-colors cursor-pointer rounded-sm"
             >
-              <Plus className="size-3.5 rotate-45" />
+              <Plus className="size-3.5 rotate-45 shrink-0" />
             </button>
           )}
         </div>
 
         {/* View Toggle and Filter */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-muted p-1 rounded-lg">
+          <div className="flex items-center bg-muted p-1 rounded-md">
             {(['grid', 'list'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
                 className={cn(
-                  "relative p-1.5 rounded-md transition-colors",
+                  "relative p-1.5 rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary",
                   view === v
-                    ? "text-foreground"
+                    ? "text-foreground font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
                 aria-label={`${v} view`}
@@ -167,13 +167,13 @@ export default function Topbar({
                 {view === v && (
                   <motion.div
                     layoutId="view-toggle"
-                    className="absolute inset-0 bg-black/10 dark:bg-white/10 rounded-md"
+                    className="absolute inset-0 bg-background rounded-md shadow-xs"
                     transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
                   />
                 )}
                 <span className="relative z-10 flex">
-                  {v === 'grid' && <Columns3 className="size-4" strokeWidth={2.5} />}
-                  {v === 'list' && <AlignJustify className="size-4" strokeWidth={2.5} />}
+                  {v === 'grid' && <Columns3 className="size-4 shrink-0" strokeWidth={2.5} />}
+                  {v === 'list' && <AlignJustify className="size-4 shrink-0" strokeWidth={2.5} />}
                 </span>
               </button>
             ))}
@@ -183,32 +183,32 @@ export default function Topbar({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-lg shadow-sm">
-              <Plus className="size-3.5" />
+            <Button size="sm" className="h-8 gap-1.5 px-3 rounded-md cursor-pointer">
+              <Plus className="size-3.5 text-primary-foreground shrink-0" />
               <span>New</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-52 p-1.5 shadow-lg">
+          <PopoverContent align="end" className="w-48 p-1 rounded-md border border-border bg-popover shadow-sm">
             <button
               onClick={handleUploadFile}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <Upload className="size-4 text-primary" />
+              <Upload className="size-4 text-foreground shrink-0" />
               <span>Upload file</span>
             </button>
             <button
               onClick={handleUploadFolder}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <FolderUp className="size-4 text-primary" />
+              <FolderUp className="size-4 text-foreground shrink-0" />
               <span>Upload folder</span>
             </button>
-            <div className="h-px bg-border/50 my-1" />
+            <div className="h-px bg-border my-1" />
             <button
               onClick={handleCreateFolder}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
             >
-              <FolderPlus className="size-4 text-emerald-500" />
+              <FolderPlus className="size-4 text-foreground shrink-0" />
               <span>New folder</span>
             </button>
           </PopoverContent>

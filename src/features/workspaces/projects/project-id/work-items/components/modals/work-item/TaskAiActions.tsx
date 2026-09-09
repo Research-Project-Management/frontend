@@ -153,18 +153,18 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
         <Button
           variant="outline"
           size="sm"
-          className="h-6.5 px-2 text-11 font-medium rounded-md border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-all shadow-none"
+          className="h-6.5 px-2 text-11 font-medium rounded-md border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-all shadow-none shrink-0"
         >
-          <Sparkles className="size-3 text-purple-500" />
+          <Sparkles className="size-3 shrink-0 text-purple-500" />
           <span>AI Copilot</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-72 p-1.5 rounded-sm border-purple-500/20 shadow-2xl bg-popover z-100 space-y-1"
+        className="w-72 p-1.5 rounded-md border border-border shadow-sm bg-popover z-100 space-y-1"
       >
-        <div className="px-2.5 py-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5 border-b border-border/60">
-          <Wand2 className="size-3.5" />
+        <div className="px-2.5 py-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5 border-b border-border">
+          <Wand2 className="size-3.5 shrink-0" />
           <span>Work-Item AI Assistant</span>
         </div>
 
@@ -176,7 +176,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
           >
             {isGenerating && activeAction === 'breakdown' ? (
-              <Loader2 className="size-4 animate-spin text-purple-500" />
+              <Loader2 className="size-4 shrink-0 animate-spin text-purple-500" />
             ) : (
               <GitBranch className="size-4 text-purple-500 shrink-0" />
             )}
@@ -193,7 +193,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
           >
             {isGenerating && activeAction === 'criteria' ? (
-              <Loader2 className="size-4 animate-spin text-purple-500" />
+              <Loader2 className="size-4 shrink-0 animate-spin text-purple-500" />
             ) : (
               <CheckCircle2 className="size-4 text-purple-500 shrink-0" />
             )}
@@ -210,7 +210,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
           >
             {isGenerating && activeAction === 'enhance' ? (
-              <Loader2 className="size-4 animate-spin text-purple-500" />
+              <Loader2 className="size-4 shrink-0 animate-spin text-purple-500" />
             ) : (
               <FileText className="size-4 text-purple-500 shrink-0" />
             )}

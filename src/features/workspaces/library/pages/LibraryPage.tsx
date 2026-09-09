@@ -278,7 +278,7 @@ export default function LibraryPage() {
         >
           {/* Drop Overlay */}
           {isDraggingOver && (
-            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-background/85 backdrop-blur-xs border-2 border-dashed border-primary rounded-md p-6 pointer-events-none select-none">
+            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-background/95 border-2 border-dashed border-primary rounded-md p-6 pointer-events-none select-none">
               <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center mb-2.5">
                 <FileText className="size-6 text-primary shrink-0" />
               </div>
@@ -305,7 +305,7 @@ export default function LibraryPage() {
               <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
                 <BookOpen className="size-6 text-muted-foreground shrink-0" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">No references found</h3>
+              <h2 className="text-sm font-semibold text-foreground">No references found</h2>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                 {search.trim()
                   ? 'No references matching your search query.'
@@ -346,9 +346,9 @@ export default function LibraryPage() {
                   <col className={activeFilter === 'unfiled' ? 'w-[120px]' : 'w-[110px]'} />
                   <col className="w-10" />
                 </colgroup>
-                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs border-b border-border select-none">
+                <thead className="sticky top-0 z-20 bg-background border-b border-border select-none">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
-                    <th className="w-10 px-2.5 py-1.5 text-center align-middle">
+                    <th scope="col" className="w-10 px-2.5 py-1.5 text-center align-middle">
                       <Checkbox
                         checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
                         onCheckedChange={toggleSelectAll}
@@ -356,8 +356,18 @@ export default function LibraryPage() {
                       />
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      aria-sort={hasUserSorted && sortField === 'title' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
                       onClick={() => onColumnSort('title')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('title');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
@@ -365,8 +375,18 @@ export default function LibraryPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      aria-sort={hasUserSorted && sortField === 'authors' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
                       onClick={() => onColumnSort('authors')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('authors');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Creator</span>
@@ -374,8 +394,18 @@ export default function LibraryPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      aria-sort={hasUserSorted && sortField === 'year' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
                       onClick={() => onColumnSort('year')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('year');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="whitespace-nowrap">Year</span>
@@ -383,20 +413,30 @@ export default function LibraryPage() {
                       </div>
                     </th>
                     {activeFilter !== 'unfiled' && (
-                      <th className="px-3.5 py-1.5 align-middle truncate">
+                      <th scope="col" className="px-3.5 py-1.5 align-middle truncate">
                         <span className="truncate">Collection</span>
                       </th>
                     )}
                     <th
+                      scope="col"
+                      role="columnheader"
+                      aria-sort={hasUserSorted && sortField === 'createdAt' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
                       onClick={() => onColumnSort('createdAt')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('createdAt');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="whitespace-nowrap">Date Added</span>
                         {renderSortIcon('createdAt')}
                       </div>
                     </th>
-                    <th className="w-10 px-2 py-1.5" />
+                    <th scope="col" className="w-10 px-2 py-1.5" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">

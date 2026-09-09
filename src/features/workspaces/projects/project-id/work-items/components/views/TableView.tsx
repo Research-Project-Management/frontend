@@ -69,7 +69,7 @@ const PRIORITY_ICONS: Record<TaskPriority, { icon: React.ElementType; color: str
   high: { icon: ArrowUp, color: 'text-orange-500', label: 'High' },
   medium: { icon: Minus, color: 'text-amber-500', label: 'Medium' },
   low: { icon: ArrowDown, color: 'text-blue-500', label: 'Low' },
-  none: { icon: CircleSlash, color: 'text-muted-foreground/60', label: 'None' },
+  none: { icon: CircleSlash, color: 'text-muted-foreground', label: 'None' },
 };
 
 export function TableView({
@@ -190,10 +190,10 @@ export function TableView({
   return (
     <div className="flex-1 min-h-0 h-full flex flex-col bg-background text-foreground overflow-hidden">
       {/* Table Container */}
-      <div className="flex-1 overflow-auto border-t border-border/50">
+      <div className="flex-1 overflow-auto border-t border-border">
         <table className="w-full text-left border-collapse text-xs">
           {/* Table Header */}
-          <thead className="sticky top-0 z-20 bg-muted backdrop-blur-md border-b border-border/70 select-none">
+          <thead className="sticky top-0 z-20 bg-muted border-b border-border select-none">
             <tr className="h-9 font-semibold text-muted-foreground">
               <th className="w-9 px-3 text-center">
                 <Checkbox
@@ -211,9 +211,9 @@ export function TableView({
                 <div className="flex items-center gap-1">
                   <span>ID</span>
                   {sortField === 'identifier' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -225,9 +225,9 @@ export function TableView({
                 <div className="flex items-center gap-1">
                   <span>Type</span>
                   {sortField === 'type' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -239,9 +239,9 @@ export function TableView({
                 <div className="flex items-center gap-1">
                   <span>Title</span>
                   {sortField === 'title' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -253,9 +253,9 @@ export function TableView({
                 <div className="flex items-center gap-1">
                   <span>Status</span>
                   {sortField === 'status' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -267,9 +267,9 @@ export function TableView({
                 <div className="flex items-center gap-1">
                   <span>Priority</span>
                   {sortField === 'priority' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -283,9 +283,9 @@ export function TableView({
                 <div className="flex items-center justify-center gap-1">
                   <span>Pts</span>
                   {sortField === 'storyPoints' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -297,9 +297,9 @@ export function TableView({
                 <div className="flex items-center gap-1">
                   <span>Due Date</span>
                   {sortField === 'dueDate' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
                   ) : (
-                    <ArrowUpDown className="size-3 opacity-30" />
+                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
                   )}
                 </div>
               </th>
@@ -309,7 +309,7 @@ export function TableView({
           </thead>
 
           {/* Table Body */}
-          <tbody className="divide-y divide-border/40">
+          <tbody className="divide-y divide-border">
             {sortedTasks.map((task) => {
               const isSelected = selectedTaskIds.includes(task.id);
               const col = columnMap.get(task.columnId);
@@ -331,7 +331,7 @@ export function TableView({
                   onClick={() => onEditCard(task)}
                   className={cn(
                     'h-10 hover:bg-muted cursor-pointer transition-colors group',
-                    isSelected && 'bg-primary/5 hover:bg-primary/10'
+                    isSelected && 'bg-muted'
                   )}
                 >
                   {/* Selection Checkbox */}
@@ -379,14 +379,14 @@ export function TableView({
                         <button
                           type="button"
                           disabled={isReadOnly}
-                          className="h-6.5 text-11 font-semibold border border-border/50 bg-muted hover:bg-muted rounded-md px-2 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none max-w-[130px]"
+                          className="h-6.5 text-11 font-semibold border border-border bg-muted hover:bg-muted rounded-md px-2 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none max-w-[130px]"
                         >
                           <span
                             className="size-2 rounded-full shrink-0"
                             style={{ backgroundColor: colColor }}
                           />
                           <span className="truncate">{col?.title || task.columnId}</span>
-                          <ChevronDown className="size-3 text-muted-foreground opacity-60 ml-0.5 shrink-0" />
+                          <ChevronDown className="size-3 text-muted-foreground ml-0.5 shrink-0" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-50">
@@ -400,12 +400,12 @@ export function TableView({
                               onClick={() => onMoveCard(task.id, cId)}
                               className={cn(
                                 "flex items-center gap-2 cursor-pointer text-xs py-1.5",
-                                isCurrent && "bg-primary/10 font-semibold text-primary"
+                                isCurrent && "bg-muted font-semibold text-foreground"
                               )}
                             >
                               <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                               <span className="flex-1 truncate">{c.title}</span>
-                              {isCurrent && <Check className="size-3.5 text-primary ml-auto" />}
+                              {isCurrent && <Check className="size-3.5 text-foreground ml-auto shrink-0" />}
                             </DropdownMenuItem>
                           );
                         })}
@@ -436,18 +436,18 @@ export function TableView({
                         </span>
                       </div>
                     ) : (
-                      <span className="text-11 text-muted-foreground/60 italic">Unassigned</span>
+                      <span className="text-11 text-muted-foreground italic">Unassigned</span>
                     )}
                   </td>
 
                   {/* Story Points */}
                   <td className="px-2.5 text-center">
                     {task.storyPoints !== undefined && task.storyPoints !== null ? (
-                      <span className="inline-flex items-center justify-center font-mono font-bold text-10 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <span className="inline-flex items-center justify-center font-mono font-bold text-10 px-1.5 py-0.5 rounded-sm bg-muted text-foreground border border-border">
                         {task.storyPoints}
                       </span>
                     ) : (
-                      <span className="text-muted-foreground/40">—</span>
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
 
@@ -469,7 +469,7 @@ export function TableView({
                         </span>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground/40 text-11">—</span>
+                      <span className="text-muted-foreground text-11">—</span>
                     )}
                   </td>
 
@@ -483,9 +483,9 @@ export function TableView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-7 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity cursor-pointer"
+                          className="size-7 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity cursor-pointer"
                         >
-                          <MoreHorizontal className="size-3.5 text-foreground" />
+                          <MoreHorizontal className="size-3.5 text-foreground shrink-0" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44 text-xs p-1">
@@ -494,7 +494,7 @@ export function TableView({
                         </DropdownMenuItem>
                         {!isReadOnly && (
                           <DropdownMenuItem onClick={() => onDuplicateCard(task)} className="cursor-pointer">
-                            <Copy className="mr-2 size-3.5" />
+                            <Copy className="mr-2 size-3.5 shrink-0" />
                             Duplicate
                           </DropdownMenuItem>
                         )}
@@ -504,25 +504,25 @@ export function TableView({
                             className="cursor-pointer"
                           >
                             {isCurrentUser ? (
-                              <UserMinus className="mr-2 size-3.5" />
+                              <UserMinus className="mr-2 size-3.5 shrink-0" />
                             ) : (
-                              <UserPlus className="mr-2 size-3.5" />
+                              <UserPlus className="mr-2 size-3.5 shrink-0" />
                             )}
                             {isCurrentUser ? 'Leave task' : 'Join task'}
                           </DropdownMenuItem>
                         )}
                         {onRemoveFromCycle && (
                           <DropdownMenuItem onClick={() => onRemoveFromCycle(task)} className="cursor-pointer">
-                            <RotateCcw className="mr-2 size-3.5" />
+                            <RotateCcw className="mr-2 size-3.5 shrink-0" />
                             Remove from cycle
                           </DropdownMenuItem>
                         )}
                         {!isReadOnly && (
                           <DropdownMenuItem
                             onClick={() => onDeleteCard(task)}
-                            className="text-destructive focus:bg-destructive/10 cursor-pointer"
+                            className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
                           >
-                            <Trash2 className="mr-2 size-3.5" />
+                            <Trash2 className="mr-2 size-3.5 shrink-0" />
                             Delete
                           </DropdownMenuItem>
                         )}
@@ -537,7 +537,7 @@ export function TableView({
             {!isReadOnly && isAddingNew && (
               <tr className="bg-muted">
                 <td className="px-3 text-center">
-                  <Plus className="size-3.5 text-primary mx-auto" />
+                  <Plus className="size-3.5 text-foreground mx-auto shrink-0" />
                 </td>
                 <td className="px-2.5 font-mono text-11 text-muted-foreground">NEW</td>
                 <td className="px-2.5">
@@ -550,7 +550,7 @@ export function TableView({
                       onChange={(e) => setNewTitle(e.target.value)}
                       placeholder="Type a task title and press Enter..."
                       autoFocus
-                      className="flex-1 h-7 text-xs bg-background border border-border rounded px-2.5 text-foreground outline-none focus:border-primary"
+                      className="flex-1 h-7 text-xs bg-background border border-border rounded-md px-2.5 text-foreground outline-none focus:border-primary"
                     />
                     <Select value={newColumnId} onValueChange={setNewColumnId}>
                       <SelectTrigger className="h-7 text-xs w-32 border-border bg-background">
@@ -594,7 +594,7 @@ export function TableView({
         {sortedTasks.length === 0 && !isAddingNew && (
           <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
             <div className="size-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-              <CheckSquare className="size-6" />
+              <CheckSquare className="size-6 shrink-0" />
             </div>
             <div>
               <h4 className="text-sm font-bold text-foreground">No tasks found</h4>
@@ -608,7 +608,7 @@ export function TableView({
                 className="h-8 text-xs font-semibold"
                 onClick={() => setIsAddingNew(true)}
               >
-                <Plus className="mr-1.5 size-3.5" />
+                <Plus className="mr-1.5 size-3.5 shrink-0" />
                 Add New Task
               </Button>
             )}
@@ -617,11 +617,11 @@ export function TableView({
       </div>
 
       {/* Footer / Status Bar */}
-      <div className="h-9 px-4 border-t border-border/60 bg-muted flex items-center justify-between text-11 text-muted-foreground shrink-0">
+      <div className="h-9 px-4 border-t border-border bg-muted flex items-center justify-between text-11 text-muted-foreground shrink-0">
         <div className="flex items-center gap-2">
           <span>{sortedTasks.length} task{sortedTasks.length === 1 ? '' : 's'}</span>
           {selectedTaskIds.length > 0 && (
-            <span className="font-semibold text-primary">
+            <span className="font-semibold text-foreground">
               • {selectedTaskIds.length} selected
             </span>
           )}
@@ -634,7 +634,7 @@ export function TableView({
             onClick={() => setIsAddingNew(true)}
             className="h-6.5 text-11 font-medium text-foreground hover:bg-muted gap-1 px-2 cursor-pointer"
           >
-            <Plus className="size-3" />
+            <Plus className="size-3 shrink-0" />
             <span>New Task</span>
           </Button>
         )}

@@ -659,7 +659,7 @@ export function WorkItemDetailModal({
             <span>{activeCol?.title || columnId}</span>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-100 rounded-md border-border/70 shadow-xl bg-popover">
+        <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-100 rounded-md border-border shadow-sm bg-popover">
           {columns.map((col) => {
             const cId = resolveTaskColumnId(col);
             const color = resolveTaskColumnColor(cId, col.accentColor);
@@ -677,7 +677,7 @@ export function WorkItemDetailModal({
                   <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                   <span className="truncate">{col.title}</span>
                 </div>
-                {isCurrent && <Check className="size-3.5 text-primary" />}
+                {isCurrent && <Check className="size-3.5 shrink-0 text-primary" />}
               </DropdownMenuItem>
             );
           })}
@@ -692,7 +692,7 @@ export function WorkItemDetailModal({
         ref={dialogScrollRef}
         showCloseButton={false}
         className={cn(
-          "w-[94vw] max-h-[85vh] p-0 border border-border/80 shadow-2xl rounded-xl overflow-hidden flex flex-col bg-background text-foreground duration-150",
+          "w-[94vw] max-h-[85vh] p-0 border border-border shadow-sm rounded-lg overflow-hidden flex flex-col bg-background text-foreground duration-150",
           isCreating ? "max-w-[640px] sm:max-w-[640px]" : "max-w-[900px] sm:max-w-[900px]"
         )}
         style={{
@@ -703,7 +703,7 @@ export function WorkItemDetailModal({
       >
         <div className="flex h-full min-h-0 flex-col bg-background text-foreground overflow-hidden">
           {/* Top Modal Header */}
-          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border/70 bg-muted shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border bg-muted shrink-0">
             <DialogTitle className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
               <span>{isCreating ? "Create Work Items" : (card?.identifier ? `${card.identifier}` : "Work Item Detail")}</span>
             </DialogTitle>
@@ -719,13 +719,13 @@ export function WorkItemDetailModal({
                       className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer outline-none"
                       aria-label="More actions"
                     >
-                      <MoreHorizontal className="size-3.5" />
+                      <MoreHorizontal className="size-3.5 shrink-0" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 rounded-md border-border/50 shadow-xl p-1">
+                  <DropdownMenuContent align="end" className="w-48 rounded-md border-border shadow-sm p-1">
                     {!isReadOnly && onDuplicate && (
                       <DropdownMenuItem onClick={onDuplicate} className="rounded-sm py-1.5 text-xs">
-                        <Copy className="mr-2 h-3.5 w-3.5 text-foreground" />
+                        <Copy className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
                         <span>Duplicate</span>
                       </DropdownMenuItem>
                     )}
@@ -735,16 +735,16 @@ export function WorkItemDetailModal({
                         className="rounded-sm py-1.5 text-xs"
                       >
                         {isCurrentUserAssignee ? (
-                          <UserMinus className="mr-2 h-3.5 w-3.5 text-foreground" />
+                          <UserMinus className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
                         ) : (
-                          <UserPlus className="mr-2 h-3.5 w-3.5 text-foreground" />
+                          <UserPlus className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
                         )}
                         <span>{isCurrentUserAssignee ? "Leave issue" : "Join issue"}</span>
                       </DropdownMenuItem>
                     )}
                     {onRemoveFromCycle && (
                       <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-sm py-1.5 text-xs">
-                        <RotateCcw className="mr-2 h-3.5 w-3.5 text-foreground" />
+                        <RotateCcw className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground" />
                         <span>Remove from cycle</span>
                       </DropdownMenuItem>
                     )}
@@ -753,7 +753,7 @@ export function WorkItemDetailModal({
                         onClick={onDelete}
                         className="rounded-sm py-1.5 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
                       >
-                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        <Trash2 className="mr-2 h-3.5 w-3.5 shrink-0" />
                         <span>Delete issue</span>
                       </DropdownMenuItem>
                     )}
@@ -767,7 +767,7 @@ export function WorkItemDetailModal({
                 className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer outline-none"
                 onClick={handleClose}
               >
-                <X className="size-4" />
+                <X className="size-4 shrink-0" />
               </Button>
             </div>
           </div>
@@ -807,7 +807,7 @@ export function WorkItemDetailModal({
                   className="h-6.5 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 shrink-0"
                   title="Copy git branch command"
                 >
-                  <Terminal className="size-3 text-emerald-500" />
+                  <Terminal className="size-3 shrink-0 text-emerald-500" />
                   <span className="hidden sm:inline">Copy Branch</span>
                 </Button>
               </div>
@@ -845,7 +845,7 @@ export function WorkItemDetailModal({
                   placeholder="Add a detailed description..."
                   disabled={isReadOnly}
                   rows={4}
-                  className="w-full resize-none rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[95px]"
+                  className="w-full resize-none rounded-md border border-border bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[95px]"
                 />
               </div>
 
@@ -855,7 +855,7 @@ export function WorkItemDetailModal({
                 {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
                   <div className="flex flex-wrap items-center gap-1 pt-0.5">
                     {selectedMember && (
-                      <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
+                      <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border">
                         <Avatar className="size-3.5">
                           <AvatarImage src={selectedMember.avatar} />
                           <AvatarFallback className="text-9">
@@ -869,7 +869,7 @@ export function WorkItemDetailModal({
                             onClick={() => setAssigneeId(null)}
                             className="hover:text-red-500 cursor-pointer ml-0.5"
                           >
-                            <X className="size-2.5" />
+                            <X className="size-2.5 shrink-0" />
                           </button>
                         )}
                       </div>
@@ -891,15 +891,15 @@ export function WorkItemDetailModal({
                             }}
                             className="hover:opacity-80 cursor-pointer"
                           >
-                            <X className="size-2.5" />
+                            <X className="size-2.5 shrink-0" />
                           </button>
                         )}
                       </span>
                     ))}
 
                     {(startDate || dueDate) && (
-                      <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
-                        <Clock className="size-3 text-muted-foreground" />
+                      <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border">
+                        <Clock className="size-3 shrink-0 text-muted-foreground" />
                         <span>
                           {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
                           {startDate && dueDate ? ' - ' : ''}
@@ -916,7 +916,7 @@ export function WorkItemDetailModal({
                             }}
                             className="hover:text-red-500 cursor-pointer ml-0.5"
                           >
-                            <X className="size-2.5" />
+                            <X className="size-2.5 shrink-0" />
                           </button>
                         )}
                       </div>
@@ -943,6 +943,22 @@ export function WorkItemDetailModal({
                       assigneeId={assigneeId}
                       setAssigneeId={(id) => setAssigneeId(id)}
                       members={members}
+                      actionBtnClass={actionBtnClass}
+                    />
+
+                    <PriorityPopover
+                      open={openPriorityPopover}
+                      onOpenChange={setOpenPriorityPopover}
+                      priority={priority}
+                      setPriority={(p) => setPriority(p)}
+                      actionBtnClass={actionBtnClass}
+                    />
+
+                    <StoryPointsPopover
+                      open={openStoryPointsPopover}
+                      onOpenChange={setOpenStoryPointsPopover}
+                      storyPoints={storyPoints}
+                      setStoryPoints={(points) => setStoryPoints(points)}
                       actionBtnClass={actionBtnClass}
                     />
 
@@ -976,15 +992,15 @@ export function WorkItemDetailModal({
                     <Popover open={openChecklistPopover} onOpenChange={setOpenChecklistPopover}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className={actionBtnClass}>
-                          <CheckSquare className="size-3.5 text-muted-foreground" />
+                          <CheckSquare className="size-3.5 shrink-0 text-muted-foreground" />
                           <span>Checklist</span>
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
-                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                      <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-sm border-border flex flex-col z-100">
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
                           <span className="text-xs font-semibold text-foreground">Add Checklist</span>
                           <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenChecklistPopover(false)}>
-                            <X className="size-3" />
+                            <X className="size-3 shrink-0" />
                           </Button>
                         </div>
                         <form
@@ -1015,15 +1031,15 @@ export function WorkItemDetailModal({
                     <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className={actionBtnClass}>
-                          <Paperclip className="size-3.5 text-muted-foreground" />
+                          <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
                           <span>Attach</span>
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
-                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                      <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-sm border-border flex flex-col z-100">
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
                           <span className="text-xs font-semibold text-foreground">Attach Files</span>
                           <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenAttachmentPopover(false)}>
-                            <X className="size-3" />
+                            <X className="size-3 shrink-0" />
                           </Button>
                         </div>
                         <div className="p-2.5 space-y-2">
@@ -1041,10 +1057,10 @@ export function WorkItemDetailModal({
                             onClick={() => fileInputRef.current?.click()}
                             className={cn(
                               'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                              dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
+                              dragActive ? 'border-primary bg-muted' : 'border-border hover:bg-muted'
                             )}
                           >
-                            <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
+                            <Paperclip className="mx-auto h-5 w-5 shrink-0 text-muted-foreground mb-1" />
                             <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
                             <p className="text-10 text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
                             <input
@@ -1104,10 +1120,10 @@ export function WorkItemDetailModal({
 
                   {/* Progress Rollup Bar */}
                   {(checklists.length > 0 || subtasks.length > 0) && (
-                    <div className="space-y-1 p-2 rounded-md bg-muted border border-border/50">
+                    <div className="space-y-1 p-2 rounded-md bg-muted border border-border">
                       <div className="flex items-center justify-between text-11">
                         <span className="font-semibold text-foreground flex items-center gap-1">
-                          <Zap className="size-3 text-amber-500" />
+                          <Zap className="size-3 shrink-0 text-amber-500" />
                           Overall Completion
                         </span>
                         <span className="font-bold text-muted-foreground">{progressRollup}%</span>
@@ -1135,7 +1151,7 @@ export function WorkItemDetailModal({
                       placeholder="Add a detailed description..."
                       disabled={isReadOnly}
                       rows={3}
-                      className="w-full resize-none rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[85px]"
+                      className="w-full resize-none rounded-md border border-border bg-background p-2.5 text-xs text-foreground outline-none focus:border-primary transition-colors leading-relaxed min-h-[85px]"
                     />
                     {showDescriptionActions && !isReadOnly && (
                       <div className="flex gap-1.5">
@@ -1171,7 +1187,7 @@ export function WorkItemDetailModal({
                     {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
                       <div className="flex flex-wrap items-center gap-1 pt-0.5">
                         {selectedMember && (
-                          <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
+                          <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border">
                             <Avatar className="size-3.5">
                               <AvatarImage src={selectedMember.avatar} />
                               <AvatarFallback className="text-9">
@@ -1188,7 +1204,7 @@ export function WorkItemDetailModal({
                                 }}
                                 className="hover:text-red-500 cursor-pointer ml-0.5"
                               >
-                                <X className="size-2.5" />
+                                <X className="size-2.5 shrink-0" />
                               </button>
                             )}
                           </div>
@@ -1211,15 +1227,15 @@ export function WorkItemDetailModal({
                                 }}
                                 className="hover:opacity-80 cursor-pointer"
                               >
-                                <X className="size-2.5" />
+                                <X className="size-2.5 shrink-0" />
                               </button>
                             )}
                           </span>
                         ))}
 
                         {(startDate || dueDate) && (
-                          <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
-                            <Clock className="size-3 text-muted-foreground" />
+                          <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border">
+                            <Clock className="size-3 shrink-0 text-muted-foreground" />
                             <span>
                               {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
                               {startDate && dueDate ? ' - ' : ''}
@@ -1235,15 +1251,15 @@ export function WorkItemDetailModal({
                                   setReminder("1day");
                                   onSave({
                                     ...currentPayload,
-                                    startDate: null,
-                                    dueDate: null,
+                                    startDate: "",
+                                    dueDate: "",
                                     recurrence: "none",
                                     reminder: "1day",
                                   });
                                 }}
                                 className="hover:text-red-500 cursor-pointer ml-0.5"
                               >
-                                <X className="size-2.5" />
+                                <X className="size-2.5 shrink-0" />
                               </button>
                             )}
                           </div>
@@ -1276,6 +1292,28 @@ export function WorkItemDetailModal({
                             onSave({ ...currentPayload, assigneeId: id });
                           }}
                           members={members}
+                          actionBtnClass={actionBtnClass}
+                        />
+
+                        <PriorityPopover
+                          open={openPriorityPopover}
+                          onOpenChange={setOpenPriorityPopover}
+                          priority={priority}
+                          setPriority={(p) => {
+                            setPriority(p);
+                            onSave({ ...currentPayload, priority: p });
+                          }}
+                          actionBtnClass={actionBtnClass}
+                        />
+
+                        <StoryPointsPopover
+                          open={openStoryPointsPopover}
+                          onOpenChange={setOpenStoryPointsPopover}
+                          storyPoints={storyPoints}
+                          setStoryPoints={(points) => {
+                            setStoryPoints(points);
+                            onSave({ ...currentPayload, storyPoints: points });
+                          }}
                           actionBtnClass={actionBtnClass}
                         />
 
@@ -1317,15 +1355,15 @@ export function WorkItemDetailModal({
                         <Popover open={openChecklistPopover} onOpenChange={setOpenChecklistPopover}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className={actionBtnClass}>
-                              <CheckSquare className="size-3.5 text-muted-foreground" />
+                              <CheckSquare className="size-3.5 shrink-0 text-muted-foreground" />
                               <span>Checklist</span>
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
-                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                          <PopoverContent align="start" className="w-68 rounded-md p-0 shadow-sm border-border flex flex-col z-100">
+                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
                               <span className="text-xs font-semibold text-foreground">Add Checklist</span>
                               <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenChecklistPopover(false)}>
-                                <X className="size-3" />
+                                <X className="size-3 shrink-0" />
                               </Button>
                             </div>
                             <form
@@ -1356,15 +1394,15 @@ export function WorkItemDetailModal({
                         <Popover open={openAttachmentPopover} onOpenChange={setOpenAttachmentPopover}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className={actionBtnClass}>
-                              <Paperclip className="size-3.5 text-muted-foreground" />
+                              <Paperclip className="size-3.5 shrink-0 text-muted-foreground" />
                               <span>Attach</span>
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-xl border-border/50 flex flex-col z-100">
-                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 shrink-0">
+                          <PopoverContent align="start" className="w-72 rounded-md p-0 shadow-sm border-border flex flex-col z-100">
+                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
                               <span className="text-xs font-semibold text-foreground">Attach Files</span>
                               <Button variant="ghost" size="icon" className="size-5 text-foreground" onClick={() => setOpenAttachmentPopover(false)}>
-                                <X className="size-3" />
+                                <X className="size-3 shrink-0" />
                               </Button>
                             </div>
                             <div className="p-2.5 space-y-2">
@@ -1382,10 +1420,10 @@ export function WorkItemDetailModal({
                                 onClick={() => fileInputRef.current?.click()}
                                 className={cn(
                                   'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                                  dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
+                                  dragActive ? 'border-primary bg-muted' : 'border-border hover:bg-muted'
                                 )}
                               >
-                                <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
+                                <Paperclip className="mx-auto h-5 w-5 shrink-0 text-muted-foreground mb-1" />
                                 <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
                                 <p className="text-10 text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
                                 <input
@@ -1426,13 +1464,13 @@ export function WorkItemDetailModal({
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
                       <label className="text-11 font-bold text-muted-foreground tracking-normal flex items-center gap-1.5">
-                        <GitBranch className="size-3.5" />
+                        <GitBranch className="size-3.5 shrink-0" />
                         <span>Subtasks ({subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{subtasks.length})</span>
                       </label>
                     </div>
 
                     {subtasks.length > 0 && (
-                      <div className="divide-y divide-border/60 rounded-md border border-border/70 bg-background overflow-hidden">
+                      <div className="divide-y divide-border rounded-md border border-border bg-background overflow-hidden">
                         {subtasks.map((sub: any, sIdx: number) => {
                           const isSubDone = sub.completed || sub.columnId === 'done';
                           return (
@@ -1452,7 +1490,7 @@ export function WorkItemDetailModal({
                                     isSubDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-border hover:border-primary'
                                   )}
                                 >
-                                  {isSubDone && <Check className="size-2.5" />}
+                                  {isSubDone && <Check className="size-2.5 shrink-0" />}
                                 </button>
                                 <span className={cn("font-medium text-xs", isSubDone ? 'line-through text-muted-foreground' : 'text-foreground')}>
                                   {sub.title}
@@ -1468,7 +1506,7 @@ export function WorkItemDetailModal({
                                   }}
                                   className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 text-muted-foreground cursor-pointer transition-opacity"
                                 >
-                                  <X className="size-3" />
+                                  <X className="size-3 shrink-0" />
                                 </button>
                               )}
                             </div>

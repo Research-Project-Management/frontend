@@ -51,17 +51,17 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none',
+            'h-7 px-2.5 text-xs font-medium rounded-md border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none shrink-0',
             actionBtnClass
           )}
         >
-          <CurrentIcon className={cn('size-3.5', currentConfig.color)} />
+          <CurrentIcon className={cn('size-3.5 shrink-0', currentConfig.color)} />
           <span>{priority && priority !== 'none' ? currentConfig.label : 'Priority'}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-48 p-1 rounded-sm border-border bg-popover"
+        className="w-48 p-1 rounded-md border-border shadow-sm bg-popover z-100"
       >
         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b border-border mb-1">
           Set Priority
@@ -81,15 +81,15 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
                   onOpenChange(false);
                 }}
                 className={cn(
-                  'w-full flex items-center justify-between px-2 py-1.5 rounded-sm text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
-                  isSelected && 'bg-muted text-foreground'
+                  'w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
+                  isSelected && 'bg-muted text-foreground font-semibold'
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <Icon className={cn('size-3.5', item.color)} />
+                  <Icon className={cn('size-3.5 shrink-0', item.color)} />
                   <span>{item.label}</span>
                 </div>
-                {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
               </button>
             );
           })}

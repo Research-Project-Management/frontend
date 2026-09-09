@@ -141,25 +141,25 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 30, scale: 0.95 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-2rem)] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-popover/95 backdrop-blur-md border border-border shadow-2xl text-popover-foreground text-xs select-none overflow-x-auto"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-2rem)] flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-popover border border-border shadow-md text-popover-foreground text-xs select-none overflow-x-auto"
         >
           {/* Select all checkbox toggle */}
           <button
             onClick={handleToggleSelectAll}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-accent transition-colors font-medium cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted transition-colors font-medium cursor-pointer shrink-0"
             title={allSelected ? 'Deselect all' : 'Select all'}
           >
             {allSelected ? (
-              <CheckSquare className="size-4 text-primary" />
+              <CheckSquare className="size-4 text-primary shrink-0" />
             ) : (
-              <Square className="size-4 text-muted-foreground" />
+              <Square className="size-4 text-muted-foreground shrink-0" />
             )}
             <span className="text-foreground font-semibold">
               {selectedCount} selected
             </span>
           </button>
 
-          <div className="h-4 w-px bg-border/80 mx-1 shrink-0" />
+          <div className="h-4 w-px bg-border mx-1 shrink-0" />
 
           {/* Action buttons */}
           {!isTrash && (
@@ -167,15 +167,15 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkDownload}
                 disabled={isDownloading}
                 title="Download selected files"
               >
                 {isDownloading ? (
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
                 ) : (
-                  <Download className="size-3.5" />
+                  <Download className="size-3.5 shrink-0" />
                 )}
                 Download
               </Button>
@@ -183,13 +183,13 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkStar}
                 disabled={isStarring}
                 title={hasUnstarred ? 'Star selected' : 'Unstar selected'}
               >
                 <Star
-                  className={`size-3.5 ${
+                  className={`size-3.5 shrink-0 ${
                     !hasUnstarred ? 'fill-amber-400 text-amber-400' : ''
                   }`}
                 />
@@ -199,7 +199,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                className="h-8 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground cursor-pointer shrink-0 rounded-md"
                 onClick={() => {
                   window.dispatchEvent(
                     new CustomEvent('open-move-modal', {
@@ -209,7 +209,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
                 }}
                 title="Move selected items"
               >
-                <FolderInput className="size-3.5" />
+                <FolderInput className="size-3.5 shrink-0" />
                 Move
               </Button>
             </>
@@ -220,15 +220,15 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer shrink-0"
+                className="h-8 px-2.5 text-xs gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkRestore}
                 disabled={isRestoring}
                 title="Restore selected items"
               >
                 {isRestoring ? (
-                  <Loader2 className="size-3.5 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
                 ) : (
-                  <RotateCcw className="size-3.5" />
+                  <RotateCcw className="size-3.5 shrink-0" />
                 )}
                 Restore
               </Button>
@@ -236,12 +236,12 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2.5 text-xs gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
+                className="h-8 px-2.5 text-xs gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
                 onClick={() => setIsDeleteModalOpen(true)}
                 disabled={isPermanentDeleting}
                 title="Delete selected items permanently"
               >
-                <Trash2 className="size-3.5" />
+                <Trash2 className="size-3.5 shrink-0" />
                 Delete permanently
               </Button>
             </>
@@ -249,25 +249,25 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2.5 text-xs gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
+              className="h-8 px-2.5 text-xs gap-1.5 text-destructive hover:bg-destructive/10 cursor-pointer shrink-0 rounded-md"
               onClick={() => setIsDeleteModalOpen(true)}
               disabled={isDeleting}
               title="Move selected items to trash"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-3.5 shrink-0" />
               Trash
             </Button>
           )}
 
-          <div className="h-4 w-px bg-border/80 mx-1 shrink-0" />
+          <div className="h-4 w-px bg-border mx-1 shrink-0" />
 
           {/* Clear selection */}
           <button
             onClick={clearSelection}
-            className="size-7 rounded-lg flex items-center justify-center hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+            className="size-7 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
             title="Deselect all (Esc)"
           >
-            <X className="size-3.5" />
+            <X className="size-3.5 shrink-0" />
           </button>
         </motion.div>
       </AnimatePresence>

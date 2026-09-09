@@ -208,7 +208,7 @@ export function Column({
                   className="h-7 w-7 text-foreground hover:bg-muted cursor-pointer"
                   aria-label="Column options"
                 >
-                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                  <MoreHorizontal className="h-4 w-4 text-foreground shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 text-xs z-50">
@@ -217,7 +217,7 @@ export function Column({
                     onClick={() => onEditColumn(column)}
                     className="cursor-pointer gap-2 py-1.5"
                   >
-                    <Pencil className="size-3.5 text-muted-foreground" />
+                    <Pencil className="size-3.5 text-foreground shrink-0" />
                     <span>Edit column</span>
                   </DropdownMenuItem>
                 )}
@@ -228,7 +228,7 @@ export function Column({
                       onClick={() => onDeleteColumn(column)}
                       className="cursor-pointer gap-2 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-3.5 shrink-0" />
                       <span>Delete column</span>
                     </DropdownMenuItem>
                   </>
@@ -277,7 +277,7 @@ export function Column({
           <div className="flex items-center gap-1.5 mt-2">
             <Button
               size="sm"
-              className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
+              className="h-7 px-3 text-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md cursor-pointer"
               onClick={handleQuickAddSubmit}
             >
               Add Card
@@ -285,7 +285,7 @@ export function Column({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs rounded-md cursor-pointer"
+              className="h-7 px-2 text-11 rounded-md cursor-pointer"
               onClick={handleCloseQuickAdd}
             >
               Cancel

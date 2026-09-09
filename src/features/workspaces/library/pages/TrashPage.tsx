@@ -238,9 +238,9 @@ export default function TrashPage() {
                   <col className="w-6/12" />
                   <col className="w-10" />
                 </colgroup>
-                <thead className="sticky top-0 z-20 bg-background/95 backdrop-blur-xs select-none border-b border-border">
+                <thead className="sticky top-0 z-20 bg-background select-none border-b border-border">
                   <tr className="h-9 type-dense font-normal text-foreground [&_th]:font-normal [&_th]:text-foreground">
-                    <th className="w-10 px-2.5 py-1.5 text-center align-middle">
+                    <th scope="col" className="w-10 px-2.5 py-1.5 text-center align-middle">
                       <div className="flex items-center justify-center">
                         <Checkbox
                           checked={isAllSelected ? true : isPartiallySelected ? 'indeterminate' : false}
@@ -250,8 +250,18 @@ export default function TrashPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      aria-sort={hasUserSorted && sortField === 'title' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
                       onClick={() => onColumnSort('title')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('title');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer min-w-0 truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Title</span>
@@ -259,15 +269,25 @@ export default function TrashPage() {
                       </div>
                     </th>
                     <th
+                      scope="col"
+                      role="columnheader"
+                      aria-sort={hasUserSorted && sortField === 'authors' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      tabIndex={0}
                       onClick={() => onColumnSort('authors')}
-                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onColumnSort('authors');
+                        }
+                      }}
+                      className="group/th px-3.5 py-1.5 align-middle cursor-pointer truncate outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset select-none"
                     >
                       <div className="flex items-center">
                         <span className="truncate">Creator</span>
                         {renderSortIcon('authors')}
                       </div>
                     </th>
-                    <th className="w-10 px-2 py-1.5" />
+                    <th scope="col" className="w-10 px-2 py-1.5" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30">

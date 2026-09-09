@@ -1,21 +1,14 @@
-﻿'use client';
+'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import ListView from '../views/ListView';
-import GridView from '../views/GridView';
-import { useViewStore } from '../../store/use-view-store';
-import { usePreviewStore } from '../../store/use-preview-store';
-import { useStorageFilterStore } from '../../store/use-filter-store';
+import React, { useMemo } from 'react';
+import { StorageViewContainer } from './StorageViewContainer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileUrl } from '@/shared/utils/file';
 import { BulkActionBar } from '../actions/BulkActionBar';
 import Topbar from './Topbar';
-import { useDebounce } from '@/shared/hooks/use-debounce';
 import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
 import type { LucideIcon } from 'lucide-react';
+import { useStorageQueryParams } from '../../hooks/use-storage-query-params';
 
 export interface StoragePageTemplateProps {
   title: string;
@@ -42,24 +35,14 @@ export function StoragePageTemplate({
   onRestore,
   isTrash = false,
 }: StoragePageTemplateProps) {
-  const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
-  const { view } = useViewStore();
-  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
-  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
-  const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?.id || workspaceUrl;
-
-  const queryParams: FileQueryParams = useMemo(
-    () => ({
-      search: debouncedSearch || undefined,
-      sortBy,
-      types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
-      projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
-    }),
-    [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter],
-  );
+  const {
+    workspaceId,
+    isWorkspaceLoading,
+    searchQuery,
+    setSearchQuery,
+    setSelectedItem,
+    queryParams,
+  } = useStorageQueryParams();
 
   const { data, isLoading: isFilesLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useFilesHook(
     workspaceId,
@@ -84,6 +67,20 @@ export function StoragePageTemplate({
     [data?.pages],
   );
 
+  const viewProps = {
+    items: files,
+    hasMore: hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+    onFolderClick: handleFolderClick,
+    onToggleStar: onToggleStar ? (id: string) => { void onToggleStar(id); } : undefined,
+    onDelete: (id: string) => { if (onDelete) void onDelete(id); },
+    onRestore: onRestore ? (id: string) => { void onRestore(id); } : undefined,
+    onDownload: handleDownload,
+    onFileClick: (item: StorageItem) => setSelectedItem(item),
+    isTrash,
+  };
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden relative">
       <Topbar
@@ -93,41 +90,11 @@ export function StoragePageTemplate({
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {isWorkspaceLoading || (isFilesLoading && !data) ? (
-          <Skeleton className="h-48 w-full rounded-lg" />
-        ) : !workspaceId ? (
-          <div className="p-6 text-muted-foreground">Workspace not found</div>
-        ) : view === 'list' ? (
-          <ListView
-            items={files}
-            hasMore={hasNextPage}
-            isFetchingNextPage={isFetchingNextPage}
-            onLoadMore={fetchNextPage}
-            onFolderClick={handleFolderClick}
-            onToggleStar={onToggleStar ? (id) => { void onToggleStar(id); } : undefined}
-            onDelete={onDelete ? (id) => { void onDelete(id); } : undefined}
-            onRestore={onRestore ? (id) => { void onRestore(id); } : undefined}
-            onDownload={handleDownload}
-            onFileClick={(item) => setSelectedItem(item)}
-            isTrash={isTrash}
-          />
-        ) : (
-          <GridView
-            items={files}
-            hasMore={hasNextPage}
-            isFetchingNextPage={isFetchingNextPage}
-            onLoadMore={fetchNextPage}
-            onFolderClick={handleFolderClick}
-            onToggleStar={onToggleStar ? (id) => { void onToggleStar(id); } : undefined}
-            onDelete={onDelete ? (id) => { void onDelete(id); } : undefined}
-            onRestore={onRestore ? (id) => { void onRestore(id); } : undefined}
-            onDownload={handleDownload}
-            onFileClick={(item) => setSelectedItem(item)}
-            isTrash={isTrash}
-          />
-        )}
-      </div>
+      <StorageViewContainer
+        isLoading={isWorkspaceLoading || (isFilesLoading && !data)}
+        workspaceId={workspaceId}
+        viewProps={viewProps}
+      />
       <BulkActionBar items={files} isTrash={isTrash} />
     </div>
   );

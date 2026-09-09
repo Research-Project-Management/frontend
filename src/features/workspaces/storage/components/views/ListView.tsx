@@ -20,7 +20,7 @@ import { Button } from '@/shared/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { DeleteModal } from '../modal/DeleteModal';
 import { resolveFileUrl } from '@/shared/utils/url';
-import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
+import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import {
   getFileType,
@@ -30,6 +30,7 @@ import {
   formatDate,
 } from '../../utils/file';
 import { useStorageSelectionStore } from '../../store/use-selection-store';
+import { createFolderDropHandlers } from '../../utils/drag-drop.util';
 
 function FileIconItem({ item }: { item: StorageItem }) {
   const [hasError, setHasError] = useState(false);
@@ -52,7 +53,7 @@ function FileIconItem({ item }: { item: StorageItem }) {
   return (
     <div className={`flex items-center justify-center shrink-0 ${getFileColor(fileType)}`}>
       {item.isFolder ? (
-        <Folder className="size-5 fill-amber-500/20 text-amber-500" />
+        <Folder className="size-5 fill-amber-500/20 text-amber-500 shrink-0" />
       ) : (
         getFileIcon(fileType, 5)
       )}
@@ -177,7 +178,7 @@ export function ItemActions({
           onClick={() => onDownload(item)}
           title="Download"
         >
-          <Download className="size-3.5" />
+          <Download className="size-3.5 shrink-0" />
         </Button>
       )}
 
@@ -191,7 +192,7 @@ export function ItemActions({
             disabled={isRestoring}
             title="Restore"
           >
-            <RotateCcw className="size-3.5" />
+            <RotateCcw className="size-3.5 shrink-0" />
           </Button>
 
           <Button
@@ -201,7 +202,7 @@ export function ItemActions({
             onClick={() => setIsDeleteModalOpen(true)}
             title="Delete Permanently"
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-3.5 shrink-0" />
           </Button>
         </div>
       ) : (
@@ -212,23 +213,23 @@ export function ItemActions({
               size="icon"
               className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              <MoreVertical className="size-3.5" />
+              <MoreVertical className="size-3.5 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 text-xs">
             <DropdownMenuItem onClick={handleRenameClick} className="gap-2 cursor-pointer">
-              <Pencil className="size-3.5" />
+              <Pencil className="size-3.5 shrink-0" />
               <span>Rename</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem onClick={handleMoveClick} className="gap-2 cursor-pointer">
-              <FolderInput className="size-3.5" />
+              <FolderInput className="size-3.5 shrink-0" />
               <span>Move</span>
             </DropdownMenuItem>
 
             {onOpenLocation && (
               <DropdownMenuItem onClick={() => onOpenLocation(item)} className="gap-2 cursor-pointer">
-                <FolderSymlink className="size-3.5" />
+                <FolderSymlink className="size-3.5 shrink-0" />
                 <span>Go to location</span>
               </DropdownMenuItem>
             )}
@@ -237,7 +238,7 @@ export function ItemActions({
               onClick={() => setIsDeleteModalOpen(true)}
               className="gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-3.5 shrink-0" />
               <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -283,16 +284,7 @@ export default function ListView({
   onLoadMore,
 }: StorageViewProps) {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const { isIntersecting } = useIntersectionObserver(sentinelRef, {
-    rootMargin: '250px',
-  });
-
-  useEffect(() => {
-    if (isIntersecting && hasMore && !isFetchingNextPage && onLoadMore) {
-      onLoadMore();
-    }
-  }, [isIntersecting, hasMore, isFetchingNextPage, onLoadMore]);
+  const sentinelRef = useInfiniteSentinel({ hasMore, isFetchingNextPage, onLoadMore });
 
   const {
     selectedIds,
@@ -319,7 +311,7 @@ export default function ListView({
   return (
     <div className="rounded-lg overflow-hidden select-none">
       {/* Header - Google Drive style */}
-      <div className="grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border/50 select-none">
+      <div className="grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border select-none">
         <div className="col-span-5 flex items-center gap-3">
           {!isReadOnly && (
             <button
@@ -328,11 +320,11 @@ export default function ListView({
               title={allSelected ? "Deselect all" : "Select all"}
             >
               {allSelected ? (
-                <CheckSquare className="size-4 text-primary" />
+                <CheckSquare className="size-4 text-primary shrink-0" />
               ) : hasSomeSelected ? (
-                <MinusSquare className="size-4 text-primary" />
+                <MinusSquare className="size-4 text-primary shrink-0" />
               ) : (
-                <Square className="size-4 opacity-50 hover:opacity-100" />
+                <Square className="size-4 opacity-50 hover:opacity-100 shrink-0" />
               )}
             </button>
           )}
@@ -346,7 +338,7 @@ export default function ListView({
 
       {items.length === 0 ? (
         <div className="p-12 text-center text-muted-foreground">
-          <Folder className="size-12 mx-auto mb-3 opacity-20" />
+          <Folder className="size-12 mx-auto mb-3 opacity-20 shrink-0" />
           <p className="text-sm">No files or folders</p>
         </div>
       ) : (
@@ -372,24 +364,7 @@ export default function ListView({
                       onDragStartFile(item, e);
                     }
                   }}
-                  onDragOver={(e: React.DragEvent) => {
-                    if (!isReadOnly && item.isFolder && onDropOnFolder) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDragOverFolderId(item.id);
-                    }
-                  }}
-                  onDragLeave={(e: React.DragEvent) => {
-                    if (isReadOnly) return;
-                    e.stopPropagation();
-                    setDragOverFolderId(null);
-                  }}
-                  onDrop={(e: React.DragEvent) => {
-                    if (!isReadOnly && item.isFolder && onDropOnFolder) {
-                      setDragOverFolderId(null);
-                      onDropOnFolder(item, e);
-                    }
-                  }}
+                  {...createFolderDropHandlers(item, isReadOnly, onDropOnFolder, setDragOverFolderId)}
                   className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted cursor-pointer group transition-colors select-none ${
                     isSelected ? "bg-accent font-medium" : ""
                   } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
@@ -430,9 +405,9 @@ export default function ListView({
                         title={isMultiSelected ? "Deselect" : "Select"}
                       >
                         {isMultiSelected ? (
-                          <CheckSquare className="size-4 text-primary" />
+                          <CheckSquare className="size-4 text-primary shrink-0" />
                         ) : (
-                          <Square className="size-4" />
+                          <Square className="size-4 shrink-0" />
                         )}
                       </button>
                     )}
@@ -500,7 +475,7 @@ export default function ListView({
           <div ref={sentinelRef} className="py-2 flex items-center justify-center min-h-6">
             {isFetchingNextPage && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
-                <Loader2 className="size-4 animate-spin text-primary" />
+                <Loader2 className="size-4 animate-spin text-primary shrink-0" />
                 <span>Loading more files...</span>
               </div>
             )}

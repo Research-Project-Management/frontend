@@ -1,11 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
+import { useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
-import { usePreviewStore } from '../store/use-preview-store';
-import { useStorageFilterStore } from '../store/use-filter-store';
 import { StorageViewContainer } from '../components/layout/StorageViewContainer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { downloadFileUrl } from '@/shared/utils/file';
@@ -14,28 +11,22 @@ import Topbar from '../components/layout/Topbar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { Home } from 'lucide-react';
 import { useTopbar } from '../hooks/use-topbar';
-
-import { useDebounce } from '@/shared/hooks/use-debounce';
-import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
+import { useStorageQueryParams } from '../hooks/use-storage-query-params';
 
 export default function WorkspaceHomePage() {
   const router = useRouter();
-  const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
-  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
-  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
+  const {
+    workspaceUrl,
+    workspace,
+    workspaceId,
+    isWorkspaceLoading,
+    searchQuery,
+    setSearchQuery,
+    setSelectedItem,
+    queryParams,
+  } = useStorageQueryParams();
   
-  const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
-  const workspaceId = workspace?.id || workspaceUrl;
   const { handleUploadFiles } = useTopbar({ workspaceId, searchQuery, onSearchChange: setSearchQuery });
-
-  const queryParams: FileQueryParams = useMemo(() => ({
-    search: debouncedSearch || undefined,
-    sortBy,
-    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
-    projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
-  }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
 
   // Home view fetches filtered & sorted items directly from backend
   const {

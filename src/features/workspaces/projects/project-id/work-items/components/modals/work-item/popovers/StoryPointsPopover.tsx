@@ -31,17 +31,17 @@ export const StoryPointsPopover: React.FC<StoryPointsPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none',
+            'h-7 px-2.5 text-xs font-medium rounded-md border-border bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none shrink-0',
             actionBtnClass
           )}
         >
-          <Hash className="size-3.5 text-amber-500" />
+          <Hash className="size-3.5 shrink-0 text-amber-500" />
           <span>{storyPoints !== undefined && storyPoints !== null ? `${storyPoints} pts` : 'Estimate'}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-48 p-1 rounded-sm border-border shadow-xl bg-popover z-100"
+        className="w-48 p-1 rounded-md border-border shadow-sm bg-popover z-100"
       >
         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b border-border mb-1 flex items-center justify-between">
           <span>Story Points</span>
@@ -73,7 +73,7 @@ export const StoryPointsPopover: React.FC<StoryPointsPopoverProps> = ({
                   'h-8 rounded-sm text-xs font-semibold flex items-center justify-center border transition-all cursor-pointer',
                   isSelected
                     ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 font-bold'
-                    : 'border-border/60 hover:bg-muted text-foreground'
+                    : 'border-border hover:bg-muted text-foreground'
                 )}
               >
                 {pts}

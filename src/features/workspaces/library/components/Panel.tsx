@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Plus,
   PanelRight,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -631,44 +632,70 @@ export default function InspectorPanel({
     <div className="flex h-full shrink-0 select-none font-sans z-10">
       {/* ── Left Part: Collapsible Resizable Inspector Drawer ───────────────── */}
       {isInspectorOpen && (
-        <aside
-          aria-label="Document inspector"
-          style={{
-            width: `${inspectorWidth}px`,
-          }}
-          className="relative shrink-0 flex flex-col h-full border-l border-border bg-background select-none"
-        >
-          {/* Resizer Handle */}
+        <>
+          {/* Mobile Backdrop Overlay */}
           <div
-            role="separator"
-            aria-orientation="vertical"
-            onMouseDown={handleMouseDown}
-            onDoubleClick={() => setInspectorWidth(360)}
-            className="absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 z-30 select-none group flex items-center justify-center -translate-x-1/2"
-            title="Drag to resize inspector (double-click to reset)"
-          >
-            <div
-              className={cn(
-                "w-0.5 h-8 rounded-full",
-                isDragging ? "bg-primary" : "bg-transparent group-hover:bg-foreground/20"
-              )}
-            />
-          </div>
+            className="fixed inset-0 z-40 bg-black/30 md:hidden"
+            onClick={() => setIsInspectorOpen(false)}
+            aria-hidden="true"
+          />
 
-          {paper ? (
-            <header className="h-12 px-3 border-b border-border bg-background flex items-center shrink-0 select-none">
-              {/* Paper Title at the top */}
-              <div className="w-full min-w-0">
-                <InspectorTitleInput
-                  title={paper.title || 'Untitled Reference'}
-                  onSave={(newTitle) => handleUpdatePaper({ title: newTitle })}
-                />
-              </div>
-            </header>
-          ) : (
-            /* Clean h-12 Header when no paper is selected (no Reference Details text, matching topbar line) */
-            <header className="h-12 px-3 border-b border-border bg-background flex items-center shrink-0 select-none" />
-          )}
+          <aside
+            aria-label="Document inspector"
+            style={{
+              width: `${inspectorWidth}px`,
+              maxWidth: '100vw',
+            }}
+            className="fixed inset-y-0 right-0 z-50 md:static md:z-auto shrink-0 flex flex-col h-full border-l border-border bg-background select-none shadow-none max-w-full sm:max-w-[480px]"
+          >
+            {/* Resizer Handle (desktop only) */}
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              onMouseDown={handleMouseDown}
+              onDoubleClick={() => setInspectorWidth(360)}
+              className="hidden md:flex absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 z-30 select-none group items-center justify-center -translate-x-1/2"
+              title="Drag to resize inspector (double-click to reset)"
+            >
+              <div
+                className={cn(
+                  "w-0.5 h-8 rounded-full",
+                  isDragging ? "bg-primary" : "bg-transparent group-hover:bg-foreground/20"
+                )}
+              />
+            </div>
+
+            {paper ? (
+              <header className="h-12 px-3 border-b border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
+                {/* Paper Title at the top */}
+                <div className="flex-1 min-w-0">
+                  <InspectorTitleInput
+                    title={paper.title || 'Untitled Reference'}
+                    onSave={(newTitle) => handleUpdatePaper({ title: newTitle })}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsInspectorOpen(false)}
+                  className="md:hidden p-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer"
+                  aria-label="Close inspector"
+                >
+                  <X className="size-4 shrink-0 text-foreground" />
+                </button>
+              </header>
+            ) : (
+              /* Clean h-12 Header when no paper is selected */
+              <header className="h-12 px-3 border-b border-border bg-background flex items-center justify-end shrink-0 select-none">
+                <button
+                  type="button"
+                  onClick={() => setIsInspectorOpen(false)}
+                  className="md:hidden p-1.5 rounded-md text-foreground hover:bg-muted cursor-pointer"
+                  aria-label="Close inspector"
+                >
+                  <X className="size-4 shrink-0 text-foreground" />
+                </button>
+              </header>
+            )}
 
           {/* Continuous Scrollable Section Accordion Body (always rendered, never hidden by empty screen) */}
           <div
@@ -935,12 +962,13 @@ export default function InspectorPanel({
             )}
           </div>
         </aside>
+        </>
       )}
 
       {/* ── Right Part: Vertical Icon Panel Bar ─────────────────────────────── */}
       <aside
         aria-label="Inspector panel bar"
-        className="w-10 shrink-0 h-full border-l border-border bg-background flex flex-col items-center z-20 select-none"
+        className="w-10 shrink-0 h-full border-l border-border bg-background hidden sm:flex flex-col items-center z-20 select-none"
       >
         {/* Top: Toggle Panel Button Container - EXACTLY h-12 with line cách biên p-1 */}
         <div className="h-12 w-full flex flex-col items-center justify-between shrink-0">

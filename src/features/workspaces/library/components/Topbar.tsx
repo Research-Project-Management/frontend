@@ -225,7 +225,7 @@ export default function Topbar({
             className={cn(
               "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-md overflow-hidden group",
               isSearchExpanded || search
-                ? "w-64 border border-border bg-background/80"
+                ? "w-64 border border-border bg-background"
                 : "w-8 hover:bg-muted cursor-pointer"
             )}
             onClick={expandSearch}
@@ -288,7 +288,7 @@ export default function Topbar({
                   onClick={handleAddFileClick}
                   className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
-                  <FileText className="size-4 text-muted-foreground shrink-0" />
+                  <FileText className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">Add file</span>
                 </DropdownMenuItem>
               )}
@@ -297,7 +297,7 @@ export default function Topbar({
                   onClick={handleAddFolderClick}
                   className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
-                  <FolderUp className="size-4 text-muted-foreground shrink-0" />
+                  <FolderUp className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">Add folder</span>
                 </DropdownMenuItem>
               )}
@@ -306,7 +306,7 @@ export default function Topbar({
                   onClick={onAddCollection}
                   className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
-                  <FolderPlus className="size-4 text-muted-foreground shrink-0" />
+                  <FolderPlus className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">{isSubcollection ? "New Subcollection" : "New Collection"}</span>
                 </DropdownMenuItem>
               )}
@@ -315,7 +315,7 @@ export default function Topbar({
                   onClick={handleAddLinkClick}
                   className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
                 >
-                  <Link2 className="size-4 text-muted-foreground shrink-0" />
+                  <Link2 className="size-4 text-foreground shrink-0" />
                   <span className="text-foreground">Add link</span>
                 </DropdownMenuItem>
               )}

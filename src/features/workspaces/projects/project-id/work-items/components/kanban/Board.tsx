@@ -127,10 +127,10 @@ export function Board({
               <button
                 type="button"
                 onClick={onAddColumn}
-                className="w-full h-11 border border-dashed border-border/80 hover:border-primary/60 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-all cursor-pointer bg-muted shadow-none"
+                className="w-full h-11 border border-dashed border-border hover:border-primary rounded-md flex items-center justify-center gap-1.5 text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer bg-muted"
               >
-                <Plus className="size-4" />
-                <span>Add Column</span>
+                <Plus className="size-4 shrink-0" />
+                <span>Add column</span>
               </button>
             </div>
           )}

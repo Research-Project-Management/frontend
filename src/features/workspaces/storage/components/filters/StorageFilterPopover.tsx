@@ -104,13 +104,13 @@ export function StorageFilterPopover() {
                 variant="outline"
                 size="icon"
                 className={cn(
-                  'relative size-8 rounded-lg bg-transparent border-border/60 hover:bg-muted cursor-pointer outline-none transition-colors',
+                  'relative size-8 rounded-md bg-transparent border border-border hover:bg-muted cursor-pointer outline-none transition-colors',
                   isActive &&
-                    'bg-accent border-primary/50 text-primary hover:bg-accent hover:text-primary'
+                    'bg-muted border-primary text-primary hover:bg-muted hover:text-primary'
                 )}
                 aria-label="Filter & sort"
               >
-                <ListFilter className="size-4" strokeWidth={2} />
+                <ListFilter className="size-4 shrink-0" strokeWidth={2} />
                 {isActive && (
                   <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
                 )}
@@ -126,15 +126,15 @@ export function StorageFilterPopover() {
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-80 p-3.5 rounded-xl shadow-xl border border-border/70 bg-popover text-popover-foreground z-50 select-none animate-in fade-in-0 zoom-in-95"
+        className="w-80 p-3 rounded-md shadow-sm border border-border bg-popover text-popover-foreground z-50 select-none animate-in fade-in-0 zoom-in-95"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-border/50">
+        <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-border">
           <div className="flex items-center gap-1.5">
             <ListFilter className="size-3.5 text-primary shrink-0" />
             <span className="text-xs font-semibold text-foreground">Filter & Sort</span>
             {activeCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-10 font-semibold bg-primary/15 text-primary">
+              <span className="px-1.5 py-0.2 rounded-full text-10 font-semibold bg-muted border border-border text-foreground">
                 {activeCount}
               </span>
             )}
@@ -144,7 +144,7 @@ export function StorageFilterPopover() {
               onClick={resetFilters}
               className="flex items-center gap-1 text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
             >
-              <RotateCcw className="size-3" />
+              <RotateCcw className="size-3 shrink-0" />
               Reset all
             </button>
           )}
@@ -156,7 +156,7 @@ export function StorageFilterPopover() {
             <button
               type="button"
               onClick={() => setIsTypesOpen(!isTypesOpen)}
-              className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground/90 hover:text-foreground cursor-pointer outline-none"
+              className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground hover:text-foreground cursor-pointer outline-none"
             >
               <div className="flex items-center gap-1.5">
                 <span>File type</span>
@@ -168,7 +168,7 @@ export function StorageFilterPopover() {
               </div>
               <ChevronDown
                 className={cn(
-                  'size-3.5 text-muted-foreground transition-transform duration-200',
+                  'size-3.5 text-muted-foreground shrink-0 transition-transform duration-200',
                   isTypesOpen ? '' : '-rotate-90'
                 )}
               />
@@ -192,10 +192,10 @@ export function StorageFilterPopover() {
                         }
                       }}
                       className={cn(
-                        'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
+                        'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors',
                         isChecked
                           ? 'bg-accent text-foreground font-medium'
-                          : 'hover:bg-muted text-foreground/80'
+                          : 'hover:bg-muted text-foreground'
                       )}
                     >
                       <Checkbox
@@ -214,11 +214,11 @@ export function StorageFilterPopover() {
 
           {/* 2. Project Section (only in workspace level) */}
           {showProjectFilter && (
-            <div className="border-t border-border/50 pt-2.5">
+            <div className="border-t border-border pt-2.5">
               <button
                 type="button"
                 onClick={() => setIsProjectsOpen(!isProjectsOpen)}
-                className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground/90 hover:text-foreground cursor-pointer outline-none"
+                className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground hover:text-foreground cursor-pointer outline-none"
               >
                 <div className="flex items-center gap-1.5">
                   <span>Project</span>
@@ -230,7 +230,7 @@ export function StorageFilterPopover() {
                 </div>
                 <ChevronDown
                   className={cn(
-                    'size-3.5 text-muted-foreground transition-transform duration-200',
+                    'size-3.5 text-muted-foreground shrink-0 transition-transform duration-200',
                     isProjectsOpen ? '' : '-rotate-90'
                   )}
                 />
@@ -240,12 +240,12 @@ export function StorageFilterPopover() {
                 <div className="mt-1.5 space-y-1.5">
                   {projects.length > 5 && (
                     <div className="relative flex items-center mb-1">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground shrink-0" />
                       <input
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
                         placeholder="Search projects..."
-                        className="h-7 w-full pl-7 pr-2 text-11 bg-muted hover:bg-muted focus:bg-background border border-border/60 rounded-md outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground/60 text-foreground"
+                        className="h-7 w-full pl-7 pr-2 text-11 bg-muted hover:bg-muted focus:bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground text-foreground"
                       />
                     </div>
                   )}
@@ -262,10 +262,10 @@ export function StorageFilterPopover() {
                       }
                     }}
                     className={cn(
-                      'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
+                      'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors',
                       selectedProjects.includes('workspace-only')
                         ? 'bg-accent text-foreground font-medium'
-                        : 'hover:bg-muted text-foreground/80'
+                        : 'hover:bg-muted text-foreground'
                     )}
                   >
                     <Checkbox
@@ -294,10 +294,10 @@ export function StorageFilterPopover() {
                             }
                           }}
                           className={cn(
-                            'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
+                            'flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors',
                             isChecked
                               ? 'bg-accent text-foreground font-medium'
-                              : 'hover:bg-muted text-foreground/80'
+                              : 'hover:bg-muted text-foreground'
                           )}
                         >
                           <Checkbox
@@ -305,7 +305,7 @@ export function StorageFilterPopover() {
                             tabIndex={-1}
                             className="pointer-events-none"
                           />
-                          <span className="size-2 rounded-full bg-primary/70 shrink-0" />
+                          <span className="size-2 rounded-full bg-primary shrink-0" />
                           <span className="flex-1 truncate">{proj.name}</span>
                         </div>
                       );
@@ -317,19 +317,19 @@ export function StorageFilterPopover() {
           )}
 
           {/* 3. Sort By Section */}
-          <div className="border-t border-border/50 pt-2.5">
+          <div className="border-t border-border pt-2.5">
             <button
               type="button"
               onClick={() => setIsSortOpen(!isSortOpen)}
-              className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground/90 hover:text-foreground cursor-pointer outline-none"
+              className="flex items-center justify-between w-full py-1 text-xs font-semibold text-foreground hover:text-foreground cursor-pointer outline-none"
             >
               <div className="flex items-center gap-1.5">
-                <ArrowUpDown className="size-3 text-muted-foreground" />
+                <ArrowUpDown className="size-3 text-muted-foreground shrink-0" />
                 <span>Sort by</span>
               </div>
               <ChevronDown
                 className={cn(
-                  'size-3.5 text-muted-foreground transition-transform duration-200',
+                  'size-3.5 text-muted-foreground shrink-0 transition-transform duration-200',
                   isSortOpen ? '' : '-rotate-90'
                 )}
               />
@@ -345,10 +345,10 @@ export function StorageFilterPopover() {
                       type="button"
                       onClick={() => setSortBy(opt.value)}
                       className={cn(
-                        'flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-xs text-left cursor-pointer transition-colors',
+                        'flex items-center justify-between w-full px-2 py-1.5 rounded-md text-xs text-left cursor-pointer transition-colors',
                         isSelected
                           ? 'bg-accent text-foreground font-medium'
-                          : 'hover:bg-muted text-foreground/80'
+                          : 'hover:bg-muted text-foreground'
                       )}
                     >
                       <span className="truncate">{opt.label}</span>

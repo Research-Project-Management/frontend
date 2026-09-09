@@ -336,10 +336,10 @@ export function WorkItemPage({
         <div className="flex-1 flex gap-5 p-6 overflow-hidden">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-72 space-y-3">
-              <Skeleton className="h-8 w-full rounded" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-8 w-full rounded-md" />
+              <Skeleton className="h-24 w-full rounded-md" />
+              <Skeleton className="h-24 w-full rounded-md" />
+              <Skeleton className="h-16 w-full rounded-md" />
             </div>
           ))}
         </div>
@@ -381,8 +381,8 @@ export function WorkItemPage({
       <div className="flex-1 flex flex-col min-h-0 relative">
         {isCycleEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <KanbanSquare className="w-8 h-8 text-primary shrink-0" />
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <KanbanSquare className="w-8 h-8 text-foreground shrink-0" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-1">
               No work items in this cycle
@@ -395,7 +395,7 @@ export function WorkItemPage({
                 variant="outline"
                 size="sm"
                 onClick={() => setModal({ type: 'add-existing' })}
-                className="gap-2 rounded-sm"
+                className="gap-2 rounded-md"
               >
                 <ArrowRightLeft className="w-4 h-4 shrink-0" />
                 <span>Add Existing Work Items</span>
@@ -406,7 +406,7 @@ export function WorkItemPage({
                   const firstCol = columns[0];
                   handleOpenAddDialog(firstCol ? resolveTaskColumnId(firstCol) : "");
                 }}
-                className="gap-2 rounded-sm"
+                className="gap-2 rounded-md"
               >
                 <Plus className="w-4 h-4 shrink-0" />
                 <span>Create Work Item</span>
@@ -468,7 +468,7 @@ export function WorkItemPage({
 
       {/* Task Delete Confirmation Modal */}
       <Dialog open={modal.type === 'delete-task'} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="w-full max-w-md p-6 gap-4">
+        <DialogContent className="w-full max-w-md p-6 gap-4 rounded-lg border border-border shadow-sm bg-background">
           <DialogHeader className="text-left space-y-1.5">
             <DialogTitle className="text-base font-semibold text-foreground">Delete Work Item</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
@@ -476,10 +476,10 @@ export function WorkItemPage({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={closeModal} disabled={projectState.status.isDeleting}>
+            <Button variant="ghost" size="sm" onClick={closeModal} disabled={projectState.status.isDeleting} className="rounded-md">
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleTaskDeleteConfirm} disabled={projectState.status.isDeleting}>
+            <Button variant="destructive" size="sm" onClick={handleTaskDeleteConfirm} disabled={projectState.status.isDeleting} className="rounded-md">
               {projectState.status.isDeleting ? "Deleting..." : "Delete Work Item"}
             </Button>
           </DialogFooter>

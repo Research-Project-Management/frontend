@@ -4,6 +4,7 @@ import type {
   CatalogItem,
   CatalogItemBundle,
   ItemAttachment,
+  PaginatedCatalogItemsResponse,
 } from "@/features/workspaces/library/types/library.types";
 import { AttachmentsService } from './attachment.service';
 
@@ -197,34 +198,41 @@ export const CatalogItemService = {
       cursor?: string;
     },
   ) => {
-    return apiGet<any>(
+    return apiGet<PaginatedCatalogItemsResponse>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items`,
       { params },
     ).then((res) => {
       const items: CatalogItem[] = Array.isArray(res)
         ? res
-        : res?.items || res?.papers || res?.data || [];
+        : res?.items || [];
+      const meta = res?.pagination || res?.meta;
       const total =
-        (res as any)?.meta?.totalCount ??
-        (res as any)?.pagination?.totalCount ??
-        (res as any)?.total ??
+        meta?.totalCount ??
+        res?.total ??
         items.length;
-      const meta = (res as any)?.meta || (res as any)?.pagination;
       return {
         items,
         papers: items,
         total,
         meta,
+        pagination: meta,
       };
     });
   },
 
   getById: (workspaceId: string, itemId: string) =>
-    apiGet<any>(
+    apiGet<CatalogItem | { item?: CatalogItem; paper?: CatalogItem }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}`,
     ).then((res) => {
-      const item = res?.item || res?.paper || res?.data || res;
-      return { item, paper: item, ...(typeof item === 'object' && item !== null ? item : {}) };
+      const item: CatalogItem =
+        res && typeof res === 'object' && 'item' in res && res.item
+          ? (res.item as CatalogItem)
+          : (res as CatalogItem);
+      return {
+        ...item,
+        item,
+        paper: item,
+      };
     }),
 
   getAcademicBundle: (workspaceId: string, itemId: string) =>

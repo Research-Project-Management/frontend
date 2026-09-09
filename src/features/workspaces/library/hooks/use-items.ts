@@ -49,13 +49,11 @@ export function useViewItems(
       }),
     enabled: Boolean(workspaceId),
     select: (data) => {
-      const items: CatalogItem[] = Array.isArray(data)
-        ? data
-        : (data as any)?.items || (data as any)?.papers || (data as any)?.data || [];
-      const meta = (data as any)?.meta || (data as any)?.pagination || null;
+      const items: CatalogItem[] = data?.items || [];
+      const meta = data?.meta || data?.pagination || null;
       const total: number =
         meta?.totalCount ??
-        (data as any)?.total ??
+        data?.total ??
         items.length;
       return { items, meta, total, hasNextPage: meta?.hasNextPage ?? false, nextCursor: meta?.cursor };
     },
@@ -82,10 +80,8 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
     enabled: Boolean(workspaceId),
     select: (data) => {
       if (!data) return { items: [] as CatalogItem[], meta: null };
-      const items: CatalogItem[] = Array.isArray(data)
-        ? data
-        : (data as any).papers || (data as any).items || (data as any).data || [];
-      const meta = (data as any)?.meta || (data as any)?.pagination || null;
+      const items: CatalogItem[] = data.items || [];
+      const meta = data.meta || data.pagination || null;
       return { items, meta };
     },
   });
@@ -94,14 +90,14 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
     queryKey: itemKeys.byId(workspaceId, activeItemId),
     queryFn: () => CatalogItemService.getById(workspaceId, activeItemId),
     enabled: Boolean(workspaceId && activeItemId),
-    select: (data) => (data as any)?.paper || (data as any)?.item || data,
+    select: (data) => (data?.item ? (data.item as CatalogItem) : (data as CatalogItem)),
   });
 
   const collectionItemsQuery = useQuery({
     queryKey: itemKeys.byCollection(workspaceId, collectionId || ''),
     queryFn: () => CatalogItemService.getByCollection(workspaceId, collectionId || ''),
     enabled: Boolean(workspaceId && collectionId),
-    select: (data) => (data as any)?.papers || (data as any)?.items || [],
+    select: (data) => (data?.items || data?.papers || []) as CatalogItem[],
   });
 
   const createMutation = useMutation({

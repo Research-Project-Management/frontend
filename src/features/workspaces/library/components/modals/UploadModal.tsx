@@ -808,7 +808,6 @@ export default function PaperUploadDialog({
                   <input
                     ref={folderInputRef}
                     type="file"
-                    // @ts-ignore
                     webkitdirectory=""
                     directory=""
                     multiple

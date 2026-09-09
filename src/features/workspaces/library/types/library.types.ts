@@ -178,6 +178,24 @@ export interface ItemQueryParams {
 }
 
 
+export interface CursorPaginationMeta {
+  totalCount?: number;
+  pageSize?: number;
+  hasMore?: boolean;
+  hasNextPage?: boolean;
+  nextCursor?: string | null;
+  prevCursor?: string | null;
+  cursor?: string | null;
+}
+
+export interface PaginatedCatalogItemsResponse {
+  items: CatalogItem[];
+  papers?: CatalogItem[];
+  pagination?: CursorPaginationMeta;
+  meta?: CursorPaginationMeta;
+  total?: number;
+}
+
 export type ItemInput = Partial<CatalogItem>;
 export type CreateItemDTO = Partial<CatalogItem> & { collectionId?: string | null };
 export type UpdateItemDTO = Partial<CatalogItem>;

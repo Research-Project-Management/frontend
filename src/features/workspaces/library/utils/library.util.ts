@@ -51,66 +51,65 @@ export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): stri
   };
 
   // 1. Primary file / attachment (priority order: primary_pdf -> application/pdf -> .pdf filename)
-  const attachments: any[] = Array.isArray((paper as any)?.attachments)
-    ? (paper as any).attachments
+  const attachments = Array.isArray(paper.attachments)
+    ? paper.attachments
     : [];
 
   const primaryPdfAttachment =
     attachments.find(
-      (a: any) =>
-        a?.attachmentType === 'primary_pdf' ||
-        a?.type === 'primary_pdf',
+      (a) =>
+        a?.attachmentType === 'primary_pdf',
     ) ||
     attachments.find(
-      (a: any) => a?.mimeType === 'application/pdf',
+      (a) => a?.mimeType === 'application/pdf',
     ) ||
     attachments.find(
-      (a: any) =>
-        a?.fileId &&
+      (a) =>
+        Boolean(a?.fileId) &&
         typeof a?.filename === 'string' &&
         a.filename.toLowerCase().endsWith('.pdf'),
     );
 
   if (primaryPdfAttachment) {
     const url = normalizeUrl(
-      primaryPdfAttachment.url || primaryPdfAttachment.fileUrl,
+      primaryPdfAttachment.url,
       primaryPdfAttachment.fileId,
     );
     if (url) return url;
   }
 
   // 2. Direct fileId on paper
-  if ((paper as any)?.fileId) {
-    return `/api/files/${(paper as any).fileId}/content`;
+  if (paper.fileId) {
+    return `/api/files/${paper.fileId}/content`;
   }
 
   // 3. PrimaryFile object
   if (paper.primaryFile) {
     const url = normalizeUrl(
       paper.primaryFile.url,
-      (paper.primaryFile as any).fileId || (paper.primaryFile as any).id,
+      paper.primaryFile.fileId,
     );
     if (url) return url;
   }
 
   // 4. Direct fileUrl on paper
   if (paper.fileUrl) {
-    const url = normalizeUrl(paper.fileUrl, (paper as any).fileId);
+    const url = normalizeUrl(paper.fileUrl, paper.fileId);
     if (url) return url;
   }
 
   // 4b. Direct openAccessPdfUrl on paper
-  if ((paper as any)?.openAccessPdfUrl) {
-    const oaUrl = normalizeUrl((paper as any).openAccessPdfUrl);
+  if (paper.openAccessPdfUrl) {
+    const oaUrl = normalizeUrl(paper.openAccessPdfUrl);
     if (oaUrl) return oaUrl;
   }
 
   // 5. arXiv fallback: If paper has arxivId, arXiv DOI, arXiv URL, or arXiv filename
   const arxivMatch =
-    (paper as any)?.arxivId ||
+    paper.arxivId ||
     paper.doi?.match(/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
     paper.url?.match(/arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
-    (paper as any)?.filename?.match(/^(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?$/i)?.[1];
+    paper.filename?.match(/^(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?$/i)?.[1];
 
   if (arxivMatch) {
     return `https://arxiv.org/pdf/${arxivMatch.replace(/\.pdf$/i, '')}.pdf`;
@@ -196,16 +195,21 @@ export function normalizeTags(paper: Partial<CatalogItem> | null | undefined): s
   if (!paper) return [];
   const raw: unknown[] = [
     ...(Array.isArray(paper.tags) ? paper.tags : []),
-    ...(Array.isArray((paper as any).labels) ? (paper as any).labels : []),
+    ...(Array.isArray(paper.labels) ? paper.labels : []),
     ...(Array.isArray(paper.keywords) ? paper.keywords : []),
-    ...(Array.isArray((paper as any).itemTags)
-      ? (paper as any).itemTags.map((it: any) => it?.tag?.name ?? it?.name ?? '')
+    ...(Array.isArray(paper.itemTags)
+      ? paper.itemTags.map((it) => it?.tag?.name ?? '')
       : []),
   ];
   const seen = new Set<string>();
   const result: string[] = [];
   for (const t of raw) {
-    const s = typeof t === 'string' ? t : (t as any)?.name ?? '';
+    const s =
+      typeof t === 'string'
+        ? t
+        : t && typeof t === 'object' && 'name' in t && typeof (t as { name?: unknown }).name === 'string'
+          ? String((t as { name: string }).name)
+          : '';
     if (!s) continue;
     const parts = s.split(/[,;\n\r|•·]/).map((p: string) => p.trim()).filter(Boolean);
     for (const part of parts) {

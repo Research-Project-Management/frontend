@@ -345,7 +345,6 @@ export default function Topbar({
         <input
           ref={directFolderInputRef}
           type="file"
-          // @ts-ignore
           webkitdirectory=""
           directory=""
           multiple

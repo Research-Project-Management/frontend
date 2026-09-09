@@ -304,7 +304,7 @@ export default function InspectorPanel({
     void CatalogItemService.getById(activeWorkspaceId, incomingPaper.id)
       .then((response) => {
         if (cancelled) return;
-        const latest = (response as any)?.item || (response as any)?.paper || response;
+        const latest = response;
         if (!latest?.id) return;
 
         setPaper((current) => {
@@ -520,7 +520,7 @@ export default function InspectorPanel({
 
         try {
           const response = await CatalogItemService.getById(activeWorkspaceId, currentPaper.id);
-          const latest = (response as any)?.item || (response as any)?.paper || response;
+          const latest = response;
           if (!latest?.id) return;
           latestPaperRef.current = latest;
           setPaper((current) =>

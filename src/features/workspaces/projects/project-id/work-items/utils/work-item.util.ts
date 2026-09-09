@@ -47,6 +47,9 @@ export const WorkItemHelpers = {
       content: data.content,
       description: data.description,
       priority: data.priority,
+      issueType: data.issueType,
+      storyPoints: data.storyPoints,
+      relations: data.relations,
       labels: data.labels,
       startDate: data.startDate,
       dueDate: data.dueDate,
@@ -55,6 +58,39 @@ export const WorkItemHelpers = {
       checklists: data.checklists,
       attachments: data.attachments,
     }),
+
+  generateGitBranchName: (identifier?: string | null, title?: string): string => {
+    const cleanTitle = (title || 'task')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40);
+    const prefix = identifier ? identifier.toLowerCase() : 'feat';
+    return `${prefix}/${cleanTitle}`;
+  },
+
+  calculateProgressRollup: (checklists: any[] = [], subtasks: any[] = []): number => {
+    let total = 0;
+    let completed = 0;
+
+    for (const cl of checklists) {
+      if (Array.isArray(cl.items)) {
+        for (const item of cl.items) {
+          total++;
+          if (item.completed) completed++;
+        }
+      }
+    }
+
+    for (const sub of subtasks) {
+      total++;
+      if (sub.completed || sub.columnId === 'done') completed++;
+    }
+
+    if (total === 0) return 0;
+    return Math.round((completed / total) * 100);
+  },
 
   normalizeChecklists: (items: any[]) => {
     if (!Array.isArray(items)) return [];

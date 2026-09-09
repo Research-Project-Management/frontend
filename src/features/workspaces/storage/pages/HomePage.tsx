@@ -5,31 +5,61 @@ import { useParams, useRouter } from "next/navigation";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { usePreviewStore } from '../store/use-preview-store';
+import { useViewStore } from '../store/use-view-store';
 import { useStorageFilterStore } from '../store/use-filter-store';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { StorageViewRenderer } from '../components/views/StorageViewRenderer';
+import ListView from '../components/views/ListView';
+import GridView from '../components/views/GridView';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadStorageItem } from '../utils/file';
-import { filterHomeFiles } from '../utils/home.util';
-import { applyStorageFilters } from '../utils/filter.util';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import { downloadFileUrl } from '@/shared/utils/file';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
+import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { Home } from 'lucide-react';
+import { useTopbar } from '../hooks/use-topbar';
+
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';
 
 export default function WorkspaceHomePage() {
   const router = useRouter();
   const { workspaceId: workspaceUrl } = useParams() as { workspaceId: string };
-  const { typeFilter, projectFilter, sortBy } = useStorageFilterStore();
+  const { view } = useViewStore();
+  const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const setSelectedItem = usePreviewStore(s => s.setSelectedItem);
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
   
   const { workspace, isLoading: isWorkspaceLoading } = useWorkspace(workspaceUrl!);
   const workspaceId = workspace?.id || workspaceUrl;
+  const { handleUploadFiles } = useTopbar({ workspaceId, searchQuery, onSearchChange: setSearchQuery });
 
-  // Home view always fetches root items
-  const { data, isLoading: isFilesLoading } = useHomeFiles(workspaceId);
-  const { mutate: handleToggleStar } = useToggleStarItem();
-  const { mutate: handleDelete } = useDeleteItem();
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+    projectIds: selectedProjects.length > 0 ? selectedProjects : (projectFilter !== 'all' ? projectFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter, selectedProjects, projectFilter]);
+
+  // Home view fetches filtered & sorted items directly from backend
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useHomeFiles(workspaceId, null, queryParams);
+  const { mutateAsync: handleToggleStar } = useToggleStarItem();
+  const { mutateAsync: handleDelete } = useDeleteItem();
+
+  const handleDownload = async (item: StorageItem) => {
+    if (!item.url) return;
+    try {
+      await downloadFileUrl(item.url, item.filename);
+    } catch {
+      window.open(item.url, "_blank");
+    }
+  };
 
   const handleOpenLocation = useCallback((item: StorageItem) => {
     if (item.parentId) {
@@ -40,37 +70,27 @@ export default function WorkspaceHomePage() {
   }, [router, workspaceUrl]);
 
   const files = useMemo(
-    () => applyStorageFilters(filterHomeFiles((data?.files || []) as StorageItem[]), { typeFilter, projectFilter, sortBy, searchQuery }),
-    [data?.files, typeFilter, projectFilter, sortBy, searchQuery],
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
   );
-
-  if (isWorkspaceLoading || isFilesLoading) {
-    return (
-      <div className="flex-1 p-6 space-y-4">
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!workspaceId) {
-    return <div className="p-6">Workspace not found</div>;
-  }
 
   const viewProps = {
     items: files,
     isReadOnly: false,
-    onToggleStar: (id: string) => handleToggleStar(id),
-    onDelete: (id: string) => handleDelete(id),
-    onDownload: downloadStorageItem,
+    hasMore: hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
+    onToggleStar: (id: string) => { void handleToggleStar(id); },
+    onDelete: (id: string) => { void handleDelete(id); },
+    onDownload: handleDownload,
     onOpenLocation: handleOpenLocation,
     onFileClick: (item: StorageItem) => setSelectedItem(item),
     onFolderClick: (folder: StorageItem) => router.push(`/${workspaceUrl}/storage/my-files/${folder.id}`),
   };
+
+  const handleFilesDrop = useCallback((droppedFiles: File[]) => {
+    handleUploadFiles(droppedFiles, null);
+  }, [handleUploadFiles]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden relative">
@@ -81,9 +101,29 @@ export default function WorkspaceHomePage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        <StorageViewRenderer {...viewProps} />
-      </div>
+      <StorageDropzoneOverlay
+        onFilesDrop={handleFilesDrop}
+        folderName={workspace?.name || "All workspace files"}
+      >
+        <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+          {isWorkspaceLoading || (isFilesLoading && !data) ? (
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full rounded-lg" />
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded" />
+                ))}
+              </div>
+            </div>
+          ) : !workspaceId ? (
+            <div className="p-6 text-muted-foreground">Workspace not found</div>
+          ) : view === 'list' ? (
+            <ListView {...viewProps} />
+          ) : (
+            <GridView {...viewProps} />
+          )}
+        </div>
+      </StorageDropzoneOverlay>
       <BulkActionBar items={files} />
     </div>
   );

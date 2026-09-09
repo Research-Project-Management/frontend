@@ -6,7 +6,8 @@ import Topbar from "../components/layout/Topbar";
 import { WorkItemViews, TaskViews } from "../components/views/WorkItemViews";
 import { WorkItemDetailModal as WorkItemDialog, TaskDetailModal as TaskDialog } from "../components/modals/work-item/WorkItemDetailModal";
 import { TransferModal } from "../components/modals/TransferModal";
-import { AddExistingWorkItemModal, AddExistingTaskModal } from "../components/modals/AddExistingWorkItemModal";
+import { AddExistingTaskModal } from "../components/modals/AddExistingWorkItemModal";
+import { ColumnFormModal, DeleteColumnModal } from "../components/modals/ColumnModals";
 import { useTaskProject } from "../hooks/use-work-item";
 import { useTopbar } from "../hooks/use-topbar";
 import { useKanban } from "../hooks/use-kanban";
@@ -15,6 +16,7 @@ import type {
   Task as TaskType,
   WorkItemMutationInput,
   TaskMutationInput,
+  Column as ColumnType,
 } from "../types/work-item.types";
 import { resolveWorkItemColumnId, resolveTaskColumnId } from "../types/work-item.types";
 import { Button } from '@/shared/components/ui/button';
@@ -40,7 +42,10 @@ export type WorkItemModalState =
   | { type: 'detail'; card: Partial<WorkItemType> }
   | { type: 'delete-task'; task: WorkItemType }
   | { type: 'add-existing' }
-  | { type: 'transfer' };
+  | { type: 'transfer' }
+  | { type: 'create-column' }
+  | { type: 'edit-column'; column: ColumnType }
+  | { type: 'delete-column'; column: ColumnType };
 
 export type TaskModalState = WorkItemModalState;
 
@@ -221,7 +226,8 @@ export function WorkItemPage({
 
   const handleJoinCard = (card: TaskType) => {
     if (!currentUser?.id) return;
-    if (card.assigneeId?.id === currentUser.id) return;
+    const currentAssigneeId = typeof card.assigneeId === 'object' ? card.assigneeId?.id : card.assigneeId;
+    if (currentAssigneeId === currentUser.id) return;
 
     projectActions.updateTask({
       taskId: card.id,
@@ -232,7 +238,8 @@ export function WorkItemPage({
 
   const handleLeaveCard = (card: TaskType) => {
     if (!currentUser?.id) return;
-    if (card.assigneeId?.id !== currentUser.id) return;
+    const currentAssigneeId = typeof card.assigneeId === 'object' ? card.assigneeId?.id : card.assigneeId;
+    if (currentAssigneeId !== currentUser.id) return;
 
     projectActions.updateTask({
       taskId: card.id,
@@ -278,6 +285,44 @@ export function WorkItemPage({
           : `${taskIds.length} tasks added to calendar`,
       );
     }
+  };
+
+  const handleOpenAddColumn = () => {
+    setModal({ type: 'create-column' });
+  };
+
+  const handleOpenEditColumn = (column: ColumnType) => {
+    setModal({ type: 'edit-column', column });
+  };
+
+  const handleOpenDeleteColumn = (column: ColumnType) => {
+    setModal({ type: 'delete-column', column });
+  };
+
+  const handleCreateColumn = (payload: { sectionName: string; selectedColor: string }) => {
+    projectActions.addColumn({
+      title: payload.sectionName,
+      accentColor: payload.selectedColor,
+    }).then(() => {
+      closeModal();
+    });
+  };
+
+  const handleEditColumn = (payload: { sectionName: string; selectedColor: string }) => {
+    if (modal.type !== 'edit-column') return;
+    projectActions.updateColumn(modal.column.id, {
+      title: payload.sectionName,
+      accentColor: payload.selectedColor,
+    }).then(() => {
+      closeModal();
+    });
+  };
+
+  const handleDeleteColumnConfirm = () => {
+    if (modal.type !== 'delete-column') return;
+    projectActions.deleteColumn(modal.column.id).then(() => {
+      closeModal();
+    });
   };
 
   const isCycleEmpty = cycleId && allTasks.length === 0 && !isLoading;
@@ -386,6 +431,9 @@ export function WorkItemPage({
             onLeaveCard={handleLeaveCard}
             onRemoveFromCycle={handleRemoveFromCycle}
             onAssignExistingTasks={handleAssignExistingTasksToDate}
+            onAddColumn={handleOpenAddColumn}
+            onEditColumn={handleOpenEditColumn}
+            onDeleteColumn={handleOpenDeleteColumn}
             isReadOnly={isReadOnly}
           />
         )}
@@ -437,6 +485,40 @@ export function WorkItemPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Column Modals */}
+      <ColumnFormModal
+        isOpen={modal.type === 'create-column'}
+        onClose={closeModal}
+        onSubmit={handleCreateColumn}
+        mode="create"
+        isLoading={projectState.status.isSaving}
+      />
+
+      {modal.type === 'edit-column' && (
+        <ColumnFormModal
+          isOpen={true}
+          onClose={closeModal}
+          onSubmit={handleEditColumn}
+          mode="edit"
+          initialData={{
+            sectionName: modal.column.title,
+            selectedColor: modal.column.accentColor,
+          }}
+          isLoading={projectState.status.isSaving}
+        />
+      )}
+
+      {modal.type === 'delete-column' && (
+        <DeleteColumnModal
+          isOpen={true}
+          onClose={closeModal}
+          onConfirm={handleDeleteColumnConfirm}
+          columnTitle={modal.column.title}
+          fallbackColumnTitle={columns.find((c) => c.id !== modal.column.id)?.title || 'Backlog'}
+          isLoading={projectState.status.isDeleting}
+        />
+      )}
 
       {/* Cycle Modals */}
       {cycleId && (

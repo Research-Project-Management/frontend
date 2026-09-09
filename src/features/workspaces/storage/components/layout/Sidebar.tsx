@@ -6,11 +6,12 @@ import { useParams, usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import {
   Home,
-  File,
+  Folder,
   Users,
   Star,
   Trash,
   PanelLeftClose,
+  Cloud,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -24,7 +25,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // Storage-specific navigation
   const storageItems = [
     { label: 'Home', icon: Home, to: basePath },
-    { label: 'My Drive', icon: File, to: `${basePath}/my-files` },
+    { label: 'All Files', icon: Folder, to: `${basePath}/my-files` },
     { label: 'Shared', icon: Users, to: `${basePath}/shared` },
     { label: 'Starred', icon: Star, to: `${basePath}/starred` },
     { label: 'Trash', icon: Trash, to: `${basePath}/trash` },
@@ -52,7 +53,8 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
             className='flex flex-col gap-1 max-md:flex-row max-md:overflow-x-auto'
           >
             {storageItems.map((item) => {
-              const isActive = pathname === item.to;
+              const isActive = pathname === item.to || (item.to !== basePath && pathname.startsWith(item.to));
+              const Icon = item.icon;
               return (
                 <Link
                   href={item.to}

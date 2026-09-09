@@ -5,8 +5,8 @@
 export const storageKeys = {
   all: ['storage'] as const,
   workspace: (workspaceId: string) => [...storageKeys.all, 'workspace', workspaceId] as const,
-  workspaceHomeFiles: (workspaceId: string) =>
-    [...storageKeys.workspace(workspaceId), 'home'] as const,
+  workspaceHomeFiles: (workspaceId: string, parentId?: string | null) =>
+    [...storageKeys.workspace(workspaceId), 'home', parentId ?? 'root'] as const,
   workspaceFiles: (workspaceId: string, parentId?: string | null) =>
     [...storageKeys.workspace(workspaceId), 'files', parentId ?? 'root'] as const,
   workspaceMyFiles: (workspaceId: string) =>

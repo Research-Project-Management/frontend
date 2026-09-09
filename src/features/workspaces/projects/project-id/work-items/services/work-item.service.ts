@@ -74,6 +74,23 @@ export const WorkItemService = {
 
   getActivityLogs: (taskId: string) =>
     apiGet(`/api/work-items/${taskId}/activity`),
+
+  addColumn: (projectId: string, data: { title: string; accentColor?: string; id?: string }) =>
+    apiPost<{ columns: any[] }>(`/api/projects/${projectId}/columns`, data),
+
+  updateColumn: (projectId: string, columnId: string, data: { title?: string; accentColor?: string }) =>
+    apiPut<{ columns: any[] }>(`/api/projects/${projectId}/columns/${columnId}`, data),
+
+  deleteColumn: (projectId: string, columnId: string, targetColumnId?: string) =>
+    apiDelete<{ columns: any[]; fallbackColumnId?: string }>(
+      `/api/projects/${projectId}/columns/${columnId}${targetColumnId ? `?targetColumnId=${targetColumnId}` : ''}`
+    ),
+
+  reorderColumns: (projectId: string, columns: any[]) =>
+    apiPut<{ columns: any[] }>(`/api/projects/${projectId}/columns/reorder`, { columns }),
+
+  resetColumns: (projectId: string) =>
+    apiPost<{ columns: any[] }>(`/api/projects/${projectId}/columns/reset`, {}),
 };
 
 // ── Backward-compatible Aliases ─────────────────────────────────────────────

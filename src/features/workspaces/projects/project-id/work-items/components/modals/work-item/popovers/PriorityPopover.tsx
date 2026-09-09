@@ -51,7 +51,7 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-sm border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer',
+            'h-7 px-2.5 text-xs font-medium rounded-md border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none',
             actionBtnClass
           )}
         >

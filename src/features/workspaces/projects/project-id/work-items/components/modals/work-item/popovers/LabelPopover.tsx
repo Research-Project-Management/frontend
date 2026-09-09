@@ -58,23 +58,25 @@ export function LabelPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={
-            isOpen
-              ? 'h-10 rounded-sm border border-border bg-muted px-4 text-base font-medium text-foreground shadow-none'
-              : actionBtnClass
-          }
+          size="sm"
+          className={cn(
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            actionBtnClass,
+            isOpen && 'bg-muted border-border'
+          )}
         >
-          <Tag className="mr-2 h-4 w-4 text-foreground shrink-0" />
+          <Tag className="size-3.5 text-muted-foreground" />
           <span>Labels</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        sideOffset={-14}
-        className="w-80 p-0 rounded-sm border-border overflow-hidden flex flex-col z-100 bg-popover"
+        sideOffset={6}
+        collisionPadding={16}
+        className="w-80 p-0 rounded-lg shadow-2xl border-border/70 overflow-hidden flex flex-col z-100 bg-popover max-h-[min(500px,calc(100vh-80px))]"
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
           {view !== 'list' && (
             <Button
               variant="ghost"
@@ -82,7 +84,7 @@ export function LabelPopover({
               className="size-8 text-foreground"
               onClick={() => setView('list')}
             >
-              <ChevronLeft className="size-4 shrink-0" />
+              <ChevronLeft className="size-4" />
             </Button>
           )}
           <span className="text-sm font-semibold text-center flex-1 text-foreground">
@@ -94,7 +96,7 @@ export function LabelPopover({
             className="size-8 text-foreground"
             onClick={() => setIsOpen(false)}
           >
-            <X className="size-4 shrink-0" />
+            <X className="size-4" />
           </Button>
         </div>
 
@@ -131,7 +133,7 @@ export function LabelPopover({
                         })
                       }
                     >
-                      <SquarePen className="size-3.5 text-muted-foreground shrink-0" />
+                      <SquarePen className="size-3.5 text-muted-foreground" />
                     </Button>
                   </div>
                 );

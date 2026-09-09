@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ChevronRight, HardDrive, Home } from 'lucide-react';
+import { ChevronRight, Folder, Home } from 'lucide-react';
 
 import { useProject } from '@/features/workspaces/projects/shell/hooks/use-project';
 import {
@@ -22,13 +22,16 @@ import ListView from '@/features/workspaces/projects/project-id/storage/componen
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
 import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 import { pushBreadcrumbFolder, navigateBreadcrumbPath, canDropIntoFolder } from '../utils/my-files.util';
-import { applyStorageFilters } from '../utils/filter.util';
 import { downloadFileUrl } from '@/shared/utils/file';
 import Topbar from '../components/layout/Topbar';
+import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
+import { useTopbar } from '../hooks/use-topbar';
 
 import { useRouter } from 'next/navigation';
 import { useStorageSelectionStore } from '@/features/workspaces/storage/store/use-selection-store';
-import { BulkActionBar } from '../components/layout/BulkActionBar';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
+import { BulkActionBar } from '../components/actions/BulkActionBar';
 
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function MyFilesPage() {
@@ -42,32 +45,46 @@ export default function MyFilesPage() {
   const folderParam = routeFolderId || searchParams.get('folder');
   const highlightParam = searchParams.get('highlight');
 
+  const { state: projectState, isLoading: isProjectLoading } = useProject(projectId!);
+  const rootName = projectState?.project?.name || 'Project Files';
+
   const { view } = useViewStore();
-  const { typeFilter, sortBy } = useStorageFilterStore();
+  const { typeFilter, selectedTypes, sortBy } = useStorageFilterStore();
   const { clearSelection } = useStorageSelectionStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
 
   const [currentFolder, setCurrentFolder] = useState<string | null>(folderParam || null);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(highlightParam || null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbSegment[]>([
-    { id: null, name: 'My Drive' },
+    { id: null, name: rootName },
   ]);
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
 
-  const { data: projectData, isLoading: isProjectLoading } = useProject(projectId!);
+  const { handleUploadFiles } = useTopbar({ projectId, parentId: currentFolder, searchQuery, onSearchChange: setSearchQuery });
 
-  const { data, isLoading: isFilesLoading } = useHomeFiles(projectId!, currentFolder);
+  const queryParams: FileQueryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    sortBy,
+    types: selectedTypes.length > 0 ? selectedTypes : (typeFilter !== 'all' ? typeFilter : undefined),
+  }), [debouncedSearch, sortBy, selectedTypes, typeFilter]);
+
+  const {
+    data,
+    isLoading: isFilesLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useHomeFiles(projectId!, currentFolder, queryParams);
   const { data: folderPathData } = useFolderPath(currentFolder);
   const { mutateAsync: handleToggleStar } = useToggleStarItem();
   const { mutateAsync: handleDelete }     = useDeleteItem();
   const { mutateAsync: moveItem }         = useMoveItem();
 
-  const rawFiles = useMemo(() => (data?.files || []) as StorageItem[], [data?.files]);
-
   const files = useMemo(
-    () => applyStorageFilters(rawFiles, { typeFilter, sortBy, searchQuery }),
-    [rawFiles, typeFilter, sortBy, searchQuery],
+    () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
+    [data?.pages],
   );
 
   useEffect(() => {
@@ -84,13 +101,13 @@ export default function MyFilesPage() {
   useEffect(() => {
     if (currentFolder && folderPathData?.path && folderPathData.path.length > 0) {
       setBreadcrumbs([
-        { id: null, name: 'My Drive' },
+        { id: null, name: rootName },
         ...folderPathData.path,
       ]);
     } else if (!currentFolder) {
-      setBreadcrumbs([{ id: null, name: 'My Drive' }]);
+      setBreadcrumbs([{ id: null, name: rootName }]);
     }
-  }, [currentFolder, folderPathData?.path]);
+  }, [currentFolder, folderPathData?.path, rootName]);
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const handleFolderClick = useCallback((folder: StorageItem) => {
@@ -117,14 +134,14 @@ export default function MyFilesPage() {
   }, [breadcrumbs, handleBreadcrumbNavigate]);
 
   // ── Download ───────────────────────────────────────────────────────────
-  const handleDownload = useCallback(async (item: StorageItem) => {
+  const handleDownload = async (item: StorageItem) => {
     if (!item.url) return;
     try {
       await downloadFileUrl(item.url, item.filename);
     } catch {
       window.open(item.url, '_blank');
     }
-  }, []);
+  };
 
   // ── Drag-and-drop move ─────────────────────────────────────────────────
   const handleDragStart = useCallback((item: StorageItem) => {
@@ -154,36 +171,25 @@ export default function MyFilesPage() {
       try {
         await moveItem({ itemId: item.id, parentId });
         toast.success(
-          `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : 'My Drive'}`,
+          `Moved "${item.filename}" to ${parentId ? breadcrumbs[breadcrumbs.length - 2].name : rootName}`,
         );
       } catch {
         toast.error(`Failed to move "${item.filename}"`);
       }
     },
-    [breadcrumbs, moveItem],
+    [breadcrumbs, moveItem, rootName],
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────
-  if (isProjectLoading || isFilesLoading) {
-    return (
-      <div className="flex-1 p-6 space-y-4">
-        <Skeleton className="h-9 w-full rounded-lg" />
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!projectId) {
-    return <div className="p-6 text-muted-foreground">Project not found</div>;
-  }
+  const handleFilesDrop = useCallback((droppedFiles: File[]) => {
+    handleUploadFiles(droppedFiles, currentFolder);
+  }, [handleUploadFiles, currentFolder]);
 
   const viewProps = {
     items: files,
     highlightedItemId,
+    hasMore: hasNextPage,
+    isFetchingNextPage,
+    onLoadMore: fetchNextPage,
     onFolderClick: handleFolderClick,
     onToggleStar: (id: string) => { void handleToggleStar(id); },
     onDelete: (id: string) => { void handleDelete(id); },
@@ -194,11 +200,13 @@ export default function MyFilesPage() {
     onMoveToParent: currentFolder ? handleMoveToParent : undefined,
   };
 
+  const currentFolderName = breadcrumbs[breadcrumbs.length - 1]?.name || rootName;
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden relative">
       <Topbar
-        title="My Drive"
-        icon={HardDrive}
+        title={rootName}
+        icon={Folder}
         breadcrumbs={breadcrumbs}
         onBreadcrumbNavigate={handleTopBreadcrumbNavigate}
         projectId={projectId}
@@ -206,9 +214,29 @@ export default function MyFilesPage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-        {view === 'list' ? <ListView {...viewProps} /> : <GridView {...viewProps} />}
-      </div>
+      <StorageDropzoneOverlay
+        onFilesDrop={handleFilesDrop}
+        folderName={currentFolderName}
+      >
+        <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
+          {isProjectLoading || (isFilesLoading && !data) ? (
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full rounded-lg" />
+              <div className="space-y-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded" />
+                ))}
+              </div>
+            </div>
+          ) : !projectId ? (
+            <div className="p-6 text-muted-foreground">Project not found</div>
+          ) : view === 'list' ? (
+            <ListView {...viewProps} />
+          ) : (
+            <GridView {...viewProps} />
+          )}
+        </div>
+      </StorageDropzoneOverlay>
       <BulkActionBar items={files} />
     </div>
   );

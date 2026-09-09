@@ -34,7 +34,16 @@ export const useRegister = () => {
     mutationFn: (payload: RegisterPayload) => registerUser(payload),
     onSuccess: () => {
       toast.success('Account created! Please log in.');
-      router.push('/login');
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
+      const redirect = params?.get('redirect');
+      if (redirect) {
+        router.push(`/login?redirect=${encodeURIComponent(redirect)}`);
+      } else {
+        router.push('/login');
+      }
     },
     onError: (err: unknown) => {
       const message =

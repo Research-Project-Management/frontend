@@ -110,9 +110,9 @@ export function TransferModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden border-border bg-background rounded-sm">
+        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border shadow-sm bg-background rounded-lg">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-border bg-muted">
+          <div className="px-6 py-5 border-b border-border bg-background">
             <div className="flex items-center gap-2 text-foreground font-semibold text-base">
               <ArrowRightLeft className="size-4.5 text-primary shrink-0" />
               <span>Transfer Work Items from Cycle</span>
@@ -249,7 +249,7 @@ export function TransferModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-border bg-muted flex items-center justify-end gap-2">
+          <div className="px-6 py-3 border-t border-border bg-background flex items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"

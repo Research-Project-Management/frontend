@@ -121,19 +121,6 @@ export function Board({
               />
             );
           })}
-
-          {!isReadOnly && onAddColumn && (
-            <div className="w-72 shrink-0 pt-0.5">
-              <button
-                type="button"
-                onClick={onAddColumn}
-                className="w-full h-11 border border-dashed border-border hover:border-primary rounded-md flex items-center justify-center gap-1.5 text-13 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer bg-muted"
-              >
-                <Plus className="size-4 shrink-0" />
-                <span>Add column</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {isMounted &&

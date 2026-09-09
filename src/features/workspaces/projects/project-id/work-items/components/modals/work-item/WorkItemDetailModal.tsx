@@ -703,7 +703,7 @@ export function WorkItemDetailModal({
       >
         <div className="flex h-full min-h-0 flex-col bg-background text-foreground overflow-hidden">
           {/* Top Modal Header */}
-          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border bg-muted shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border bg-background shrink-0">
             <DialogTitle className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
               <span>{isCreating ? "Create Work Items" : (card?.identifier ? `${card.identifier}` : "Work Item Detail")}</span>
             </DialogTitle>
@@ -1583,7 +1583,7 @@ export function WorkItemDetailModal({
 
           {/* Footer for Creation Mode */}
           {isCreating && (
-            <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-border/70 bg-muted shrink-0">
+            <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-border bg-background shrink-0">
               <Button
                 type="button"
                 variant="ghost"

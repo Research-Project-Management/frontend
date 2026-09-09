@@ -287,25 +287,12 @@ export function WorkItemPage({
     }
   };
 
-  const handleOpenAddColumn = () => {
-    setModal({ type: 'create-column' });
-  };
-
   const handleOpenEditColumn = (column: ColumnType) => {
     setModal({ type: 'edit-column', column });
   };
 
   const handleOpenDeleteColumn = (column: ColumnType) => {
     setModal({ type: 'delete-column', column });
-  };
-
-  const handleCreateColumn = (payload: { sectionName: string; selectedColor: string }) => {
-    projectActions.addColumn({
-      title: payload.sectionName,
-      accentColor: payload.selectedColor,
-    }).then(() => {
-      closeModal();
-    });
   };
 
   const handleEditColumn = (payload: { sectionName: string; selectedColor: string }) => {
@@ -431,7 +418,6 @@ export function WorkItemPage({
             onLeaveCard={handleLeaveCard}
             onRemoveFromCycle={handleRemoveFromCycle}
             onAssignExistingTasks={handleAssignExistingTasksToDate}
-            onAddColumn={handleOpenAddColumn}
             onEditColumn={handleOpenEditColumn}
             onDeleteColumn={handleOpenDeleteColumn}
             isReadOnly={isReadOnly}
@@ -487,14 +473,6 @@ export function WorkItemPage({
       </Dialog>
 
       {/* Column Modals */}
-      <ColumnFormModal
-        isOpen={modal.type === 'create-column'}
-        onClose={closeModal}
-        onSubmit={handleCreateColumn}
-        mode="create"
-        isLoading={projectState.status.isSaving}
-      />
-
       {modal.type === 'edit-column' && (
         <ColumnFormModal
           isOpen={true}

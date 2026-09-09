@@ -51,7 +51,7 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
           className='w-64 p-0 overflow-hidden bg-popover rounded-md shadow-none border border-border'
           alignOffset={0}
         >
-          <div className="flex flex-col items-center justify-center text-center px-4 py-4 border-b border-border bg-muted">
+          <div className="flex flex-col items-center justify-center text-center px-4 py-4 border-b border-border bg-popover">
             <Avatar className="size-12 rounded-full border border-border">
               {user.avatar ? (
                 <AvatarImage

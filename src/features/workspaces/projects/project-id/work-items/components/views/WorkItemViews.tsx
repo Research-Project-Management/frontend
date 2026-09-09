@@ -100,7 +100,6 @@ export function WorkItemViews({
           onLeaveCard={onLeaveCard}
           onRemoveFromCycle={onRemoveFromCycle}
           onMoveCard={onMoveCard}
-          onAddColumn={onAddColumn}
           onEditColumn={onEditColumn}
           onDeleteColumn={onDeleteColumn}
           isReadOnly={isReadOnly}
@@ -180,7 +179,6 @@ export function WorkItemViews({
           onLeaveCard={onLeaveCard}
           onRemoveFromCycle={onRemoveFromCycle}
           onMoveCard={onMoveCard}
-          onAddColumn={onAddColumn}
           onEditColumn={onEditColumn}
           onDeleteColumn={onDeleteColumn}
           cycleId={cycleId}

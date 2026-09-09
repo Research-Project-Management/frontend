@@ -6,10 +6,10 @@ import type { WorkItem, Task, Column, Project, Cycle } from '../types/work-item.
 import { resolveWorkItemColumnId, resolveTaskColumnId } from '../types/work-item.types';
 import { useTaskWorkspaceProjects } from './use-work-item';
 
-export type ViewMode = 'list' | 'board' | 'calendar' | 'table' | 'split';
+export type ViewMode = 'board' | 'list' | 'calendar' | 'table' | 'split';
 
 const TASKS_VIEW_STORAGE_KEY = 'flux:tasks-view-mode';
-const VALID_MODES: ViewMode[] = ['list', 'board', 'calendar', 'table', 'split'];
+const VALID_MODES: ViewMode[] = ['board', 'list', 'calendar', 'table', 'split'];
 
 export type AssigneeFilterOption = {
   id: string;

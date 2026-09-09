@@ -890,19 +890,6 @@ export default function ListView({
               isReadOnly={isReadOnly}
             />
           ))}
-
-          {!isReadOnly && onAddColumn && (
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={onAddColumn}
-                className="w-full h-9 border border-dashed border-border hover:border-primary hover:bg-muted rounded-md flex items-center justify-center gap-1.5 text-13 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer bg-background shadow-none"
-              >
-                <Plus className="size-3.5 shrink-0" />
-                <span>Add status / column</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
       {isMounted && createPortal(

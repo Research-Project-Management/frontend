@@ -246,7 +246,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
         </DialogHeader>
 
         {/* Navigation & Breadcrumb Toolbar */}
-        <div className="px-5 py-2.5 bg-muted border-b border-border flex items-center justify-between gap-2 min-w-0">
+        <div className="px-5 py-2.5 bg-background border-b border-border flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto py-0.5 text-xs">
             {breadcrumbs.length > 1 && (
               <button
@@ -449,7 +449,7 @@ export default function MoveModal({ workspaceId: propWorkspaceId, projectId: pro
         </div>
 
         {/* Footer with Destination Preview and Confirm Action */}
-        <DialogFooter className="px-5 py-3.5 bg-muted border-t border-border flex sm:items-center sm:justify-between gap-3">
+        <DialogFooter className="px-5 py-3.5 bg-background border-t border-border flex sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate min-w-0">
             <CornerDownRight className="size-3.5 text-primary shrink-0" />
             <span className="shrink-0">Destination:</span>

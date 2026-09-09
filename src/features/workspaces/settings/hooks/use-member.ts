@@ -234,6 +234,8 @@ export function useMember(workspaceId: string) {
   const updateRoleMutate = updateRoleMutation.mutate;
   const removeMutate = removeMutation.mutate;
   const leaveMutate = leaveMutation.mutate;
+  const inviteMutateAsync = inviteMutation.mutateAsync;
+  const revokeInviteMutate = revokeInviteMutation.mutate;
 
   const handleUpdateRole = useCallback(
     (userId: string, newRole: WorkspaceRole) => {
@@ -257,16 +259,16 @@ export function useMember(workspaceId: string) {
 
   const handleInviteMembers = useCallback(
     async (emails: string[], role: WorkspaceRole) => {
-      await inviteMutation.mutateAsync({ emails, role });
+      await inviteMutateAsync({ emails, role });
     },
-    [inviteMutation],
+    [inviteMutateAsync],
   );
 
   const handleCancelInvite = useCallback(
     (inviteId: string) => {
-      revokeInviteMutation.mutate(inviteId);
+      revokeInviteMutate(inviteId);
     },
-    [revokeInviteMutation],
+    [revokeInviteMutate],
   );
 
   const handleImportCsv = useCallback(
@@ -276,14 +278,14 @@ export function useMember(workspaceId: string) {
         .filter((e) => e && e.includes('@'));
 
       if (validEmails.length > 0) {
-        await inviteMutation.mutateAsync({
+        await inviteMutateAsync({
           emails: validEmails,
           role: 'member',
         });
       }
       setImportModalOpen(false);
     },
-    [inviteMutation],
+    [inviteMutateAsync],
   );
 
   const pendingInvites: WorkspacePendingInvite[] = useMemo(() => {

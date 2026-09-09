@@ -62,7 +62,7 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
   return (
     <div className="space-y-1.5 pt-1">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+        <label className="text-11 font-bold text-muted-foreground tracking-normal flex items-center gap-1.5">
           <Link2 className="size-3.5" />
           <span>Dependencies & Relations ({relations.length})</span>
         </label>
@@ -73,7 +73,7 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+                className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
               >
                 <Plus className="size-3" />
                 <span>Add</span>
@@ -88,7 +88,7 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
               </div>
               <form onSubmit={handleAdd} className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground">Relation Type</label>
+                  <label className="text-11 font-medium text-muted-foreground">Relation Type</label>
                   <div className="grid grid-cols-2 gap-1">
                     {(Object.keys(RELATION_TYPE_CONFIG) as TaskRelationType[]).map((type) => {
                       const cfg = RELATION_TYPE_CONFIG[type];
@@ -99,7 +99,7 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
                           type="button"
                           onClick={() => setSelectedType(type)}
                           className={cn(
-                            'px-2 py-1.5 rounded-xs text-[11px] font-medium text-left border transition-all cursor-pointer',
+                            'px-2 py-1.5 rounded-sm text-11 font-medium text-left border transition-all cursor-pointer',
                             isSelected
                               ? 'bg-primary/10 border-primary text-primary font-semibold'
                               : 'border-border/60 hover:bg-muted text-muted-foreground'
@@ -113,7 +113,7 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground">Issue Title or Subject</label>
+                  <label className="text-11 font-medium text-muted-foreground">Issue Title or Subject</label>
                   <Input
                     value={targetTitle}
                     onChange={(e) => setTargetTitle(e.target.value)}
@@ -124,7 +124,7 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-muted-foreground">Issue ID (Optional)</label>
+                  <label className="text-11 font-medium text-muted-foreground">Issue ID (Optional)</label>
                   <Input
                     value={targetIdentifier}
                     onChange={(e) => setTargetIdentifier(e.target.value)}
@@ -173,19 +173,19 @@ export const TaskRelations: React.FC<TaskRelationsProps> = ({
             return (
               <div
                 key={rel.id}
-                className="flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/40 transition-colors group"
+                className="flex items-center justify-between px-3 py-2 text-xs hover:bg-muted transition-colors group"
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span
                     className={cn(
-                      'px-1.5 py-0.5 rounded-xs text-[10px] font-semibold tracking-wider uppercase border',
+                      'px-1.5 py-0.5 rounded-sm text-10 font-semibold tracking-normal border',
                       config.badgeColor
                     )}
                   >
                     {config.label}
                   </span>
                   {rel.targetIdentifier && (
-                    <span className="font-mono font-semibold text-muted-foreground text-[11px]">
+                    <span className="font-mono font-semibold text-muted-foreground text-11">
                       {rel.targetIdentifier}
                     </span>
                   )}

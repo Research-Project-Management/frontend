@@ -266,7 +266,7 @@ export function TaskActivities({
       <div className="flex items-center justify-between pb-2 border-b border-border/60">
         <div className="flex items-center gap-1.5">
           <MessageSquare className="size-3.5 text-muted-foreground" />
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-11 font-bold tracking-normal text-muted-foreground">
             Comments & Activity
           </h3>
         </div>
@@ -274,7 +274,7 @@ export function TaskActivities({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
+          className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer shadow-none"
           onClick={() => setShowDetailActivity((prev) => !prev)}
         >
           {showDetailActivity ? "Hide details" : "Show details"}
@@ -314,7 +314,7 @@ export function TaskActivities({
           disabled={!canComment || isReadOnly}
           className={cn(
             "min-h-[58px] rounded-md border border-border/80 bg-background p-2.5 text-xs text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-primary/40 resize-none transition-colors leading-relaxed",
-            (!canComment || isReadOnly) && "cursor-not-allowed bg-muted/40"
+            (!canComment || isReadOnly) && "cursor-not-allowed bg-muted"
           )}
           rows={2}
         />
@@ -353,13 +353,13 @@ export function TaskActivities({
       {/* Activity Timeline List */}
       <div className="space-y-3 pt-1">
         {activityLoading ? (
-          <div className="rounded-md bg-muted px-2.5 py-1.5 text-[11px] text-muted-foreground">
+          <div className="rounded-md bg-muted px-2.5 py-1.5 text-11 text-muted-foreground">
             Loading activity...
           </div>
         ) : null}
 
         {activityError ? (
-          <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
+          <div className="rounded-md bg-destructive/10 px-2.5 py-1.5 text-11 text-destructive">
             Could not load activity. Please try again.
           </div>
         ) : null}
@@ -378,7 +378,7 @@ export function TaskActivities({
                 <div key={item.id} className="flex items-start gap-2 text-xs">
                   <Avatar className="size-6 shrink-0 mt-0.5">
                     <AvatarImage src={item.avatarUrl || undefined} />
-                    <AvatarFallback className="bg-muted text-[10px] font-bold text-foreground">
+                    <AvatarFallback className="bg-muted text-10 font-bold text-foreground">
                       {item.authorInitials}
                     </AvatarFallback>
                   </Avatar>
@@ -386,9 +386,9 @@ export function TaskActivities({
                   <div className="min-w-0 flex-1 space-y-1">
                     {isComment ? (
                       <>
-                        <div className="flex items-center gap-1.5 text-[11px]">
+                        <div className="flex items-center gap-1.5 text-11">
                           <span className="font-semibold text-foreground truncate">{item.author}</span>
-                          <span className="text-[10px] text-muted-foreground">{item.timestamp}</span>
+                          <span className="text-10 text-muted-foreground">{item.timestamp}</span>
                         </div>
 
                         {isEditing ? (
@@ -427,16 +427,16 @@ export function TaskActivities({
                           </div>
                         ) : (
                           <>
-                            <div className="rounded-md border border-border/70 bg-muted/20 px-2.5 py-1.5 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
+                            <div className="rounded-md border border-border/70 bg-muted px-2.5 py-1.5 text-xs leading-relaxed text-foreground shadow-none whitespace-pre-wrap break-words">
                               {renderCommentContent(item.content, attachmentLinks)}
                             </div>
                             {item.reactionEmoji ? (
-                              <div className="inline-flex items-center rounded-full border border-border/70 bg-background px-1.5 py-0.5 text-[11px] shadow-xs">
+                              <div className="inline-flex items-center rounded-full border border-border/70 bg-background px-1.5 py-0.5 text-11 shadow-xs">
                                 {item.reactionEmoji}
                               </div>
                             ) : null}
 
-                            <div className="relative inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <div className="relative inline-flex items-center gap-1.5 text-10 text-muted-foreground">
                               <button
                                 type="button"
                                 disabled={isReadOnly}
@@ -499,11 +499,11 @@ export function TaskActivities({
                         )}
                       </>
                     ) : (
-                      <div className="text-[11px] leading-snug">
+                      <div className="text-11 leading-snug">
                         <p className="text-foreground">
                           <span className="font-semibold">{item.author}</span> {item.content}
                         </p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                        <p className="text-10 text-muted-foreground mt-0.5">
                           {item.timestamp}
                         </p>
                       </div>

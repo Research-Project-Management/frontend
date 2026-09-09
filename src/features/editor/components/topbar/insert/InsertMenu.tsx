@@ -3,6 +3,7 @@
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarSub, MenubarSubTrigger, MenubarSubContent } from '@/shared/components/ui/menubar';
 import { usePageStore } from '@/features/editor/store/page.store';
+import { EditorEventBus } from '@/features/editor/utils/editor.util';
 
 export default function InsertMenu() {
   const { editorRef } = usePageStore();
@@ -107,7 +108,7 @@ export default function InsertMenu() {
         </MenubarSub>
 
         <MenubarSeparator />
-        <MenubarItem onClick={() => insertSnippet('\\cite{key}')}>
+        <MenubarItem onClick={() => EditorEventBus.emit('flux:open-citation-picker')}>
           Citation (\cite&#123;…&#125;)
         </MenubarItem>
         <MenubarItem onClick={() => insertSnippet('\\ref{fig:label}')}>

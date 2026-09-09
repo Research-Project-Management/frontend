@@ -14,14 +14,11 @@ import {
   useMoveItem,
   useFolderPath,
 } from '@/features/workspaces/storage/hooks/use-storage';
-import { useViewStore } from '../store/use-view-store';
 import { usePreviewStore } from '../store/use-preview-store';
 import { useStorageFilterStore } from '../store/use-filter-store';
 import { useStorageSelectionStore } from '../store/use-selection-store';
 
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import ListView from '../components/views/ListView';
-import GridView from '../components/views/GridView';
+import { StorageViewContainer } from '../components/layout/StorageViewContainer';
 import type { StorageItem, BreadcrumbSegment } from '@/features/workspaces/storage/types/storage.types';
 import {
   pushBreadcrumbFolder,
@@ -50,7 +47,6 @@ export default function WorkspaceMyFilesPage() {
   const workspaceId = workspace?.id || workspaceUrl;
   const rootName = workspace?.name || 'All Files';
 
-  const { view } = useViewStore();
   const { typeFilter, selectedTypes, projectFilter, selectedProjects, sortBy } = useStorageFilterStore();
   const { clearSelection } = useStorageSelectionStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -221,24 +217,11 @@ export default function WorkspaceMyFilesPage() {
         onFilesDrop={handleFilesDrop}
         folderName={currentFolderName}
       >
-        <div className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
-          {isWorkspaceLoading || (isFilesLoading && !data) ? (
-            <div className="space-y-4">
-              <Skeleton className="h-9 w-full rounded-lg" />
-              <div className="space-y-2">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full rounded" />
-                ))}
-              </div>
-            </div>
-          ) : !workspaceId ? (
-            <div className="p-6 text-muted-foreground">Workspace not found</div>
-          ) : view === 'list' ? (
-            <ListView {...viewProps} />
-          ) : (
-            <GridView {...viewProps} />
-          )}
-        </div>
+        <StorageViewContainer
+          isLoading={isWorkspaceLoading || (isFilesLoading && !data)}
+          workspaceId={workspaceId}
+          viewProps={viewProps}
+        />
       </StorageDropzoneOverlay>
       <BulkActionBar items={files} />
     </div>

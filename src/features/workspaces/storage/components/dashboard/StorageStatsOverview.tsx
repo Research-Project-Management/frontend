@@ -207,7 +207,7 @@ export default function StorageStatsOverview({
                 <div className={cn("size-9 rounded-lg flex items-center justify-center", cat.iconBg)}>
                   <Icon className="size-5" />
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted/80 text-muted-foreground">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                   {cat.count} files
                 </span>
               </div>

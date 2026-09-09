@@ -31,7 +31,7 @@ export const StoryPointsPopover: React.FC<StoryPointsPopoverProps> = ({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none',
+            'h-7 px-2.5 text-xs font-medium rounded-md border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer shadow-none',
             actionBtnClass
           )}
         >
@@ -52,7 +52,7 @@ export const StoryPointsPopover: React.FC<StoryPointsPopoverProps> = ({
                 setStoryPoints(null);
                 onOpenChange(false);
               }}
-              className="text-[10px] text-muted-foreground hover:text-red-500 cursor-pointer"
+              className="text-10 text-muted-foreground hover:text-red-500 cursor-pointer"
             >
               Clear
             </button>
@@ -70,7 +70,7 @@ export const StoryPointsPopover: React.FC<StoryPointsPopoverProps> = ({
                   onOpenChange(false);
                 }}
                 className={cn(
-                  'h-8 rounded-xs text-xs font-semibold flex items-center justify-center border transition-all cursor-pointer',
+                  'h-8 rounded-sm text-xs font-semibold flex items-center justify-center border transition-all cursor-pointer',
                   isSelected
                     ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 font-bold'
                     : 'border-border/60 hover:bg-muted text-foreground'

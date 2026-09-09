@@ -111,7 +111,7 @@ export function DatePopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
             open && 'bg-muted border-border'
           )}
@@ -163,14 +163,14 @@ export function DatePopover({
           <div className="flex-1 p-3.5 space-y-3 flex flex-col justify-between overflow-y-auto max-h-[300px]">
             {/* Quick Presets */}
             <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Quick Select</span>
+              <span className="text-10 font-bold text-muted-foreground tracking-normal">Quick Select</span>
               <div className="grid grid-cols-2 gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(0)}
-                  className="h-6.5 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
                 >
                   Today
                 </Button>
@@ -179,7 +179,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(1)}
-                  className="h-6.5 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
                 >
                   Tomorrow
                 </Button>
@@ -188,7 +188,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(7)}
-                  className="h-6.5 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
                 >
                   Next week
                 </Button>
@@ -197,7 +197,7 @@ export function DatePopover({
                   variant="outline"
                   size="sm"
                   onClick={() => setQuickDue(14)}
-                  className="h-6.5 text-[11px] font-medium justify-start px-2 bg-muted/30 hover:bg-muted cursor-pointer"
+                  className="h-6.5 text-11 font-medium justify-start px-2 bg-muted hover:bg-muted cursor-pointer"
                 >
                   In 2 weeks
                 </Button>
@@ -218,7 +218,7 @@ export function DatePopover({
                 <Input
                   readOnly
                   value={selectedRange.from ? selectedRange.from.toLocaleDateString() : 'M/D/YYYY'}
-                  className="h-6.5 w-24 text-[11px] text-center px-1 font-mono"
+                  className="h-6.5 w-24 text-11 text-center px-1 font-mono"
                 />
               </div>
 
@@ -240,7 +240,7 @@ export function DatePopover({
                       ? selectedRange.from.toLocaleDateString()
                       : 'M/D/YYYY'
                   }
-                  className="h-6.5 w-24 text-[11px] text-center px-1 font-mono"
+                  className="h-6.5 w-24 text-11 text-center px-1 font-mono"
                 />
               </div>
             </div>
@@ -248,14 +248,14 @@ export function DatePopover({
             {/* Reminders & Recurrence */}
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                <label className="text-10 font-bold text-muted-foreground">
                   Reminder
                 </label>
                 <Select
                   value={reminderOption || 'none'}
                   onValueChange={(val) => setReminderOption(val as TaskReminder)}
                 >
-                  <SelectTrigger className="h-6.5 text-[11px] px-2">
+                  <SelectTrigger className="h-6.5 text-11 px-2">
                     <SelectValue placeholder="Reminder" />
                   </SelectTrigger>
                   <SelectContent className="text-xs">
@@ -269,14 +269,14 @@ export function DatePopover({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                <label className="text-10 font-bold text-muted-foreground">
                   Repeat
                 </label>
                 <Select
                   value={recurrenceOption || 'none'}
                   onValueChange={(val) => setRecurrenceOption(val as TaskRecurrence)}
                 >
-                  <SelectTrigger className="h-6.5 text-[11px] px-2">
+                  <SelectTrigger className="h-6.5 text-11 px-2">
                     <SelectValue placeholder="Repeat" />
                   </SelectTrigger>
                   <SelectContent className="text-xs">

@@ -90,7 +90,7 @@ export default function Topbar({
                       "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded px-1 py-0.5",
                       isLast
                         ? "font-semibold text-foreground cursor-default"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
                     )}
                     title={segment.name}
                   >
@@ -114,7 +114,7 @@ export default function Topbar({
         <div
           className={cn(
             "relative flex items-center transition-all duration-300 ease-in-out h-8 rounded-lg overflow-hidden group",
-            isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary/80 cursor-pointer"
+            isSearchExpanded || searchQuery ? "w-64 border border-border/50 bg-background" : "w-8 hover:bg-secondary cursor-pointer"
           )}
           onClick={expandSearch}
         >
@@ -160,7 +160,7 @@ export default function Topbar({
                   "relative p-1.5 rounded-md transition-colors",
                   view === v
                     ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
                 aria-label={`${v} view`}
               >

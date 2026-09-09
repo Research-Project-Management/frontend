@@ -65,57 +65,28 @@ export function useWorkspaceFiles(workspaceId: string, parentId?: string | null)
   });
 }
 
-export function useMyFiles(workspaceId: string, params?: FileQueryParams) {
-  return useInfiniteQuery({
-    queryKey: [...storageKeys.workspaceMyFiles(workspaceId), 'infinite', params],
-    queryFn: ({ pageParam = 1 }) =>
-      getMyFiles(workspaceId, { ...params, page: pageParam as number, limit: 40 }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: !!workspaceId,
-    ...STORAGE_QUERY_OPTIONS,
-  });
+function createInfiniteStorageQuery(
+  getKey: (workspaceId: string) => readonly unknown[],
+  fetcher: (workspaceId: string, params: FileQueryParams) => Promise<any>,
+) {
+  return function useInfiniteStorage(workspaceId: string, params?: FileQueryParams) {
+    return useInfiniteQuery({
+      queryKey: [...getKey(workspaceId), 'infinite', params],
+      queryFn: ({ pageParam = 1 }) =>
+        fetcher(workspaceId, { ...params, page: pageParam as number, limit: 40 }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) =>
+        lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
+      enabled: !!workspaceId,
+      ...STORAGE_QUERY_OPTIONS,
+    });
+  };
 }
 
-export function useSharedFiles(workspaceId: string, params?: FileQueryParams) {
-  return useInfiniteQuery({
-    queryKey: [...storageKeys.workspaceShared(workspaceId), 'infinite', params],
-    queryFn: ({ pageParam = 1 }) =>
-      getSharedFiles(workspaceId, { ...params, page: pageParam as number, limit: 40 }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: !!workspaceId,
-    ...STORAGE_QUERY_OPTIONS,
-  });
-}
-
-export function useStarredFiles(workspaceId: string, params?: FileQueryParams) {
-  return useInfiniteQuery({
-    queryKey: [...storageKeys.workspaceStarred(workspaceId), 'infinite', params],
-    queryFn: ({ pageParam = 1 }) =>
-      getStarredFiles(workspaceId, { ...params, page: pageParam as number, limit: 40 }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: !!workspaceId,
-    ...STORAGE_QUERY_OPTIONS,
-  });
-}
-
-export function useTrash(workspaceId: string, params?: FileQueryParams) {
-  return useInfiniteQuery({
-    queryKey: [...storageKeys.workspaceTrashed(workspaceId), 'infinite', params],
-    queryFn: ({ pageParam = 1 }) =>
-      getTrashedFiles(workspaceId, { ...params, page: pageParam as number, limit: 40 }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? (lastPage.page || 1) + 1 : undefined,
-    enabled: !!workspaceId,
-    ...STORAGE_QUERY_OPTIONS,
-  });
-}
+export const useMyFiles = createInfiniteStorageQuery(storageKeys.workspaceMyFiles, getMyFiles);
+export const useSharedFiles = createInfiniteStorageQuery(storageKeys.workspaceShared, getSharedFiles);
+export const useStarredFiles = createInfiniteStorageQuery(storageKeys.workspaceStarred, getStarredFiles);
+export const useTrash = createInfiniteStorageQuery(storageKeys.workspaceTrashed, getTrashedFiles);
 
 export function useStorageUsage(workspaceId: string) {
   return useQuery({

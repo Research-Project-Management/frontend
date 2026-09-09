@@ -390,8 +390,8 @@ export default function ListView({
                       onDropOnFolder(item, e);
                     }
                   }}
-                  className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted/50 cursor-pointer group transition-colors select-none ${
-                    isSelected ? "bg-accent/80 font-medium" : ""
+                  className={`grid grid-cols-12 gap-3 items-center px-4 py-2 hover:bg-muted cursor-pointer group transition-colors select-none ${
+                    isSelected ? "bg-accent font-medium" : ""
                   } ${dragOverFolderId === item.id ? "bg-muted ring-1 ring-muted-foreground/30" : ""}`}
                   onClick={(e: React.MouseEvent) => {
                     if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {

@@ -336,7 +336,7 @@ export function resolveFileUrl(fileUrl?: string | null): string {
 
 // ── Strongly-Typed Event Bus ──────────────────────────────────────────────────
 
-export type SidebarTabName = 'Explorer' | 'Search' | 'Review' | 'History' | 'AI' | 'Settings';
+export type SidebarTabName = 'Explorer' | 'Search' | 'Review' | 'History' | 'AI' | 'Settings' | 'Citations';
 
 export interface EditorEventMap {
   'flux:open-panel': SidebarTabName | { panel: SidebarTabName; commentId?: string };
@@ -344,6 +344,7 @@ export interface EditorEventMap {
   'flux:toggle-ai-panel': undefined;
   'flux:trigger-compile': { forceSync?: boolean; draft?: boolean } | undefined;
   'flux:insert-citation': { bibKey: string };
+  'flux:open-citation-picker': undefined;
   'flux:focus-editor': undefined;
 }
 

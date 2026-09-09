@@ -86,7 +86,7 @@ export function PendingInvites({
   if (invites.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4 text-center select-none rounded-lg border border-border/60 bg-background/50">
-        <div className="size-12 rounded-xl border border-border/80 bg-muted/30 flex items-center justify-center mb-3 shadow-xs">
+        <div className="size-12 rounded-xl border border-border/80 bg-muted flex items-center justify-center mb-3 shadow-xs">
           <Mail className="size-5 text-muted-foreground stroke-[1.5]" />
         </div>
         <h3 className="text-sm font-semibold text-foreground">
@@ -104,7 +104,7 @@ export function PendingInvites({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-border/70 bg-muted/20 text-muted-foreground text-[0.7rem] font-medium">
+            <tr className="border-b border-border/70 bg-muted text-muted-foreground text-[0.7rem] font-medium">
               <th className="py-3 px-4 w-[35%]">Invited email</th>
               <th className="py-3 px-4 w-[15%]">Role</th>
               <th className="py-3 px-4 w-[20%]">Invited on</th>
@@ -123,12 +123,12 @@ export function PendingInvites({
               return (
                 <tr
                   key={invite.id}
-                  className="hover:bg-muted/25 transition-colors group text-foreground"
+                  className="hover:bg-muted transition-colors group text-foreground"
                 >
                   {/* Email & Initial */}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="size-7 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-[10px] font-semibold uppercase shrink-0">
+                      <div className="size-7 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-10 font-medium shrink-0">
                         {invite.email.charAt(0)}
                       </div>
                       <div className="min-w-0">
@@ -136,7 +136,7 @@ export function PendingInvites({
                           {invite.email}
                         </p>
                         {invite.invitedBy?.name && (
-                          <p className="text-[10px] text-muted-foreground truncate">
+                          <p className="text-10 text-muted-foreground truncate">
                             Invited by {invite.invitedBy.name}
                           </p>
                         )}
@@ -146,13 +146,13 @@ export function PendingInvites({
 
                   {/* Role */}
                   <td className="py-3 px-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-secondary/80 text-secondary-foreground border border-border/60">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-10 font-medium tracking-normal bg-secondary text-secondary-foreground border border-border/60">
                       {invite.role}
                     </span>
                   </td>
 
                   {/* Date */}
-                  <td className="py-3 px-4 text-muted-foreground text-[11px]">
+                  <td className="py-3 px-4 text-muted-foreground text-11">
                     <div className="flex items-center gap-1.5">
                       <Clock className="size-3 text-muted-foreground shrink-0" />
                       <span>{formatDate(invite.createdAt)}</span>
@@ -162,7 +162,7 @@ export function PendingInvites({
                   {/* Expiration */}
                   <td className="py-3 px-4">
                     <span
-                      className={`inline-flex items-center gap-1 text-[11px] ${
+                      className={`inline-flex items-center gap-1 text-11 ${
                         isExpiringSoon
                           ? 'text-amber-500 font-medium'
                           : 'text-muted-foreground'
@@ -187,14 +187,14 @@ export function PendingInvites({
                           {isCopied ? (
                             <>
                               <Check className="size-3 text-green-500" />
-                              <span className="text-[11px] text-green-500 font-medium">
+                              <span className="text-11 text-green-500 font-medium">
                                 Copied
                               </span>
                             </>
                           ) : (
                             <>
                               <Copy className="size-3" />
-                              <span className="text-[11px]">Copy link</span>
+                              <span className="text-11">Copy link</span>
                             </>
                           )}
                         </Button>

@@ -80,8 +80,8 @@ export default function GridView({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 sm:p-16 text-center rounded-2xl border border-dashed border-border/80 bg-muted/10 my-4">
-        <div className="size-16 rounded-2xl bg-muted/60 flex items-center justify-center text-muted-foreground/60 mb-4 shadow-inner">
+      <div className="flex flex-col items-center justify-center p-12 sm:p-16 text-center rounded-2xl border border-dashed border-border/80 bg-muted my-4">
+        <div className="size-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground/60 mb-4 shadow-inner">
           <Folder className="size-8 stroke-[1.5]" />
         </div>
         <h3 className="text-base font-semibold text-foreground tracking-tight mb-1">
@@ -129,7 +129,7 @@ export default function GridView({
         <div className="space-y-2.5">
           {files.length > 0 && (
             <div className="flex items-center gap-2 px-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold tracking-normal text-muted-foreground">
                 Folders ({folders.length})
               </span>
             </div>
@@ -181,7 +181,7 @@ export default function GridView({
                       }
                       onFolderClick?.(folder);
                     }}
-                    className={`group flex items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer relative shadow-sm ${
+                    className={`group flex items-center justify-between p-3 rounded-xl border bg-card hover:bg-muted hover:border-border transition-all cursor-pointer relative shadow-sm ${
                       isSelected
                         ? "border-primary/80 bg-primary/5 ring-2 ring-primary/30"
                         : "border-border/60"
@@ -256,7 +256,7 @@ export default function GridView({
         <div className="space-y-2.5">
           {folders.length > 0 && (
             <div className="flex items-center gap-2 px-1 pt-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold tracking-normal text-muted-foreground">
                 Files ({files.length})
               </span>
             </div>
@@ -303,7 +303,7 @@ export default function GridView({
                     }}
                   >
                     {/* Thumbnail Area */}
-                    <div className="h-32 flex items-center justify-center bg-muted/20 overflow-hidden relative border-b border-border/40">
+                    <div className="h-32 flex items-center justify-center bg-muted overflow-hidden relative border-b border-border/40">
                       {/* Selection Checkbox (top-left) */}
                       {!isReadOnly && (
                         <button
@@ -362,7 +362,7 @@ export default function GridView({
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/20">
-                        <span className="text-[11px] font-medium">{formatFileSize(file.size)}</span>
+                        <span className="text-11 font-medium">{formatFileSize(file.size)}</span>
                         {file.author && (
                           <div className="flex items-center gap-1" title={file.author.name}>
                             {file.author.avatar ? (
@@ -373,7 +373,7 @@ export default function GridView({
                               />
                             ) : (
                               <div className="size-4 rounded-full bg-muted flex items-center justify-center">
-                                <span className="text-[9px] font-medium">
+                                <span className="text-9 font-medium">
                                   {file.author.name?.charAt(0)?.toUpperCase()}
                                 </span>
                               </div>

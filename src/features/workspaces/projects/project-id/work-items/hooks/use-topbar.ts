@@ -72,8 +72,8 @@ export function useTopbar({
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(TASKS_VIEW_STORAGE_KEY) as ViewMode;
-        if (saved && VALID_MODES.includes(saved) && saved !== mode) {
-          setModeState(saved);
+        if (saved && VALID_MODES.includes(saved)) {
+          setModeState(prev => (saved !== prev ? saved : prev));
         }
       } catch {}
     }

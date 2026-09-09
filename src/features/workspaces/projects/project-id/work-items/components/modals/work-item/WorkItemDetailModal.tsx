@@ -640,7 +640,7 @@ export function WorkItemDetailModal({
 
   // Compact Pill Button Class
   const actionBtnClass =
-    'h-7 px-2.5 text-xs font-medium rounded-md bg-muted/50 hover:bg-muted text-foreground border border-border/70 shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
+    'h-7 px-2.5 text-xs font-medium rounded-md bg-muted hover:bg-muted text-foreground border border-border/70 shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0';
 
   const renderStatusSelector = () => {
     const activeCol = columns.find((c) => resolveTaskColumnId(c) === columnId);
@@ -651,7 +651,7 @@ export function WorkItemDetailModal({
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 text-xs font-medium rounded-md bg-muted/50 hover:bg-muted text-foreground border border-border/70 shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
+              'h-7 px-2.5 text-xs font-medium rounded-md bg-muted hover:bg-muted text-foreground border border-border/70 shadow-none flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 outline-none',
               isReadOnly && 'opacity-60 cursor-not-allowed'
             )}
           >
@@ -669,8 +669,8 @@ export function WorkItemDetailModal({
                 key={cId}
                 onClick={() => handleColumnChange(cId)}
                 className={cn(
-                  'flex items-center justify-between px-2.5 py-1.5 rounded-xs text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
-                  isCurrent && 'bg-muted/80 text-foreground font-semibold'
+                  'flex items-center justify-between px-2.5 py-1.5 rounded-sm text-xs font-medium transition-colors hover:bg-muted cursor-pointer text-left',
+                  isCurrent && 'bg-muted text-foreground font-semibold'
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -703,7 +703,7 @@ export function WorkItemDetailModal({
       >
         <div className="flex h-full min-h-0 flex-col bg-background text-foreground overflow-hidden">
           {/* Top Modal Header */}
-          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border/70 bg-muted/20 shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border/70 bg-muted shrink-0">
             <DialogTitle className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
               <span>{isCreating ? "Create Work Items" : (card?.identifier ? `${card.identifier}` : "Work Item Detail")}</span>
             </DialogTitle>
@@ -724,7 +724,7 @@ export function WorkItemDetailModal({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 rounded-md border-border/50 shadow-xl p-1">
                     {!isReadOnly && onDuplicate && (
-                      <DropdownMenuItem onClick={onDuplicate} className="rounded-xs py-1.5 text-xs">
+                      <DropdownMenuItem onClick={onDuplicate} className="rounded-sm py-1.5 text-xs">
                         <Copy className="mr-2 h-3.5 w-3.5 text-foreground" />
                         <span>Duplicate</span>
                       </DropdownMenuItem>
@@ -732,7 +732,7 @@ export function WorkItemDetailModal({
                     {currentUserId && (
                       <DropdownMenuItem
                         onClick={isCurrentUserAssignee ? handleLeaveTask : handleJoinTask}
-                        className="rounded-xs py-1.5 text-xs"
+                        className="rounded-sm py-1.5 text-xs"
                       >
                         {isCurrentUserAssignee ? (
                           <UserMinus className="mr-2 h-3.5 w-3.5 text-foreground" />
@@ -743,7 +743,7 @@ export function WorkItemDetailModal({
                       </DropdownMenuItem>
                     )}
                     {onRemoveFromCycle && (
-                      <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-xs py-1.5 text-xs">
+                      <DropdownMenuItem onClick={onRemoveFromCycle} className="rounded-sm py-1.5 text-xs">
                         <RotateCcw className="mr-2 h-3.5 w-3.5 text-foreground" />
                         <span>Remove from cycle</span>
                       </DropdownMenuItem>
@@ -751,7 +751,7 @@ export function WorkItemDetailModal({
                     {!isReadOnly && onDelete && (
                       <DropdownMenuItem
                         onClick={onDelete}
-                        className="rounded-xs py-1.5 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
+                        className="rounded-sm py-1.5 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
                       >
                         <Trash2 className="mr-2 h-3.5 w-3.5" />
                         <span>Delete issue</span>
@@ -793,7 +793,7 @@ export function WorkItemDetailModal({
                   <button
                     type="button"
                     onClick={handleCopyIdentifier}
-                    className="font-mono text-[11px] font-bold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded bg-muted/50 hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                    className="font-mono text-11 font-bold text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded bg-muted hover:bg-muted transition-colors cursor-pointer flex items-center gap-1 shrink-0"
                     title="Click to copy identifier"
                   >
                     <span>{card.identifier}</span>
@@ -804,7 +804,7 @@ export function WorkItemDetailModal({
                   variant="ghost"
                   size="sm"
                   onClick={handleCopyBranch}
-                  className="h-6.5 px-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 shrink-0"
+                  className="h-6.5 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 shrink-0"
                   title="Copy git branch command"
                 >
                   <Terminal className="size-3 text-emerald-500" />
@@ -836,7 +836,7 @@ export function WorkItemDetailModal({
 
               {/* Description */}
               <div className="space-y-1.5 pt-1">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                <label className="text-11 font-bold text-muted-foreground tracking-normal">
                   Description
                 </label>
                 <textarea
@@ -855,10 +855,10 @@ export function WorkItemDetailModal({
                 {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
                   <div className="flex flex-wrap items-center gap-1 pt-0.5">
                     {selectedMember && (
-                      <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                      <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
                         <Avatar className="size-3.5">
                           <AvatarImage src={selectedMember.avatar} />
-                          <AvatarFallback className="text-[8px]">
+                          <AvatarFallback className="text-9">
                             {selectedMember.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
@@ -878,7 +878,7 @@ export function WorkItemDetailModal({
                     {selectedLabelsList.map((l: any) => (
                       <span
                         key={l.id}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white shadow-xs"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-bold text-white shadow-xs"
                         style={{ backgroundColor: l.color }}
                       >
                         {l.name}
@@ -898,7 +898,7 @@ export function WorkItemDetailModal({
                     ))}
 
                     {(startDate || dueDate) && (
-                      <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                      <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
                         <Clock className="size-3 text-muted-foreground" />
                         <span>
                           {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
@@ -1041,12 +1041,12 @@ export function WorkItemDetailModal({
                             onClick={() => fileInputRef.current?.click()}
                             className={cn(
                               'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                              dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                              dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
                             )}
                           >
                             <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
                             <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
+                            <p className="text-10 text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
                             <input
                               ref={fileInputRef}
                               type="file"
@@ -1104,8 +1104,8 @@ export function WorkItemDetailModal({
 
                   {/* Progress Rollup Bar */}
                   {(checklists.length > 0 || subtasks.length > 0) && (
-                    <div className="space-y-1 p-2 rounded-md bg-muted/30 border border-border/50">
-                      <div className="flex items-center justify-between text-[11px]">
+                    <div className="space-y-1 p-2 rounded-md bg-muted border border-border/50">
+                      <div className="flex items-center justify-between text-11">
                         <span className="font-semibold text-foreground flex items-center gap-1">
                           <Zap className="size-3 text-amber-500" />
                           Overall Completion
@@ -1123,7 +1123,7 @@ export function WorkItemDetailModal({
 
                   {/* Description */}
                   <div className="space-y-1.5 pt-1">
-                    <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <label className="text-11 font-bold text-muted-foreground tracking-normal">
                       Description
                     </label>
                     <textarea
@@ -1171,10 +1171,10 @@ export function WorkItemDetailModal({
                     {(selectedMember || selectedLabelsList.length > 0 || dueDate || startDate) && (
                       <div className="flex flex-wrap items-center gap-1 pt-0.5">
                         {selectedMember && (
-                          <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                          <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
                             <Avatar className="size-3.5">
                               <AvatarImage src={selectedMember.avatar} />
-                              <AvatarFallback className="text-[8px]">
+                              <AvatarFallback className="text-9">
                                 {selectedMember.name.charAt(0)}
                               </AvatarFallback>
                             </Avatar>
@@ -1197,7 +1197,7 @@ export function WorkItemDetailModal({
                         {selectedLabelsList.map((l: any) => (
                           <span
                             key={l.id}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-white shadow-xs"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-bold text-white shadow-xs"
                             style={{ backgroundColor: l.color }}
                           >
                             {l.name}
@@ -1218,7 +1218,7 @@ export function WorkItemDetailModal({
                         ))}
 
                         {(startDate || dueDate) && (
-                          <div className="flex items-center gap-1 bg-muted/70 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-foreground border border-border/50">
+                          <div className="flex items-center gap-1 bg-muted rounded-md px-1.5 py-0.5 text-10 font-medium text-foreground border border-border/50">
                             <Clock className="size-3 text-muted-foreground" />
                             <span>
                               {startDate && new Date(startDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' })}
@@ -1382,12 +1382,12 @@ export function WorkItemDetailModal({
                                 onClick={() => fileInputRef.current?.click()}
                                 className={cn(
                                   'border border-dashed rounded-md p-3 text-center cursor-pointer transition-colors',
-                                  dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                                  dragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
                                 )}
                               >
                                 <Paperclip className="mx-auto h-5 w-5 text-muted-foreground mb-1" />
                                 <p className="text-xs font-semibold text-foreground">Click or drag & drop</p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
+                                <p className="text-10 text-muted-foreground mt-0.5">Images, PDFs, Documents</p>
                                 <input
                                   ref={fileInputRef}
                                   type="file"
@@ -1425,7 +1425,7 @@ export function WorkItemDetailModal({
                   {/* Subtasks Section */}
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <label className="text-11 font-bold text-muted-foreground tracking-normal flex items-center gap-1.5">
                         <GitBranch className="size-3.5" />
                         <span>Subtasks ({subtasks.filter((s: any) => s.completed || s.columnId === 'done').length}/{subtasks.length})</span>
                       </label>
@@ -1436,7 +1436,7 @@ export function WorkItemDetailModal({
                         {subtasks.map((sub: any, sIdx: number) => {
                           const isSubDone = sub.completed || sub.columnId === 'done';
                           return (
-                            <div key={sub.id || sIdx} className="flex items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted/40 transition-colors group">
+                            <div key={sub.id || sIdx} className="flex items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted transition-colors group">
                               <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <button
                                   type="button"
@@ -1448,7 +1448,7 @@ export function WorkItemDetailModal({
                                     setSubtasks(updated);
                                   }}
                                   className={cn(
-                                    'size-3.5 rounded-xs border flex items-center justify-center transition-colors cursor-pointer',
+                                    'size-3.5 rounded-sm border flex items-center justify-center transition-colors cursor-pointer',
                                     isSubDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-border hover:border-primary'
                                   )}
                                 >
@@ -1545,7 +1545,7 @@ export function WorkItemDetailModal({
 
           {/* Footer for Creation Mode */}
           {isCreating && (
-            <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-border/70 bg-muted/20 shrink-0">
+            <div className="flex items-center justify-end gap-2 px-4 sm:px-5 py-3 border-t border-border/70 bg-muted shrink-0">
               <Button
                 type="button"
                 variant="ghost"

@@ -531,7 +531,7 @@ export function useLabels(workspaceId: string, type?: string, projectId?: string
     setView('list');
     setName('');
     setEditId(null);
-  }, [createLabelMutateAsync, updateLabelMutateAsync, view, name, color, workspaceId, type, projectId, editId]);
+  }, [createLabelMutateAsync, updateLabelMutateAsync, view, name, color, workspaceId, type, editId]);
 
   const remove = useCallback(
     async (labelId?: string) => {

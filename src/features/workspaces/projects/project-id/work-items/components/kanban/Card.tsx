@@ -242,12 +242,12 @@ export function CardUI({
         )}
         <div className="min-w-0 flex-1">
           {card.identifier && (
-            <span className="mb-0.5 block text-[11px] font-mono font-semibold text-muted-foreground tracking-tight">
+            <span className="mb-0.5 block text-11 font-mono font-semibold text-muted-foreground tracking-tight">
               {card.identifier}
             </span>
           )}
           <h4
-            className={`min-w-0 flex-1 wrap-break-word text-[13px] font-medium leading-snug tracking-tight pr-5 ${
+            className={`min-w-0 flex-1 wrap-break-word text-13 font-medium leading-snug tracking-tight pr-5 ${
               isDone ? 'text-muted-foreground line-through' : 'text-foreground'
             }`}
           >
@@ -302,7 +302,7 @@ export function CardUI({
 
           {assignee.user && (
             <div className="shrink-0" title={assignee.user.name}>
-              <Avatar className="size-5 border border-border/80 bg-background text-[10px] font-medium text-foreground">
+              <Avatar className="size-5 border border-border/80 bg-background text-10 font-medium text-foreground">
                 {assignee.avatar ? (
                   <AvatarImage src={assignee.avatar} alt={assignee.user.name} />
                 ) : null}

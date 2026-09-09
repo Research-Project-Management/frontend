@@ -318,7 +318,7 @@ export const moveItem = (itemId: string, parentId: string | null) =>
 export const updateFileMetadata = (itemId: string, metaData: Record<string, any>) =>
     apiPut(`/api/files/${itemId}`, { metaData });
 
-export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
+const fetchAuthorized = async (url: string, errorType: string): Promise<Response> => {
     const token = getAuthToken();
     const headers: Record<string, string> = {};
     if (token && !url.startsWith("blob:") && !url.startsWith("data:")) {
@@ -326,22 +326,19 @@ export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
     }
     const response = await fetch(url, { credentials: "include", headers });
     if (!response.ok) {
-        throw new Error("Failed to fetch file buffer: " + response.statusText);
+        throw new Error(`Failed to fetch file ${errorType}: ` + response.statusText);
     }
-    return response.arrayBuffer();
+    return response;
+};
+
+export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
+    const res = await fetchAuthorized(url, "buffer");
+    return res.arrayBuffer();
 };
 
 export const getFileBlob = async (url: string): Promise<Blob> => {
-    const token = getAuthToken();
-    const headers: Record<string, string> = {};
-    if (token && !url.startsWith("blob:") && !url.startsWith("data:")) {
-        headers["Authorization"] = `Bearer ${token}`;
-    }
-    const response = await fetch(url, { credentials: "include", headers });
-    if (!response.ok) {
-        throw new Error("Failed to fetch file blob: " + response.statusText);
-    }
-    return response.blob();
+    const res = await fetchAuthorized(url, "blob");
+    return res.blob();
 };
 
 

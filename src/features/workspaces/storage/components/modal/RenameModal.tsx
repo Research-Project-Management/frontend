@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { useRenameItem } from "@/features/workspaces/storage/hooks/use-storage";
 import { renameItemSchema, type RenameItemInput } from "@/features/workspaces/storage/schemas/storage.schema";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
+import { SingleInputModal } from "./SingleInputModal";
 
 export default function RenameModal() {
   const [open, setOpen] = useState(false);
@@ -17,10 +15,10 @@ export default function RenameModal() {
   const { mutateAsync: renameFile, isPending } = useRenameItem();
 
   const {
-    register,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<RenameItemInput>({
     resolver: zodResolver(renameItemSchema),
@@ -55,55 +53,19 @@ export default function RenameModal() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-md bg-popover"
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <DialogHeader>
-            <DialogTitle className="text-foreground">
-              Rename
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Input
-                id="name"
-                data-testid="rename-input"
-                placeholder="New name"
-                disabled={isPending}
-                autoFocus
-                {...register("name")}
-              />
-              {errors.name && (
-                <p className="text-xs text-destructive">{errors.name.message}</p>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-              disabled={isPending}
-              className="text-foreground hover:bg-muted cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={!newName?.trim() || isPending}
-              className="cursor-pointer"
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <SingleInputModal
+      open={open}
+      onOpenChange={setOpen}
+      title="Rename"
+      placeholder="New name"
+      submitLabel="Save"
+      value={newName || ""}
+      onChange={(val) => setValue("name", val, { shouldValidate: true })}
+      onSubmit={handleSubmit(onFormSubmit)}
+      isLoading={isPending}
+      errorMessage={errors.name?.message}
+      inputId="name"
+      testId="rename-input"
+    />
   );
 }
-

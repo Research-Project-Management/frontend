@@ -208,7 +208,7 @@ const TaskRowContent = ({
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-2.5 px-4 py-2.5 bg-card hover:bg-muted/30 transition-colors text-left group cursor-pointer border-b border-border/40 last:border-b-0 relative",
+        "w-full flex items-center gap-2.5 px-4 py-2.5 bg-card hover:bg-muted transition-colors text-left group cursor-pointer border-b border-border/40 last:border-b-0 relative",
         task.completed && "opacity-75",
         isDragging && "z-50 bg-card border border-primary/40 opacity-90 rounded-lg"
       )}
@@ -228,7 +228,7 @@ const TaskRowContent = ({
 
       {/* Identifier */}
       {task.identifier && (
-        <span className="font-mono text-[11px] font-semibold text-muted-foreground shrink-0">
+        <span className="font-mono text-11 font-semibold text-muted-foreground shrink-0">
           {task.identifier}
         </span>
       )}
@@ -243,7 +243,7 @@ const TaskRowContent = ({
 
       {/* Blocked Warning */}
       {isBlocked && (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-xs text-[10px] font-semibold bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 shrink-0">
           <ShieldAlert className="size-3" />
           <span>Blocked</span>
         </span>
@@ -251,7 +251,7 @@ const TaskRowContent = ({
 
       {/* Story Points */}
       {task.storyPoints !== undefined && task.storyPoints !== null && (
-        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-xs text-[10px] font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
           <Hash className="size-3" />
           <span>{task.storyPoints}</span>
         </span>
@@ -327,7 +327,7 @@ const TaskRowContent = ({
           <AvatarImage
             src={isCurrentUserAssignee && !assignee.avatar ? currentUserAvatar : assignee.avatar}
           />
-          <AvatarFallback className="text-[10px] font-medium bg-muted text-muted-foreground">
+          <AvatarFallback className="text-10 font-medium bg-muted text-muted-foreground">
             {assignee.name?.charAt(0) || 'U'}
           </AvatarFallback>
         </Avatar>
@@ -506,7 +506,7 @@ const ListViewColumn = ({
     >
       {/* ── Group Header ── */}
       <div 
-        className="flex items-center justify-between px-3.5 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors group cursor-pointer border-b border-border/50 select-none"
+        className="flex items-center justify-between px-3.5 py-2.5 bg-muted hover:bg-muted transition-colors group cursor-pointer border-b border-border/50 select-none"
         onClick={() => toggleExpand(group.key)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -536,7 +536,7 @@ const ListViewColumn = ({
                 setQuickAddColumnId(group.key);
               }}
               disabled={isAddingCard}
-              className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer rounded"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded"
               aria-label="Add task"
             >
               <Plus className="size-3.5" />
@@ -550,7 +550,7 @@ const ListViewColumn = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer rounded"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded"
                   aria-label="Status options"
                 >
                   <MoreHorizontal className="size-3.5" />
@@ -636,7 +636,7 @@ const ListViewColumn = ({
 
           {/* Quick Add Form */}
           {quickAddColumnId === group.key && (
-            <div className="p-3 bg-muted/20 border-t border-border/40 space-y-2">
+            <div className="p-3 bg-muted border-t border-border/40 space-y-2">
               <input
                 ref={quickAddInputRef}
                 type="text"
@@ -896,7 +896,7 @@ export default function ListView({
               <button
                 type="button"
                 onClick={onAddColumn}
-                className="w-full h-10 border border-dashed border-border/80 hover:border-primary/60 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-all cursor-pointer bg-muted/10 shadow-none"
+                className="w-full h-10 border border-dashed border-border/80 hover:border-primary/60 hover:bg-primary/5 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-all cursor-pointer bg-muted shadow-none"
               >
                 <Plus className="size-4" />
                 <span>Add Status / Column</span>

@@ -104,9 +104,9 @@ export function StorageFilterPopover() {
                 variant="outline"
                 size="icon"
                 className={cn(
-                  'relative size-8 rounded-lg bg-transparent border-border/60 hover:bg-muted/80 cursor-pointer outline-none transition-colors',
+                  'relative size-8 rounded-lg bg-transparent border-border/60 hover:bg-muted cursor-pointer outline-none transition-colors',
                   isActive &&
-                    'bg-accent/80 border-primary/50 text-primary hover:bg-accent hover:text-primary'
+                    'bg-accent border-primary/50 text-primary hover:bg-accent hover:text-primary'
                 )}
                 aria-label="Filter & sort"
               >
@@ -134,7 +134,7 @@ export function StorageFilterPopover() {
             <ListFilter className="size-3.5 text-primary shrink-0" />
             <span className="text-xs font-semibold text-foreground">Filter & Sort</span>
             {activeCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-primary/15 text-primary">
+              <span className="px-1.5 py-0.2 rounded-full text-10 font-semibold bg-primary/15 text-primary">
                 {activeCount}
               </span>
             )}
@@ -142,7 +142,7 @@ export function StorageFilterPopover() {
           {isActive && (
             <button
               onClick={resetFilters}
-              className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
+              className="flex items-center gap-1 text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none"
             >
               <RotateCcw className="size-3" />
               Reset all
@@ -161,7 +161,7 @@ export function StorageFilterPopover() {
               <div className="flex items-center gap-1.5">
                 <span>File type</span>
                 {selectedTypes.length > 0 && (
-                  <span className="text-[10px] text-primary font-medium">
+                  <span className="text-10 text-primary font-medium">
                     ({selectedTypes.length})
                   </span>
                 )}
@@ -194,8 +194,8 @@ export function StorageFilterPopover() {
                       className={cn(
                         'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
                         isChecked
-                          ? 'bg-accent/70 text-foreground font-medium'
-                          : 'hover:bg-muted/60 text-foreground/80'
+                          ? 'bg-accent text-foreground font-medium'
+                          : 'hover:bg-muted text-foreground/80'
                       )}
                     >
                       <Checkbox
@@ -223,7 +223,7 @@ export function StorageFilterPopover() {
                 <div className="flex items-center gap-1.5">
                   <span>Project</span>
                   {selectedProjects.length > 0 && (
-                    <span className="text-[10px] text-primary font-medium">
+                    <span className="text-10 text-primary font-medium">
                       ({selectedProjects.length})
                     </span>
                   )}
@@ -245,7 +245,7 @@ export function StorageFilterPopover() {
                         value={projectSearch}
                         onChange={(e) => setProjectSearch(e.target.value)}
                         placeholder="Search projects..."
-                        className="h-7 w-full pl-7 pr-2 text-[11px] bg-muted/40 hover:bg-muted/60 focus:bg-background border border-border/60 rounded-md outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground/60 text-foreground"
+                        className="h-7 w-full pl-7 pr-2 text-11 bg-muted hover:bg-muted focus:bg-background border border-border/60 rounded-md outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground/60 text-foreground"
                       />
                     </div>
                   )}
@@ -264,8 +264,8 @@ export function StorageFilterPopover() {
                     className={cn(
                       'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
                       selectedProjects.includes('workspace-only')
-                        ? 'bg-accent/70 text-foreground font-medium'
-                        : 'hover:bg-muted/60 text-foreground/80'
+                        ? 'bg-accent text-foreground font-medium'
+                        : 'hover:bg-muted text-foreground/80'
                     )}
                   >
                     <Checkbox
@@ -296,8 +296,8 @@ export function StorageFilterPopover() {
                           className={cn(
                             'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs cursor-pointer transition-colors',
                             isChecked
-                              ? 'bg-accent/70 text-foreground font-medium'
-                              : 'hover:bg-muted/60 text-foreground/80'
+                              ? 'bg-accent text-foreground font-medium'
+                              : 'hover:bg-muted text-foreground/80'
                           )}
                         >
                           <Checkbox
@@ -347,8 +347,8 @@ export function StorageFilterPopover() {
                       className={cn(
                         'flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-xs text-left cursor-pointer transition-colors',
                         isSelected
-                          ? 'bg-accent/70 text-foreground font-medium'
-                          : 'hover:bg-muted/60 text-foreground/80'
+                          ? 'bg-accent text-foreground font-medium'
+                          : 'hover:bg-muted text-foreground/80'
                       )}
                     >
                       <span className="truncate">{opt.label}</span>

@@ -184,7 +184,7 @@ export default function StatusesPage() {
 
       {/* ── Statuses List Card ── */}
       <div className="border border-border/80 rounded-xl bg-card overflow-hidden shadow-xs">
-        <div className="px-4 py-3 bg-muted/40 border-b border-border/60 flex items-center justify-between text-xs font-semibold text-muted-foreground select-none">
+        <div className="px-4 py-3 bg-muted border-b border-border/60 flex items-center justify-between text-xs font-semibold text-muted-foreground select-none">
           <div className="flex items-center gap-3">
             <span className="w-6 text-center">#</span>
             <span>Status Name</span>
@@ -204,12 +204,12 @@ export default function StatusesPage() {
             return (
               <div
                 key={colId}
-                className="px-4 py-3.5 flex items-center justify-between hover:bg-muted/30 transition-colors group"
+                className="px-4 py-3.5 flex items-center justify-between hover:bg-muted transition-colors group"
               >
                 {/* Left: Index, Color Dot, Title, Badge */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="flex items-center gap-1 w-6 text-muted-foreground text-xs font-mono justify-center">
-                    <span className="text-[11px] font-medium">{index + 1}</span>
+                    <span className="text-11 font-medium">{index + 1}</span>
                   </div>
 
                   <span
@@ -222,7 +222,7 @@ export default function StatusesPage() {
                   </span>
 
                   {col.isDefault && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
+                    <span className="text-10 font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
                       Default
                     </span>
                   )}

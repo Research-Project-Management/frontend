@@ -142,7 +142,7 @@ export function ColumnFormModal({
             </div>
           </div>
 
-          <div className="px-6 py-4 bg-muted/30 flex flex-row items-center justify-end gap-2.5 border-t border-border">
+          <div className="px-6 py-4 bg-muted flex flex-row items-center justify-end gap-2.5 border-t border-border">
             <Button
               type="button"
               variant="ghost"
@@ -213,7 +213,7 @@ export function DeleteColumnModal({
           </DialogHeader>
         </div>
 
-        <div className="px-6 py-3.5 bg-muted/30 border-t border-border flex items-center justify-end gap-2.5">
+        <div className="px-6 py-3.5 bg-muted border-t border-border flex items-center justify-end gap-2.5">
           <Button
             type="button"
             variant="outline"

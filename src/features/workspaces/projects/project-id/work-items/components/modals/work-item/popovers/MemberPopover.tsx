@@ -41,7 +41,7 @@ export function MemberPopover({
           variant="outline"
           size="sm"
           className={cn(
-            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted/50 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
+            'h-7 px-2.5 text-xs font-medium rounded-md border border-border/70 bg-muted hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0',
             actionBtnClass,
             open && 'bg-muted border-border'
           )}
@@ -96,8 +96,8 @@ export function MemberPopover({
                       onOpenChange(false);
                     }}
                     className={cn(
-                      'w-full flex items-center gap-3 px-2 py-1.5 rounded-sm transition-colors hover:bg-accent/50 text-left cursor-pointer',
-                      assigneeId === memberUserId && 'bg-accent/50 ring-1 ring-zinc-300',
+                      'w-full flex items-center gap-3 px-2 py-1.5 rounded-sm transition-colors hover:bg-accent text-left cursor-pointer',
+                      assigneeId === memberUserId && 'bg-accent ring-1 ring-zinc-300',
                     )}
                   >
                     <Avatar className="size-6">

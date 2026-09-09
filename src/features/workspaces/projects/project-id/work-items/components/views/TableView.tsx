@@ -193,7 +193,7 @@ export function TableView({
       <div className="flex-1 overflow-auto border-t border-border/50">
         <table className="w-full text-left border-collapse text-xs">
           {/* Table Header */}
-          <thead className="sticky top-0 z-20 bg-muted/70 backdrop-blur-md border-b border-border/70 select-none">
+          <thead className="sticky top-0 z-20 bg-muted backdrop-blur-md border-b border-border/70 select-none">
             <tr className="h-9 font-semibold text-muted-foreground">
               <th className="w-9 px-3 text-center">
                 <Checkbox
@@ -330,7 +330,7 @@ export function TableView({
                   key={task.id}
                   onClick={() => onEditCard(task)}
                   className={cn(
-                    'h-10 hover:bg-muted/50 cursor-pointer transition-colors group',
+                    'h-10 hover:bg-muted cursor-pointer transition-colors group',
                     isSelected && 'bg-primary/5 hover:bg-primary/10'
                   )}
                 >
@@ -350,13 +350,13 @@ export function TableView({
                   </td>
 
                   {/* Identifier */}
-                  <td className="px-2.5 font-mono text-[11px] font-bold text-muted-foreground group-hover:text-foreground">
+                  <td className="px-2.5 font-mono text-11 font-bold text-muted-foreground group-hover:text-foreground">
                     {task.identifier || '—'}
                   </td>
 
                   {/* Issue Type */}
                   <td className="px-2.5">
-                    <div className="flex items-center gap-1 text-[11px] font-medium">
+                    <div className="flex items-center gap-1 text-11 font-medium">
                       <TypeIcon className="size-3.5 shrink-0" style={{ color: typeCfg.color }} />
                       <span className="truncate">{typeCfg.label}</span>
                     </div>
@@ -379,7 +379,7 @@ export function TableView({
                         <button
                           type="button"
                           disabled={isReadOnly}
-                          className="h-6.5 text-[11px] font-semibold border border-border/50 bg-muted/50 hover:bg-muted rounded-md px-2 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none max-w-[130px]"
+                          className="h-6.5 text-11 font-semibold border border-border/50 bg-muted hover:bg-muted rounded-md px-2 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none max-w-[130px]"
                         >
                           <span
                             className="size-2 rounded-full shrink-0"
@@ -415,7 +415,7 @@ export function TableView({
 
                   {/* Priority */}
                   <td className="px-2.5">
-                    <div className="flex items-center gap-1 text-[11px] font-medium">
+                    <div className="flex items-center gap-1 text-11 font-medium">
                       <PriorityIcon className={cn('size-3.5 shrink-0', priorityCfg.color)} />
                       <span>{priorityCfg.label}</span>
                     </div>
@@ -427,23 +427,23 @@ export function TableView({
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Avatar className="size-4.5 shrink-0">
                           <AvatarImage src={assignee.avatar} />
-                          <AvatarFallback className="text-[8px] font-bold">
+                          <AvatarFallback className="text-9 font-bold">
                             {TaskHelpers.getInitials(assignee.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate text-[11px] font-medium text-foreground">
+                        <span className="truncate text-11 font-medium text-foreground">
                           {assignee.name || 'Member'}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground/60 italic">Unassigned</span>
+                      <span className="text-11 text-muted-foreground/60 italic">Unassigned</span>
                     )}
                   </td>
 
                   {/* Story Points */}
                   <td className="px-2.5 text-center">
                     {task.storyPoints !== undefined && task.storyPoints !== null ? (
-                      <span className="inline-flex items-center justify-center font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <span className="inline-flex items-center justify-center font-mono font-bold text-10 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                         {task.storyPoints}
                       </span>
                     ) : (
@@ -456,7 +456,7 @@ export function TableView({
                     {task.dueDate ? (
                       <div
                         className={cn(
-                          'flex items-center gap-1 text-[11px] font-medium',
+                          'flex items-center gap-1 text-11 font-medium',
                           isOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'
                         )}
                       >
@@ -469,7 +469,7 @@ export function TableView({
                         </span>
                       </div>
                     ) : (
-                      <span className="text-muted-foreground/40 text-[11px]">—</span>
+                      <span className="text-muted-foreground/40 text-11">—</span>
                     )}
                   </td>
 
@@ -535,13 +535,13 @@ export function TableView({
 
             {/* Quick Add Row */}
             {!isReadOnly && isAddingNew && (
-              <tr className="bg-muted/30">
+              <tr className="bg-muted">
                 <td className="px-3 text-center">
                   <Plus className="size-3.5 text-primary mx-auto" />
                 </td>
-                <td className="px-2.5 font-mono text-[11px] text-muted-foreground">NEW</td>
+                <td className="px-2.5 font-mono text-11 text-muted-foreground">NEW</td>
                 <td className="px-2.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">Task</span>
+                  <span className="text-11 font-medium text-muted-foreground">Task</span>
                 </td>
                 <td colSpan={6} className="px-2.5 py-1.5">
                   <form onSubmit={handleQuickAddSubmit} className="flex items-center gap-2">
@@ -593,7 +593,7 @@ export function TableView({
         {/* Empty State */}
         {sortedTasks.length === 0 && !isAddingNew && (
           <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-            <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+            <div className="size-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
               <CheckSquare className="size-6" />
             </div>
             <div>
@@ -617,7 +617,7 @@ export function TableView({
       </div>
 
       {/* Footer / Status Bar */}
-      <div className="h-9 px-4 border-t border-border/60 bg-muted/30 flex items-center justify-between text-[11px] text-muted-foreground shrink-0">
+      <div className="h-9 px-4 border-t border-border/60 bg-muted flex items-center justify-between text-11 text-muted-foreground shrink-0">
         <div className="flex items-center gap-2">
           <span>{sortedTasks.length} task{sortedTasks.length === 1 ? '' : 's'}</span>
           {selectedTaskIds.length > 0 && (
@@ -632,7 +632,7 @@ export function TableView({
             variant="ghost"
             size="sm"
             onClick={() => setIsAddingNew(true)}
-            className="h-6.5 text-[11px] font-medium text-foreground hover:bg-muted gap-1 px-2 cursor-pointer"
+            className="h-6.5 text-11 font-medium text-foreground hover:bg-muted gap-1 px-2 cursor-pointer"
           >
             <Plus className="size-3" />
             <span>New Task</span>

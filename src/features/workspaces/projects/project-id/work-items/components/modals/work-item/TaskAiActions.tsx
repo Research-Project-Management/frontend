@@ -153,7 +153,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
         <Button
           variant="outline"
           size="sm"
-          className="h-6.5 px-2 text-[11px] font-medium rounded-md border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-all shadow-none"
+          className="h-6.5 px-2 text-11 font-medium rounded-md border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-all shadow-none"
         >
           <Sparkles className="size-3 text-purple-500" />
           <span>AI Copilot</span>
@@ -173,7 +173,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             type="button"
             disabled={isGenerating}
             onClick={handleBreakdown}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xs text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
           >
             {isGenerating && activeAction === 'breakdown' ? (
               <Loader2 className="size-4 animate-spin text-purple-500" />
@@ -182,7 +182,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             )}
             <div className="min-w-0">
               <div className="font-semibold text-foreground">Auto-Breakdown Subtasks</div>
-              <div className="text-[11px] text-muted-foreground">Generate 3-5 subtasks from issue title</div>
+              <div className="text-11 text-muted-foreground">Generate 3-5 subtasks from issue title</div>
             </div>
           </button>
 
@@ -190,7 +190,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             type="button"
             disabled={isGenerating}
             onClick={handleAcceptanceCriteria}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xs text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
           >
             {isGenerating && activeAction === 'criteria' ? (
               <Loader2 className="size-4 animate-spin text-purple-500" />
@@ -199,7 +199,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             )}
             <div className="min-w-0">
               <div className="font-semibold text-foreground">Acceptance Criteria</div>
-              <div className="text-[11px] text-muted-foreground">Generate checklist for testing/QA</div>
+              <div className="text-11 text-muted-foreground">Generate checklist for testing/QA</div>
             </div>
           </button>
 
@@ -207,7 +207,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             type="button"
             disabled={isGenerating}
             onClick={handleEnhance}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xs text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm text-xs font-medium hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-left cursor-pointer disabled:opacity-50"
           >
             {isGenerating && activeAction === 'enhance' ? (
               <Loader2 className="size-4 animate-spin text-purple-500" />
@@ -216,7 +216,7 @@ ${taskDescription || `Implementation plan and details for ${taskTitle}.`}
             )}
             <div className="min-w-0">
               <div className="font-semibold text-foreground">Enhance Description</div>
-              <div className="text-[11px] text-muted-foreground">Format with clear sections & notes</div>
+              <div className="text-11 text-muted-foreground">Format with clear sections & notes</div>
             </div>
           </button>
         </div>

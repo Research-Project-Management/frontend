@@ -1,12 +1,15 @@
 import type { NextConfig } from 'next';
 
+const isStandalone =
+  process.env.STANDALONE === 'true' || process.env.DOCKER_BUILD === 'true';
+
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: false,
   poweredByHeader: false,
   compress: true,
-  output: process.env.VERCEL ? undefined : 'standalone',
-  serverExternalPackages: ['pdfjs-dist', 'canvas'],
+  output: isStandalone ? 'standalone' : undefined,
+  serverExternalPackages: ['pdfjs-dist'],
   allowedDevOrigins: [
     'localhost:2915',
     '127.0.0.1:2915',
@@ -61,7 +64,10 @@ const nextConfig: NextConfig = {
       'lucide-react',
       'framer-motion',
       'date-fns',
-      '@radix-ui/react-icons',
+      '@tanstack/react-query',
+      'recharts',
+      'katex',
+      '@dnd-kit/core',
     ],
   },
 

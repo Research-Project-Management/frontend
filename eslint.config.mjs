@@ -6,18 +6,16 @@ const eslintConfig = [
   {
     ignores: [
       '.next/**',
-      '.next*/**',
       'node_modules/**',
       'dist/**',
       'out/**',
       'public/**',
+      '.turbo/**',
       '.playwright/**',
       'playwright-report/**',
       'test-results/**',
-      '*flux-next-cache*/**',
-      '**/*flux-next-cache*/**',
-      'C:/**',
-      '**/C:/**',
+      'coverage/**',
+      '*.tsbuildinfo',
     ],
   },
   {

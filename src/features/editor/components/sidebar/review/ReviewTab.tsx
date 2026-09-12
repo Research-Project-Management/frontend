@@ -69,7 +69,7 @@ function Avatar({
     <div
       className={`size-${size} rounded-full bg-primary/10 flex items-center justify-center shrink-0`}
     >
-      <User className={`size-${Math.round(size * 0.55)} text-primary`} />
+      <User className={`size-${Math.round(size * 0.55)} text-primary shrink-0`} />
     </div>
   );
 }
@@ -482,7 +482,7 @@ export default function ReviewTab({ onClose }: { onClose?: () => void }) {
                 <button
                   type="submit"
                   disabled={createMutation.isPending || isSubmitting}
-                  className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
                   {createMutation.isPending ? (
                     <Loader2 className="size-3 animate-spin shrink-0" />

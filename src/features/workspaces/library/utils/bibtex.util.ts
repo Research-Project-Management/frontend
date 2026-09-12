@@ -1,4 +1,4 @@
-import type { Paper, CatalogItem } from '../types/library.types';
+import type { Paper, Item } from '../types/library.types';
 import { normalizeAuthors, cleanDoi } from './author-doi.util';
 
 // ── BibTeX Citation Engine ────────────────────────────────────────────────────
@@ -7,7 +7,7 @@ import { normalizeAuthors, cleanDoi } from './author-doi.util';
  * Generates a BibTeX-standard citation key.
  * Format: LastName + Year + FirstSignificantTitleWord (e.g. "he2016deep").
  */
-export function generateCitationKey(paper?: Partial<Paper> | CatalogItem | null): string {
+export function generateCitationKey(paper?: Partial<Item> | null): string {
   if (!paper) return 'refpaper';
   if (paper.citationKey && paper.citationKey.trim()) {
     return paper.citationKey.trim().replace(/\s+/g, '');
@@ -100,7 +100,7 @@ export function unescapeLatexChars(text: string): string {
     .replace(/\\textbackslash\{\}/g, '\\');
 }
 
-export function convertToBibTeX(paper: CatalogItem): string {
+export function convertToBibTeX(paper: Item): string {
   const entryType = getBibTeXEntryType(paper);
   const citationKey = generateCitationKey(paper);
   const authors = normalizeAuthors(paper.authors, (paper as any)?.creators);
@@ -191,7 +191,7 @@ export function parseBibTeX(bibtexString: string): Partial<Paper>[] {
   return results;
 }
 
-export function downloadBibTeXFile(paper: CatalogItem, filename?: string): void {
+export function downloadBibTeXFile(paper: Item, filename?: string): void {
   const content = convertToBibTeX(paper);
   const name = filename || `${getPaperCitationKey(paper)}.bib`;
   const blob = new Blob([content], { type: 'application/x-bibtex;charset=utf-8;' });
@@ -206,13 +206,13 @@ export function downloadBibTeXFile(paper: CatalogItem, filename?: string): void 
 }
 
 export class BibtexEngine {
-  static convert(paper: CatalogItem): string {
+  static convert(paper: Item): string {
     return convertToBibTeX(paper);
   }
   static parse(bibtexString: string): Partial<Paper>[] {
     return parseBibTeX(bibtexString);
   }
-  static download(paper: CatalogItem, filename?: string): void {
+  static download(paper: Item, filename?: string): void {
     downloadBibTeXFile(paper, filename);
   }
 }

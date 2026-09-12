@@ -6,20 +6,28 @@ import {
   workspaceKeys,
   fetchWorkspaceById,
   fetchAllWorkspaces,
+  createWorkspace,
   updateWorkspaceById,
   deleteWorkspaceById,
 } from '../services/workspace.service';
-import type { WorkspaceListResponse, WorkspaceDetailResponse, WorkspacePatch } from '../services/workspace.service';
-import type { Workspace } from '@/features/setup/types/workspace.types';
+import type {
+  WorkspaceListResponse,
+  WorkspaceDetailResponse,
+  CreateWorkspaceBody,
+  WorkspacePatch,
+} from '../services/workspace.service';
+import type { Workspace } from '../types/workspace.types';
 
 
 
 // ── useWorkspace ──────────────────────────────────────────────────────────────
-// Reads current workspaceId from URL params automatically.
+// Reads current workspaceId from URL params or falls back to user default workspace.
 
 export const useWorkspace = (explicitWorkspaceId?: string) => {
   const params = useParams<{ workspaceId?: string }>();
-  const workspaceId = explicitWorkspaceId || params?.workspaceId;
+  const { data: listData } = useWorkspaces();
+  const defaultWs = listData?.workspaces?.[0];
+  const workspaceId = explicitWorkspaceId || params?.workspaceId || defaultWs?.url || defaultWs?.id;
   const { data, isLoading, isError } = useQuery({
     queryKey: workspaceKeys.detail(workspaceId!),
     queryFn: ({ signal }) => fetchWorkspaceById(workspaceId!, signal),
@@ -27,11 +35,11 @@ export const useWorkspace = (explicitWorkspaceId?: string) => {
   });
 
   const pData = data as any;
-  const workspace = pData?.workspace ?? pData?.data?.workspace ?? (pData?.id ? pData : undefined);
+  const workspace = pData?.workspace ?? pData?.data?.workspace ?? (pData?.id ? pData : defaultWs);
 
   return {
     workspace: workspace as Workspace | undefined,
-    yourRole: pData?.yourRole,
+    yourRole: pData?.yourRole ?? 'owner',
     isLoading,
     isError,
   };
@@ -80,6 +88,16 @@ export const useWorkspaceById = (workspaceUrl: string) => {
 };
 
 // ── Mutations ─────────────────────────────────────────────────────────────────
+
+export const useCreateWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateWorkspaceBody) => createWorkspace(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+    },
+  });
+};
 
 export const useUpdateWorkspace = () => {
   const queryClient = useQueryClient();

@@ -5,7 +5,7 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from "@/shared/lib/api";
 import { API_BASE_URL } from '@/config/env';
-import { generateThumbnail } from '@/shared/utils/file';
+import { generateThumbnail } from "@/shared/lib/file-client";
 import type { StorageItem, StorageResponse, UploadFileParams, CreateFileRecordParams, CreateFolderParams } from '@/features/workspaces/storage/types/storage.types';
 
 export interface FileQueryParams {

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ChevronLeft,
   Download,
+  FileDown,
   FileJson,
   Loader2,
   PanelRightClose,
@@ -13,10 +15,12 @@ import {
   Pencil,
   RefreshCcw,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Separator } from '@/shared/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+import { toast } from 'sonner';
+import { downloadAnnotatedPdf } from '@/features/workspaces/library/services/export.service';
+import { Button } from "@/shared/components/ui";
+import { Separator } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { normalizeAuthors } from '../utils/reader.util';
 import { documentRenameFormSchema } from '../schemas/reader.schema';
 import type { ReaderDocument, ReaderPanel, DocumentRenameFormData } from '../types/reader.types';
@@ -113,9 +117,31 @@ export default function Topbar({
   onUpdateTitle,
   onBack,
 }: TopbarProps) {
+  const params = useParams();
+  const workspaceId = (params?.workspaceId as string) || '';
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isExportingAnnotated, setIsExportingAnnotated] = useState(false);
   const ragStatus = paper?.ragStatus ?? 'idle';
   const authors = paper ? normalizeAuthors(paper.authors, paper.creators) : [];
+
+  const handleExportAnnotatedPdf = async () => {
+    if (!paper?.id || !workspaceId) return;
+    try {
+      setIsExportingAnnotated(true);
+      await downloadAnnotatedPdf(
+        workspaceId,
+        paper.id,
+        `${paper.title || 'document'}-annotated.pdf`,
+      );
+      toast.success('Annotated PDF downloaded');
+    } catch (err: any) {
+      toast.error('Failed to export annotated PDF', {
+        description: err?.message || 'Please verify that the document has annotations.',
+      });
+    } finally {
+      setIsExportingAnnotated(false);
+    }
+  };
 
   const handleTitleSubmit = async (newTitle: string) => {
     setIsEditingTitle(false);
@@ -136,7 +162,7 @@ export default function Topbar({
                 size="icon-sm"
                 onClick={onBack}
                 aria-label="Back to library"
-                className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm"
+                className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-md"
               >
                 <ChevronLeft className="size-4 text-foreground shrink-0" />
               </Button>
@@ -196,7 +222,7 @@ export default function Topbar({
             size="sm"
             onClick={onReindex}
             disabled={isReindexing}
-            className="h-7 text-xs font-medium gap-1.5 px-2 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm"
+            className="h-7 text-xs font-medium gap-1.5 px-2 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-md"
           >
             {isReindexing ? <Loader2 className="size-3 animate-spin shrink-0" /> : <RefreshCcw className="size-3 shrink-0" />}
             <span>{ragStatus === 'failed' ? 'Retry index' : 'Index'}</span>
@@ -208,13 +234,40 @@ export default function Topbar({
           <TooltipProvider delayDuration={500}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm" asChild>
+                <Button variant="ghost" size="icon-sm" className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-md" asChild>
                   <a href={paperUrl} download={paper?.filename || 'document.pdf'} aria-label="Download document">
                     <Download className="size-3.5 shrink-0" />
                   </a>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">Download document</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {/* Download Annotated PDF */}
+        {paper && (
+          <TooltipProvider delayDuration={500}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleExportAnnotatedPdf}
+                  disabled={isExportingAnnotated}
+                  className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-md"
+                  aria-label="Download Annotated PDF"
+                >
+                  {isExportingAnnotated ? (
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
+                  ) : (
+                    <FileDown className="size-3.5 shrink-0" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                Download PDF with annotations
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
@@ -228,7 +281,7 @@ export default function Topbar({
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => setBibtexOpen(true)}
-                  className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm"
+                  className="size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-md"
                   aria-label="Export BibTeX"
                 >
                   <FileJson className="size-3.5 shrink-0" />
@@ -251,7 +304,7 @@ export default function Topbar({
                 variant="ghost"
                 size="icon-sm"
                 className={cn(
-                  'size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-sm transition-colors',
+                  'size-7 text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none cursor-pointer rounded-md transition-colors',
                   activePanel && 'bg-muted text-foreground',
                 )}
                 onClick={() => setActivePanel((current: ReaderPanel | null) => (current ? null : 'ai'))}

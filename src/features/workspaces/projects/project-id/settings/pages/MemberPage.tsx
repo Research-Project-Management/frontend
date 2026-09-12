@@ -8,10 +8,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 import { toast } from 'sonner';
 import { Lead } from '../components/member/Lead';
@@ -22,7 +22,7 @@ import { Filter } from '../components/member/Filter';
 import { AddMemberDialog } from '../components/member/Dialog';
 import { useMembers } from '../hooks/use-member';
 import type { ProjectMemberItem } from '../types/member.types';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 type SortFieldType = 'name' | 'displayName' | 'email' | 'role' | 'date';
 
@@ -156,31 +156,36 @@ export default function MemberPage() {
 
   if (isLoading) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-44 rounded-lg" />
+      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
+        <Skeleton className="h-8 w-44 rounded-md" />
         <div className="space-y-4">
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md" />
         </div>
-        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-md" />
       </div>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">
+      <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">
         Error loading project members.
       </div>
     );
   }
 
   return (
-    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Members</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Members</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage researchers, principal investigators, and collaboration roles in this project.
+          </p>
+        </div>
       </div>
 
       {/* Top Settings */}
@@ -226,7 +231,7 @@ export default function MemberPage() {
               <Button
                 size="sm"
                 onClick={() => setAddDialogOpen(true)}
-                className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
+                className="h-8 px-3.5 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
               >
                 Add member
               </Button>
@@ -235,7 +240,7 @@ export default function MemberPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-border overflow-hidden bg-background">
+        <div className="rounded-md border border-border overflow-hidden bg-background">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>

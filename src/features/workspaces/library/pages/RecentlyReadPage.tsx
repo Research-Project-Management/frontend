@@ -14,20 +14,20 @@ import {
   ArrowDown,
   Trash2,
 } from 'lucide-react';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Checkbox } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/shared/components/ui/context-menu';
+} from "@/shared/components/ui";
 import Topbar from '../components/Topbar';
 import InspectorPanel from '../components/Panel';
 import AddLinkModal from '../components/modals/AddLinkModal';
@@ -36,8 +36,8 @@ import BatchBar from '../components/table/BatchBar';
 import { useLibrary } from '../hooks/use-library';
 import { useViewItems, useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '../types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item } from '../types/library.types';
 
 function formatLastReadDate(dateString?: string | null): string {
   if (!dateString) return '—';
@@ -85,9 +85,9 @@ export default function RecentlyReadPage() {
   const [search, setSearch] = useState('');
 
   const { data: viewData, isLoading } = useViewItems(workspaceId, 'recent', search);
-  const recentlyReadItems: CatalogItem[] = Array.isArray(viewData)
+  const recentlyReadItems: Item[] = Array.isArray(viewData)
     ? viewData
-    : (viewData as { items?: CatalogItem[] } | undefined)?.items || [];
+    : (viewData as { items?: Item[] } | undefined)?.items || [];
 
   const {
     sortedItems,
@@ -106,7 +106,7 @@ export default function RecentlyReadPage() {
     initialSortOrder: 'desc',
   });
 
-  const handleSelectItem = (item: CatalogItem) => {
+  const handleSelectItem = (item: Item) => {
     const itemId = item.id;
     if (selectedItemId === itemId) {
       setSelectedItemId(null);
@@ -115,19 +115,19 @@ export default function RecentlyReadPage() {
     }
   };
 
-  const handleRowClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
     handleSelectItem(item);
   };
 
-  const handleRowDoubleClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowDoubleClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
-    if (item.id && workspaceId) {
-      router.push(`/${workspaceId}/library/papers/${item.id}`);
+    if (item.id) {
+      router.push(workspaceId ? `/${workspaceId}/library/papers/${item.id}` : `/library/papers/${item.id}`);
     }
   };
 
@@ -341,7 +341,7 @@ export default function RecentlyReadPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
-                                      onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)}
+                                      onClick={() => router.push(workspaceId ? `/${workspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`)}
                                       className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <BookOpen className="size-3.5 text-foreground shrink-0" />
@@ -370,7 +370,7 @@ export default function RecentlyReadPage() {
                           </tr>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48 text-xs font-sans">
-                          <ContextMenuItem onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)} className="gap-2">
+                          <ContextMenuItem onClick={() => router.push(workspaceId ? `/${workspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`)} className="gap-2">
                             <BookOpen className="size-3.5 shrink-0" />
                             <span>Open in Reader</span>
                           </ContextMenuItem>

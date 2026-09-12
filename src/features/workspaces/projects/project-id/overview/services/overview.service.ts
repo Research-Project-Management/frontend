@@ -1,4 +1,4 @@
-import { apiGet } from '@/shared/lib/api';
+import { apiGet } from "@/shared/lib/api";
 import type { OverviewData } from '../types/overview.types';
 
 export const OverviewService = {

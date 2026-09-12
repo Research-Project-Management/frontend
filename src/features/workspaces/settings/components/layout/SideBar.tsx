@@ -1,25 +1,21 @@
 'use client';
 
-import { useParams, usePathname } from 'next/navigation';
-import { Users } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Puzzle, Tag } from 'lucide-react';
 import { BuildingOfficeIcon } from '../icons/BuildingOfficeIcon';
 import React, { useId } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
 import Link from 'next/link';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 export function SideBar() {
-  const params = useParams();
-  const rawId = params?.workspaceId;
-  const workspaceId = rawId && rawId !== 'undefined' ? rawId : '';
   const pathname = usePathname();
   const id = useId();
 
-  const basePath = `/${workspaceId}/settings`;
-
   const sidebarItems = [
-    { label: 'General', icon: BuildingOfficeIcon, to: basePath },
-    { label: 'Members', icon: Users, to: `${basePath}/members` },
+    { label: 'General', icon: BuildingOfficeIcon, to: '/settings' },
+    { label: 'Labels', icon: Tag, to: '/settings/labels' },
+    { label: 'Integrations', icon: Puzzle, to: '/settings/integrations' },
   ];
 
   return (
@@ -37,15 +33,17 @@ export function SideBar() {
         >
           {sidebarItems.map((item) => {
             const isActive =
-              pathname === item.to ||
-              (item.to !== basePath && pathname.startsWith(item.to + '/'));
+              item.to === '/settings'
+                ? pathname === '/settings'
+                : pathname === item.to || pathname.startsWith(item.to + '/');
+
             return (
               <Link
                 href={item.to}
                 key={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
+                  'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
                   isActive
                     ? 'bg-muted text-foreground font-medium'
                     : 'text-foreground hover:bg-muted font-normal',

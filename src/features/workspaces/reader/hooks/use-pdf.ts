@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchPdfBlob } from '../services/items.service';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 
 export interface UsePdfReturn {
   blobUrl: string | null;

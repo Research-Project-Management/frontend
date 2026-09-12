@@ -1,5 +1,5 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { apiGet, apiPost } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 import type { FormattedCitation, CslStyle, ReferenceData } from '../types/library.types';
 import { cleanDoi } from '../utils/author-doi.util';
 
@@ -46,10 +46,11 @@ export async function fetchReferenceByDoi(
       { doi: normalizedDoi },
       { silent: true },
     );
-    if ('found' in referenceResponse && referenceResponse.found === false) return null;
-    if ('metadata' in referenceResponse && referenceResponse.metadata) return referenceResponse.metadata;
-    if ('work' in referenceResponse && referenceResponse.work) return referenceResponse.work;
-    if ('data' in referenceResponse && referenceResponse.data) return referenceResponse.data;
+    const res = referenceResponse as any;
+    if (res?.found === false) return null;
+    if (res?.metadata) return res.metadata as ReferenceData;
+    if (res?.work) return res.work as ReferenceData;
+    if (res?.data) return res.data as ReferenceData;
     return referenceResponse as ReferenceData;
   } catch (error: any) {
     if (error?.statusCode === 404 || error?.response?.status === 404) {
@@ -72,10 +73,11 @@ export async function fetchReferenceByDoi(
         doiUrl,
         { silent: true },
       );
-      if ('found' in fallback && fallback.found === false) return null;
-      if ('metadata' in fallback && fallback.metadata) return fallback.metadata;
-      if ('work' in fallback && fallback.work) return fallback.work;
-      if ('data' in fallback && fallback.data) return fallback.data;
+      const fb = fallback as any;
+      if (fb?.found === false) return null;
+      if (fb?.metadata) return fb.metadata as ReferenceData;
+      if (fb?.work) return fb.work as ReferenceData;
+      if (fb?.data) return fb.data as ReferenceData;
       return fallback as ReferenceData;
     } catch (fallbackError: any) {
       if (
@@ -295,6 +297,21 @@ export const CitationService = {
         style,
       },
     ),
+
+  /**
+   * Format raw item metadata into citation string without requiring item persistence
+   * Backed by POST /citation/format
+   */
+  formatRawItem: (
+    workspaceId: string,
+    item: Record<string, any>,
+    styleId: string = 'apa-7th',
+    index: number = 1,
+  ) =>
+    apiPost<FormattedCitation>(
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/citation/format`,
+      { item, styleId, index },
+    ),
 };
 
 // Aliases
@@ -302,4 +319,6 @@ export const ReferenceService = CitationService;
 export const formatCslCitation = CitationService.formatCitation;
 export const batchFormatCslCitations = CitationService.batchFormat;
 export const resolveAcademicQuery = CitationService.resolve;
+export const formatRawCitation = CitationService.formatRawItem;
+
 

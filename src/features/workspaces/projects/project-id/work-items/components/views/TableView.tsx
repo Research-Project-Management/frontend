@@ -1,40 +1,91 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  ArrowUpDown,
+  Users,
+  Tag,
+  Paperclip,
+  Timer,
+  CalendarClock,
+  Calendar,
+  User,
+  Link2,
+  Layers,
   ArrowUp,
   ArrowDown,
   Plus,
-  MoreHorizontal,
-  Copy,
-  Trash2,
-  UserPlus,
-  UserMinus,
+  X,
+  FileText,
+  SlidersHorizontal,
+  Search,
   RotateCcw,
-  Clock,
-  Hash,
-  Sparkles,
-  Bug,
-  CheckSquare,
-  TrendingUp,
-  Zap,
-  Tag,
-  AlertCircle,
-  Minus,
-  CircleSlash,
-  ChevronDown,
-  Check,
+  MoreHorizontal,
+  Pencil,
+  Copy,
+  ExternalLink,
+  Archive,
+  Trash2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { cn } from '@/shared/lib/utils';
-import type { Task, Column as ColumnType, TaskPriority, TaskIssueType } from '../../types/work-item.types';
-import { ISSUE_TYPE_CONFIG, resolveTaskColumnId, resolveTaskColumnColor } from '../../types/work-item.types';
-import { TaskHelpers } from '../../utils/work-item.util';
+import {
+  Button,
+  Input,
+  Checkbox,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
+import { useCopyTaskText } from '../../hooks/use-tasks';
+import { StatusIcon } from '../StatusIcon';
+import { TaskHelpers } from '../../utils/util';
+import type { Task, Column as ColumnType, Cycle, ProjectMember, Priority } from '../../types/types';
+
+// ── 1. Table Types ───────────────────────────────────────────────────────────
+
+export type TablePropertyKey =
+  | 'state'
+  | 'priority'
+  | 'assignees'
+  | 'labels'
+  | 'attach'
+  | 'cycle'
+  | 'startDate'
+  | 'dueDate'
+  | 'createdOn'
+  | 'createdBy'
+  | 'updatedOn'
+  | 'link'
+  | 'attachment'
+  | 'subtask'
+  | 'subWorkItem';
+
+export type TableSortField =
+  | 'identifier'
+  | 'title'
+  | 'state'
+  | 'priority'
+  | 'dueDate'
+  | 'startDate'
+  | 'createdOn'
+  | 'updatedOn';
+
+export type TableSortOrder = 'asc' | 'desc';
+
+export interface TablePropertyConfig {
+  key: TablePropertyKey;
+  label: string;
+  icon: React.ElementType;
+  defaultVisible: boolean;
+  minWidth?: number;
+}
 
 export interface TableViewProps {
   tasks: Task[];
@@ -42,68 +93,1178 @@ export interface TableViewProps {
   currentUserId?: string | null;
   currentUserAvatar?: string;
   projectId?: string;
-  onAddCard: (columnId: string, title?: string) => void;
-  onEditCard: (card: Task) => void;
-  onDeleteCard: (card: Task) => void;
-  onDuplicateCard: (card: Task) => void;
-  onJoinCard: (card: Task) => void;
-  onLeaveCard: (card: Task) => void;
-  onRemoveFromCycle?: (card: Task) => void;
+  workspaceId?: string;
+  cycles?: Cycle[];
+  members?: ProjectMember[];
+  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
+  onEditCard: (task: Task) => void;
+  onDeleteCard: (task: Task) => void;
+  onDuplicateCard: (task: Task) => void;
+  onJoinCard: (task: Task) => void;
+  onLeaveCard: (task: Task) => void;
+  onRemoveFromCycle?: (task: Task) => void;
   onMoveCard: (taskId: string, newColumnId: string) => void;
+  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
   isReadOnly?: boolean;
+  selectedTaskIds?: string[];
+  onToggleSelectTask?: (id: string) => void;
+  onSelectAllTasks?: (ids: string[]) => void;
 }
 
-type SortField = 'identifier' | 'title' | 'status' | 'priority' | 'type' | 'dueDate' | 'storyPoints';
-type SortOrder = 'asc' | 'desc';
+// ── 2. Table Custom Icons ────────────────────────────────────────────────────
 
-const ISSUE_TYPE_ICONS: Record<TaskIssueType, React.ElementType> = {
-  task: CheckSquare,
-  bug: Bug,
-  feature: Sparkles,
-  improvement: TrendingUp,
-  epic: Zap,
+export function PriorityNoneIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
+      aria-label="None"
+    >
+      <circle cx="8" cy="8" r="6.25" />
+      <line x1="3.5" y1="3.5" x2="12.5" y2="12.5" />
+    </svg>
+  );
+}
+
+export function PriorityLowIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={cn("size-3.5 shrink-0 text-blue-500", className)}
+      aria-label="Low"
+    >
+      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
+      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" opacity="0.15" />
+      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" opacity="0.15" />
+    </svg>
+  );
+}
+
+export function PriorityMediumIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={cn("size-3.5 shrink-0 text-amber-500", className)}
+      aria-label="Medium"
+    >
+      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
+      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" />
+      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" opacity="0.15" />
+    </svg>
+  );
+}
+
+export function PriorityHighIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={cn("size-3.5 shrink-0 text-orange-500", className)}
+      aria-label="High"
+    >
+      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
+      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" />
+      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" />
+    </svg>
+  );
+}
+
+export function PriorityUrgentIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      className={cn("size-3 shrink-0 text-red-500", className)}
+      aria-label="Urgent"
+    >
+      <circle cx="8" cy="8" r="6.25" />
+      <line x1="8" y1="4.5" x2="8" y2="8.5" strokeLinecap="round" />
+      <circle cx="8" cy="11.25" r="0.75" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function PriorityHeaderIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
+      aria-label="Priority"
+    >
+      <rect x="2.5" y="10.5" width="2.5" height="3.5" rx="0.5" />
+      <rect x="6.75" y="7" width="2.5" height="7" rx="0.5" />
+      <rect x="11" y="3.5" width="2.5" height="10.5" rx="0.5" />
+    </svg>
+  );
+}
+
+export function StateHeaderIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
+      aria-label="State"
+    >
+      <circle cx="8" cy="8" r="6.25" />
+      <circle cx="8" cy="8" r="2.5" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+export function ModulesGridIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className={cn("size-3.5 shrink-0 text-muted-foreground", className)}
+      aria-label="Modules"
+    >
+      <rect x="2.5" y="2.5" width="4" height="4" rx="1" />
+      <rect x="9.5" y="2.5" width="4" height="4" rx="1" />
+      <rect x="2.5" y="9.5" width="4" height="4" rx="1" />
+      <rect x="9.5" y="9.5" width="4" height="4" rx="1" />
+    </svg>
+  );
+}
+
+// ── 3. Table Constants ───────────────────────────────────────────────────────
+
+export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v3';
+
+export const TABLE_PROPERTIES: TablePropertyConfig[] = [
+  { key: 'state', label: 'State', icon: StateHeaderIcon, defaultVisible: true, minWidth: 130 },
+  { key: 'priority', label: 'Priority', icon: PriorityHeaderIcon, defaultVisible: true, minWidth: 110 },
+  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 130 },
+  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 130 },
+  { key: 'attach', label: 'Attach', icon: ModulesGridIcon, defaultVisible: true, minWidth: 140 },
+  { key: 'cycle', label: 'Cycle', icon: Timer, defaultVisible: false, minWidth: 130 },
+  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 120 },
+  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: false, minWidth: 120 },
+  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 120 },
+  { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 130 },
+  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 120 },
+  { key: 'link', label: 'Link', icon: Link2, defaultVisible: false, minWidth: 110 },
+  { key: 'attachment', label: 'Attachment', icon: Paperclip, defaultVisible: false, minWidth: 120 },
+  { key: 'subtask', label: 'Subtasks', icon: Layers, defaultVisible: false, minWidth: 130 },
+  { key: 'subWorkItem', label: 'Subtasks', icon: Layers, defaultVisible: false, minWidth: 130 },
+];
+
+export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
+  state: true,
+  priority: true,
+  assignees: true,
+  labels: true,
+  attach: true,
+  cycle: false,
+  startDate: false,
+  dueDate: false,
+  createdOn: false,
+  createdBy: false,
+  updatedOn: false,
+  link: false,
+  attachment: false,
+  subtask: false,
+  subWorkItem: false,
 };
 
-const PRIORITY_ICONS: Record<TaskPriority, { icon: React.ElementType; color: string; label: string }> = {
-  urgent: { icon: AlertCircle, color: 'text-red-500', label: 'Urgent' },
-  high: { icon: ArrowUp, color: 'text-orange-500', label: 'High' },
-  medium: { icon: Minus, color: 'text-amber-500', label: 'Medium' },
-  low: { icon: ArrowDown, color: 'text-blue-500', label: 'Low' },
-  none: { icon: CircleSlash, color: 'text-muted-foreground', label: 'None' },
-};
+// ── 4. Table Attach Cell ─────────────────────────────────────────────────────
+
+export function TableAttachCell({
+  task,
+  onEditCard,
+}: {
+  task: Task;
+  onEditCard?: (task: Task) => void;
+}) {
+  const rawAttachments = task.attachments;
+  const attachmentsList: Array<{ id: string; name: string; url?: string }> = Array.isArray(rawAttachments)
+    ? rawAttachments
+    : rawAttachments && typeof rawAttachments === 'object'
+    ? [
+        ...((rawAttachments as any).files || []).map((fileItem: any) => ({
+          id: fileItem.id || fileItem.url,
+          name: fileItem.name || 'File',
+          url: fileItem.url,
+        })),
+        ...((rawAttachments as any).pages || []).map((pageItem: any) => ({
+          id: pageItem.id,
+          name: pageItem.title || 'Page',
+          url: '#',
+        })),
+        ...((rawAttachments as any).papers || []).map((paperItem: any) => ({
+          id: paperItem.id,
+          name: paperItem.title || 'Paper',
+          url: '#',
+        })),
+        ...((rawAttachments as any).links || []).map((linkItem: any) => ({
+          id: linkItem.url || linkItem.title,
+          name: linkItem.title || linkItem.url,
+          url: linkItem.url,
+        })),
+      ]
+    : [];
+
+  const hasAttachments = attachmentsList.length > 0;
+
+  if (hasAttachments) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild onClick={(event) => event.stopPropagation()}>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <ModulesGridIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="font-medium text-11">{attachmentsList.length}</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-56 p-2 text-xs bg-popover border-border shadow-none"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border">
+            <span className="font-medium text-foreground">Attachments ({attachmentsList.length})</span>
+            {onEditCard && (
+              <button
+                type="button"
+                onClick={() => onEditCard(task)}
+                className="text-11 text-primary hover:underline"
+              >
+                View all
+              </button>
+            )}
+          </div>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {attachmentsList.map((attachment) => (
+              <a
+                key={attachment.id}
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground truncate transition-colors"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{attachment.name}</span>
+              </a>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <div
+      onClick={(event) => {
+        event.stopPropagation();
+        if (onEditCard) onEditCard(task);
+      }}
+      className="group/attach flex items-center h-6 cursor-pointer text-muted-foreground hover:text-foreground"
+    >
+      <div className="opacity-0 group-hover/row:opacity-100 group-hover/attach:opacity-100 transition-opacity duration-150 flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground">
+        <Plus className="h-3 w-3 shrink-0" />
+        <span className="text-10">Attach</span>
+      </div>
+    </div>
+  );
+}
+
+// ── 5. Table Action Menu ─────────────────────────────────────────────────────
+
+export function TableActionMenu({
+  task,
+  projectId = '',
+  workspaceId = '',
+  onEditCard,
+  onDuplicateCard,
+  onDeleteCard,
+}: {
+  task: Task;
+  projectId?: string;
+  workspaceId?: string;
+  onEditCard: (task: Task) => void;
+  onDuplicateCard: (task: Task) => void;
+  onDeleteCard: (task: Task) => void;
+}) {
+  const copyTaskText = useCopyTaskText();
+
+  const handleCopyLink = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/workspaces/${workspaceId}/projects/${projectId}/work-items?taskId=${task.id}`
+        : '';
+    if (url) {
+      copyTaskText(url, 'Link copied to clipboard');
+    }
+  };
+
+  const handleOpenInNewTab = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (typeof window !== 'undefined') {
+      const url = `/workspaces/${workspaceId}/projects/${projectId}/work-items?taskId=${task.id}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted p-0 rounded-sm"
+        >
+          <MoreHorizontal className="h-4 w-4 shrink-0" />
+          <span className="sr-only">Work item actions</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48 text-xs py-1">
+        <DropdownMenuItem
+          onClick={(event) => {
+            event.stopPropagation();
+            onEditCard(task);
+          }}
+          className="gap-2 cursor-pointer"
+        >
+          <Pencil className="size-3.5 text-muted-foreground shrink-0" />
+          <span>Edit</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={(event) => {
+            event.stopPropagation();
+            onDuplicateCard(task);
+          }}
+          className="gap-2 cursor-pointer"
+        >
+          <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span>Make a copy</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleCopyLink} className="gap-2 cursor-pointer">
+          <Link2 className="size-3.5 text-muted-foreground shrink-0" />
+          <span>Copy link</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleOpenInNewTab} className="gap-2 cursor-pointer">
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span>Open in new tab</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled
+          className="gap-2 text-muted-foreground cursor-not-allowed"
+          title="Only completed or cancelled work items can be archived"
+        >
+          <Archive className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span>Archive</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={(event) => {
+            event.stopPropagation();
+            onDeleteCard(task);
+          }}
+          className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+        >
+          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+          <span>Delete</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ── 6. Table Column Properties Popover ───────────────────────────────────────
+
+export function TableColumnPropertiesPopover({
+  visibleProperties,
+  onToggleProperty,
+  onResetProperties,
+}: {
+  visibleProperties: Record<TablePropertyKey, boolean>;
+  onToggleProperty: (key: TablePropertyKey) => void;
+  onResetProperties: () => void;
+}) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProperties = TABLE_PROPERTIES.filter((propertyItem) =>
+    propertyItem.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const activeCount = Object.values(visibleProperties).filter(Boolean).length;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-2 border-border bg-background text-xs font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <SlidersHorizontal className="size-3.5 shrink-0" />
+          <span>Display</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-10 font-medium text-muted-foreground">
+            {activeCount}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-2 border-border bg-popover">
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-border px-1">
+          <span className="text-xs font-semibold text-foreground">Display properties</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onResetProperties}
+            className="h-6 px-1.5 text-11 text-muted-foreground hover:text-foreground gap-1"
+          >
+            <RotateCcw className="h-3 w-3 shrink-0" />
+            Reset
+          </Button>
+        </div>
+
+        <div className="relative mb-2 px-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search properties..."
+            className="h-7 pl-7 text-xs bg-background border-border"
+          />
+        </div>
+
+        <div className="max-h-60 overflow-y-auto space-y-0.5 px-1 py-0.5">
+          {filteredProperties.map((propertyItem) => {
+            const Icon = propertyItem.icon;
+            const isChecked = Boolean(visibleProperties[propertyItem.key]);
+
+            return (
+              <label
+                key={propertyItem.key}
+                className="flex items-center justify-between px-2 py-1.5 rounded-sm text-xs cursor-pointer hover:bg-muted transition-colors text-foreground select-none"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span>{propertyItem.label}</span>
+                </div>
+                <Checkbox
+                  checked={isChecked}
+                  onCheckedChange={() => onToggleProperty(propertyItem.key)}
+                  className="h-3.5 w-3.5"
+                />
+              </label>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── 7. Table Header ──────────────────────────────────────────────────────────
+
+export function TableHeader({
+  visibleProperties,
+  onToggleProperty,
+  onResetProperties,
+  isAllSelected,
+  isSomeSelected,
+  onToggleSelectAll,
+  sortField,
+  sortOrder,
+  onSort,
+}: {
+  visibleProperties: Record<TablePropertyKey, boolean>;
+  onToggleProperty: (key: TablePropertyKey) => void;
+  onResetProperties: () => void;
+  isAllSelected: boolean;
+  isSomeSelected: boolean;
+  onToggleSelectAll: () => void;
+  sortField?: TableSortField;
+  sortOrder?: TableSortOrder;
+  onSort?: (field: TableSortField) => void;
+}) {
+  const activeProperties = TABLE_PROPERTIES.filter((propertyItem) => visibleProperties[propertyItem.key]);
+
+  const renderSortIndicator = (field: TableSortField) => {
+    if (sortField !== field) return null;
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="h-3 w-3 text-foreground ml-1 shrink-0" />
+    ) : (
+      <ArrowDown className="h-3 w-3 text-foreground ml-1 shrink-0" />
+    );
+  };
+
+  return (
+    <div
+      role="row"
+      className="flex items-center h-9 border-b border-border bg-secondary text-xs text-muted-foreground font-normal select-none w-full"
+    >
+      <div
+        role="columnheader"
+        className="relative flex items-center min-w-[320px] max-w-[500px] flex-1 px-3 group/header"
+      >
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:opacity-100 sm:opacity-0 sm:group-hover/header:opacity-100 has-[[data-state=checked]]:opacity-100 transition-opacity duration-150">
+          <Checkbox
+            checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
+            onCheckedChange={onToggleSelectAll}
+            aria-label="Select all work items"
+            className="h-3.5 w-3.5 border-border data-[state=checked]:border-primary"
+          />
+        </div>
+        <span className="pl-6 text-xs font-normal text-muted-foreground select-none">
+          Work items
+        </span>
+      </div>
+
+      <div className="flex items-center">
+        {activeProperties.map((propertyItem) => {
+          const Icon = propertyItem.icon;
+          const isSortable = [
+            'state',
+            'priority',
+            'dueDate',
+            'startDate',
+            'createdOn',
+            'updatedOn',
+          ].includes(propertyItem.key);
+
+          return (
+            <div
+              key={propertyItem.key}
+              role="columnheader"
+              tabIndex={isSortable ? 0 : undefined}
+              aria-sort={sortField === propertyItem.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined}
+              aria-label={isSortable ? `Sort by ${propertyItem.label}` : propertyItem.label}
+              onKeyDown={(e) => {
+                if (isSortable && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  onSort?.(propertyItem.key as TableSortField);
+                }
+              }}
+              style={{ width: `${propertyItem.minWidth || 130}px` }}
+              onClick={() => isSortable && onSort?.(propertyItem.key as TableSortField)}
+              className={`flex items-center gap-1.5 px-3 h-9 text-xs text-muted-foreground select-none transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary ${
+                isSortable ? 'cursor-pointer hover:bg-muted hover:text-foreground' : ''
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{propertyItem.label}</span>
+              {isSortable && renderSortIndicator(propertyItem.key as TableSortField)}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="ml-auto pr-3 flex items-center">
+        <TableColumnPropertiesPopover
+          visibleProperties={visibleProperties}
+          onToggleProperty={onToggleProperty}
+          onResetProperties={onResetProperties}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── 8. Table Quick Add Row ───────────────────────────────────────────────────
+
+export function TableQuickAddRow({
+  columns,
+  defaultColumnId,
+  onAddCard,
+}: {
+  columns: ColumnType[];
+  defaultColumnId?: string;
+  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const [selectedColumnId, setSelectedColumnId] = useState<string>(
+    defaultColumnId || columns[0]?.id || ''
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isAdding) {
+      inputRef.current?.focus();
+    }
+  }, [isAdding]);
+
+  useEffect(() => {
+    if (defaultColumnId) {
+      setSelectedColumnId(defaultColumnId);
+    } else if (columns.length > 0 && !selectedColumnId) {
+      setSelectedColumnId(columns[0].id || '');
+    }
+  }, [defaultColumnId, columns, selectedColumnId]);
+
+  const activeColumn = columns.find((columnItem) => columnItem.id === selectedColumnId) || columns[0];
+
+  const handleSubmit = (event?: React.FormEvent) => {
+    if (event) event.preventDefault();
+    if (!title.trim()) return;
+
+    onAddCard(activeColumn?.id || '', title.trim());
+    setTitle('');
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSubmit();
+    } else if (event.key === 'Escape') {
+      setIsAdding(false);
+      setTitle('');
+    }
+  };
+
+  if (!isAdding) {
+    return (
+      <div className="border-t border-border bg-background">
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-2 px-6 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left font-normal select-none"
+        >
+          <Plus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span>Add work item</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-border bg-background p-2.5">
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center gap-2 max-w-2xl bg-background border border-border rounded-md p-1.5 focus-within:border-ring transition-colors"
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+            >
+              <StatusIcon
+                title={activeColumn?.title}
+                group={activeColumn?.slug || activeColumn?.title}
+                color={activeColumn?.accentColor}
+                className="h-3.5 w-3.5 shrink-0"
+              />
+              <span className="max-w-[90px] truncate">
+                {activeColumn?.title || 'State'}
+              </span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44 text-xs py-1">
+            {columns.map((columnItem) => (
+              <DropdownMenuItem
+                key={columnItem.id}
+                onClick={() => columnItem.id && setSelectedColumnId(columnItem.id)}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <StatusIcon
+                  title={columnItem.title}
+                  group={columnItem.slug || columnItem.title}
+                  color={columnItem.accentColor}
+                  className="h-3.5 w-3.5 shrink-0"
+                />
+                <span>{columnItem.title}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Input
+          ref={inputRef}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Work item title..."
+          className="h-7 border-0 shadow-none focus-visible:ring-0 text-xs px-1 bg-transparent"
+        />
+
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!title.trim()}
+            className="h-7 px-2.5 text-xs font-medium"
+          >
+            Add
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setIsAdding(false);
+              setTitle('');
+            }}
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5 shrink-0" />
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ── 9. Table Row ─────────────────────────────────────────────────────────────
+
+export function TableRow({
+  task,
+  columns,
+  visibleProperties,
+  isSelected,
+  onToggleSelect,
+  onEditCard,
+  onDeleteCard,
+  onDuplicateCard,
+  onMoveCard,
+  onUpdateCard,
+  members = [],
+  cycles = [],
+  projectId = '',
+  workspaceId = '',
+}: {
+  task: Task;
+  columns: ColumnType[];
+  visibleProperties: Record<TablePropertyKey, boolean>;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+  onEditCard: (task: Task) => void;
+  onDeleteCard: (task: Task) => void;
+  onDuplicateCard: (task: Task) => void;
+  onMoveCard: (taskId: string, newColumnId: string) => void;
+  onUpdateCard?: (task: { id: string } & Partial<Task>) => void;
+  members?: ProjectMember[];
+  cycles?: Cycle[];
+  projectId?: string;
+  workspaceId?: string;
+}) {
+  const currentColumn = columns.find((columnItem) => columnItem.id === task.columnId);
+  const activeProperties = TABLE_PROPERTIES.filter((propertyItem) => visibleProperties[propertyItem.key]);
+
+  const getPriorityIcon = (priority?: Priority) => {
+    switch (priority) {
+      case 'urgent':
+        return <PriorityUrgentIcon className="h-3.5 w-3.5 shrink-0" />;
+      case 'high':
+        return <PriorityHighIcon className="h-3.5 w-3.5 shrink-0" />;
+      case 'medium':
+        return <PriorityMediumIcon className="h-3.5 w-3.5 shrink-0" />;
+      case 'low':
+        return <PriorityLowIcon className="h-3.5 w-3.5 shrink-0" />;
+      case 'none':
+      default:
+        return <PriorityNoneIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
+    }
+  };
+
+  const priorityLabels: Record<string, string> = {
+    none: 'None',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    urgent: 'Urgent',
+  };
+
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return '-';
+    try {
+      const parsedDate = new Date(dateStr);
+      return parsedDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const resolvedAssignee = TaskHelpers.resolveAssignee(task);
+  const assigneeId = TaskHelpers.resolveAssigneeId(task);
+  const memberMatch = members.find((member) => member.userId === assigneeId || member.id === assigneeId);
+
+  const assigneeName = resolvedAssignee?.name || memberMatch?.name || null;
+  const assigneeAvatar = resolvedAssignee?.avatar || memberMatch?.avatar || undefined;
+
+  const renderCellContent = (key: TablePropertyKey) => {
+    switch (key) {
+      case 'state': {
+        const title = currentColumn?.title || 'Backlog';
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left truncate"
+              >
+                <StatusIcon
+                  title={title}
+                  group={currentColumn?.slug || title}
+                  color={currentColumn?.accentColor}
+                  className="h-3.5 w-3.5 shrink-0"
+                />
+                <span className="truncate">{title}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40 text-xs py-1">
+              {columns.map((columnItem) => (
+                <DropdownMenuItem
+                  key={columnItem.id}
+                  onClick={() => columnItem.id && onMoveCard(task.id, columnItem.id)}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <StatusIcon
+                    title={columnItem.title}
+                    group={columnItem.slug || columnItem.title}
+                    color={columnItem.accentColor}
+                    className="h-3.5 w-3.5 shrink-0"
+                  />
+                  <span>{columnItem.title}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
+
+      case 'priority': {
+        const priorityKey = (task.priority || 'none') as Priority;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors w-full text-left truncate"
+              >
+                {getPriorityIcon(priorityKey)}
+                <span className="truncate">{priorityLabels[priorityKey] || 'None'}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-36 text-xs py-1">
+              {(['urgent', 'high', 'medium', 'low', 'none'] as Priority[]).map((pKey) => (
+                <DropdownMenuItem
+                  key={pKey}
+                  onClick={() => onUpdateCard?.({ id: task.id, priority: pKey })}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  {getPriorityIcon(pKey)}
+                  <span>{priorityLabels[pKey]}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      }
+
+      case 'assignees': {
+        return (
+          <div className="flex items-center gap-1.5 px-1.5 truncate">
+            {assigneeName ? (
+              <>
+                <Avatar className="h-4 w-4 shrink-0">
+                  <AvatarImage src={assigneeAvatar} />
+                  <AvatarFallback className="text-9 font-medium">
+                    {assigneeName.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-foreground truncate">{assigneeName}</span>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground italic">-</span>
+            )}
+          </div>
+        );
+      }
+
+      case 'labels': {
+        const labelList = Array.isArray(task.labels) ? task.labels : [];
+        if (labelList.length === 0) {
+          return <span className="text-xs text-muted-foreground px-1.5">-</span>;
+        }
+
+        return (
+          <div className="flex items-center gap-1 px-1.5 overflow-hidden">
+            {labelList.slice(0, 2).map((labelId) => (
+              <span
+                key={labelId}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground border border-border truncate max-w-[80px]"
+              >
+                {labelId}
+              </span>
+            ))}
+            {labelList.length > 2 && (
+              <span className="text-10 text-muted-foreground font-medium">
+                +{labelList.length - 2}
+              </span>
+            )}
+          </div>
+        );
+      }
+
+      case 'attach': {
+        return <TableAttachCell task={task} onEditCard={onEditCard} />;
+      }
+
+      case 'cycle': {
+        const currentCycle = cycles.find((cycleItem) => cycleItem.id === task.cycleId);
+        return (
+          <span className="text-xs text-muted-foreground px-1.5 truncate">
+            {currentCycle?.name || '-'}
+          </span>
+        );
+      }
+
+      case 'startDate':
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">
+            {formatDate(task.startDate)}
+          </span>
+        );
+
+      case 'dueDate':
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">
+            {formatDate(task.dueDate)}
+          </span>
+        );
+
+      case 'createdOn':
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">
+            {formatDate((task as any).createdAt)}
+          </span>
+        );
+
+      case 'createdBy':
+        return (
+          <span className="text-xs text-muted-foreground px-1.5 truncate">
+            {(task as any).author?.name || '-'}
+          </span>
+        );
+
+      case 'updatedOn':
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">
+            {formatDate((task as any).updatedAt)}
+          </span>
+        );
+
+      case 'link':
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">-</span>
+        );
+
+      case 'attachment': {
+        const count = TaskHelpers.countAttachments(task.attachments);
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">
+            {count > 0 ? `${count} file${count > 1 ? 's' : ''}` : '-'}
+          </span>
+        );
+      }
+
+      case 'subtask':
+      case 'subWorkItem': {
+        const subtaskCount = (task as any).subtaskCount ?? (task.subtasks?.length || 0);
+        return (
+          <span className="text-xs text-muted-foreground px-1.5">
+            {subtaskCount > 0 ? `${subtaskCount} subtask${subtaskCount > 1 ? 's' : ''}` : '-'}
+          </span>
+        );
+      }
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div
+      role="row"
+      tabIndex={0}
+      onClick={() => onEditCard(task)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onEditCard(task);
+        }
+      }}
+      aria-label={`Work item: ${task.title}`}
+      className={`group/row flex items-center h-9 border-b border-border hover:bg-muted transition-colors cursor-pointer w-full text-xs select-none outline-none focus-visible:ring-1 focus-visible:ring-primary ${
+        isSelected ? 'bg-muted font-medium' : ''
+      }`}
+    >
+      <div
+        role="cell"
+        className="relative flex items-center min-w-[320px] max-w-[500px] flex-1 px-3"
+      >
+        <div
+          onClick={(event) => event.stopPropagation()}
+          className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center max-sm:opacity-100 sm:opacity-0 sm:group-hover/row:opacity-100 has-[[data-state=checked]]:opacity-100 transition-opacity duration-150"
+        >
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect(task.id)}
+            aria-label={isSelected ? `Deselect ${task.title}` : `Select ${task.title}`}
+            className="h-3.5 w-3.5 border-border data-[state=checked]:border-primary"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 pl-6 min-w-0 pr-2">
+          {task.identifier && (
+            <span className="text-11 font-mono text-muted-foreground shrink-0 select-none">
+              {task.identifier}
+            </span>
+          )}
+          <span
+            className={`truncate font-normal ${
+              task.completed
+                ? 'line-through text-muted-foreground'
+                : 'text-foreground'
+            }`}
+          >
+            {task.title}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center">
+        {activeProperties.map((propertyItem) => (
+          <div
+            key={propertyItem.key}
+            role="cell"
+            style={{ width: `${propertyItem.minWidth || 130}px` }}
+            className="flex items-center h-9 overflow-hidden"
+          >
+            {renderCellContent(propertyItem.key)}
+          </div>
+        ))}
+      </div>
+
+      <div className="ml-auto pr-3 flex items-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+        <TableActionMenu
+          task={task}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          onEditCard={onEditCard}
+          onDuplicateCard={onDuplicateCard}
+          onDeleteCard={onDeleteCard}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── 10. Main TableView Component ─────────────────────────────────────────────
 
 export function TableView({
-  tasks = [],
-  columns = [],
-  currentUserId,
+  tasks,
+  columns,
+  projectId = '',
+  workspaceId = '',
+  cycles = [],
+  members = [],
   onAddCard,
   onEditCard,
   onDeleteCard,
   onDuplicateCard,
-  onJoinCard,
-  onLeaveCard,
-  onRemoveFromCycle,
   onMoveCard,
-  isReadOnly = false,
+  onUpdateCard,
+  isReadOnly,
+  selectedTaskIds: propSelectedTaskIds,
+  onToggleSelectTask: propOnToggleSelectTask,
+  onSelectAllTasks: propOnSelectAllTasks,
 }: TableViewProps) {
-  const [sortField, setSortField] = useState<SortField>('identifier');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
-  const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newColumnId, setNewColumnId] = useState<string>(
-    columns.length > 0 ? resolveTaskColumnId(columns[0]) : 'todo'
+  const [visibleProperties, setVisibleProperties] = useState<Record<TablePropertyKey, boolean>>(
+    DEFAULT_VISIBLE_PROPERTIES
   );
 
-  const columnMap = useMemo(() => {
-    const map = new Map<string, ColumnType>();
-    columns.forEach((c) => map.set(resolveTaskColumnId(c), c));
-    return map;
-  }, [columns]);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TABLE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          setVisibleProperties((prev) => ({ ...prev, ...parsed }));
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
 
-  const handleSort = (field: SortField) => {
+  const handleToggleProperty = (key: TablePropertyKey) => {
+    setVisibleProperties((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return updated;
+    });
+  };
+
+  const handleResetProperties = () => {
+    setVisibleProperties(DEFAULT_VISIBLE_PROPERTIES);
+    try {
+      localStorage.setItem(TABLE_STORAGE_KEY, JSON.stringify(DEFAULT_VISIBLE_PROPERTIES));
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
+
+  const [localSelectedTaskIds, setLocalSelectedTaskIds] = useState<string[]>([]);
+  const selectedTaskIds = propSelectedTaskIds ?? localSelectedTaskIds;
+
+  const handleToggleSelect = (id: string) => {
+    if (propOnToggleSelectTask) {
+      propOnToggleSelectTask(id);
+    } else {
+      setLocalSelectedTaskIds((prev) =>
+        prev.includes(id) ? prev.filter((taskId) => taskId !== id) : [...prev, id]
+      );
+    }
+  };
+
+  const handleSelectAll = () => {
+    const allIds = tasks.map((task) => task.id);
+    const isAllSelected = tasks.length > 0 && selectedTaskIds.length === tasks.length;
+
+    if (propOnSelectAllTasks) {
+      propOnSelectAllTasks(isAllSelected ? [] : allIds);
+    } else {
+      setLocalSelectedTaskIds(isAllSelected ? [] : allIds);
+    }
+  };
+
+  const [sortField, setSortField] = useState<TableSortField>('identifier');
+  const [sortOrder, setSortOrder] = useState<TableSortOrder>('asc');
+
+  const handleSort = (field: TableSortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortOrder('asc');
@@ -111,533 +1272,111 @@ export function TableView({
   };
 
   const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => {
-      let valA: any = '';
-      let valB: any = '';
+    const list = [...tasks];
+    list.sort((taskA, taskB) => {
+      let comparison = 0;
 
       switch (sortField) {
-        case 'identifier':
-          valA = a.identifier || '';
-          valB = b.identifier || '';
+        case 'identifier': {
+          const numA = (taskA as any).sequenceNumber || 0;
+          const numB = (taskB as any).sequenceNumber || 0;
+          comparison = numA - numB;
           break;
+        }
         case 'title':
-          valA = (a.title || '').toLowerCase();
-          valB = (b.title || '').toLowerCase();
+          comparison = (taskA.title || '').localeCompare(taskB.title || '');
           break;
-        case 'status':
-          valA = columnMap.get(a.columnId)?.title || a.columnId || '';
-          valB = columnMap.get(b.columnId)?.title || b.columnId || '';
+        case 'dueDate': {
+          const timeA = taskA.dueDate ? new Date(taskA.dueDate).getTime() : 0;
+          const timeB = taskB.dueDate ? new Date(taskB.dueDate).getTime() : 0;
+          comparison = timeA - timeB;
           break;
+        }
+        case 'startDate': {
+          const timeA = taskA.startDate ? new Date(taskA.startDate).getTime() : 0;
+          const timeB = taskB.startDate ? new Date(taskB.startDate).getTime() : 0;
+          comparison = timeA - timeB;
+          break;
+        }
         case 'priority': {
-          const priorityWeights: Record<TaskPriority, number> = {
+          const weights: Record<string, number> = {
             urgent: 4,
             high: 3,
             medium: 2,
             low: 1,
             none: 0,
           };
-          valA = priorityWeights[a.priority || 'none'] || 0;
-          valB = priorityWeights[b.priority || 'none'] || 0;
+          const weightA = weights[taskA.priority || 'none'] || 0;
+          const weightB = weights[taskB.priority || 'none'] || 0;
+          comparison = weightA - weightB;
           break;
         }
-        case 'type':
-          valA = a.issueType || 'task';
-          valB = b.issueType || 'task';
-          break;
-        case 'dueDate':
-          valA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
-          valB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
-          break;
-        case 'storyPoints':
-          valA = a.storyPoints ?? -1;
-          valB = b.storyPoints ?? -1;
-          break;
         default:
-          return 0;
+          comparison = 0;
       }
 
-      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
+      return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [tasks, sortField, sortOrder, columnMap]);
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedTaskIds(sortedTasks.map((t) => t.id));
-    } else {
-      setSelectedTaskIds([]);
-    }
-  };
+    return list;
+  }, [tasks, sortField, sortOrder]);
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedTaskIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  const handleQuickAddSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    onAddCard(newColumnId, newTitle.trim());
-    setNewTitle('');
-    setIsAddingNew(false);
-  };
-
-  const allSelected = sortedTasks.length > 0 && selectedTaskIds.length === sortedTasks.length;
-  const someSelected = selectedTaskIds.length > 0 && !allSelected;
+  const isAllSelected = tasks.length > 0 && selectedTaskIds.length === tasks.length;
+  const isSomeSelected = selectedTaskIds.length > 0 && selectedTaskIds.length < tasks.length;
 
   return (
-    <div className="flex-1 min-h-0 h-full flex flex-col bg-background text-foreground overflow-hidden">
-      {/* Table Container */}
-      <div className="flex-1 overflow-auto border-t border-border">
-        <table className="w-full text-left border-collapse text-xs">
-          {/* Table Header */}
-          <thead className="sticky top-0 z-20 bg-muted border-b border-border select-none">
-            <tr className="h-9 font-semibold text-muted-foreground">
-              <th className="w-9 px-3 text-center">
-                <Checkbox
-                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all"
-                  className="size-3.5"
-                />
-              </th>
-
-              <th
-                onClick={() => handleSort('identifier')}
-                className="w-24 px-2.5 cursor-pointer hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <span>ID</span>
-                  {sortField === 'identifier' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th
-                onClick={() => handleSort('type')}
-                className="w-24 px-2.5 cursor-pointer hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Type</span>
-                  {sortField === 'type' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th
-                onClick={() => handleSort('title')}
-                className="min-w-[220px] px-2.5 cursor-pointer hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Title</span>
-                  {sortField === 'title' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th
-                onClick={() => handleSort('status')}
-                className="w-32 px-2.5 cursor-pointer hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Status</span>
-                  {sortField === 'status' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th
-                onClick={() => handleSort('priority')}
-                className="w-28 px-2.5 cursor-pointer hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Priority</span>
-                  {sortField === 'priority' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th className="w-36 px-2.5">Assignee</th>
-
-              <th
-                onClick={() => handleSort('storyPoints')}
-                className="w-20 px-2.5 cursor-pointer hover:text-foreground transition-colors text-center"
-              >
-                <div className="flex items-center justify-center gap-1">
-                  <span>Pts</span>
-                  {sortField === 'storyPoints' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th
-                onClick={() => handleSort('dueDate')}
-                className="w-28 px-2.5 cursor-pointer hover:text-foreground transition-colors"
-              >
-                <div className="flex items-center gap-1">
-                  <span>Due Date</span>
-                  {sortField === 'dueDate' ? (
-                    sortOrder === 'asc' ? <ArrowUp className="size-3 shrink-0" /> : <ArrowDown className="size-3 shrink-0" />
-                  ) : (
-                    <ArrowUpDown className="size-3 opacity-30 shrink-0" />
-                  )}
-                </div>
-              </th>
-
-              <th className="w-12 px-2 text-center">Actions</th>
-            </tr>
-          </thead>
-
-          {/* Table Body */}
-          <tbody className="divide-y divide-border">
-            {sortedTasks.map((task) => {
-              const isSelected = selectedTaskIds.includes(task.id);
-              const col = columnMap.get(task.columnId);
-              const colColor = resolveTaskColumnColor(task.columnId, col?.accentColor);
-              const issueType = (task.issueType as TaskIssueType) || 'task';
-              const typeCfg = ISSUE_TYPE_CONFIG[issueType] || ISSUE_TYPE_CONFIG.task;
-              const TypeIcon = ISSUE_TYPE_ICONS[issueType] || CheckSquare;
-              const priority = task.priority || 'none';
-              const priorityCfg = PRIORITY_ICONS[priority] || PRIORITY_ICONS.none;
-              const PriorityIcon = priorityCfg.icon;
-              const isOverdue = TaskHelpers.checkOverdue(task.dueDate);
-              const assignee = typeof task.assigneeId === 'object' ? task.assigneeId : (task as any).assignee;
-              const assigneeIdStr = assignee?.id || (typeof task.assigneeId === 'string' ? task.assigneeId : null);
-              const isCurrentUser = Boolean(currentUserId && assigneeIdStr === currentUserId);
-
-              return (
-                <tr
-                  key={task.id}
-                  onClick={() => onEditCard(task)}
-                  className={cn(
-                    'h-10 hover:bg-muted cursor-pointer transition-colors group',
-                    isSelected && 'bg-muted'
-                  )}
-                >
-                  {/* Selection Checkbox */}
-                  <td
-                    className="px-3 text-center"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleSelect(task.id);
-                    }}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => handleToggleSelect(task.id)}
-                      className="size-3.5"
-                    />
-                  </td>
-
-                  {/* Identifier */}
-                  <td className="px-2.5 font-mono text-11 font-bold text-muted-foreground group-hover:text-foreground">
-                    {task.identifier || '—'}
-                  </td>
-
-                  {/* Issue Type */}
-                  <td className="px-2.5">
-                    <div className="flex items-center gap-1 text-11 font-medium">
-                      <TypeIcon className="size-3.5 shrink-0" style={{ color: typeCfg.color }} />
-                      <span className="truncate">{typeCfg.label}</span>
-                    </div>
-                  </td>
-
-                  {/* Title */}
-                  <td className="px-2.5">
-                    <span className="font-semibold text-foreground truncate block max-w-[340px]">
-                      {task.title}
-                    </span>
-                  </td>
-
-                  {/* Status Dropdown */}
-                  <td
-                    className="px-2.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={isReadOnly}
-                          className="h-6.5 text-11 font-semibold border border-border bg-muted hover:bg-muted rounded-md px-2 gap-1.5 flex items-center shadow-none transition-colors cursor-pointer outline-none max-w-[130px]"
-                        >
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: colColor }}
-                          />
-                          <span className="truncate">{col?.title || task.columnId}</span>
-                          <ChevronDown className="size-3 text-muted-foreground ml-0.5 shrink-0" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" sideOffset={4} className="w-44 p-1 text-xs z-50">
-                        {columns.map((c) => {
-                          const cId = resolveTaskColumnId(c);
-                          const color = resolveTaskColumnColor(cId, c.accentColor);
-                          const isCurrent = task.columnId === cId;
-                          return (
-                            <DropdownMenuItem
-                              key={cId}
-                              onClick={() => onMoveCard(task.id, cId)}
-                              className={cn(
-                                "flex items-center gap-2 cursor-pointer text-xs py-1.5",
-                                isCurrent && "bg-muted font-semibold text-foreground"
-                              )}
-                            >
-                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                              <span className="flex-1 truncate">{c.title}</span>
-                              {isCurrent && <Check className="size-3.5 text-foreground ml-auto shrink-0" />}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-
-                  {/* Priority */}
-                  <td className="px-2.5">
-                    <div className="flex items-center gap-1 text-11 font-medium">
-                      <PriorityIcon className={cn('size-3.5 shrink-0', priorityCfg.color)} />
-                      <span>{priorityCfg.label}</span>
-                    </div>
-                  </td>
-
-                  {/* Assignee */}
-                  <td className="px-2.5">
-                    {assignee ? (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Avatar className="size-4.5 shrink-0">
-                          <AvatarImage src={assignee.avatar} />
-                          <AvatarFallback className="text-9 font-bold">
-                            {TaskHelpers.getInitials(assignee.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="truncate text-11 font-medium text-foreground">
-                          {assignee.name || 'Member'}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-11 text-muted-foreground italic">Unassigned</span>
-                    )}
-                  </td>
-
-                  {/* Story Points */}
-                  <td className="px-2.5 text-center">
-                    {task.storyPoints !== undefined && task.storyPoints !== null ? (
-                      <span className="inline-flex items-center justify-center font-mono font-bold text-10 px-1.5 py-0.5 rounded-sm bg-muted text-foreground border border-border">
-                        {task.storyPoints}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-
-                  {/* Due Date */}
-                  <td className="px-2.5">
-                    {task.dueDate ? (
-                      <div
-                        className={cn(
-                          'flex items-center gap-1 text-11 font-medium',
-                          isOverdue ? 'text-destructive font-semibold' : 'text-muted-foreground'
-                        )}
-                      >
-                        <Clock className="size-3 shrink-0" />
-                        <span>
-                          {new Date(task.dueDate).toLocaleDateString('vi-VN', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-11">—</span>
-                    )}
-                  </td>
-
-                  {/* Actions Dropdown */}
-                  <td
-                    className="px-2 text-center"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity cursor-pointer"
-                        >
-                          <MoreHorizontal className="size-3.5 text-foreground shrink-0" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44 text-xs p-1">
-                        <DropdownMenuItem onClick={() => onEditCard(task)} className="cursor-pointer">
-                          View details
-                        </DropdownMenuItem>
-                        {!isReadOnly && (
-                          <DropdownMenuItem onClick={() => onDuplicateCard(task)} className="cursor-pointer">
-                            <Copy className="mr-2 size-3.5 shrink-0" />
-                            Duplicate
-                          </DropdownMenuItem>
-                        )}
-                        {currentUserId && (
-                          <DropdownMenuItem
-                            onClick={() => (isCurrentUser ? onLeaveCard(task) : onJoinCard(task))}
-                            className="cursor-pointer"
-                          >
-                            {isCurrentUser ? (
-                              <UserMinus className="mr-2 size-3.5 shrink-0" />
-                            ) : (
-                              <UserPlus className="mr-2 size-3.5 shrink-0" />
-                            )}
-                            {isCurrentUser ? 'Leave task' : 'Join task'}
-                          </DropdownMenuItem>
-                        )}
-                        {onRemoveFromCycle && (
-                          <DropdownMenuItem onClick={() => onRemoveFromCycle(task)} className="cursor-pointer">
-                            <RotateCcw className="mr-2 size-3.5 shrink-0" />
-                            Remove from cycle
-                          </DropdownMenuItem>
-                        )}
-                        {!isReadOnly && (
-                          <DropdownMenuItem
-                            onClick={() => onDeleteCard(task)}
-                            className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
-                          >
-                            <Trash2 className="mr-2 size-3.5 shrink-0" />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {/* Quick Add Row */}
-            {!isReadOnly && isAddingNew && (
-              <tr className="bg-muted">
-                <td className="px-3 text-center">
-                  <Plus className="size-3.5 text-foreground mx-auto shrink-0" />
-                </td>
-                <td className="px-2.5 font-mono text-11 text-muted-foreground">NEW</td>
-                <td className="px-2.5">
-                  <span className="text-11 font-medium text-muted-foreground">Task</span>
-                </td>
-                <td colSpan={6} className="px-2.5 py-1.5">
-                  <form onSubmit={handleQuickAddSubmit} className="flex items-center gap-2">
-                    <input
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="Type a task title and press Enter..."
-                      autoFocus
-                      className="flex-1 h-7 text-xs bg-background border border-border rounded-md px-2.5 text-foreground outline-none focus:border-primary"
-                    />
-                    <Select value={newColumnId} onValueChange={setNewColumnId}>
-                      <SelectTrigger className="h-7 text-xs w-32 border-border bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="text-xs">
-                        {columns.map((c) => {
-                          const id = resolveTaskColumnId(c);
-                          return (
-                            <SelectItem key={id} value={id}>
-                              {c.title}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <Button type="submit" size="sm" className="h-7 text-xs px-3">
-                      Create
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs px-2 text-muted-foreground"
-                      onClick={() => {
-                        setIsAddingNew(false);
-                        setNewTitle('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </form>
-                </td>
-                <td />
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        {/* Empty State */}
-        {sortedTasks.length === 0 && !isAddingNew && (
-          <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-            <div className="size-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-              <CheckSquare className="size-6 shrink-0" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-foreground">No tasks found</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Get started by creating your first task.
-              </p>
-            </div>
-            {!isReadOnly && (
-              <Button
-                size="sm"
-                className="h-8 text-xs font-semibold"
-                onClick={() => setIsAddingNew(true)}
-              >
-                <Plus className="mr-1.5 size-3.5 shrink-0" />
-                Add New Task
-              </Button>
-            )}
+    <div className="flex flex-col flex-1 w-full overflow-hidden bg-background">
+      <div className="flex-1 overflow-auto">
+        <div role="table" aria-label="Work items table" className="min-w-max">
+          <div role="rowgroup">
+            <TableHeader
+              visibleProperties={visibleProperties}
+              onToggleProperty={handleToggleProperty}
+              onResetProperties={handleResetProperties}
+              isAllSelected={isAllSelected}
+              isSomeSelected={isSomeSelected}
+              onToggleSelectAll={handleSelectAll}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+            />
           </div>
-        )}
-      </div>
 
-      {/* Footer / Status Bar */}
-      <div className="h-9 px-4 border-t border-border bg-muted flex items-center justify-between text-11 text-muted-foreground shrink-0">
-        <div className="flex items-center gap-2">
-          <span>{sortedTasks.length} task{sortedTasks.length === 1 ? '' : 's'}</span>
-          {selectedTaskIds.length > 0 && (
-            <span className="font-semibold text-foreground">
-              • {selectedTaskIds.length} selected
-            </span>
+          {sortedTasks.length === 0 ? (
+            <div className="py-16 text-center text-xs text-muted-foreground select-none">
+              No work items found
+            </div>
+          ) : (
+            <div role="rowgroup" className="flex flex-col">
+              {sortedTasks.map((task) => (
+                <TableRow
+                  key={task.id}
+                  task={task}
+                  columns={columns}
+                  visibleProperties={visibleProperties}
+                  isSelected={selectedTaskIds.includes(task.id)}
+                  onToggleSelect={handleToggleSelect}
+                  onEditCard={onEditCard}
+                  onDeleteCard={onDeleteCard}
+                  onDuplicateCard={onDuplicateCard}
+                  onMoveCard={onMoveCard}
+                  onUpdateCard={onUpdateCard}
+                  members={members}
+                  cycles={cycles}
+                  projectId={projectId}
+                  workspaceId={workspaceId}
+                />
+              ))}
+            </div>
+          )}
+
+          {!isReadOnly && (
+            <TableQuickAddRow
+              columns={columns}
+              onAddCard={onAddCard}
+            />
           )}
         </div>
-
-        {!isReadOnly && !isAddingNew && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsAddingNew(true)}
-            className="h-6.5 text-11 font-medium text-foreground hover:bg-muted gap-1 px-2 cursor-pointer"
-          >
-            <Plus className="size-3 shrink-0" />
-            <span>New Task</span>
-          </Button>
-        )}
       </div>
     </div>
   );

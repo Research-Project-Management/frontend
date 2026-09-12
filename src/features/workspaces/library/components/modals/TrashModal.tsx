@@ -8,10 +8,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { Trash2, Loader2 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 export interface MoveToTrashTarget {
   id?: string;
@@ -128,7 +128,7 @@ export function TrashModal({
               'cursor-pointer shadow-none !rounded-md',
               isRed
                 ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-primary text-primary-foreground hover:bg-primary-hover'
             )}
           >
             {loading ? (

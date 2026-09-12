@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { StorageViewContainer } from './StorageViewContainer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../actions/BulkActionBar';
 import Topbar from './Topbar';
 import type { FileQueryParams } from '@/features/workspaces/storage/services/file.service';

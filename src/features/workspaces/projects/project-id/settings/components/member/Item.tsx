@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { ChevronDown, MoreHorizontal, Trash2 } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/shared/components/ui/dropdown-menu';
-import { cn } from '@/shared/lib/utils';
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { ProjectMemberItem } from '../../types/member.types';
 
 interface ItemProps {
@@ -39,18 +39,16 @@ function getDisplayName(user: { name: string; email?: string }): string {
 
 function getRoleLabel(role: string): string {
   switch (role.toLowerCase()) {
-    case 'admin':
-      return 'Admin';
+    case 'owner':
+      return 'Owner (PI)';
     case 'contributor':
       return 'Contributor';
     case 'commenter':
       return 'Commenter';
     case 'viewer':
       return 'Viewer';
-    case 'owner':
-      return 'Owner';
-    case 'member':
-      return 'Member';
+    case 'admin':
+      return 'Owner (PI)';
     default:
       return role.charAt(0).toUpperCase() + role.slice(1);
   }
@@ -104,7 +102,7 @@ export function Item({
 
       {/* Role */}
       <td className="py-3 px-4">
-        {canManage && !isCurrentUser ? (
+        {canManage && !isCurrentUser && role.toLowerCase() !== 'owner' && role.toLowerCase() !== 'admin' ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -115,22 +113,19 @@ export function Item({
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-36 p-1 rounded-md">
+            <DropdownMenuContent align="start" className="w-40 p-1 rounded-md">
               <DropdownMenuRadioGroup
                 value={role.toLowerCase()}
                 onValueChange={onUpdateRole}
               >
-                <DropdownMenuRadioItem value="admin" className="text-xs cursor-pointer">
-                  Admin
-                </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="contributor" className="text-xs cursor-pointer">
-                  Contributor
+                  Contributor (Thành viên)
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="commenter" className="text-xs cursor-pointer">
-                  Commenter
+                  Commenter (GVHD / Review)
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="viewer" className="text-xs cursor-pointer">
-                  Viewer
+                  Viewer (Phản biện)
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>

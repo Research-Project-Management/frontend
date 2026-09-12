@@ -14,8 +14,8 @@ import {
   Pencil,
   AlignLeft
 } from "lucide-react";
-import { Button } from '@/shared/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Button } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import type { Cycle } from "../../types/cycle.types";
 const STATIC_PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },
@@ -119,10 +119,10 @@ function CycleStatusIndicator({ status, hasDates }: { status: string; hasDates: 
   }
   
   if (hasDates) {
-    return <CircleDashed className="size-4.5 text-primary/60 shrink-0" strokeWidth={2.5} />;
+    return <CircleDashed className="size-4.5 text-primary/60 shrink-0" strokeWidth={1.75} />;
   }
   
-  return <Circle className="size-4.5 text-muted-foreground/40 shrink-0" strokeWidth={2} />;
+  return <Circle className="size-4.5 text-muted-foreground/40 shrink-0" strokeWidth={1.5} />;
 }
 
 export function Item({
@@ -341,7 +341,7 @@ export function ListViewGroup({
 }: ListViewGroupProps) {
   const config = {
     active: { 
-      label: "Active cycle", 
+      label: "Current cycle", 
       icon: (
         <div className="relative size-4.5">
           <div className="absolute inset-0 rounded-full border-2 border-warning/30" />

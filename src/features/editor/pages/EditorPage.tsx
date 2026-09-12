@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
-import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { TooltipProvider } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { FileImage, AlertCircle, FileCode2, LayoutGrid } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { editor } from 'monaco-editor';
@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/features/editor/store/settings.store';
 import { resolveFileUrl } from '@/features/editor/utils/editor.util';
 import { useActiveDocument } from '@/features/editor/hooks/use-page';
 import type { AssetInfo } from '@/features/editor/store/page.store';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 const Editor = dynamic(() => import('../components/editor/Editor'), { ssr: false });
 const Viewer = dynamic(() => import('../components/viewer/Viewer'), { ssr: false });
@@ -135,10 +135,10 @@ function LoadingSkeleton() {
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-16" />
         <div className="flex-1" />
-        <Skeleton className="h-5 w-5 rounded" />
-        <Skeleton className="h-5 w-5 rounded" />
+        <Skeleton className="h-5 w-5 rounded-sm" />
+        <Skeleton className="h-5 w-5 rounded-sm" />
       </div>
-      <div className="h-10 border-b border-border bg-muted flex items-center gap-px px-2">
+      <div className="h-10 border-b border-border bg-background flex items-center gap-px px-2">
         {[100, 120, 80].map((w, i) => (
           <Skeleton key={i} className="h-6 rounded-md" style={{ width: w }} />
         ))}
@@ -194,6 +194,7 @@ function EditorColumn() {
 // ─── Shell (sidebar + editor + viewer + settings) ─────────────────────────────
 
 function EditorShell() {
+  const { resolvedTheme } = useTheme();
   const {
     layout,
     sidebarWidth,
@@ -202,6 +203,7 @@ function EditorShell() {
     setEditorFlex,
     settingsPanelOpen,
     editorTheme,
+    setEditorTheme,
   } = useSettingsStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -233,12 +235,10 @@ function EditorShell() {
   }, []);
 
   useEffect(() => {
-    if (editorTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (resolvedTheme && editorTheme !== resolvedTheme) {
+      setEditorTheme(resolvedTheme);
     }
-  }, [editorTheme]);
+  }, [resolvedTheme, editorTheme, setEditorTheme]);
 
   const clampSidebarWidth = useCallback(
     (width: number) => Math.min(Math.max(width, MIN_SIDEBAR), MAX_SIDEBAR),

@@ -121,6 +121,91 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/projects/:projectId/:path*',
+        destination: '/projects/:projectId/:path*',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/projects/:projectId',
+        destination: '/projects/:projectId',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/projects',
+        destination: '/projects',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/library/:path*',
+        destination: '/library/:path*',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/library',
+        destination: '/library',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/storage/:path*',
+        destination: '/storage/:path*',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/storage',
+        destination: '/storage',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/settings/:path*',
+        destination: '/settings/:path*',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/settings',
+        destination: '/settings',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/stickies',
+        destination: '/stickies',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/your-work',
+        destination: '/your-work',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/ai/:path*',
+        destination: '/ai/:path*',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/ai',
+        destination: '/ai',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)/editor/:path*',
+        destination: '/editor/:path*',
+        permanent: false,
+      },
+      {
+        source: '/ws',
+        destination: '/projects',
+        permanent: false,
+      },
+      {
+        source: '/:workspaceId((?!api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites).*)',
+        destination: '/projects',
+        permanent: false,
+      },
+    ];
+  },
+
   async rewrites() {
     const rawBackendUrl =
       process.env.INTERNAL_API_URL ||

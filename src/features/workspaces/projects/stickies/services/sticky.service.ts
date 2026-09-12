@@ -22,27 +22,38 @@ export const normalizeSticky = (s: Partial<Sticky> | null | undefined): Sticky =
   } as Sticky;
 };
 
-export const getStickies = async (workspaceId: string, search?: string, projectId?: string): Promise<Sticky[]> => {
+export const getStickies = async (workspaceId?: string, search?: string, projectId?: string): Promise<Sticky[]> => {
   const params = new URLSearchParams();
   if (search) params.append("search", search);
-  if (projectId) params.append("projectId", projectId);
-
   const queryStr = params.toString() ? `?${params.toString()}` : "";
-  const data = await apiGet<{ stickies: Partial<Sticky>[] }>(`/api/workspace/${workspaceId}/stickies${queryStr}`);
+
+  const endpoint = projectId
+    ? `/api/projects/${projectId}/stickies${queryStr}`
+    : workspaceId
+    ? `/api/workspace/${workspaceId}/stickies${queryStr}`
+    : `/api/me/stickies${queryStr}`;
+
+  const data = await apiGet<{ stickies: Partial<Sticky>[] }>(endpoint);
   return (data?.stickies || []).map(normalizeSticky);
 };
 
 export const createSticky = async (variables: {
-  workspaceId: string;
+  workspaceId?: string;
   title?: string;
   content: string;
   color?: string;
   position?: { x: number; y: number };
   projectId?: string;
 }): Promise<Sticky> => {
-  const { workspaceId, ...payload } = variables;
+  const { workspaceId, projectId, ...payload } = variables;
+  const endpoint = projectId
+    ? `/api/projects/${projectId}/stickies`
+    : workspaceId
+    ? `/api/workspace/${workspaceId}/stickies`
+    : `/api/me/stickies`;
+
   const res = await apiPost<{ sticky: Partial<Sticky> } | Partial<Sticky>>(
-    `/api/workspace/${workspaceId}/stickies`,
+    endpoint,
     payload,
   );
   const stickyData = res && 'sticky' in res ? res.sticky : res;
@@ -63,6 +74,11 @@ export const deleteSticky = async (stickyId: string) => {
   return apiDelete(`/api/stickies/${stickyId}`);
 };
 
-export const reorderStickies = async (workspaceId: string, stickyIds: string[]) => {
-  return apiPut(`/api/workspace/${workspaceId}/stickies/reorder`, { stickyIds });
+export const reorderStickies = async (workspaceId?: string, stickyIds: string[] = [], projectId?: string) => {
+  const endpoint = projectId
+    ? `/api/projects/${projectId}/stickies/reorder`
+    : workspaceId
+    ? `/api/workspace/${workspaceId}/stickies/reorder`
+    : `/api/me/stickies/reorder`;
+  return apiPut(endpoint, { stickyIds });
 };

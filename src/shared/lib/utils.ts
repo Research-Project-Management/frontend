@@ -31,3 +31,25 @@ export function cn(...inputs: ClassValue[]) {
   return customTwMerge(clsx(inputs));
 }
 
+// Ergonomic re-exports for shared utilities
+export { copyToClipboard } from './clipboard';
+export { logger } from './logger';
+export {
+  getErrorMessage,
+  tryCatch,
+  tryCatchSync,
+  isOk,
+  isErr,
+  Ok,
+  Err,
+  type Result,
+  type Ok as OkType,
+  type Err as ErrType,
+} from '../utils/error.util';
+export {
+  formatDate,
+  formatRelativeTime,
+  formatBytes,
+  fixMojibake,
+  getInitials,
+} from '../utils/format';

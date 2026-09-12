@@ -1,4 +1,5 @@
 import type { YourWorkTask } from '../schemas/your-work.schema';
+import { inferStateGroup, type StateGroup } from './workload.util';
 
 export interface ProjectInfo {
   id: string;
@@ -88,11 +89,15 @@ export interface CategorizedTasksResult {
 export function getDefaultStatusBreakdown(): Record<string, number> {
   return {
     backlog: 0,
+    unstarted: 0,
+    started: 0,
+    completed: 0,
+    cancelled: 0,
+    // backwards-compatibility aliases
     todo: 0,
     doing: 0,
     review: 0,
     done: 0,
-    cancelled: 0,
   };
 }
 
@@ -104,6 +109,26 @@ export function getDefaultPriorityBreakdown(): Record<string, number> {
     low: 0,
     none: 0,
   };
+}
+
+export function calculateStatusBreakdown(tasks: any[] = []): Record<string, number> {
+  const breakdown = getDefaultStatusBreakdown();
+  tasks.forEach((t) => {
+    const rawCol = (t.columnId || 'todo').toLowerCase();
+    const group = inferStateGroup(rawCol, rawCol);
+    breakdown[group] = (breakdown[group] || 0) + 1;
+    breakdown[rawCol] = (breakdown[rawCol] || 0) + 1;
+  });
+  return breakdown;
+}
+
+export function calculatePriorityBreakdown(tasks: any[] = []): Record<string, number> {
+  const breakdown = getDefaultPriorityBreakdown();
+  tasks.forEach((t) => {
+    const prio = (t.priority || 'none').toLowerCase();
+    breakdown[prio] = (breakdown[prio] || 0) + 1;
+  });
+  return breakdown;
 }
 
 /**
@@ -148,8 +173,10 @@ export function categorizeTasks(
 
     if (isAssignee) {
       assigned.push(t);
-      const col = t.columnId || 'todo';
-      statusBreakdown[col] = (statusBreakdown[col] || 0) + 1;
+      const rawCol = (t.columnId || 'todo').toLowerCase();
+      const group = inferStateGroup(rawCol, rawCol);
+      statusBreakdown[group] = (statusBreakdown[group] || 0) + 1;
+      statusBreakdown[rawCol] = (statusBreakdown[rawCol] || 0) + 1;
 
       const prio = t.priority || 'none';
       priorityBreakdown[prio] = (priorityBreakdown[prio] || 0) + 1;

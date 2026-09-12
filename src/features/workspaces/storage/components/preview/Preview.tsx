@@ -9,18 +9,18 @@ import {
   BookMarked, Building2, FileDigit, ScrollText, CircleDot,
   BookOpen
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 import LibraryPopover from './LibraryPopover';
 import {
   getFileType, getFileIcon, getFileColor,
   formatFileSize, formatDate, formatMimeType,
 } from '../../utils/file';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { resolveFileUrl } from "@/shared/lib/file-client";
 import { usePreview } from '../../hooks/use-preview';
 import { usePreviewStore } from '../../store/use-preview-store';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 
 
 export default function Preview() {

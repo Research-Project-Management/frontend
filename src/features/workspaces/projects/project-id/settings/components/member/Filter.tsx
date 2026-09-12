@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { ChevronDown, Check } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { cn } from '@/shared/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 interface FilterProps {
   currentRole: string | null;
@@ -12,7 +12,7 @@ interface FilterProps {
 
 const ROLES = [
   { id: null, label: 'All roles' },
-  { id: 'admin', label: 'Admin' },
+  { id: 'owner', label: 'Owner (PI)' },
   { id: 'contributor', label: 'Contributor' },
   { id: 'commenter', label: 'Commenter' },
   { id: 'viewer', label: 'Viewer' },

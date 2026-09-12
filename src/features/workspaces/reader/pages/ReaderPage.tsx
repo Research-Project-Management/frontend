@@ -3,7 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2, FileText, FileQuestion, ChevronLeft } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import { useReader } from '../hooks/use-reader';
 import Topbar from '../components/Topbar';
 import Panel from '../components/Panel';
@@ -131,6 +131,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               fulltext={fulltext}
               isLoadingFulltext={isLoadingFulltext}
               targetPage={targetPage}
+              paper={paper}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center max-w-lg mx-auto">
@@ -160,7 +161,7 @@ export default function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                 <Button
                   size="sm"
                   onClick={() => handlePanelToggle('notes')}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer rounded-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none"
                 >
                   <span>Open Notes</span>
                 </Button>

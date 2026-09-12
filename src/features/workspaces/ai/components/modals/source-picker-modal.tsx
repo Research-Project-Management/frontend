@@ -10,15 +10,15 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Input } from '@/shared/components/ui/input';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { useChatMode } from '../../hooks/use-chat-mode';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import { useCollections } from '@/features/workspaces/library/hooks/use-library';
-import { useCatalogItems as usePapers } from '@/features/workspaces/library/hooks/use-items';
+import { useItems as usePapers } from '@/features/workspaces/library/hooks/use-items';
 import type { Collection, Paper } from '@/features/workspaces/library/types/library.types';
 
 export interface SourcePickerModalProps {
@@ -184,7 +184,7 @@ export function SourcePickerModal({
                 className="p-0.5 hover:bg-muted rounded"
               >
                 <ChevronRight
-                  className={cn('size-3 text-muted-foreground transition-transform', isExp && 'rotate-90')}
+                  className={cn('size-3 text-muted-foreground transition-transform shrink-0', isExp && 'rotate-90')}
                 />
               </span>
             ) : (
@@ -304,7 +304,7 @@ export function SourcePickerModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-muted">
+        <div className="px-5 py-3 border-t border-border flex items-center justify-between bg-background">
           <span className="text-xs text-muted-foreground">
             {pendingSelection.size} new paper(s) selected
           </span>

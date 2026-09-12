@@ -12,16 +12,16 @@ import {
 } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { CatalogItemService } from '@/features/workspaces/library/services/catalog.service';
+import { ItemService } from '@/features/workspaces/library/services/item.service';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export function useChat() {
-  const { chatId, workspaceId } = useParams() as { chatId?: string; workspaceId: string };
+  const { chatId, workspaceId } = useParams() as { chatId?: string; workspaceId?: string };
   const searchParams = useSearchParams();
   const initialQ = searchParams.get('q') || undefined;
   const initialProject = searchParams.get('project') || undefined;
   const router = useRouter();
-  const { workspace } = useWorkspace(workspaceId!);
+  const { workspace } = useWorkspace(workspaceId);
   const {
     enabledDocumentIds,
     fluxDataEnabled,
@@ -195,7 +195,7 @@ export function useChat() {
     if (!collectionId || preloadedCollectionRef.current === collectionId) return;
 
     preloadedCollectionRef.current = collectionId;
-    CatalogItemService.getByCollection(resolvedWorkspaceId, collectionId)
+    ItemService.getByCollection(resolvedWorkspaceId, collectionId)
       .then((res: any) => {
         const papers: any[] = Array.isArray(res) ? res : res?.papers || [];
         const indexedPapers = papers.filter(
@@ -301,7 +301,7 @@ export function useChat() {
                   : undefined,
             });
             setSessionTitle(title);
-            router.push(`/${workspaceId}/ai/${session.id}`);
+            router.push(workspaceId ? `/${workspaceId}/ai/${session.id}` : `/ai/${session.id}`);
           } catch (err) {
             console.error('Failed to create session:', err);
             setSaveError(true);

@@ -11,10 +11,10 @@ import {
   Maximize2,
   ListTree,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { pageNavFormSchema } from '../../schemas/reader.schema';
 import type { PageNavFormData } from '../../types/reader.types';
 

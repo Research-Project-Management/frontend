@@ -1,9 +1,11 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { Button } from '@/shared/components/ui/button';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import { Loader2, LayoutDashboard, FileText, CheckSquare, HardDrive, StickyNote, RefreshCcw, BookOpen } from 'lucide-react';
+import { Button } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
+import { Loader2, LayoutDashboard, FileText, HardDrive } from 'lucide-react';
+import { WorkItemsIcon } from "@/shared/components/ui";
+import { StickiesIcon } from "@/shared/components/ui";
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';
 import type { ModuleDef } from '../types/module.types';
@@ -11,13 +13,11 @@ import type { ModuleDef } from '../types/module.types';
 // ── Module Registry ───────────────────────────────────────────────────────────
 
 const MODULES: ModuleDef[] = [
-  { id: 'overview',   label: 'Overview',   desc: 'Project dashboard and summary', icon: LayoutDashboard, locked: true },
-  { id: 'pages',      label: 'Pages',      desc: 'Collaborative documents and notes', icon: FileText },
-  { id: 'collection', label: 'Collection', desc: 'Project papers and bibliography collection', icon: BookOpen },
-  { id: 'tasks',      label: 'Work items', desc: 'Issue tracking and work items', icon: CheckSquare },
-  { id: 'cycles',     label: 'Cycles',     desc: 'Sprint-based iteration planning', icon: RefreshCcw },
-  { id: 'storage',    label: 'Storage',    desc: 'File storage and attachments', icon: HardDrive },
-  { id: 'stickies',   label: 'Stickies',   desc: 'Quick sticky notes', icon: StickyNote },
+  { id: 'overview',   label: 'Overview',   desc: 'Project dashboard, activity feed and progress summary', icon: LayoutDashboard, locked: true },
+  { id: 'tasks',      label: 'Work items', desc: 'Research activities, milestones and task tracking', icon: WorkItemsIcon },
+  { id: 'pages',      label: 'Pages',      desc: 'Collaborative documents, notes and manuscripts', icon: FileText },
+  { id: 'stickies',   label: 'Stickies',   desc: 'Quick scratchpad notes and research ideas', icon: StickiesIcon },
+  { id: 'storage',    label: 'Storage',    desc: 'Research datasets, file storage and attachments', icon: HardDrive },
 ];
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -28,21 +28,21 @@ export default function ModulesPage() {
 
   if (isLoading) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-44 rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-lg" />
+      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
+        <Skeleton className="h-8 w-44 rounded-md" />
+        <Skeleton className="h-64 w-full rounded-md" />
       </div>
     );
   }
 
   if (isError || !project) {
-    return <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">Error loading project.</div>;
+    return <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">Error loading project.</div>;
   }
 
   return (
-    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 border-b border-border pb-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">Modules</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -54,9 +54,9 @@ export default function ModulesPage() {
           size="sm"
           onClick={save}
           disabled={!hasChanges || isSaving}
-          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none shrink-0"
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
         >
-          {isSaving && <Loader2 className="mr-2 size-3.5 animate-spin shrink-0" />}
+          {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
           Save changes
         </Button>
       </div>

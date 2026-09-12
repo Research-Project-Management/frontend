@@ -9,9 +9,9 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 export interface DeleteModalConfig {
   open: boolean;
@@ -117,7 +117,7 @@ export default function DeleteModal({
               'cursor-pointer shadow-none !rounded-md',
               isRed
                 ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-primary text-primary-foreground hover:bg-primary-hover'
             )}
           >
             {isDeleting ? (

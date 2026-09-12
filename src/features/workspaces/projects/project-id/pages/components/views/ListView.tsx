@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { FileText, ChevronRight } from 'lucide-react';
 import type { Page } from '../../types/page.types';
-import { formatDate } from '@/shared/utils/format';
+import { formatDate } from "@/shared/lib/utils";
 
 interface ListViewProps {
   pages: Page[];
@@ -40,7 +40,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
                   <td className="px-4 py-3">
                     <Link
                       href={linkHref}
-                      className="flex items-center gap-2.5 font-medium text-foreground hover:underline transition-colors"
+                      className="flex items-center gap-2.5 font-medium text-foreground hover:underline transition-colors shrink-0"
                     >
                       <FileText className="size-4 text-foreground shrink-0" />
                       <span className="line-clamp-1">{page.title}</span>
@@ -55,7 +55,7 @@ export function ListView({ pages, workspaceId }: ListViewProps) {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={linkHref}
-                      className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-foreground transition-colors"
+                      className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-foreground transition-colors shrink-0"
                     >
                       <ChevronRight className="size-4 shrink-0" />
                     </Link>

@@ -44,7 +44,7 @@ export default function Toolbar({
   const isDeleteOpen = activeModal === "delete";
 
   return (
-    <div className="h-10 px-4 flex items-center justify-between bg-muted border-t border-border rounded-b-lg">
+    <div className="h-10 px-4 flex items-center justify-between bg-transparent">
       <div className="relative flex items-center gap-1.5">
         <ColorModal 
           sticky={sticky} 
@@ -58,7 +58,7 @@ export default function Toolbar({
           isActive={editor?.isActive("bold")}
           disabled={!editor}
         >
-          <Bold size={14} />
+          <Bold size={14} className="shrink-0" />
         </ToolbarBtn>
         <ToolbarBtn
           title="Italic"
@@ -66,7 +66,7 @@ export default function Toolbar({
           isActive={editor?.isActive("italic")}
           disabled={!editor}
         >
-          <Italic size={14} />
+          <Italic size={14} className="shrink-0" />
         </ToolbarBtn>
         <ToolbarBtn
           title="Task list"
@@ -74,7 +74,7 @@ export default function Toolbar({
           isActive={editor?.isActive("taskList")}
           disabled={!editor}
         >
-          <ListTodo size={14} />
+          <ListTodo size={14} className="shrink-0" />
         </ToolbarBtn>
       </div>
 
@@ -84,7 +84,7 @@ export default function Toolbar({
         onClick={() => onActiveModalChange(isDeleteOpen ? null : "delete")}
         isActive={isDeleteOpen}
       >
-        <Trash2 size={14} />
+        <Trash2 className="shrink-0" size={14} />
       </ToolbarBtn>
 
       <DeleteModal

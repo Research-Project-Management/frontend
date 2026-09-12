@@ -2,13 +2,13 @@
 
 import React, { useState, useRef } from 'react';
 import { Tag, MinusCircle } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item } from '@/features/workspaces/library/types/library.types';
 import { normalizeTags } from '@/features/workspaces/library/utils/library.util';
 
 interface TagsSectionProps {
-  onUpdatePaper?: (data: Partial<CatalogItem>) => void;
-  paper: CatalogItem;
+  onUpdatePaper?: (data: Partial<Item>) => void;
+  paper: Item;
   onUpdateTags?: (tags: string[]) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;

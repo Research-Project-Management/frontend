@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from "react";
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/components/ui";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/shared/components/ui";
 import {
   Search,
   ArrowRightLeft,
@@ -12,11 +12,10 @@ import {
   CircleDashed,
   X,
 } from "lucide-react";
-import { useBulkUpdateTasks } from "../../hooks/use-work-item";
-import { WorkItemDetailModal as TaskDialog } from "./work-item/WorkItemDetailModal";
-import type { WorkItem, Task, Column, Cycle } from "../../types/work-item.types";
+import { useTransferTasks } from "../../hooks/use-tasks";
+import { DetailModal as TaskDialog } from "./DetailModal";
+import type { Task, Column, Cycle } from "../../types/types";
 import { cn } from "@/shared/lib/utils";
-import { toast } from "sonner";
 
 export interface TransferModalProps {
   open: boolean;
@@ -43,7 +42,7 @@ export function TransferModal({
   members = [],
   onSuccess,
 }: TransferModalProps) {
-  const bulkUpdateMutation = useBulkUpdateTasks();
+  const { transferTasks, isPending } = useTransferTasks(projectId);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
@@ -82,46 +81,32 @@ export function TransferModal({
   };
 
   const handleTransfer = async () => {
-    if (!targetCycleId) {
-      toast.error("Please select a destination cycle");
-      return;
-    }
-    if (selectedIds.length === 0) {
-      toast.error("Please select at least one task to transfer");
-      return;
-    }
-
-    try {
-      await bulkUpdateMutation.mutateAsync({
-        taskIds: selectedIds,
-        data: { cycleId: targetCycleId === "unassigned" ? null : targetCycleId },
-        projectId,
-      });
-
-      toast.success(`Successfully transferred ${selectedIds.length} tasks`);
-      onOpenChange(false);
-      setSelectedIds([]);
-      onSuccess?.();
-    } catch (error) {
-      toast.error("Failed to transfer tasks");
-    }
+    await transferTasks({
+      selectedIds,
+      targetCycleId,
+      onSuccess: () => {
+        onOpenChange(false);
+        setSelectedIds([]);
+        onSuccess?.();
+      },
+    });
   };
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border shadow-sm bg-background rounded-lg">
+        <DialogContent className="max-w-xl p-0 overflow-hidden border border-border bg-background rounded-lg">
           {/* Header */}
-          <div className="px-6 py-5 border-b border-border bg-background">
-            <div className="flex items-center gap-2 text-foreground font-semibold text-base">
+          <DialogHeader className="px-6 py-5 border-b border-border bg-background text-left">
+            <DialogTitle className="flex items-center gap-2 text-foreground font-semibold text-base">
               <ArrowRightLeft className="size-4.5 text-primary shrink-0" />
               <span>Transfer Work Items from Cycle</span>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground mt-1">
               Select work items to move from{" "}
               <span className="font-semibold text-foreground">{sourceCycleName}</span> to another cycle.
-            </p>
-          </div>
+            </DialogDescription>
+          </DialogHeader>
 
           {/* Controls */}
           <div className="p-6 space-y-4">
@@ -158,14 +143,17 @@ export function TransferModal({
               <Search className="size-3.5 text-muted-foreground mr-2 shrink-0" />
               <input
                 type="text"
-                placeholder="Search tasks to transfer..."
+                placeholder="Search work items to transfer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search work items to transfer"
                 className="w-full h-full text-xs bg-transparent outline-none placeholder:text-muted-foreground text-foreground"
               />
               {searchTerm && (
                 <button
+                  type="button"
                   onClick={() => setSearchTerm("")}
+                  aria-label="Clear search"
                   className="text-foreground cursor-pointer"
                 >
                   <X className="size-3 shrink-0" />
@@ -197,10 +185,10 @@ export function TransferModal({
                 </span>
               </div>
 
-              <div className="max-h-56 overflow-y-auto divide-y divide-border/60">
+              <div className="max-h-56 overflow-y-auto divide-y divide-border">
                 {filteredTasks.length === 0 ? (
                   <div className="py-8 text-center text-xs text-muted-foreground">
-                    No tasks found matching criteria.
+                    No work items found matching criteria.
                   </div>
                 ) : (
                   filteredTasks.map((task) => {
@@ -254,7 +242,7 @@ export function TransferModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              disabled={bulkUpdateMutation.isPending}
+              disabled={isPending}
               className="text-xs"
             >
               Cancel
@@ -265,11 +253,11 @@ export function TransferModal({
               disabled={
                 !targetCycleId ||
                 selectedIds.length === 0 ||
-                bulkUpdateMutation.isPending
+                isPending
               }
               className="text-xs font-semibold"
             >
-              {bulkUpdateMutation.isPending ? "Transferring..." : "Transfer Work Items"}
+              {isPending ? "Transferring..." : "Transfer Tasks"}
             </Button>
           </div>
         </DialogContent>

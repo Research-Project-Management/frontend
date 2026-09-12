@@ -1,6 +1,7 @@
 import React from 'react';
 import { Folder, FileText, Video, Music, Archive, Image as ImageIcon, File as FileIcon } from 'lucide-react';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
+import { cn } from "@/shared/lib/utils";
 import type { FileType, StorageItem } from '../types/storage.types';
 
 export function getFileType(item: StorageItem): FileType {
@@ -21,27 +22,38 @@ export function getFileType(item: StorageItem): FileType {
       'svg',
       'bmp',
       'ico',
-      'tif',
-      'tiff',
+      'heic',
+      'heif',
+      'avif',
     ].includes(ext || '')
-  ) {
+  )
     return 'image';
-  }
-
-  if (mimeType.startsWith('video/')) return 'video';
-  if (mimeType.startsWith('audio/')) return 'audio';
   if (
-    mimeType.includes('pdf') ||
-    mimeType.includes('document') ||
-    mimeType.includes('text')
+    [
+      'pdf',
+      'doc',
+      'docx',
+      'txt',
+      'rtf',
+      'odt',
+      'tex',
+      'bib',
+      'cls',
+      'sty',
+      'csv',
+      'tsv',
+    ].includes(ext || '')
   )
     return 'document';
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', 'flv'].includes(ext || ''))
+    return 'video';
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma'].includes(ext || ''))
+    return 'audio';
   if (
-    mimeType.includes('zip') ||
-    mimeType.includes('rar') ||
-    mimeType.includes('tar')
+    ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'tgz'].includes(ext || '')
   )
     return 'archive';
+
   return 'other';
 }
 
@@ -49,19 +61,19 @@ export function getFileIcon(type: FileType, size: number = 20) {
   const className = `size-${size}`;
   switch (type) {
     case 'folder':
-      return <Folder className={className} />;
+      return <Folder className={cn('shrink-0', className)} />;
     case 'document':
-      return <FileText className={className} />;
+      return <FileText className={cn('shrink-0', className)} />;
     case 'image':
-      return <ImageIcon className={className} />;
+      return <ImageIcon className={cn('shrink-0', className)} />;
     case 'video':
-      return <Video className={className} />;
+      return <Video className={cn('shrink-0', className)} />;
     case 'audio':
-      return <Music className={className} />;
+      return <Music className={cn('shrink-0', className)} />;
     case 'archive':
-      return <Archive className={className} />;
+      return <Archive className={cn('shrink-0', className)} />;
     default:
-      return <FileIcon className={className} />;
+      return <FileIcon className={cn('shrink-0', className)} />;
   }
 }
 

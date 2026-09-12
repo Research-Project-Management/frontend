@@ -1,18 +1,18 @@
-import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/shared/lib/api";
 import type { Note } from '../types/library.types';
 import { noteResponseSchema, noteListResponseSchema } from '../schemas/library.schema';
 
 export interface CreateNoteDTO {
   itemId?: string | null;
   title?: string;
-  contentJson?: any;
+  contentJson?: Record<string, unknown> | null;
   contentMd?: string;
   tags?: string[];
 }
 
 export interface UpdateNoteDTO {
   title?: string;
-  contentJson?: any;
+  contentJson?: Record<string, unknown> | null;
   contentMd?: string;
   tags?: string[];
   expectedVersion?: number;

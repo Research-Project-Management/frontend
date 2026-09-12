@@ -1,74 +1,34 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
-import { getActivityFeed, getWorkspaceTasks } from '../services/your-work.service';
-import { z } from 'zod';
-import { yourWorkActivityEventSchema, type YourWorkActivityEvent } from '../schemas/your-work.schema';
-import { createProjectMap } from '../utils/your-work.util';
+import { useYourWork } from './use-your-work-base';
+import { useOptionalYourWorkContext } from '../context/your-work.context';
 
 export function useActivityFeed() {
-  const { workspaceId } = useParams() as { workspaceId: string };
-  const { projects = [], isLoading: isLoadingProjects } = useProjects();
-
-  const {
-    data: rawActivity,
-    isLoading: isLoadingActivity,
-    refetch: refetchActivity,
-  } = useQuery({
-    queryKey: ['workspace-activity', workspaceId],
-    queryFn: async ({ signal }) => {
-      const res = await getActivityFeed(workspaceId, signal);
-      const items = Array.isArray(res) ? res : (res as any)?.items || (res as any)?.data || [];
-      const parsed = z.array(yourWorkActivityEventSchema).safeParse(items);
-      return parsed.success ? parsed.data : (items as YourWorkActivityEvent[]);
-    },
-    enabled: !!workspaceId,
-    staleTime: 30_000,
-  });
-
-  const {
-    data: tasksData = [],
-    isLoading: isLoadingTasks,
-    refetch: refetchTasks,
-  } = useQuery({
-    queryKey: ['workspace-tasks', workspaceId],
-    queryFn: ({ signal }) => getWorkspaceTasks(workspaceId, signal),
-    enabled: !!workspaceId,
-    staleTime: 30_000,
-  });
-
-  const allTasks: any[] = Array.isArray(tasksData)
-    ? tasksData
-    : (tasksData as any)?.tasks || (tasksData as any)?.data || [];
-
-  const activities: YourWorkActivityEvent[] = Array.isArray(rawActivity)
-    ? rawActivity
-    : (rawActivity as any)?.items || [];
-
-  const taskProjectMap = useMemo(() => createProjectMap(projects), [projects]);
+  const context = useOptionalYourWorkContext();
+  const base = useYourWork();
+  const source = context || base;
 
   return {
     state: {
-      workspaceId,
-      allTasks,
-      activities,
-      count: activities.length,
-      taskProjectMap,
-      isLoading: isLoadingActivity || isLoadingTasks || isLoadingProjects,
-      isLoadingActivity,
-      isLoadingTasks,
-      isLoadingProjects,
+      workspaceId: source.workspaceId,
+      allTasks: source.allTasks,
+      activities: source.activities,
+      count: source.activities.length,
+      taskProjectMap: source.taskProjectMap,
+      selectedProjectId: context?.selectedProjectId || null,
+      selectedProject: context?.selectedProject || null,
+      isLoading: source.isLoading,
+      isLoadingActivity: source.isLoadingYourWork,
+      isLoadingTasks: source.isLoadingYourWork,
+      isLoadingProjects: source.isLoadingProjects,
     },
     actions: {
-      refetch: () => {
-        refetchActivity();
-        refetchTasks();
-      },
+      refetch: source.refetch,
+      selectProject: (id: string | null) => context?.setSelectedProjectId(id),
     },
   };
 }
 
 export default useActivityFeed;
+
+

@@ -12,9 +12,10 @@ import {
   Minus,
   X,
   Loader2,
+  ShieldAlert,
 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem, CreatorCredit } from '@/features/workspaces/library/types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item, CreatorCredit } from '@/features/workspaces/library/types/library.types';
 import { normalizeAuthors, splitAuthorString, cleanDoi, extractArxivId, formatAndSanitizeExtraMetadata } from '@/features/workspaces/library/utils/library.util';
 import { generateCitationKey } from '@/features/workspaces/library/utils/bibtex.util';
 import {
@@ -30,19 +31,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import ConvertModal from '../modals/ConvertModal';
 import { toast } from 'sonner';
-import { copyToClipboard as copyText } from '@/shared/lib/clipboard';
+import { copyToClipboard as copyText } from "@/shared/lib/utils";
 import { useItemTypes } from '@/features/workspaces/library/hooks/use-items';
 import { useConversion } from '@/features/workspaces/library/hooks/use-conversion';
 
 interface InfoSectionProps {
-  paper: CatalogItem;
-  onUpdatePaper?: (data: Partial<CatalogItem>) => void;
+  paper: Item;
+  onUpdatePaper?: (data: Partial<Item>) => void;
 }
 
-/** Fields backed by first-class CatalogItem columns. All other registry fields
+/** Fields backed by first-class Item columns. All other registry fields
  * are persisted through extraFields, which survives registry additions without
  * another frontend allow-list change. */
 const DIRECT_METADATA_FIELDS = new Set([
@@ -116,7 +117,7 @@ export interface CreatorEntry {
 }
 
 /** Parse & sanitize creators array into structured list */
-function parseCreators(paper: CatalogItem): CreatorEntry[] {
+function parseCreators(paper: Item): CreatorEntry[] {
   const rawCreators = paper.creators && paper.creators.length > 0
     ? paper.creators
     : paper.contributors;
@@ -207,8 +208,8 @@ function areCreatorsEqual(
   return true;
 }
 
-/** Convert CreatorEntry items into strongly typed CreatorCredit items for CatalogItem */
-function toCatalogItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] {
+/** Convert CreatorEntry items into strongly typed CreatorCredit items for Item */
+function toItemCreators(creatorEntries: CreatorEntry[]): CreatorCredit[] {
   return creatorEntries.map((creatorEntry, indexPosition) => ({
     orderIndex: indexPosition,
     creatorType: creatorEntry.creatorType || 'author',
@@ -439,7 +440,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     }
   };
 
-  const handleFieldChange = (field: keyof CatalogItem | string, value: any) => {
+  const handleFieldChange = (field: keyof Item | string, value: any) => {
     if (onUpdatePaper) {
       onUpdatePaper({ [field]: value });
     }
@@ -465,7 +466,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     if (onUpdatePaper) {
       onUpdatePaper({
         authors: validAuthorNames.length ? validAuthorNames : undefined,
-        creators: toCatalogItemCreators(updatedCreators),
+        creators: toItemCreators(updatedCreators),
       });
     }
   };
@@ -491,7 +492,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     if (onUpdatePaper) {
       onUpdatePaper({
         authors: validAuthorNames.length ? validAuthorNames : undefined,
-        creators: toCatalogItemCreators(updatedCreators),
+        creators: toItemCreators(updatedCreators),
       });
     }
   };
@@ -516,7 +517,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
     if (onUpdatePaper) {
       onUpdatePaper({
         authors: validAuthorNames.length ? validAuthorNames : undefined,
-        creators: updatedCreators.length ? toCatalogItemCreators(updatedCreators) : undefined,
+        creators: updatedCreators.length ? toItemCreators(updatedCreators) : undefined,
       });
     }
   };
@@ -771,6 +772,39 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
 
   return (
     <div className="space-y-0.5 select-text font-sans antialiased">
+      {/* ⚠️ Retraction Warning Alert Banner */}
+      {paper.isRetracted && (
+        <div className="mb-3 p-3 rounded-lg border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 text-xs select-none">
+          <div className="flex items-start gap-2.5">
+            <ShieldAlert className="size-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-1">
+              <div className="font-semibold text-11 text-rose-700 dark:text-rose-400">
+                {paper.retractionNature === 'expression_of_concern'
+                  ? '⚠️ Expression of Concern'
+                  : paper.retractionNature === 'correction'
+                  ? 'ℹ️ Publisher Correction Notice'
+                  : '🚨 Retracted Publication'}
+              </div>
+              <p className="text-xs text-rose-800 dark:text-rose-300">
+                {((paper.retractionDetails as any)?.reason) ||
+                  'This publication has been flagged as retracted or unreliable by academic integrity audits.'}
+              </p>
+              {((paper.retractionDetails as any)?.noticeUrl) && (
+                <a
+                  href={(paper.retractionDetails as any).noticeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-11 font-medium text-rose-700 dark:text-rose-400 underline hover:text-rose-900 mt-1"
+                >
+                  View publisher retraction notice
+                  <ExternalLink className="size-3 shrink-0" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Item Type Selector */}
       <div className="grid grid-cols-[96px_1fr] gap-1.5 items-center py-0.5">
         <span className="text-muted-foreground text-right font-normal select-none pr-2 text-12 leading-normal truncate" id="label-item-type">
@@ -995,7 +1029,7 @@ export default function InfoSection({ paper, onUpdatePaper }: InfoSectionProps) 
                       if (onUpdatePaper) {
                         onUpdatePaper({
                           authors: validAuthorNames.length ? validAuthorNames : undefined,
-                          creators: toCatalogItemCreators(localCreators),
+                          creators: toItemCreators(localCreators),
                         });
                       }
                     }}

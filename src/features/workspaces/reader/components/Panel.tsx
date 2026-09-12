@@ -7,9 +7,9 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { ReaderDocument, ReaderPanel } from '../types/reader.types';
 import ChatPanel from './panel/ChatPanel';
 import DocInfoPanel from './panel/DocInfoPanel';

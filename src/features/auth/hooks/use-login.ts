@@ -46,18 +46,8 @@ export const useLogin = () => {
         return;
       }
 
-      // Determine routing based on existing workspaces
-      fetchAllWorkspaces()
-        .then((res) => {
-          if (res?.workspaces && res.workspaces.length > 0) {
-            router.push(`/${res.workspaces[0].url}`);
-          } else {
-            router.push('/create-workspace');
-          }
-        })
-        .catch(() => {
-          router.push('/create-workspace');
-        });
+      // Direct routing to /projects (Overleaf/Google Drive style)
+      router.push('/projects');
     },
     onError: (err: unknown) => {
       const message =
@@ -97,20 +87,7 @@ export const useLogin = () => {
         return;
       }
 
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (!isMounted) return;
-          if (data?.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          if (isMounted) {
-            router.replace('/create-workspace');
-          }
-        });
+      router.replace('/projects');
     }
     return () => {
       isMounted = false;

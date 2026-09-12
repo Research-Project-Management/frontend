@@ -13,26 +13,26 @@ import {
 import Topbar from '../components/Topbar';
 import InspectorPanel from '../components/Panel';
 import BatchBar from '../components/table/BatchBar';
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/shared/components/ui/context-menu';
+} from "@/shared/components/ui";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from '@/shared/components/ui/tooltip';
+} from "@/shared/components/ui";
 import {
   Dialog,
   DialogContent,
@@ -40,12 +40,12 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
+} from "@/shared/components/ui";
 import { useLibrary } from '../hooks/use-library';
 import { useTrash, useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '../types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item } from '../types/library.types';
 
 export default function TrashPage() {
   const { state, actions } = useLibrary();
@@ -60,7 +60,7 @@ export default function TrashPage() {
 
   const [search, setSearch] = useState('');
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
-  const [singlePurgeTarget, setSinglePurgeTarget] = useState<CatalogItem | null>(null);
+  const [singlePurgeTarget, setSinglePurgeTarget] = useState<Item | null>(null);
 
   const {
     trashItems,
@@ -75,7 +75,11 @@ export default function TrashPage() {
   const filteredTrashItems = search.trim()
     ? trashItems.filter((item) =>
         item.title?.toLowerCase().includes(search.toLowerCase()) ||
-        item.authors?.some((a) => a.toLowerCase().includes(search.toLowerCase())),
+        item.authors?.some((a: unknown) =>
+          (typeof a === 'string' ? a : (a as { name?: string; fullName?: string })?.name || (a as { fullName?: string })?.fullName || '')
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        ),
       )
     : trashItems;
 
@@ -96,7 +100,7 @@ export default function TrashPage() {
     initialSortOrder: 'desc',
   });
 
-  const handleSelectItem = (item: CatalogItem) => {
+  const handleSelectItem = (item: Item) => {
     const itemId = item.id;
     if (selectedItemId === itemId) {
       setSelectedItemId(null);
@@ -105,7 +109,7 @@ export default function TrashPage() {
     }
   };
 
-  const handleRowClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }

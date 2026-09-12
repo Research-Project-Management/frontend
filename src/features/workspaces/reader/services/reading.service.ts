@@ -1,10 +1,10 @@
-import { apiGet, apiPatch, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiPost } from "@/shared/lib/api";
 import type { DocumentReadingState } from '../types/reader.types';
 
 export type ItemStateData = DocumentReadingState;
 
 /**
- * ReadingService corresponding to backend ReadingService (backend/src/modules/library/reading/reading.service.ts)
+ * ReadingService communicating with backend StateController (/library/items/:itemId/state)
  */
 export const ReadingService = {
   getState: (workspaceId: string, itemId: string) =>

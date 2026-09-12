@@ -10,8 +10,8 @@ import {
   Globe,
   UserSquare2,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { cn } from '@/shared/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import {
   getProjectKey,
   isProjectPrivate,
@@ -78,7 +78,7 @@ export function ArchiveCard({
         <div className="space-y-0.5 min-w-0">
           <Link
             href={`/${workspaceId}/projects/${projectId}/overview`}
-            className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline"
+            className="text-sm font-semibold text-foreground tracking-tight truncate block hover:underline shrink-0"
           >
             {project.name}
           </Link>

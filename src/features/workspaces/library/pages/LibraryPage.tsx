@@ -16,34 +16,43 @@ import {
   ArrowDown,
   ArrowUpDown,
   FileText,
+  Search,
+  ShieldAlert,
+  Award,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import Topbar from '../components/Topbar';
 import InspectorPanel from '../components/Panel';
 import AddLinkModal from '../components/modals/AddLinkModal';
 import CreateCollectionModal from '../components/modals/CreateCollectionModal';
+import FlagRetractionModal from '../components/modals/FlagRetractionModal';
+import AuthorshipModal from '../components/modals/AuthorshipModal';
 import TrashModal, { type MoveToTrashTarget } from '../components/modals/TrashModal';
 import ProcessModal from '../components/modals/ProcessModal';
+import { useRetraction } from '../hooks/use-retraction';
+import { ItemService } from '../services/item.service';
 import BatchBar from '../components/table/BatchBar';
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/shared/components/ui/context-menu';
+} from "@/shared/components/ui";
 import { useLibrary } from '../hooks/use-library';
 import { useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '../types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item } from '../types/library.types';
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -53,7 +62,6 @@ export default function LibraryPage() {
     workspaceSlug,
     isLoading,
     search,
-    activeTag,
     activeFilter,
     selectedItemId,
     filteredItems,
@@ -85,6 +93,36 @@ export default function LibraryPage() {
   const [trashTarget, setTrashTarget] = useState<MoveToTrashTarget | null>(null);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [retractionModalItem, setRetractionModalItem] = useState<Item | null>(null);
+  const [authorshipModalItem, setAuthorshipModalItem] = useState<Item | null>(null);
+  const [isUpdatingAuthorship, setIsUpdatingAuthorship] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  const handleConfirmAuthorship = async (itemId: string, isMyPublication: boolean) => {
+    try {
+      setIsUpdatingAuthorship(true);
+      await ItemService.setMyPublication(workspaceId, itemId, isMyPublication);
+      toast.success(
+        isMyPublication
+          ? 'Added to My Publications'
+          : 'Removed from My Publications',
+      );
+      queryClient.invalidateQueries({ queryKey: ['items', workspaceId] });
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update publication status');
+    } finally {
+      setIsUpdatingAuthorship(false);
+    }
+  };
+
+  const {
+    flagItem: flagRetraction,
+    unflagItem: unflagRetraction,
+    checkWorkspace,
+    isCheckingWorkspace,
+    isFlagging,
+  } = useRetraction(workspaceId);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -128,7 +166,7 @@ export default function LibraryPage() {
     initialSortOrder: 'desc',
   });
 
-  const handleSelectItem = (item: CatalogItem) => {
+  const handleSelectItem = (item: Item) => {
     const itemId = item.id;
     if (selectedItemId === itemId) {
       setSelectedItemId(null);
@@ -141,23 +179,23 @@ export default function LibraryPage() {
     setSelectedItemId(null);
   }, [setSelectedItemId]);
 
-  const handleRowClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
     handleSelectItem(item);
   };
 
-  const handleRowDoubleClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowDoubleClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
-    if (item.id && workspaceId) {
-      router.push(`/${workspaceId}/library/papers/${item.id}`);
+    if (item.id) {
+      router.push(workspaceId ? `/${workspaceId}/library/papers/${item.id}` : `/library/papers/${item.id}`);
     }
   };
 
-  const handleInitiateSingleTrash = (item: CatalogItem) => {
+  const handleInitiateSingleTrash = (item: Item) => {
     setTrashTarget({
       id: item.id,
       title: item.title || 'Untitled Reference',
@@ -221,6 +259,16 @@ export default function LibraryPage() {
         return { title: 'Duplicate Items', icon: Files };
       case 'trash':
         return { title: 'Trash', icon: Trash2 };
+      case 'retracted':
+        return { title: 'Retracted Items', icon: ShieldAlert };
+      case 'my-publications':
+      case 'publications':
+        return { title: 'My Publications', icon: Award };
+      case 'saved-search':
+        return {
+          title: (state as any).activeSavedSearch?.name || 'Saved Search',
+          icon: Search,
+        };
       default:
         return { title: 'Library', icon: BookOpen };
     }
@@ -242,32 +290,20 @@ export default function LibraryPage() {
           onDirectFolderUpload={activeFilter !== 'trash' ? handleDirectFolderUpload : undefined}
           onAddCollection={activeFilter !== 'trash' ? () => setCreateCollectionOpen(true) : undefined}
           onAddLink={activeFilter !== 'trash' ? () => setAddLinkOpen(true) : undefined}
-        />
-
-        {/* Active Filter Chips */}
-        {(activeTag || activeFilter) && (
-          <div className="px-4 py-2 bg-muted border-b border-border flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Filtering by:</span>
-            {activeTag && (
-              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border font-medium">
-                Tag: #{activeTag}
-              </span>
-            )}
-            {activeFilter && (
-              <span className="px-2 py-0.5 rounded-sm bg-muted text-foreground border border-border font-medium capitalize">
-                View: {activeFilter}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate(`/${workspaceSlug}/library`)}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted rounded-sm px-1.5 py-0.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+        >
+          {activeFilter === 'retracted' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => checkWorkspace(undefined)}
+              disabled={isCheckingWorkspace}
+              className="h-8 gap-1.5 px-3 rounded-md text-xs font-normal border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
             >
-              <span>Clear filter</span>
-              <X className="size-3 text-muted-foreground shrink-0" />
-            </button>
-          </div>
-        )}
+              <ShieldAlert className="size-3.5 shrink-0" />
+              <span>{isCheckingWorkspace ? 'Scanning...' : 'Scan Retractions'}</span>
+            </Button>
+          )}
+        </Topbar>
 
         {/* Central Items Table - Managed Directly by LibraryPage */}
         <div
@@ -319,18 +355,7 @@ export default function LibraryPage() {
                 >
                   Clear search
                 </button>
-              ) : (
-                <div className="mt-4 flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setAddLinkOpen(true)}
-                    className="h-8 text-xs gap-1.5 cursor-pointer text-foreground hover:bg-muted border border-border !rounded-md shadow-none"
-                  >
-                    <span>Add Item</span>
-                  </Button>
-                </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="flex-1 overflow-auto">
@@ -469,6 +494,24 @@ export default function LibraryPage() {
 
                             <td className="px-3.5 py-1.5 align-middle min-w-0 max-w-0 truncate">
                               <div className="flex items-center gap-2 min-w-0">
+                                {paper.isMyPublication && (
+                                  <span
+                                    title="You are an author/co-author of this publication"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-10 font-medium bg-primary/10 text-primary border border-primary/20 shrink-0 select-none"
+                                  >
+                                    <Award className="size-2.5 shrink-0" />
+                                    Author
+                                  </span>
+                                )}
+                                {paper.isRetracted && (
+                                  <span
+                                    title={`Retracted: ${(paper.retractionDetails as any)?.reason || paper.retractionNature || 'Retracted'}`}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-10 font-medium bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-300 dark:border-rose-900 shrink-0 select-none"
+                                  >
+                                    <ShieldAlert className="size-2.5 shrink-0" />
+                                    Retracted
+                                  </span>
+                                )}
                                 <span className="truncate block type-dense font-normal text-foreground" title={paper.title || 'Untitled Reference'}>
                                   {paper.title || 'Untitled Reference'}
                                 </span>
@@ -509,7 +552,7 @@ export default function LibraryPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
-                                      onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)}
+                                      onClick={() => router.push(workspaceId ? `/${workspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`)}
                                       className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <BookOpen className="size-3.5 text-foreground shrink-0" />
@@ -521,6 +564,20 @@ export default function LibraryPage() {
                                     >
                                       <Quote className="size-3.5 text-foreground shrink-0" />
                                       <span>Cite</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => setAuthorshipModalItem(paper)}
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    >
+                                      <Award className="size-3.5 text-foreground shrink-0" />
+                                      <span>{paper.isMyPublication ? 'Authorship Details' : 'Add to My Publications'}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => setRetractionModalItem(paper)}
+                                      className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                    >
+                                      <ShieldAlert className="size-3.5 text-foreground shrink-0" />
+                                      <span>{paper.isRetracted ? 'Retraction Details' : 'Flag as Retracted'}</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() => handleInitiateSingleTrash(paper)}
@@ -536,13 +593,21 @@ export default function LibraryPage() {
                           </tr>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48 text-xs font-sans">
-                          <ContextMenuItem onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)} className="gap-2 text-foreground">
+                          <ContextMenuItem onClick={() => router.push(workspaceId ? `/${workspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`)} className="gap-2 text-foreground">
                             <BookOpen className="size-3.5 text-foreground shrink-0" />
                             <span>Open in Reader</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleSelectItem(paper)} className="gap-2 text-foreground">
                             <Quote className="size-3.5 text-foreground shrink-0" />
                             <span>Cite</span>
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => setAuthorshipModalItem(paper)} className="gap-2 text-foreground">
+                            <Award className="size-3.5 text-foreground shrink-0" />
+                            <span>{paper.isMyPublication ? 'Authorship Details' : 'Add to My Publications'}</span>
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => setRetractionModalItem(paper)} className="gap-2 text-foreground">
+                            <ShieldAlert className="size-3.5 text-foreground shrink-0" />
+                            <span>{paper.isRetracted ? 'Retraction Details' : 'Flag as Retracted'}</span>
                           </ContextMenuItem>
                           <ContextMenuItem onClick={() => handleInitiateSingleTrash(paper)} className="gap-2 text-foreground">
                             <Trash2 className="size-3.5 text-foreground shrink-0" />
@@ -619,6 +684,25 @@ export default function LibraryPage() {
           }}
         />
       )}
+
+      {/* Flag Retraction Modal */}
+      <FlagRetractionModal
+        open={Boolean(retractionModalItem)}
+        onOpenChange={(open) => !open && setRetractionModalItem(null)}
+        item={retractionModalItem}
+        onFlag={(itemId, data) => flagRetraction({ itemId, data })}
+        onUnflag={(itemId) => unflagRetraction(itemId)}
+        isPending={isFlagging}
+      />
+
+      {/* Authorship Confirmation Modal */}
+      <AuthorshipModal
+        open={Boolean(authorshipModalItem)}
+        onOpenChange={(open) => !open && setAuthorshipModalItem(null)}
+        item={authorshipModalItem}
+        onConfirmAuthorship={handleConfirmAuthorship}
+        isPending={isUpdatingAuthorship}
+      />
     </div>
   );
 }

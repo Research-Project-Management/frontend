@@ -56,20 +56,7 @@ export const useRegister = () => {
   useEffect(() => {
     let isMounted = true;
     if (!isAuthLoading && user) {
-      fetchAllWorkspaces()
-        .then((data) => {
-          if (!isMounted) return;
-          if (data?.workspaces && data.workspaces.length > 0) {
-            router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
-          }
-        })
-        .catch(() => {
-          if (isMounted) {
-            router.replace('/create-workspace');
-          }
-        });
+      router.replace('/projects');
     }
     return () => {
       isMounted = false;

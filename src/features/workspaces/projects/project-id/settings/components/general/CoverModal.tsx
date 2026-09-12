@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { Search, Loader2 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/components/ui/dialog';
-import { Input } from '@/shared/components/ui/input';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 interface CoverModalProps {
   currentCover?: string | null;
@@ -162,11 +162,11 @@ export function CoverModal({
                 placeholder="Search for images"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none"
+                className="h-9 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none"
               />
               <Button
                 type="button"
-                className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer shrink-0 "
+                className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground rounded-md cursor-pointer shrink-0 "
               >
                 Search
               </Button>
@@ -275,7 +275,7 @@ export function CoverModal({
                 type="button"
                 onClick={handleUploadAndSave}
                 disabled={!selectedFile || isUploading}
-                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer disabled:opacity-50"
+                className="h-8 px-4 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground rounded-md cursor-pointer disabled:opacity-50"
               >
                 {isUploading && <Loader2 className="size-3.5 animate-spin mr-1.5 shrink-0" />}
                 Upload & Save

@@ -41,11 +41,11 @@ export default function DocumentBreadcrumb() {
 
   return (
     <div className="flex items-center min-w-0 flex-1 justify-center px-2">
-      {/* Flux Logo / Workspace navigation */}
+      {/* Flux Logo / Navigation */}
       <button
         type="button"
-        onClick={() => router.push('/ws')}
-        aria-label="Navigate to workspaces"
+        onClick={() => router.push('/projects')}
+        aria-label="Navigate to projects"
         className="flex items-center shrink-0 p-1 rounded hover:bg-muted transition-colors outline-none"
       >
         <img src="/Flux.svg" className="size-5" alt="Flux" />
@@ -59,13 +59,10 @@ export default function DocumentBreadcrumb() {
             type="button"
             onClick={() => {
               const proj = currentPage?.projectId;
-              if (proj && typeof proj === 'object') {
-                const ws = (proj as any).workspaceId;
-                const wsUrl = ws && typeof ws === 'object' ? ws.url : null;
-                if (wsUrl) {
-                  router.push(`/${wsUrl}/projects/${(proj as any).id}/pages`);
-                  return;
-                }
+              const projId = proj && typeof proj === 'object' ? (proj as any).id : proj;
+              if (projId) {
+                router.push(`/projects/${projId}/pages`);
+                return;
               }
               router.back();
             }}

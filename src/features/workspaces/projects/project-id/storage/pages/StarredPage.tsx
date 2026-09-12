@@ -7,7 +7,7 @@ import { useProject } from '@/features/workspaces/projects/shell/hooks/use-proje
 import { useStarredFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 
 import { Star } from "lucide-react";
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from "@/shared/components/ui";
 import ListView from '@/features/workspaces/projects/project-id/storage/components/views/ListView';
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
@@ -16,11 +16,11 @@ import { useStorageFilterStore } from '@/features/workspaces/projects/project-id
 import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 import { filterStarredFiles } from '../utils/starred.util';
 import { applyStorageFilters } from '../utils/filter.util';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
 
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useDebounce } from "@/shared/hooks";
 import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 
 export default function StarredPage() {

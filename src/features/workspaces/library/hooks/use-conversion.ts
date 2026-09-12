@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CatalogItemService } from '../services/catalog.service';
+import { ItemService } from '../services/item.service';
 import { itemKeys } from './use-items';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -62,12 +62,12 @@ export function useItemTypeConversion(workspaceId: string) {
       targetType: string;
       retainUnmappedInExtra?: boolean;
     }) =>
-      CatalogItemService.previewConvertType(
+      ItemService.previewConvertType(
         workspaceId,
         itemId,
         targetType,
         retainUnmappedInExtra,
-      ).then((res: any): TypeConversionPreview => res?.preview ?? res?.data ?? res),
+      ).then((res: unknown): TypeConversionPreview => (res as { preview?: TypeConversionPreview; data?: TypeConversionPreview })?.preview ?? (res as { data?: TypeConversionPreview })?.data ?? (res as TypeConversionPreview)),
     onError: (err: any) => {
       toast.error('Preview failed', {
         description: err?.message || 'Failed to preview type conversion.',
@@ -90,7 +90,7 @@ export function useItemTypeConversion(workspaceId: string) {
       retainUnmappedInExtra?: boolean;
       silent?: boolean;
     }) =>
-      CatalogItemService.convertType(
+      ItemService.convertType(
         workspaceId,
         itemId,
         targetType,

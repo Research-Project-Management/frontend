@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPost } from "@/shared/lib/api";
 import {
   type UnifiedIngestionPayload,
   type UnifiedIngestionResponse,
@@ -50,7 +50,7 @@ export const IngestionService = {
   },
 
   /**
-   * Confirm Captured URL metadata and persist CatalogItem
+   * Confirm Captured URL metadata and persist Item
    */
   confirmUrl: (
     workspaceId: string,

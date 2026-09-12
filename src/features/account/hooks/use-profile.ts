@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { authKeys } from '@/features/auth/constants/auth.keys';
 import type { AuthUser } from '@/features/auth/types/auth.types';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import { updateProfile } from '../services/profile.service';
 import type { UpdateProfilePayload } from '../types/profile.types';
 

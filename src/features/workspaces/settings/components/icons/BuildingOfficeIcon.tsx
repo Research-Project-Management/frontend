@@ -2,7 +2,7 @@ import React from 'react';
 import type { LucideProps } from 'lucide-react';
 
 export const BuildingOfficeIcon = React.forwardRef<SVGSVGElement, LucideProps>(
-  ({ className = '', size = 16, strokeWidth = 2, ...props }, ref) => {
+  ({ className = '', size = 16, strokeWidth = 1.75, ...props }, ref) => {
     return (
       <svg
         ref={ref}

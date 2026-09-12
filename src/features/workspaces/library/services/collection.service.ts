@@ -1,3 +1,4 @@
+import { ExportService } from './export.service';
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "@/shared/lib/api";
 import type {
   Collection,
@@ -41,7 +42,8 @@ export const CollectionService = {
 
   delete: (workspaceId: string, collectionId: string, strategy?: "cascade" | "move-to-parent" | "orphan") =>
     apiDelete(
-      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/collections/${encodeURIComponent(collectionId)}${strategy ? `?strategy=${strategy}` : ""}`,
+      `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/collections/${encodeURIComponent(collectionId)}`,
+      { params: strategy ? { strategy } : undefined },
     ),
 
   moveItems: (workspaceId: string, collectionId: string, itemIds: string[]) =>
@@ -117,3 +119,5 @@ export const moveItemsToCollection = CollectionService.moveItems;
 export const movePapersToCollection = CollectionService.movePapers;
 export const reorderCollections = CollectionService.reorder;
 
+
+export { ExportService } from './export.service';

@@ -12,7 +12,7 @@ import {
 } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import type { ProjectMemberItem, ProjectRole } from '../types/member.types';
 import {
   normalizeProjectMembers,

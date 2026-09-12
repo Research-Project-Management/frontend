@@ -5,7 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-} from '@/shared/components/ui/dialog';
+} from "@/shared/components/ui";
 import Sidebar from '../components/Sidebar';
 import ProfileTab from '@/features/account/components/ProfileTab';
 import PreferencesTab from '@/features/account/components/PreferencesTab';

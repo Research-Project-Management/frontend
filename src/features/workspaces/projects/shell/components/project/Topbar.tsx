@@ -8,7 +8,7 @@ import {
   Plus,
   Archive,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import { ProjectFilterPopover } from './ProjectFilterPopover';
 import { CollapsibleSearchInput } from './CollapsibleSearchInput';
 import type { Project } from '../../types/project.types';
@@ -44,7 +44,7 @@ export function Topbar({
 
   return (
     <header
-      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+      className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Icon, Title & Project Count */}
@@ -90,7 +90,7 @@ export function Topbar({
             className="h-8 px-2.5 text-xs gap-1.5 text-foreground hover:bg-muted hidden sm:inline-flex cursor-pointer"
             title="View archived projects"
           >
-            <Link href={`/${workspaceId}/projects/archives`}>
+            <Link className="shrink-0" href={`/${workspaceId}/projects/archives`}>
               <Archive className="size-3.5 text-foreground shrink-0" />
               <span>Archives</span>
               <span className="text-xs font-mono tabular-nums px-1 rounded-full bg-muted text-foreground">

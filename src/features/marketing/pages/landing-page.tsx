@@ -106,15 +106,9 @@ export default function LandingPage() {
           if (!isMounted) return;
           if (data?.workspaces && data.workspaces.length > 0) {
             router.replace(`/${data.workspaces[0].url}`);
-          } else {
-            router.replace('/create-workspace');
           }
         })
-        .catch(() => {
-          if (isMounted) {
-            router.replace('/create-workspace');
-          }
-        });
+        .catch(() => {});
     }
     return () => {
       isMounted = false;
@@ -173,14 +167,14 @@ export default function LandingPage() {
             >
               <Link
                 href='/login'
-                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Start for free
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
               </Link>
               <Link
                 href='/login'
-                className='flex h-9 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='flex h-9 items-center justify-center rounded-md border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Sign in
               </Link>
@@ -364,7 +358,7 @@ export default function LandingPage() {
             <div className='flex flex-col sm:flex-row gap-3 justify-center pt-2'>
               <Link
                 href='/login'
-                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer'
+                className='group flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 cursor-pointer shrink-0'
               >
                 Get started
                 <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />

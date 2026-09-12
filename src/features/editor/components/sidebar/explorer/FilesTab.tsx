@@ -9,7 +9,7 @@ import React, {
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTabsStore } from "@/features/editor/store/tabs.store";
-import { logger } from "@/shared/lib/logger";
+import { logger } from "@/shared/lib/utils";
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import {
   AlertTriangle,
@@ -35,8 +35,8 @@ import {
   Braces,
   ListTree,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageStore, type AssetInfo } from "@/features/editor/store/page.store";
 import {

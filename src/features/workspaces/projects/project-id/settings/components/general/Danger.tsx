@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import { DeleteModal } from '@/features/workspaces/settings/components/modal/DeleteModal';
 
 interface GeneralDangerProps {
@@ -25,7 +25,7 @@ export function GeneralDanger({
   return (
     <div className="pt-6">
       {/* Container Card with Divider */}
-      <div className="rounded-lg border border-border bg-background divide-y divide-border/60 overflow-hidden shadow-none">
+      <div className="rounded-md border border-border bg-background divide-y divide-border/60 overflow-hidden shadow-none">
         {/* Row 1: Archive */}
         <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1 max-w-xl">
@@ -39,7 +39,7 @@ export function GeneralDanger({
             variant="outline"
             size="sm"
             onClick={() => setArchiveOpen(true)}
-            className="h-8 px-3.5 rounded-lg border-border bg-background hover:bg-muted text-xs font-medium text-foreground shrink-0 cursor-pointer"
+            className="h-8 px-3.5 rounded-md border-border bg-background hover:bg-muted text-xs font-medium text-foreground shrink-0 cursor-pointer"
           >
             {isArchived ? 'Restore' : 'Archive'}
           </Button>
@@ -59,7 +59,7 @@ export function GeneralDanger({
             size="sm"
             onClick={() => setDeleteOpen(true)}
             disabled={isDeleting}
-            className="h-8 px-3.5 rounded-lg border-destructive text-destructive hover:bg-destructive/10 text-xs font-medium shrink-0 cursor-pointer"
+            className="h-8 px-3.5 rounded-md border-destructive text-destructive hover:bg-destructive/10 text-xs font-medium shrink-0 cursor-pointer"
           >
             Delete
           </Button>

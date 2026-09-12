@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useMemo } from "react";
-import { Plus, Search, Layers2, ListFilter, Check, RotateCcw, X } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
+import { Plus, Search, ListFilter, Check, RotateCcw, X } from "lucide-react";
+import { StickiesIcon } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { useParams } from "next/navigation";
 import { useWorkspaceProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
@@ -11,7 +12,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/shared/components/ui/popover";
+} from "@/shared/components/ui";
+import { ProjectTopbarSwitcher } from '@/features/workspaces/projects/project-id/components/layout';
 
 interface TopBarProps {
   searchQuery: string;
@@ -34,7 +36,7 @@ export default function TopBar({
   onProjectFilterChange,
   availableProjectIds,
 }: TopBarProps) {
-  const { workspaceId } = useParams() as { workspaceId: string };
+  const { workspaceId, projectId } = useParams() as { workspaceId: string; projectId?: string };
   const { projects: allProjects = [] } = useWorkspaceProjects(workspaceId || "");
   const projects = availableProjectIds
     ? allProjects.filter((p: any) => availableProjectIds.includes(p.id))
@@ -70,20 +72,27 @@ export default function TopBar({
 
   return (
     <header
-      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
+      className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
-      <div className="flex items-center gap-2.5">
-        <Layers2 className="size-4 text-foreground shrink-0" />
-        <h1 className="text-sm font-semibold text-foreground tracking-tight">Stickies</h1>
-      </div>
+      {projectId ? (
+        <ProjectTopbarSwitcher
+          moduleTitle="Stickies"
+          moduleIcon={StickiesIcon}
+        />
+      ) : (
+        <div className="flex items-center gap-2.5">
+          <StickiesIcon className="size-4 text-foreground shrink-0" />
+          <h1 className="text-sm font-semibold text-foreground tracking-tight">Stickies</h1>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 shrink-0">
         {/* Search */}
         <div
           role="search"
           tabIndex={isSearchExpanded || searchQuery ? -1 : 0}
-          aria-label="Search stickies by title"
+          aria-label="Search stickies"
           className={cn(
             "relative flex items-center transition-colors duration-300 ease-in-out h-8 rounded-md overflow-hidden group focus-visible:ring-2 focus-visible:ring-ring",
             isSearchExpanded || searchQuery
@@ -106,7 +115,7 @@ export default function TopBar({
         >
           <Search
             className={cn(
-              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-300 z-10 text-foreground",
+              "absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-300 z-10 text-foreground shrink-0",
               isSearchExpanded || searchQuery
                 ? "left-2.5 translate-x-0"
                 : "left-1/2 -translate-x-1/2"
@@ -114,7 +123,7 @@ export default function TopBar({
           />
           <Input
             ref={inputRef}
-            placeholder="Search by title..."
+            placeholder="Search stickies..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             onBlur={() => !searchQuery && setIsSearchExpanded(false)}
@@ -241,7 +250,7 @@ export default function TopBar({
           size="sm"
           onClick={onAddSticky}
           disabled={isAddingSticky}
-          className="h-8 gap-1.5 rounded-lg px-3 text-xs cursor-pointer"
+          className="h-8 gap-1.5 rounded-md px-3 text-xs cursor-pointer"
         >
           <Plus className="size-3.5 text-primary-foreground shrink-0" />
           {addLabel}

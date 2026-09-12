@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Button } from '@/shared/components/ui/button';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Button } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { Loader2, ChevronRight } from 'lucide-react';
 import { Duration } from '../components/cycle/Duration';
 import { Automation } from '../components/cycle/Automation';
@@ -26,26 +26,26 @@ export default function CyclePage() {
 
   if (isLoading) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-6">
-        <Skeleton className="h-8 w-44 rounded-lg" />
-        <Skeleton className="h-32 w-full rounded-lg" />
-        <Skeleton className="h-32 w-full rounded-lg" />
+      <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
+        <Skeleton className="h-8 w-44 rounded-md" />
+        <Skeleton className="h-32 w-full rounded-md" />
+        <Skeleton className="h-32 w-full rounded-md" />
       </div>
     );
   }
 
   if (isError || !project) {
     return (
-      <div className="px-6 md:px-10 lg:px-12 py-8 text-sm text-muted-foreground">
+      <div className="max-w-5xl mx-auto p-6 md:p-8 text-sm text-muted-foreground">
         Error loading cycle settings.
       </div>
     );
   }
 
   return (
-    <div className="px-6 md:px-10 lg:px-12 py-8 md:py-10 max-w-6xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-6">
       {/* Page Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 border-b border-border pb-6">
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">
             Cycles
@@ -59,7 +59,7 @@ export default function CyclePage() {
           size="sm"
           onClick={save}
           disabled={!hasChanges || isSaving}
-          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-none shrink-0"
+          className="h-8 text-xs font-medium px-3.5 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-none shrink-0"
         >
           {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
           Save changes

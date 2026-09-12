@@ -22,8 +22,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import { cn } from '@/shared/lib/utils';
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { useEditorStorage } from '@/features/editor/hooks/use-storage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/services/storage.service';
 

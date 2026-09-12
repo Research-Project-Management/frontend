@@ -1,4 +1,4 @@
-import type { Paper, CatalogItem, Collection, Note, ReferenceData } from '../types/library.types';
+import type { Paper, Item, Collection, Note, ReferenceData } from '../types/library.types';
 import { resolveAcademicQuery, fetchReferenceByDoi } from '../services/citation.service';
 import {
   INSTITUTION_KEYWORDS,
@@ -30,11 +30,19 @@ export {
  * Strictly resolves canonical binary content URLs (/api/files/:fileId/content)
  * and avoids falling back to DOI landing page URLs.
  */
-export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): string {
+export function getPaperFileUrl(
+  paper?: Partial<Paper> | null | undefined,
+  workspaceId?: string,
+): string {
   if (!paper) return '';
+
+  const wsId = workspaceId || (paper as any)?.workspaceId;
 
   const normalizeUrl = (url?: string | null, fileId?: string | null): string => {
     if (fileId) {
+      if (wsId) {
+        return `/api/v1/workspaces/${encodeURIComponent(wsId)}/library/files/${encodeURIComponent(fileId)}/content`;
+      }
       return `/api/files/${fileId}/content`;
     }
     if (!url || typeof url !== 'string') return '';
@@ -80,6 +88,9 @@ export function getPaperFileUrl(paper?: Partial<Paper> | null | undefined): stri
 
   // 2. Direct fileId on paper
   if (paper.fileId) {
+    if (wsId) {
+      return `/api/v1/workspaces/${encodeURIComponent(wsId)}/library/files/${encodeURIComponent(paper.fileId)}/content`;
+    }
     return `/api/files/${paper.fileId}/content`;
   }
 
@@ -191,7 +202,7 @@ function cleanSingleFrontendTag(raw: string): string | null {
  * Cleans mojibake, strips Wikipedia disambiguation suffixes, maps arXiv taxonomy codes,
  * and formats with Title Case and preserved acronyms.
  */
-export function normalizeTags(paper: Partial<CatalogItem> | null | undefined): string[] {
+export function normalizeTags(paper: Partial<Item> | null | undefined): string[] {
   if (!paper) return [];
   const raw: unknown[] = [
     ...(Array.isArray(paper.tags) ? paper.tags : []),
@@ -286,7 +297,7 @@ export {
   type SortOptions,
 } from './filter.util';
 
-export function getUniqueTags(items: CatalogItem[]): string[] {
+export function getUniqueTags(items: Item[]): string[] {
   const tagSet = new Set<string>();
   for (const paper of items) {
     for (const tag of normalizeTags(paper)) {
@@ -597,7 +608,7 @@ const EXCLUDED_EXTRA_TELEMETRY_KEYS: ReadonlySet<string> = new Set([
 export function formatAndSanitizeExtraMetadata(
   rawExtraMetadata?: string | null,
   additionalExtraFields?: Record<string, unknown> | null,
-  associatedPaperItem?: Partial<CatalogItem> | null,
+  associatedPaperItem?: Partial<Item> | null,
 ): string {
   let textContent = '';
 

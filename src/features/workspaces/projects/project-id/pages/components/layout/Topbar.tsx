@@ -1,24 +1,31 @@
 import React from 'react';
 import { PenLine, Search, LayoutGrid, List, Plus } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
+import { ProjectTopbarSwitcher } from '@/features/workspaces/projects/project-id/components/layout';
 
 export interface TopbarProps {
+  project?: {
+    id?: string;
+    name?: string;
+    avatar?: string | null;
+  };
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
   onCreateClick: () => void;
 }
 
-export function Topbar({ viewMode, setViewMode, onCreateClick }: TopbarProps) {
+export function Topbar({ project, viewMode, setViewMode, onCreateClick }: TopbarProps) {
   return (
     <header
-      className="flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
+      className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none"
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
-      <div className="flex items-center gap-2.5">
-        <PenLine className="size-4 text-foreground shrink-0" />
-        <h1 className="text-sm font-semibold text-foreground tracking-tight">Pages</h1>
-      </div>
+      <ProjectTopbarSwitcher
+        project={project}
+        moduleTitle="Pages"
+        moduleIcon={PenLine}
+      />
       <div className="flex items-center gap-2.5">
         <Button variant="ghost" size="icon" aria-label="Search pages" className="size-8 text-foreground hover:bg-muted cursor-pointer">
           <Search className="size-4 text-foreground shrink-0" />
@@ -47,10 +54,10 @@ export function Topbar({ viewMode, setViewMode, onCreateClick }: TopbarProps) {
 
         <Button
           size="sm"
-          className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 ml-2"
+          className="h-8 gap-1.5 rounded-md px-3 bg-primary text-primary-foreground hover:bg-primary-hover ml-2 cursor-pointer"
           onClick={onCreateClick}
         >
-          <Plus className="mr-2 size-4 shrink-0" />
+          <Plus className="size-3.5 text-primary-foreground shrink-0" />
           Add Document
         </Button>
       </div>

@@ -3,7 +3,7 @@
  * across LaTeX and Markdown documents in the Flux Editor.
  */
 
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 
 /**
  * Regex matching LaTeX citation commands with optional square-bracket arguments:
@@ -178,9 +178,9 @@ export function formatCitationSnippet(
 }
 
 /**
- * Returns a human-readable summary string for a CatalogItem (e.g. for completion details).
+ * Returns a human-readable summary string for an Item (e.g. for completion details).
  */
-export function formatItemAuthorSummary(item: CatalogItem): string {
+export function formatItemAuthorSummary(item: Item): string {
   if (Array.isArray(item.contributors) && item.contributors.length > 0) {
     const firstAuthor = item.contributors[0];
     const lastName = firstAuthor?.lastName || firstAuthor?.name || 'Unknown';

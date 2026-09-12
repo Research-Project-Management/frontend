@@ -19,7 +19,7 @@ export function ActivityFeedList({
   emptyPadding = 'py-8',
 }: ActivityFeedListProps) {
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden divide-y divide-border shadow-none">
+    <div className="rounded-md bg-muted/30 overflow-hidden divide-y divide-border/40 shadow-none">
       {isLoading ? (
         <div className="p-8 text-center text-xs text-muted-foreground">
           Loading recent activities...

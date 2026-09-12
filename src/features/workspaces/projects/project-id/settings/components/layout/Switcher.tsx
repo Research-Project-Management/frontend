@@ -3,9 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Check, Search, FolderOpen, ChevronsUpDown, X } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-import { useClickOutside } from '@/shared/hooks/use-click-outside';
-import { useHotkeys } from '@/shared/hooks/use-hotkeys';
+import { cn } from "@/shared/lib/utils";
+import { useClickOutside, useHotkeys } from "@/shared/hooks";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,9 +54,8 @@ export default function Switcher({
   useClickOutside(ref, () => setOpen(false), { enabled: open });
 
   // Close on Escape
-  useHotkeys('escape', () => setOpen(false), {
-    enabled: open,
-    enableOnFormTags: true,
+  useHotkeys('escape', () => {
+    if (open) setOpen(false);
   });
 
   // Focus search when dropdown opens

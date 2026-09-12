@@ -2,7 +2,7 @@ import React from "react";
 import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { type StickyColor } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { STICKY_COLOR_MAP } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { Palette } from "lucide-react";
 import { ToolbarBtn } from "../ui/ToolbarBtn";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,12 +28,12 @@ export default function ColorModal({
           title="Color"
           isActive={isActive}
         >
-          <Palette size={14} />
+          <Palette size={14} className="shrink-0" />
         </ToolbarBtn>
       </PopoverTrigger>
       <PopoverContent 
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-[242px] p-0 rounded-lg z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
+        className="w-[242px] p-0 rounded-md z-[100] bg-popover border border-border text-popover-foreground overflow-hidden" 
         align="start" 
         side="top" 
         sideOffset={14}

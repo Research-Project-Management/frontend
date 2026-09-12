@@ -12,13 +12,13 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Input } from '@/shared/components/ui/input';
-import { Badge } from '@/shared/components/ui/badge';
+import { Input } from "@/shared/components/ui";
+import { Badge } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store/page.store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 import { useEditorCitations } from '@/features/editor/hooks/use-editor-citations';
 import { generateCitationKey } from '@/features/workspaces/library/utils/bibtex.util';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 
 interface CitationTabProps {
   onClose?: () => void;
@@ -60,7 +60,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   const filteredLibrary = useMemo(() => {
     const q = libraryQuery.trim().toLowerCase();
     if (!q) return libraryItems;
-    return libraryItems.filter((item: CatalogItem) => {
+    return libraryItems.filter((item: Item) => {
       const key = (item.citationKey || '').toLowerCase();
       const title = (item.title || '').toLowerCase();
       const authors = (item.authors || []).join(' ').toLowerCase();
@@ -106,9 +106,9 @@ export default function CitationTab({ onClose }: CitationTabProps) {
   return (
     <div className="h-full flex flex-col bg-background text-foreground select-none">
       {/* Tab Header */}
-      <div className="h-10 px-3 border-b border-border flex items-center justify-between shrink-0 bg-muted/30">
+      <div className="h-10 px-3 border-b border-border flex items-center justify-between shrink-0 bg-background">
         <div className="flex items-center gap-2">
-          <BookMarked className="size-4 text-primary" />
+          <BookMarked className="size-4 text-primary shrink-0" />
           <span className="text-13 font-semibold text-foreground">Citations</span>
         </div>
         <div className="flex items-center gap-1">
@@ -118,7 +118,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="Insert citation from library"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3.5 shrink-0" />
           </button>
           {onClose && (
             <button
@@ -127,7 +127,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
               className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               title="Close panel"
             >
-              <X className="size-3.5" />
+              <X className="size-3.5 shrink-0" />
             </button>
           )}
         </div>
@@ -152,7 +152,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
           ) : (
             <div className="space-y-1.5">
               {/* Successfully matched cited items */}
-              {citedItems.map((item: CatalogItem) => {
+              {citedItems.map((item: Item) => {
                 const key = item.citationKey || generateCitationKey(item);
                 const isCopied = copiedKey === key;
                 const authorYear = getAuthorSummary(item);
@@ -257,7 +257,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             </div>
           ) : (
             <div className="space-y-1 max-h-96 overflow-y-auto pr-0.5">
-              {filteredLibrary.map((item: CatalogItem) => {
+              {filteredLibrary.map((item: Item) => {
                 const key = item.citationKey || generateCitationKey(item);
                 const authorYear = getAuthorSummary(item);
 

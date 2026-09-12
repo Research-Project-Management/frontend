@@ -14,8 +14,8 @@ import type {
   SourceItem,
 } from '../types/editor-ai.types';
 import { API_BASE_URL as API_URL } from '@/config/env';
-import { getAuthToken } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { getAuthToken } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 
 function getHeaders(extra?: Record<string, string>): Record<string, string> {
   const token = getAuthToken();

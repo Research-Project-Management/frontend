@@ -8,15 +8,18 @@ import {
   Settings,
   Users,
   LayoutGrid,
-  RefreshCcw,
+  Sparkles,
   Tag,
-  Clock,
   Layers,
+  Download,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
+import { CycleIcon } from "@/shared/components/ui";
 import { useProjectDetails, useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
+import { ScrollArea } from "@/shared/components/ui";
 import Switcher from './Switcher';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -24,7 +27,7 @@ import Switcher from './Switcher';
 interface NavItem {
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon: LucideIcon | React.ComponentType<{ className?: string }>;
   to: string;
   exact?: boolean;
   aliases?: string[];
@@ -55,14 +58,16 @@ export default function Sidebar() {
   );
   const role =
     project?.createdById === user?.id
-      ? 'Admin'
+      ? 'Owner (PI)'
       : userMember?.role === 'owner'
-        ? 'Owner'
-        : userMember?.role === 'admin'
-          ? 'Admin'
-          : userMember?.role === 'viewer'
-            ? 'Viewer'
-            : 'Admin';
+        ? 'Owner (PI)'
+        : userMember?.role === 'contributor'
+          ? 'Contributor'
+          : userMember?.role === 'commenter'
+            ? 'Commenter'
+            : userMember?.role === 'viewer'
+              ? 'Viewer'
+              : 'Contributor';
 
   const base = `/${workspaceId}/projects/${projectId}/settings`;
 
@@ -71,17 +76,19 @@ export default function Sidebar() {
       title: 'General',
       items: [
         { id: 'general', label: 'General', icon: Settings, to: base, exact: true },
-        { id: 'members', label: 'Members', icon: Users, to: `${base}/members`, aliases: [`${base}/team`] },
-        { id: 'worklogs', label: 'Worklogs', icon: Clock, to: `${base}/worklogs` },
+        { id: 'members', label: 'Members', icon: Users, to: `${base}/members` },
+        { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
+        { id: 'ai', label: 'AI', icon: Sparkles, to: `${base}/ai` },
       ],
     },
     {
-      title: 'Features',
+      title: 'Workflow & Data',
       items: [
-        { id: 'statuses', label: 'Statuses', icon: Layers, to: `${base}/statuses` },
-        { id: 'modules', label: 'Modules', icon: LayoutGrid, to: `${base}/modules` },
-        { id: 'cycles', label: 'Cycles', icon: RefreshCcw, to: `${base}/cycles` },
+        { id: 'cycles', label: 'Cycles', icon: CycleIcon, to: `${base}/cycles` },
+        { id: 'states', label: 'States', icon: Layers, to: `${base}/states` },
         { id: 'labels', label: 'Labels', icon: Tag, to: `${base}/labels` },
+        { id: 'views', label: 'Saved Views', icon: SlidersHorizontal, to: `${base}/views` },
+        { id: 'export', label: 'Export', icon: Download, to: `${base}/export` },
       ],
     },
   ];
@@ -95,33 +102,37 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="h-full w-60 shrink-0 overflow-x-hidden border-r border-border bg-transparent p-2 py-4 select-none sidebar-scrollbar">
-      {/* Back */}
-      <div className="mb-2 px-1">
-        <Link
-          href={`/${workspaceId}/projects/${projectId}/overview`}
-          className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 font-normal text-foreground hover:bg-muted transition-colors"
-        >
-          <ArrowLeft className="size-4 shrink-0 text-foreground transition-transform group-hover:-translate-x-0.5" />
-          <span className="tracking-tight">Project settings</span>
-        </Link>
-      </div>
+    <aside className="h-full w-60 shrink-0 border-r border-border bg-transparent select-none">
+      <ScrollArea type="scroll" scrollHideDelay={600} className="h-full w-full">
+        <div className="w-full p-2 py-4">
+          {/* Back */}
+          <div className="mb-2 px-1">
+            <Link
+              href={`/${workspaceId}/projects/${projectId}/overview`}
+              className="group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 font-normal text-foreground hover:bg-muted transition-colors shrink-0"
+            >
+              <ArrowLeft className="size-4 shrink-0 text-foreground transition-transform group-hover:-translate-x-0.5" />
+              <span className="tracking-tight">Project settings</span>
+            </Link>
+          </div>
 
-      {/* Project Switcher */}
-      <Switcher
-        currentProject={project}
-        projects={projects}
-        workspaceId={workspaceId}
-        currentProjectId={projectId}
-        role={role}
-      />
+          {/* Project Switcher */}
+          <Switcher
+            currentProject={project}
+            projects={projects}
+            workspaceId={workspaceId}
+            currentProjectId={projectId}
+            role={role}
+          />
 
-      {/* Nav groups */}
-      <div className="mt-3 flex flex-col gap-3.5">
-        {navGroups.map((group) => (
-          <GroupSection key={group.title} group={group} isItemActive={isItemActive} />
-        ))}
-      </div>
+          {/* Nav groups */}
+          <div className="mt-3 flex flex-col gap-3.5">
+            {navGroups.map((group) => (
+              <GroupSection key={group.title} group={group} isItemActive={isItemActive} />
+            ))}
+          </div>
+        </div>
+      </ScrollArea>
     </aside>
   );
 }
@@ -149,10 +160,10 @@ function GroupSection({
               key={item.id}
               href={item.to}
               className={cn(
-                'group flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none',
+                'group flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none shrink-0',
                 active
                   ? 'bg-muted text-foreground font-medium'
-                  : 'text-foreground hover:bg-muted font-normal',
+                  : 'text-foreground hover:bg-muted font-normal'
               )}
             >
               <Icon

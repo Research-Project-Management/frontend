@@ -6,8 +6,8 @@ import {
   removeAuthToken,
   getAuthToken,
   getRefreshToken,
-} from '@/shared/lib/api';
-import { fixMojibake } from '@/shared/utils/format';
+} from "@/shared/lib/api";
+import { fixMojibake } from "@/shared/lib/utils";
 import type {
   AuthUser,
   LoginPayload,

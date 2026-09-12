@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, getAuthToken } from '@/shared/lib/api';
+import { apiGet, apiPatch, apiPost, getAuthToken } from "@/shared/lib/api";
 import type { ReaderDocument, DocumentFulltext } from '../types/reader.types';
 
 // API base resolution

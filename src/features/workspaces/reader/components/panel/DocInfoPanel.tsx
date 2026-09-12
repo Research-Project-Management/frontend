@@ -13,10 +13,10 @@ import {
   Sparkles,
   Quote,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Badge } from '@/shared/components/ui/badge';
-import { Separator } from '@/shared/components/ui/separator';
-import { copyToClipboard } from '@/shared/lib/clipboard';
+import { Button } from "@/shared/components/ui";
+import { Badge } from "@/shared/components/ui";
+import { Separator } from "@/shared/components/ui";
+import { copyToClipboard } from "@/shared/lib/utils";
 import { toast } from 'sonner';
 import { cleanDoi as sanitizeDoi, normalizeAuthors } from '../../utils/reader.util';
 import type { ReaderDocument } from '../../types/reader.types';

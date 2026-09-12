@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import type { Page, CreatePageInput, CreatePageResponse } from '../types/page.types';
 
 export const PageService = {

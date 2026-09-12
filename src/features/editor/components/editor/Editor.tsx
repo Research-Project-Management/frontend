@@ -6,7 +6,7 @@ import MonacoEditor, { loader } from "@monaco-editor/react";
 import type { OnMount } from "@monaco-editor/react";
 import { registerLaTeXLanguage } from "monaco-latex";
 import type { editor } from "monaco-editor";
-import { logger } from '@/shared/lib/logger';
+import { logger } from "@/shared/lib/utils";
 import {
   Bold,
   BookOpen,
@@ -38,9 +38,10 @@ import {
 import { useParams } from "next/navigation";
 import { usePageActions } from '@/features/editor/hooks/use-page';
 import { usePageComments } from '@/features/editor/services/comment.service';
+import { ItemService } from '@/features/workspaces/library/services/item.service';
 import type { Page, PageComment } from "@/features/editor/types/document.types";
 import { useActionsStore } from '@/features/editor/store/actions.store';
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useDebounce } from "@/shared/hooks";
 import { usePageStore } from "@/features/editor/store/page.store";
 import { useSettingsStore } from "@/features/editor/store/settings.store";
 import { useCompileStore } from "@/features/editor/store/compile.store";
@@ -49,13 +50,12 @@ import { EditorEventBus } from "@/features/editor/utils/editor.util";
 const FluxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 );
-import { CatalogItemService } from '@/features/workspaces/library/services/catalog.service';
 import { generateCitationKey } from '@/features/workspaces/library/utils/library.util';
 import Format from "./Format";
 import CitationPickerModal from "./CitationPickerModal";
 import { registerCitationCompletion } from "./citation-completion.provider";
 import { useViewItems } from '@/features/workspaces/library/hooks/use-items';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 
 // Register LaTeX language and custom theme before Monaco loads
 if (typeof window !== 'undefined') {
@@ -227,7 +227,7 @@ export default function Editor({ page }: EditorProps) {
   const [citationModalOpen, setCitationModalOpen] = useState(false);
   const { data: libraryData } = useViewItems(workspaceIdRef.current, 'all');
   const libraryItems = libraryData?.items ?? [];
-  const libraryItemsRef = useRef<CatalogItem[]>([]);
+  const libraryItemsRef = useRef<Item[]>([]);
   libraryItemsRef.current = libraryItems;
 
   useEffect(() => {
@@ -701,7 +701,7 @@ export default function Editor({ page }: EditorProps) {
         if (!currentWorkspaceId) return { suggestions: [] };
 
         try {
-          const res = await CatalogItemService.getAll(currentWorkspaceId, { limit: 100 });
+          const res = await ItemService.getAll(currentWorkspaceId, { limit: 100 });
           const papers: any[] = Array.isArray(res) ? res : (res as any)?.papers || [];
 
           const word = model.getWordUntilPosition(position);
@@ -1062,7 +1062,7 @@ export default function Editor({ page }: EditorProps) {
                     !renameDialog.newName.trim() ||
                     renameDialog.newName === renameDialog.word
                   }
-                  className="px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Rename
                 </button>

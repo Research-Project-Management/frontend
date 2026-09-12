@@ -44,7 +44,7 @@ import {
 } from "@/features/editor/utils/ai.util";
 import SuggestionCard from "./SuggestionCard";
 import ChatHistory from "./ChatHistory";
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import {
   AssistantMessage,
   MarkdownAssistantMessage,
@@ -1419,7 +1419,7 @@ export default function AiTab({ onClose }: { onClose?: () => void }) {
                 onClick={isStreaming ? () => abortRef.current?.abort() : () => handleSend()}
                 disabled={(!input.trim() && !activeCommand && !isStreaming) || isLoading}
                 aria-label={isStreaming ? "Stop response" : "Send message"}
-                className="size-8 flex items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-20 disabled:cursor-not-allowed outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="size-8 flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary-hover transition-all disabled:opacity-20 disabled:cursor-not-allowed outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 {isStreaming ? <Square className="size-3.5 shrink-0" /> : <ArrowUp className="size-4 shrink-0" />}
               </button>

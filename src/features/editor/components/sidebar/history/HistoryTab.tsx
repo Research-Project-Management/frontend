@@ -31,7 +31,7 @@ import {
 import type { PageEvent } from "@/features/editor/types/document.types";
 import { usePageStore } from "@/features/editor/store/page.store";
 import { cn } from "@/shared/lib/utils";
-import { Input } from '@/shared/components/ui/input';
+import { Input } from "@/shared/components/ui";
 
 type View = "file" | "project";
 
@@ -252,7 +252,7 @@ export default function HistoryTab({ onClose }: { onClose?: () => void }) {
                 type="submit"
                 disabled={saveMutation.isPending || isSubmitting}
                 title="Save current file as a snapshot"
-                className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+                className="flex h-8 shrink-0 items-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-60"
               >
                 {saveMutation.isPending ? (
                   <Loader2 className="size-3.5 animate-spin shrink-0" />

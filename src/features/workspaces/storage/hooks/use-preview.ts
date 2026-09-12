@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFileArrayBuffer, updateFileMetadata } from '@/features/workspaces/storage/services/file.service';
 import { previewServices } from '@/features/workspaces/storage/services/preview.service';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { resolveFileUrl } from "@/shared/lib/file-client";
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';
 import { mergeCrossrefMetadata } from '../utils/preview.utils';
 import { storageKeys } from '../constants/storage.keys';

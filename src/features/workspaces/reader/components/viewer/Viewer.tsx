@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { X, Loader2, AlertTriangle, StickyNote, Copy, Check, Highlighter } from 'lucide-react';
+import { X, Loader2, AlertTriangle, StickyNote, Copy, Check, Highlighter, Quote } from 'lucide-react';
 import Toolbar from './Toolbar';
 import DocumentNavDrawer from './DocumentNavDrawer';
-import type { DocumentFulltext } from '../../types/reader.types';
+import type { DocumentFulltext, ReaderDocument } from '../../types/reader.types';
+import { formatInTextCitation } from '../../utils/reader.util';
 
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
-import { copyToClipboard } from '@/shared/lib/clipboard';
+import { copyToClipboard } from "@/shared/lib/utils";
 
 // Configure worker matching exact react-pdf bundled pdfjs-dist version
 if (typeof window !== 'undefined' && pdfjs && typeof pdfjs === 'object' && 'GlobalWorkerOptions' in pdfjs && pdfjs.GlobalWorkerOptions) {
@@ -52,11 +53,12 @@ interface ViewerProps {
   error: string | null;
   onRetry?: () => void;
   onAskAi: (selectedText: string) => void;
-  onAddToNote?: (selectedText: string) => void;
+  onAddToNote?: (selectedText: string, pageNumber?: number) => void;
   onAnnotate?: (selectedText: string, pageNumber: number) => void;
   fulltext?: DocumentFulltext | null;
   isLoadingFulltext?: boolean;
   targetPage?: { pageNumber: number; timestamp: number } | null;
+  paper?: ReaderDocument;
 }
 
 export default function Viewer({
@@ -70,6 +72,7 @@ export default function Viewer({
   fulltext,
   isLoadingFulltext,
   targetPage,
+  paper,
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -91,6 +94,7 @@ export default function Viewer({
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [showFloatingMenu, setShowFloatingMenu] = useState<boolean>(false);
   const [copiedSelection, setCopiedSelection] = useState<boolean>(false);
+  const [copiedCitation, setCopiedCitation] = useState<boolean>(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(600);
@@ -202,6 +206,7 @@ export default function Viewer({
       setSelectedText(text);
       setShowFloatingMenu(true);
       setCopiedSelection(false);
+      setCopiedCitation(false);
     } catch {
       setShowFloatingMenu(false);
     }
@@ -221,6 +226,20 @@ export default function Viewer({
       setCopiedSelection(true);
       setTimeout(() => {
         setCopiedSelection(false);
+        setShowFloatingMenu(false);
+      }, 1200);
+    }
+  };
+
+  const handleCopyCitation = async () => {
+    if (!paper || !selectedText) return;
+    const citation = formatInTextCitation(paper, visiblePage);
+    const citeText = `${citation} "${selectedText}"`;
+    const ok = await copyToClipboard(citeText);
+    if (ok) {
+      setCopiedCitation(true);
+      setTimeout(() => {
+        setCopiedCitation(false);
         setShowFloatingMenu(false);
       }, 1200);
     }
@@ -263,7 +282,7 @@ export default function Viewer({
                 <button
                   type="button"
                   onClick={onRetry}
-                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shadow-none cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary-hover focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none transition-colors shadow-none cursor-pointer"
                 >
                   Retry
                 </button>
@@ -351,7 +370,7 @@ export default function Viewer({
               <button
                 type="button"
                 onClick={() => {
-                  onAddToNote(selectedText);
+                  onAddToNote(selectedText, visiblePage);
                   setShowFloatingMenu(false);
                   window.getSelection()?.removeAllRanges();
                 }}
@@ -360,6 +379,22 @@ export default function Viewer({
               >
                 <StickyNote className="size-3.5 text-background shrink-0" />
                 Note
+              </button>
+            ) : null}
+
+            {paper ? (
+              <button
+                type="button"
+                onClick={handleCopyCitation}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium hover:bg-background/20 focus-visible:ring-1 focus-visible:ring-background focus-visible:outline-none transition-colors cursor-pointer"
+                title="Copy in-text citation: (Author, Year, p. X)"
+              >
+                {copiedCitation ? (
+                  <Check className="size-3.5 text-background shrink-0" />
+                ) : (
+                  <Quote className="size-3.5 shrink-0" />
+                )}
+                {copiedCitation ? 'Cited' : 'Cite'}
               </button>
             ) : null}
 

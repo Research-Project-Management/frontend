@@ -1,27 +1,27 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Copy, Check, ChevronDown, Download } from 'lucide-react';
+import { Copy, Check, ChevronDown, Download, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from '@/shared/components/ui/tooltip';
+} from "@/shared/components/ui";
 import { useCslCitation } from '@/features/workspaces/library/hooks/use-library';
-import type { CatalogItem, CslStyle } from '@/features/workspaces/library/types/library.types';
+import type { Item, CslStyle } from '@/features/workspaces/library/types/library.types';
 import { getPaperCitationKey, cleanDoi } from '@/features/workspaces/library/utils/library.util';
 
 export interface CiteSectionProps {
-  paper: CatalogItem;
+  paper: Item;
   workspaceId?: string;
   hideHeader?: boolean;
 }
@@ -295,6 +295,17 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
         </span>
       </div>
 
+      {/* ⚠️ Citation Guard: Retraction Notice */}
+      {paper.isRetracted && (
+        <div className="p-2.5 rounded-md border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 text-xs flex items-start gap-2 select-none shrink-0">
+          <ShieldAlert className="size-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold text-rose-700 dark:text-rose-400">Citation Guard: </span>
+            <span>You are generating a citation for a <strong>retracted publication</strong>. Citing this paper may compromise academic rigor.</span>
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Adaptive Format Selection Bar */}
       <div
         ref={containerRef}
@@ -365,6 +376,38 @@ export default function CiteSection({ paper, workspaceId }: CiteSectionProps) {
           </DropdownMenu>
         )}
       </div>
+
+      {/* Citation Key Bar */}
+      {citeKey && (
+        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border/80 bg-muted/30 text-xs">
+          <div className="flex items-center gap-1.5 min-w-0 pr-2">
+            <span className="text-muted-foreground text-11 shrink-0 font-medium">Citekey</span>
+            <span className="font-mono text-11 text-foreground truncate select-text font-semibold">
+              @{citeKey}
+            </span>
+          </div>
+          <TooltipProvider delayDuration={700}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await copyToClipboard(citeKey);
+                    if (ok) toast.success(`Copied @${citeKey} to clipboard`, { id: 'library-clipboard' });
+                  }}
+                  className="size-6 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+                  aria-label="Copy citation key"
+                >
+                  <Copy className="size-3.5 text-foreground shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={4} className="text-xs px-2 py-1">
+                Copy @citekey
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
 
       {/* In-Text Citation Preview Row (Academic styles only) */}
       {!isExportFormat && inTextPreview && (

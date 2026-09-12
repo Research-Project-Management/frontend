@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, SlidersHorizontal, LogOut } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/components/ui";
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { resolveFileUrl } from "@/shared/lib/file-client";
 import AccountModal from '@/features/account/pages/AccountModal';
 
 interface AccountDropdownProps {
-  workspaceId: string;
+  workspaceId?: string;
 }
 
 export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
@@ -60,12 +60,12 @@ export default function AccountDropdown({ workspaceId }: AccountDropdownProps) {
                   referrerPolicy="no-referrer"
                 />
               ) : null}
-              <AvatarFallback className="text-sm font-semibold">
+              <AvatarFallback className="text-13 font-semibold">
                 {String(user.name || '').substring(0, 2).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <p className="text-sm font-semibold text-foreground mt-2.5 max-w-full truncate tracking-tight">{user?.name || 'User'}</p>
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-full truncate">{user?.email || ''}</p>
+            <p className="text-13 font-semibold text-foreground mt-2.5 max-w-full truncate tracking-tight">{user?.name || 'User'}</p>
+            <p className="text-11 text-muted-foreground mt-0.5 max-w-full truncate">{user?.email || ''}</p>
           </div>
           
           <div className="p-1.5 space-y-0.5">

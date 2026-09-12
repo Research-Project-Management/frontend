@@ -3,26 +3,36 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { WorkItemDetailModal as TaskDialog } from '@/features/workspaces/projects/project-id/work-items/components/modals/work-item/WorkItemDetailModal';
+import { DetailModal as TaskDialog } from '@/features/workspaces/projects/project-id/work-items/components/modals/DetailModal';
 import {
   useProjectTasks,
   useUpdateTask,
   useDeleteTask,
   useDuplicateTask,
-} from '@/features/workspaces/projects/project-id/work-items/hooks/use-work-item';
-import type { WorkItemMutationInput as TaskMutationInput } from '@/features/workspaces/projects/project-id/work-items/types/work-item.types';
+} from '@/features/workspaces/projects/project-id/work-items/hooks/use-tasks';
+import type { TaskMutationInput } from '@/features/workspaces/projects/project-id/work-items/types/types';
 import { useProjectDetails } from '@/features/workspaces/projects/shell/hooks/use-project';
 
 export interface TaskDialogModalProps {
   taskId: string;
   projectId: string;
+  initialTask?: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+const DEFAULT_COLUMNS = [
+  { id: 'backlog', title: 'Backlog', isDefault: true, accentColor: '#6366F1' },
+  { id: 'todo', title: 'To Do', isDefault: true, accentColor: '#0EA5E9' },
+  { id: 'doing', title: 'Doing', isDefault: true, accentColor: '#F59E0B' },
+  { id: 'review', title: 'Review', isDefault: true, accentColor: '#eab308' },
+  { id: 'done', title: 'Done', isDefault: true, accentColor: '#22c55e' },
+];
+
 export function TaskDialogModal({
   taskId,
   projectId,
+  initialTask,
   open,
   onOpenChange,
 }: TaskDialogModalProps) {
@@ -36,16 +46,21 @@ export function TaskDialogModal({
   const deleteTaskMutation = useDeleteTask();
   const duplicateTaskMutation = useDuplicateTask();
 
-  const task = projectTasks?.tasks.find((t: any) => t.id === taskId);
-  const columns = projectTasks?.columns || [];
+  const fetchedTask = projectTasks?.tasks.find((t: any) => t.id === taskId);
+  const task = fetchedTask || initialTask;
+  const columns =
+    projectTasks?.columns && projectTasks.columns.length > 0
+      ? projectTasks.columns
+      : (projectDetails as any)?.taskColumns && Array.isArray((projectDetails as any).taskColumns)
+        ? (projectDetails as any).taskColumns
+        : DEFAULT_COLUMNS;
   const pDetails = projectDetails as any;
   const members = pDetails?.members || [];
 
   const invalidateWorkspaceData = () => {
     if (workspaceId) {
-      queryClient.invalidateQueries({ queryKey: ['workspace-tasks', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['your-work'] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-activity', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['your-work', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', projectId] });
     }
   };
 

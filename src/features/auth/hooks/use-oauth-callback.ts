@@ -7,8 +7,8 @@ import { toast } from 'sonner';
 import { authKeys } from '../constants/auth.keys';
 import type { AuthUser } from '../types/auth.types';
 import { fetchAllWorkspaces } from '@/features/workspaces/shell/services/workspace.service';
-import { apiPost, setAuthToken } from '@/shared/lib/api';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { apiPost, setAuthToken } from "@/shared/lib/api";
+import { getErrorMessage } from "@/shared/lib/utils";
 
 interface OAuthExchangeResponse {
   accessToken: string;
@@ -76,10 +76,10 @@ export const useOAuthCallback = () => {
           if (workspaceData.workspaces && workspaceData.workspaces.length > 0) {
             router.replace(`/${workspaceData.workspaces[0].url}`);
           } else {
-            router.replace('/create-workspace');
+            router.replace('/dashboard');
           }
         } catch {
-          router.replace('/create-workspace');
+          router.replace('/dashboard');
         }
       } catch (err: unknown) {
         toast.error(getErrorMessage(err));

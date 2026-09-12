@@ -7,12 +7,12 @@ import {
   Info,
   Loader2,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { Textarea } from '@/shared/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
 
 interface GeneralDetailsProps {
   name: string;
@@ -88,7 +88,7 @@ export function GeneralDetails({
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder="Enter project name"
-          className="h-10 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3"
+          className="h-10 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none px-3"
         />
       </div>
 
@@ -99,7 +99,7 @@ export function GeneralDetails({
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Enter project description"
-          className="text-xs min-h-[110px] rounded-lg border-border bg-background focus:ring-0 focus:outline-none resize-none p-3 leading-relaxed"
+          className="text-xs min-h-[110px] rounded-md border-border bg-background focus:ring-0 focus:outline-none resize-none p-3 leading-relaxed"
         />
       </div>
 
@@ -113,7 +113,7 @@ export function GeneralDetails({
               value={identifier}
               onChange={handleIdentifierInput}
               placeholder="e.g. XINCHAO23"
-              className="h-10 text-xs font-mono font-medium rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3 pr-9"
+              className="h-10 text-xs font-mono font-medium rounded-md border-border bg-background focus:ring-0 focus:outline-none px-3 pr-9"
             />
             <TooltipProvider>
               <Tooltip>
@@ -141,7 +141,7 @@ export function GeneralDetails({
             value={isPrivate ? 'private' : 'public'}
             onValueChange={(val) => onPrivateChange(val === 'private')}
           >
-            <SelectTrigger className="h-10 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3">
+            <SelectTrigger className="h-10 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none px-3">
               <div className="flex items-center gap-2">
                 {isPrivate ? (
                   <>
@@ -181,7 +181,7 @@ export function GeneralDetails({
           value={timezone || 'UTC'}
           onValueChange={onTimezoneChange}
         >
-          <SelectTrigger className="h-10 text-xs rounded-lg border-border bg-background focus:ring-0 focus:outline-none px-3">
+          <SelectTrigger className="h-10 text-xs rounded-md border-border bg-background focus:ring-0 focus:outline-none px-3">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="text-xs max-h-48">
@@ -199,7 +199,7 @@ export function GeneralDetails({
         <Button
           onClick={onSubmit}
           disabled={!hasChanges || isSaving || !name.trim()}
-          className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
+          className="h-9 px-4 text-xs font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0"
         >
           {isSaving && <Loader2 className="mr-1.5 size-3.5 animate-spin shrink-0" />}
           Update project

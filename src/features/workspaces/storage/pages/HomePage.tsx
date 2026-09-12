@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/workspaces/storage/hooks/use-storage';
 import { StorageViewContainer } from '../components/layout/StorageViewContainer';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
@@ -48,13 +48,15 @@ export default function WorkspaceHomePage() {
     }
   };
 
+  const basePath = workspaceUrl ? `/${workspaceUrl}/storage` : `/storage`;
+
   const handleOpenLocation = useCallback((item: StorageItem) => {
     if (item.parentId) {
-      router.push(`/${workspaceUrl}/storage/my-files/${item.parentId}?highlight=${item.id}`);
+      router.push(`${basePath}/my-files/${item.parentId}?highlight=${item.id}`);
     } else {
-      router.push(`/${workspaceUrl}/storage/my-files?highlight=${item.id}`);
+      router.push(`${basePath}/my-files?highlight=${item.id}`);
     }
-  }, [router, workspaceUrl]);
+  }, [router, basePath]);
 
   const files = useMemo(
     () => (data?.pages.flatMap((page) => page.files || []) || []) as StorageItem[],
@@ -72,7 +74,7 @@ export default function WorkspaceHomePage() {
     onDownload: handleDownload,
     onOpenLocation: handleOpenLocation,
     onFileClick: (item: StorageItem) => setSelectedItem(item),
-    onFolderClick: (folder: StorageItem) => router.push(`/${workspaceUrl}/storage/my-files/${folder.id}`),
+    onFolderClick: (folder: StorageItem) => router.push(`${basePath}/my-files/${folder.id}`),
   };
 
   const handleFilesDrop = useCallback((droppedFiles: File[]) => {

@@ -17,10 +17,10 @@ import {
   ZoomOut,
   Check,
 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
-import { Separator } from '@/shared/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/shared/components/ui";
+import { Separator } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import type { CompileStatus } from '@/features/editor/store/compile.store';
 import type { LaTeXEngine } from '@/features/editor/store/settings.store';
 
@@ -57,13 +57,13 @@ export function ToolbarButton({
             'p-1.5 px-2 rounded-md transition-colors disabled:opacity-50 flex items-center gap-2 outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer',
             variant === 'default' &&
               'text-foreground hover:bg-muted',
-            variant === 'primary' && 'bg-primary text-primary-foreground hover:bg-primary/90',
+            variant === 'primary' && 'bg-primary text-primary-foreground hover:bg-primary-hover',
           )}
         >
           {loading ? (
             <Loader2 className="size-4 animate-spin shrink-0" />
           ) : (
-            <Icon className="size-4 shrink-0" strokeWidth={2} />
+            <Icon className="size-4 shrink-0" strokeWidth={1.75} />
           )}
           {title && <span className="text-sm font-medium">{title}</span>}
         </button>
@@ -115,7 +115,7 @@ export function CompileButton({
             ? statusLabel[compileStatus] ?? 'Compiling document…'
             : 'Compile document (Ctrl+Enter)'
         }
-        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover transition-colors disabled:opacity-60 outline-none focus-visible:ring-1 focus-visible:ring-primary"
       >
         {isRunning ? (
           <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -130,7 +130,7 @@ export function CompileButton({
             type="button"
             disabled={isRunning}
             aria-label="Compile mode options"
-            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 border-l border-primary-foreground/20 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="flex items-center justify-center h-7 w-5 rounded-r-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-60 border-l border-primary-foreground/20 outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <ChevronDown className="size-3 shrink-0" />
           </button>
@@ -237,6 +237,7 @@ export default function Toolbar({
 
             <ToolbarButton icon={ZoomOut} label="Zoom Out (-)" onClick={onZoomOut} />
             <button
+              type="button"
               onClick={onToggleAutoFit}
               className="h-7 px-3 flex items-center justify-center rounded-md text-xs font-semibold tracking-wide transition-colors active:scale-95 outline-none font-mono min-w-14 text-center border border-border text-foreground hover:bg-muted"
               title={autoFit ? 'Lock at current scale' : 'Fit to width'}
@@ -248,7 +249,10 @@ export default function Toolbar({
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="h-7 px-2 flex items-center justify-center gap-1 rounded-md text-xs font-medium tracking-wide transition-colors active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary border border-border text-foreground hover:bg-muted">
+              <button
+                type="button"
+                className="h-7 px-2 flex items-center justify-center gap-1 rounded-md text-xs font-medium tracking-wide transition-colors active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary border border-border text-foreground hover:bg-muted"
+              >
                 <span className="font-mono">{autoFit ? 'Fit' : `${Math.round(scale * 100)}%`}</span>
                 <ChevronDown className="size-3 opacity-60 shrink-0" />
               </button>

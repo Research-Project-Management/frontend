@@ -1,4 +1,4 @@
-import type { CatalogItem, DuplicateCluster } from '../types/library.types';
+import type { Item, DuplicateCluster } from '../types/library.types';
 import { cleanDoi } from './author-doi.util';
 
 export type { DuplicateCluster };
@@ -6,12 +6,12 @@ export type { DuplicateCluster };
 /**
  * Groups duplicate items into clusters by matching DOI or normalized title.
  */
-export function findDuplicateClusters(items: CatalogItem[]): DuplicateCluster[] {
+export function findDuplicateClusters(items: Item[]): DuplicateCluster[] {
   const clusters: DuplicateCluster[] = [];
   const visited = new Set<string>();
 
   // 1. Group by DOI
-  const doiMap = new Map<string, CatalogItem[]>();
+  const doiMap = new Map<string, Item[]>();
   for (const item of items) {
     if (item.doi && cleanDoi(item.doi)) {
       const doi = cleanDoi(item.doi).toLowerCase();
@@ -33,7 +33,7 @@ export function findDuplicateClusters(items: CatalogItem[]): DuplicateCluster[] 
 
   // 2. Group unclustered items by normalized title
   const remaining = items.filter((p) => !visited.has(p.id));
-  const titleMap = new Map<string, CatalogItem[]>();
+  const titleMap = new Map<string, Item[]>();
 
   for (const item of remaining) {
     if (item.title && item.title.trim().length > 15) {
@@ -60,7 +60,7 @@ export function findDuplicateClusters(items: CatalogItem[]): DuplicateCluster[] 
 /**
  * Computes a metadata completeness score for an item (0 to 100).
  */
-export function getCompletenessScore(item: CatalogItem): number {
+export function getCompletenessScore(item: Item): number {
   let score = 0;
   if (item.title) score += 20;
   if (item.authors && item.authors.length > 0) score += 20;
@@ -78,7 +78,7 @@ export const findDuplicates = findDuplicateClusters;
 /**
  * Calculates a Set of Item IDs that are duplicate candidates.
  */
-export function getDuplicateIds(items: CatalogItem[]): Set<string> {
+export function getDuplicateIds(items: Item[]): Set<string> {
   const clusters = findDuplicateClusters(items.filter((item) => !item.deletedAt));
   const duplicates = new Set<string>();
   for (const cluster of clusters) {

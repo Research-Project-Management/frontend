@@ -6,9 +6,8 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaces } from '../hooks/use-workspace';
 import AccountDropdown from './AccountDropdown';
 import Switcher from './Switcher';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
-
-import type { Workspace } from '@/features/setup/types/workspace.types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui";
+import type { Workspace } from '../types/workspace.types';
 
 export default function Topbar() {
   const { user, isLoading } = useAuth();
@@ -32,7 +31,7 @@ export default function Topbar() {
   return (
     <nav
       aria-label='Workspace Header Navigation'
-      className='flex h-12 w-full shrink-0 items-center justify-between gap-4 bg-transparent px-2 select-none'
+      className='flex h-11 w-full shrink-0 items-center justify-between gap-4 bg-muted px-2 select-none'
     >
       {/* Left: Workspace & Project breadcrumb */}
       <div className='flex items-center gap-2 min-w-0 shrink-0'>
@@ -43,14 +42,14 @@ export default function Topbar() {
         />
       </div>
 
-      {/* Center: Search placeholder (clean without shortcut keys) */}
+      {/* Center: Search placeholder */}
       <div className='flex flex-1 items-center justify-center max-w-sm px-2'>
         <button
           type='button'
           className='group flex h-8 w-full items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-13 text-foreground shadow-none transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
         >
           <Search className='size-3.5 text-foreground shrink-0' />
-          <span className='text-13 text-foreground truncate'>Search...</span>
+          <span className='text-13 text-muted-foreground truncate'>Search...</span>
         </button>
       </div>
 

@@ -14,8 +14,8 @@ import {
   FileText,
   RotateCcw,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
+import { Button } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { useAnnotations } from '../../hooks/use-annotations';
 import { annotationFormSchema } from '../../schemas/reader.schema';
 import { PdfAnnotationEngine } from '../../utils/reader.util';
@@ -204,7 +204,7 @@ export default function AnnotationsPanel({
 
       {/* Filter & Search Bar */}
       {annotations && annotations.length > 0 && (
-        <div className="space-y-1.5 border-b border-border/40 px-3 py-2 bg-muted/20">
+        <div className="space-y-1.5 border-b border-border/40 px-3 py-2 bg-background">
           <div className="relative flex items-center">
             <Search className="absolute left-2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
             <input

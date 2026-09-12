@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { Library, Folder, X } from 'lucide-react';
-import { useCatalogItems } from '@/features/workspaces/library/hooks/use-items';
+import { useItems } from '@/features/workspaces/library/hooks/use-items';
 import { useCollections } from '@/features/workspaces/library/hooks/use-library';
-import type { CatalogItem, Collection } from '@/features/workspaces/library/types/library.types';
+import type { Item, Collection } from '@/features/workspaces/library/types/library.types';
 
 interface CollectionsSectionProps {
-  paper: CatalogItem;
+  paper: Item;
   workspaceId: string;
   onCreateCollection?: () => void;
   hideHeader?: boolean;
@@ -18,7 +18,7 @@ export default function CollectionsSection({
   workspaceId,
   hideHeader = false,
 }: CollectionsSectionProps) {
-  const { actions } = useCatalogItems({ workspaceId });
+  const { actions } = useItems({ workspaceId });
   const { updatePaper } = actions;
   const { state: colState } = useCollections(workspaceId);
   const collections = colState.collections;

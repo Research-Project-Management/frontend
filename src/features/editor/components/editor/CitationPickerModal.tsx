@@ -8,11 +8,11 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from '@/shared/components/ui/command';
-import { Badge } from '@/shared/components/ui/badge';
+} from "@/shared/components/ui";
+import { Badge } from "@/shared/components/ui";
 import { BookOpen, FileText } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item } from '@/features/workspaces/library/types/library.types';
 import { formatCitationSnippet, formatItemAuthorSummary } from '../../utils/citation.util';
 import { generateCitationKey } from '@/features/workspaces/library/utils/bibtex.util';
 
@@ -26,7 +26,7 @@ export type CitationStyle =
 interface CitationPickerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  items: CatalogItem[];
+  items: Item[];
   onSelectCitation: (snippet: string, citeKey: string) => void;
   defaultStyle?: CitationStyle;
 }
@@ -70,7 +70,7 @@ export default function CitationPickerModal({
       onOpenChange={onOpenChange}
       title="Insert Citation"
       description="Search library items and insert citation snippet"
-      className="max-w-2xl rounded-lg border border-border shadow-sm"
+      className="max-w-2xl rounded-lg border border-border "
     >
       <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-border bg-muted">
         <div className="flex items-center gap-2">

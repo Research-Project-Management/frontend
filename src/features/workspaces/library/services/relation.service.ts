@@ -1,14 +1,13 @@
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
 import type { RelatedItem } from '../types/library.types';
 
 export const RelationService = {
   getRelated: (workspaceId: string, itemId: string) =>
-    apiGet<{ relatedPapers: RelatedItem[]; relatedItems?: RelatedItem[]; total: number }>(
+    apiGet<{ relatedItems: RelatedItem[]; total: number }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/relations`,
     ).then((res) => ({
-      relatedItems: res.relatedItems || res.relatedPapers || [],
-      relatedPapers: res.relatedPapers || res.relatedItems || [],
-      total: res.total || (res.relatedItems || res.relatedPapers || []).length,
+      relatedItems: (res as any).relatedItems || (res as any).relatedPapers || [],
+      total: (res as any).total || ((res as any).relatedItems || (res as any).relatedPapers || []).length,
     })),
 
   link: (
@@ -19,7 +18,7 @@ export const RelationService = {
   ) =>
     apiPost<{ message: string; relationType: string }>(
       `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/relations`,
-      { targetItemId, targetPaperId: targetItemId, relationType },
+      { targetItemId, relationType },
     ),
 
   unlink: (workspaceId: string, itemId: string, targetItemId: string) =>

@@ -9,8 +9,8 @@ import {
   Search,
   X,
   FolderKanban,
-} from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react';
 import {
   addDays,
   addMonths,
@@ -18,7 +18,6 @@ import {
   endOfMonth,
   endOfWeek,
   format,
-  isPast,
   isSameMonth,
   isSameWeek,
   isToday,
@@ -27,15 +26,25 @@ import {
   startOfWeek,
   subMonths,
   subDays,
-} from "date-fns";
-import { Button } from '@/shared/components/ui/button';
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import { CardUI } from '../kanban/Card';
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import type { Column, Task, WorkItem } from "../../types/work-item.types";
-import { resolveWorkItemColumnId, resolveTaskColumnId, resolveWorkItemColumnColor, resolveTaskColumnColor } from "../../types/work-item.types";
+} from 'date-fns';
+import {
+  Button,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Dialog,
+  DialogContent,
+  Checkbox,
+} from "@/shared/components/ui";
+import type { Column, Task } from '../../types/types';
+import { resolveStateId, resolveStateColor, PRIORITY_CONFIG } from '../../types/types';
 import {
   DndContext,
   closestCorners,
@@ -47,10 +56,61 @@ import {
   useDroppable,
   type DragEndEvent,
   type DragStartEvent,
-} from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from "@/shared/lib/utils";
-import { createPortal } from "react-dom";
+import { createPortal } from 'react-dom';
+
+interface CalendarCardProps {
+  card: Task;
+  onRemoveFromCycle?: (card: Task) => void;
+  isReadOnly?: boolean;
+}
+
+function CalendarCard({ card }: CalendarCardProps) {
+  const priorityConfig = PRIORITY_CONFIG[card.priority || 'none'];
+  const columnColor = resolveStateColor(card.columnId);
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 space-y-2 text-xs w-72">
+      <div className="flex items-center justify-between gap-2">
+        {card.identifier && (
+          <span className="text-10 font-mono text-muted-foreground font-semibold">
+            {card.identifier}
+          </span>
+        )}
+        {priorityConfig && (
+          <span className="text-10 font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            {priorityConfig.label}
+          </span>
+        )}
+      </div>
+
+      <div className="font-semibold text-foreground text-sm leading-snug line-clamp-2">
+        {card.title}
+      </div>
+
+      <div className="flex items-center justify-between pt-1 text-11 text-muted-foreground border-t border-border">
+        <div className="flex items-center gap-1.5">
+          <span className="size-2 rounded-full" style={{ backgroundColor: columnColor }} />
+          <span className="capitalize">{card.columnId}</span>
+        </div>
+
+        {card.assignee && (
+          <div className="flex items-center gap-1">
+            <Avatar className="size-4">
+              <AvatarImage src={(card.assignee as any).avatar} />
+              <AvatarFallback className="text-9">
+                {(card.assignee as any).name ? (card.assignee as any).name.charAt(0) : 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <span>{(card.assignee as any).name}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type CalendarViewProps = {
   tasks: Task[];
@@ -99,7 +159,7 @@ function createCalendarDueDate(dateKey: string) {
   return `${dateKey}T00:00:00.000Z`;
 }
 
-export default function CalendarView({
+export function CalendarView({
   tasks,
   columns,
   workspaceId,
@@ -228,7 +288,7 @@ export default function CalendarView({
     if (!trimmedTitle) return;
 
     const dateKeyToSubmit = quickAddDateKey;
-    const columnIdToSubmit = columns.length > 0 ? resolveTaskColumnId(columns[0]) : "";
+    const columnIdToSubmit = columns.length > 0 ? resolveStateId(columns[0]) : "";
     setQuickAddDateKey(null);
     setQuickAddTitle("");
 
@@ -239,13 +299,13 @@ export default function CalendarView({
     setAddTaskMenuDateKey(dateKey);
   }, []);
 
-  const handleAddWorkItem = useCallback((dateKey: string) => {
+  const handleAddTask = useCallback((dateKey: string) => {
     setAddTaskMenuDateKey(null);
     setExistingDialogDateKey(null);
     handleOpenQuickAdd(dateKey);
   }, [handleOpenQuickAdd]);
 
-  const handleAddExistingWorkItem = useCallback((dateKey: string) => {
+  const handleAddExistingTask = useCallback((dateKey: string) => {
     setAddTaskMenuDateKey(null);
     setExistingDialogDateKey(dateKey);
     setExistingSearch("");
@@ -320,91 +380,95 @@ export default function CalendarView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="w-full flex-1 overflow-y-auto px-6 py-4 bg-background">
-        <div className="w-full space-y-3 pb-8">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePrevious}
-                className="h-8 w-8 rounded-md text-foreground hover:bg-muted cursor-pointer"
-              >
-                <ChevronLeft className="h-4 w-4 shrink-0" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleNext}
-                className="h-8 w-8 rounded-md text-foreground hover:bg-muted cursor-pointer"
-              >
-                <ChevronRight className="h-4 w-4 shrink-0" />
-              </Button>
-              <div className="flex items-center gap-2 pl-1">
-                <h3 className="text-base font-semibold tracking-tight text-foreground">
-                  {title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleToday}
-                className="h-8 px-3 text-xs font-medium text-foreground hover:bg-muted rounded-md cursor-pointer"
-              >
-                Today
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 border border-border px-3 text-xs font-medium text-foreground rounded-md cursor-pointer"
-                  >
-                    Options
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                  className="w-48 rounded-lg p-1 text-xs"
-                >
-                  <DropdownMenuItem
-                    onSelect={() => setLayoutMode("month")}
-                    className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
-                  >
-                    <span className="flex-1 text-left text-foreground">Month layout</span>
-                    {layoutMode === "month" ? <Check className="h-4 w-4 ml-2 text-primary shrink-0" /> : null}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => setLayoutMode("week")}
-                    className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
-                  >
-                    <span className="flex-1 text-left text-foreground">Week layout</span>
-                    {layoutMode === "week" ? <Check className="h-4 w-4 ml-2 text-primary shrink-0" /> : null}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+      <div className="flex flex-col flex-1 w-full h-full overflow-hidden bg-background">
+        {/* Full-Bleed Calendar Header Toolbar (No bottom border dividing from content) */}
+        <div className="h-11 px-4 flex items-center justify-between bg-background shrink-0 select-none">
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handlePrevious}
+              aria-label="Previous period"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer"
+            >
+              <ChevronLeft className="size-4 shrink-0" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleNext}
+              aria-label="Next period"
+              className="size-7 rounded-md text-foreground hover:bg-muted cursor-pointer"
+            >
+              <ChevronRight className="size-4 shrink-0" />
+            </Button>
+            <div className="flex items-center gap-2 pl-1">
+              <h3 className="text-14 font-semibold tracking-tight text-foreground">
+                {title}
+              </h3>
             </div>
           </div>
 
-        <div className="overflow-hidden rounded-md border border-border bg-card">
-          <div className="grid grid-cols-7 divide-x divide-border bg-muted">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleToday}
+              className="h-7 px-2.5 text-11 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer"
+            >
+              Today
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Calendar options"
+                  className="h-7 gap-1.5 border border-border px-2.5 text-11 font-medium text-foreground rounded-md cursor-pointer"
+                >
+                  Options
+                  <ChevronDown className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="w-48 rounded-lg p-1 text-xs"
+              >
+                <DropdownMenuItem
+                  onSelect={() => setLayoutMode("month")}
+                  className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
+                >
+                  <span className="flex-1 text-left text-foreground">Month layout</span>
+                  {layoutMode === "month" ? <Check className="h-4 w-4 ml-2 text-primary shrink-0" /> : null}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => setLayoutMode("week")}
+                  className="pl-3 pr-2 py-2 flex items-center cursor-pointer text-xs"
+                >
+                  <span className="flex-1 text-left text-foreground">Week layout</span>
+                  {layoutMode === "week" ? <Check className="h-4 w-4 ml-2 text-primary shrink-0" /> : null}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Scrollable Calendar Grid (Unified 7-Column Grid with sleek custom scrollbar) */}
+        <div className="flex-1 overflow-auto vertical-scrollbar custom-scrollbar">
+          <div className="grid grid-cols-7 bg-background min-h-full min-w-[560px]">
+            {/* Week Day Labels (Row 1 of Grid - Centralized bg-secondary, Natural Title Case, No Bottom Border) */}
             {WEEK_DAY_LABELS.map((label) => (
               <div
                 key={label}
-                className="py-2.5 text-center text-xs font-semibold text-muted-foreground"
+                className="sticky top-0 z-20 h-8 px-3 flex items-center justify-end text-11 font-medium text-muted-foreground bg-secondary [&:not(:nth-child(7n))]:border-r border-border select-none"
               >
                 {label}
               </div>
             ))}
-          </div>
 
-          <div className="grid grid-cols-7 divide-x divide-y divide-border/60 bg-background">
+            {/* Calendar Days (Rows 2+ of Grid) */}
             {calendarDays.map((day) => {
               const dateKey = format(day, DATE_KEY_FORMAT);
               const dayTasks = tasksByDate.get(dateKey) || [];
@@ -416,7 +480,7 @@ export default function CalendarView({
               const isThisToday = isToday(day);
               const isWeekendDay = isWeekend(day);
               const dayTextClass = !isCurrentMonth
-                ? "text-muted-foreground/50"
+                ? "text-muted-foreground"
                 : isWeekendDay
                     ? "text-muted-foreground"
                     : "text-foreground";
@@ -438,8 +502,8 @@ export default function CalendarView({
                   addTaskMenuDateKey={addTaskMenuDateKey}
                   isAddTaskMenuOpen={addTaskMenuDateKey === dateKey}
                   onSetAddTaskMenuDateKey={setAddTaskMenuDateKey}
-                  onAddWorkItem={handleAddWorkItem}
-                  onAddExistingWorkItem={handleAddExistingWorkItem}
+                  onAddWorkItem={handleAddTask}
+                  onAddExistingWorkItem={handleAddExistingTask}
                   quickAddTitle={quickAddTitle}
                   onSetQuickAddTitle={setQuickAddTitle}
                   onQuickAddSubmit={handleQuickAddSubmit}
@@ -460,18 +524,18 @@ export default function CalendarView({
             if (!open) handleCloseExistingDialog();
           }}
         >
-          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-md border border-border p-0" showCloseButton={false}>
+          <DialogContent className="w-145 max-w-[90vw] overflow-hidden rounded-lg border border-border p-0" showCloseButton={false}>
             {/* Search bar */}
             <div className="px-2 pt-6 pb-2">
               <div className="relative flex items-center">
-                <Search className="absolute left-4 size-5 text-muted-foreground shrink-0" strokeWidth={2.25} />
+                <Search className="absolute left-4 size-5 text-muted-foreground shrink-0" strokeWidth={1.75} />
                 <input
                   type="text"
                   value={existingSearch}
                   onChange={(event) => setExistingSearch(event.target.value)}
                   placeholder="Type to search"
                   autoFocus
-                  className="h-10 w-full pl-13 pr-3 text-lg font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground/60 focus:border-border"
+                  className="h-10 w-full pl-13 pr-3 text-lg font-medium text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground focus:border-border"
                 />
               </div>
             </div>
@@ -597,7 +661,7 @@ export default function CalendarView({
                   type="button"
                   onClick={handleSubmitExistingTasks}
                   disabled={selectedExistingTaskIds.length === 0}
-                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-30"
+                  className="h-9 min-w-17.5 bg-primary px-4 text-primary-foreground shadow-none hover:bg-primary-hover disabled:opacity-30"
                 >
                   Add
                 </Button>
@@ -605,7 +669,6 @@ export default function CalendarView({
             </div>
           </DialogContent>
         </Dialog>
-        </div>
       </div>
       {isMounted && createPortal(
         <DragOverlay>
@@ -617,7 +680,7 @@ export default function CalendarView({
               <div className="relative flex items-center gap-2 px-3 py-1.5 text-xs font-medium leading-tight text-foreground">
                 <span
                   className="absolute left-0 top-1/2 h-5.5 w-0.5 -translate-y-1/2 rounded-r-full"
-                  style={{ backgroundColor: resolveTaskColumnColor(activeTask.columnId) }}
+                  style={{ backgroundColor: resolveStateColor(activeTask.columnId) }}
                 />
                 <span className="min-w-0 flex-1 truncate">
                   {activeTask.title}
@@ -645,19 +708,20 @@ const CalendarDayCell = memo(({
   onOpenCardDetail,
   handleOpenAddTaskMenu,
   addTaskMenuDateKey,
-  isAddTaskMenuOpen,
   onSetAddTaskMenuDateKey,
   onAddWorkItem,
   onAddExistingWorkItem,
   onRemoveFromCycle,
-  quickAddTitle,
   onSetQuickAddTitle,
   onQuickAddSubmit,
   onCloseQuickAdd,
   isAddingCard,
   columns,
   isReadOnly,
+  quickAddTitle = '',
 }: any) => {
+  const isAddTaskMenuOpen = addTaskMenuDateKey === dateKey;
+  const isWeekendDay = isWeekend(day);
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
   });
@@ -667,30 +731,50 @@ const CalendarDayCell = memo(({
       ref={setNodeRef}
       style={{ minHeight: dayCellMinHeight }}
       className={cn(
-        "group flex flex-col p-2.5 transition-colors",
-        !isCurrentMonth ? "bg-muted" : "bg-card",
-        isOver && "bg-primary/5 ring-1 ring-inset ring-primary/40"
+        "group flex flex-col transition-colors border-b [&:not(:nth-child(7n))]:border-r border-border",
+        !isCurrentMonth
+          ? "bg-muted text-muted-foreground"
+          : isWeekendDay
+          ? "bg-secondary"
+          : "bg-background",
+        isOver && "bg-muted ring-1 ring-inset ring-ring"
       )}
     >
-      <div className="mb-2 flex items-start justify-end gap-1">
-        <span
-          className={
-            isThisToday
-              ? "inline-flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground pt-0.5"
-              : `text-xs font-medium leading-none tracking-tight ${dayTextClass}`
-          }
-        >
-          {format(day, "d")}
-        </span>
+      {/* Day number header row - perfectly positioned top right */}
+      <div className="flex items-center justify-end px-3 pt-2 pb-1 text-right select-none">
+        {day.getDate() === 1 && (
+          <span className="text-11 font-medium text-muted-foreground mr-1">
+            {format(day, "MMM")}
+          </span>
+        )}
+        {isThisToday ? (
+          <span className="inline-flex size-5.5 items-center justify-center rounded-full bg-primary text-11 font-semibold text-primary-foreground shadow-xs">
+            {format(day, "d")}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "text-11 font-medium leading-none",
+              !isCurrentMonth
+                ? "text-muted-foreground"
+                : isWeekendDay
+                ? "text-muted-foreground"
+                : "text-foreground"
+            )}
+          >
+            {format(day, "d")}
+          </span>
+        )}
       </div>
 
-      <div
-        className={cn(
-          "space-y-2 overflow-y-auto custom-scrollbar min-h-[1px]",
-          layoutMode === "week" ? "max-h-105" : "max-h-42.5"
-        )}
-      >
-        {dayTasks.map((task: any) => (
+      <div className="flex-1 flex flex-col px-2 pb-2 min-h-0">
+        <div
+          className={cn(
+            "space-y-1.5 overflow-y-auto custom-scrollbar flex-1 min-h-[1px]",
+            layoutMode === "week" ? "max-h-175" : "max-h-48"
+          )}
+        >
+          {dayTasks.map((task: any) => (
             <CalendarTaskItem
               key={task.id}
               task={task}
@@ -698,102 +782,103 @@ const CalendarDayCell = memo(({
               onRemoveFromCycle={onRemoveFromCycle}
               isReadOnly={isReadOnly}
             />
-        ))}
-      </div>
-
-      {!isReadOnly && !isQuickAdding && (
-        <DropdownMenu
-          open={isAddTaskMenuOpen}
-          onOpenChange={(open) => {
-            if (!open && isAddTaskMenuOpen) {
-              onSetAddTaskMenuDateKey(null);
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              onClick={() => handleOpenAddTaskMenu(dateKey)}
-              className={cn(
-                dayTasks.length > 0 ? "mt-1.5" : "mt-0",
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted cursor-pointer",
-                "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
-              )}
-            >
-              <Plus className="size-3.5 shrink-0" />
-              <span>Add task</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            sideOffset={6}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-44 rounded-lg border border-border bg-popover p-1 text-xs"
-          >
-            <DropdownMenuItem
-              onSelect={() => onAddWorkItem(dateKey)}
-              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary hover:bg-muted"
-            >
-              <Plus className="size-3.5 text-foreground shrink-0" />
-              <span>Add task</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => onAddExistingWorkItem(dateKey)}
-              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary hover:bg-muted"
-            >
-              <FolderKanban className="size-3.5 text-foreground shrink-0" />
-              <span>Add existing task</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
-      {isQuickAdding && (
-        <div className="mt-2 flex flex-col gap-2">
-          <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-primary/50">
-            <input
-              type="text"
-              autoFocus
-              value={quickAddTitle}
-              onChange={(event) => onSetQuickAddTitle(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  onQuickAddSubmit();
-                }
-
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  onCloseQuickAdd();
-                }
-              }}
-              placeholder="Task title..."
-              className="h-7 min-w-0 flex-1 bg-transparent px-2 text-xs text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
-              disabled={isAddingCard}
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              size="sm"
-              className="h-6.5 px-2.5 text-xs bg-primary hover:bg-primary/90 text-primary-foreground rounded-md cursor-pointer"
-              onClick={onQuickAddSubmit}
-              disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
-            >
-              Add
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6.5 px-2 text-xs rounded-md cursor-pointer"
-              onClick={onCloseQuickAdd}
-            >
-              Cancel
-            </Button>
-          </div>
+          ))}
         </div>
-      )}
+
+        {!isReadOnly && !isQuickAdding && (
+          <DropdownMenu
+            open={isAddTaskMenuOpen}
+            onOpenChange={(open) => {
+              if (!open && isAddTaskMenuOpen) {
+                onSetAddTaskMenuDateKey(null);
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={() => handleOpenAddTaskMenu(dateKey)}
+                className={cn(
+                  dayTasks.length > 0 ? "mt-1.5" : "mt-0",
+                  "flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-11 font-medium text-foreground transition-colors hover:bg-muted cursor-pointer",
+                  "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto data-[state=open]:opacity-100 data-[state=open]:pointer-events-auto"
+                )}
+              >
+                <Plus className="size-3.5 shrink-0" strokeWidth={1.75} />
+                <span>Add task</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={6}
+              onCloseAutoFocus={(e) => e.preventDefault()}
+              className="w-44 rounded-md border border-border bg-popover p-1 text-xs"
+            >
+              <DropdownMenuItem
+                onSelect={() => onAddWorkItem(dateKey)}
+                className="rounded-sm px-2.5 py-1.5 text-11 font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted"
+              >
+                <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.75} />
+                <span>Add task</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onAddExistingWorkItem(dateKey)}
+                className="rounded-sm px-2.5 py-1.5 text-11 font-medium text-foreground flex items-center gap-2 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted"
+              >
+                <FolderKanban className="size-3.5 text-foreground shrink-0" strokeWidth={1.75} />
+                <span>Add existing task</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
+        {isQuickAdding && (
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="relative flex w-full items-center rounded-md border border-border bg-background focus-within:border-ring">
+              <input
+                type="text"
+                autoFocus
+                value={quickAddTitle}
+                onChange={(event) => onSetQuickAddTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    onQuickAddSubmit();
+                  }
+
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    onCloseQuickAdd();
+                  }
+                }}
+                placeholder="Task title..."
+                className="h-7 min-w-0 flex-1 bg-transparent px-2 text-12 text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                disabled={isAddingCard}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 px-2.5 text-11 font-medium bg-primary hover:bg-primary-hover text-primary-foreground rounded-md cursor-pointer shadow-none"
+                onClick={onQuickAddSubmit}
+                disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
+              >
+                Add
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-11 font-medium rounded-md hover:bg-muted cursor-pointer"
+                onClick={onCloseQuickAdd}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 });
@@ -811,7 +896,7 @@ const CalendarTaskItem = memo(({
 }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const columnColor = resolveTaskColumnColor(task.columnId);
+  const columnColor = resolveStateColor(task.columnId);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
@@ -856,7 +941,7 @@ const CalendarTaskItem = memo(({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(
-              "group relative flex w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-left text-xs font-medium leading-tight text-foreground transition-colors hover:bg-muted cursor-pointer",
+              "group relative flex w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-left text-12 font-medium leading-tight text-foreground transition-colors hover:bg-muted cursor-pointer",
               isDragging && "z-50 opacity-40 border-primary"
             )}
           >
@@ -877,10 +962,11 @@ const CalendarTaskItem = memo(({
           onOpenAutoFocus={(e: Event) => e.preventDefault()}
         >
           <div className="pointer-events-none">
-            <CardUI card={task} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
+            <CalendarCard card={task} onRemoveFromCycle={onRemoveFromCycle} isReadOnly={isReadOnly} />
           </div>
         </PopoverContent>
       </Popover>
     </div>
   );
 });
+export default CalendarView;

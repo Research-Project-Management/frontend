@@ -23,7 +23,7 @@ export function useRelations(workspaceId: string, itemId: string) {
     queryFn: () => RelationService.getRelated(workspaceId, itemId),
     enabled: Boolean(workspaceId && itemId),
     select: (data) => ({
-      items: data.relatedItems || data.relatedPapers || [],
+      items: data.relatedItems || (data as any).relatedPapers || [],
       total: data.total || 0,
     }),
   });

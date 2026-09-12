@@ -13,8 +13,8 @@ import {
   FormField,
   FormItem,
   FormMessage,
-} from '@/shared/components/ui/form';
-import { Switch } from '@/shared/components/ui/switch';
+} from "@/shared/components/ui";
+import { Switch } from "@/shared/components/ui";
 
 export default function NotificationsTab() {
   const form = useForm<z.infer<typeof notificationsSchema>>({

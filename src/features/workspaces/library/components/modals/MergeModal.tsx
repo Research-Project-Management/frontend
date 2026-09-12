@@ -8,21 +8,21 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
-import { Label } from '@/shared/components/ui/label';
-import { Badge } from '@/shared/components/ui/badge';
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { RadioGroup, RadioGroupItem } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
+import { Badge } from "@/shared/components/ui";
 import { Files, Check, Loader2 } from 'lucide-react';
-import type { CatalogItem } from '../../types/library.types';
+import type { Item } from '../../types/library.types';
 
 export interface MergeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  duplicates: CatalogItem[];
+  duplicates: Item[];
   onMerge: (
-    masterPaper: CatalogItem,
-    mergedFields: Partial<CatalogItem>,
+    masterPaper: Item,
+    mergedFields: Partial<Item>,
     duplicateIdsToDelete: string[],
   ) => Promise<void>;
 }
@@ -58,7 +58,7 @@ export function MergeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border shadow-none rounded-md">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto bg-background border border-border shadow-none rounded-lg">
         <DialogHeader>
           <div className="flex items-center gap-2 text-foreground">
             <Files className="size-5 text-foreground shrink-0" />

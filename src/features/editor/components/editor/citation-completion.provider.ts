@@ -1,5 +1,5 @@
 ﻿import type * as Monaco from 'monaco-editor';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 import { detectCitationTrigger, formatItemAuthorSummary } from '../../utils/citation.util';
 
 /**
@@ -8,7 +8,7 @@ import { detectCitationTrigger, formatItemAuthorSummary } from '../../utils/cita
  */
 export function registerCitationCompletion(
   monaco: typeof Monaco,
-  getItems: () => CatalogItem[],
+  getItems: () => Item[],
   languages: string[] = ['latex', 'markdown'],
 ): Monaco.IDisposable {
   const disposables: Monaco.IDisposable[] = [];

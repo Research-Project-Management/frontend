@@ -19,10 +19,10 @@ import React, {
 } from 'react';
 import { LayoutGroup } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
-import { cn } from '@/shared/lib/utils';
-import { logger } from '@/shared/lib/logger';
-import { getErrorMessage } from '@/shared/utils/error.util';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { cn } from "@/shared/lib/utils";
+import { logger } from "@/shared/lib/utils";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 import type { ChatSession } from '../../types/chat.types';
 import {
   listChatSessions,
@@ -172,8 +172,8 @@ export function Sidebar() {
       await deleteChatSession(targetChatId);
       setChats((prev) => prev.filter((c) => c.id !== targetChatId));
       toast.success('Chat deleted');
-      if (activeChatId === targetChatId && workspaceId) {
-        router.push(`/${workspaceId}/ai`);
+      if (activeChatId === targetChatId) {
+        router.push(workspaceId ? `/${workspaceId}/ai` : `/ai`);
       }
     } catch (err) {
       toast.error(getErrorMessage(err) || 'Failed to delete chat');
@@ -217,7 +217,7 @@ export function Sidebar() {
       {/* Header */}
       <div className="p-2.5 border-b border-border flex items-center justify-between gap-2">
         <button
-          onClick={() => workspaceId && router.push(`/${workspaceId}/ai`)}
+          onClick={() => router.push(workspaceId ? `/${workspaceId}/ai` : `/ai`)}
           className="flex-1 flex items-center justify-center gap-2 h-8 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors shadow-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <SquarePen className="size-3.5 text-foreground shrink-0" />
@@ -279,7 +279,7 @@ export function Sidebar() {
                     <ChevronDown
                       className={`size-3 text-muted-foreground transition-transform ${
                         isCollapsed ? '-rotate-90' : ''
-                      }`}
+                      } shrink-0`}
                     />
                   </button>
 
@@ -293,7 +293,7 @@ export function Sidebar() {
                           <div
                             key={chat.id}
                             onClick={() =>
-                              workspaceId && router.push(`/${workspaceId}/ai/${chat.id}`)
+                              router.push(workspaceId ? `/${workspaceId}/ai/${chat.id}` : `/ai/${chat.id}`)
                             }
                             className={cn(
                               'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-13 leading-5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',

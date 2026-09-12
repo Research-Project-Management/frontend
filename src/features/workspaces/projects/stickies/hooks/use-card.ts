@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useSticky } from '@/features/workspaces/projects/stickies/hooks/use-sticky';
 import { type Sticky, STICKY_COLOR_CYCLE } from '@/features/workspaces/projects/stickies/types/sticky.types';
-import { isStickyEmpty } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
+import { isStickyEmpty, stripHtml } from '@/features/workspaces/projects/stickies/utils/sticky.utils';
 import { toast } from "sonner";
 import {
   MouseSensor,
@@ -28,7 +28,17 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const api = useSticky(workspaceId, search, projectId);
-  const stickies = useMemo(() => (api.query.data || []) as Sticky[], [api.query.data]);
+  const rawStickies = useMemo(() => (api.query.data || []) as Sticky[], [api.query.data]);
+
+  const stickies = useMemo(() => {
+    if (!search || !search.trim()) return rawStickies;
+    const q = search.toLowerCase().trim();
+    return rawStickies.filter((s) => {
+      const contentText = stripHtml(s.content || '').toLowerCase();
+      const titleText = (s.title || '').toLowerCase();
+      return contentText.includes(q) || titleText.includes(q);
+    });
+  }, [rawStickies, search]);
 
   const createStickyMutate = api.mutations.create.mutate;
   const isCreatePending = api.mutations.create.isPending;
@@ -76,7 +86,6 @@ export const useCard = (options?: { search?: string; projectId?: string }) => {
           workspaceId,
           content: "<p></p>",
           color: nextColor,
-          title: "",
           position: { x: 0, y: 0 },
         });
       }, [workspaceId, stickies, createStickyMutate, isCreatePending]),

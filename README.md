@@ -50,7 +50,7 @@ A cloud-native, multi-tenant B2B/Academic SaaS platform with AI integration, eng
 - **React 19** - Latest React with React Server Components support
 - **TypeScript** - Strict type safety
 - **TailwindCSS 4** - Modern utility-first CSS framework with CSS-first `@theme` configuration
-- **Inter & IBM Plex Mono** - 100% Plane.so official typography standard via `next/font/google` (zero-CLS, subsets: latin, vietnamese), 13-step scale (9px–40px), 450 body weight, 1.54 line-height, and strict 600 SemiBold UI cap
+- **Inter & IBM Plex Mono** - Precision typography standard via `next/font/google` (zero-CLS, subsets: latin, vietnamese), 13-step scale (9px–40px), 450 body weight, 1.54 line-height, and strict 600 SemiBold UI cap
 
 ### UI & Design System
 

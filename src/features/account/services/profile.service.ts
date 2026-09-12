@@ -1,4 +1,4 @@
-import { apiPut } from '@/shared/lib/api';
+import { apiPut } from "@/shared/lib/api";
 import type { AuthUser } from '@/features/auth/types/auth.types';
 import type { UpdateProfilePayload } from '../types/profile.types';
 

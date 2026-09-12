@@ -2,15 +2,29 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Puzzle } from 'lucide-react';
+import { Puzzle, Loader2 } from 'lucide-react';
 import { TopBar } from '../components/layout/TopBar';
 import { ZoteroConnectionPanel } from '../integrations/zotero/components/zotero-connection-panel';
 import { ZoteroConflictInbox } from '../integrations/zotero/components/zotero-conflict-inbox';
+import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 
 export default function IntegrationsPage() {
   const params = useParams();
   const rawId = params?.workspaceId;
-  const workspaceId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : '';
+  const urlId = typeof rawId === 'string' ? rawId : Array.isArray(rawId) ? rawId[0] : undefined;
+  const { workspace, isLoading } = useWorkspace(urlId);
+  const workspaceId = workspace?.id || urlId || '';
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full flex-col bg-background">
+        <TopBar title="Integrations" Icon={Puzzle} />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   if (!workspaceId) {
     return (

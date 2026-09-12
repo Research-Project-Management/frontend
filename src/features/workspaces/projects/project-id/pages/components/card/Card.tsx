@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
 import type { Page } from '../../types/page.types';
-import { formatDate } from '@/shared/utils/format';
+import { formatDate } from "@/shared/lib/utils";
 
 interface CardProps {
   page: Page;
@@ -23,7 +23,7 @@ export function Card({ page, workspaceId }: CardProps) {
   return (
     <Link
       href={`/${workspaceId}/projects/${projId}/pages/${page.id}${fileQuery}`}
-      className="group flex flex-col rounded-lg border border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:border-primary transition-all overflow-hidden"
+      className="group flex flex-col rounded-lg border border-border bg-card text-card-foreground hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:border-primary transition-all overflow-hidden shrink-0"
     >
       <div className="aspect-[4/3] bg-muted border-b border-border flex items-center justify-center overflow-hidden">
         {page.pdfThumbnail ? (

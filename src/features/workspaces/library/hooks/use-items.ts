@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  CatalogItemService,
-} from '../services/catalog.service';
-import { ReadingService as ItemStateService, type ItemStateData } from '../services/reading.service';
+  ItemService,
+} from '../services/item.service';
+import { StateService as ItemStateService, type ItemStateData } from '../services/state.service';
 import { invalidateCollections } from './use-collections';
 import type {
-  CatalogItem,
-  CreateItemDTO,
+  Item,
+    CreateItemDTO,
   UpdateItemDTO,
   ItemQueryParams,
 } from '../types/library.types';
@@ -27,29 +27,27 @@ export const itemKeys = {
   types: (workspaceId: string) => ['items', workspaceId, 'types'] as const,
 };
 
-export const catalogItemKeys = itemKeys;
-
 // ── View-scoped Items Hook (unfiled, recent, trash, all) ───────────────────────
 /**
  * Fetches items filtered by a specific view.
  * Returns { items, meta, total, hasNextPage, nextCursor } — consumers must NOT strip meta.
- * Pages use this hook — they must NOT call CatalogItemService directly.
+ * Pages use this hook — they must NOT call ItemService directly.
  */
 export function useViewItems(
   workspaceId: string,
-  view: 'all' | 'recent' | 'unfiled' | 'trash',
+  view: 'all' | 'recent' | 'unfiled' | 'trash' | 'my-publications' | 'publications',
   search?: string,
 ) {
   return useQuery({
     queryKey: itemKeys.byView(workspaceId, view, search),
     queryFn: () =>
-      CatalogItemService.getAll(workspaceId, {
+      ItemService.getAll(workspaceId, {
         view,
         search: search?.trim() || undefined,
       }),
     enabled: Boolean(workspaceId),
     select: (data) => {
-      const items: CatalogItem[] = data?.items || [];
+      const items: Item[] = data?.items || [];
       const meta = data?.meta || data?.pagination || null;
       const total: number =
         meta?.totalCount ??
@@ -76,11 +74,11 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
 
   const allItemsQuery = useQuery({
     queryKey: itemKeys.all(workspaceId),
-    queryFn: () => CatalogItemService.getAll(workspaceId),
+    queryFn: () => ItemService.getAll(workspaceId),
     enabled: Boolean(workspaceId),
     select: (data) => {
-      if (!data) return { items: [] as CatalogItem[], meta: null };
-      const items: CatalogItem[] = data.items || [];
+      if (!data) return { items: [] as Item[], meta: null };
+      const items: Item[] = data.items || [];
       const meta = data.meta || data.pagination || null;
       return { items, meta };
     },
@@ -88,20 +86,20 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
 
   const itemByIdQuery = useQuery({
     queryKey: itemKeys.byId(workspaceId, activeItemId),
-    queryFn: () => CatalogItemService.getById(workspaceId, activeItemId),
+    queryFn: () => ItemService.getById(workspaceId, activeItemId),
     enabled: Boolean(workspaceId && activeItemId),
-    select: (data) => (data?.item ? (data.item as CatalogItem) : (data as CatalogItem)),
+    select: (data) => (data?.item ? (data.item as Item) : (data as Item)),
   });
 
   const collectionItemsQuery = useQuery({
     queryKey: itemKeys.byCollection(workspaceId, collectionId || ''),
-    queryFn: () => CatalogItemService.getByCollection(workspaceId, collectionId || ''),
+    queryFn: () => ItemService.getByCollection(workspaceId, collectionId || ''),
     enabled: Boolean(workspaceId && collectionId),
-    select: (data) => (data?.items || data?.papers || []) as CatalogItem[],
+    select: (data) => (data?.items || data?.papers || []) as Item[],
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateItemDTO & { silent?: boolean }) => CatalogItemService.create(workspaceId, collectionId || '', data),
+    mutationFn: (data: CreateItemDTO & { silent?: boolean }) => ItemService.create(workspaceId, collectionId || '', data),
     onSuccess: (newItem, variables) => {
       const targetCollection = (newItem as any)?.collectionId || collectionId;
       if (targetCollection) {
@@ -110,10 +108,11 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
         });
       }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
       invalidateCollections(queryClient, workspaceId);
       if (!variables?.silent) {
         toast.success('Document added', {
-          description: 'Added to your library catalog.',
+          description: 'Added to your library.',
           id: 'library-item-create',
         });
       }
@@ -130,7 +129,7 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, expectedVersion, silent }: { id: string; data: UpdateItemDTO; expectedVersion?: number; silent?: boolean }) => {
-      const res = await CatalogItemService.update(workspaceId, id, data, expectedVersion);
+      const res = await ItemService.update(workspaceId, id, data, expectedVersion);
       return { res, silent, id };
     },
     onSuccess: ({ res: updatedItem, silent, id }) => {
@@ -158,7 +157,7 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, silent }: { id: string; silent?: boolean }) => {
-      const res = await CatalogItemService.delete(workspaceId, id);
+      const res = await ItemService.delete(workspaceId, id);
       return { res, silent };
     },
     onSuccess: ({ silent }) => {
@@ -187,13 +186,13 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
   });
 
   const state = {
-    allItems: ((allItemsQuery.data as any)?.items || []) as CatalogItem[],
-    allPapers: ((allItemsQuery.data as any)?.items || []) as CatalogItem[],
+    allItems: ((allItemsQuery.data as any)?.items || []) as Item[],
+    allPapers: ((allItemsQuery.data as any)?.items || []) as Item[],
     meta: (allItemsQuery.data as any)?.meta || null,
-    item: (itemByIdQuery.data || null) as CatalogItem | null,
-    paper: (itemByIdQuery.data || null) as CatalogItem | null,
-    collectionItems: (collectionItemsQuery.data || []) as CatalogItem[],
-    collectionPapers: (collectionItemsQuery.data || []) as CatalogItem[],
+    item: (itemByIdQuery.data || null) as Item | null,
+    paper: (itemByIdQuery.data || null) as Item | null,
+    collectionItems: (collectionItemsQuery.data || []) as Item[],
+    collectionPapers: (collectionItemsQuery.data || []) as Item[],
     isLoadingAll: allItemsQuery.isLoading,
     isLoadingItem: itemByIdQuery.isLoading,
     isLoadingPaper: itemByIdQuery.isLoading,
@@ -290,23 +289,13 @@ export function useItems({ workspaceId, collectionId, paperId, itemId }: UseItem
   };
 }
 
-export const useCatalogItems = useItems;
-export function useCatalogItem(workspaceId: string, itemId: string) {
-  const result = useItems({ workspaceId, itemId });
-  return {
-    ...result,
-    data: result.state.item,
-    isLoading: result.state.isLoadingItem,
-  };
-}
-
 // ── 2. Item Types Hook ───────────────────────────────────────────────────────
 
 export function useItemTypes(workspaceId?: string) {
   const wid = workspaceId || 'current';
   const { data, isLoading } = useQuery({
     queryKey: itemKeys.types(wid),
-    queryFn: () => CatalogItemService.getItemTypes(wid),
+    queryFn: () => ItemService.getItemTypes(wid),
     enabled: Boolean(workspaceId),
     staleTime: 1000 * 60 * 60,
   });
@@ -400,23 +389,23 @@ export function useTrash(workspaceId: string) {
 
   const trashQuery = useQuery({
     queryKey: itemKeys.trash(workspaceId),
-    queryFn: () => CatalogItemService.getAll(workspaceId, { view: 'trash' }),
+    queryFn: () => ItemService.getAll(workspaceId, { view: 'trash' }),
     enabled: Boolean(workspaceId),
-    select: (data): CatalogItem[] => {
+    select: (data): Item[] => {
       if (Array.isArray(data?.items)) return data.items;
       if (Array.isArray((data as any)?.papers)) return (data as any).papers;
-      if (Array.isArray(data)) return data as unknown as CatalogItem[];
+      if (Array.isArray(data)) return data as unknown as Item[];
       return [];
     },
   });
 
-  const trashItems: CatalogItem[] = trashQuery.data ?? [];
+  const trashItems: Item[] = trashQuery.data ?? [];
 
   const restoreMutation = useMutation({
-    mutationFn: (itemId: string) => CatalogItemService.restore(workspaceId, itemId),
+    mutationFn: (itemId: string) => ItemService.restore(workspaceId, itemId),
     onSuccess: () => {
       toast.success('Document restored', {
-        description: 'Item has been returned to your library catalog.',
+        description: 'Item has been returned to your library.',
         id: 'trash-mutation-toast',
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(workspaceId) });
@@ -430,7 +419,7 @@ export function useTrash(workspaceId: string) {
   });
 
   const purgeMutation = useMutation({
-    mutationFn: (itemId: string) => CatalogItemService.purge(workspaceId, itemId),
+    mutationFn: (itemId: string) => ItemService.purge(workspaceId, itemId),
     onSuccess: () => {
       toast.success('Permanently deleted', {
         description: 'The document and its files were permanently removed.',
@@ -447,9 +436,9 @@ export function useTrash(workspaceId: string) {
   });
 
   const emptyTrashMutation = useMutation({
-    mutationFn: async (items: CatalogItem[]) => {
+    mutationFn: async (items: Item[]) => {
       if (items.length === 0) return 0;
-      await Promise.all(items.map((item) => CatalogItemService.purge(workspaceId, item.id)));
+      await Promise.all(items.map((item) => ItemService.purge(workspaceId, item.id)));
       return items.length;
     },
     onSuccess: (count) => {
@@ -506,14 +495,14 @@ export type SortField =
 export type SortOrder = 'asc' | 'desc';
 
 export interface UseItemTableOptions {
-  papers?: CatalogItem[];
-  items?: CatalogItem[];
+  papers?: Item[];
+  items?: Item[];
   initialActiveId?: string | null;
   initialSortField?: SortField;
   initialSortOrder?: SortOrder;
 }
 
-const EMPTY_ITEMS: CatalogItem[] = [];
+const EMPTY_ITEMS: Item[] = [];
 
 export function useItemTable({
   papers,

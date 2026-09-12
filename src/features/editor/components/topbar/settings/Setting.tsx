@@ -27,17 +27,18 @@ import {
 } from '@/features/editor/store/settings.store';
 import { usePageStore } from '@/features/editor/store/page.store';
 import { filesQuery, useFileActions } from '@/features/editor/hooks/use-page';
-import { Separator } from '@/shared/components/ui/separator';
-import { Switch } from '@/shared/components/ui/switch';
-import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { Separator } from "@/shared/components/ui";
+import { Switch } from "@/shared/components/ui";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/components/ui";
+import { useTheme } from "@/shared/providers";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select';
-import { cn } from '@/shared/lib/utils';
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 // ── Setting Row Helper ───────────────────────────────────────────────────────
 
@@ -93,6 +94,8 @@ export default function Setting() {
     toggleSettingsPanel,
   } = useSettingsStore();
 
+  const { setTheme } = useTheme();
+
   const { texFiles, currentPage } = usePageStore();
   const { setMainFile: setMainFileMutation } = useFileActions();
 
@@ -145,7 +148,7 @@ export default function Setting() {
   return (
     <div className="h-full w-[280px] border-l border-border bg-background flex flex-col shrink-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
+      <div className="flex items-center justify-between px-4 h-11 border-b border-border shrink-0">
         <span className="text-sm font-semibold">Settings</span>
         <button
           type="button"
@@ -218,7 +221,14 @@ export default function Setting() {
           <h3 className="text-xs font-medium text-muted-foreground px-4">Editor</h3>
 
           <SettingRow icon={editorTheme === 'light' ? Sun : Moon} label="Theme">
-            <Tabs value={editorTheme} onValueChange={(v) => setEditorTheme(v as 'light' | 'dark')}>
+            <Tabs
+              value={editorTheme}
+              onValueChange={(v) => {
+                const next = v as 'light' | 'dark';
+                setEditorTheme(next);
+                setTheme(next);
+              }}
+            >
               <TabsList className="h-7 p-0.5 border-none bg-secondary">
                 <TabsTrigger value="light" className="text-xs px-2 py-1">Light</TabsTrigger>
                 <TabsTrigger value="dark" className="text-xs px-2 py-1">Dark</TabsTrigger>

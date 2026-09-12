@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { cn } from '@/shared/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import { getTaskProject, type ProjectMap } from '../../utils/your-work.util';
 import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';
 
@@ -71,7 +71,7 @@ export function ActivityFeedItem({
         className,
       )}
     >
-      <Avatar className="size-9 rounded-full shrink-0 mt-0.5 border border-border">
+      <Avatar className="size-9 rounded-full shrink-0 mt-0.5">
         <AvatarImage
           src={activity.user?.avatar || undefined}
           alt={actorName}

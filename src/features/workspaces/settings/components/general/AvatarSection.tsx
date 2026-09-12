@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Camera, Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { resolveFileUrl } from "@/shared/lib/file-client";
 
 interface AvatarSectionProps {
   name: string;

@@ -16,10 +16,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Button } from '@/shared/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { Button } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
 import { DeleteModal } from '../modal/DeleteModal';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import {
@@ -166,7 +166,7 @@ export function ItemActions({
           onClick={() => onToggleStar?.(item.id)}
           title={item.starred ? "Unstar" : "Star"}
         >
-          <Star className={`size-3.5 ${item.starred ? "fill-amber-400 text-amber-400" : ""}`} />
+          <Star className={`size-3.5 ${item.starred ? "fill-amber-400 text-amber-400" : ""} shrink-0`} />
         </Button>
       )}
 

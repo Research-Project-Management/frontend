@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from "@/shared/components/ui";
 import ListView, { type StorageViewProps } from '../views/ListView';
 import GridView from '../views/GridView';
 import { useViewStore } from '../../store/use-view-store';

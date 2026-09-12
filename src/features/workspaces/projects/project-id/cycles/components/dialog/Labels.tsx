@@ -9,11 +9,11 @@ import {
   Tag, 
   X
 } from "lucide-react";
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { useParams } from "next/navigation";
 import { useLabels, AVAILABLE_LABEL_COLORS } from '../../hooks/use-label';
 
@@ -98,7 +98,7 @@ const LabelSelect = ({
                     key={item.name} 
                     onClick={() => setSelectedColor(item.color)} 
                     disabled={isMutating}
-                    className="h-8 rounded-lg relative transition-transform hover:scale-105 active:scale-95 flex items-center justify-center disabled:opacity-50 cursor-pointer" 
+                    className="h-8 rounded-md relative transition-transform hover:scale-105 active:scale-95 flex items-center justify-center disabled:opacity-50 cursor-pointer" 
                     style={{ backgroundColor: item.color }}
                   >
                     {selectedColor === item.color && <Check className="size-4 text-white shrink-0" />}
@@ -112,7 +112,7 @@ const LabelSelect = ({
             <Button 
               onClick={() => handleSave()} 
               disabled={isMutating || !editingName.trim()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-9 px-6 rounded-md min-w-20 cursor-pointer"
+              className="bg-primary hover:bg-primary-hover text-primary-foreground font-semibold h-9 px-6 rounded-md min-w-20 cursor-pointer"
             >
               {isMutating ? "Saving..." : "Save"}
             </Button>
@@ -163,7 +163,7 @@ const LabelSelect = ({
                   <Checkbox 
                     checked={selectedLabelIds.includes(label.id)} 
                     onCheckedChange={() => toggleTag(label.id)} 
-                    className="size-5 rounded-lg border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
+                    className="size-5 rounded-md border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary" 
                   />
                   <button 
                     type="button" 

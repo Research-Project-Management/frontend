@@ -19,12 +19,13 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/components/ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import { CreateProjectModal } from '../components/project/CreateProjectModal';
+import { ProjectAvatar } from "@/shared/components/ui";
 import { Topbar } from '../components/project/Topbar';
 import { Card } from '../components/project/Card';
 import { useProjects, useArchiveProject } from '../hooks/use-project';
@@ -42,7 +43,7 @@ import {
   type ProjectFilterCriteria,
 } from '../utils/projects-page.util';
 import { filterArchivedProjects } from '../utils/archive-page.util';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import type { Project } from '../types/project.types';
 
 type ViewMode = 'grid' | 'list';
@@ -61,8 +62,8 @@ function ProjectCardSkeleton() {
 }
 
 export function ProjectsPage() {
-  const params = useParams<{ workspaceId: string }>();
-  const workspaceId = params.workspaceId;
+  const params = useParams<{ workspaceId?: string }>();
+  const workspaceId = params?.workspaceId;
   const { user } = useAuth();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -135,9 +136,10 @@ export function ProjectsPage() {
     e.preventDefault();
     e.stopPropagation();
     if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(
-        `${window.location.origin}/${workspaceId}/projects/${projectId}/overview`
-      );
+      const url = workspaceId
+        ? `${window.location.origin}/${workspaceId}/projects/${projectId}/overview`
+        : `${window.location.origin}/projects/${projectId}/overview`;
+      navigator.clipboard.writeText(url);
     }
   };
 
@@ -362,19 +364,15 @@ export function ProjectsPage() {
                 >
                   {/* Left: Avatar + Title + Key + Description */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center text-base shrink-0 font-semibold text-foreground">
-                      {project.avatar ? (
-                        <span>{project.avatar}</span>
-                      ) : (
-                        <span>{project.name ? project.name.charAt(0).toUpperCase() : 'P'}</span>
-                      )}
+                    <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden font-semibold text-foreground">
+                      <ProjectAvatar avatar={project.avatar} name={project.name} size="md" />
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <Link
-                          href={`/${workspaceId}/projects/${projectId}/overview`}
-                          className="font-semibold text-foreground hover:underline transition-colors truncate block"
+                          href={workspaceId ? `/${workspaceId}/projects/${projectId}/overview` : `/projects/${projectId}/overview`}
+                          className="font-semibold text-foreground hover:underline transition-colors truncate block shrink-0"
                         >
                           {project.name}
                         </Link>
@@ -453,7 +451,7 @@ export function ProjectsPage() {
                         <DropdownMenuItem asChild className="cursor-pointer font-medium">
                           <Link
                             href={`/${workspaceId}/projects/${projectId}/settings`}
-                            className="flex items-center gap-2 w-full"
+                            className="flex items-center gap-2 w-full shrink-0"
                           >
                             <Settings className="size-3.5 shrink-0" />
                             <span>Settings</span>
@@ -531,17 +529,11 @@ export function ProjectsPage() {
       </div>
 
       {/* Create Project Modal */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent
-          onCloseAutoFocus={(e: Event) => e.preventDefault()}
-          className="sm:max-w-xl bg-popover"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-foreground">New Project</DialogTitle>
-          </DialogHeader>
-          <CreateProjectModal onSuccess={() => setIsCreateOpen(false)} />
-        </DialogContent>
-      </Dialog>
+      <CreateProjectModal
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onSuccess={() => setIsCreateOpen(false)}
+      />
     </div>
   );
 }

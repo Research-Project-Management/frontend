@@ -1,7 +1,7 @@
 import type { PdfMetadata, CrossrefWork } from '../types/preview.types';
 import { extractDoiFromText, parseXmpMetadata, mergeCrossrefMetadata } from '../utils/preview.utils';
-import { apiGet, apiPost } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
+import { apiGet, apiPost } from "@/shared/lib/api";
+import { logger } from "@/shared/lib/utils";
 import { getFileArrayBuffer } from './file.service';
 
 async function getPdfjs() {

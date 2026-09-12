@@ -3,9 +3,9 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckSquare, Users, HardDrive, CalendarDays } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Progress } from '@/shared/components/ui/progress';
-import { formatBytes } from '@/shared/utils/format';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Progress } from "@/shared/components/ui";
+import { formatBytes } from "@/shared/lib/utils";
 import type { ProjectInfo, Stats as StatsType } from '../types/overview.types';
 
 interface StatsProps {
@@ -40,7 +40,7 @@ export function Stats({
       {/* Total Work Items */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/work-items`)}
-        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:bg-muted/50 transition-colors duration-150 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
@@ -65,8 +65,8 @@ export function Stats({
 
       {/* Team */}
       <div
-        onClick={() => router.push(`/${workspaceId}/projects/${projectId}/settings/team`)}
-        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        onClick={() => router.push(`/${workspaceId}/projects/${projectId}/settings/members`)}
+        className="p-4 rounded-lg bg-card border border-border hover:bg-muted/50 transition-colors duration-150 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">
@@ -96,7 +96,7 @@ export function Stats({
       {/* Files */}
       <div
         onClick={() => router.push(`/${workspaceId}/projects/${projectId}/storage`)}
-        className="p-4 rounded-lg bg-card border border-border hover:border-primary/40 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+        className="p-4 rounded-lg bg-card border border-border hover:bg-muted/50 transition-colors duration-150 cursor-pointer group flex flex-col justify-between"
       >
         <div>
           <div className="flex items-center gap-2.5 mb-3">

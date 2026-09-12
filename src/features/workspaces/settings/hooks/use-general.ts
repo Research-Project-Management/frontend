@@ -13,9 +13,9 @@ import {
   useUpdateWorkspace,
   useDeleteWorkspace,
 } from '@/features/workspaces/shell/hooks/use-workspace';
-import { useUpload } from '@/shared/hooks/use-upload';
+import { useUpload } from "@/shared/hooks/use-upload";
 
-export function useGeneral(workspaceId: string) {
+export function useGeneral(workspaceId?: string) {
   const router = useRouter();
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -24,6 +24,7 @@ export function useGeneral(workspaceId: string) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { workspace, isLoading, isError } = useWorkspace(workspaceId);
+  const effectiveWorkspaceId = workspace?.id || workspaceId || '';
   const { workspaces } = useWorkspaces();
   const { uploadFile, isUploading: isUploadingAvatar } = useUpload();
 
@@ -60,9 +61,10 @@ export function useGeneral(workspaceId: string) {
 
   const handleUpdate = useCallback(
     (values: GeneralSettingsFormValues) => {
+      if (!effectiveWorkspaceId) return;
       updateMutation.mutate(
         {
-          id: workspaceId,
+          id: effectiveWorkspaceId,
           data: {
             name: values.name,
             url: values.url,
@@ -83,16 +85,17 @@ export function useGeneral(workspaceId: string) {
         },
       );
     },
-    [workspaceId, currentAvatar, workspace?.url, updateMutation, router],
+    [effectiveWorkspaceId, currentAvatar, workspace?.url, updateMutation, router],
   );
 
   const handleAvatarUpload = useCallback(
     async (file: File) => {
+      if (!effectiveWorkspaceId) return;
       try {
         const url = await uploadFile(file, 'workspace/avatars');
         setCurrentAvatar(url);
         updateMutation.mutate({
-          id: workspaceId,
+          id: effectiveWorkspaceId,
           data: { avatar: url },
         });
         toast.success('Avatar updated successfully');
@@ -100,14 +103,15 @@ export function useGeneral(workspaceId: string) {
         toast.error('Failed to upload avatar');
       }
     },
-    [workspaceId, uploadFile, updateMutation],
+    [effectiveWorkspaceId, uploadFile, updateMutation],
   );
 
   const handleDelete = useCallback(() => {
-    deleteMutation.mutate(workspaceId, {
+    if (!effectiveWorkspaceId) return;
+    deleteMutation.mutate(effectiveWorkspaceId, {
       onSuccess: () => {
         toast.success('Workspace deleted');
-        const nextWs: any = (workspaces as any[])?.find((w: any) => w.id !== workspaceId);
+        const nextWs: any = (workspaces as any[])?.find((w: any) => w.id !== effectiveWorkspaceId);
         if (nextWs?.url) {
           router.push(`/${nextWs.url}`);
         } else {
@@ -118,7 +122,7 @@ export function useGeneral(workspaceId: string) {
         toast.error('Failed to delete workspace');
       },
     });
-  }, [workspaceId, workspaces, deleteMutation, router]);
+  }, [effectiveWorkspaceId, workspaces, deleteMutation, router]);
 
   const hasChanges = useMemo(() => {
     return (

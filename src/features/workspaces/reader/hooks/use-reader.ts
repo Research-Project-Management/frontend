@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
 import { usePdf } from './use-pdf';
 import { ItemsService } from '../services/items.service';
@@ -161,8 +161,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setActivePanel('ai');
   };
 
-  const handleAddToNote = (text: string) => {
-    setPendingNoteText(text);
+  const handleAddToNote = (text: string, pageNumber?: number) => {
+    const trimmed = text.trim();
+    const formatted = pageNumber ? `> "${trimmed}"\n\n— *Page ${pageNumber}*` : `> "${trimmed}"`;
+    setPendingNoteText(formatted);
     setActivePanel('notes');
   };
 
@@ -257,7 +259,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       onBackOverride();
       return;
     }
-    router.push(`/${workspaceUrl}/library`);
+    router.push(workspaceUrl ? `/${workspaceUrl}/library` : `/library`);
   };
 
   return {

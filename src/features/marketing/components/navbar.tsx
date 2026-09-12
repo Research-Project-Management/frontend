@@ -43,7 +43,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link
             href='/'
-            className='flex gap-2.5 items-center min-h-11'
+            className='flex gap-2.5 items-center min-h-11 shrink-0'
             onClick={() => setIsMenuOpen(false)}
             aria-label='Flux home'
           >
@@ -55,13 +55,13 @@ export default function Navbar() {
           <div className='hidden md:flex items-center gap-2'>
             <Link
               href='/login'
-              className='flex h-9 items-center px-4 text-sm font-medium text-foreground rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+              className='flex h-9 items-center px-4 text-sm font-medium text-foreground rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
             >
               Sign in
             </Link>
             <Link
               href='/login'
-              className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+              className='group flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
             >
               Get started
               <ArrowRight className='w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0' aria-hidden='true' />
@@ -95,14 +95,14 @@ export default function Navbar() {
               <div className='flex flex-col gap-2'>
                 <Link
                   href='/login'
-                  className='flex items-center justify-center min-h-11 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                  className='flex items-center justify-center min-h-11 rounded-md border border-border px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign in
                 </Link>
                 <Link
                   href='/login'
-                  className='flex items-center justify-center gap-1.5 min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer'
+                  className='flex items-center justify-center gap-1.5 min-h-11 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer shrink-0'
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Get started

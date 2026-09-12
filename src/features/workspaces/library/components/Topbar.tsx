@@ -16,15 +16,15 @@ import {
   PanelLeft,
 } from "lucide-react";
 import { useLibrarySidebarStore } from "@/features/workspaces/library/store/sidebar.store";
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+} from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui";
 
 export interface BreadcrumbItem {
   id?: string;
@@ -119,7 +119,7 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        "flex items-center justify-between border-b border-border bg-background px-4 h-12 sticky top-0 z-10 shrink-0 select-none",
+        "flex items-center justify-between border-b border-border bg-background px-4 h-11 sticky top-0 z-10 shrink-0 select-none",
         className
       )}
     >
@@ -232,7 +232,7 @@ export default function Topbar({
           >
             <Search
               className={cn(
-                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10",
+                "absolute top-1/2 -translate-y-1/2 size-3.5 transition-all duration-300 ease-in-out z-10 shrink-0",
                 isSearchExpanded || search
                   ? "left-2 translate-x-0 text-muted-foreground"
                   : "left-1/2 -translate-x-1/2 text-muted-foreground"

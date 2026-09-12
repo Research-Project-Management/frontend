@@ -4,7 +4,7 @@ import { useId } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 export default function NavigationBar() {
   const { workspaceId, projectId } = useParams();
@@ -37,7 +37,7 @@ export default function NavigationBar() {
                 key={item.label}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'relative flex h-12 items-center justify-center text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap',
+                  'relative flex h-11 items-center justify-center text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-nowrap',
                   isActive ? 'text-primary' : 'text-muted-foreground hover:bg-muted'
                 )}
               >

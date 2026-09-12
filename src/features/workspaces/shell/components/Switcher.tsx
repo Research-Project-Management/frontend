@@ -1,197 +1,250 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronUp, PlusCircle, LogOut, Check, Settings, UserPlus, Mails } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
-import { resolveFileUrl } from '@/shared/utils/url';
-
-import type { Workspace } from '@/features/setup/types/workspace.types';
+import { useState, useMemo } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Settings,
+  Plus,
+  Search,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { resolveFileUrl } from "@/shared/lib/file-client";
+import { cn } from "@/shared/lib/utils";
+import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
+import { CreateProjectModal } from '@/features/workspaces/projects/shell/components/project/CreateProjectModal';
+import { ProjectAvatar } from '@/shared/components/icon-picker/ProjectAvatar';
+import type { Workspace } from '../types/workspace.types';
 
 interface SwitcherProps {
   currentItem: Workspace | null;
-  items: Workspace[];
+  items?: Workspace[];
   activeId: string;
 }
 
 export default function Switcher({
   currentItem,
-  items,
   activeId,
 }: SwitcherProps) {
-  const { user, logout } = useAuth();
   const router = useRouter();
+  const params = useParams<{ workspaceId?: string; projectId?: string }>();
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
 
-  if (!currentItem) return null;
+  const workspaceId = activeId || params?.workspaceId || currentItem?.url || '';
+  const { projects = [] } = useProjects(workspaceId);
+
+  const activeProjectId = params?.projectId;
+  const currentProject = useMemo(() => {
+    if (!activeProjectId || !projects.length) return null;
+    return projects.find((p) => p.id === activeProjectId || p.identifier === activeProjectId) || null;
+  }, [activeProjectId, projects]);
+
+  const nonArchivedProjects = useMemo(() => {
+    return projects.filter((p) => !p.isArchived);
+  }, [projects]);
+
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery.trim()) return nonArchivedProjects;
+    const q = searchQuery.toLowerCase().trim();
+    return nonArchivedProjects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.identifier && p.identifier.toLowerCase().includes(q))
+    );
+  }, [nonArchivedProjects, searchQuery]);
+
+  const displayName = currentItem?.name || 'Flux';
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger
-        aria-label={`Current Item: ${currentItem.name}`}
-        className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-muted data-[state=open]:bg-muted'
-      >
-        <Avatar className='size-5.5 rounded-md font-semibold'>
-          {currentItem.avatar ? (
-            <AvatarImage
-              src={resolveFileUrl(currentItem.avatar) || undefined}
-              alt={String(currentItem.name)}
-              referrerPolicy="no-referrer"
-            />
-          ) : null}
-          <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-11 font-semibold">
-            {String(currentItem.name).substring(0, 1).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <span className='max-w-[140px] truncate text-13 font-semibold tracking-tight text-foreground sm:max-w-[180px]'>
-          {currentItem.name}
-        </span>
-        {isOpen ? (
-          <ChevronUp className='size-3.5 text-foreground transition-colors shrink-0' strokeWidth={2} />
-        ) : (
-          <ChevronDown className='size-3.5 text-foreground transition-colors shrink-0' strokeWidth={2} />
-        )}
-      </DropdownMenuTrigger>
+    <>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger
+          aria-label={currentProject ? `Project: ${currentProject.name}` : `Workspace: ${displayName}`}
+          className='group flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors hover:bg-background/80 data-[state=open]:bg-background/90'
+        >
+          {/* Workspace Avatar */}
+          <Avatar className='size-5 rounded-md font-semibold shrink-0'>
+            {currentItem?.avatar ? (
+              <AvatarImage
+                src={resolveFileUrl(currentItem.avatar) || undefined}
+                alt={String(displayName)}
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
+            <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-10 font-semibold">
+              {String(displayName).substring(0, 1).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
 
-      <DropdownMenuContent
-        align='start'
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        className='w-80 p-0 rounded-md overflow-hidden bg-popover border border-border shadow-none'
-        sideOffset={8}
-      >
-        {/* User email header */}
-        <div className='px-4 pt-3.5 pb-2.5 text-xs font-medium text-muted-foreground bg-background select-none truncate'>
-          {user?.email || 'user@example.com'}
-        </div>
+          {/* Breadcrumb: Workspace Name [/ Project Name] */}
+          <span className='max-w-[120px] truncate text-13 font-semibold tracking-tight text-foreground'>
+            {displayName}
+          </span>
 
-        {/* Current active workspace */}
-        <div className='bg-secondary px-4 py-3.5 border-b border-border'>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-3 min-w-0'>
-              <Avatar className='size-9 rounded-md font-medium shrink-0'>
-                {currentItem.avatar ? (
+          {currentProject && (
+            <>
+              <span className='text-muted-foreground text-12 select-none'>/</span>
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <ProjectAvatar avatar={currentProject.avatar} name={currentProject.name} size="xs" />
+                <span className='max-w-[120px] truncate text-13 font-medium text-foreground'>
+                  {currentProject.name}
+                </span>
+              </div>
+            </>
+          )}
+
+          {isOpen ? (
+            <ChevronUp className='size-3.5 text-muted-foreground transition-colors shrink-0' strokeWidth={1.5} />
+          ) : (
+            <ChevronDown className='size-3.5 text-muted-foreground transition-colors shrink-0' strokeWidth={1.5} />
+          )}
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align='start'
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className='w-72 p-1 rounded-lg overflow-hidden bg-popover border border-border '
+          sideOffset={6}
+        >
+          {/* ── Context Header ─────────────────────────── */}
+          <div className='flex items-center justify-between px-2.5 py-2 select-none bg-muted/40 rounded-md mb-1'>
+            <div className='flex items-center gap-2 min-w-0'>
+              <Avatar className='size-6 rounded-md shrink-0'>
+                {currentItem?.avatar ? (
                   <AvatarImage
                     src={resolveFileUrl(currentItem.avatar) || undefined}
-                    alt={String(currentItem.name)}
+                    alt={String(displayName)}
                     referrerPolicy="no-referrer"
                   />
                 ) : null}
-                <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-medium">
-                  {String(currentItem.name).substring(0, 1).toUpperCase()}
+                <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-10 font-medium">
+                  {String(displayName).substring(0, 1).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className='flex flex-col min-w-0'>
-                <span className='text-sm font-semibold text-foreground tracking-tight truncate'>{currentItem.name}</span>
-                <span className='text-xs text-muted-foreground mt-0.5 truncate'>
-                  Owner • {currentItem.members?.length || 1} Members
+                <span className='text-12 font-semibold text-foreground truncate'>
+                  {displayName}
                 </span>
+                <span className='text-10 text-muted-foreground truncate'>Research Projects</span>
               </div>
             </div>
-            <Check className='size-4 text-foreground shrink-0' />
-          </div>
 
-          <div className='flex items-center gap-2 mt-3.5'>
             <button
               type='button'
-              className='h-8 flex-1 px-2.5 bg-background font-medium shadow-none text-12 rounded-md border border-border text-foreground cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap outline-none'
-              onClick={() => {
+              title='Settings'
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsOpen(false);
-                router.push(`/${activeId}/settings`);
+                router.push('/settings');
               }}
+              className='size-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer'
             >
-              <Settings className='size-3.5 text-foreground shrink-0' />
-              <span>Settings</span>
-            </button>
-            <button
-              type='button'
-              className='h-8 flex-1 px-2.5 bg-background font-medium shadow-none text-12 rounded-md border border-border text-foreground cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap outline-none'
-              onClick={() => {
-                setIsOpen(false);
-                router.push(`/${activeId}/settings/members`);
-              }}
-            >
-              <UserPlus className='size-3.5 text-foreground shrink-0' />
-              <span>Invite members</span>
+              <Settings className='size-3.5 shrink-0' />
             </button>
           </div>
-        </div>
 
-        {/* Other workspaces */}
-        {items.filter((item: Workspace) => item.id !== currentItem.id).length > 0 && (
-          <div className='max-h-[200px] overflow-y-auto bg-background flex flex-col border-b border-border'>
-            {items
-              .filter((item: Workspace) => item.id !== currentItem.id)
-              .map((item: Workspace) => (
-                <DropdownMenuItem
-                  key={item.id}
-                  onClick={() => {
-                    setIsOpen(false);
-                    router.push(`/${item.url}`);
-                  }}
-                  className='w-full px-4 py-2.5 justify-between cursor-pointer rounded-none hover:bg-muted focus:bg-muted'
-                >
-                  <div className='flex items-center gap-3 min-w-0'>
-                    <Avatar className='size-7 rounded-md font-medium shrink-0'>
-                      {item.avatar ? (
-                        <AvatarImage
-                          src={resolveFileUrl(item.avatar) || undefined}
-                          alt={String(item.name)}
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : null}
-                      <AvatarFallback className="rounded-md bg-primary text-primary-foreground text-xs font-medium">
-                        {String(item.name).substring(0, 1).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className='flex flex-col min-w-0'>
-                      <span className='text-sm text-foreground font-medium truncate'>{item.name}</span>
-                      <span className='text-xs text-muted-foreground truncate'>
-                        {item.members?.length || 1} Member
-                      </span>
+          <DropdownMenuSeparator className='my-1' />
+
+          {/* ── Projects Section Header & Search ─────────────────── */}
+          <div className='flex items-center justify-between px-2.5 pt-1.5 pb-1 text-11 font-medium text-muted-foreground select-none'>
+            <span>Projects</span>
+            <span className='font-mono text-11'>{nonArchivedProjects.length}</span>
+          </div>
+
+          {nonArchivedProjects.length > 4 && (
+            <div className='px-1.5 py-1'>
+              <div className='relative flex items-center'>
+                <Search className='size-3 shrink-0 absolute left-2 text-muted-foreground pointer-events-none' />
+                <input
+                  type='text'
+                  placeholder='Filter projects...'
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className='w-full h-7 pl-6 pr-2 text-11 bg-muted border border-border/50 focus:border-border rounded-md outline-none placeholder:text-muted-foreground text-foreground'
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── Projects List ─────────────────────────────────────── */}
+          <div className='max-h-56 overflow-y-auto space-y-0.5 py-0.5'>
+            {filteredProjects.length === 0 ? (
+              <div className='px-3 py-3 text-center text-xs text-muted-foreground'>
+                {searchQuery ? 'No matching projects' : 'No projects yet'}
+              </div>
+            ) : (
+              filteredProjects.map((proj) => {
+                const isActive = proj.id === activeProjectId || proj.identifier === activeProjectId;
+                return (
+                  <DropdownMenuItem
+                    key={proj.id}
+                    onClick={() => {
+                      setIsOpen(false);
+                      router.push(`/projects/${proj.id}`);
+                    }}
+                    className={cn(
+                      'flex items-center justify-between gap-2 px-2 py-1.5 rounded-md cursor-pointer text-xs transition-colors outline-none',
+                      isActive
+                        ? 'bg-muted font-medium text-foreground'
+                        : 'text-foreground/80 hover:text-foreground hover:bg-muted'
+                    )}
+                  >
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <ProjectAvatar avatar={proj.avatar} name={proj.name} size="xs" />
+                      <span className='truncate max-w-[160px] text-12 font-medium'>{proj.name}</span>
+                      {proj.identifier && (
+                        <span className='text-10 font-mono text-muted-foreground shrink-0'>
+                          {proj.identifier}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </DropdownMenuItem>
-              ))}
+                    {isActive && <Check className='size-3.5 text-primary shrink-0' />}
+                  </DropdownMenuItem>
+                );
+              })
+            )}
           </div>
-        )}
 
-        <div className="p-2 bg-background space-y-1">
-          <DropdownMenuItem
-            onClick={() => {
-              setIsOpen(false);
-              router.push('/create-workspace');
-            }}
-            className='px-3 py-2 cursor-pointer rounded-md gap-3'
-          >
-            <PlusCircle />
-            <span>Create workspace</span>
-          </DropdownMenuItem>
+          <DropdownMenuSeparator className='my-1' />
 
-          <DropdownMenuItem
-            onClick={() => {
-              setIsOpen(false);
-              router.push('/workspace-invites');
-            }}
-            className='px-3 py-2 cursor-pointer rounded-md gap-3'
-          >
-            <Mails />
-            <span>Workspace invites</span>
-          </DropdownMenuItem>
+          {/* ── Action: Create Project ─────────────────────────── */}
+          <div className='p-0.5'>
+            <DropdownMenuItem
+              onClick={() => {
+                setIsOpen(false);
+                setIsCreateProjectOpen(true);
+              }}
+              className='flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-xs font-medium text-foreground hover:bg-muted transition-colors outline-none'
+            >
+              <Plus className='size-3.5 text-foreground shrink-0' />
+              <span>Create project</span>
+            </DropdownMenuItem>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-          <DropdownMenuItem
-            onClick={() => {
-              setIsOpen(false);
-              logout();
-            }}
-            className='px-3 py-2 cursor-pointer rounded-md gap-3'
-          >
-            <LogOut />
-            <span>Sign out</span>
-          </DropdownMenuItem>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {/* ── Create Project Modal ─────────────────────────────────── */}
+      <CreateProjectModal
+        open={isCreateProjectOpen}
+        onOpenChange={setIsCreateProjectOpen}
+        onSuccess={(newProject) => {
+          setIsCreateProjectOpen(false);
+          if (newProject?.id) {
+            router.push(`/projects/${newProject.id}`);
+          }
+        }}
+      />
+    </>
   );
 }

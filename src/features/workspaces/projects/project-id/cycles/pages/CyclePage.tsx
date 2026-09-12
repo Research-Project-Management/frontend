@@ -6,12 +6,11 @@ import { toast } from "sonner";
 import { isWithinInterval, parseISO } from "date-fns";
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useCycle, useCompleteCycle, type DerivedStatus } from '../hooks/use-cycle';
+import type { Cycle } from '../types/cycle.types';
 import { useLabels } from '../hooks/use-label';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import { 
-  Plus,
-  RotateCcw
-} from "lucide-react";
+import { Skeleton } from "@/shared/components/ui";
+import { Plus } from "lucide-react";
+import { CycleIcon } from "@/shared/components/ui";
 
 import { Item, ListViewGroup, EmptyState } from '../components/views/ListView';
 
@@ -19,17 +18,16 @@ import { Item, ListViewGroup, EmptyState } from '../components/views/ListView';
 import { DeleteModal } from '../components/modals/DeleteModal';
 import { CycleModal } from '../components/modals/CycleModal';
 import { StatusModal, type StatusModalType } from '../components/modals/StatusModal';
-import type { Cycle, CycleMilestone } from '../types/cycle.types';
-import { TopBar as Topbar } from '@/features/workspaces/settings/components/layout/TopBar';
 import CycleTopBarActions from '../components/layout/Topbar';
-import { logger } from '@/shared/lib/logger';
+import { ProjectTopbarSwitcher } from '@/features/workspaces/projects/project-id/components/layout';
+import { logger } from "@/shared/lib/utils";
 
 const PHASE_CONFIG: Record<string, any> = {
   todo: { label: "To Do", color: "#64748b" },
   in_progress: { label: "In Progress", color: "#3b82f6" },
   done: { label: "Done", color: "#22c55e" },
 };
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 
 const PHASES = Object.entries(PHASE_CONFIG).map(([id, config]) => ({
   id,
@@ -333,10 +331,14 @@ export function CyclePage() {
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      <Topbar
-        title="Cycles"
-        Icon={RotateCcw}
-        actions={
+      <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10">
+        <ProjectTopbarSwitcher
+          project={projectData}
+          moduleTitle="Cycles"
+          moduleIcon={CycleIcon}
+          count={cycles?.length}
+        />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
           <CycleTopBarActions
             onAddCycle={openCreate}
             searchQuery={searchTerm}
@@ -344,8 +346,8 @@ export function CyclePage() {
             dateFilters={dateFilters}
             onDateFilterChange={setDateFilters}
           />
-        }
-      />
+        </div>
+      </header>
       <main className="w-full flex-1 overflow-y-auto px-6 py-4 scroll-smooth custom-scrollbar">
         <div>
           {isLoading ? (
@@ -356,12 +358,12 @@ export function CyclePage() {
             <div className="mt-1">
               {cycles.length === 0 && !searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-32 text-center">
-                  <RotateCcw className="size-10 text-muted-foreground mb-4 shrink-0" strokeWidth={1.5} />
+                  <CycleIcon className="size-10 text-muted-foreground mb-4 shrink-0" />
                   <h3 className="text-base font-semibold text-foreground mb-1.5">No cycles found</h3>
                   <p className="text-xs text-muted-foreground max-w-[400px] mb-6 leading-relaxed">
                     Research cycles help you track progress over time. Create your first cycle to start organizing your tasks.
                   </p>
-                  <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
+                  <Button onClick={openCreate} className="h-8 px-4 bg-primary hover:bg-primary-hover text-primary-foreground rounded-md gap-2 cursor-pointer text-xs">
                     <Plus className="size-4 shrink-0" />
                     <span>Create your first cycle</span>
                   </Button>

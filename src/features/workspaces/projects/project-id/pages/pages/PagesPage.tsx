@@ -38,15 +38,12 @@ export default function PagesPage({ projectId: propProjectId }: { projectId?: st
       });
       setIsCreateModalOpen(false);
       setTitle('');
-      const mainFileStr = data.mainFile
-        ? typeof data.mainFile === 'object' && data.mainFile !== null && 'id' in data.mainFile
-          ? (data.mainFile.id as string)
-          : (data.mainFile as string)
-        : null;
-      const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
-      router.push(
-        `/${workspaceId}/projects/${projectId}/pages/${data.page.id}${fileQuery}`,
-      );
+      const mainFileId = data.mainFileId || (typeof data.mainFile === 'string' ? data.mainFile : (data.mainFile as any)?.id);
+      const queryStr = mainFileId ? `?file=${mainFileId}` : '';
+      const targetUrl = workspaceId
+        ? `/${workspaceId}/projects/${projectId}/pages/${data.page.id}${queryStr}`
+        : `/projects/${projectId}/pages/${data.page.id}${queryStr}`;
+      router.push(targetUrl);
     } catch (error) {
       console.error(error);
     }

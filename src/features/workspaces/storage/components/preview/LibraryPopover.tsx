@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { previewServices } from "../../services/preview.service";
 import { toAuthors, toKeywords, toYear } from "../../utils/preview.util";
-import { getErrorMessage } from "@/shared/utils/error.util";
-import { Button } from '@/shared/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { getErrorMessage } from "@/shared/lib/utils";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 
 export interface StoragePdfMetadata {

@@ -28,7 +28,7 @@ interface LibrarySidebarStore {
 
 export const useLibrarySidebarStore = create<LibrarySidebarStore>((set) => ({
   isOpen: true,
-  width: 220,
+  width: 240,
   inspectorWidth: 360,
   isInspectorOpen: false,
   activeInspectorTab: 'info',

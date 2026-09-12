@@ -2,8 +2,8 @@
 
 import React, { useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { Input } from '@/shared/components/ui/input';
-import { cn } from '@/shared/lib/utils';
+import { Input } from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 export interface CollapsibleSearchInputProps {
   placeholder?: string;

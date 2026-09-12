@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/shared/utils/error.util';
+import { getErrorMessage } from "@/shared/lib/utils";
 import {
   NotesService,
   type CreateNoteDTO,

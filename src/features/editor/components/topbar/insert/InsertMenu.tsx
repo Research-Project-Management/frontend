@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarSub, MenubarSubTrigger, MenubarSubContent } from '@/shared/components/ui/menubar';
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarSub, MenubarSubTrigger, MenubarSubContent } from "@/shared/components/ui";
 import { usePageStore } from '@/features/editor/store/page.store';
 import { EditorEventBus } from '@/features/editor/utils/editor.util';
 

@@ -4,24 +4,24 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderInput, Copy, Trash2, X, Folder, Library, Quote, Download, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { copyToClipboard } from '@/shared/lib/clipboard';
-import { Button } from '@/shared/components/ui/button';
+import { copyToClipboard } from "@/shared/lib/utils";
+import { Button } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import { convertToBibTeX, generateCitationKey } from '../../utils/library.util';
 import { CitationService } from '../../services/citation.service';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
-import type { Collection, CatalogItem, CslStyle } from '../../types/library.types';
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/shared/components/ui";
+import type { Collection, Item, CslStyle } from '../../types/library.types';
 
 export interface BatchBarProps {
   selectedCount: number;
-  selectedItems?: CatalogItem[];
+  selectedItems?: Item[];
   /** @deprecated Use selectedItems */
-  selectedPapers?: CatalogItem[];
+  selectedPapers?: Item[];
   collections: Collection[];
   onClearSelection: () => void;
   onBatchMove?: (collectionId: string | null) => void;

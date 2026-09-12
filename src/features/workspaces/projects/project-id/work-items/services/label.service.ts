@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from "@/shared/lib/api";
 import type { Label, CreateLabelInput, UpdateLabelInput } from "../types/label.types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -41,10 +41,40 @@ export const DEFAULT_LABEL_COLOR = "#4bce97";
 // ── Pure Label API Service ───────────────────────────────────────────────────
 
 export const LabelService = {
+  // ── Project-Scoped Methods ─────────────────────────────────────────
+
+  getProjectLabels: async (projectId: string): Promise<Label[]> => {
+    const data = await apiGet<{ labels?: Label[] }>(`/api/projects/${projectId}/labels`);
+    return data.labels ?? [];
+  },
+
+  createProjectLabel: async (projectId: string, input: { name: string; color?: string; description?: string; parentId?: string | null; sortOrder?: number }): Promise<Label> => {
+    const data = await apiPost<{ label?: Label }>(`/api/projects/${projectId}/labels`, input);
+    return data.label!;
+  },
+
+  updateProjectLabel: async (projectId: string, labelId: string, input: { name?: string; color?: string; description?: string | null; parentId?: string | null; sortOrder?: number }): Promise<Label> => {
+    const data = await apiPatch<{ label?: Label }>(`/api/projects/${projectId}/labels/${labelId}`, input);
+    return data.label!;
+  },
+
+  deleteProjectLabel: (projectId: string, labelId: string): Promise<void> =>
+    apiDelete(`/api/projects/${projectId}/labels/${labelId}`),
+
+  reorderProjectLabels: (projectId: string, labels: Array<{ id: string; sortOrder: number }>): Promise<void> =>
+    apiPost(`/api/projects/${projectId}/labels/reorder`, { labels }),
+
+  importProjectLabels: (projectId: string, labels: Array<{ name: string; color?: string; description?: string }>) =>
+    apiPost<{ created: number; skipped: number; failed: number; labels: Label[] }>(`/api/projects/${projectId}/labels/import`, { labels }),
+
+  // ── Workspace-Level Methods (Preserved for Backward Compatibility) ─────────
+
   list: async (workspaceId: string, type?: string, projectId?: string): Promise<Label[]> => {
+    if (projectId) {
+      return LabelService.getProjectLabels(projectId);
+    }
     const params = new URLSearchParams();
     if (type) params.append("type", type);
-    if (projectId) params.append("projectId", projectId);
 
     const queryStr = params.toString() ? `?${params.toString()}` : "";
     const data = await apiGet<any>(`/api/workspace/${workspaceId}/labels${queryStr}`);
@@ -56,18 +86,31 @@ export const LabelService = {
 
   create: ({ workspaceId, ...payload }: CreateLabelInput) => {
     const { projectId, ...cleanPayload } = payload as any;
+    if (projectId) {
+      return LabelService.createProjectLabel(projectId, cleanPayload);
+    }
     return apiPost<{ label?: Label; tag?: Label }>(`/api/workspace/${workspaceId}/labels`, cleanPayload);
   },
 
   update: ({ labelId, ...payload }: UpdateLabelInput & { projectId?: string }) => {
     const { projectId, ...cleanPayload } = payload as any;
+    if (projectId) {
+      return LabelService.updateProjectLabel(projectId, labelId, cleanPayload);
+    }
     return apiPut<{ label?: Label; tag?: Label }>(`/api/labels/${labelId}`, cleanPayload);
   },
 
-  delete: (labelId: string) =>
-    apiDelete(`/api/labels/${labelId}`),
+  delete: (labelId: string, projectId?: string) => {
+    if (projectId) {
+      return LabelService.deleteProjectLabel(projectId, labelId);
+    }
+    return apiDelete(`/api/labels/${labelId}`);
+  },
 };
 
 // ── Backward-compatible Function Aliases ─────────────────────────────────────
 
 export const fetchLabels = LabelService.list;
+export const createLabel = LabelService.create;
+export const updateLabel = LabelService.update;
+export const deleteLabel = LabelService.delete;

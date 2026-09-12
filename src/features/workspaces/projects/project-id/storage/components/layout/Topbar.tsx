@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import { HardDrive, Search, Plus, Upload, FolderUp, FolderPlus, Columns3, AlignJustify, ListFilter, ChevronRight } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
 import { useTopbar } from '../../hooks/use-topbar';
 import CreateFolderModal from '../modals/CreateFolderModal';
 import RenameModal from '../modals/RenameModal';
@@ -14,6 +14,7 @@ import DuplicateModal from '../modals/DuplicateModal';
 import MoveModal from '../modals/MoveModal';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
 import { StorageFilterPopover } from '../filters/StorageFilterPopover';
+import { ProjectTopbarSwitcher } from '@/features/workspaces/projects/project-id/components/layout';
 
 export interface BreadcrumbItem {
   id: string | null;
@@ -67,47 +68,43 @@ export default function Topbar({
   return (
     <header
       className={cn(
-        'flex h-12 w-full items-center justify-between border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
+        'flex h-11 w-full items-center justify-between border-b border-border bg-background/80 px-4 py-2 backdrop-blur-md sticky top-0 z-10 shrink-0 select-none',
         className
       )}
       style={{ paddingLeft: "max(1rem, var(--header-offset, 0px))" }}
     >
-      <div className="flex items-center gap-1.5 min-w-0 max-w-[55vw]">
-        {breadcrumbs && breadcrumbs.length > 1 ? (
-          <div className="flex items-center gap-1 min-w-0 overflow-x-auto py-1">
-            {Icon && <Icon className="size-4 text-foreground shrink-0 mr-1" />}
-            {breadcrumbs.map((segment, index) => {
-              const isLast = index === breadcrumbs.length - 1;
-              return (
-                <div key={segment.id || `root-${index}`} className="flex items-center gap-1 min-w-0 shrink-0">
-                  {index > 0 && (
-                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
-                  )}
-                  <button
-                    onClick={() => onBreadcrumbNavigate?.(segment.id)}
-                    disabled={isLast}
-                    className={cn(
-                      "text-sm tracking-tight truncate max-w-[160px] transition-colors rounded-md px-1.5 py-0.5",
-                      isLast
-                        ? "font-semibold text-foreground cursor-default"
-                        : "text-foreground hover:bg-muted cursor-pointer font-normal"
-                    )}
-                    title={segment.name}
-                  >
-                    {segment.name}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            {Icon && <Icon className="size-4 text-foreground shrink-0" />}
-            <h1 className="text-sm font-semibold tracking-tight text-foreground transition-colors duration-200">
-              {title || 'Files'}
-            </h1>
-          </div>
-        )}
+      <div className="flex items-center min-w-0 max-w-[55vw]">
+        <ProjectTopbarSwitcher
+          moduleTitle={breadcrumbs && breadcrumbs.length > 1 ? breadcrumbs[0].name : (title || 'Files')}
+          moduleIcon={Icon}
+        >
+          {breadcrumbs && breadcrumbs.length > 1 && (
+            <div className="flex items-center gap-1 min-w-0 overflow-x-auto py-1 ml-1">
+              {breadcrumbs.slice(1).map((segment, index) => {
+                const isLast = index === breadcrumbs.length - 2;
+                return (
+                  <div key={segment.id || `sub-${index}`} className="flex items-center gap-1 min-w-0 shrink-0">
+                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                    <button
+                      type="button"
+                      onClick={() => onBreadcrumbNavigate?.(segment.id)}
+                      disabled={isLast}
+                      className={cn(
+                        "text-13 tracking-tight truncate max-w-[160px] transition-colors rounded-md px-1.5 py-0.5",
+                        isLast
+                          ? "font-semibold text-foreground cursor-default"
+                          : "text-foreground hover:bg-muted cursor-pointer font-normal"
+                      )}
+                      title={segment.name}
+                    >
+                      {segment.name}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ProjectTopbarSwitcher>
       </div>
 
       <div className="flex items-center gap-3">
@@ -172,8 +169,8 @@ export default function Topbar({
                   />
                 )}
                 <span className="relative z-10 flex">
-                  {v === 'grid' && <Columns3 className="size-4 shrink-0" strokeWidth={2.5} />}
-                  {v === 'list' && <AlignJustify className="size-4 shrink-0" strokeWidth={2.5} />}
+                  {v === 'grid' && <Columns3 className="size-4 shrink-0" strokeWidth={1.75} />}
+                  {v === 'list' && <AlignJustify className="size-4 shrink-0" strokeWidth={1.75} />}
                 </span>
               </button>
             ))}
@@ -188,7 +185,7 @@ export default function Topbar({
               <span>New</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-48 p-1 rounded-md border border-border bg-popover shadow-sm">
+          <PopoverContent align="end" className="w-48 p-1 rounded-md border border-border bg-popover ">
             <button
               onClick={handleUploadFile}
               className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors text-left text-foreground cursor-pointer"

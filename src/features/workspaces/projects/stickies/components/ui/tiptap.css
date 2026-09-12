@@ -39,8 +39,8 @@
   margin: 0;
   transform: translateY(1px);
 
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
 
@@ -56,7 +56,7 @@
   content: "";
   width: 7px;
   height: 4px;
-  border: 2px solid #fff;
+  border: 2px solid var(--primary-foreground);
   border-top: 0;
   border-right: 0;
   transform: rotate(-45deg) scale(0);
@@ -67,8 +67,8 @@
   li
   > label
   > input[type="checkbox"]:checked {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .ProseMirror
@@ -84,7 +84,7 @@
   li
   > label
   > input[type="checkbox"]:hover {
-  border-color: rgba(0, 0, 0, 0.55);
+  border-color: var(--border-hover);
 }
 
 .ProseMirror
@@ -92,6 +92,6 @@
   li
   > label
   > input[type="checkbox"]:focus-visible {
-  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }

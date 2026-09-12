@@ -1,6 +1,6 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPost } from "@/shared/lib/api";
 import type {
-  CatalogItem,
+  Item,
   DuplicateGroup,
   LibraryIntegrityReport,
 } from '../types/library.types';
@@ -63,11 +63,11 @@ export const QualityService = {
     apiPost<{
       success: boolean;
       data: {
-        masterPaper: CatalogItem;
+        masterPaper: Item;
         mergedCount: number;
         softDeletedPaperIds: string[];
       };
-      masterPaper?: CatalogItem;
+      masterPaper?: Item;
       mergedCount?: number;
       softDeletedPaperIds?: string[];
     }>(

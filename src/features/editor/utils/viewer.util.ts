@@ -12,7 +12,7 @@ import {
   type CrossrefWork,
 } from "../services/document.service";
 import { parseCompileErrors, type ParsedCompileError } from "./editor.util";
-import { logger } from "@/shared/lib/logger";
+import { logger } from "@/shared/lib/utils";
 
 export type { CrossrefWork };
 

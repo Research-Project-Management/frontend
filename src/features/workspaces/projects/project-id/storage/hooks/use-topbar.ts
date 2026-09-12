@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useUpload } from '@/shared/hooks/use-upload';
+import { useUpload } from "@/shared/hooks/use-upload";
 import { useCreateFileRecord } from "./use-storage";
 import { toast } from "sonner";
 import { checkDuplicateFile, deleteItem } from '../services/file.service';

@@ -30,8 +30,8 @@ export const ToolbarBtn = React.forwardRef<HTMLButtonElement, ToolbarBtnProps>(f
           : cn(
               "text-current transition-colors",
               isActive 
-                ? "opacity-100 bg-muted text-foreground" 
-                : "opacity-50 hover:opacity-100 hover:bg-muted"
+                ? "opacity-100 bg-current/15 text-current" 
+                : "opacity-50 hover:opacity-100 hover:bg-current/10"
             ),
         className
       )}

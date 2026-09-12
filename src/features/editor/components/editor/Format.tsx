@@ -29,9 +29,9 @@ import {
   Settings,
   Sparkles,
 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/shared/components/ui/tooltip';
+import { cn } from "@/shared/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/shared/components/ui";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/shared/components/ui";
 import {
   EditorCommandBus,
   EditorEventBus,
@@ -263,7 +263,7 @@ export default function Format() {
               {/* Environments Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded-md text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                  <button type="button" className="h-7 px-1.5 flex items-center justify-center gap-0.5 rounded-md text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary">
                     <span className="text-xs font-medium">Env</span>
                     <ChevronDown className="size-3 shrink-0 opacity-60" />
                   </button>
@@ -290,7 +290,7 @@ export default function Format() {
             <div className="flex items-center gap-px px-1.5">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="h-7 px-1.5 flex items-center justify-center gap-1 rounded-md text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                  <button type="button" className="h-7 px-1.5 flex items-center justify-center gap-1 rounded-md text-xs font-medium text-foreground hover:bg-muted active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary">
                     <Type className="size-3.5 shrink-0" />
                     <ChevronDown className="size-3 shrink-0 opacity-60" />
                   </button>

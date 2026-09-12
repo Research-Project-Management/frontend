@@ -5,7 +5,7 @@ import {
   formatCitationSnippet,
   formatItemAuthorSummary,
 } from '@/features/editor/utils/citation.util';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 
 describe('citation.util - extractCitationKeys', () => {
   it('extracts single LaTeX \\cite key', () => {
@@ -109,7 +109,7 @@ describe('citation.util - formatItemAuthorSummary', () => {
   it('formats single author', () => {
     const item = {
       contributors: [{ lastName: 'Vaswani', firstName: 'Ashish' }],
-    } as CatalogItem;
+    } as Item;
     expect(formatItemAuthorSummary(item)).toBe('Vaswani');
   });
 
@@ -119,7 +119,7 @@ describe('citation.util - formatItemAuthorSummary', () => {
         { lastName: 'Vaswani', firstName: 'Ashish' },
         { lastName: 'Shazeer', firstName: 'Noam' },
       ],
-    } as CatalogItem;
+    } as Item;
     expect(formatItemAuthorSummary(item)).toBe('Vaswani & Shazeer');
   });
 
@@ -130,7 +130,7 @@ describe('citation.util - formatItemAuthorSummary', () => {
         { lastName: 'Shazeer', firstName: 'Noam' },
         { lastName: 'Parmar', firstName: 'Niki' },
       ],
-    } as CatalogItem;
+    } as Item;
     expect(formatItemAuthorSummary(item)).toBe('Vaswani et al.');
   });
 });

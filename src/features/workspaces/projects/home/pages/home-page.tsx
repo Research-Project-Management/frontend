@@ -6,8 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import { fixMojibake } from '@/shared/utils/format';
+import { Skeleton } from "@/shared/components/ui";
+import { fixMojibake } from "@/shared/lib/utils";
 import { ChatAi, Recent, Quicklinks, Stickies } from "../components";
 import { Section } from "../components/layouts/section";
 import { ManageWidgetsModal } from "../components/modals/manage-widgets-modal";
@@ -150,7 +150,7 @@ export default function HomePage() {
               </p>
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="mt-6 px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium transition-colors shadow-none"
+                className="mt-6 px-5 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary-hover text-sm font-medium transition-colors shadow-none"
               >
                 Enable Widgets
               </button>

@@ -1,333 +1,578 @@
 'use client';
 
-import React, { useState, useRef } from "react";
-import EmojiPicker, { EmojiStyle, Theme } from "emoji-picker-react";
-import type { EmojiClickData } from "emoji-picker-react";
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
-import { Textarea } from '@/shared/components/ui/textarea';
-import { useClickOutside } from "@/shared/hooks/use-click-outside";
-import { useParams } from "next/navigation";
-import { useCreateProject } from "../../hooks/use-project";
+import React, { useState, useRef, useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { IconPicker, ProjectAvatar } from "@/shared/components/ui";
+import { toast } from 'sonner';
 import {
-  FlaskConical,
-  FolderKanban,
-  BookOpen,
-  Blocks,
-  Check,
+  X,
+  Globe,
   Lock,
-  type LucideIcon,
-} from "lucide-react";
+  Info,
+  Check,
+  Loader2,
+} from 'lucide-react';
 
-// ── Module definitions ────────────────────────────────────────────────────────
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui";
+import { Switch } from "@/shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
+import { Popover, PopoverTrigger, PopoverContent } from "@/shared/components/ui";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/shared/components/ui";
+import { useClickOutside } from "@/shared/hooks";
+import { cn } from "@/shared/lib/utils";
+import { useAuth } from '@/features/auth/hooks/use-auth';
+import { useCreateProject, useUpdateProject } from '../../hooks/use-project';
+import { CoverModal } from '@/features/workspaces/projects/project-id/settings/components/general/CoverModal';
+import { uploadGenericFile } from '@/features/workspaces/storage/services/file.service';
+import type { Project } from '../../types/project.types';
 
-type ProjectModuleKey =
-  | "overview"
-  | "tasks"
-  | "cycles"
-  | "pages"
-  | "collection"
-  | "storage"
-  | "stickies";
+// ── Default Cover Photo ──────────────────────────────────────────────────────
+const DEFAULT_COVER =
+  'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&auto=format&fit=crop&q=80';
 
-const MODULE_ORDER: ProjectModuleKey[] = [
-  "overview",
-  "pages",
-  "collection",
-  "tasks",
-  "cycles",
-  "storage",
-  "stickies",
-];
-
-const LOCKED_MODULES: ProjectModuleKey[] = ["overview"];
-
-const ALL_MODULES: {
-  id: ProjectModuleKey;
-  label: string;
-  locked?: boolean;
-}[] = [
-  { id: "overview", label: "Overview", locked: true },
-  { id: "pages", label: "Pages" },
-  { id: "collection", label: "Collection" },
-  { id: "tasks", label: "Tasks" },
-  { id: "cycles", label: "Cycles" },
-  { id: "storage", label: "Storage" },
-  { id: "stickies", label: "Stickies" },
-];
-
-// ── Template definitions ──────────────────────────────────────────────────────
-
-type Template = {
+// ── Project Modules Config (Matching Flux Settings) ──────────────────────────
+export interface ProjectModuleOption {
   id: string;
-  name: string;
-  description: string;
-  icon: LucideIcon;
-  modules: ProjectModuleKey[];
-  accent: string; // tailwind ring color
-};
+  title: string;
+  desc: string;
+  defaultOn?: boolean;
+}
 
-const TEMPLATES: Template[] = [
+const PROJECT_MODULE_OPTIONS: ProjectModuleOption[] = [
   {
-    id: "research",
-    name: "Research Paper",
-    description: "Full research workflow with citations, cycles & task tracking",
-    icon: FlaskConical,
-    modules: ["overview", "pages", "collection", "tasks", "cycles", "storage"],
-    accent: "ring-foreground/80",
+    id: 'cycles',
+    title: 'Enable cycles',
+    desc: 'Timebox work per project and adjust the time period as needed. One cycle can be 2 weeks, the next 1 week.',
+    defaultOn: true,
   },
   {
-    id: "general",
-    name: "General Project",
-    description: "Standard project management with tasks & files",
-    icon: FolderKanban,
-    modules: ["overview", "pages", "tasks", "storage"],
-    accent: "ring-foreground/80",
+    id: 'tasks',
+    title: 'Enable work items',
+    desc: 'Organize work into issues, subtasks, and track progress with Kanban, Table, and Calendar views.',
+    defaultOn: true,
   },
   {
-    id: "writing",
-    name: "Writing & Docs",
-    description: "Focus on writing with project stickies",
-    icon: BookOpen,
-    modules: ["overview", "pages", "storage", "stickies"],
-    accent: "ring-foreground/80",
+    id: 'pages',
+    title: 'Enable pages',
+    desc: 'Create and edit free-form content; notes, docs, anything.',
+    defaultOn: true,
   },
   {
-    id: "custom",
-    name: "Custom",
-    description: "Start from scratch, pick your modules",
-    icon: Blocks,
-    modules: ["overview"],
-    accent: "ring-foreground/80",
+    id: 'storage',
+    title: 'Enable storage',
+    desc: 'Manage project files, research documents, and attachments.',
+    defaultOn: true,
+  },
+  {
+    id: 'stickies',
+    title: 'Enable stickies',
+    desc: 'Quick sticky notes and brainstorming canvas for project ideas.',
+    defaultOn: true,
   },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Helper: Derive Short Project Identifier ─────────────────────────────────
+function generateIdentifier(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    return words[0].slice(0, 4);
+  }
+  return words
+    .slice(0, 4)
+    .map((w) => w[0])
+    .join('');
+}
+
+// ── Props ────────────────────────────────────────────────────────────────────
+export interface CreateProjectModalProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSuccess?: (project?: any) => void;
+}
 
 export function CreateProjectModal({
+  open,
+  onOpenChange,
   onSuccess,
-}: {
-  onSuccess?: () => void;
-}) {
-  const { workspaceId } = useParams();
-  const mutation = useCreateProject();
-  const emojiRef = useRef<HTMLDivElement>(null);
+}: CreateProjectModalProps) {
+  const { workspaceId } = useParams() as { workspaceId: string };
+  const router = useRouter();
+  const createMutation = useCreateProject();
+  const updateMutation = useUpdateProject();
 
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("research");
-  const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState("📁");
-  const [description, setDescription] = useState("");
-  const [modules, setModules] = useState<ProjectModuleKey[]>(() => {
-    const selectedModules = new Set(TEMPLATES[0].modules);
-    return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
-  });
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  // Internal dialog state (supports both controlled & uncontrolled)
+  const [internalOpen, setInternalOpen] = useState(true);
+  const isModalOpen = open !== undefined ? open : internalOpen;
+  const handleOpenChange = onOpenChange || setInternalOpen;
 
-  // Close emoji picker on outside click
-  useClickOutside(emojiRef, () => setShowEmojiPicker(false), {
-    enabled: showEmojiPicker,
-  });
+  // Step state: 1 = Create Project, 2 = Projects and work items
+  const [step, setStep] = useState<1 | 2>(1);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  // Step 1 Form States
+  const [name, setName] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [hasManuallyEditedIdentifier, setHasManuallyEditedIdentifier] = useState(false);
+  const [avatar, setAvatar] = useState('👌');
+  const [cover, setCover] = useState(DEFAULT_COVER);
+  const [description, setDescription] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const { user } = useAuth();
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
-  const handleTemplateSelect = (template: Template) => {
-    setSelectedTemplate(template.id);
-    setModules(() => {
-      const selectedModules = new Set(template.modules);
-      return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
-    });
+  // Step 2 State
+  const [createdProject, setCreatedProject] = useState<Project | null>(null);
+  const [activeModules, setActiveModules] = useState<string[]>(() =>
+    PROJECT_MODULE_OPTIONS.filter((m) => m.defaultOn).map((m) => m.id)
+  );
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Handlers
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setName(val);
+    if (nameError) setNameError('');
+    if (!hasManuallyEditedIdentifier) {
+      setIdentifier(generateIdentifier(val));
+    }
   };
 
-  const handleModuleToggle = (moduleId: ProjectModuleKey) => {
-    if (LOCKED_MODULES.includes(moduleId)) return;
-    setModules((prev) =>
-      prev.includes(moduleId)
-        ? prev.filter((m) => m !== moduleId)
-        : MODULE_ORDER.filter((currentModuleId) =>
-            new Set([...prev, moduleId]).has(currentModuleId),
-          ),
-    );
+  const handleIdentifierChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHasManuallyEditedIdentifier(true);
+    setIdentifier(e.target.value.replace(/[^a-zA-Z0-9-_]/g, '').slice(0, 10));
   };
 
-  const handleEmojiClick = (emojiData: EmojiClickData) => {
-    setAvatar(emojiData.emoji);
-    setShowEmojiPicker(false);
+  const handleUploadCustomCover = async (file: File) => {
+    try {
+      setIsUploadingCover(true);
+      const url = await uploadGenericFile(file, workspaceId);
+      setCover(url);
+      toast.success('Cover uploaded');
+    } catch {
+      const localUrl = URL.createObjectURL(file);
+      setCover(localUrl);
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleClose = () => {
+    handleOpenChange(false);
+    setTimeout(() => {
+      setStep(1);
+      setName('');
+      setNameError('');
+      setIdentifier('');
+      setHasManuallyEditedIdentifier(false);
+      setAvatar('👌');
+      setCover(DEFAULT_COVER);
+      setDescription('');
+      setIsPrivate(false);
+      setCreatedProject(null);
+      setActiveModules(PROJECT_MODULE_OPTIONS.filter((m) => m.defaultOn).map((m) => m.id));
+    }, 200);
+  };
+
+  const handleSubmitStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !workspaceId) return;
-    mutation.mutate(
+    if (!name.trim()) {
+      setNameError('Project name is required');
+      nameInputRef.current?.focus();
+      return;
+    }
+    setNameError('');
+    if (createMutation.isPending) return;
+
+    const initialModules = ['overview', ...activeModules];
+
+    createMutation.mutate(
       {
-        workspaceId: workspaceId as string,
+        workspaceId: workspaceId || undefined,
         name: name.trim(),
+        identifier: identifier.trim() || undefined,
         avatar,
-        description,
-        modules: MODULE_ORDER.filter((moduleId) => modules.includes(moduleId)),
+        cover,
+        description: description.trim() || undefined,
+        isPrivate,
+        leadId: user?.id,
+        modules: initialModules,
       },
       {
-        onSuccess: () => {
-          setName("");
-          setAvatar("📁");
-          setDescription("");
-          setSelectedTemplate("research");
-          setModules(() => {
-            const selectedModules = new Set(TEMPLATES[0].modules);
-            return MODULE_ORDER.filter((moduleId) => selectedModules.has(moduleId));
-          });
-          onSuccess?.();
+        onSuccess: (res: any) => {
+          const proj: Project = res?.project || res?.data || res;
+          setCreatedProject(proj);
+          if (proj?.modules && Array.isArray(proj.modules)) {
+            setActiveModules(proj.modules.filter((m: string) => m !== 'overview'));
+          }
+          setStep(2);
         },
       }
     );
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const handleToggleModule = (modId: string) => {
+    const nextModules = activeModules.includes(modId)
+      ? activeModules.filter((m) => m !== modId)
+      : [...activeModules, modId];
+
+    setActiveModules(nextModules);
+
+    if (createdProject?.id) {
+      updateMutation.mutate({
+        projectId: createdProject.id,
+        modules: ['overview', ...nextModules],
+      });
+    }
+  };
+
+  const handleOpenProject = () => {
+    const targetProjId = createdProject?.id;
+    handleClose();
+    onSuccess?.(createdProject);
+    if (targetProjId) {
+      router.push(`/projects/${targetProjId}`);
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {/* ── Template Selector ──────────────────────────────────────── */}
-      <div>
-        <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-          Template
-        </Label>
-        <div className="grid grid-cols-2 gap-2">
-          {TEMPLATES.map((tpl) => {
-            const isSelected = selectedTemplate === tpl.id;
-            return (
-              <button
-                type="button"
-                key={tpl.id}
-                onClick={() => handleTemplateSelect(tpl)}
-                className={`relative flex flex-col items-start gap-1.5 p-3 rounded-lg border text-left transition-all duration-150 cursor-pointer
-                  ${
-                    isSelected
-                      ? `border-transparent ring-2 ${tpl.accent} bg-muted`
-                      : "border-border hover:border-muted-foreground/30 hover:bg-muted"
-                  }`}
-              >
-                {isSelected && (
-                  <div className="absolute top-2 right-2">
-                    <span className="flex size-4 items-center justify-center rounded-full bg-foreground text-background">
-                      <Check className="size-2.5 stroke-[3] shrink-0" />
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <tpl.icon className="size-4 text-foreground shrink-0" />
-                  <span className="text-xs font-semibold text-foreground">
-                    {tpl.name}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
-                  {tpl.description}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className="w-[94vw] sm:max-w-[780px] md:max-w-[820px] p-0 overflow-hidden rounded-lg border border-border bg-background gap-0 z-50 duration-150"
+      >
+        <DialogTitle className="sr-only">
+          {step === 1 ? 'Create Project' : 'Projects and work items'}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {step === 1
+            ? 'Enter details to create a new project'
+            : 'Configure feature modules for this project'}
+        </DialogDescription>
 
-      {/* ── Project Details ────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex gap-3 items-start">
-          {/* Emoji Picker */}
-          <div className="relative" ref={emojiRef}>
-            <button
-              type="button"
-              className="flex items-center justify-center w-12 h-12 text-2xl border border-border hover:border-foreground rounded-md cursor-pointer hover:bg-muted transition-colors shrink-0"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              {avatar}
-            </button>
-            {showEmojiPicker && (
-              <div 
-                className="absolute z-50 mt-2 left-0 rounded-md border border-border overflow-hidden"
-                style={{ 
-                  "--epr-bg-color": "var(--card)",
-                  "--epr-category-navigation-button-active-color": "var(--muted-foreground)",
-                  "--epr-highlight-color": "var(--muted-foreground)",
-                  "--epr-search-input-bg-color": "var(--secondary)",
-                  "--epr-search-input-border-color": "var(--border)",
-                  "--epr-hover-bg-color": "var(--accent)",
-                  "--epr-focus-bg-color": "var(--accent)",
-                } as React.CSSProperties}
-              >
-                <EmojiPicker
-                  emojiStyle={EmojiStyle.NATIVE}
-                  onEmojiClick={handleEmojiClick}
-                  theme={Theme.AUTO}
-                  height={350}
-                  width={300}
-                  lazyLoadEmojis={true}
-                  searchPlaceholder="Search emoji..."
+        {step === 1 ? (
+          /* ── STEP 1: CREATE PROJECT ─────────────────────────────────────── */
+          <form onSubmit={handleSubmitStep1} className="flex flex-col">
+            {/* Cover Banner Section (Symmetric margins to modal edge) */}
+            <div className="relative mx-3 mt-3 sm:mx-4 sm:mt-3.5">
+              {/* Inset Banner Image Container with rounded corners & overflow-hidden */}
+              <div className="relative h-44 sm:h-52 w-full rounded-lg overflow-hidden bg-muted border border-border/40">
+                <img
+                  src={cover}
+                  alt="Project Cover"
+                  className="w-full h-full object-cover select-none"
+                />
+
+                {/* Close 'X' Button on Cover */}
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="absolute top-3 right-3 size-7 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer z-10"
+                  aria-label="Close dialog"
+                >
+                  <X className="size-4 shrink-0" />
+                </button>
+
+                {/* Change Cover Button */}
+                <div className="absolute bottom-3 right-3 z-10">
+                  <CoverModal
+                    currentCover={cover}
+                    onSelectCover={(url) => setCover(url)}
+                    onUploadCustomCover={handleUploadCustomCover}
+                    isUploading={isUploadingCover}
+                  >
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 px-2.5 text-11 font-medium bg-background text-foreground hover:bg-background/95 shadow-xs border border-border/40 rounded-md cursor-pointer"
+                    >
+                      Change cover
+                    </Button>
+                  </CoverModal>
+                </div>
+              </div>
+
+              {/* Hanging Emoji & Icon Picker Avatar Button */}
+              {/* Placed outside overflow-hidden so it is NEVER clipped; left-2 aligns directly with px-5 / sm:px-6 inputs below */}
+              <div className="absolute -bottom-6 left-2 z-20">
+                <IconPicker currentValue={avatar} onSelect={(val) => setAvatar(val)} align="start" side="bottom" sideOffset={8}>
+                  <button
+                    type="button"
+                    title="Change project icon or emoji"
+                    className="size-12 rounded-lg border border-border bg-background hover:bg-muted shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    <ProjectAvatar avatar={avatar} name={name} size="xl" className="size-full" />
+                  </button>
+                </IconPicker>
+              </div>
+            </div>
+
+            {/* Form Fields Body (Indented symmetrically so left edge aligns perfectly with hanging avatar button) */}
+            <div className="px-5 sm:px-6 pt-8 sm:pt-9 pb-4 space-y-3.5">
+              {/* Row 1: Project Name (Left) + Project ID (Right) */}
+              <div className="flex items-start gap-3.5">
+                <div className="flex-1 space-y-1">
+                  <Input
+                    ref={nameInputRef}
+                    value={name}
+                    onChange={handleNameChange}
+                    placeholder="Project name"
+                    autoFocus
+                    className={cn(
+                      'h-10 text-13 font-normal rounded-md border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground',
+                      nameError && 'border-destructive focus-visible:ring-destructive/30'
+                    )}
+                  />
+                  {nameError && (
+                    <p className="text-11 text-destructive pl-0.5">{nameError}</p>
+                  )}
+                </div>
+
+                <div className="relative w-44 sm:w-52 shrink-0">
+                  <Input
+                    value={identifier}
+                    onChange={handleIdentifierChange}
+                    placeholder="Project ID"
+                    maxLength={10}
+                    className="h-10 pr-9 text-13 font-normal rounded-md border border-border bg-background focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground"
+                  />
+                  <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-help p-0.5 outline-none"
+                        >
+                          <Info className="size-4 shrink-0" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        align="end"
+                        className="bg-popover text-foreground border border-border rounded-md text-11 px-3 py-1.5 max-w-[280px] font-normal leading-relaxed"
+                      >
+                        Helps you identify work items in the project uniquely. Max 10 characters.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+
+              {/* Row 2: Description */}
+              <div>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Description"
+                  rows={3}
+                  className="resize-none min-h-[110px] text-13 rounded-md border border-border bg-background p-3 focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground leading-relaxed"
                 />
               </div>
-            )}
-          </div>
 
-          {/* Name */}
-          <div className="flex-1">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Project name"
-              required
-              className="text-base h-12 border-border focus-visible:border-foreground focus-visible:ring-0"
-              autoFocus
-            />
-          </div>
-        </div>
+                {/* Row 3: Pills (Public / Private + Lead) */}
+                <div className="flex items-center gap-2 pt-1">
+                  {/* Public / Private Pill */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-background hover:bg-muted text-13 font-normal text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      >
+                        {isPrivate ? (
+                          <>
+                            <Lock className="size-4 shrink-0 text-muted-foreground" />
+                            <span>Private</span>
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="size-4 shrink-0 text-muted-foreground" />
+                            <span>Public</span>
+                          </>
+                        )}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-56 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 "
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setIsPrivate(false)}
+                        className={cn(
+                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-13 transition-colors cursor-pointer text-left',
+                          !isPrivate
+                            ? 'bg-muted font-medium text-foreground'
+                            : 'hover:bg-muted text-foreground'
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Globe className="size-4 shrink-0" />
+                          <div>
+                            <div>Public</div>
+                            <div className="text-11 text-muted-foreground font-normal">
+                              Visible to everyone
+                            </div>
+                          </div>
+                        </div>
+                        {!isPrivate && <Check className="size-4 shrink-0 text-primary" />}
+                      </button>
 
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add a more detailed description..."
-          rows={2}
-          className="resize-none text-sm border-border focus-visible:border-foreground focus-visible:ring-0 min-h-[100px]"
-        />
-      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsPrivate(true)}
+                        className={cn(
+                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-13 transition-colors cursor-pointer text-left',
+                          isPrivate
+                            ? 'bg-muted font-medium text-foreground'
+                            : 'hover:bg-muted text-foreground'
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Lock className="size-4 shrink-0" />
+                          <div>
+                            <div>Private</div>
+                            <div className="text-11 text-muted-foreground font-normal">
+                              Only invited members
+                            </div>
+                          </div>
+                        </div>
+                        {isPrivate && <Check className="size-4 shrink-0 text-primary" />}
+                      </button>
+                    </PopoverContent>
+                  </Popover>
 
-      {/* ── Module Chips ───────────────────────────────────────────── */}
-      <div>
-        <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-          Modules
-        </Label>
-        <div className="flex flex-wrap gap-1.5">
-          {ALL_MODULES.map((mod) => {
-            const isActive = modules.includes(mod.id);
-            const isLocked = mod.locked;
-            return (
-              <button
+                  {/* Lead Indicator (Creator is Project PI / Owner) */}
+                  <div className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-muted/50 text-13 font-normal text-foreground select-none">
+                    <Avatar className="size-4.5 shrink-0">
+                      {user?.avatar && (
+                        <AvatarImage src={user.avatar} />
+                      )}
+                      <AvatarFallback className="text-10 font-semibold">
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate max-w-[140px]">
+                      {user?.name || 'Lead (PI)'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            {/* Footer */}
+            <div className="border-t border-border px-5 sm:px-6 py-3 bg-background flex items-center justify-end gap-2">
+              <Button
                 type="button"
-                key={mod.id}
-                onClick={() => handleModuleToggle(mod.id)}
-                disabled={isLocked}
-                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 border
-                  ${
-                    isActive
-                      ? "bg-primary/10 text-primary border-primary/20"
-                      : "bg-muted text-muted-foreground border-border hover:bg-muted"
-                  }
-                  ${isLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}
-                `}
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                className="h-8.5 px-3.5 text-13 font-medium rounded-md cursor-pointer border border-border hover:bg-muted text-foreground transition-colors"
               >
-                {isLocked && <Lock className="size-3 shrink-0" />}
-                {!isLocked && isActive && <Check className="size-3 shrink-0" />}
-                {mod.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                Cancel
+              </Button>
+              {/* Default active color (not dimmed/darkened), validates on click */}
+              <Button
+                type="submit"
+                size="sm"
+                disabled={createMutation.isPending}
+                className="h-8.5 px-4 text-13 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer transition-colors"
+              >
+                {createMutation.isPending && (
+                  <Loader2 className="mr-2 size-3.5 animate-spin shrink-0" />
+                )}
+                Create project
+              </Button>
+            </div>
+          </form>
+        ) : (
+          /* ── STEP 2: PROJECTS AND WORK ITEMS ────────────────────────────── */
+          <div className="flex flex-col">
+            {/* Header */}
+            <div className="px-5 sm:px-6 pt-4 sm:pt-5 pb-3">
+              <h2 className="text-18 sm:text-20 font-semibold text-foreground tracking-tight">
+                Projects and work items
+              </h2>
+              <p className="text-13 text-muted-foreground mt-0.5">
+                Toggle these on or off this project.
+              </p>
+            </div>
 
-      {/* ── Actions ────────────────────────────────────────────────── */}
-      <div className="flex gap-2 justify-end pt-1">
-        <Button type="submit" disabled={mutation.isPending || !name.trim()} className="cursor-pointer">
-          {mutation.isPending ? "Creating..." : "Create Project"}
-        </Button>
-      </div>
-    </form>
+            {/* Module Cards List */}
+            <div className="px-5 sm:px-6 pb-4 space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar">
+              {PROJECT_MODULE_OPTIONS.map((mod) => {
+                const isActive = activeModules.includes(mod.id);
+                return (
+                  <div
+                    key={mod.id}
+                    className="rounded-md border border-border p-3 sm:p-3.5 bg-background flex items-center justify-between gap-3.5 transition-colors hover:border-border/80"
+                  >
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <h3 className="text-13 sm:text-14 font-medium text-foreground leading-tight">
+                        {mod.title}
+                      </h3>
+                      <p className="text-12 sm:text-13 text-muted-foreground leading-relaxed mt-0.5">
+                        {mod.desc}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={() => handleToggleModule(mod.id)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Step 2 Footer */}
+            <div className="border-t border-border px-5 sm:px-6 py-3 bg-background flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-13 text-foreground font-medium truncate min-w-0">
+                <span className="text-muted-foreground">Congrats!</span>
+                <ProjectAvatar avatar={avatar} name={name} size="sm" />
+                <span className="font-semibold truncate text-foreground">
+                  {createdProject?.name || name}
+                </span>
+                <span className="text-muted-foreground">created.</span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  className="h-8.5 px-3.5 text-13 font-medium rounded-md cursor-pointer border border-border hover:bg-muted text-foreground transition-colors"
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleOpenProject}
+                  className="h-8.5 px-4 text-13 font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none cursor-pointer transition-colors"
+                >
+                  Open project
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

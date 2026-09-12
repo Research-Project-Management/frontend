@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
 import type { Member } from '../types/overview.types';
 
 interface TeamProps {

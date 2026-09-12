@@ -1,68 +1,82 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getYourWork } from '../services/your-work.service';
-import { yourWorkSummaryResponseSchema, type YourWorkSummaryResponse } from '../schemas/your-work.schema';
-import { useYourWorkBase } from './use-your-work-base';
+import { useYourWork } from './use-your-work-base';
+import { useOptionalYourWorkContext } from '../context/your-work.context';
 
 export function useSummaryWork() {
-  const base = useYourWorkBase();
+  const context = useOptionalYourWorkContext();
+  const base = useYourWork();
 
-  const {
-    data: rawYourWork,
-    isLoading: isLoadingYourWork,
-    refetch: refetchYourWork,
-  } = useQuery({
-    queryKey: ['your-work', 'summary', base.workspaceId],
-    queryFn: async ({ signal }) => {
-      const res = await getYourWork(base.workspaceId, signal);
-      const parsed = yourWorkSummaryResponseSchema.safeParse(res);
-      return parsed.success ? parsed.data : (res as YourWorkSummaryResponse);
-    },
-    enabled: !!base.workspaceId,
-    staleTime: 30_000,
-  });
-
-  const activities = useMemo(
-    () => (rawYourWork as any)?.activity || [],
-    [rawYourWork],
-  );
+  const source = context || base;
 
   const state = useMemo(
     () => ({
-      workspaceId: base.workspaceId,
-      tasks: base.allTasks,
-      activities,
-      categorizedTasks: base.categories,
-      taskProjectMap: base.taskProjectMap,
-      isLoading: isLoadingYourWork || base.isLoading,
-      isLoadingYourWork,
-      isLoadingTasks: base.isLoadingTasks,
-      isLoadingProjects: base.isLoadingProjects,
+      workspaceId: source.workspaceId,
+      tasks: source.allTasks,
+      activities: source.activities,
+      categorizedTasks: {
+        assigned: source.assigned,
+        created: source.created,
+        subscribed: source.subscribed,
+        statusBreakdown: source.statusBreakdown,
+        priorityBreakdown: source.priorityBreakdown,
+      },
+      statusBreakdown: source.statusBreakdown,
+      subscribedStatusBreakdown: source.subscribedStatusBreakdown,
+      priorityBreakdown: source.priorityBreakdown,
+      projectBreakdown: source.projectBreakdown,
+      taskProjectMap: source.taskProjectMap,
+      userData: source.userData,
+      selectedProjectId: context?.selectedProjectId || null,
+      selectedProject: context?.selectedProject || null,
+      totalCounts: context?.totalCounts || {
+        assigned: source.assigned.length,
+        created: source.created.length,
+        subscribed: source.subscribed.length,
+        activity: source.activities.length,
+      },
+      isLoading: source.isLoading,
+      isLoadingYourWork: source.isLoadingYourWork,
+      isLoadingTasks: source.isLoadingTasks,
+      isLoadingProjects: source.isLoadingProjects,
+      isRefetching: source.isRefetching,
     }),
     [
-      base.workspaceId,
-      base.allTasks,
-      activities,
-      base.categories,
-      base.taskProjectMap,
-      isLoadingYourWork,
-      base.isLoading,
-      base.isLoadingTasks,
-      base.isLoadingProjects,
+      source.workspaceId,
+      source.allTasks,
+      source.activities,
+      source.assigned,
+      source.created,
+      source.subscribed,
+      source.statusBreakdown,
+      source.subscribedStatusBreakdown,
+      source.priorityBreakdown,
+      source.projectBreakdown,
+      source.taskProjectMap,
+      source.userData,
+      source.isLoading,
+      source.isLoadingYourWork,
+      source.isLoadingTasks,
+      source.isLoadingProjects,
+      source.isRefetching,
+      context?.selectedProjectId,
+      context?.selectedProject,
+      context?.totalCounts,
     ],
   );
 
-  const baseRefetch = base.refetch;
   const actions = useMemo(
     () => ({
-      refetch: () => {
-        refetchYourWork();
-        baseRefetch();
+      refetch: source.refetch,
+      invalidate: source.invalidate,
+      selectProject: (projectId: string | null) => {
+        if (context?.setSelectedProjectId) {
+          context.setSelectedProjectId(projectId);
+        }
       },
     }),
-    [refetchYourWork, baseRefetch],
+    [source.refetch, source.invalidate, context],
   );
 
   return useMemo(
@@ -75,3 +89,4 @@ export function useSummaryWork() {
 }
 
 export default useSummaryWork;
+

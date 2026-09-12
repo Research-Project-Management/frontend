@@ -146,7 +146,7 @@ export default function Stickies() {
             <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/90 to-transparent flex items-end justify-center pb-2">
               <Link
                 href={`/${workspaceId}/stickies`}
-                className="text-sm font-medium text-primary hover:underline transition-colors"
+                className="text-sm font-medium text-primary hover:underline transition-colors shrink-0"
               >
                 Show all
               </Link>

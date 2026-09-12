@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { MinusCircle, Plus } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Textarea } from '@/shared/components/ui/textarea';
+import { Button } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui";
 import { normalizeNotes, type NormalizedNote } from '@/features/workspaces/library/utils/library.util';
 import { useNotes } from '@/features/workspaces/library/hooks/use-notes';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 import type { Paper } from '@/features/workspaces/library/types/library.types';
 
 export interface NotesSectionProps {

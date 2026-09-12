@@ -292,8 +292,10 @@ export default function Viewer() {
         const rootId = parentPageIdRef.current;
         if (rootId) {
           const redirectUrl =
-            workspaceId && projectId
-              ? `/${workspaceId}/projects/${projectId}/pages/${rootId}?file=${matchedPage.id}`
+            projectId
+              ? (workspaceId
+                  ? `/${workspaceId}/projects/${projectId}/pages/${rootId}?file=${matchedPage.id}`
+                  : `/projects/${projectId}/pages/${rootId}?file=${matchedPage.id}`)
               : `/editor/${rootId}?file=${matchedPage.id}`;
 
           setActiveFilePage(matchedPage as unknown as ProjectPage);

@@ -6,7 +6,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import Card from '../components/card/Card';
 import { type Sticky } from '@/features/workspaces/projects/stickies/types/sticky.types';
 import { useParams } from "next/navigation";
-import { Loader2, Layers2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { StickiesIcon } from "@/shared/components/ui";
 import {
   DndContext,
   DragOverlay,
@@ -25,7 +26,7 @@ import EmptyState from '../components/layout/EmptyState';
 
 const copy = {
   title: "Stickies",
-  Icon: Layers2,
+  Icon: StickiesIcon,
   loading: "Loading stickies...",
   emptyFiltered: "No stickies match your filters",
   empty: "No stickies yet",

@@ -13,14 +13,14 @@ import {
   PanelLeftClose,
   Cloud,
 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const { workspaceId } = useParams();
   const pathname = usePathname();
   const id = useId();
 
-  const basePath = `/${workspaceId}/storage`;
+  const basePath = workspaceId ? `/${workspaceId}/storage` : `/storage`;
 
   // Storage-specific navigation
   const storageItems = [
@@ -61,7 +61,7 @@ export default function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   key={item.label}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'group relative flex h-8 items-center gap-1.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
+                    'group relative flex h-8 items-center gap-2 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none max-md:shrink-0',
                     isActive
                       ? 'bg-muted text-foreground font-medium'
                       : 'text-foreground hover:bg-muted font-normal'

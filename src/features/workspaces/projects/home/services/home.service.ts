@@ -1,23 +1,24 @@
-import { apiGet, apiPost } from '@/shared/lib/api';
+import { apiGet, apiPost } from "@/shared/lib/api";
 
 import type { RecentItem } from '../types/home.types';
 
-export const getRecentItems = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet<RecentItem[]>(`/api/activity/workspaces/${workspaceId}/recent`, { signal });
+export const getRecentItems = (workspaceId?: string, signal?: AbortSignal) =>
+  apiGet<RecentItem[]>(workspaceId ? `/api/activity/workspaces/${workspaceId}/recent` : `/api/activity/recent`, { signal });
 
-
-export const getStickies = async (workspaceId: string) => {
-  const data = await apiGet<{ stickies: any[] }>(`/api/workspace/${workspaceId}/stickies`);
-  return data.stickies;
+export const getStickies = async (workspaceId?: string) => {
+  const endpoint = workspaceId ? `/api/workspace/${workspaceId}/stickies` : `/api/me/stickies`;
+  const data = await apiGet<{ stickies: any[] }>(endpoint);
+  return data.stickies || [];
 };
 
 export const createSticky = async (variables: {
-  workspaceId: string;
+  workspaceId?: string;
   title?: string;
   content: string;
   color?: string;
   position?: { x: number; y: number };
 }) => {
   const { workspaceId, ...payload } = variables;
-  return apiPost(`/api/workspace/${workspaceId}/stickies`, payload);
+  const endpoint = workspaceId ? `/api/workspace/${workspaceId}/stickies` : `/api/me/stickies`;
+  return apiPost(endpoint, payload);
 };

@@ -1,27 +1,6 @@
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-
-export interface AttachmentRevisionDto {
-  id: string;
-  attachmentId: string;
-  revisionNumber: number;
-  fileHash: string;
-  sizeBytes: number;
-  url: string;
-  comment?: string;
-  createdAt: string;
-}
-
-export interface AttachmentDto {
-  id: string;
-  catalogItemId: string;
-  filename: string;
-  url: string;
-  mimeType: string;
-  size: number;
-  fileHash?: string;
-  uploadedAt: string;
-  revisions?: AttachmentRevisionDto[];
-}
+import { apiGet, apiPost, apiDelete } from "@/shared/lib/api";
+import type { AttachmentDto, AttachmentRevisionDto } from "../types/library.types";
+export type { AttachmentDto, AttachmentRevisionDto };
 
 export interface AddRevisionDto {
   fileId: string;
@@ -95,19 +74,40 @@ export async function captureSnapshot(
     `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments/snapshot`,
     url ? { url } : {},
   );
-  return (response as any).attachment ?? response;
+  return (response as { attachment?: AttachmentDto }).attachment ?? (response as AttachmentDto);
 }
 
 export async function createAttachment(
   workspaceId: string,
   itemId: string,
-  data: any,
-): Promise<any> {
-  const response = await apiPost<any>(
+  data: Record<string, unknown>,
+): Promise<AttachmentDto> {
+  const response = await apiPost<{ attachment?: AttachmentDto } | AttachmentDto>(
     `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments`,
     data,
   );
-  return response;
+  return (response as { attachment?: AttachmentDto }).attachment ?? (response as AttachmentDto);
+}
+
+export async function setPrimaryAttachment(
+  workspaceId: string,
+  itemId: string,
+  attachmentId: string,
+): Promise<{ success: boolean }> {
+  return apiPost(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/items/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}/set-primary`,
+    {},
+  );
+}
+
+export function getFileContentUrl(workspaceId: string, fileId: string): string {
+  return `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/files/${encodeURIComponent(fileId)}/content`;
+}
+
+export async function fetchFileContent(workspaceId: string, fileId: string): Promise<Blob> {
+  return apiGet<Blob>(
+    `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/library/attachments/files/${encodeURIComponent(fileId)}/content`,
+  );
 }
 
 export const AttachmentsService = {
@@ -117,6 +117,10 @@ export const AttachmentsService = {
   addRevision,
   deleteAttachment,
   createAttachment,
+  setPrimaryAttachment,
+  getFileContentUrl,
+  fetchFileContent,
+  streamFileContent: fetchFileContent,
   addAttachment: createAttachment,
   captureSnapshot,
   // Ergonomic aliases
@@ -126,7 +130,7 @@ export const AttachmentsService = {
   delete: deleteAttachment,
   add: createAttachment,
   create: createAttachment,
+  setPrimary: setPrimaryAttachment,
 };
-
 
 export const AttachmentService = AttachmentsService;

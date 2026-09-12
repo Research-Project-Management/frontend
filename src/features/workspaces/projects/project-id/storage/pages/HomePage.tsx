@@ -7,18 +7,18 @@ import { useHomeFiles, useToggleStarItem, useDeleteItem } from '@/features/works
 import { usePreviewStore } from '@/features/workspaces/projects/project-id/storage/store/use-preview-store';
 import { useViewStore } from '@/features/workspaces/projects/project-id/storage/store/use-view-store';
 import { useStorageFilterStore } from '@/features/workspaces/projects/project-id/storage/store/use-filter-store';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from "@/shared/components/ui";
 import ListView from '@/features/workspaces/projects/project-id/storage/components/views/ListView';
 import GridView from '@/features/workspaces/projects/project-id/storage/components/views/GridView';
 import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { Home } from 'lucide-react';
 import { useTopbar } from '../hooks/use-topbar';
 
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useDebounce } from "@/shared/hooks";
 import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 
 export default function HomePage() {

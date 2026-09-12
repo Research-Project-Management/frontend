@@ -4,9 +4,9 @@ import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AlertCircle, Loader2, Play } from 'lucide-react';
 import { LatexCompilerEngine, type SyncTeXMap } from '@/features/editor/utils/viewer.util';
-import { useIntersectionObserver } from '@/shared/hooks/use-intersection-observer';
+import { useIntersectionObserver } from "@/shared/hooks";
 import { toast } from 'sonner';
-import { logger } from '@/shared/lib/logger';
+import { logger } from "@/shared/lib/utils";
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -195,7 +195,7 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
                 compileStatus !== 'done' &&
                 compileStatus !== 'error'
               }
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
               {compileStatus === 'compiling' ||
               compileStatus === 'flushing' ||
@@ -236,7 +236,7 @@ export const Surface = forwardRef<SurfaceHandle, SurfaceProps>(function Surface(
                 <button
                   type="button"
                   onClick={onCompile}
-                  className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 mt-2 transition-colors"
+                  className="px-3 py-1 text-xs rounded bg-primary text-primary-foreground hover:bg-primary-hover mt-2 transition-colors"
                 >
                   Compile again
                 </button>

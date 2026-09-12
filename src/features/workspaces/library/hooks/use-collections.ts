@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -60,9 +60,9 @@ export function useCollections(workspaceId: string) {
   const updateMutation = useMutation({
     mutationFn: (data: UpdateCollectionDTO & { collectionId: string }) => {
       const { collectionId, ...rest } = data;
-      const rawParent = (rest as any).parentId ?? (rest as any).parent ?? undefined;
+      const rawParent = rest.parentId ?? (rest as { parent?: string | null }).parent ?? undefined;
       const cleanParentId = rawParent === 'root' ? null : rawParent;
-      const payload: any = {
+      const payload: UpdateCollectionDTO = {
         name: rest.name !== undefined ? rest.name.trim() : undefined,
         description: rest.description !== undefined ? rest.description.trim() : undefined,
         color: rest.color,

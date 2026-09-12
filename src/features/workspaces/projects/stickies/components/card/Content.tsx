@@ -44,7 +44,7 @@ export default memo(function Content({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0 max-w-none focus:outline-none min-h-[210px] max-h-[380px] overflow-y-auto overflow-x-hidden px-5 py-4",
+          "prose prose-sm dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0 max-w-none focus:outline-none min-h-[220px] max-h-[380px] overflow-y-auto overflow-x-hidden px-4 pt-2 pb-3",
         "aria-label": "Sticky content",
       },
     },

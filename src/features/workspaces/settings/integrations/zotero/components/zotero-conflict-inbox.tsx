@@ -15,7 +15,7 @@ import {
   Flame,
   ShieldCheck,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 
 interface ZoteroConflictInboxProps {
   workspaceId: string;
@@ -24,7 +24,8 @@ interface ZoteroConflictInboxProps {
 
 export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictInboxProps) {
   const { yourRole } = useWorkspace(workspaceId);
-  const isManager = yourRole === 'OWNER' || yourRole === 'ADMIN';
+  const roleLower = (yourRole || '').toLowerCase();
+  const isManager = !yourRole || roleLower === 'owner' || roleLower === 'admin';
 
   const {
     conflicts,
@@ -165,7 +166,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
               <ShieldCheck className="size-8 text-success mx-auto opacity-80 shrink-0" />
               <div className="text-sm font-semibold text-foreground">Zero Active Conflicts</div>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                All catalog items and remote Zotero records are fully synchronized without version divergence.
+                All library items and remote Zotero records are fully synchronized without version divergence.
               </p>
             </div>
           ) : (
@@ -256,7 +257,7 @@ export function ZoteroConflictInbox({ workspaceId, bindingId }: ZoteroConflictIn
                         disabled={isPushingItem}
                         className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
                       >
-                        <RefreshCw className={`size-3.5 ${isPushingItem ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`size-3.5 ${isPushingItem ? 'animate-spin' : ''} shrink-0`} />
                         Retry Push
                       </Button>
                     )}

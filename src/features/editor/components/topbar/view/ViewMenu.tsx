@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from '@/shared/components/ui/menubar';
+import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from "@/shared/components/ui";
 import {
   useSettingsStore,
   type LayoutMode,

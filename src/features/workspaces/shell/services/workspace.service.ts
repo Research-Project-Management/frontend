@@ -1,76 +1,111 @@
-import { apiGet, apiPost, apiPut, apiDelete, ApiError } from '@/shared/lib/api';
-import type { Workspace } from '@/features/setup/types/workspace.types';
+import { apiGet, apiPut } from "@/shared/lib/api";
+import type {
+  Workspace,
+  WorkspaceListResponse,
+  WorkspaceDetailResponse,
+  CreateWorkspaceBody,
+  WorkspacePatch,
+  DeleteWorkspaceResult,
+} from '../types/workspace.types';
 
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type WorkspaceListResponse = {
-  workspaces: Workspace[];
+export type {
+  Workspace,
+  WorkspaceListResponse,
+  WorkspaceDetailResponse,
+  CreateWorkspaceBody,
+  WorkspacePatch,
+  DeleteWorkspaceResult,
 };
 
-export type WorkspaceDetailResponse = {
-  workspace: Workspace;
-  yourRole?: string;
-};
-
-export type CreateWorkspaceBody = {
-  name: string;
-  url: string;
-  size?: string;
-  companySize?: string;
-  avatar?: string | null;
-};
-
-
-export type WorkspacePatch = Partial<{
-  name: string;
-  avatar: string | null;
-  companySize: string;
-  timezone: string;
-  url: string;
-}>;
-
-export type DeleteWorkspaceResult = {
-  workspaceId: string;
-  alreadyDeleted: boolean;
-};
-
-// ── Query Keys ────────────────────────────────────────────────────────────────
+// ── Query Keys Factory ────────────────────────────────────────────────────────
 
 export const workspaceKeys = {
-  all: ['workspaces'] as const,
+  all: ['user-workspace-context'] as const,
   lists: () => [...workspaceKeys.all, 'list'] as const,
   list: (filters?: Record<string, unknown>) => [...workspaceKeys.lists(), filters] as const,
   details: () => [...workspaceKeys.all, 'detail'] as const,
   detail: (idOrUrl: string) => [...workspaceKeys.details(), idOrUrl] as const,
-  members: (workspaceId: string) => [...workspaceKeys.detail(workspaceId), 'members'] as const,
 };
 
-// ── Services ──────────────────────────────────────────────────────────────────
+// ── Pure User-Centric Adaptation Layer ────────────────────────────────────────
+// Workspaces are completely dissolved. Frontend reads current user profile and settings.
 
-export const fetchAllWorkspaces = (signal?: AbortSignal) =>
-  apiGet<WorkspaceListResponse>('/api/workspace', { signal });
+export const fetchAllWorkspaces = async (signal?: AbortSignal): Promise<WorkspaceListResponse> => {
+  try {
+    const res = await apiGet<{ user?: any }>('/api/users/me', { signal });
+    const user = res?.user;
+    if (!user) return { workspaces: [] };
+    const userWorkspace: Workspace = {
+      id: user.id,
+      name: user.name || 'Personal',
+      slug: 'personal',
+      url: 'personal',
+      avatar: user.avatar || '',
+      plan: 'free',
+      createdAt: user.createdAt || new Date().toISOString(),
+      updatedAt: user.updatedAt || new Date().toISOString(),
+    } as Workspace;
+    return { workspaces: [userWorkspace] };
+  } catch {
+    return { workspaces: [] };
+  }
+};
 
-export const fetchWorkspaceById = (workspaceId: string, signal?: AbortSignal) =>
-  apiGet<WorkspaceDetailResponse>(`/api/workspace/${workspaceId}`, { signal });
+export const fetchWorkspaceById = async (
+  _workspaceId: string,
+  signal?: AbortSignal,
+): Promise<WorkspaceDetailResponse> => {
+  try {
+    const res = await apiGet<{ user?: any }>('/api/users/me', { signal });
+    const user = res?.user;
+    const userWorkspace: Workspace = {
+      id: user?.id || 'personal',
+      name: user?.name || 'Personal',
+      slug: 'personal',
+      url: 'personal',
+      avatar: user?.avatar || '',
+      plan: 'free',
+      createdAt: user?.createdAt || new Date().toISOString(),
+      updatedAt: user?.updatedAt || new Date().toISOString(),
+    } as Workspace;
+    return { workspace: userWorkspace, yourRole: 'owner' };
+  } catch {
+    return {
+      workspace: {
+        id: 'personal',
+        name: 'Personal',
+        slug: 'personal',
+        url: 'personal',
+      } as Workspace,
+      yourRole: 'owner',
+    };
+  }
+};
 
-export const createWorkspace = (data: CreateWorkspaceBody) =>
-  apiPost<WorkspaceDetailResponse>('/api/workspace', data);
+export const createWorkspace = async (_data: CreateWorkspaceBody): Promise<WorkspaceDetailResponse> => {
+  return fetchWorkspaceById('personal');
+};
 
-export const updateWorkspaceById = (workspaceId: string, data: WorkspacePatch) =>
-  apiPut<WorkspaceDetailResponse>(`/api/workspace/${workspaceId}`, data);
+export const updateWorkspaceById = async (
+  _workspaceId: string,
+  data: WorkspacePatch,
+): Promise<WorkspaceDetailResponse> => {
+  await apiPut('/api/users/settings', { settings: data });
+  return fetchWorkspaceById('personal');
+};
 
 export const deleteWorkspaceById = async (
   workspaceId: string,
 ): Promise<DeleteWorkspaceResult> => {
-  try {
-    await apiDelete(`/api/workspace/${workspaceId}`);
-    return { workspaceId, alreadyDeleted: false };
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      return { workspaceId, alreadyDeleted: true };
-    }
-    throw error;
-  }
+  return { workspaceId, alreadyDeleted: true };
 };
 
+// ── Structured Service Object ─────────────────────────────────────────────────
+
+export const WorkspaceService = {
+  getAll: fetchAllWorkspaces,
+  getById: fetchWorkspaceById,
+  create: createWorkspace,
+  update: updateWorkspaceById,
+  delete: deleteWorkspaceById,
+};

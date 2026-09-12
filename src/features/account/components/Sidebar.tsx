@@ -1,9 +1,9 @@
 'use client';
 
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui";
 import { User, SlidersHorizontal, Bell, Lock } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;

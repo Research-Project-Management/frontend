@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
-import { Label } from '@/shared/components/ui/label';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { RadioGroup, RadioGroupItem } from "@/shared/components/ui";
+import { Label } from "@/shared/components/ui";
 
 export type UploadMode = "replace" | "keep-both";
 
@@ -109,7 +109,7 @@ export default function DuplicateModal({
           <Button
             onClick={handleConfirm}
             disabled={isUploading}
-            className="h-9 px-5 font-medium bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            className="h-9 px-5 font-medium bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer"
           >
             Confirm
           </Button>

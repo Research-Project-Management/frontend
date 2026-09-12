@@ -146,7 +146,6 @@ export interface ReaderState {
   selectionContext: string | null;
 }
 
-export type CatalogItem = ReaderDocument;
 export type Collection = ReaderCollection;
 export type Note = ReaderNote;
 export type PdfAnnotation = ReaderAnnotation;

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { cn } from '@/shared/lib/utils';
+import { cn } from "@/shared/lib/utils";
 
 export const TABS = [
   { key: 'summary', label: 'Summary', href: '' },
@@ -41,7 +41,7 @@ export default function NavigationBar({
     <nav
       aria-label="Your Work Sub Navigation"
       className={cn(
-        'flex items-center gap-1 border-b border-border px-6 bg-background select-none shrink-0',
+        'flex items-center gap-1 border-b border-border px-6 bg-background select-none shrink-0 h-13',
         className,
       )}
     >
@@ -56,19 +56,19 @@ export default function NavigationBar({
             href={targetHref}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'relative flex items-center gap-1.5 px-3.5 py-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-t-sm',
+              'relative flex h-full items-center gap-2 px-3.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0',
               isActive
-                ? 'text-primary font-semibold'
-                : 'text-muted-foreground hover:bg-muted',
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <span>{tab.label}</span>
             {typeof count === 'number' && count > 0 && (
               <span
                 className={cn(
-                  'text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none',
+                  'text-xs px-1.5 py-0.5 rounded-full font-medium leading-none tabular-nums',
                   isActive
-                    ? 'bg-primary/15 text-primary'
+                    ? 'bg-primary/10 text-primary'
                     : 'bg-muted text-muted-foreground',
                 )}
               >
@@ -77,7 +77,7 @@ export default function NavigationBar({
             )}
 
             {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
+              <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary" />
             )}
           </Link>
         );

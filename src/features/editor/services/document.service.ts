@@ -7,7 +7,7 @@
  *  - LaTeX Compilation Proxy (`/api/latex/compile`, `/api/pages/:rootId/sync-incremental`)
  */
 
-import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
 import type {
   Page,
   PageFile,

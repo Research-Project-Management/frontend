@@ -19,20 +19,20 @@ import {
   ChevronDown,
   Search,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from '@/shared/components/ui/popover';
-import { Checkbox } from '@/shared/components/ui/checkbox';
+} from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 import {
   useStorageFilterStore,
   type StorageTypeFilter,
@@ -110,7 +110,7 @@ export function StorageFilterPopover() {
                 )}
                 aria-label="Filter & sort"
               >
-                <ListFilter className="size-4 shrink-0" strokeWidth={2} />
+                <ListFilter className="size-4 shrink-0" strokeWidth={1.5} />
                 {isActive && (
                   <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
                 )}
@@ -126,7 +126,7 @@ export function StorageFilterPopover() {
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-80 p-3 rounded-md shadow-sm border border-border bg-popover text-popover-foreground z-50 select-none animate-in fade-in-0 zoom-in-95"
+        className="w-80 p-3 rounded-md border border-border bg-popover text-popover-foreground z-50 select-none animate-in fade-in-0 zoom-in-95"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-border">

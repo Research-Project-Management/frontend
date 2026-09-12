@@ -15,21 +15,21 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Button } from "@/shared/components/ui";
+import { Checkbox } from "@/shared/components/ui";
+import { Skeleton } from "@/shared/components/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+} from "@/shared/components/ui";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from '@/shared/components/ui/context-menu';
+} from "@/shared/components/ui";
 import Topbar from '../components/Topbar';
 import InspectorPanel from '../components/Panel';
 import AddLinkModal from '../components/modals/AddLinkModal';
@@ -40,8 +40,8 @@ import { useLibrary } from '../hooks/use-library';
 import { useDuplicateGroups, useMergePapers } from '../hooks/use-curation';
 import { useItemTable, type SortField } from '../hooks/use-items';
 import { normalizeAuthors, formatCreatorCompact } from '../utils/library.util';
-import { cn } from '@/shared/lib/utils';
-import type { CatalogItem } from '../types/library.types';
+import { cn } from "@/shared/lib/utils";
+import type { Item, DuplicateGroup } from '../types/library.types';
 
 export default function DuplicatesPage() {
   const router = useRouter();
@@ -75,16 +75,16 @@ export default function DuplicatesPage() {
   const { data: duplicateData, isLoading: isDupLoading } = useDuplicateGroups(workspaceId);
   const mergeMutation = useMergePapers(workspaceId);
 
-  const duplicateGroups = useMemo(
+  const duplicateGroups: DuplicateGroup[] = useMemo(
     () =>
-      (duplicateData as { duplicateGroups?: any[]; groups?: any[] } | undefined)?.duplicateGroups ||
-      (duplicateData as { duplicateGroups?: any[]; groups?: any[] } | undefined)?.groups ||
+      (duplicateData as { duplicateGroups?: DuplicateGroup[]; groups?: DuplicateGroup[] } | undefined)?.duplicateGroups ||
+      (duplicateData as { duplicateGroups?: DuplicateGroup[]; groups?: DuplicateGroup[] } | undefined)?.groups ||
       [],
     [duplicateData],
   );
 
   const allDuplicateItems = useMemo(() => {
-    const list: CatalogItem[] = [];
+    const list: Item[] = [];
     const seen = new Set<string>();
     for (const group of duplicateGroups) {
       const groupItems = group.items || group.papers || [];
@@ -105,7 +105,7 @@ export default function DuplicatesPage() {
       (p) =>
         p.title?.toLowerCase().includes(q) ||
         (Array.isArray(p.authors) &&
-          p.authors.some((a: any) => (typeof a === 'string' ? a : a.name || '').toLowerCase().includes(q))) ||
+          p.authors.some((a: unknown) => (typeof a === 'string' ? a : (a as { name?: string })?.name || '').toLowerCase().includes(q))) ||
         (p.doi && p.doi.toLowerCase().includes(q)),
     );
   }, [allDuplicateItems, search]);
@@ -127,7 +127,7 @@ export default function DuplicatesPage() {
     initialSortOrder: 'desc',
   });
 
-  const handleSelectItem = (item: CatalogItem) => {
+  const handleSelectItem = (item: Item) => {
     const itemId = item.id;
     if (selectedItemId === itemId) {
       setSelectedItemId(null);
@@ -136,35 +136,35 @@ export default function DuplicatesPage() {
     }
   };
 
-  const handleRowClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
     handleSelectItem(item);
   };
 
-  const handleRowDoubleClick = (e: React.MouseEvent, item: CatalogItem) => {
+  const handleRowDoubleClick = (e: React.MouseEvent, item: Item) => {
     if ((e.target as HTMLElement).closest('input[type="checkbox"], button, [role="menuitem"]')) {
       return;
     }
-    if (item.id && workspaceId) {
-      router.push(`/${workspaceId}/library/papers/${item.id}`);
+    if (item.id) {
+      router.push(workspaceId ? `/${workspaceId}/library/papers/${item.id}` : `/library/papers/${item.id}`);
     }
   };
 
-  const [mergeCluster, setMergeCluster] = useState<CatalogItem[] | null>(null);
+  const [mergeCluster, setMergeCluster] = useState<Item[] | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
-  const [itemsToMerge, setItemsToMerge] = useState<CatalogItem[]>([]);
+  const [itemsToMerge, setItemsToMerge] = useState<Item[]>([]);
 
-  const handleOpenMerge = (clusterItems: CatalogItem[]) => {
+  const handleOpenMerge = (clusterItems: Item[]) => {
     if (!clusterItems || clusterItems.length < 2) return;
     setMergeCluster(clusterItems);
     setMergeOpen(true);
   };
 
   const handleExecuteMerge = async (
-    masterItem: CatalogItem,
-    _mergedFields: Partial<CatalogItem>,
+    masterItem: Item,
+    _mergedFields: Partial<Item>,
     duplicateIdsToDelete: string[],
   ) => {
     await mergeMutation.mutateAsync({
@@ -220,13 +220,13 @@ export default function DuplicatesPage() {
                 <span className="text-muted-foreground font-mono">({allDuplicateItems.length} items)</span>
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5">
-                {duplicateGroups.map((group: any, idx: number) => {
-                  const items = group.items || group.papers || [];
+                {duplicateGroups.map((group: DuplicateGroup, idx: number) => {
+                  const items = (group as unknown as { items?: Item[]; papers?: Item[] }).items || (group as unknown as { items?: Item[]; papers?: Item[] }).papers || [];
                   if (items.length < 2) return null;
                   const matchLabel = group.matchType === 'DOI' ? 'DOI' : 'Title';
                   return (
                     <Button
-                      key={group.key || group.clusterId || idx}
+                      key={group.key || idx}
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenMerge(items)}
@@ -406,7 +406,7 @@ export default function DuplicatesPage() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" sideOffset={4} className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-none space-y-0.5">
                                     <DropdownMenuItem
-                                      onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)}
+                                      onClick={() => router.push(workspaceId ? `/${workspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`)}
                                       className="h-8.5 gap-2.5 px-2.5 text-xs font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
                                     >
                                       <BookOpen className="size-3.5 text-foreground shrink-0" />
@@ -435,7 +435,7 @@ export default function DuplicatesPage() {
                           </tr>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-48 text-xs font-sans">
-                          <ContextMenuItem onClick={() => router.push(`/${workspaceId}/library/papers/${paper.id}`)} className="gap-2">
+                          <ContextMenuItem onClick={() => router.push(workspaceId ? `/${workspaceId}/library/papers/${paper.id}` : `/library/papers/${paper.id}`)} className="gap-2">
                             <BookOpen className="size-3.5 shrink-0" />
                             <span>Open in Reader</span>
                           </ContextMenuItem>

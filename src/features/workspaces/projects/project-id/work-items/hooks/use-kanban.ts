@@ -8,8 +8,6 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
-  type SensorDescriptor,
-  type SensorOptions,
 } from '@dnd-kit/core';
 import {
   Clock3,
@@ -22,17 +20,12 @@ import {
   ArrowUp,
   Minus,
   ArrowDown,
-  Hash,
   ShieldAlert,
-  Bug,
-  Sparkles,
-  TrendingUp,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
-import type { WorkItem, Task, Column, TaskIssueType } from '../types/work-item.types';
-import { resolveWorkItemColumnId, resolveTaskColumnId, ISSUE_TYPE_CONFIG } from '../types/work-item.types';
-import { WorkItemHelpers, TaskHelpers } from './use-work-item';
+import type { Task, Column } from '../types/types';
+import { resolveTaskColumnId } from '../types/types';
+import { TaskHelpers } from '../utils/util';
 
 export type TaskCardLabel = {
   id: string;
@@ -75,15 +68,15 @@ export function useKanban({
   const validColumnIds = useMemo(() => {
     return new Set(
       columns
-        .map((c) => resolveTaskColumnId(c))
+        .map((column) => resolveTaskColumnId(column))
         .filter((id): id is string => Boolean(id)),
     );
   }, [columns]);
 
   const tasksByColumn = useMemo(() => {
     const map = new Map<string, Task[]>();
-    for (const col of columns) {
-      const columnId = resolveTaskColumnId(col);
+    for (const column of columns) {
+      const columnId = resolveTaskColumnId(column);
       if (columnId) map.set(columnId, []);
     }
     for (const task of tasks) {
@@ -96,7 +89,7 @@ export function useKanban({
 
   const activeTask = useMemo(() => {
     if (!activeId) return null;
-    return tasks.find((t) => t.id === activeId) ?? null;
+    return tasks.find((task) => task.id === activeId) ?? null;
   }, [activeId, tasks]);
 
   const dragStart = useCallback((event: DragStartEvent) => {
@@ -116,7 +109,7 @@ export function useKanban({
       if (validColumnIds.has(overId)) {
         targetColumnId = overId;
       } else {
-        const overTask = tasks.find((t) => t.id === overId);
+        const overTask = tasks.find((task) => task.id === overId);
         if (overTask?.columnId && validColumnIds.has(overTask.columnId)) {
           targetColumnId = overTask.columnId;
         }
@@ -124,7 +117,7 @@ export function useKanban({
 
       if (!targetColumnId) return;
 
-      const currentTask = tasks.find((t) => t.id === activeTaskId);
+      const currentTask = tasks.find((task) => task.id === activeTaskId);
       if (currentTask && currentTask.columnId !== targetColumnId) {
         onMoveCard?.(activeTaskId, targetColumnId);
       }
@@ -217,30 +210,31 @@ export function useCard({
 
   const hasDue = Boolean(card.dueDate && !Number.isNaN(new Date(card.dueDate).getTime()));
   const isOverdue = useMemo(() => {
-    if (card.dueState === 'overdue' || card.isOverdue === true) return true;
     return TaskHelpers.checkOverdue(card.dueDate);
-  }, [card.dueState, card.isOverdue, card.dueDate]);
+  }, [card.dueDate]);
 
   const hasDesc = Boolean(card.description?.trim() || card.content?.trim());
-  const comments = card.commentCount ?? 0;
-  const attachments = Array.isArray(card.attachments) ? card.attachments.length : 0;
-  const checklists = Array.isArray(card.checklists) ? card.checklists : [];
-  const checkTotal = checklists.reduce((acc, c) => acc + (Array.isArray(c?.items) ? c.items.length : 0), 0);
-  const checkDone = checklists.reduce((acc, c) => acc + (Array.isArray(c?.items) ? c.items.filter((i: any) => i?.completed || i?.isCompleted).length : 0), 0);
+  const comments = (card as any).commentCount ?? (card as any).comments?.length ?? 0;
+  const attachments = TaskHelpers.countAttachments(card.attachments);
+  const subtasks = Array.isArray(card.subtasks) ? card.subtasks : [];
+  const subtaskTotal = (card as any).subtaskCount ?? subtasks.length;
+  const subtaskDone =
+    (card as any).subtaskCompletedCount ??
+    subtasks.filter((subtask: any) => subtask?.completed || subtask?.columnId === 'done').length;
 
   const labels = useMemo(() => {
     return (card.labels || [])
       .map((id: string) => labelMap?.get(id))
       .filter(Boolean)
-      .map((t) => ({ id: t!.id, color: t!.color, title: t!.name }))
-      .filter((l) => Boolean(l.color));
+      .map((labelItem) => ({ id: labelItem!.id, color: labelItem!.color, title: labelItem!.name }))
+      .filter((labelItem) => Boolean(labelItem.color));
   }, [card.labels, labelMap]);
 
   const user = useMemo(() => {
-    const raw = (card as any).assignee || (typeof card.assigneeId === 'object' ? card.assigneeId : null);
+    const raw = TaskHelpers.resolveAssignee(card);
     if (!raw) return null;
     return {
-      id: raw.id || (typeof card.assigneeId === 'string' ? card.assigneeId : ''),
+      id: raw.id,
       name: raw.name || '',
       avatar: raw.avatar || undefined,
     };
@@ -265,24 +259,16 @@ export function useCard({
     if (attachments > 0) {
       list.push({ key: 'attachments', icon: Paperclip, label: `${attachments} attachments`, text: String(attachments) });
     }
-    if (checkTotal > 0) {
+    if (subtaskTotal > 0) {
       list.push({
-        key: 'checklists',
+        key: 'subtasks',
         icon: CheckSquare,
-        label: `${checkDone}/${checkTotal} checklist items completed`,
-        text: `${checkDone}/${checkTotal}`,
-      });
-    }
-    if (card.storyPoints !== undefined && card.storyPoints !== null) {
-      list.push({
-        key: 'story-points',
-        icon: Hash,
-        label: `Estimate: ${card.storyPoints} points`,
-        text: `${card.storyPoints} pts`,
+        label: `${subtaskDone}/${subtaskTotal} subtasks completed`,
+        text: `${subtaskDone}/${subtaskTotal}`,
       });
     }
 
-    const isBlocked = Array.isArray(card.relations) && card.relations.some((r) => r.type === 'blocked_by');
+    const isBlocked = Array.isArray(card.relations) && card.relations.some((relation) => relation.type === 'blocked_by');
     if (isBlocked) {
       list.push({
         key: 'blocked',
@@ -293,7 +279,7 @@ export function useCard({
     }
 
     const subCount = card.subtaskCount ?? (card.subtasks?.length ?? 0);
-    const subDone = card.subtaskCompletedCount ?? (card.subtasks?.filter((s: any) => s.completed || s.columnId === 'done').length ?? 0);
+    const subDone = card.subtaskCompletedCount ?? (card.subtasks?.filter((subtask: any) => subtask.completed || subtask.columnId === 'done').length ?? 0);
     if (subCount > 0) {
       list.push({
         key: 'subtasks',
@@ -304,19 +290,21 @@ export function useCard({
     }
 
     if (card.priority && card.priority !== 'none') {
-      const pIcons: Record<string, any> = {
+      const priorityIcons: Record<string, any> = {
         urgent: AlertCircle,
         high: ArrowUp,
         medium: Minus,
         low: ArrowDown,
       };
-      const PIcon = pIcons[card.priority] || Minus;
-      list.push({
-        key: 'priority',
-        icon: PIcon,
-        label: `Priority: ${card.priority}`,
-        text: card.priority.charAt(0).toUpperCase() + card.priority.slice(1),
-      });
+      const Icon = priorityIcons[card.priority];
+      if (Icon) {
+        list.push({
+          key: 'priority',
+          icon: Icon,
+          label: `Priority: ${card.priority}`,
+          text: card.priority.charAt(0).toUpperCase() + card.priority.slice(1),
+        });
+      }
     }
 
     return list;
@@ -325,13 +313,12 @@ export function useCard({
     hasDesc,
     comments,
     attachments,
-    checkTotal,
-    checkDone,
+    subtaskTotal,
+    subtaskDone,
     card.subtaskCount,
     card.subtaskCompletedCount,
     card.subtasks,
     card.priority,
-    card.storyPoints,
     card.relations,
   ]);
 
@@ -339,15 +326,13 @@ export function useCard({
 
   const state = {
     dates: { start: startDate, due: dueDate, display: dateText, hasDue, isOverdue },
-    counts: { comments, attachments, checkTotal, checkDone },
+    counts: { comments, attachments, subtaskTotal, subtaskDone },
     labels,
     assignee: { user, initials, isCurrentUser, avatar },
     hasDescription: hasDesc,
     showLabelDetails: showLabels,
     metadataItems,
-    issueType: (card.issueType as TaskIssueType) || 'task',
-    storyPoints: card.storyPoints,
-    isBlocked: Array.isArray(card.relations) && card.relations.some((r) => r.type === 'blocked_by'),
+    isBlocked: Array.isArray(card.relations) && card.relations.some((relation) => relation.type === 'blocked_by'),
     status: {
       isCompleted: card.columnId === 'done',
       isReadOnly,

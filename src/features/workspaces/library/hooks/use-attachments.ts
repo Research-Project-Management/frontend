@@ -73,7 +73,7 @@ export function useAttachments(workspaceId: string, itemId: string) {
         queryKey: attachmentKeys.byItem(workspaceId, itemId),
       });
       queryClient.invalidateQueries({
-        queryKey: ['catalog-items'],
+        queryKey: ['items'],
       });
       toast.success('Web Snapshot captured', { id: 'snapshot-mutation' });
     },
@@ -81,6 +81,26 @@ export function useAttachments(workspaceId: string, itemId: string) {
       toast.error('Failed to capture snapshot', {
         description: err?.message || 'Please verify the URL is accessible.',
         id: 'snapshot-mutation',
+      });
+    },
+  });
+
+  const setPrimaryMutation = useMutation({
+    mutationFn: (attachmentId: string) =>
+      AttachmentsService.setPrimaryAttachment(workspaceId, itemId, attachmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: attachmentKeys.byItem(workspaceId, itemId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['items'],
+      });
+      toast.success('Set as primary document', { id: 'primary-attachment-mutation' });
+    },
+    onError: (err: any) => {
+      toast.error('Failed to set primary document', {
+        description: err?.message || 'Please try again.',
+        id: 'primary-attachment-mutation',
       });
     },
   });
@@ -93,9 +113,11 @@ export function useAttachments(workspaceId: string, itemId: string) {
     add: addMutation.mutateAsync,
     remove: deleteMutation.mutateAsync,
     captureSnapshot: captureSnapshotMutation.mutateAsync,
+    setPrimary: setPrimaryMutation.mutateAsync,
     isAdding: addMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isCapturingSnapshot: captureSnapshotMutation.isPending,
+    isSettingPrimary: setPrimaryMutation.isPending,
   };
 }
 

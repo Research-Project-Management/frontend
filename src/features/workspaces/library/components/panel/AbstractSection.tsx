@@ -3,18 +3,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Copy, Check, Sparkles, AlignJustify, AlignLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCopyToClipboard } from '@/shared/hooks/use-copy-to-clipboard';
+import { useCopyToClipboard } from "@/shared/hooks";
 import { cleanAbstractText } from '@/features/workspaces/library/utils/library.util';
-import type { CatalogItem } from '@/features/workspaces/library/types/library.types';
+import type { Item } from '@/features/workspaces/library/types/library.types';
 
 interface AbstractSectionProps {
-  paper: CatalogItem;
-  onUpdatePaper?: (data: Partial<CatalogItem>) => void;
+  paper: Item;
+  onUpdatePaper?: (data: Partial<Item>) => void;
   hideHeader?: boolean;
 }
 
-function getAbstractValue(p: CatalogItem): string {
-  const item = p as CatalogItem & {
+function getAbstractValue(p: Item): string {
+  const item = p as Item & {
     abstractNote?: string;
     extra?: { abstract?: string };
     metadata?: { abstract?: string };
@@ -78,7 +78,7 @@ export default function AbstractSection({
         onUpdatePaper({
           abstract: trimmed || undefined,
           abstractNote: trimmed || undefined,
-        } as unknown as Partial<CatalogItem>);
+        } as unknown as Partial<Item>);
       }
     }
   }, [draft, paper, onUpdatePaper]);
@@ -94,7 +94,7 @@ export default function AbstractSection({
       onUpdatePaper({
         abstract: cleaned,
         abstractNote: cleaned,
-      } as unknown as Partial<CatalogItem>);
+      } as unknown as Partial<Item>);
       toast.success('Abstract formatted & cleaned', { id: 'library-abstract-format' });
     } else {
       toast.success('Abstract already clean', { id: 'library-abstract-format' });

@@ -13,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
+} from "@/shared/components/ui";
 import type { Quicklink } from '../types/home.types';
 
 const getDisplayTitle = (title: string, url: string) => {

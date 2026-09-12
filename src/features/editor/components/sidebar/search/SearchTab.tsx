@@ -8,10 +8,10 @@ import {
   ChevronRight,
   Replace,
 } from "lucide-react";
-import { Input } from '@/shared/components/ui/input';
+import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 import { usePageStore } from "@/features/editor/store/page.store";
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useDebounce } from "@/shared/hooks";
 
 interface MatchEntry {
   line: number;
@@ -172,7 +172,7 @@ export default function SearchTab({ onClose }: { onClose?: () => void }) {
               type="button"
               onClick={handleReplaceAll}
               disabled={!debouncedQuery}
-              className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="h-8 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               All
             </button>

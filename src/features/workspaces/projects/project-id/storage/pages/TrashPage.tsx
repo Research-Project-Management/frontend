@@ -7,7 +7,7 @@ import { useProject } from '@/features/workspaces/projects/shell/hooks/use-proje
 import { useTrash, useRestoreItem, usePermanentlyDeleteItem } from '@/features/workspaces/projects/project-id/storage/hooks/use-storage';
 
 import { Trash2 } from "lucide-react";
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { Skeleton } from "@/shared/components/ui";
 import ListView from '../components/views/ListView';
 import GridView from '../components/views/GridView';
 import { useViewStore } from '../store/use-view-store';
@@ -16,11 +16,11 @@ import { useStorageFilterStore } from '../store/use-filter-store';
 import type { StorageItem } from '@/features/workspaces/projects/project-id/storage/types/storage.types';
 import { filterTrashFiles } from '../utils/trash.util';
 import { applyStorageFilters } from '../utils/filter.util';
-import { downloadFileUrl } from '@/shared/utils/file';
+import { downloadFileUrl } from "@/shared/lib/file-client";
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import Topbar from '../components/layout/Topbar';
 
-import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useDebounce } from "@/shared/hooks";
 import type { FileQueryParams } from '@/features/workspaces/projects/project-id/storage/services/file.service';
 
 export default function ProjectTrashPage() {

@@ -2,10 +2,10 @@
 
 import React, { useMemo, useRef } from "react";
 import { LabelsDisplay } from "../icons/LabelsDisplay";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
+import { Dialog, DialogContent, DialogFooter } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { CalendarDays, Plus, X, Lock, ArrowRight, PlayCircle, CheckCircle2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -199,7 +199,7 @@ export const CycleModal = ({
                       )}
                     </div>
                     {!isReadOnly && (
-                      <button onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors cursor-pointer" aria-label="Clear dates">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setFormStart(""); setFormEnd(""); }} className="ml-0.5 size-4 rounded-full hover:bg-foreground/10 flex items-center justify-center transition-colors cursor-pointer" aria-label="Clear dates">
                         <X className="size-2.5 text-foreground shrink-0" />
                       </button>
                     )}
@@ -233,7 +233,7 @@ export const CycleModal = ({
             {isReadOnly ? 'Close' : 'Cancel'}
           </Button>
           {!isReadOnly && (
-            <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-primary px-6 text-primary-foreground hover:bg-primary/90 shadow-none font-medium transition-all active:scale-95 cursor-pointer">
+            <Button onClick={onSave} disabled={!formName.trim() || isSaving} className="h-9 bg-primary px-6 text-primary-foreground hover:bg-primary-hover shadow-none font-medium transition-all active:scale-95 cursor-pointer">
               {isSaving ? (mode === 'create' ? "Creating..." : "Saving...") : (mode === 'create' ? "Create" : "Save")}
             </Button>
           )}

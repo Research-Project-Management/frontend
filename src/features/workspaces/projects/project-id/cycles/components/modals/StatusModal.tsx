@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
-import { Button } from '@/shared/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui";
 import { PlayCircle, CheckCircle2, ArrowRight, CornerDownLeft, CircleSlash } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -187,7 +187,7 @@ export const StatusModal = ({
               type="button"
               onClick={handleConfirm}
               disabled={isSubmitting}
-              className="h-9 px-5 text-sm font-semibold border-none shadow-none rounded-sm transition-all active:scale-95 cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="h-9 px-5 text-sm font-semibold border-none shadow-none rounded-sm transition-all active:scale-95 cursor-pointer bg-primary hover:bg-primary-hover text-primary-foreground"
             >
               {isSubmitting ? "Processing..." : (isComplete ? "Complete Cycle" : "Start Cycle")}
             </Button>

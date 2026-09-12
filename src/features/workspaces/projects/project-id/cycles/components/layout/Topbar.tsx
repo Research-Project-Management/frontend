@@ -2,11 +2,11 @@
 
 import { useState, useRef } from "react";
 import { Search, Filter, Plus, X, Check, ChevronDown, ChevronUp } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { addWeeks, addMonths, startOfDay, format } from "date-fns";
 import { DoubleCalendarModal } from "../modals/DateRangeFilterModal";
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { Button } from "@/shared/components/ui";
+import { Input } from "@/shared/components/ui";
 import { cn } from "@/shared/lib/utils";
 
 interface TopBarProps {
@@ -76,7 +76,7 @@ export default function TopBar({
       >
         <div className="flex items-center justify-center w-8 shrink-0">
           <Search 
-            className="size-3.5 text-foreground"
+            className="size-3.5 text-foreground shrink-0"
           />
         </div>
         <Input
@@ -170,7 +170,7 @@ export default function TopBar({
                             });
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
+                            "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
                             isActive ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
                           )}
                         >
@@ -178,7 +178,7 @@ export default function TopBar({
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             isActive ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {isActive && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
+                            {isActive && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={1.5} />}
                           </div>
                           <span className="font-medium">{opt.label}</span>
                         </button>
@@ -196,7 +196,7 @@ export default function TopBar({
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             dateFilters.startDate?.label === "Custom" ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {dateFilters.startDate?.label === "Custom" && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
+                            {dateFilters.startDate?.label === "Custom" && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={1.5} />}
                           </div>
                         <span className="font-medium">Custom</span>
                       </button>
@@ -239,7 +239,7 @@ export default function TopBar({
                             });
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
+                            "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors cursor-pointer",
                             isActive ? "bg-muted text-foreground font-medium" : "text-foreground hover:bg-muted"
                           )}
                         >
@@ -247,7 +247,7 @@ export default function TopBar({
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             isActive ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {isActive && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
+                            {isActive && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={1.5} />}
                           </div>
                           <span className="font-medium">{opt.label}</span>
                         </button>
@@ -265,7 +265,7 @@ export default function TopBar({
                             "size-4 rounded-sm border border-border flex items-center justify-center transition-all",
                             dateFilters.dueDate?.label === "Custom" ? "bg-primary border-primary text-primary-foreground" : "bg-background"
                           )}>
-                            {dateFilters.dueDate?.label === "Custom" && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={3} />}
+                            {dateFilters.dueDate?.label === "Custom" && <Check className="size-3 text-primary-foreground shrink-0" strokeWidth={1.5} />}
                           </div>
                         <span className="font-medium">Custom</span>
                       </button>
@@ -299,7 +299,7 @@ export default function TopBar({
       <Button
         onClick={onAddCycle}
         size="sm"
-        className="h-8 gap-1.5 rounded-sm px-3 text-xs shadow-none transition-all bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+        className="h-8 gap-1.5 rounded-md px-3 text-13 shadow-none transition-all bg-primary text-primary-foreground hover:bg-primary-hover cursor-pointer"
       >
         <Plus className="size-3.5 text-primary-foreground shrink-0" />
         Add Cycle

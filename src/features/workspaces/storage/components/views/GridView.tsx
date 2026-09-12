@@ -3,9 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Star, Folder, CheckSquare, Square, Loader2, Upload, FolderPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { resolveFileUrl } from '@/shared/utils/url';
+import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useInfiniteSentinel } from '../../hooks/use-infinite-sentinel';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from "@/shared/components/ui";
 import type { StorageItem } from '@/features/workspaces/storage/types/storage.types';
 import { getFileType, getFileIcon, getFileColor, formatFileSize } from '../../utils/file';
 import { ItemActions, type StorageViewProps } from './ListView';
@@ -369,7 +369,7 @@ export default function GridView({
       <div ref={sentinelRef} className="col-span-full py-2 flex items-center justify-center min-h-6">
         {isFetchingNextPage && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
-            <Loader2 className="size-4 animate-spin text-primary" />
+            <Loader2 className="size-4 animate-spin text-primary shrink-0" />
             <span>Loading more files...</span>
           </div>
         )}

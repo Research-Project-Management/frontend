@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Switch } from '@/shared/components/ui/switch';
-import { Textarea } from '@/shared/components/ui/textarea';
-import { useClickOutside } from '@/shared/hooks/use-click-outside';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Switch } from "@/shared/components/ui";
+import { Textarea } from "@/shared/components/ui";
+import { useClickOutside } from "@/shared/hooks";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 import { ArrowUp, Square, Globe, X, Plus, ChevronDown } from 'lucide-react';
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useParams } from 'next/navigation';
@@ -57,7 +57,7 @@ export function ChatInput({
   initialAgent,
   initialWebSearch,
 }: ChatInputProps) {
-  const { workspaceId } = useParams() as { workspaceId: string };
+  const { workspaceId } = useParams() as { workspaceId?: string };
   const { workspace } = useWorkspace(workspaceId);
   const { projects } = useProjects();
   const [message, setMessage] = useState(initialMessage || '');

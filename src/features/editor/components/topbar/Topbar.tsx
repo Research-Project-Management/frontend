@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowUpLeft } from 'lucide-react';
 
-import { Menubar, MenubarMenu, MenubarTrigger } from '@/shared/components/ui/menubar';
+import { Menubar, MenubarMenu, MenubarTrigger } from "@/shared/components/ui";
 
 import FileMenu from './file/FileMenu';
 import EditMenu from './edit/EditMenu';
@@ -23,7 +23,7 @@ export default function Topbar() {
   return (
     <nav
       aria-label="Editor toolbar"
-      className="flex h-12 items-center justify-between gap-2 px-2 py-1 border-b border-border bg-background shrink-0 z-10"
+      className="flex h-11 items-center justify-between gap-2 px-2 py-1 border-b border-border bg-background shrink-0 z-10"
     >
       {/* ── Left: Main Menubar (Home, File, Edit, View, Insert, Format) ── */}
       <div className="flex items-center min-w-0 shrink-0">
@@ -33,7 +33,7 @@ export default function Topbar() {
             <MenubarTrigger asChild>
               <Link
                 href={homeHref}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-foreground transition-colors cursor-pointer rounded-sm hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-foreground transition-colors cursor-pointer rounded-sm hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
               >
                 <ArrowUpLeft className="size-3.5 shrink-0" />
                 <span>Home</span>

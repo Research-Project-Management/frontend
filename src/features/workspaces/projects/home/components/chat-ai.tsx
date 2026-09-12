@@ -5,10 +5,10 @@ import type { KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
 import { ArrowUp, Globe, ChevronDown, X, Plus, Check } from "lucide-react";
 
-import { Textarea } from '@/shared/components/ui/textarea';
-import { Switch } from '@/shared/components/ui/switch';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Textarea } from "@/shared/components/ui";
+import { Switch } from "@/shared/components/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui";
 
 import { useProjects } from '@/features/workspaces/projects/shell/hooks/use-project';
 import { useWorkspace } from '@/features/workspaces/shell/hooks/use-workspace';
@@ -182,7 +182,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
             {webSearch && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1 text-xs text-primary px-2 py-1 rounded-md bg-primary/8 hover:bg-primary/15 transition-colors cursor-pointer">
+                  <button type="button" className="flex items-center gap-1 text-xs text-primary px-2 py-1 rounded-md bg-primary/8 hover:bg-primary/15 transition-colors cursor-pointer">
                     <Globe className="size-3 shrink-0" />
                     <span>{sites.length} sites</span>
                     <ChevronDown className="size-3 shrink-0" />
